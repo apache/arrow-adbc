@@ -15,12 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 
-prefix=@CMAKE_INSTALL_PREFIX@
-libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
-includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+# To use this, install the python package `pre-commit` and
+# run once `pre-commit install`. This will setup a git pre-commit-hook
+# that is executed on each commit and will report the linting problems.
+# To run all hooks on all files use `pre-commit run -a`
 
-Name: ADBC C++ Client
-Description: C++ bindings for the ADBC API.
-Version: @ADBC_VERSION@
-Requires: arrow
-Libs: -L${libdir} -ladbc_client
+repos:
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: v1.3.5
+    hooks:
+      - id: clang-format
+        args: [-i]
+        types_or: [c, c++]
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+    - id: cmake-format
+      args: [--in-place, --config-files, .cmake-format]

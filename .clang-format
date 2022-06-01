@@ -14,13 +14,8 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
-prefix=@CMAKE_INSTALL_PREFIX@
-libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
-includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
-
-Name: ADBC C++ Driver Utilities
-Description: C++ utilities for implementing ADBC drivers.
-Version: @ADBC_VERSION@
-Requires: arrow
-Libs: -L${libdir} -ladbc_driver
+---
+BasedOnStyle: Google
+ColumnLimit: 90
+DerivePointerAlignment: false
+IncludeBlocks: Preserve
