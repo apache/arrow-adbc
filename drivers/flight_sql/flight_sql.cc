@@ -35,18 +35,11 @@ using arrow::Status;
 
 namespace {
 
-void SetError(const Status& status, struct AdbcError* error) {
-  if (!error) return;
-  std::string message = arrow::util::StringBuilder("[Flight SQL] ", status.ToString());
+void ReleaseError(struct AdbcError* error) {
   if (error->message) {
-    message.reserve(message.size() + 1 + std::strlen(error->message));
-    message.append(1, '\n');
-    message.append(error->message);
     delete[] error->message;
+    error->message = nullptr;
   }
-  error->message = new char[message.size() + 1];
-  message.copy(error->message, message.size());
-  error->message[message.size()] = '\0';
 }
 
 template <typename... Args>
@@ -63,6 +56,7 @@ void SetError(struct AdbcError* error, Args&&... args) {
   error->message = new char[message.size() + 1];
   message.copy(error->message, message.size());
   error->message[message.size()] = '\0';
+  error->release = ReleaseError;
 }
 
 class FlightSqlDatabaseImpl {
@@ -96,7 +90,7 @@ class FlightSqlDatabaseImpl {
 
     auto status = client_->Close();
     if (!status.ok()) {
-      SetError(status, error);
+      SetError(error, status);
       return ADBC_STATUS_IO;
     }
     return ADBC_STATUS_OK;
@@ -159,7 +153,7 @@ class FlightSqlStatementImpl : public arrow::RecordBatchReader {
 
     auto status = NextStream();
     if (!status.ok()) {
-      SetError(status, error);
+      SetError(error, status);
       return ADBC_STATUS_IO;
     }
     if (!schema_) {
@@ -168,7 +162,7 @@ class FlightSqlStatementImpl : public arrow::RecordBatchReader {
 
     status = arrow::ExportRecordBatchReader(self, out);
     if (!status.ok()) {
-      SetError(status, error);
+      SetError(error, status);
       return ADBC_STATUS_UNKNOWN;
     }
     return ADBC_STATUS_OK;
@@ -257,7 +251,7 @@ class AdbcFlightSqlImpl {
     std::unique_ptr<flight::FlightInfo> flight_info;
     auto status = client_->GetTableTypes(call_options).Value(&flight_info);
     if (!status.ok()) {
-      SetError(status, error);
+      SetError(error, status);
       return ADBC_STATUS_IO;
     }
     impl->Init(client_, std::move(flight_info));
@@ -282,7 +276,7 @@ class AdbcFlightSqlImpl {
     std::unique_ptr<flight::FlightInfo> flight_info;
     auto status = client_->Execute(call_options, std::string(query)).Value(&flight_info);
     if (!status.ok()) {
-      SetError(status, error);
+      SetError(error, status);
       return ADBC_STATUS_IO;
     }
     impl->Init(client_, std::move(flight_info));
@@ -312,7 +306,7 @@ class AdbcFlightSqlImpl {
         *arrow::schema({}), flight::FlightDescriptor::Command(""), endpoints,
         /*total_records=*/-1, /*total_bytes=*/-1);
     if (!maybe_info.ok()) {
-      SetError(maybe_info.status(), error);
+      SetError(error, maybe_info.status());
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     std::unique_ptr<flight::FlightInfo> flight_info(
@@ -330,38 +324,32 @@ class AdbcFlightSqlImpl {
 }  // namespace
 
 ADBC_DRIVER_EXPORT
-void AdbcErrorRelease(struct AdbcError* error) {
-  delete[] error->message;
-  error->message = nullptr;
-}
-
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseInit(const struct AdbcDatabaseOptions* options,
                                 struct AdbcDatabase* out, struct AdbcError* error) {
   std::unordered_map<std::string, std::string> option_pairs;
   auto status = adbc::ParseConnectionString(arrow::util::string_view(options->target))
                     .Value(&option_pairs);
   if (!status.ok()) {
-    SetError(status, error);
+    SetError(error, status);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   auto location_it = option_pairs.find("Location");
   if (location_it == option_pairs.end()) {
-    SetError(Status::Invalid("Must provide Location option"), error);
+    SetError(error, Status::Invalid("Must provide Location option"));
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   flight::Location location;
   status = flight::Location::Parse(location_it->second).Value(&location);
   if (!status.ok()) {
-    SetError(status, error);
+    SetError(error, status);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   std::unique_ptr<flight::FlightClient> flight_client;
   status = flight::FlightClient::Connect(location).Value(&flight_client);
   if (!status.ok()) {
-    SetError(status, error);
+    SetError(error, status);
     return ADBC_STATUS_IO;
   }
   std::unique_ptr<flightsql::FlightSqlClient> client(
@@ -497,11 +485,10 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 extern "C" {
 ARROW_EXPORT
 AdbcStatusCode AdbcFlightSqlDriverInit(size_t count, struct AdbcDriver* driver,
-                                       size_t* initialized) {
+                                       size_t* initialized, struct AdbcError* error) {
   if (count < ADBC_VERSION_0_0_1) return ADBC_STATUS_NOT_IMPLEMENTED;
 
   std::memset(driver, 0, sizeof(*driver));
-  driver->ErrorRelease = AdbcErrorRelease;
   driver->DatabaseInit = AdbcDatabaseInit;
   driver->DatabaseRelease = AdbcDatabaseRelease;
   driver->ConnectionInit = AdbcConnectionInit;

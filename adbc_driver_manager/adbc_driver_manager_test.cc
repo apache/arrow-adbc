@@ -36,9 +36,9 @@ class DriverManager : public ::testing::Test {
  public:
   void SetUp() override {
     size_t initialized = 0;
-    ADBC_ASSERT_OK(
+    ADBC_ASSERT_OK_WITH_ERROR(error,
         AdbcLoadDriver("Driver=libadbc_driver_sqlite.so;Entrypoint=AdbcSqliteDriverInit",
-                       ADBC_VERSION_0_0_1, &driver, &initialized));
+                       ADBC_VERSION_0_0_1, &driver, &initialized, &error));
     ASSERT_EQ(initialized, ADBC_VERSION_0_0_1);
 
     AdbcDatabaseOptions db_options;
@@ -90,8 +90,6 @@ TEST_F(DriverManager, SqlExecute) {
 }
 
 TEST_F(DriverManager, SqlExecuteInvalid) {
-  GTEST_SKIP() << "AdbcError needs refactoring";
-
   std::string query = "INVALID";
   AdbcStatement statement;
   std::memset(&statement, 0, sizeof(statement));
