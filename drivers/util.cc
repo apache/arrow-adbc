@@ -15,9 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "adbc/driver/util.h"
-#include "arrow/status.h"
-#include "arrow/util/string_view.h"
+#include "drivers/util.h"
+#include <arrow/status.h>
+#include <arrow/util/string_view.h>
 
 namespace adbc {
 

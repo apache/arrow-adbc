@@ -22,14 +22,15 @@
 #include <mutex>
 #include <string>
 
-#include "adbc/adbc.h"
-#include "adbc/driver/util.h"
-#include "arrow/builder.h"
-#include "arrow/c/bridge.h"
-#include "arrow/record_batch.h"
-#include "arrow/status.h"
-#include "arrow/util/logging.h"
-#include "arrow/util/string_builder.h"
+#include <arrow/builder.h>
+#include <arrow/c/bridge.h>
+#include <arrow/record_batch.h>
+#include <arrow/status.h>
+#include <arrow/util/logging.h>
+#include <arrow/util/string_builder.h>
+
+#include "adbc.h"
+#include "drivers/util.h"
 
 namespace {
 

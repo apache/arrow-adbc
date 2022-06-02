@@ -15,20 +15,27 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# To use this, install the python package `pre-commit` and
-# run once `pre-commit install`. This will setup a git pre-commit-hook
-# that is executed on each commit and will report the linting problems.
-# To run all hooks on all files use `pre-commit run -a`
+# Common definitions for the CMake projects in this repository.
 
-repos:
-  - repo: https://github.com/pocc/pre-commit-hooks
-    rev: v1.3.5
-    hooks:
-      - id: clang-format
-        args: [-i]
-        types_or: [c, c++]
-  - repo: https://github.com/cheshirekow/cmake-format-precommit
-    rev: v0.6.13
-    hooks:
-    - id: cmake-format
-      args: [--in-place]
+enable_language(C)
+include(DefineOptions)
+
+set(ARROW_VERSION "9.0.0-SNAPSHOT")
+set(ARROW_BASE_VERSION "9.0.0")
+set(ARROW_VERSION_MAJOR "9")
+set(ARROW_VERSION_MINOR "0")
+set(ARROW_VERSION_PATCH "0")
+
+math(EXPR ARROW_SO_VERSION "${ARROW_VERSION_MAJOR} * 100 + ${ARROW_VERSION_MINOR}")
+set(ARROW_FULL_SO_VERSION "${ARROW_SO_VERSION}.${ARROW_VERSION_PATCH}.0")
+
+if(ARROW_DEPENDENCY_SOURCE STREQUAL "CONDA")
+  message(STATUS "Adding \$CONDA_PREFIX to CMAKE_PREFIX_PATH")
+  list(APPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
+endif()
+
+if(ARROW_BUILD_TESTS)
+  add_custom_target(all-tests)
+  find_package(GTest)
+  set(ARROW_TEST_LINK_LIBS GTest::gtest_main GTest::gtest GTest::gmock)
+endif()

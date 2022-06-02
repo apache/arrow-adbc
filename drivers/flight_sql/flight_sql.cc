@@ -18,16 +18,16 @@
 #include <mutex>
 #include <string>
 
-#include "adbc/adbc.h"
-#include "adbc/driver/util.h"
-#include "arrow/c/bridge.h"
-#include "arrow/flight/client.h"
-#include "arrow/flight/sql/client.h"
-#include "arrow/record_batch.h"
-#include "arrow/result.h"
-#include "arrow/status.h"
-#include "arrow/util/string_builder.h"
-#include "arrow/util/string_view.h"
+#include <arrow/c/bridge.h>
+#include <arrow/flight/client.h>
+#include <arrow/flight/sql/client.h>
+#include <arrow/record_batch.h>
+#include <arrow/result.h>
+#include <arrow/status.h>
+#include <arrow/util/string_builder.h>
+#include <arrow/util/string_view.h>
+#include "adbc.h"
+#include "drivers/util.h"
 
 namespace flight = arrow::flight;
 namespace flightsql = arrow::flight::sql;
@@ -127,7 +127,7 @@ class FlightSqlStatementImpl : public arrow::RecordBatchReader {
   Status ReadNext(std::shared_ptr<arrow::RecordBatch>* batch) override {
     flight::FlightStreamChunk chunk;
     while (current_stream_ && !chunk.data) {
-      RETURN_NOT_OK(current_stream_->Next(&chunk));
+      ARROW_ASSIGN_OR_RAISE(chunk, current_stream_->Next());
       if (chunk.data) {
         *batch = chunk.data;
         break;
@@ -352,14 +352,14 @@ AdbcStatusCode AdbcDatabaseInit(const struct AdbcDatabaseOptions* options,
   }
 
   flight::Location location;
-  status = flight::Location::Parse(location_it->second, &location);
+  status = flight::Location::Parse(location_it->second).Value(&location);
   if (!status.ok()) {
     SetError(status, error);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   std::unique_ptr<flight::FlightClient> flight_client;
-  status = flight::FlightClient::Connect(location, &flight_client);
+  status = flight::FlightClient::Connect(location).Value(&flight_client);
   if (!status.ok()) {
     SetError(status, error);
     return ADBC_STATUS_IO;
