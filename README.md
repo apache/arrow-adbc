@@ -22,3 +22,18 @@
 [![License](http://img.shields.io/:license-Apache%202-blue.svg)](https://github.com/apache/arrow-adbc/blob/master/LICENSE.txt)
 
 EXPERIMENTAL. Please see the [mailing list discussion](https://lists.apache.org/thread/gnz1kz2rj3rb8rh8qz7l0mv8lvzq254w).
+
+## Building
+
+The libraries here are all **individual** CMake projects.
+
+```shell
+$ mkdir -p build/driver_manager
+$ cd build/driver_manager
+$ cmake ../../adbc_driver_manager
+$ make
+```
+
+Some of Arrow's build options are supported:
+
+- `ARROW_BUILD_TESTS`: build the unit tests

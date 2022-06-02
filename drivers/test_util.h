@@ -19,12 +19,13 @@
 
 #include <memory>
 
-#include "adbc/adbc.h"
-#include "arrow/c/bridge.h"
-#include "arrow/record_batch.h"
-#include "arrow/result.h"
-#include "arrow/testing/gtest_util.h"
-#include "arrow/util/macros.h"
+#include <arrow/c/bridge.h>
+#include <arrow/ipc/json_simple.h>
+#include <arrow/record_batch.h>
+#include <arrow/result.h>
+#include <arrow/testing/gtest_util.h>
+#include <arrow/util/macros.h>
+#include "adbc.h"
 
 namespace adbc {
 
@@ -34,31 +35,34 @@ namespace adbc {
     ASSERT_EQ(code_, ADBC_STATUS_OK); \
   } while (false)
 
-#define ADBC_ASSERT_OK_WITH_ERROR(DRIVER, ERROR, EXPR)                         \
+#define ADBC_ASSERT_OK_WITH_ERROR(ERROR, EXPR)                                 \
   do {                                                                         \
     auto code_ = (EXPR);                                                       \
     if (code_ != ADBC_STATUS_OK) {                                             \
       std::string errmsg_ = ERROR.message ? ERROR.message : "(unknown error)"; \
-      (DRIVER)->ErrorRelease(&ERROR);                                          \
+      AdbcErrorRelease(&ERROR);                                                \
       ASSERT_EQ(code_, ADBC_STATUS_OK) << errmsg_;                             \
     }                                                                          \
   } while (false)
 
-#define ADBC_ASSERT_ERROR_THAT(DRIVER, ERROR, PATTERN)                       \
+#define ADBC_ASSERT_ERROR_THAT(ERROR, PATTERN)                               \
   do {                                                                       \
     ASSERT_NE(ERROR.message, nullptr);                                       \
     std::string errmsg_ = ERROR.message ? ERROR.message : "(unknown error)"; \
-    (DRIVER)->ErrorRelease(&ERROR);                                          \
+    AdbcErrorRelease(&ERROR);                                                \
     ASSERT_THAT(errmsg_, PATTERN) << errmsg_;                                \
   } while (false)
 
-static inline void ReadStatement(AdbcDriver* driver, AdbcStatement* statement,
+#define ASSERT_SCHEMA_EQ(schema1, schema2) \
+  ASSERT_TRUE((schema1).Equals((schema2))) \
+      << "LHS: " << (schema1).ToString() << "RHS: " << (schema2).ToString()
+
+static inline void ReadStatement(AdbcStatement* statement,
                                  std::shared_ptr<arrow::Schema>* schema,
                                  arrow::RecordBatchVector* batches) {
   AdbcError error = {};
   ArrowArrayStream stream;
-  ADBC_ASSERT_OK_WITH_ERROR(driver, error,
-                            driver->StatementGetStream(statement, &stream, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementGetStream(statement, &stream, &error));
   ASSERT_OK_AND_ASSIGN(auto reader, arrow::ImportRecordBatchReader(&stream));
 
   *schema = reader->schema();
@@ -68,7 +72,15 @@ static inline void ReadStatement(AdbcDriver* driver, AdbcStatement* statement,
     if (!batch) break;
     batches->push_back(std::move(batch));
   }
-  ADBC_ASSERT_OK_WITH_ERROR(driver, error, driver->StatementRelease(statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(statement, &error));
+}
+
+static inline std::shared_ptr<arrow::RecordBatch> RecordBatchFromJSON(
+    const std::shared_ptr<arrow::Schema>& schema, const std::string& json) {
+  auto struct_type = arrow::struct_(schema->fields());
+  std::shared_ptr<arrow::Array> struct_array =
+      *arrow::ipc::internal::json::ArrayFromJSON(struct_type, json);
+  return *arrow::RecordBatch::FromStructArray(struct_array);
 }
 
 }  // namespace adbc
