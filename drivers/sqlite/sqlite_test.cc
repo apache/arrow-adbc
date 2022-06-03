@@ -60,95 +60,93 @@ class Sqlite : public ::testing::Test {
 };
 
 TEST_F(Sqlite, SqlExecute) {
-  {
-    std::string query = "SELECT 1";
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcConnectionSqlExecute(&connection, query.c_str(), &statement, &error));
+  std::string query = "SELECT 1";
+  AdbcStatement statement;
+  std::memset(&statement, 0, sizeof(statement));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error,
+                            AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
-    std::shared_ptr<arrow::Schema> schema;
-    arrow::RecordBatchVector batches;
-    ReadStatement(&statement, &schema, &batches);
-    ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("1", arrow::int64())}));
-    EXPECT_THAT(batches,
-                ::testing::UnorderedPointwise(
-                    PointeesEqual(), {
-                                         adbc::RecordBatchFromJSON(schema, "[[1]]"),
-                                     }));
-  }
+  std::shared_ptr<arrow::Schema> schema;
+  arrow::RecordBatchVector batches;
+  ReadStatement(&statement, &schema, &batches);
+  ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("1", arrow::int64())}));
+  EXPECT_THAT(batches,
+              ::testing::UnorderedPointwise(
+                  PointeesEqual(), {
+                                       adbc::RecordBatchFromJSON(schema, "[[1]]"),
+                                   }));
+}
 
-  {
-    std::string query = "INVALID";
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
-    ASSERT_NE(AdbcConnectionSqlExecute(&connection, query.c_str(), &statement, &error),
-              ADBC_STATUS_OK);
-    ADBC_ASSERT_ERROR_THAT(
-        error, ::testing::AllOf(::testing::HasSubstr("[SQLite3] sqlite3_prepare_v2:"),
-                                ::testing::HasSubstr("syntax error")));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
+TEST_F(Sqlite, SqlExecuteInvalid) {
+  std::string query = "INVALID";
+  AdbcStatement statement;
+  std::memset(&statement, 0, sizeof(statement));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ASSERT_NE(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error), ADBC_STATUS_OK);
+  ADBC_ASSERT_ERROR_THAT(
+      error, ::testing::AllOf(::testing::HasSubstr("[SQLite3] sqlite3_prepare_v2:"),
+                              ::testing::HasSubstr("syntax error")));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
 }
 
 TEST_F(Sqlite, SqlPrepare) {
-  {
-    std::string query = "SELECT 1";
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcConnectionSqlPrepare(&connection, query.c_str(), &statement, &error));
+  std::string query = "SELECT 1";
+  AdbcStatement statement;
+  std::memset(&statement, 0, sizeof(statement));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error,
+                            AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementPrepare(&statement, &error));
 
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
-    std::shared_ptr<arrow::Schema> schema;
-    arrow::RecordBatchVector batches;
-    ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
-    ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("1", arrow::int64())}));
-    EXPECT_THAT(batches,
-                ::testing::UnorderedPointwise(
-                    PointeesEqual(), {
-                                         adbc::RecordBatchFromJSON(schema, "[[1]]"),
-                                     }));
-  }
+  std::shared_ptr<arrow::Schema> schema;
+  arrow::RecordBatchVector batches;
+  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
+  ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("1", arrow::int64())}));
+  EXPECT_THAT(batches,
+              ::testing::UnorderedPointwise(
+                  PointeesEqual(), {
+                                       adbc::RecordBatchFromJSON(schema, "[[1]]"),
+                                   }));
+}
 
-  {
-    auto param_schema = arrow::schema(
-        {arrow::field("1", arrow::int64()), arrow::field("2", arrow::utf8())});
-    std::string query = "SELECT ?, ?";
-    AdbcStatement statement;
-    ArrowArray export_params;
-    ArrowSchema export_schema;
-    std::memset(&statement, 0, sizeof(statement));
+TEST_F(Sqlite, SqlPrepareMultipleParams) {
+  auto param_schema = arrow::schema(
+      {arrow::field("1", arrow::int64()), arrow::field("2", arrow::utf8())});
+  std::string query = "SELECT ?, ?";
+  AdbcStatement statement;
+  ArrowArray export_params;
+  ArrowSchema export_schema;
+  std::memset(&statement, 0, sizeof(statement));
 
-    ASSERT_OK(ExportRecordBatch(
-        *adbc::RecordBatchFromJSON(param_schema, R"([[1, "foo"], [2, "bar"]])"),
-        &export_params));
-    ASSERT_OK(ExportSchema(*param_schema, &export_schema));
+  ASSERT_OK(ExportRecordBatch(
+      *adbc::RecordBatchFromJSON(param_schema, R"([[1, "foo"], [2, "bar"]])"),
+      &export_params));
+  ASSERT_OK(ExportSchema(*param_schema, &export_schema));
 
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcConnectionSqlPrepare(&connection, query.c_str(), &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error,
+                            AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementPrepare(&statement, &error));
 
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_params, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcStatementBind(&statement, &export_params, &export_schema, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
-    std::shared_ptr<arrow::Schema> schema;
-    arrow::RecordBatchVector batches;
-    ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
-    ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("?", arrow::int64()),
-                                              arrow::field("?", arrow::utf8())}));
-    EXPECT_THAT(batches,
-                ::testing::UnorderedPointwise(
-                    PointeesEqual(),
-                    {
-                        adbc::RecordBatchFromJSON(schema, R"([[1, "foo"], [2, "bar"]])"),
-                    }));
-  }
+  std::shared_ptr<arrow::Schema> schema;
+  arrow::RecordBatchVector batches;
+  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
+  ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("?", arrow::int64()),
+                                            arrow::field("?", arrow::utf8())}));
+  EXPECT_THAT(batches,
+              ::testing::UnorderedPointwise(
+                  PointeesEqual(),
+                  {
+                      adbc::RecordBatchFromJSON(schema, R"([[1, "foo"], [2, "bar"]])"),
+                  }));
 }
 
 TEST_F(Sqlite, MultipleConnections) {
@@ -164,9 +162,10 @@ TEST_F(Sqlite, MultipleConnections) {
     std::string query = "CREATE TABLE foo (bar INTEGER)";
     AdbcStatement statement;
     std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcConnectionSqlExecute(&connection, query.c_str(), &statement, &error));
+        error, AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;
@@ -181,9 +180,10 @@ TEST_F(Sqlite, MultipleConnections) {
     std::string query = "SELECT * FROM foo";
     AdbcStatement statement;
     std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection2, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcConnectionSqlExecute(&connection2, query.c_str(), &statement, &error));
+        error, AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;

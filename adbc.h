@@ -264,49 +264,6 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error);
 
-/// \defgroup adbc-connection-sql SQL Semantics
-/// Functions for executing SQL queries, or querying SQL-related
-/// metadata. Drivers are not required to support both SQL and
-/// Substrait semantics. If they do, it may be via converting
-/// between representations internally.
-/// @{
-
-/// \brief Execute a one-shot query.
-///
-/// For queries expected to be executed repeatedly, create a
-/// prepared statement.
-///
-/// \param[in] connection The database connection.
-/// \param[in] query The query to execute.
-/// \param[in,out] statement The result set. Allocate with AdbcStatementInit.
-/// \param[out] error Error details, if an error occurs.
-AdbcStatusCode AdbcConnectionSqlExecute(struct AdbcConnection* connection,
-                                        const char* query,
-                                        struct AdbcStatement* statement,
-                                        struct AdbcError* error);
-
-/// \brief Prepare a query to be executed multiple times.
-///
-/// TODO: this should return AdbcPreparedStatement to disaggregate
-/// preparation and execution
-AdbcStatusCode AdbcConnectionSqlPrepare(struct AdbcConnection* connection,
-                                        const char* query,
-                                        struct AdbcStatement* statement,
-                                        struct AdbcError* error);
-
-/// }@
-
-/// \defgroup adbc-connection-substrait Substrait Semantics
-/// Functions for executing Substrait plans, or querying
-/// Substrait-related metadata.  Drivers are not required to support
-/// both SQL and Substrait semantics.  If they do, it may be via
-/// converting between representations internally.
-/// @{
-
-// TODO: not yet defined
-
-/// }@
-
 /// \defgroup adbc-connection-partition Partitioned Results
 /// Some databases may internally partition the results. These
 /// partitions are exposed to clients who may wish to integrate them
@@ -453,13 +410,19 @@ struct AdbcStatement {
 };
 
 /// \brief Create a new statement for a given connection.
-AdbcStatusCode AdbcStatementInit(struct AdbcConnection* connection,
-                                 struct AdbcStatement* statement,
-                                 struct AdbcError* error);
+///
+/// Set options on the statement, then call AdbcStatementExecute or
+/// AdbcStatementPrepare.
+AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
+                                struct AdbcStatement* statement, struct AdbcError* error);
 
-/// \brief Set an integer option on a statement.
-AdbcStatusCode AdbcStatementSetOptionInt64(struct AdbcStatement* statement,
-                                           struct AdbcError* error);
+/// \brief Execute a statement.
+AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
+                                    struct AdbcError* error);
+
+/// \brief Create a prepared statement to be executed multiple times.
+AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
+                                    struct AdbcError* error);
 
 /// \brief Destroy a statement.
 /// \param[in] statement The statement to release.
@@ -467,6 +430,38 @@ AdbcStatusCode AdbcStatementSetOptionInt64(struct AdbcStatement* statement,
 ///   message if necessary.
 AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
                                     struct AdbcError* error);
+
+/// \defgroup adbc-statement-sql SQL Semantics
+/// Functions for executing SQL queries, or querying SQL-related
+/// metadata. Drivers are not required to support both SQL and
+/// Substrait semantics. If they do, it may be via converting
+/// between representations internally.
+/// @{
+
+/// \brief Execute a one-shot query.
+///
+/// For queries expected to be executed repeatedly, create a
+/// prepared statement.
+///
+/// \param[in] connection The database connection.
+/// \param[in] query The query to execute.
+/// \param[in,out] statement The result set. Allocate with AdbcStatementInit.
+/// \param[out] error Error details, if an error occurs.
+AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* connection,
+                                        const char* query, struct AdbcError* error);
+
+/// }@
+
+/// \defgroup adbc-statement-substrait Substrait Semantics
+/// Functions for executing Substrait plans, or querying
+/// Substrait-related metadata.  Drivers are not required to support
+/// both SQL and Substrait semantics.  If they do, it may be via
+/// converting between representations internally.
+/// @{
+
+// TODO: not yet defined
+
+/// }@
 
 /// \brief Bind parameter values for parameterized statements.
 /// \param[in] statement The statement to bind to.
@@ -479,12 +474,6 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
                                  struct ArrowArray* values, struct ArrowSchema* schema,
                                  struct AdbcError* error);
-
-/// \brief Execute a statement.
-///
-/// Not called for one-shot queries (e.g. AdbcConnectionSqlExecute).
-AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
-                                    struct AdbcError* error);
 
 /// \brief Read the result of a statement.
 ///
@@ -602,19 +591,21 @@ struct AdbcDriver {
                                         const char*, const char**, struct AdbcStatement*,
                                         struct AdbcError*);
 
-  AdbcStatusCode (*StatementInit)(struct AdbcConnection*, struct AdbcStatement*,
-                                  struct AdbcError*);
-  AdbcStatusCode (*StatementSetOptionInt64)(struct AdbcStatement*, struct AdbcError*);
+  AdbcStatusCode (*StatementNew)(struct AdbcConnection*, struct AdbcStatement*,
+                                 struct AdbcError*);
   AdbcStatusCode (*StatementRelease)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementBind)(struct AdbcStatement*, struct ArrowArray*,
                                   struct ArrowSchema*, struct AdbcError*);
   AdbcStatusCode (*StatementExecute)(struct AdbcStatement*, struct AdbcError*);
+  AdbcStatusCode (*StatementPrepare)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementGetStream)(struct AdbcStatement*, struct ArrowArrayStream*,
                                        struct AdbcError*);
   AdbcStatusCode (*StatementGetPartitionDescSize)(struct AdbcStatement*, size_t*,
                                                   struct AdbcError*);
   AdbcStatusCode (*StatementGetPartitionDesc)(struct AdbcStatement*, uint8_t*,
                                               struct AdbcError*);
+  AdbcStatusCode (*StatementSetSqlQuery)(struct AdbcStatement*, const char*,
+                                         struct AdbcError*);
   // Do not edit fields. New fields can only be appended to the end.
 };
 

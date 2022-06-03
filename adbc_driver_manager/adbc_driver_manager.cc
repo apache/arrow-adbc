@@ -147,15 +147,24 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
   return status;
 }
 
-AdbcStatusCode AdbcConnectionInit(const struct AdbcConnectionOptions* options,
-                                  struct AdbcConnection* out, struct AdbcError* error) {
-  if (!options->database->private_driver) {
+AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
+                                 struct AdbcConnection* connection,
+                                 struct AdbcError* error) {
+  if (!database->private_driver) {
+    return ADBC_STATUS_UNINITIALIZED;
+  }
+  auto status = database->private_driver->ConnectionNew(database, connection, error);
+  connection->private_driver = database->private_driver;
+  return status;
+}
+
+AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
+                                  struct AdbcError* error) {
+  if (!connection->private_driver) {
     // TODO: set error
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
-  auto status = options->database->private_driver->ConnectionInit(options, out, error);
-  out->private_driver = options->database->private_driver;
-  return status;
+  return connection->private_driver->ConnectionInit(connection, error);
 }
 
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
@@ -165,50 +174,6 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
   }
   auto status = connection->private_driver->ConnectionRelease(connection, error);
   connection->private_driver = nullptr;
-  return status;
-}
-
-AdbcStatusCode AdbcConnectionSqlExecute(struct AdbcConnection* connection,
-                                        const char* query,
-                                        struct AdbcStatement* statement,
-                                        struct AdbcError* error) {
-  if (!connection->private_driver) {
-    return ADBC_STATUS_UNINITIALIZED;
-  }
-  return connection->private_driver->ConnectionSqlExecute(connection, query, statement,
-                                                          error);
-}
-
-AdbcStatusCode AdbcConnectionSqlPrepare(struct AdbcConnection* connection,
-                                        const char* query,
-                                        struct AdbcStatement* statement,
-                                        struct AdbcError* error) {
-  if (!connection->private_driver) {
-    return ADBC_STATUS_UNINITIALIZED;
-  }
-  return connection->private_driver->ConnectionSqlPrepare(connection, query, statement,
-                                                          error);
-}
-
-AdbcStatusCode AdbcStatementInit(struct AdbcConnection* connection,
-                                 struct AdbcStatement* statement,
-                                 struct AdbcError* error) {
-  if (!connection->private_driver) {
-    // TODO: set error
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-  auto status = connection->private_driver->StatementInit(connection, statement, error);
-  statement->private_driver = connection->private_driver;
-  return status;
-}
-
-AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
-                                    struct AdbcError* error) {
-  if (!statement->private_driver) {
-    return ADBC_STATUS_UNINITIALIZED;
-  }
-  auto status = statement->private_driver->StatementRelease(statement, error);
-  statement->private_driver = nullptr;
   return status;
 }
 
@@ -236,6 +201,43 @@ AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
     return ADBC_STATUS_UNINITIALIZED;
   }
   return statement->private_driver->StatementGetStream(statement, out, error);
+}
+
+AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
+                                struct AdbcStatement* statement,
+                                struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  auto status = connection->private_driver->StatementNew(connection, statement, error);
+  statement->private_driver = connection->private_driver;
+  return status;
+}
+
+AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
+                                    struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_UNINITIALIZED;
+  }
+  return statement->private_driver->StatementPrepare(statement, error);
+}
+
+AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
+                                    struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_UNINITIALIZED;
+  }
+  auto status = statement->private_driver->StatementRelease(statement, error);
+  statement->private_driver = nullptr;
+  return status;
+}
+
+AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
+                                        const char* query, struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_UNINITIALIZED;
+  }
+  return statement->private_driver->StatementSetSqlQuery(statement, query, error);
 }
 
 const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
