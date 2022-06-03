@@ -31,50 +31,35 @@ namespace adbc {
 
 using arrow::PointeesEqual;
 
-TEST(Adbc, Basics) {
-  AdbcDatabase database;
-  AdbcConnection connection;
-  AdbcError error = {};
-
-  {
-    AdbcDatabaseOptions options;
-    std::memset(&options, 0, sizeof(options));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&options, &database, &error));
+class Sqlite : public ::testing::Test {
+ public:
+  void SetUp() override {
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcDatabaseSetOption(&database, "filename", ":memory:", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
     ASSERT_NE(database.private_data, nullptr);
-  }
 
-  {
-    AdbcConnectionOptions options;
-    std::memset(&options, 0, sizeof(options));
-    options.database = &database;
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&options, &connection, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &error));
     ASSERT_NE(connection.private_data, nullptr);
   }
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
-  ASSERT_EQ(connection.private_data, nullptr);
+  void TearDown() override {
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
+    ASSERT_EQ(connection.private_data, nullptr);
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
-  ASSERT_EQ(database.private_data, nullptr);
-}
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
+    ASSERT_EQ(database.private_data, nullptr);
+  }
 
-TEST(AdbcSqlite, SqlExecute) {
+ protected:
   AdbcDatabase database;
   AdbcConnection connection;
   AdbcError error = {};
+};
 
-  {
-    AdbcDatabaseOptions options;
-    std::memset(&options, 0, sizeof(options));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&options, &database, &error));
-  }
-  {
-    AdbcConnectionOptions options;
-    std::memset(&options, 0, sizeof(options));
-    options.database = &database;
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&options, &connection, &error));
-  }
-
+TEST_F(Sqlite, SqlExecute) {
   {
     std::string query = "SELECT 1";
     AdbcStatement statement;
@@ -106,28 +91,9 @@ TEST(AdbcSqlite, SqlExecute) {
                                 ::testing::HasSubstr("syntax error")));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
-
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
 }
 
-TEST(AdbcSqlite, SqlPrepare) {
-  AdbcDatabase database;
-  AdbcConnection connection;
-  AdbcError error = {};
-
-  {
-    AdbcDatabaseOptions options;
-    std::memset(&options, 0, sizeof(options));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&options, &database, &error));
-  }
-  {
-    AdbcConnectionOptions options;
-    std::memset(&options, 0, sizeof(options));
-    options.database = &database;
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&options, &connection, &error));
-  }
-
+TEST_F(Sqlite, SqlPrepare) {
   {
     std::string query = "SELECT 1";
     AdbcStatement statement;
@@ -183,36 +149,24 @@ TEST(AdbcSqlite, SqlPrepare) {
                         adbc::RecordBatchFromJSON(schema, R"([[1, "foo"], [2, "bar"]])"),
                     }));
   }
-
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
 }
 
-TEST(AdbcSqlite, MultipleConnections) {
-  AdbcDatabase database;
-  AdbcConnection connection1, connection2;
-  AdbcError error = {};
+TEST_F(Sqlite, MultipleConnections) {
+  struct AdbcConnection connection2;
 
   {
-    AdbcDatabaseOptions options;
-    std::memset(&options, 0, sizeof(options));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&options, &database, &error));
-  }
-  {
-    AdbcConnectionOptions options;
-    std::memset(&options, 0, sizeof(options));
-    options.database = &database;
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&options, &connection1, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&options, &connection2, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection2, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &error));
+    ASSERT_NE(connection.private_data, nullptr);
   }
 
   {
     std::string query = "CREATE TABLE foo (bar INTEGER)";
     AdbcStatement statement;
     std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection1, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcConnectionSqlExecute(&connection1, query.c_str(), &statement, &error));
+        error, AdbcConnectionSqlExecute(&connection, query.c_str(), &statement, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;
@@ -222,8 +176,6 @@ TEST(AdbcSqlite, MultipleConnections) {
                 ::testing::UnorderedPointwise(
                     PointeesEqual(), std::vector<std::shared_ptr<arrow::RecordBatch>>{}));
   }
-
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection1, &error));
 
   {
     std::string query = "SELECT * FROM foo";
@@ -243,7 +195,6 @@ TEST(AdbcSqlite, MultipleConnections) {
   }
 
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection2, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
 }
 
 }  // namespace adbc

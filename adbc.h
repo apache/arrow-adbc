@@ -181,18 +181,6 @@ struct AdbcError {
 /// common connection state.
 /// @{
 
-/// \brief A set of database options.
-struct AdbcDatabaseOptions {
-  /// \brief A driver-specific database string.
-  ///
-  /// Should be in ODBC-style format ("Key1=Value1;Key2=Value2").
-  const char* target;
-
-  /// \brief The associated driver. Required if using the driver
-  ///   manager; not required if directly calling into a driver.
-  AdbcDriver* driver;
-};
-
 /// \brief An instance of a database.
 ///
 /// Must be kept alive as long as any connections exist.
@@ -205,9 +193,18 @@ struct AdbcDatabase {
   AdbcDriver* private_driver;
 };
 
-/// \brief Initialize a new database.
-AdbcStatusCode AdbcDatabaseInit(const struct AdbcDatabaseOptions* options,
-                                struct AdbcDatabase* out, struct AdbcError* error);
+/// \brief Allocate a new (but uninitialized) database.
+AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error);
+
+/// \brief Set a char* option.
+AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
+                                     const char* value, struct AdbcError* error);
+
+/// \brief Finish setting options and initialize the database.
+///
+/// Some backends may support setting options after initialization
+/// as well.
+AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error);
 
 /// \brief Destroy this database. No connections may exist.
 /// \param[in] database The database to release.
@@ -248,9 +245,16 @@ struct AdbcConnection {
   AdbcDriver* private_driver;
 };
 
-/// \brief Create a new connection to a database.
-AdbcStatusCode AdbcConnectionInit(const struct AdbcConnectionOptions* options,
-                                  struct AdbcConnection* connection,
+/// \brief Allocate a new (but uninitialized) connection.
+AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
+                                 struct AdbcConnection* connection,
+                                 struct AdbcError* error);
+
+AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
+                                       const char* value, struct AdbcError* error);
+
+/// \brief Finish setting options and initialize the connection.
+AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
                                   struct AdbcError* error);
 
 /// \brief Destroy this connection.
@@ -567,12 +571,17 @@ struct AdbcDriver {
   void* private_data;
   // TODO: DriverRelease
 
-  AdbcStatusCode (*DatabaseInit)(const struct AdbcDatabaseOptions*, struct AdbcDatabase*,
-                                 struct AdbcError*);
+  AdbcStatusCode (*DatabaseNew)(struct AdbcDatabase*, struct AdbcError*);
+  AdbcStatusCode (*DatabaseSetOption)(struct AdbcDatabase*, const char*, const char*,
+                                      struct AdbcError*);
+  AdbcStatusCode (*DatabaseInit)(struct AdbcDatabase*, struct AdbcError*);
   AdbcStatusCode (*DatabaseRelease)(struct AdbcDatabase*, struct AdbcError*);
 
-  AdbcStatusCode (*ConnectionInit)(const struct AdbcConnectionOptions*,
-                                   struct AdbcConnection*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionNew)(struct AdbcDatabase*, struct AdbcConnection*,
+                                  struct AdbcError*);
+  AdbcStatusCode (*ConnectionSetOption)(struct AdbcConnection*, const char*, const char*,
+                                        struct AdbcError*);
+  AdbcStatusCode (*ConnectionInit)(struct AdbcConnection*, struct AdbcError*);
   AdbcStatusCode (*ConnectionRelease)(struct AdbcConnection*, struct AdbcError*);
   AdbcStatusCode (*ConnectionSqlExecute)(struct AdbcConnection*, const char*,
                                          struct AdbcStatement*, struct AdbcError*);
@@ -622,13 +631,13 @@ struct AdbcDriver {
 /// \param[out] error An optional location to return an error message
 ///   if necessary.
 typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* driver,
-                                             size_t* initialized, struct AdbcError* error);
-// TODO: how best to report errors here?
+                                             size_t* initialized,
+                                             struct AdbcError* error);
 // TODO: use sizeof() instead of count, or version the
 // struct/entrypoint instead?
 
 // For use with count
-#define ADBC_VERSION_0_0_1 19
+#define ADBC_VERSION_0_0_1 21
 
 /// }@
 

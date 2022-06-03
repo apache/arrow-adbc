@@ -61,13 +61,51 @@ void SetError(struct AdbcError* error, Args&&... args) {
 
 class FlightSqlDatabaseImpl {
  public:
-  explicit FlightSqlDatabaseImpl(std::unique_ptr<flightsql::FlightSqlClient> client)
-      : client_(std::move(client)), connection_count_(0) {}
+  explicit FlightSqlDatabaseImpl() : client_(nullptr), connection_count_(0) {}
 
   flightsql::FlightSqlClient* Connect() {
     std::lock_guard<std::mutex> guard(mutex_);
-    ++connection_count_;
+    if (client_) ++connection_count_;
     return client_.get();
+  }
+
+  AdbcStatusCode Init(struct AdbcError* error) {
+    if (client_) {
+      SetError(error, "Database already initialized");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    auto it = options_.find("location");
+    if (it == options_.end()) {
+      SetError(error, "Must provide 'location' option");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    flight::Location location;
+    arrow::Status status = flight::Location::Parse(it->second).Value(&location);
+    if (!status.ok()) {
+      SetError(error, status);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    std::unique_ptr<flight::FlightClient> flight_client;
+    status = flight::FlightClient::Connect(location).Value(&flight_client);
+    if (!status.ok()) {
+      SetError(error, status);
+      return ADBC_STATUS_IO;
+    }
+
+    client_.reset(new flightsql::FlightSqlClient(std::move(flight_client)));
+    options_.clear();
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode SetOption(const char* key, const char* value, struct AdbcError* error) {
+    if (client_) {
+      SetError(error, "Database already initialized");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    options_[key] = value;
+    return ADBC_STATUS_OK;
   }
 
   AdbcStatusCode Disconnect(struct AdbcError* error) {
@@ -99,6 +137,7 @@ class FlightSqlDatabaseImpl {
  private:
   std::unique_ptr<flightsql::FlightSqlClient> client_;
   int connection_count_;
+  std::unordered_map<std::string, std::string> options_;
   std::mutex mutex_;
 };
 
@@ -223,14 +262,23 @@ class FlightSqlStatementImpl : public arrow::RecordBatchReader {
   std::unique_ptr<flight::FlightStreamReader> current_stream_;
 };
 
-class AdbcFlightSqlImpl {
+class FlightSqlConnectionImpl {
  public:
-  explicit AdbcFlightSqlImpl(std::shared_ptr<FlightSqlDatabaseImpl> database)
-      : database_(std::move(database)), client_(database_->Connect()) {}
+  explicit FlightSqlConnectionImpl(std::shared_ptr<FlightSqlDatabaseImpl> database)
+      : database_(std::move(database)), client_(nullptr) {}
 
   //----------------------------------------------------------
   // Common Functions
   //----------------------------------------------------------
+
+  AdbcStatusCode Init(struct AdbcError* error) {
+    client_ = database_->Connect();
+    if (!client_) {
+      SetError(error, "Database not yet initialized!");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    return ADBC_STATUS_OK;
+  }
 
   AdbcStatusCode Close(struct AdbcError* error) { return database_->Disconnect(error); }
 
@@ -324,40 +372,27 @@ class AdbcFlightSqlImpl {
 }  // namespace
 
 ADBC_DRIVER_EXPORT
-AdbcStatusCode AdbcDatabaseInit(const struct AdbcDatabaseOptions* options,
-                                struct AdbcDatabase* out, struct AdbcError* error) {
-  std::unordered_map<std::string, std::string> option_pairs;
-  auto status = adbc::ParseConnectionString(arrow::util::string_view(options->target))
-                    .Value(&option_pairs);
-  if (!status.ok()) {
-    SetError(error, status);
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-  auto location_it = option_pairs.find("Location");
-  if (location_it == option_pairs.end()) {
-    SetError(error, Status::Invalid("Must provide Location option"));
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  flight::Location location;
-  status = flight::Location::Parse(location_it->second).Value(&location);
-  if (!status.ok()) {
-    SetError(error, status);
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  std::unique_ptr<flight::FlightClient> flight_client;
-  status = flight::FlightClient::Connect(location).Value(&flight_client);
-  if (!status.ok()) {
-    SetError(error, status);
-    return ADBC_STATUS_IO;
-  }
-  std::unique_ptr<flightsql::FlightSqlClient> client(
-      new flightsql::FlightSqlClient(std::move(flight_client)));
-
-  auto impl = std::make_shared<FlightSqlDatabaseImpl>(std::move(client));
-  out->private_data = new std::shared_ptr<FlightSqlDatabaseImpl>(impl);
+AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
+  auto impl = std::make_shared<FlightSqlDatabaseImpl>();
+  database->private_data = new std::shared_ptr<FlightSqlDatabaseImpl>(impl);
   return ADBC_STATUS_OK;
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
+                                     const char* value, struct AdbcError* error) {
+  if (!database || !database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<FlightSqlDatabaseImpl>*>(database->private_data);
+  return (*ptr)->SetOption(key, value, error);
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
+  if (!database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<FlightSqlDatabaseImpl>*>(database->private_data);
+  return (*ptr)->Init(error);
 }
 
 ADBC_DRIVER_EXPORT
@@ -379,8 +414,8 @@ AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* con
                                                       struct AdbcStatement* statement,
                                                       struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<AdbcFlightSqlImpl>*>(connection->private_data);
+  auto* ptr = reinterpret_cast<std::shared_ptr<FlightSqlConnectionImpl>*>(
+      connection->private_data);
   return (*ptr)->DeserializePartitionDesc(serialized_partition, serialized_length,
                                           statement, error);
 }
@@ -390,31 +425,43 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct AdbcStatement* statement,
                                            struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<AdbcFlightSqlImpl>*>(connection->private_data);
+  auto* ptr = reinterpret_cast<std::shared_ptr<FlightSqlConnectionImpl>*>(
+      connection->private_data);
   return (*ptr)->GetTableTypes(statement, error);
 }
 
 ADBC_DRIVER_EXPORT
-AdbcStatusCode AdbcConnectionInit(const struct AdbcConnectionOptions* options,
-                                  struct AdbcConnection* out, struct AdbcError* error) {
-  if (!options->database || !options->database->private_data) {
-    SetError(error, "Must provide database");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-  auto ptr = reinterpret_cast<std::shared_ptr<FlightSqlDatabaseImpl>*>(
-      options->database->private_data);
-  auto impl = std::make_shared<AdbcFlightSqlImpl>(*ptr);
-  out->private_data = new std::shared_ptr<AdbcFlightSqlImpl>(impl);
+AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
+                                 struct AdbcConnection* connection,
+                                 struct AdbcError* error) {
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<FlightSqlDatabaseImpl>*>(database->private_data);
+  auto impl = std::make_shared<FlightSqlConnectionImpl>(*ptr);
+  connection->private_data = new std::shared_ptr<FlightSqlConnectionImpl>(impl);
   return ADBC_STATUS_OK;
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
+                                       const char* value, struct AdbcError* error) {
+  return ADBC_STATUS_OK;
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
+                                  struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto ptr = reinterpret_cast<std::shared_ptr<FlightSqlConnectionImpl>*>(
+      connection->private_data);
+  return (*ptr)->Init(error);
 }
 
 ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<AdbcFlightSqlImpl>*>(connection->private_data);
+  auto* ptr = reinterpret_cast<std::shared_ptr<FlightSqlConnectionImpl>*>(
+      connection->private_data);
   auto status = (*ptr)->Close(error);
   delete ptr;
   connection->private_data = nullptr;
@@ -426,8 +473,8 @@ AdbcStatusCode AdbcConnectionSqlExecute(struct AdbcConnection* connection,
                                         const char* query, struct AdbcStatement* out,
                                         struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<AdbcFlightSqlImpl>*>(connection->private_data);
+  auto* ptr = reinterpret_cast<std::shared_ptr<FlightSqlConnectionImpl>*>(
+      connection->private_data);
   return (*ptr)->SqlExecute(query, out, error);
 }
 
@@ -489,13 +536,19 @@ AdbcStatusCode AdbcFlightSqlDriverInit(size_t count, struct AdbcDriver* driver,
   if (count < ADBC_VERSION_0_0_1) return ADBC_STATUS_NOT_IMPLEMENTED;
 
   std::memset(driver, 0, sizeof(*driver));
+  driver->DatabaseNew = AdbcDatabaseNew;
+  driver->DatabaseSetOption = AdbcDatabaseSetOption;
   driver->DatabaseInit = AdbcDatabaseInit;
   driver->DatabaseRelease = AdbcDatabaseRelease;
+
+  driver->ConnectionNew = AdbcConnectionNew;
+  driver->ConnectionSetOption = AdbcConnectionSetOption;
   driver->ConnectionInit = AdbcConnectionInit;
   driver->ConnectionRelease = AdbcConnectionRelease;
   driver->ConnectionSqlExecute = AdbcConnectionSqlExecute;
   driver->ConnectionDeserializePartitionDesc = AdbcConnectionDeserializePartitionDesc;
   driver->ConnectionGetTableTypes = AdbcConnectionGetTableTypes;
+
   driver->StatementGetPartitionDesc = AdbcStatementGetPartitionDesc;
   driver->StatementGetPartitionDescSize = AdbcStatementGetPartitionDescSize;
   driver->StatementGetStream = AdbcStatementGetStream;

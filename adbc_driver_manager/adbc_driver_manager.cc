@@ -19,34 +19,11 @@
 
 #include <dlfcn.h>
 #include <algorithm>
+#include <cstring>
 #include <string>
 #include <unordered_map>
 
 namespace {
-std::unordered_map<std::string, std::string> ParseConnectionString(
-    const std::string& target) {
-  // TODO: this does not properly implement the ODBC connection string format.
-  std::unordered_map<std::string, std::string> option_pairs;
-  size_t cur = 0;
-
-  while (cur < target.size()) {
-    auto divider = target.find('=', cur);
-    if (divider == std::string::npos) break;
-
-    std::string key = target.substr(cur, divider - cur);
-    cur = divider + 1;
-    auto end = target.find(';', cur);
-    if (end == std::string::npos) {
-      option_pairs.insert({std::move(key), target.substr(cur)});
-      break;
-    } else {
-      option_pairs.insert({std::string(key), target.substr(cur, end - cur)});
-      cur = end + 1;
-    }
-  }
-  return option_pairs;
-}
-
 void ReleaseError(struct AdbcError* error) {
   if (error) {
     delete[] error->message;
@@ -75,24 +52,89 @@ AdbcStatusCode StatementBind(struct AdbcStatement*, struct ArrowArray*,
 AdbcStatusCode StatementExecute(struct AdbcStatement*, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
-}  // namespace
 
-#define FILL_DEFAULT(DRIVER, STUB) \
-  if (!DRIVER->STUB) {             \
-    DRIVER->STUB = &STUB;          \
-  }
+// Temporary
+struct TempDatabase {
+  std::unordered_map<std::string, std::string> options;
+  std::string driver;
+  std::string entrypoint;
+};
+}  // namespace
 
 // Direct implementations of API methods
 
-AdbcStatusCode AdbcDatabaseInit(const struct AdbcDatabaseOptions* options,
-                                struct AdbcDatabase* out, struct AdbcError* error) {
-  if (!options->driver) {
-    // TODO: set error
+AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
+  // Allocate a temporary structure to store options pre-Init
+  database->private_data = new TempDatabase;
+  database->private_driver = nullptr;
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
+                                     const char* value, struct AdbcError* error) {
+  if (database->private_driver) {
+    return database->private_driver->DatabaseSetOption(database, key, value, error);
+  }
+
+  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
+  if (std::strcmp(key, "driver") == 0) {
+    args->driver = value;
+  } else if (std::strcmp(key, "entrypoint") == 0) {
+    args->entrypoint = value;
+  } else {
+    args->options[key] = value;
+  }
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
+  if (!database->private_data) {
+    SetError(error, "Must call AdbcDatabaseNew first");
+    return ADBC_STATUS_UNINITIALIZED;
+  }
+  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
+  if (args->driver.empty()) {
+    delete args;
+    SetError(error, "Must provide 'driver' parameter");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  } else if (args->entrypoint.empty()) {
+    delete args;
+    SetError(error, "Must provide 'entrypoint' parameter");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
-  auto status = options->driver->DatabaseInit(options, out, error);
-  out->private_driver = options->driver;
-  return status;
+
+  database->private_driver = new AdbcDriver;
+  size_t initialized = 0;
+  AdbcStatusCode status =
+      AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(), ADBC_VERSION_0_0_1,
+                     database->private_driver, &initialized, error);
+  if (status != ADBC_STATUS_OK) {
+    delete args;
+    delete database->private_driver;
+    return status;
+  } else if (initialized < ADBC_VERSION_0_0_1) {
+    delete args;
+    delete database->private_driver;
+    SetError(error, "Database version is too old");  // TODO: clearer error
+    return status;
+  }
+  status = database->private_driver->DatabaseNew(database, error);
+  if (status != ADBC_STATUS_OK) {
+    delete args;
+    delete database->private_driver;
+    return status;
+  }
+  for (const auto& option : args->options) {
+    status = database->private_driver->DatabaseSetOption(database, option.first.c_str(),
+                                                         option.second.c_str(), error);
+    if (status != ADBC_STATUS_OK) {
+      delete args;
+      delete database->private_driver;
+      return status;
+    }
+  }
+  delete args;
+  return database->private_driver->DatabaseInit(database, error);
 }
 
 AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
@@ -101,7 +143,7 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
     return ADBC_STATUS_UNINITIALIZED;
   }
   auto status = database->private_driver->DatabaseRelease(database, error);
-  database->private_driver = nullptr;
+  delete database->private_driver;
   return status;
 }
 
@@ -219,24 +261,20 @@ const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
 #undef STRINGIFY
 }
 
-AdbcStatusCode AdbcLoadDriver(const char* connection, size_t count,
-                              struct AdbcDriver* driver, size_t* initialized,
-                              struct AdbcError* error) {
-  auto params = ParseConnectionString(connection);
-
-  auto driver_str = params.find("Driver");
-  if (driver_str == params.end()) {
-    SetError(error, "Must provide Driver parameter");
-    return ADBC_STATUS_INVALID_ARGUMENT;
+AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
+                              size_t count, struct AdbcDriver* driver,
+                              size_t* initialized, struct AdbcError* error) {
+#define FILL_DEFAULT(DRIVER, STUB) \
+  if (!DRIVER->STUB) {             \
+    DRIVER->STUB = &STUB;          \
+  }
+#define CHECK_REQUIRED(DRIVER, STUB)                                           \
+  if (!DRIVER->STUB) {                                                         \
+    SetError(error, "Driver does not implement required function Adbc" #STUB); \
+    return ADBC_STATUS_INTERNAL;                                               \
   }
 
-  auto entrypoint_str = params.find("Entrypoint");
-  if (entrypoint_str == params.end()) {
-    SetError(error, "Must provide Entrypoint parameter");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  void* handle = dlopen(driver_str->second.c_str(), RTLD_NOW | RTLD_LOCAL);
+  void* handle = dlopen(driver_name, RTLD_NOW | RTLD_LOCAL);
   if (!handle) {
     std::string message = "dlopen() failed: ";
     message += dlerror();
@@ -244,7 +282,7 @@ AdbcStatusCode AdbcLoadDriver(const char* connection, size_t count,
     return ADBC_STATUS_UNKNOWN;
   }
 
-  void* load_handle = dlsym(handle, entrypoint_str->second.c_str());
+  void* load_handle = dlsym(handle, entrypoint);
   auto* load = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
   if (!load) {
     std::string message = "dlsym() failed: ";
@@ -258,8 +296,13 @@ AdbcStatusCode AdbcLoadDriver(const char* connection, size_t count,
     return result;
   }
 
+  CHECK_REQUIRED(driver, DatabaseNew);
+  CHECK_REQUIRED(driver, DatabaseInit);
   FILL_DEFAULT(driver, ConnectionSqlPrepare);
   FILL_DEFAULT(driver, StatementBind);
   FILL_DEFAULT(driver, StatementExecute);
   return ADBC_STATUS_OK;
+
+#undef FILL_DEFAULT
+#undef CHECK_REQUIRED
 }

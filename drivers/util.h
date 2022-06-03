@@ -34,6 +34,12 @@
 #define ADBC_DRIVER_EXPORT
 #endif  // ifdef __linux__
 
+#define ADBC_RETURN_NOT_OK(expr)         \
+  do {                                   \
+    auto _s = (expr);                    \
+    if (_s != ADBC_STATUS_OK) return _s; \
+  } while (false)
+
 namespace adbc {
 
 /// \brief Parse a connection string.

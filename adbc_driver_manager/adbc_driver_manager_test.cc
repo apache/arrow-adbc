@@ -36,15 +36,20 @@ class DriverManager : public ::testing::Test {
  public:
   void SetUp() override {
     size_t initialized = 0;
-    ADBC_ASSERT_OK_WITH_ERROR(error,
-        AdbcLoadDriver("Driver=libadbc_driver_sqlite.so;Entrypoint=AdbcSqliteDriverInit",
-                       ADBC_VERSION_0_0_1, &driver, &initialized, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcLoadDriver("libadbc_driver_sqlite.so", "AdbcSqliteDriverInit",
+                              ADBC_VERSION_0_0_1, &driver, &initialized, &error));
     ASSERT_EQ(initialized, ADBC_VERSION_0_0_1);
 
-    AdbcDatabaseOptions db_options;
-    std::memset(&db_options, 0, sizeof(db_options));
-    db_options.driver = &driver;
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&db_options, &database, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
+    ASSERT_NE(database.private_data, nullptr);
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error,
+        AdbcDatabaseSetOption(&database, "driver", "libadbc_driver_sqlite.so", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error,
+        AdbcDatabaseSetOption(&database, "entrypoint", "AdbcSqliteDriverInit", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
     ASSERT_NE(database.private_data, nullptr);
 
     AdbcConnectionOptions conn_options;

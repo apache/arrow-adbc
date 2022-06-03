@@ -37,15 +37,12 @@ class AdbcFlightSqlTest : public ::testing::Test {
  public:
   void SetUp() override {
     if (const char* location = std::getenv(kServerEnvVar.c_str())) {
-      AdbcDatabaseOptions db_options;
-      std::string target = "Location=";
-      target += location;
-      db_options.target = target.c_str();
-      ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&db_options, &database, &error));
-      AdbcConnectionOptions conn_options;
-      conn_options.database = &database;
-      ADBC_ASSERT_OK_WITH_ERROR(error,
-                                AdbcConnectionInit(&conn_options, &connection, &error));
+      ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
+      ADBC_ASSERT_OK_WITH_ERROR(
+          error, AdbcDatabaseSetOption(&database, "location", location, &error));
+      ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
+      ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection, &error));
+      ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &error));
     } else {
       FAIL() << "Must provide location of Flight SQL server at " << kServerEnvVar;
     }
