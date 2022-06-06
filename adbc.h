@@ -389,9 +389,12 @@ AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
 /// }@
 
 /// \defgroup adbc-statement Managing statements.
-/// Applications should first initialize and configure a statement with
-/// AdbcStatementInit and the AdbcStatementSetOption functions, then use the
-/// statement with a function like AdbcConnectionSqlExecute.
+/// Applications should first initialize a statement with
+/// AdbcStatementNew. Then, the statement should be configured with
+/// functions like AdbcStatementSetSqlQuery and
+/// AdbcStatementSetOption. Finally, the statement can be executed
+/// with AdbcStatementExecute (or call AdbcStatementPrepare first to
+/// turn it into a prepared statement instead).
 /// @{
 
 /// \brief An instance of a database query, from parameters set before
@@ -416,19 +419,19 @@ struct AdbcStatement {
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement, struct AdbcError* error);
 
+/// \brief Destroy a statement.
+/// \param[in] statement The statement to release.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
+                                    struct AdbcError* error);
+
 /// \brief Execute a statement.
 AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
                                     struct AdbcError* error);
 
 /// \brief Create a prepared statement to be executed multiple times.
 AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
-                                    struct AdbcError* error);
-
-/// \brief Destroy a statement.
-/// \param[in] statement The statement to release.
-/// \param[out] error An optional location to return an error
-///   message if necessary.
-AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
                                     struct AdbcError* error);
 
 /// \defgroup adbc-statement-sql SQL Semantics
@@ -463,9 +466,10 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* connection,
 
 /// }@
 
-/// \brief Bind parameter values for parameterized statements.
+/// \brief Bind Arrow data. This can be used for bulk inserts or
+///   prepared statements.
 /// \param[in] statement The statement to bind to.
-/// \param[in] values The values to bind. The driver will not call the
+/// \param[in] values The values to bind. The driver will call the
 ///   release callback itself, although it may not do this until the
 ///   statement is released.
 /// \param[in] schema The schema of the values to bind.
@@ -474,6 +478,18 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* connection,
 AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
                                  struct ArrowArray* values, struct ArrowSchema* schema,
                                  struct AdbcError* error);
+
+/// \brief Bind Arrow data. This can be used for bulk inserts or
+///   prepared statements.
+/// \param[in] statement The statement to bind to.
+/// \param[in] stream The values to bind. The driver will call the
+///   release callback itself, although it may not do this until the
+///   statement is released.
+/// \param[out] error An optional location to return an error message
+///   if necessary.
+AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
+                                       struct ArrowArrayStream* values,
+                                       struct AdbcError* error);
 
 /// \brief Read the result of a statement.
 ///
@@ -486,6 +502,9 @@ AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
                                       struct ArrowArrayStream* out,
                                       struct AdbcError* error);
+
+AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
+                                      const char* value, struct AdbcError* error);
 
 // TODO: methods to get a particular result set from the statement,
 // etc. especially for prepared statements with parameter batches
@@ -572,10 +591,6 @@ struct AdbcDriver {
                                         struct AdbcError*);
   AdbcStatusCode (*ConnectionInit)(struct AdbcConnection*, struct AdbcError*);
   AdbcStatusCode (*ConnectionRelease)(struct AdbcConnection*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionSqlExecute)(struct AdbcConnection*, const char*,
-                                         struct AdbcStatement*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionSqlPrepare)(struct AdbcConnection*, const char*,
-                                         struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*ConnectionDeserializePartitionDesc)(struct AdbcConnection*,
                                                        const uint8_t*, size_t,
                                                        struct AdbcStatement*,
@@ -596,6 +611,8 @@ struct AdbcDriver {
   AdbcStatusCode (*StatementRelease)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementBind)(struct AdbcStatement*, struct ArrowArray*,
                                   struct ArrowSchema*, struct AdbcError*);
+  AdbcStatusCode (*StatementBindStream)(struct AdbcStatement*, struct ArrowArrayStream*,
+                                        struct AdbcError*);
   AdbcStatusCode (*StatementExecute)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementPrepare)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementGetStream)(struct AdbcStatement*, struct ArrowArrayStream*,
@@ -604,6 +621,8 @@ struct AdbcDriver {
                                                   struct AdbcError*);
   AdbcStatusCode (*StatementGetPartitionDesc)(struct AdbcStatement*, uint8_t*,
                                               struct AdbcError*);
+  AdbcStatusCode (*StatementSetOption)(struct AdbcStatement*, const char*, const char*,
+                                       struct AdbcError*);
   AdbcStatusCode (*StatementSetSqlQuery)(struct AdbcStatement*, const char*,
                                          struct AdbcError*);
   // Do not edit fields. New fields can only be appended to the end.
@@ -628,7 +647,7 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
 // struct/entrypoint instead?
 
 // For use with count
-#define ADBC_VERSION_0_0_1 21
+#define ADBC_VERSION_0_0_1 24
 
 /// }@
 

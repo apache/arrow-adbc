@@ -39,10 +39,6 @@ void SetError(struct AdbcError* error, const std::string& message) {
 }
 
 // Default stubs
-AdbcStatusCode ConnectionSqlPrepare(struct AdbcConnection*, const char*,
-                                    struct AdbcStatement*, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
 
 AdbcStatusCode StatementBind(struct AdbcStatement*, struct ArrowArray*,
                              struct ArrowSchema*, struct AdbcError* error) {
@@ -53,7 +49,11 @@ AdbcStatusCode StatementExecute(struct AdbcStatement*, struct AdbcError* error) 
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-// Temporary
+AdbcStatusCode StatementPrepare(struct AdbcStatement*, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+/// Temporary state while the database is being configured.
 struct TempDatabase {
   std::unordered_map<std::string, std::string> options;
   std::string driver;
@@ -186,6 +186,15 @@ AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
   return statement->private_driver->StatementBind(statement, values, schema, error);
 }
 
+AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
+                                       struct ArrowArrayStream* stream,
+                                       struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_UNINITIALIZED;
+  }
+  return statement->private_driver->StatementBindStream(statement, stream, error);
+}
+
 AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
                                     struct AdbcError* error) {
   if (!statement->private_driver) {
@@ -230,6 +239,14 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
   auto status = statement->private_driver->StatementRelease(statement, error);
   statement->private_driver = nullptr;
   return status;
+}
+
+AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
+                                      const char* value, struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_UNINITIALIZED;
+  }
+  return statement->private_driver->StatementSetOption(statement, key, value, error);
 }
 
 AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
@@ -300,9 +317,12 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
   CHECK_REQUIRED(driver, DatabaseNew);
   CHECK_REQUIRED(driver, DatabaseInit);
-  FILL_DEFAULT(driver, ConnectionSqlPrepare);
+  CHECK_REQUIRED(driver, DatabaseRelease);
+
   FILL_DEFAULT(driver, StatementBind);
   FILL_DEFAULT(driver, StatementExecute);
+  FILL_DEFAULT(driver, StatementPrepare);
+
   return ADBC_STATUS_OK;
 
 #undef FILL_DEFAULT
