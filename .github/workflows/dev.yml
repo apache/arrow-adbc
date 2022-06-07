@@ -15,26 +15,25 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# To use this, install the python package `pre-commit` and
-# run once `pre-commit install`. This will setup a git pre-commit-hook
-# that is executed on each commit and will report the linting problems.
-# To run all hooks on all files use `pre-commit run -a`
+name: Dev
 
-repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.3.0
-    hooks:
-    - id: check-yaml
-    - id: end-of-file-fixer
-    - id: trailing-whitespace
-  - repo: https://github.com/pocc/pre-commit-hooks
-    rev: v1.3.5
-    hooks:
-      - id: clang-format
-        args: [-i]
-        types_or: [c, c++]
-  - repo: https://github.com/cheshirekow/cmake-format-precommit
-    rev: v0.6.13
-    hooks:
-    - id: cmake-format
-      args: [--in-place]
+on:
+  pull_request: {}
+  push: {}
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    name: "pre-commit"
+    runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-python@v2
+    - uses: pre-commit/action@v2.0.3
+    - uses: actions/checkout@v3
