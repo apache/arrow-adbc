@@ -53,6 +53,21 @@ AdbcStatusCode StatementPrepare(struct AdbcStatement*, struct AdbcError* error) 
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode StatementSetOption(struct AdbcStatement*, const char*, const char*,
+                                  struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode StatementSetSqlQuery(struct AdbcStatement*, const char*,
+                                    struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode StatementSetSubstraitPlan(struct AdbcStatement*, const uint8_t*, size_t,
+                                         struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 /// Temporary state while the database is being configured.
 struct TempDatabase {
   std::unordered_map<std::string, std::string> options;
@@ -257,6 +272,16 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
   return statement->private_driver->StatementSetSqlQuery(statement, query, error);
 }
 
+AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
+                                             const uint8_t* plan, size_t length,
+                                             struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_UNINITIALIZED;
+  }
+  return statement->private_driver->StatementSetSubstraitPlan(statement, plan, length,
+                                                              error);
+}
+
 const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
 #define STRINGIFY(s) #s
 #define STRINGIFY_VALUE(s) STRINGIFY(s)
@@ -322,6 +347,8 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   FILL_DEFAULT(driver, StatementBind);
   FILL_DEFAULT(driver, StatementExecute);
   FILL_DEFAULT(driver, StatementPrepare);
+  FILL_DEFAULT(driver, StatementSetSqlQuery);
+  FILL_DEFAULT(driver, StatementSetSubstraitPlan);
 
   return ADBC_STATUS_OK;
 

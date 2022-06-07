@@ -391,7 +391,7 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
 
   AdbcStatusCode SetOption(const std::shared_ptr<SqliteStatementImpl>& self,
                            const char* key, const char* value, struct AdbcError* error) {
-    if (std::strcmp(key, "table") == 0) {
+    if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
       // Bulk ingest
       if (std::strlen(value) == 0) return ADBC_STATUS_INVALID_ARGUMENT;
       bulk_table_ = value;
@@ -402,6 +402,7 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
       }
       return ADBC_STATUS_OK;
     }
+    SetError(error, "Unknown option: ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 

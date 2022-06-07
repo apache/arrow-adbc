@@ -164,7 +164,8 @@ TEST_F(Sqlite, BulkIngestTable) {
     std::memset(&statement, 0, sizeof(statement));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, "table", "bulk_insert", &error));
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                      "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
@@ -203,7 +204,8 @@ TEST_F(Sqlite, BulkIngestStream) {
     std::memset(&statement, 0, sizeof(statement));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, "table", "bulk_insert", &error));
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                      "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBindStream(&statement, &export_stream, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));

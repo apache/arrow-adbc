@@ -441,16 +441,16 @@ AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
 /// between representations internally.
 /// @{
 
-/// \brief Execute a one-shot query.
+/// \brief Set the SQL query to execute.
 ///
-/// For queries expected to be executed repeatedly, create a
-/// prepared statement.
+/// The query can then be executed with AdbcStatementExecute.  For
+/// queries expected to be executed repeatedly, AdbcStatementPrepare
+/// the statement first.
 ///
-/// \param[in] connection The database connection.
+/// \param[in] statement The statement.
 /// \param[in] query The query to execute.
-/// \param[in,out] statement The result set. Allocate with AdbcStatementInit.
 /// \param[out] error Error details, if an error occurs.
-AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* connection,
+AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
                                         const char* query, struct AdbcError* error);
 
 /// }@
@@ -462,7 +462,19 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* connection,
 /// converting between representations internally.
 /// @{
 
-// TODO: not yet defined
+/// \brief Set the Substrait plan to execute.
+///
+/// The query can then be executed with AdbcStatementExecute.  For
+/// queries expected to be executed repeatedly, AdbcStatementPrepare
+/// the statement first.
+///
+/// \param[in] statement The statement.
+/// \param[in] plan The serialized substrait.Plan to execute.
+/// \param[in] length The length of the serialized plan.
+/// \param[out] error Error details, if an error occurs.
+AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
+                                             const uint8_t* plan, size_t length,
+                                             struct AdbcError* error);
 
 /// }@
 
@@ -503,8 +515,25 @@ AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
                                       struct ArrowArrayStream* out,
                                       struct AdbcError* error);
 
+/// \brief Set a string option on a statement.
 AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
                                       const char* value, struct AdbcError* error);
+
+/// \defgroup adbc-statement-ingestion Bulk Data Ingestion
+/// While it is possible to insert data via prepared statements, it
+/// can be more efficient to explicitly perform a bulk insert.  For
+/// compatible drivers, this can be accomplished by setting up and
+/// executing a statement.  Instead of setting a SQL query or
+/// Substrait plan, bind the source data via AdbcStatementBind, and
+/// set the name of the table to be created via AdbcStatementSetOption
+/// and the options below.
+///
+/// @{
+
+/// \brief The name of the target table for a bulk insert.
+#define ADBC_INGEST_OPTION_TARGET_TABLE "adbc.ingest.target_table"
+
+/// }@
 
 // TODO: methods to get a particular result set from the statement,
 // etc. especially for prepared statements with parameter batches
@@ -625,6 +654,8 @@ struct AdbcDriver {
                                        struct AdbcError*);
   AdbcStatusCode (*StatementSetSqlQuery)(struct AdbcStatement*, const char*,
                                          struct AdbcError*);
+  AdbcStatusCode (*StatementSetSubstraitPlan)(struct AdbcStatement*, const uint8_t*,
+                                              size_t, struct AdbcError*);
   // Do not edit fields. New fields can only be appended to the end.
 };
 
@@ -647,7 +678,7 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
 // struct/entrypoint instead?
 
 // For use with count
-#define ADBC_VERSION_0_0_1 24
+#define ADBC_VERSION_0_0_1 25
 
 /// }@
 
