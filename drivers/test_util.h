@@ -40,7 +40,7 @@ namespace adbc {
     auto code_ = (EXPR);                                                       \
     if (code_ != ADBC_STATUS_OK) {                                             \
       std::string errmsg_ = ERROR.message ? ERROR.message : "(unknown error)"; \
-      AdbcErrorRelease(&ERROR);                                                \
+      if (ERROR.message) error.release(&error);                                \
       ASSERT_EQ(code_, ADBC_STATUS_OK) << errmsg_;                             \
     }                                                                          \
   } while (false)
@@ -49,7 +49,7 @@ namespace adbc {
   do {                                                                       \
     ASSERT_NE(ERROR.message, nullptr);                                       \
     std::string errmsg_ = ERROR.message ? ERROR.message : "(unknown error)"; \
-    AdbcErrorRelease(&ERROR);                                                \
+      if (ERROR.message) error.release(&error);                                \
     ASSERT_THAT(errmsg_, PATTERN) << errmsg_;                                \
   } while (false)
 

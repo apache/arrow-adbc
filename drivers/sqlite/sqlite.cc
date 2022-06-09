@@ -36,6 +36,11 @@ namespace {
 
 using arrow::Status;
 
+void ReleaseError(struct AdbcError* error) {
+  delete[] error->message;
+  error->message = nullptr;
+}
+
 void SetError(sqlite3* db, const std::string& source, struct AdbcError* error) {
   if (!error) return;
   std::string message =
@@ -49,6 +54,7 @@ void SetError(sqlite3* db, const std::string& source, struct AdbcError* error) {
   error->message = new char[message.size() + 1];
   message.copy(error->message, message.size());
   error->message[message.size()] = '\0';
+  error->release = ReleaseError;
 }
 
 template <typename... Args>
@@ -65,6 +71,7 @@ void SetError(struct AdbcError* error, Args&&... args) {
   error->message = new char[message.size() + 1];
   message.copy(error->message, message.size());
   error->message[message.size()] = '\0';
+  error->release = ReleaseError;
 }
 
 std::shared_ptr<arrow::Schema> StatementToSchema(sqlite3_stmt* stmt) {
@@ -445,12 +452,6 @@ class SqliteConnectionImpl {
 }  // namespace
 
 ADBC_DRIVER_EXPORT
-void AdbcErrorRelease(struct AdbcError* error) {
-  delete[] error->message;
-  error->message = nullptr;
-}
-
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseInit(const struct AdbcDatabaseOptions* options,
                                 struct AdbcDatabase* out, struct AdbcError* error) {
   sqlite3* db = nullptr;
@@ -593,11 +594,10 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 extern "C" {
 ARROW_EXPORT
 AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
-                                    size_t* initialized) {
+                                    size_t* initialized, struct AdbcError* error) {
   if (count < ADBC_VERSION_0_0_1) return ADBC_STATUS_NOT_IMPLEMENTED;
 
   std::memset(driver, 0, sizeof(*driver));
-  driver->ErrorRelease = AdbcErrorRelease;
   driver->DatabaseInit = AdbcDatabaseInit;
   driver->DatabaseRelease = AdbcDatabaseRelease;
   driver->ConnectionInit = AdbcConnectionInit;

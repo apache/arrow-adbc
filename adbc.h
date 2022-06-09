@@ -164,21 +164,12 @@ struct AdbcError {
   /// \brief The error message.
   char* message;
 
-  /// \brief The associated driver (used by the driver manager to help
-  ///   track state).
-  AdbcDriver* private_driver;
-
-  // TODO: go back to just inlining 'release' here? And remove the
-  // global AdbcErrorRelease? It would be slightly inconsistent (and
-  // would make the struct impossible to extend) but would be easier
-  // to manage between the driver manager and driver.
+  /// \brief Release the contained error.
+  ///
+  /// Unlike other structures, this is an embedded callback to make it
+  /// easier for the driver manager and driver to cooperate.
+  void (*release)(struct AdbcError* error);
 };
-
-/// \brief Destroy an error message.
-void AdbcErrorRelease(struct AdbcError* error);
-
-/// \brief Get a human-readable description of a status code.
-const char* AdbcStatusCodeMessage(AdbcStatusCode code);
 
 /// }@
 
@@ -576,9 +567,6 @@ struct AdbcDriver {
   void* private_data;
   // TODO: DriverRelease
 
-  void (*ErrorRelease)(struct AdbcError*);
-  const char* (*StatusCodeMessage)(AdbcStatusCode);
-
   AdbcStatusCode (*DatabaseInit)(const struct AdbcDatabaseOptions*, struct AdbcDatabase*,
                                  struct AdbcError*);
   AdbcStatusCode (*DatabaseRelease)(struct AdbcDatabase*, struct AdbcError*);
@@ -631,14 +619,16 @@ struct AdbcDriver {
 /// \param[out] driver The table of function pointers to initialize.
 /// \param[out] initialized How much of the table was actually
 ///   initialized (can be less than count).
+/// \param[out] error An optional location to return an error message
+///   if necessary.
 typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* driver,
-                                             size_t* initialized);
+                                             size_t* initialized, struct AdbcError* error);
 // TODO: how best to report errors here?
 // TODO: use sizeof() instead of count, or version the
 // struct/entrypoint instead?
 
 // For use with count
-#define ADBC_VERSION_0_0_1 21
+#define ADBC_VERSION_0_0_1 19
 
 /// }@
 

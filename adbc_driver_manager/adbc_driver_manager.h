@@ -40,8 +40,11 @@ extern "C" {
 /// \param[out] driver The table of function pointers to initialize.
 /// \param[out] initialized How much of the table was actually
 ///   initialized (can be less than count).
+/// \param[out] error An optional location to return an error message
+///   if necessary.
 AdbcStatusCode AdbcLoadDriver(const char* connection, size_t count,
-                              struct AdbcDriver* driver, size_t* initialized);
+                              struct AdbcDriver* driver, size_t* initialized,
+                              struct AdbcError* error);
 
 #endif  // ADBC_DRIVER_MANAGER_H
 

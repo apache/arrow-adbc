@@ -47,6 +47,20 @@ std::unordered_map<std::string, std::string> ParseConnectionString(
   return option_pairs;
 }
 
+void ReleaseError(struct AdbcError* error) {
+  if (error) {
+    delete[] error->message;
+    error->message = nullptr;
+  }
+}
+
+void SetError(struct AdbcError* error, const std::string& message) {
+  error->message = new char[message.size() + 1];
+  message.copy(error->message, message.size());
+  error->message[message.size()] = '\0';
+  error->release = ReleaseError;
+}
+
 // Default stubs
 AdbcStatusCode ConnectionSqlPrepare(struct AdbcConnection*, const char*,
                                     struct AdbcStatement*, struct AdbcError* error) {
@@ -69,12 +83,6 @@ AdbcStatusCode StatementExecute(struct AdbcStatement*, struct AdbcError* error) 
   }
 
 // Direct implementations of API methods
-
-void AdbcErrorRelease(struct AdbcError* error) {
-  if (!error->message) return;
-  // TODO: assert
-  error->private_driver->ErrorRelease(error);
-}
 
 AdbcStatusCode AdbcDatabaseInit(const struct AdbcDatabaseOptions* options,
                                 struct AdbcDatabase* out, struct AdbcError* error) {
@@ -212,31 +220,40 @@ const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
 }
 
 AdbcStatusCode AdbcLoadDriver(const char* connection, size_t count,
-                              struct AdbcDriver* driver, size_t* initialized) {
+                              struct AdbcDriver* driver, size_t* initialized,
+                              struct AdbcError* error) {
   auto params = ParseConnectionString(connection);
 
   auto driver_str = params.find("Driver");
   if (driver_str == params.end()) {
+    SetError(error, "Must provide Driver parameter");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   auto entrypoint_str = params.find("Entrypoint");
   if (entrypoint_str == params.end()) {
+    SetError(error, "Must provide Entrypoint parameter");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   void* handle = dlopen(driver_str->second.c_str(), RTLD_NOW | RTLD_LOCAL);
   if (!handle) {
+    std::string message = "dlopen() failed: ";
+    message += dlerror();
+    SetError(error, message);
     return ADBC_STATUS_UNKNOWN;
   }
 
   void* load_handle = dlsym(handle, entrypoint_str->second.c_str());
   auto* load = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
   if (!load) {
+    std::string message = "dlsym() failed: ";
+    message += dlerror();
+    SetError(error, message);
     return ADBC_STATUS_INTERNAL;
   }
 
-  auto result = load(count, driver, initialized);
+  auto result = load(count, driver, initialized, error);
   if (result != ADBC_STATUS_OK) {
     return result;
   }
