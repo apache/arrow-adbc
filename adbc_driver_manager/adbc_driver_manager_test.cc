@@ -36,22 +36,24 @@ class DriverManager : public ::testing::Test {
  public:
   void SetUp() override {
     size_t initialized = 0;
-    ADBC_ASSERT_OK_WITH_ERROR(error,
-        AdbcLoadDriver("Driver=libadbc_driver_sqlite.so;Entrypoint=AdbcSqliteDriverInit",
-                       ADBC_VERSION_0_0_1, &driver, &initialized, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcLoadDriver("libadbc_driver_sqlite.so", "AdbcSqliteDriverInit",
+                              ADBC_VERSION_0_0_1, &driver, &initialized, &error));
     ASSERT_EQ(initialized, ADBC_VERSION_0_0_1);
 
-    AdbcDatabaseOptions db_options;
-    std::memset(&db_options, 0, sizeof(db_options));
-    db_options.driver = &driver;
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&db_options, &database, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
+    ASSERT_NE(database.private_data, nullptr);
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error,
+        AdbcDatabaseSetOption(&database, "driver", "libadbc_driver_sqlite.so", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error,
+        AdbcDatabaseSetOption(&database, "entrypoint", "AdbcSqliteDriverInit", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
     ASSERT_NE(database.private_data, nullptr);
 
-    AdbcConnectionOptions conn_options;
-    std::memset(&conn_options, 0, sizeof(conn_options));
-    conn_options.database = &database;
-    ADBC_ASSERT_OK_WITH_ERROR(error,
-                              AdbcConnectionInit(&conn_options, &connection, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &error));
     ASSERT_NE(connection.private_data, nullptr);
   }
 
@@ -74,9 +76,10 @@ TEST_F(DriverManager, SqlExecute) {
   std::string query = "SELECT 1";
   AdbcStatement statement;
   std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionSqlExecute(&connection, query.c_str(), &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error,
+                            AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
@@ -93,9 +96,8 @@ TEST_F(DriverManager, SqlExecuteInvalid) {
   std::string query = "INVALID";
   AdbcStatement statement;
   std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
-  ASSERT_NE(AdbcConnectionSqlExecute(&connection, query.c_str(), &statement, &error),
-            ADBC_STATUS_OK);
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ASSERT_NE(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error), ADBC_STATUS_OK);
   ADBC_ASSERT_ERROR_THAT(
       error, ::testing::AllOf(::testing::HasSubstr("[SQLite3] sqlite3_prepare_v2:"),
                               ::testing::HasSubstr("syntax error")));
@@ -106,9 +108,10 @@ TEST_F(DriverManager, SqlPrepare) {
   std::string query = "SELECT 1";
   AdbcStatement statement;
   std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionSqlPrepare(&connection, query.c_str(), &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error,
+                            AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementPrepare(&statement, &error));
 
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
@@ -137,9 +140,10 @@ TEST_F(DriverManager, SqlPrepareMultipleParams) {
       &export_params));
   ASSERT_OK(ExportSchema(*param_schema, &export_schema));
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementInit(&connection, &statement, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionSqlPrepare(&connection, query.c_str(), &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error,
+                            AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementPrepare(&statement, &error));
 
   ADBC_ASSERT_OK_WITH_ERROR(
       error, AdbcStatementBind(&statement, &export_params, &export_schema, &error));
@@ -150,12 +154,12 @@ TEST_F(DriverManager, SqlPrepareMultipleParams) {
   ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("?", arrow::int64()),
                                             arrow::field("?", arrow::utf8())}));
-  EXPECT_THAT(batches, ::testing::UnorderedPointwise(
-                           PointeesEqual(),
-                           {
-                               adbc::RecordBatchFromJSON(schema, R"([[1, "foo"], [2,
-                        "bar"]])"),
-                           }));
+  EXPECT_THAT(batches,
+              ::testing::UnorderedPointwise(
+                  PointeesEqual(),
+                  {
+                      adbc::RecordBatchFromJSON(schema, R"([[1, "foo"], [2, "bar"]])"),
+                  }));
 }
 
 }  // namespace adbc

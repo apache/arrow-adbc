@@ -49,7 +49,7 @@ namespace adbc {
   do {                                                                       \
     ASSERT_NE(ERROR.message, nullptr);                                       \
     std::string errmsg_ = ERROR.message ? ERROR.message : "(unknown error)"; \
-      if (ERROR.message) error.release(&error);                                \
+    if (ERROR.message) error.release(&error);                                \
     ASSERT_THAT(errmsg_, PATTERN) << errmsg_;                                \
   } while (false)
 

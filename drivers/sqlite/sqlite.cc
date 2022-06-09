@@ -21,6 +21,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 
 #include <arrow/builder.h>
 #include <arrow/c/bridge.h>
@@ -106,12 +107,42 @@ std::shared_ptr<arrow::Schema> StatementToSchema(sqlite3_stmt* stmt) {
 
 class SqliteDatabaseImpl {
  public:
-  explicit SqliteDatabaseImpl(sqlite3* db) : db_(db), connection_count_(0) {}
+  explicit SqliteDatabaseImpl() : db_(nullptr), connection_count_(0) {}
 
   sqlite3* Connect() {
     std::lock_guard<std::mutex> guard(mutex_);
-    ++connection_count_;
+    if (db_) ++connection_count_;
     return db_;
+  }
+
+  AdbcStatusCode Init(struct AdbcError* error) {
+    if (db_) {
+      SetError(error, "Database already initialized");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    const char* filename = ":memory:";
+    auto it = options_.find("filename");
+    if (it != options_.end()) filename = it->second.c_str();
+
+    auto status = sqlite3_open_v2(
+        filename, &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, /*zVfs=*/nullptr);
+    if (status != SQLITE_OK) {
+      if (db_) {
+        SetError(db_, "sqlite3_open_v2", error);
+      }
+      return ADBC_STATUS_IO;
+    }
+    options_.clear();
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode SetOption(const char* key, const char* value, struct AdbcError* error) {
+    if (db_) {
+      SetError(error, "Database already initialized");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    options_[key] = value;
+    return ADBC_STATUS_OK;
   }
 
   AdbcStatusCode Disconnect(struct AdbcError* error) {
@@ -143,18 +174,45 @@ class SqliteDatabaseImpl {
  private:
   sqlite3* db_;
   int connection_count_;
+  std::unordered_map<std::string, std::string> options_;
   std::mutex mutex_;
+};
+
+class SqliteConnectionImpl {
+ public:
+  explicit SqliteConnectionImpl(std::shared_ptr<SqliteDatabaseImpl> database)
+      : database_(std::move(database)), db_(nullptr) {}
+
+  //----------------------------------------------------------
+  // Common Functions
+  //----------------------------------------------------------
+
+  sqlite3* db() const { return db_; }
+
+  AdbcStatusCode Init(struct AdbcError* error) {
+    db_ = database_->Connect();
+    if (!db_) {
+      SetError(error, "Database not yet initialized!");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode Release(struct AdbcError* error) { return database_->Disconnect(error); }
+
+ private:
+  std::shared_ptr<SqliteDatabaseImpl> database_;
+  sqlite3* db_;
 };
 
 class SqliteStatementImpl : public arrow::RecordBatchReader {
  public:
-  SqliteStatementImpl()
-      : db_(nullptr), stmt_(nullptr), schema_(nullptr), bind_index_(0), done_(false) {}
-
-  void Init(sqlite3* db, sqlite3_stmt* stmt) {
-    db_ = db;
-    stmt_ = stmt;
-  }
+  SqliteStatementImpl(std::shared_ptr<SqliteConnectionImpl> connection)
+      : connection_(std::move(connection)),
+        stmt_(nullptr),
+        schema_(nullptr),
+        bind_index_(0),
+        done_(false) {}
 
   //----------------------------------------------------------
   // arrow::RecordBatchReader
@@ -167,7 +225,6 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
 
   Status ReadNext(std::shared_ptr<arrow::RecordBatch>* batch) override {
     constexpr int64_t kBatchSize = 1024;
-
     if (done_) {
       *batch = nullptr;
       return Status::OK();
@@ -179,6 +236,8 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
       ARROW_RETURN_NOT_OK(arrow::MakeBuilder(arrow::default_memory_pool(),
                                              schema_->field(i)->type(), &builders[i]));
     }
+
+    sqlite3* db = connection_->db();
 
     // The statement was stepped once at the start, so step at the end of the loop
     int64_t num_rows = 0;
@@ -219,7 +278,7 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
         if (bind_parameters_ && bind_index_ < bind_parameters_->num_rows()) {
           status = sqlite3_reset(stmt_);
           if (status != SQLITE_OK) {
-            return Status::IOError("[SQLite3] sqlite3_reset: ", sqlite3_errmsg(db_));
+            return Status::IOError("[SQLite3] sqlite3_reset: ", sqlite3_errmsg(db));
           }
           RETURN_NOT_OK(BindNext());
           status = sqlite3_step(stmt_);
@@ -230,7 +289,7 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
         }
         break;
       }
-      return Status::IOError("[SQLite3] sqlite3_step: ", sqlite3_errmsg(db_));
+      return Status::IOError("[SQLite3] sqlite3_step: ", sqlite3_errmsg(db));
     }
 
     arrow::ArrayVector arrays(builders.size());
@@ -249,11 +308,12 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
     if (stmt_) {
       auto status = sqlite3_finalize(stmt_);
       if (status != SQLITE_OK) {
-        SetError(db_, "sqlite3_finalize", error);
+        SetError(connection_->db(), "sqlite3_finalize", error);
         return ADBC_STATUS_UNKNOWN;
       }
       stmt_ = nullptr;
       bind_parameters_.reset();
+      connection_.reset();
     }
     return ADBC_STATUS_OK;
   }
@@ -275,24 +335,25 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
 
   AdbcStatusCode Execute(const std::shared_ptr<SqliteStatementImpl>& self,
                          struct AdbcError* error) {
+    sqlite3* db = connection_->db();
     int rc = 0;
     if (schema_) {
       rc = sqlite3_clear_bindings(stmt_);
       if (rc != SQLITE_OK) {
-        SetError(db_, "sqlite3_reset_bindings", error);
+        SetError(db, "sqlite3_reset_bindings", error);
         rc = sqlite3_finalize(stmt_);
         if (rc != SQLITE_OK) {
-          SetError(db_, "sqlite3_finalize", error);
+          SetError(db, "sqlite3_finalize", error);
         }
         return ADBC_STATUS_IO;
       }
 
       rc = sqlite3_reset(stmt_);
       if (rc != SQLITE_OK) {
-        SetError(db_, "sqlite3_reset", error);
+        SetError(db, "sqlite3_reset", error);
         rc = sqlite3_finalize(stmt_);
         if (rc != SQLITE_OK) {
-          SetError(db_, "sqlite3_finalize", error);
+          SetError(db, "sqlite3_finalize", error);
         }
         return ADBC_STATUS_IO;
       }
@@ -308,19 +369,19 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
       SetError(error, status);
       return ADBC_STATUS_IO;
     } else if (rc != SQLITE_OK) {
-      SetError(db_, "sqlite3_bind", error);
+      SetError(db, "sqlite3_bind", error);
       rc = sqlite3_finalize(stmt_);
       if (rc != SQLITE_OK) {
-        SetError(db_, "sqlite3_finalize", error);
+        SetError(db, "sqlite3_finalize", error);
       }
       return ADBC_STATUS_IO;
     }
     rc = sqlite3_step(stmt_);
     if (rc == SQLITE_ERROR) {
-      SetError(db_, "sqlite3_step", error);
+      SetError(db, "sqlite3_step", error);
       rc = sqlite3_finalize(stmt_);
       if (rc != SQLITE_OK) {
-        SetError(db_, "sqlite3_finalize", error);
+        SetError(db, "sqlite3_finalize", error);
       }
       return ADBC_STATUS_IO;
     }
@@ -338,6 +399,24 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
     auto status = arrow::ExportRecordBatchReader(self, out);
     if (!status.ok()) {
       SetError(error, "Could not initialize result reader: ", status);
+      return ADBC_STATUS_UNKNOWN;
+    }
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode SetSqlQuery(const std::shared_ptr<SqliteStatementImpl>& self,
+                             const char* query, struct AdbcError* error) {
+    sqlite3* db = connection_->db();
+    int rc = sqlite3_prepare_v2(db, query, static_cast<int>(std::strlen(query)), &stmt_,
+                                /*pzTail=*/nullptr);
+    if (rc != SQLITE_OK) {
+      if (stmt_) {
+        rc = sqlite3_finalize(stmt_);
+        if (rc != SQLITE_OK) {
+          SetError(db, "sqlite3_finalize", error);
+        }
+      }
+      SetError(db, "sqlite3_prepare_v2", error);
       return ADBC_STATUS_UNKNOWN;
     }
     return ADBC_STATUS_OK;
@@ -384,7 +463,7 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
     return SQLITE_OK;
   }
 
-  sqlite3* db_;
+  std::shared_ptr<SqliteConnectionImpl> connection_;
   sqlite3_stmt* stmt_;
   std::shared_ptr<arrow::Schema> schema_;
   std::shared_ptr<arrow::RecordBatch> bind_parameters_;
@@ -392,81 +471,30 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
   bool done_;
 };
 
-class SqliteConnectionImpl {
- public:
-  explicit SqliteConnectionImpl(std::shared_ptr<SqliteDatabaseImpl> database)
-      : database_(std::move(database)), db_(database_->Connect()) {}
-
-  //----------------------------------------------------------
-  // Common Functions
-  //----------------------------------------------------------
-
-  AdbcStatusCode Release(struct AdbcError* error) { return database_->Disconnect(error); }
-
-  //----------------------------------------------------------
-  // SQL Semantics
-  //----------------------------------------------------------
-
-  AdbcStatusCode SqlExecute(const char* query, struct AdbcStatement* out,
-                            struct AdbcError* error) {
-    auto status = SqlPrepare(query, out, error);
-    if (status != ADBC_STATUS_OK) return status;
-
-    return AdbcStatementExecute(out, error);
-  }
-
-  AdbcStatusCode SqlPrepare(const char* query, struct AdbcStatement* out,
-                            struct AdbcError* error) {
-    if (!out->private_data) {
-      SetError(error, "Statement is uninitialized, use AdbcStatementInit");
-      return ADBC_STATUS_UNINITIALIZED;
-    }
-    auto* ptr =
-        reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(out->private_data);
-    auto* impl = ptr->get();
-
-    sqlite3_stmt* stmt = nullptr;
-    auto rc = sqlite3_prepare_v2(db_, query, static_cast<int>(std::strlen(query)), &stmt,
-                                 /*pzTail=*/nullptr);
-    if (rc != SQLITE_OK) {
-      if (stmt) {
-        rc = sqlite3_finalize(stmt);
-        if (rc != SQLITE_OK) {
-          SetError(db_, "sqlite3_finalize", error);
-          return ADBC_STATUS_UNKNOWN;
-        }
-      }
-      SetError(db_, "sqlite3_prepare_v2", error);
-      return ADBC_STATUS_UNKNOWN;
-    }
-
-    impl->Init(db_, stmt);
-    return ADBC_STATUS_OK;
-  }
-
- private:
-  std::shared_ptr<SqliteDatabaseImpl> database_;
-  sqlite3* db_;
-};
-
 }  // namespace
 
 ADBC_DRIVER_EXPORT
-AdbcStatusCode AdbcDatabaseInit(const struct AdbcDatabaseOptions* options,
-                                struct AdbcDatabase* out, struct AdbcError* error) {
-  sqlite3* db = nullptr;
-  auto status = sqlite3_open_v2(
-      ":memory:", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, /*zVfs=*/nullptr);
-  if (status != SQLITE_OK) {
-    if (db) {
-      SetError(db, "sqlite3_open_v2", error);
-    }
-    return ADBC_STATUS_UNKNOWN;
-  }
-
-  auto impl = std::make_shared<SqliteDatabaseImpl>(db);
-  out->private_data = new std::shared_ptr<SqliteDatabaseImpl>(impl);
+AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
+  auto impl = std::make_shared<SqliteDatabaseImpl>();
+  database->private_data = new std::shared_ptr<SqliteDatabaseImpl>(impl);
   return ADBC_STATUS_OK;
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
+                                     const char* value, struct AdbcError* error) {
+  if (!database || !database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteDatabaseImpl>*>(database->private_data);
+  return (*ptr)->SetOption(key, value, error);
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
+  if (!database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteDatabaseImpl>*>(database->private_data);
+  return (*ptr)->Init(error);
 }
 
 ADBC_DRIVER_EXPORT
@@ -482,17 +510,29 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
 }
 
 ADBC_DRIVER_EXPORT
-AdbcStatusCode AdbcConnectionInit(const struct AdbcConnectionOptions* options,
-                                  struct AdbcConnection* out, struct AdbcError* error) {
-  if (!options->database || !options->database->private_data) {
-    SetError(error, "Must provide database");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-  auto ptr = reinterpret_cast<std::shared_ptr<SqliteDatabaseImpl>*>(
-      options->database->private_data);
+AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
+                                 struct AdbcConnection* connection,
+                                 struct AdbcError* error) {
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteDatabaseImpl>*>(database->private_data);
   auto impl = std::make_shared<SqliteConnectionImpl>(*ptr);
-  out->private_data = new std::shared_ptr<SqliteConnectionImpl>(impl);
+  connection->private_data = new std::shared_ptr<SqliteConnectionImpl>(impl);
   return ADBC_STATUS_OK;
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
+                                       const char* value, struct AdbcError* error) {
+  return ADBC_STATUS_OK;
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
+                                  struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
+  return (*ptr)->Init(error);
 }
 
 ADBC_DRIVER_EXPORT
@@ -505,40 +545,6 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
   delete ptr;
   connection->private_data = nullptr;
   return status;
-}
-
-ADBC_DRIVER_EXPORT
-AdbcStatusCode AdbcConnectionSqlExecute(struct AdbcConnection* connection,
-                                        const char* query, struct AdbcStatement* out,
-                                        struct AdbcError* error) {
-  if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
-  return (*ptr)->SqlExecute(query, out, error);
-}
-
-ADBC_DRIVER_EXPORT
-AdbcStatusCode AdbcConnectionSqlPrepare(struct AdbcConnection* connection,
-                                        const char* query, struct AdbcStatement* out,
-                                        struct AdbcError* error) {
-  if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
-  return (*ptr)->SqlPrepare(query, out, error);
-}
-
-ADBC_DRIVER_EXPORT
-AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
-                                             uint8_t* partition_desc,
-                                             struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-ADBC_DRIVER_EXPORT
-AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
-                                                 size_t* length,
-                                                 struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 ADBC_DRIVER_EXPORT
@@ -561,6 +567,20 @@ AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
 }
 
 ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
+                                             uint8_t* partition_desc,
+                                             struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
+                                                 size_t* length,
+                                                 struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
                                       struct ArrowArrayStream* out,
                                       struct AdbcError* error) {
@@ -571,11 +591,21 @@ AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
 }
 
 ADBC_DRIVER_EXPORT
-AdbcStatusCode AdbcStatementInit(struct AdbcConnection* connection,
-                                 struct AdbcStatement* statement,
-                                 struct AdbcError* error) {
-  auto impl = std::make_shared<SqliteStatementImpl>();
+AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
+                                struct AdbcStatement* statement,
+                                struct AdbcError* error) {
+  auto conn_ptr =
+      reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
+  auto impl = std::make_shared<SqliteStatementImpl>(*conn_ptr);
   statement->private_data = new std::shared_ptr<SqliteStatementImpl>(impl);
+  return ADBC_STATUS_OK;
+}
+
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
+                                    struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  // No-op
   return ADBC_STATUS_OK;
 }
 
@@ -591,6 +621,15 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
   return status;
 }
 
+ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
+                                        const char* query, struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto* ptr =
+      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
+  return (*ptr)->SetSqlQuery(*ptr, query, error);
+}
+
 extern "C" {
 ARROW_EXPORT
 AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
@@ -599,18 +638,24 @@ AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
 
   std::memset(driver, 0, sizeof(*driver));
   driver->DatabaseInit = AdbcDatabaseInit;
+  driver->DatabaseNew = AdbcDatabaseNew;
   driver->DatabaseRelease = AdbcDatabaseRelease;
+  driver->DatabaseSetOption = AdbcDatabaseSetOption;
+
   driver->ConnectionInit = AdbcConnectionInit;
+  driver->ConnectionNew = AdbcConnectionNew;
   driver->ConnectionRelease = AdbcConnectionRelease;
-  driver->ConnectionSqlExecute = AdbcConnectionSqlExecute;
-  driver->ConnectionSqlPrepare = AdbcConnectionSqlPrepare;
+  driver->ConnectionSetOption = AdbcConnectionSetOption;
+
   driver->StatementBind = AdbcStatementBind;
   driver->StatementExecute = AdbcStatementExecute;
   driver->StatementGetPartitionDesc = AdbcStatementGetPartitionDesc;
   driver->StatementGetPartitionDescSize = AdbcStatementGetPartitionDescSize;
   driver->StatementGetStream = AdbcStatementGetStream;
-  driver->StatementInit = AdbcStatementInit;
+  driver->StatementNew = AdbcStatementNew;
+  driver->StatementPrepare = AdbcStatementPrepare;
   driver->StatementRelease = AdbcStatementRelease;
+  driver->StatementSetSqlQuery = AdbcStatementSetSqlQuery;
   *initialized = ADBC_VERSION_0_0_1;
   return ADBC_STATUS_OK;
 }
