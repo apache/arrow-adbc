@@ -24,6 +24,7 @@ include(BuildUtils)
 project(adbc_driver_sqlite
         VERSION "${ARROW_BASE_VERSION}"
         LANGUAGES CXX)
+include(CTest)
 
 find_package(Arrow REQUIRED)
 find_package(SQLite3 REQUIRED)
