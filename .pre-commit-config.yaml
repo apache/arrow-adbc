@@ -24,6 +24,7 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
+    - id: check-xml
     - id: check-yaml
     - id: end-of-file-fixer
     - id: trailing-whitespace
@@ -38,3 +39,9 @@ repos:
     hooks:
     - id: cmake-format
       args: [--in-place]
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+    - id: pretty-format-java
+      args: [--autofix]
+      types_or: [java]
