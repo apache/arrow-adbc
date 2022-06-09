@@ -26,6 +26,7 @@ include(DefineOptions)
 project(adbc_driver_manager
         VERSION "${ARROW_BASE_VERSION}"
         LANGUAGES CXX)
+include(CTest)
 add_arrow_lib(adbc_driver_manager SOURCES adbc_driver_manager.cc)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 
