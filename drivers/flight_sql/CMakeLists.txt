@@ -34,10 +34,10 @@ find_package(ArrowFlightSql REQUIRED HINTS ${ARROW_CONFIG_PATH})
 add_arrow_lib(adbc_driver_flight_sql
               SOURCES
               flight_sql.cc
-              ../util.cc
               SHARED_LINK_LIBS
-              arrow_shared
-              arrow_flight_sql_shared)
+              arrow_flight_sql_shared
+              arrow_flight_shared
+              arrow_shared)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 
 if(ARROW_TEST_LINKAGE STREQUAL "shared")
