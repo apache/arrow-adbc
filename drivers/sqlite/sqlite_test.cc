@@ -20,6 +20,7 @@
 
 #include <arrow/c/bridge.h>
 #include <arrow/record_batch.h>
+#include <arrow/table.h>
 #include <arrow/testing/matchers.h>
 
 #include "adbc.h"
@@ -147,6 +148,90 @@ TEST_F(Sqlite, SqlPrepareMultipleParams) {
                   {
                       adbc::RecordBatchFromJSON(schema, R"([[1, "foo"], [2, "bar"]])"),
                   }));
+}
+
+TEST_F(Sqlite, BulkIngestTable) {
+  ArrowArray export_table;
+  ArrowSchema export_schema;
+  auto bulk_schema = arrow::schema(
+      {arrow::field("ints", arrow::int64()), arrow::field("strs", arrow::utf8())});
+  auto bulk_table = adbc::RecordBatchFromJSON(bulk_schema, R"([[1, "foo"], [2, "bar"]])");
+  ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
+  ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
+
+  {
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                      "bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+  }
+
+  {
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+
+    std::shared_ptr<arrow::Schema> schema;
+    arrow::RecordBatchVector batches;
+    ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
+    ASSERT_SCHEMA_EQ(*schema, *bulk_schema);
+    EXPECT_THAT(batches, ::testing::UnorderedPointwise(PointeesEqual(), {bulk_table}));
+  }
+}
+
+TEST_F(Sqlite, BulkIngestStream) {
+  ArrowArrayStream export_stream;
+  auto bulk_schema = arrow::schema(
+      {arrow::field("ints", arrow::int64()), arrow::field("strs", arrow::utf8())});
+  std::vector<std::shared_ptr<arrow::RecordBatch>> bulk_batches{
+      adbc::RecordBatchFromJSON(bulk_schema, R"([[1, "foo"], [2, "bar"]])"),
+      adbc::RecordBatchFromJSON(bulk_schema, R"([[3, ""], [4, "baz"]])"),
+  };
+  auto bulk_table = *arrow::Table::FromRecordBatches(bulk_batches);
+  auto reader = std::make_shared<arrow::TableBatchReader>(*bulk_table);
+  ASSERT_OK(arrow::ExportRecordBatchReader(reader, &export_stream));
+
+  {
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                      "bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementBindStream(&statement, &export_stream, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+  }
+
+  {
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+
+    std::shared_ptr<arrow::Schema> schema;
+    arrow::RecordBatchVector batches;
+    ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
+    ASSERT_SCHEMA_EQ(*schema, *bulk_schema);
+    EXPECT_THAT(
+        batches,
+        ::testing::UnorderedPointwise(
+            PointeesEqual(),
+            {
+                adbc::RecordBatchFromJSON(
+                    bulk_schema, R"([[1, "foo"], [2, "bar"], [3, ""], [4, "baz"]])"),
+            }));
+  }
 }
 
 TEST_F(Sqlite, MultipleConnections) {

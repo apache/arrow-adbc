@@ -27,6 +27,7 @@
 #include <arrow/c/bridge.h>
 #include <arrow/record_batch.h>
 #include <arrow/status.h>
+#include <arrow/table.h>
 #include <arrow/util/logging.h>
 #include <arrow/util/string_builder.h>
 
@@ -73,6 +74,19 @@ void SetError(struct AdbcError* error, Args&&... args) {
   message.copy(error->message, message.size());
   error->message[message.size()] = '\0';
   error->release = ReleaseError;
+}
+
+AdbcStatusCode CheckRc(sqlite3* db, sqlite3_stmt* stmt, int rc, const char* context,
+                       struct AdbcError* error) {
+  if (rc != SQLITE_OK) {
+    SetError(db, context, error);
+    rc = sqlite3_finalize(stmt);
+    if (rc != SQLITE_OK) {
+      SetError(db, "sqlite3_finalize", error);
+    }
+    return ADBC_STATUS_IO;
+  }
+  return ADBC_STATUS_OK;
 }
 
 std::shared_ptr<arrow::Schema> StatementToSchema(sqlite3_stmt* stmt) {
@@ -124,14 +138,9 @@ class SqliteDatabaseImpl {
     auto it = options_.find("filename");
     if (it != options_.end()) filename = it->second.c_str();
 
-    auto status = sqlite3_open_v2(
-        filename, &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, /*zVfs=*/nullptr);
-    if (status != SQLITE_OK) {
-      if (db_) {
-        SetError(db_, "sqlite3_open_v2", error);
-      }
-      return ADBC_STATUS_IO;
-    }
+    int rc = sqlite3_open_v2(filename, &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                             /*zVfs=*/nullptr);
+    ADBC_RETURN_NOT_OK(CheckRc(db_, nullptr, rc, "sqlite3_open_v2", error));
     options_.clear();
     return ADBC_STATUS_OK;
   }
@@ -165,7 +174,7 @@ class SqliteDatabaseImpl {
 
     auto status = sqlite3_close(db_);
     if (status != SQLITE_OK) {
-      // TODO:
+      if (db_) SetError(db_, "sqlite3_close", error);
       return ADBC_STATUS_UNKNOWN;
     }
     return ADBC_STATUS_OK;
@@ -275,7 +284,13 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
       if (status == SQLITE_ROW) {
         continue;
       } else if (status == SQLITE_DONE) {
-        if (bind_parameters_ && bind_index_ < bind_parameters_->num_rows()) {
+        if (bind_parameters_ &&
+            (!next_parameters_ || bind_index_ >= next_parameters_->num_rows())) {
+          ARROW_RETURN_NOT_OK(bind_parameters_->ReadNext(&next_parameters_));
+          bind_index_ = 0;
+        }
+
+        if (next_parameters_ && bind_index_ < next_parameters_->num_rows()) {
           status = sqlite3_reset(stmt_);
           if (status != SQLITE_OK) {
             return Status::IOError("[SQLite3] sqlite3_reset: ", sqlite3_errmsg(db));
@@ -285,7 +300,7 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
           if (status == SQLITE_ROW) continue;
         } else {
           done_ = true;
-          bind_parameters_.reset();
+          next_parameters_.reset();
         }
         break;
       }
@@ -306,13 +321,12 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
 
   AdbcStatusCode Close(struct AdbcError* error) {
     if (stmt_) {
-      auto status = sqlite3_finalize(stmt_);
-      if (status != SQLITE_OK) {
-        SetError(connection_->db(), "sqlite3_finalize", error);
-        return ADBC_STATUS_UNKNOWN;
-      }
+      const int rc = sqlite3_finalize(stmt_);
       stmt_ = nullptr;
+      next_parameters_.reset();
       bind_parameters_.reset();
+      ADBC_RETURN_NOT_OK(
+          CheckRc(connection_->db(), nullptr, rc, "sqlite3_finalize", error));
       connection_.reset();
     }
     return ADBC_STATUS_OK;
@@ -325,7 +339,27 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
   AdbcStatusCode Bind(const std::shared_ptr<SqliteStatementImpl>& self,
                       struct ArrowArray* values, struct ArrowSchema* schema,
                       struct AdbcError* error) {
-    auto status = arrow::ImportRecordBatch(values, schema).Value(&bind_parameters_);
+    std::shared_ptr<arrow::RecordBatch> batch;
+    auto status = arrow::ImportRecordBatch(values, schema).Value(&batch);
+    if (!status.ok()) {
+      SetError(error, status);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    std::shared_ptr<arrow::Table> table;
+    status = arrow::Table::FromRecordBatches({std::move(batch)}).Value(&table);
+    if (!status.ok()) {
+      SetError(error, status);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    bind_parameters_.reset(new arrow::TableBatchReader(std::move(table)));
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode Bind(const std::shared_ptr<SqliteStatementImpl>& self,
+                      struct ArrowArrayStream* stream, struct AdbcError* error) {
+    auto status = arrow::ImportRecordBatchReader(stream).Value(&bind_parameters_);
     if (!status.ok()) {
       SetError(error, status);
       return ADBC_STATUS_INVALID_ARGUMENT;
@@ -335,59 +369,10 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
 
   AdbcStatusCode Execute(const std::shared_ptr<SqliteStatementImpl>& self,
                          struct AdbcError* error) {
-    sqlite3* db = connection_->db();
-    int rc = 0;
-    if (schema_) {
-      rc = sqlite3_clear_bindings(stmt_);
-      if (rc != SQLITE_OK) {
-        SetError(db, "sqlite3_reset_bindings", error);
-        rc = sqlite3_finalize(stmt_);
-        if (rc != SQLITE_OK) {
-          SetError(db, "sqlite3_finalize", error);
-        }
-        return ADBC_STATUS_IO;
-      }
-
-      rc = sqlite3_reset(stmt_);
-      if (rc != SQLITE_OK) {
-        SetError(db, "sqlite3_reset", error);
-        rc = sqlite3_finalize(stmt_);
-        if (rc != SQLITE_OK) {
-          SetError(db, "sqlite3_finalize", error);
-        }
-        return ADBC_STATUS_IO;
-      }
+    if (bulk_table_.empty()) {
+      return ExecutePrepared(error);
     }
-    // Step the statement and get the schema (SQLite doesn't
-    // necessarily know the schema until it begins to execute it)
-    auto status = BindNext().Value(&rc);
-    // XXX: with parameters, inferring the schema from the first
-    // argument is inaccurate (what if one is null?). Is there a way
-    // to hint to SQLite the real type?
-    if (!status.ok()) {
-      // TODO: map Arrow codes to ADBC codes
-      SetError(error, status);
-      return ADBC_STATUS_IO;
-    } else if (rc != SQLITE_OK) {
-      SetError(db, "sqlite3_bind", error);
-      rc = sqlite3_finalize(stmt_);
-      if (rc != SQLITE_OK) {
-        SetError(db, "sqlite3_finalize", error);
-      }
-      return ADBC_STATUS_IO;
-    }
-    rc = sqlite3_step(stmt_);
-    if (rc == SQLITE_ERROR) {
-      SetError(db, "sqlite3_step", error);
-      rc = sqlite3_finalize(stmt_);
-      if (rc != SQLITE_OK) {
-        SetError(db, "sqlite3_finalize", error);
-      }
-      return ADBC_STATUS_IO;
-    }
-    schema_ = StatementToSchema(stmt_);
-    done_ = rc != SQLITE_ROW;
-    return ADBC_STATUS_OK;
+    return ExecuteBulk(error);
   }
 
   AdbcStatusCode GetStream(const std::shared_ptr<SqliteStatementImpl>& self,
@@ -404,51 +389,62 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
     return ADBC_STATUS_OK;
   }
 
+  AdbcStatusCode SetOption(const std::shared_ptr<SqliteStatementImpl>& self,
+                           const char* key, const char* value, struct AdbcError* error) {
+    if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
+      // Bulk ingest
+      if (std::strlen(value) == 0) return ADBC_STATUS_INVALID_ARGUMENT;
+      bulk_table_ = value;
+      if (stmt_) {
+        int rc = sqlite3_finalize(stmt_);
+        ADBC_RETURN_NOT_OK(
+            CheckRc(connection_->db(), nullptr, rc, "sqlite3_finalize", error));
+      }
+      return ADBC_STATUS_OK;
+    }
+    SetError(error, "Unknown option: ", key);
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
   AdbcStatusCode SetSqlQuery(const std::shared_ptr<SqliteStatementImpl>& self,
                              const char* query, struct AdbcError* error) {
+    bulk_table_.clear();
     sqlite3* db = connection_->db();
     int rc = sqlite3_prepare_v2(db, query, static_cast<int>(std::strlen(query)), &stmt_,
                                 /*pzTail=*/nullptr);
-    if (rc != SQLITE_OK) {
-      if (stmt_) {
-        rc = sqlite3_finalize(stmt_);
-        if (rc != SQLITE_OK) {
-          SetError(db, "sqlite3_finalize", error);
-        }
-      }
-      SetError(db, "sqlite3_prepare_v2", error);
-      return ADBC_STATUS_UNKNOWN;
-    }
-    return ADBC_STATUS_OK;
+    return CheckRc(connection_->db(), stmt_, rc, "sqlite3_prepare_v2", error);
   }
 
  private:
   arrow::Result<int> BindNext() {
-    if (!bind_parameters_ || bind_index_ >= bind_parameters_->num_rows()) {
+    if (!next_parameters_ || bind_index_ >= next_parameters_->num_rows()) {
       return SQLITE_OK;
     }
 
+    return BindImpl(stmt_, *next_parameters_, bind_index_++);
+  }
+
+  arrow::Result<int> BindImpl(sqlite3_stmt* stmt, const arrow::RecordBatch& data,
+                              int64_t row) {
     int col_index = 1;
-    // TODO: multiple output rows
-    const int bind_index = bind_index_++;
-    for (const auto& column : bind_parameters_->columns()) {
-      if (column->IsNull(bind_index)) {
-        const int rc = sqlite3_bind_null(stmt_, col_index);
+    for (const auto& column : data.columns()) {
+      if (column->IsNull(row)) {
+        const int rc = sqlite3_bind_null(stmt, col_index);
         if (rc != SQLITE_OK) return rc;
       } else {
         switch (column->type()->id()) {
           case arrow::Type::INT64: {
             const int rc = sqlite3_bind_int64(
-                stmt_, col_index,
-                static_cast<const arrow::Int64Array&>(*column).Value(bind_index));
+                stmt, col_index,
+                static_cast<const arrow::Int64Array&>(*column).Value(row));
             if (rc != SQLITE_OK) return rc;
             break;
           }
           case arrow::Type::STRING: {
             const auto& strings = static_cast<const arrow::StringArray&>(*column);
-            const int rc = sqlite3_bind_text64(
-                stmt_, col_index, strings.Value(bind_index).data(),
-                strings.value_length(bind_index), SQLITE_STATIC, SQLITE_UTF8);
+            const int rc = sqlite3_bind_text64(stmt, col_index, strings.Value(row).data(),
+                                               strings.value_length(row), SQLITE_STATIC,
+                                               SQLITE_UTF8);
             if (rc != SQLITE_OK) return rc;
             break;
           }
@@ -459,14 +455,148 @@ class SqliteStatementImpl : public arrow::RecordBatchReader {
       }
       col_index++;
     }
-
     return SQLITE_OK;
   }
 
+  AdbcStatusCode ExecuteBulk(struct AdbcError* error) {
+    if (!bind_parameters_) {
+      SetError(error, "Must AdbcStatementBind for bulk insertion");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    sqlite3* db = connection_->db();
+    sqlite3_stmt* stmt = nullptr;
+    int rc = SQLITE_OK;
+
+    auto check_status = [&](const arrow::Status& st) mutable {
+      if (!st.ok()) {
+        SetError(error, st);
+        if (stmt) {
+          rc = sqlite3_finalize(stmt);
+          if (rc != SQLITE_OK) {
+            SetError(db, "sqlite3_finalize", error);
+          }
+        }
+        return ADBC_STATUS_IO;
+      }
+      return ADBC_STATUS_OK;
+    };
+
+    // Create the table
+    // TODO: parameter to choose append/overwrite/error
+    {
+      // XXX: not injection-safe
+      std::string query = "CREATE TABLE ";
+      query += bulk_table_;
+      query += " (";
+      const auto& fields = bind_parameters_->schema()->fields();
+      for (int i = 0; i < fields.size(); i++) {
+        if (i > 0) query += ',';
+        query += fields[i]->name();
+      }
+      query += ')';
+
+      rc = sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.size()), &stmt,
+                              /*pzTail=*/nullptr);
+      ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_prepare_v2", error));
+
+      rc = sqlite3_step(stmt);
+      if (rc != SQLITE_DONE) return CheckRc(db, stmt, rc, "sqlite3_step", error);
+
+      rc = sqlite3_finalize(stmt);
+      ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_finalize", error));
+    }
+
+    // Insert the rows
+
+    {
+      std::string query = "INSERT INTO ";
+      query += bulk_table_;
+      query += " VALUES (";
+      const auto& fields = bind_parameters_->schema()->fields();
+      for (int i = 0; i < fields.size(); i++) {
+        if (i > 0) query += ',';
+        query += '?';
+      }
+      query += ')';
+      rc = sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.size()), &stmt,
+                              /*pzTail=*/nullptr);
+      ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, query.c_str(), error));
+    }
+
+    while (true) {
+      std::shared_ptr<arrow::RecordBatch> batch;
+      auto status = bind_parameters_->Next().Value(&batch);
+      ADBC_RETURN_NOT_OK(check_status(status));
+      if (!batch) break;
+
+      for (int64_t row = 0; row < batch->num_rows(); row++) {
+        status = BindImpl(stmt, *batch, row).Value(&rc);
+        ADBC_RETURN_NOT_OK(check_status(status));
+        ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_bind", error));
+
+        rc = sqlite3_step(stmt);
+        if (rc != SQLITE_DONE) {
+          return CheckRc(db, stmt, rc, "sqlite3_step", error);
+        }
+
+        rc = sqlite3_reset(stmt);
+        ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_reset", error));
+
+        rc = sqlite3_clear_bindings(stmt);
+        ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_clear_bindings", error));
+      }
+    }
+
+    rc = sqlite3_finalize(stmt);
+    return CheckRc(db, nullptr, rc, "sqlite3_finalize", error);
+  }
+
+  AdbcStatusCode ExecutePrepared(struct AdbcError* error) {
+    sqlite3* db = connection_->db();
+    int rc = SQLITE_OK;
+    if (schema_) {
+      rc = sqlite3_clear_bindings(stmt_);
+      ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_clear_bindings", error));
+
+      rc = sqlite3_reset(stmt_);
+      ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_reset", error));
+    }
+    // Step the statement and get the schema (SQLite doesn't
+    // necessarily know the schema until it begins to execute it)
+
+    Status status;
+    if (bind_parameters_) {
+      status = bind_parameters_->ReadNext(&next_parameters_);
+      if (status.ok()) status = BindNext().Value(&rc);
+    }
+    // XXX: with parameters, inferring the schema from the first
+    // argument is inaccurate (what if one is null?). Is there a way
+    // to hint to SQLite the real type?
+
+    if (!status.ok()) {
+      // TODO: map Arrow codes to ADBC codes
+      SetError(error, status);
+      return ADBC_STATUS_IO;
+    }
+    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_bind", error));
+
+    rc = sqlite3_step(stmt_);
+    if (rc == SQLITE_ERROR) {
+      return CheckRc(db, stmt_, rc, "sqlite3_error", error);
+    }
+    schema_ = StatementToSchema(stmt_);
+    done_ = rc != SQLITE_ROW;
+    return ADBC_STATUS_OK;
+  }
+
   std::shared_ptr<SqliteConnectionImpl> connection_;
+  // Target of bulk ingestion (rather janky to store state like this, though…)
+  std::string bulk_table_;
   sqlite3_stmt* stmt_;
   std::shared_ptr<arrow::Schema> schema_;
-  std::shared_ptr<arrow::RecordBatch> bind_parameters_;
+  std::shared_ptr<arrow::RecordBatchReader> bind_parameters_;
+  std::shared_ptr<arrow::RecordBatch> next_parameters_;
   int64_t bind_index_;
   bool done_;
 };
@@ -558,6 +688,16 @@ AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
 }
 
 ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
+                                       struct ArrowArrayStream* stream,
+                                       struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto* ptr =
+      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
+  return (*ptr)->Bind(*ptr, stream, error);
+}
+
+ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
                                     struct AdbcError* error) {
   if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
@@ -622,6 +762,15 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 }
 
 ADBC_DRIVER_EXPORT
+AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
+                                      const char* value, struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto* ptr =
+      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
+  return (*ptr)->SetOption(*ptr, key, value, error);
+}
+
+ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
                                         const char* query, struct AdbcError* error) {
   if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
@@ -648,6 +797,7 @@ AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
   driver->ConnectionSetOption = AdbcConnectionSetOption;
 
   driver->StatementBind = AdbcStatementBind;
+  driver->StatementBindStream = AdbcStatementBindStream;
   driver->StatementExecute = AdbcStatementExecute;
   driver->StatementGetPartitionDesc = AdbcStatementGetPartitionDesc;
   driver->StatementGetPartitionDescSize = AdbcStatementGetPartitionDescSize;
@@ -655,6 +805,7 @@ AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
   driver->StatementNew = AdbcStatementNew;
   driver->StatementPrepare = AdbcStatementPrepare;
   driver->StatementRelease = AdbcStatementRelease;
+  driver->StatementSetOption = AdbcStatementSetOption;
   driver->StatementSetSqlQuery = AdbcStatementSetSqlQuery;
   *initialized = ADBC_VERSION_0_0_1;
   return ADBC_STATUS_OK;

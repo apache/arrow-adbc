@@ -48,6 +48,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
                               size_t count, struct AdbcDriver* driver,
                               size_t* initialized, struct AdbcError* error);
 
+/// \brief Get a human-friendly description of a status code.
 const char* AdbcStatusCodeMessage(AdbcStatusCode code);
 
 #endif  // ADBC_DRIVER_MANAGER_H
