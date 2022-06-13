@@ -45,8 +45,7 @@ class DriverManager : public ::testing::Test {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
     ASSERT_NE(database.private_data, nullptr);
     ADBC_ASSERT_OK_WITH_ERROR(
-        error,
-        AdbcDatabaseSetOption(&database, "driver", "libadbc_driver_sqlite.so", &error));
+        error, AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error,
         AdbcDatabaseSetOption(&database, "entrypoint", "AdbcSqliteDriverInit", &error));
