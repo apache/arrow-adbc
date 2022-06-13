@@ -37,7 +37,11 @@ add_arrow_lib(adbc_driver_flight_sql
               SHARED_LINK_LIBS
               arrow_flight_sql_shared
               arrow_flight_shared
-              arrow_shared)
+              arrow_shared
+              STATIC_LINK_LIBS
+              arrow_flight_sql_static
+              arrow_flight_static
+              arrow_static)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 
 if(ADBC_BUILD_TESTS)
