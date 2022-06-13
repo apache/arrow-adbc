@@ -1,0 +1,56 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Java
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "java/**"
+      - ".github/workflows/java.yml"
+  push:
+    paths:
+      - "java/**"
+      - ".github/workflows/java.yml"
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  java:
+    name: "Java ${{ matrix.java }}/Linux"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: ['8', '11']
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v3
+        with:
+          cache: "maven"
+          distribution: "temurin"
+          java-version: ${{ matrix.java }}
+      - name: Build/Test
+        run: |
+          cd java
+          mvn install
