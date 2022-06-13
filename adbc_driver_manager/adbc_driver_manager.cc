@@ -23,6 +23,8 @@
 #include <unordered_map>
 
 #if defined(_WIN32)
+#include <windows.h>
+#include <libloaderapi.h>
 #else
 #include <dlfcn.h>
 #endif  // defined(_WIN32)
@@ -323,11 +325,36 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   }
 
   AdbcDriverInitFunc init_func;
+  std::string error_message;
 
 #if defined(_WIN32)
 
-  SetError(error, "Not implemented on Windows");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  HMODULE handle = LoadLibraryExA(driver_name, NULL, 0);
+  if (!handle) {
+    error_message = "LoadLibraryExA() failed: ";
+    error_message += std::to_string(GetLastError());
+
+    std::string full_driver_name = driver_name;
+    full_driver_name += ".lib";
+    handle = LoadLibraryExA(full_driver_name.c_str(), NULL, 0);
+    if (!handle) {
+      error_message += "LoadLibraryExA() failed: ";
+      error_message += std::to_string(GetLastError());
+    }
+  }
+  if (!handle) {
+    SetError(error, error_message);
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  void* load_handle = GetProcAddress(handle, entrypoint);
+  init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
+  if (!init_func) {
+    std::string message = "GetProcAddress() failed: ";
+    message += std::to_string(GetLastError());
+    SetError(error, message);
+    return ADBC_STATUS_INTERNAL;
+  }
 
 #else
 
@@ -338,8 +365,6 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   static const std::string kPlatformLibraryPrefix = "lib";
   static const std::string kPlatformLibrarySuffix = ".so";
 #endif  // defined(__APPLE__)
-
-  std::string error_message;
 
   void* handle = dlopen(driver_name, RTLD_NOW | RTLD_LOCAL);
   if (!handle) {
@@ -371,7 +396,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   }
   if (!handle) {
     SetError(error, error_message);
-    return ADBC_STATUS_UNKNOWN;
+    return ADBC_STATUS_INTERNAL;
   }
 
   void* load_handle = dlsym(handle, entrypoint);
