@@ -17,11 +17,15 @@
 
 #include "adbc_driver_manager.h"
 
-#include <dlfcn.h>
 #include <algorithm>
 #include <cstring>
 #include <string>
 #include <unordered_map>
+
+#if defined(_WIN32)
+#else
+#include <dlfcn.h>
+#endif  // defined(_WIN32)
 
 namespace {
 void ReleaseError(struct AdbcError* error) {
@@ -318,14 +322,22 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
     return ADBC_STATUS_INTERNAL;                                               \
   }
 
-  // TODO: handle Windows
+  AdbcDriverInitFunc init_func;
+
+#if defined(_WIN32)
+
+  SetError(error, "Not implemented on Windows");
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+
+#else
+
 #if defined(__APPLE__)
   static const std::string kPlatformLibraryPrefix = "lib";
   static const std::string kPlatformLibrarySuffix = ".dylib";
 #else
   static const std::string kPlatformLibraryPrefix = "lib";
   static const std::string kPlatformLibrarySuffix = ".so";
-#endif
+#endif  // defined(__APPLE__)
 
   std::string error_message;
 
@@ -363,15 +375,17 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   }
 
   void* load_handle = dlsym(handle, entrypoint);
-  auto* load = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
-  if (!load) {
+  init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
+  if (!init_func) {
     std::string message = "dlsym() failed: ";
     message += dlerror();
     SetError(error, message);
     return ADBC_STATUS_INTERNAL;
   }
 
-  auto result = load(count, driver, initialized, error);
+#endif  // defined(_WIN32)
+
+  auto result = init_func(count, driver, initialized, error);
   if (result != ADBC_STATUS_OK) {
     return result;
   }

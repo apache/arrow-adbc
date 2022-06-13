@@ -32,6 +32,8 @@ find_package(SQLite3 REQUIRED)
 add_arrow_lib(adbc_driver_sqlite
               SOURCES
               sqlite.cc
+              OUTPUTS
+              ADBC_LIBRARIES
               SHARED_LINK_LIBS
               SQLite::SQLite3
               arrow_shared
@@ -40,6 +42,9 @@ add_arrow_lib(adbc_driver_sqlite
               arrow_static)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
+foreach(LIB_TARGET ${ADBC_LIBRARIES})
+  target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+endforeach()
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
   set(TEST_LINK_LIBS adbc_driver_sqlite_shared)
