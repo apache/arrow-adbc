@@ -34,6 +34,9 @@ add_arrow_lib(adbc_driver_sqlite
               sqlite.cc
               SHARED_LINK_LIBS
               SQLite::SQLite3
+              arrow_shared
+              STATIC_LINK_LIBS
+              SQLite::SQLite3
               arrow_shared)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
