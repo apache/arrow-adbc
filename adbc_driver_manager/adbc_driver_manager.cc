@@ -318,11 +318,47 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
     return ADBC_STATUS_INTERNAL;                                               \
   }
 
+  // TODO: handle Windows
+#if defined(__APPLE__)
+  static const std::string kPlatformLibraryPrefix = "lib";
+  static const std::string kPlatformLibrarySuffix = ".dylib";
+#else
+  static const std::string kPlatformLibraryPrefix = "lib";
+  static const std::string kPlatformLibrarySuffix = ".so";
+#endif
+
+  std::string error_message;
+
   void* handle = dlopen(driver_name, RTLD_NOW | RTLD_LOCAL);
   if (!handle) {
-    std::string message = "dlopen() failed: ";
-    message += dlerror();
-    SetError(error, message);
+    error_message = "dlopen() failed: ";
+    error_message += dlerror();
+
+    // If applicable, append the shared library prefix/extension and
+    // try again (this way you don't have to hardcode driver names by
+    // platform in the application)
+    const std::string driver_str = driver_name;
+
+    std::string full_driver_name;
+    if (driver_str.size() < kPlatformLibraryPrefix.size() ||
+        driver_str.compare(0, kPlatformLibraryPrefix.size(), kPlatformLibraryPrefix) !=
+            0) {
+      full_driver_name += kPlatformLibraryPrefix;
+    }
+    full_driver_name += driver_name;
+    if (driver_str.size() < kPlatformLibrarySuffix.size() ||
+        driver_str.compare(full_driver_name.size() - kPlatformLibrarySuffix.size(),
+                           kPlatformLibrarySuffix.size(), kPlatformLibrarySuffix) != 0) {
+      full_driver_name += kPlatformLibrarySuffix;
+    }
+    handle = dlopen(full_driver_name.c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (!handle) {
+      error_message += "\ndlopen() failed: ";
+      error_message += dlerror();
+    }
+  }
+  if (!handle) {
+    SetError(error, error_message);
     return ADBC_STATUS_UNKNOWN;
   }
 

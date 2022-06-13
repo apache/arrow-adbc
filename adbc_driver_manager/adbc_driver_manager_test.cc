@@ -38,7 +38,7 @@ class DriverManager : public ::testing::Test {
   void SetUp() override {
     size_t initialized = 0;
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcLoadDriver("libadbc_driver_sqlite.so", "AdbcSqliteDriverInit",
+        error, AdbcLoadDriver("adbc_driver_sqlite", "AdbcSqliteDriverInit",
                               ADBC_VERSION_0_0_1, &driver, &initialized, &error));
     ASSERT_EQ(initialized, ADBC_VERSION_0_0_1);
 
