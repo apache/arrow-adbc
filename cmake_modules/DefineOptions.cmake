@@ -16,8 +16,8 @@
 # under the License.
 
 macro(set_option_category name)
-  set(ARROW_OPTION_CATEGORY ${name})
-  list(APPEND "ARROW_OPTION_CATEGORIES" ${name})
+  set(ADBC_OPTION_CATEGORY ${name})
+  list(APPEND "ADBC_OPTION_CATEGORIES" ${name})
 endmacro()
 
 function(check_description_length name description)
@@ -55,7 +55,7 @@ macro(define_option name description default)
 
   option(${name} "${multiline_description}" ${default})
 
-  list(APPEND "ARROW_${ARROW_OPTION_CATEGORY}_OPTION_NAMES" ${name})
+  list(APPEND "ADBC_${ADBC_OPTION_CATEGORY}_OPTION_NAMES" ${name})
   set("${name}_OPTION_DESCRIPTION" ${description})
   set("${name}_OPTION_DEFAULT" ${default})
   set("${name}_OPTION_TYPE" "bool")
@@ -69,7 +69,7 @@ macro(define_option_string name description default)
       ${default}
       CACHE STRING "${multiline_description}")
 
-  list(APPEND "ARROW_${ARROW_OPTION_CATEGORY}_OPTION_NAMES" ${name})
+  list(APPEND "ADBC_${ADBC_OPTION_CATEGORY}_OPTION_NAMES" ${name})
   set("${name}_OPTION_DESCRIPTION" ${description})
   set("${name}_OPTION_DEFAULT" "\"${default}\"")
   set("${name}_OPTION_TYPE" "string")
@@ -86,88 +86,86 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   #----------------------------------------------------------------------
   set_option_category("Compile and link")
 
-  define_option_string(ARROW_CXXFLAGS "Compiler flags to append when compiling Arrow" "")
+  define_option_string(ADBC_CXXFLAGS "Compiler flags to append when compiling Arrow" "")
 
-  define_option(ARROW_BUILD_STATIC "Build static libraries" ON)
+  define_option(ADBC_BUILD_STATIC "Build static libraries" ON)
 
-  define_option(ARROW_BUILD_SHARED "Build shared libraries" ON)
+  define_option(ADBC_BUILD_SHARED "Build shared libraries" ON)
 
-  define_option_string(ARROW_PACKAGE_KIND
+  define_option_string(ADBC_PACKAGE_KIND
                        "Arbitrary string that identifies the kind of package;\
 (for informational purposes)" "")
 
-  define_option_string(ARROW_GIT_ID "The Arrow git commit id (if any)" "")
+  define_option_string(ADBC_GIT_ID "The Arrow git commit id (if any)" "")
 
-  define_option_string(ARROW_GIT_DESCRIPTION "The Arrow git commit description (if any)"
+  define_option_string(ADBC_GIT_DESCRIPTION "The Arrow git commit description (if any)"
                        "")
 
-  define_option(ARROW_NO_DEPRECATED_API "Exclude deprecated APIs from build" OFF)
+  define_option(ADBC_NO_DEPRECATED_API "Exclude deprecated APIs from build" OFF)
 
-  define_option(ARROW_USE_CCACHE "Use ccache when compiling (if available)" ON)
+  define_option(ADBC_USE_CCACHE "Use ccache when compiling (if available)" ON)
 
-  define_option(ARROW_USE_PRECOMPILED_HEADERS "Use precompiled headers when compiling"
-                OFF)
+  define_option(ADBC_USE_PRECOMPILED_HEADERS "Use precompiled headers when compiling" OFF)
 
   # Arm64 architectures and extensions can lead to exploding combinations.
   # So set it directly through cmake command line.
   #
   # If you change this, you need to change the definition in
   # python/CMakeLists.txt too.
-  define_option_string(ARROW_ARMV8_ARCH
+  define_option_string(ADBC_ARMV8_ARCH
                        "Arm64 arch and extensions"
                        "armv8-a" # Default
                        "armv8-a"
                        "armv8-a+crc+crypto")
 
-  define_option(ARROW_ALTIVEC "Build with Altivec if compiler has support" ON)
+  define_option(ADBC_ALTIVEC "Build with Altivec if compiler has support" ON)
 
-  define_option(ARROW_RPATH_ORIGIN "Build Arrow libraries with RATH set to \$ORIGIN" OFF)
+  define_option(ADBC_RPATH_ORIGIN "Build Arrow libraries with RATH set to \$ORIGIN" OFF)
 
-  define_option(ARROW_INSTALL_NAME_RPATH
+  define_option(ADBC_INSTALL_NAME_RPATH
                 "Build Arrow libraries with install_name set to @rpath" ON)
 
-  define_option(ARROW_GGDB_DEBUG "Pass -ggdb flag to debug builds" ON)
+  define_option(ADBC_GGDB_DEBUG "Pass -ggdb flag to debug builds" ON)
 
   #----------------------------------------------------------------------
   set_option_category("Test and benchmark")
 
-  define_option(ARROW_BUILD_EXAMPLES "Build the Arrow examples" OFF)
+  define_option(ADBC_BUILD_EXAMPLES "Build the Arrow examples" OFF)
 
-  define_option(ARROW_BUILD_TESTS "Build the Arrow googletest unit tests" OFF)
+  define_option(ADBC_BUILD_TESTS "Build the Arrow googletest unit tests" OFF)
 
-  define_option(ARROW_BUILD_INTEGRATION "Build the Arrow integration test executables"
-                OFF)
+  define_option(ADBC_BUILD_INTEGRATION "Build the Arrow integration test executables" OFF)
 
-  define_option(ARROW_BUILD_BENCHMARKS "Build the Arrow micro benchmarks" OFF)
+  define_option(ADBC_BUILD_BENCHMARKS "Build the Arrow micro benchmarks" OFF)
 
-  if(ARROW_BUILD_SHARED)
-    set(ARROW_TEST_LINKAGE_DEFAULT "shared")
+  if(ADBC_BUILD_SHARED)
+    set(ADBC_TEST_LINKAGE_DEFAULT "shared")
   else()
-    set(ARROW_TEST_LINKAGE_DEFAULT "static")
+    set(ADBC_TEST_LINKAGE_DEFAULT "static")
   endif()
 
-  define_option_string(ARROW_TEST_LINKAGE
+  define_option_string(ADBC_TEST_LINKAGE
                        "Linkage of Arrow libraries with unit tests executables."
-                       "${ARROW_TEST_LINKAGE_DEFAULT}"
+                       "${ADBC_TEST_LINKAGE_DEFAULT}"
                        "shared"
                        "static")
 
   #----------------------------------------------------------------------
   set_option_category("Lint")
 
-  define_option(ARROW_GENERATE_COVERAGE "Build with C++ code coverage enabled" OFF)
+  define_option(ADBC_GENERATE_COVERAGE "Build with C++ code coverage enabled" OFF)
 
   #----------------------------------------------------------------------
   set_option_category("Checks")
 
-  define_option(ARROW_TEST_MEMCHECK "Run the test suite using valgrind --tool=memcheck"
+  define_option(ADBC_TEST_MEMCHECK "Run the test suite using valgrind --tool=memcheck"
                 OFF)
 
-  define_option(ARROW_USE_ASAN "Enable Address Sanitizer checks" OFF)
+  define_option(ADBC_USE_ASAN "Enable Address Sanitizer checks" OFF)
 
-  define_option(ARROW_USE_TSAN "Enable Thread Sanitizer checks" OFF)
+  define_option(ADBC_USE_TSAN "Enable Thread Sanitizer checks" OFF)
 
-  define_option(ARROW_USE_UBSAN "Enable Undefined Behavior sanitizer checks" OFF)
+  define_option(ADBC_USE_UBSAN "Enable Undefined Behavior sanitizer checks" OFF)
 
   #----------------------------------------------------------------------
   set_option_category("Thirdparty toolchain")
@@ -185,22 +183,22 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   #   $NAME_ROOT arguments to CMake, or set environment variables for the same
   #   with CMake 3.11 and higher.  If your system packages are in a non-default
   #   location, or if you are using a non-standard toolchain, you can also pass
-  #   ARROW_PACKAGE_PREFIX to set the *_ROOT variables to look in that
+  #   ADBC_PACKAGE_PREFIX to set the *_ROOT variables to look in that
   #   directory
   # * CONDA: Same as SYSTEM but set all *_ROOT variables to
   #   ENV{CONDA_PREFIX}. If this is run within an active conda environment,
   #   then ENV{CONDA_PREFIX} will be used for dependencies unless
-  #   ARROW_DEPENDENCY_SOURCE is set explicitly to one of the other options
+  #   ADBC_DEPENDENCY_SOURCE is set explicitly to one of the other options
   # * VCPKG: Searches for dependencies installed by vcpkg.
   # * BREW: Use SYSTEM but search for select packages with brew.
   if(NOT "$ENV{CONDA_PREFIX}" STREQUAL "")
-    set(ARROW_DEPENDENCY_SOURCE_DEFAULT "CONDA")
+    set(ADBC_DEPENDENCY_SOURCE_DEFAULT "CONDA")
   else()
-    set(ARROW_DEPENDENCY_SOURCE_DEFAULT "AUTO")
+    set(ADBC_DEPENDENCY_SOURCE_DEFAULT "AUTO")
   endif()
-  define_option_string(ARROW_DEPENDENCY_SOURCE
+  define_option_string(ADBC_DEPENDENCY_SOURCE
                        "Method to use for acquiring arrow's build dependencies"
-                       "${ARROW_DEPENDENCY_SOURCE_DEFAULT}"
+                       "${ADBC_DEPENDENCY_SOURCE_DEFAULT}"
                        "AUTO"
                        "BUNDLED"
                        "SYSTEM"
@@ -216,19 +214,18 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
                   "Pass verbose linking options when linking libraries and executables"
                   OFF)
 
-    define_option(ARROW_USE_STATIC_CRT "Build Arrow with statically linked CRT" OFF)
+    define_option(ADBC_USE_STATIC_CRT "Build Arrow with statically linked CRT" OFF)
   endif()
 
   #----------------------------------------------------------------------
   set_option_category("Advanced developer")
 
-  option(ARROW_BUILD_CONFIG_SUMMARY_JSON "Summarize build configuration in a JSON file"
-         ON)
+  option(ADBC_BUILD_CONFIG_SUMMARY_JSON "Summarize build configuration in a JSON file" ON)
 endif()
 
 macro(validate_config)
-  foreach(category ${ARROW_OPTION_CATEGORIES})
-    set(option_names ${ARROW_${category}_OPTION_NAMES})
+  foreach(category ${ADBC_OPTION_CATEGORIES})
+    set(option_names ${ADBC_${category}_OPTION_NAMES})
 
     foreach(name ${option_names})
       set(possible_values ${${name}_OPTION_POSSIBLE_VALUES})
@@ -246,7 +243,7 @@ endmacro()
 
 macro(config_summary_message)
   message(STATUS "---------------------------------------------------------------------")
-  message(STATUS "Arrow version:                                 ${ARROW_VERSION}")
+  message(STATUS "Arrow version:                                 ${ADBC_VERSION}")
   message(STATUS)
   message(STATUS "Build configuration summary:")
 
@@ -259,13 +256,13 @@ macro(config_summary_message)
     )
   endif()
 
-  foreach(category ${ARROW_OPTION_CATEGORIES})
+  foreach(category ${ADBC_OPTION_CATEGORIES})
 
     message(STATUS)
     message(STATUS "${category} options:")
     message(STATUS)
 
-    set(option_names ${ARROW_${category}_OPTION_NAMES})
+    set(option_names ${ADBC_${category}_OPTION_NAMES})
 
     foreach(name ${option_names})
       set(value "${${name}}")
@@ -296,8 +293,8 @@ macro(config_summary_json)
   message(STATUS "  Outputting build configuration summary to ${summary}")
   file(WRITE ${summary} "{\n")
 
-  foreach(category ${ARROW_OPTION_CATEGORIES})
-    foreach(name ${ARROW_${category}_OPTION_NAMES})
+  foreach(category ${ADBC_OPTION_CATEGORIES})
+    foreach(name ${ADBC_${category}_OPTION_NAMES})
       file(APPEND ${summary} "\"${name}\": \"${${name}}\",\n")
     endforeach()
   endforeach()
@@ -310,16 +307,16 @@ macro(config_summary_json)
                            "\"${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json\",\n")
   endif()
   file(APPEND ${summary} "\"install_prefix\": \"${CMAKE_INSTALL_PREFIX}\",\n")
-  file(APPEND ${summary} "\"arrow_version\": \"${ARROW_VERSION}\"\n")
+  file(APPEND ${summary} "\"arrow_version\": \"${ADBC_VERSION}\"\n")
   file(APPEND ${summary} "}\n")
 endmacro()
 
 macro(config_summary_cmake_setters path)
   file(WRITE ${path} "# Options used to build arrow:")
 
-  foreach(category ${ARROW_OPTION_CATEGORIES})
+  foreach(category ${ADBC_OPTION_CATEGORIES})
     file(APPEND ${path} "\n\n## ${category} options:")
-    foreach(name ${ARROW_${category}_OPTION_NAMES})
+    foreach(name ${ADBC_${category}_OPTION_NAMES})
       set(description ${${name}_OPTION_DESCRIPTION})
       foreach(description_line ${description})
         file(APPEND ${path} "\n### ${description_line}")
@@ -333,16 +330,16 @@ endmacro()
 #----------------------------------------------------------------------
 # Compute default values for omitted variables
 
-if(NOT ARROW_GIT_ID)
+if(NOT ADBC_GIT_ID)
   execute_process(COMMAND "git" "log" "-n1" "--format=%H"
                   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                  OUTPUT_VARIABLE ARROW_GIT_ID
+                  OUTPUT_VARIABLE ADBC_GIT_ID
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
-if(NOT ARROW_GIT_DESCRIPTION)
+if(NOT ADBC_GIT_DESCRIPTION)
   execute_process(COMMAND "git" "describe" "--tags" "--dirty"
                   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                   ERROR_QUIET
-                  OUTPUT_VARIABLE ARROW_GIT_DESCRIPTION
+                  OUTPUT_VARIABLE ADBC_GIT_DESCRIPTION
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()

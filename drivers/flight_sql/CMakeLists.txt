@@ -22,7 +22,7 @@ include(AdbcDefines)
 include(BuildUtils)
 
 project(adbc_driver_flight_sql
-        VERSION "${ARROW_BASE_VERSION}"
+        VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
 
 find_package(Arrow REQUIRED)
@@ -40,19 +40,21 @@ add_arrow_lib(adbc_driver_flight_sql
               arrow_shared)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 
-if(ARROW_TEST_LINKAGE STREQUAL "shared")
-  set(TEST_LINK_LIBS adbc_driver_flight_sql_shared)
-else()
-  set(TEST_LINK_LIBS adbc_driver_flight_sql_static)
-endif()
+if(ADBC_BUILD_TESTS)
+  if(ADBC_TEST_LINKAGE STREQUAL "shared")
+    set(TEST_LINK_LIBS adbc_driver_flight_sql_shared)
+  else()
+    set(TEST_LINK_LIBS adbc_driver_flight_sql_static)
+  endif()
 
-add_test_case(driver_flight_sql_test
-              PREFIX
-              adbc
-              SOURCES
-              flight_sql_test.cc
-              EXTRA_LINK_LIBS
-              ${TEST_LINK_LIBS})
+  add_test_case(driver_flight_sql_test
+                PREFIX
+                adbc
+                SOURCES
+                flight_sql_test.cc
+                EXTRA_LINK_LIBS
+                ${TEST_LINK_LIBS})
+endif()
 
 validate_config()
 config_summary_message()

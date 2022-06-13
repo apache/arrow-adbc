@@ -22,7 +22,7 @@ include(AdbcDefines)
 include(BuildUtils)
 
 project(adbc_driver_sqlite
-        VERSION "${ARROW_BASE_VERSION}"
+        VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
 include(CTest)
 
@@ -38,19 +38,21 @@ add_arrow_lib(adbc_driver_sqlite
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
 
-if(ARROW_TEST_LINKAGE STREQUAL "shared")
+if(ADBC_TEST_LINKAGE STREQUAL "shared")
   set(TEST_LINK_LIBS adbc_driver_sqlite_shared)
 else()
   set(TEST_LINK_LIBS adbc_driver_sqlite_static)
 endif()
 
-add_test_case(driver_sqlite_test
-              PREFIX
-              adbc
-              SOURCES
-              sqlite_test.cc
-              EXTRA_LINK_LIBS
-              ${TEST_LINK_LIBS})
+if(ADBC_BUILD_TESTS)
+  add_test_case(driver_sqlite_test
+                PREFIX
+                adbc
+                SOURCES
+                sqlite_test.cc
+                EXTRA_LINK_LIBS
+                ${TEST_LINK_LIBS})
+endif()
 
 validate_config()
 config_summary_message()

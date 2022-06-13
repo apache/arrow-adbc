@@ -18,7 +18,7 @@
 # Common path suffixes to be searched by find_library or find_path.
 # Windows artifacts may be found under "<root>/Library", so
 # search there as well.
-set(ARROW_LIBRARY_PATH_SUFFIXES
+set(ADBC_LIBRARY_PATH_SUFFIXES
     "${CMAKE_LIBRARY_ARCHITECTURE}"
     "lib/${CMAKE_LIBRARY_ARCHITECTURE}"
     "lib64"
@@ -28,7 +28,7 @@ set(ARROW_LIBRARY_PATH_SUFFIXES
     "Library"
     "Library/lib"
     "Library/bin")
-set(ARROW_INCLUDE_PATH_SUFFIXES "include" "Library" "Library/include")
+set(ADBC_INCLUDE_PATH_SUFFIXES "include" "Library" "Library/include")
 
 function(add_thirdparty_lib LIB_NAME LIB_TYPE LIB)
   set(options)
@@ -66,7 +66,7 @@ function(add_thirdparty_lib LIB_NAME LIB_TYPE LIB)
 endfunction()
 
 function(REUSE_PRECOMPILED_HEADER_LIB TARGET_NAME LIB_NAME)
-  if(ARROW_USE_PRECOMPILED_HEADERS)
+  if(ADBC_USE_PRECOMPILED_HEADERS)
     target_precompile_headers(${TARGET_NAME} REUSE_FROM ${LIB_NAME})
   endif()
 endfunction()
@@ -185,16 +185,16 @@ function(ADD_ARROW_LIB LIB_NAME)
     set(${ARG_OUTPUTS})
   endif()
 
-  # Allow overriding ARROW_BUILD_SHARED and ARROW_BUILD_STATIC
+  # Allow overriding ADBC_BUILD_SHARED and ADBC_BUILD_STATIC
   if(DEFINED ARG_BUILD_SHARED)
     set(BUILD_SHARED ${ARG_BUILD_SHARED})
   else()
-    set(BUILD_SHARED ${ARROW_BUILD_SHARED})
+    set(BUILD_SHARED ${ADBC_BUILD_SHARED})
   endif()
   if(DEFINED ARG_BUILD_STATIC)
     set(BUILD_STATIC ${ARG_BUILD_STATIC})
   else()
-    set(BUILD_STATIC ${ARROW_BUILD_STATIC})
+    set(BUILD_STATIC ${ADBC_BUILD_STATIC})
   endif()
   if(ARG_OUTPUT_PATH)
     set(OUTPUT_PATH ${ARG_OUTPUT_PATH})
@@ -229,7 +229,7 @@ function(ADD_ARROW_LIB LIB_NAME)
     if(ARG_PRECOMPILED_HEADER_LIB)
       reuse_precompiled_header_lib(${LIB_NAME}_objlib ${ARG_PRECOMPILED_HEADER_LIB})
     endif()
-    if(ARG_PRECOMPILED_HEADERS AND ARROW_USE_PRECOMPILED_HEADERS)
+    if(ARG_PRECOMPILED_HEADERS AND ADBC_USE_PRECOMPILED_HEADERS)
       target_precompile_headers(${LIB_NAME}_objlib PRIVATE ${ARG_PRECOMPILED_HEADERS})
     endif()
     set(LIB_DEPS $<TARGET_OBJECTS:${LIB_NAME}_objlib>)
@@ -304,8 +304,8 @@ function(ADD_ARROW_LIB LIB_NAME)
                                      PDB_OUTPUT_DIRECTORY "${OUTPUT_PATH}"
                                      LINK_FLAGS "${ARG_SHARED_LINK_FLAGS}"
                                      OUTPUT_NAME ${LIB_NAME}
-                                     VERSION "${ARROW_FULL_SO_VERSION}"
-                                     SOVERSION "${ARROW_SO_VERSION}")
+                                     VERSION "${ADBC_FULL_SO_VERSION}"
+                                     SOVERSION "${ADBC_SO_VERSION}")
 
     target_link_libraries(${LIB_NAME}_shared
                           LINK_PUBLIC
@@ -324,7 +324,7 @@ function(ADD_ARROW_LIB LIB_NAME)
       endforeach()
     endif()
 
-    if(ARROW_RPATH_ORIGIN)
+    if(ADBC_RPATH_ORIGIN)
       if(APPLE)
         set(_lib_install_rpath "@loader_path")
       else()
@@ -335,7 +335,7 @@ function(ADD_ARROW_LIB LIB_NAME)
     endif()
 
     if(APPLE)
-      if(ARROW_INSTALL_NAME_RPATH)
+      if(ADBC_INSTALL_NAME_RPATH)
         set(_lib_install_name "@rpath")
       else()
         set(_lib_install_name "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
@@ -383,8 +383,8 @@ function(ADD_ARROW_LIB LIB_NAME)
     endif()
 
     if(WIN32)
-      target_compile_definitions(${LIB_NAME}_static PUBLIC ARROW_STATIC)
-      target_compile_definitions(${LIB_NAME}_static PUBLIC ARROW_FLIGHT_STATIC)
+      target_compile_definitions(${LIB_NAME}_static PUBLIC ADBC_STATIC)
+      target_compile_definitions(${LIB_NAME}_static PUBLIC ADBC_FLIGHT_STATIC)
     endif()
 
     set_target_properties(${LIB_NAME}_static
@@ -425,13 +425,13 @@ function(ADD_ARROW_LIB LIB_NAME)
     set(TARGETS_CMAKE "${ARG_CMAKE_PACKAGE_NAME}Targets.cmake")
     install(EXPORT ${LIB_NAME}_targets
             FILE "${TARGETS_CMAKE}"
-            DESTINATION "${ARROW_CMAKE_INSTALL_DIR}")
+            DESTINATION "${ADBC_CMAKE_INSTALL_DIR}")
 
     set(CONFIG_CMAKE "${ARG_CMAKE_PACKAGE_NAME}Config.cmake")
     set(BUILT_CONFIG_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_CMAKE}")
     configure_package_config_file("${CONFIG_CMAKE}.in" "${BUILT_CONFIG_CMAKE}"
-                                  INSTALL_DESTINATION "${ARROW_CMAKE_INSTALL_DIR}")
-    install(FILES "${BUILT_CONFIG_CMAKE}" DESTINATION "${ARROW_CMAKE_INSTALL_DIR}")
+                                  INSTALL_DESTINATION "${ADBC_CMAKE_INSTALL_DIR}")
+    install(FILES "${BUILT_CONFIG_CMAKE}" DESTINATION "${ADBC_CMAKE_INSTALL_DIR}")
 
     set(CONFIG_VERSION_CMAKE "${ARG_CMAKE_PACKAGE_NAME}ConfigVersion.cmake")
     set(BUILT_CONFIG_VERSION_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_VERSION_CMAKE}")
@@ -439,8 +439,7 @@ function(ADD_ARROW_LIB LIB_NAME)
       "${BUILT_CONFIG_VERSION_CMAKE}"
       VERSION ${${PROJECT_NAME}_VERSION}
       COMPATIBILITY AnyNewerVersion)
-    install(FILES "${BUILT_CONFIG_VERSION_CMAKE}"
-            DESTINATION "${ARROW_CMAKE_INSTALL_DIR}")
+    install(FILES "${BUILT_CONFIG_VERSION_CMAKE}" DESTINATION "${ADBC_CMAKE_INSTALL_DIR}")
   endif()
 
   if(ARG_PKG_CONFIG_NAME)
@@ -525,7 +524,7 @@ function(ADD_BENCHMARK REL_BENCHMARK_NAME)
       # Customize link libraries
       target_link_libraries(${BENCHMARK_NAME} PRIVATE ${ARG_STATIC_LINK_LIBS})
     else()
-      target_link_libraries(${BENCHMARK_NAME} PRIVATE ${ARROW_BENCHMARK_LINK_LIBS})
+      target_link_libraries(${BENCHMARK_NAME} PRIVATE ${ADBC_BENCHMARK_LINK_LIBS})
     endif()
     add_dependencies(benchmark ${BENCHMARK_NAME})
     set(NO_COLOR "--color_print=false")
@@ -568,8 +567,8 @@ function(ADD_BENCHMARK REL_BENCHMARK_NAME)
     set(ARG_LABELS benchmark)
   endif()
 
-  if(ARROW_BUILD_DETAILED_BENCHMARKS)
-    target_compile_definitions(${BENCHMARK_NAME} PRIVATE ARROW_BUILD_DETAILED_BENCHMARKS)
+  if(ADBC_BUILD_DETAILED_BENCHMARKS)
+    target_compile_definitions(${BENCHMARK_NAME} PRIVATE ADBC_BUILD_DETAILED_BENCHMARKS)
   endif()
 
   add_test(${BENCHMARK_NAME}
@@ -601,7 +600,7 @@ endfunction()
 #
 # Arguments after the test name will be passed to set_tests_properties().
 #
-# \arg ENABLED if passed, add this unit test even if ARROW_BUILD_TESTS is off
+# \arg ENABLED if passed, add this unit test even if ADBC_BUILD_TESTS is off
 # \arg PREFIX a string to append to the name of the test executable. For
 # example, if you have src/arrow/foo/bar-test.cc, then PREFIX "foo" will create
 # test executable foo-bar-test
@@ -671,14 +670,14 @@ function(ADD_TEST_CASE REL_TEST_NAME)
     # Customize link libraries
     target_link_libraries(${TEST_NAME} PRIVATE ${ARG_STATIC_LINK_LIBS})
   else()
-    target_link_libraries(${TEST_NAME} PRIVATE ${ARROW_TEST_LINK_LIBS})
+    target_link_libraries(${TEST_NAME} PRIVATE ${ADBC_TEST_LINK_LIBS})
   endif()
 
   if(ARG_PRECOMPILED_HEADER_LIB)
     reuse_precompiled_header_lib(${TEST_NAME} ${ARG_PRECOMPILED_HEADER_LIB})
   endif()
 
-  if(ARG_PRECOMPILED_HEADERS AND ARROW_USE_PRECOMPILED_HEADERS)
+  if(ARG_PRECOMPILED_HEADERS AND ADBC_USE_PRECOMPILED_HEADERS)
     target_precompile_headers(${TEST_NAME} PRIVATE ${ARG_PRECOMPILED_HEADERS})
   endif()
 
@@ -694,7 +693,7 @@ function(ADD_TEST_CASE REL_TEST_NAME)
     add_dependencies(${TEST_NAME} ${ARG_EXTRA_DEPENDENCIES})
   endif()
 
-  if(ARROW_TEST_MEMCHECK AND NOT ARG_NO_VALGRIND)
+  if(ADBC_TEST_MEMCHECK AND NOT ARG_NO_VALGRIND)
     add_test(${TEST_NAME}
              bash
              -c
@@ -801,7 +800,7 @@ function(ADD_ARROW_EXAMPLE REL_EXAMPLE_NAME)
     # This example has a corresponding .cc file, set it up as an executable.
     set(EXAMPLE_PATH "${EXECUTABLE_OUTPUT_PATH}/${EXAMPLE_NAME}")
     add_executable(${EXAMPLE_NAME} "${REL_EXAMPLE_NAME}.cc" ${ARG_EXTRA_SOURCES})
-    target_link_libraries(${EXAMPLE_NAME} ${ARROW_EXAMPLE_LINK_LIBS})
+    target_link_libraries(${EXAMPLE_NAME} ${ADBC_EXAMPLE_LINK_LIBS})
     add_dependencies(runexample ${EXAMPLE_NAME})
     set(NO_COLOR "--color_print=false")
 
@@ -906,8 +905,8 @@ function(ARROW_ADD_PKG_CONFIG MODULE)
 endfunction()
 
 function(ARROW_INSTALL_CMAKE_FIND_MODULE MODULE)
-  install(FILES "${ARROW_SOURCE_DIR}/cmake_modules/Find${MODULE}.cmake"
-          DESTINATION "${ARROW_CMAKE_INSTALL_DIR}")
+  install(FILES "${ADBC_SOURCE_DIR}/cmake_modules/Find${MODULE}.cmake"
+          DESTINATION "${ADBC_CMAKE_INSTALL_DIR}")
 endfunction()
 
 # Implementations of lisp "car" and "cdr" functions

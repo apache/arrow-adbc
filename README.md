@@ -34,6 +34,8 @@ $ cmake ../../adbc_driver_manager
 $ make
 ```
 
-Some of Arrow's build options are supported:
+Some of Arrow's build options are supported (under a different prefix):
 
-- `ARROW_BUILD_TESTS`: build the unit tests
+- `ADBC_BUILD_SHARED`, `ADBC_BUILD_STATIC`: build the shared/static libraries
+- `ADBC_BUILD_TESTS`: build the unit tests
+- `ADBC_INSTALL_NAME_RPATH`: set `install_name` to `@rpath` on MacOS
