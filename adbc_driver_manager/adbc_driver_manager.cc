@@ -23,7 +23,8 @@
 #include <unordered_map>
 
 #if defined(_WIN32)
-#include <windows.h>
+#include <windows.h>  // Must come first
+
 #include <libloaderapi.h>
 #else
 #include <dlfcn.h>
@@ -311,6 +312,33 @@ const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
 #undef STRINGIFY
 }
 
+#if defined(_WIN32)
+struct ManagerDriverState {
+  // The loaded DLL
+  HMODULE handle;
+  // The original release callback
+  AdbcStatusCode (*driver_release)(struct AdbcDriver* driver, struct AdbcError* error);
+};
+static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError* error) {
+  AdbcStatusCode status = ADBC_STATUS_OK;
+
+  if (!driver->private_manager) return status;
+  ManagerDriverState* state =
+      reinterpret_cast<ManagerDriverState*>(driver->private_manager);
+
+  if (state->driver_release) {
+    status = state->driver_release(driver, error);
+  }
+
+  if (!FreeLibrary(state->handle)) {
+    // TODO: report error
+  }
+
+  delete state;
+  return status;
+}
+#endif
+
 AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
                               size_t count, struct AdbcDriver* driver,
                               size_t* initialized, struct AdbcError* error) {
@@ -331,14 +359,17 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
   HMODULE handle = LoadLibraryExA(driver_name, NULL, 0);
   if (!handle) {
-    error_message = "LoadLibraryExA() failed: ";
+    error_message += driver_name;
+    error_message += ": LoadLibraryExA() failed: ";
     error_message += std::to_string(GetLastError());
 
     std::string full_driver_name = driver_name;
     full_driver_name += ".lib";
     handle = LoadLibraryExA(full_driver_name.c_str(), NULL, 0);
     if (!handle) {
-      error_message += "LoadLibraryExA() failed: ";
+      error_message += '\n';
+      error_message += full_driver_name;
+      error_message += ": LoadLibraryExA() failed: ";
       error_message += std::to_string(GetLastError());
     }
   }
@@ -346,6 +377,9 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
     SetError(error, error_message);
     return ADBC_STATUS_INTERNAL;
   }
+
+  driver->private_manager = new ManagerDriverState{handle, /*driver_release=*/nullptr};
+  driver->release = &ReleaseDriver;
 
   void* load_handle = GetProcAddress(handle, entrypoint);
   init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
@@ -411,6 +445,13 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 #endif  // defined(_WIN32)
 
   auto result = init_func(count, driver, initialized, error);
+#if defined(_WIN32)
+  // Reset the release callback
+  reinterpret_cast<ManagerDriverState*>(driver->private_manager)->driver_release =
+      driver->release;
+  driver->release = &ReleaseDriver;
+#endif  // defined(_WIN32)
+
   if (result != ADBC_STATUS_OK) {
     return result;
   }

@@ -638,11 +638,20 @@ AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
 /// struct, without worrying about multiple definitions of the same
 /// symbol.
 struct ADBC_EXPORT AdbcDriver {
-  /// \brief Opaque implementation-defined state.
+  /// \brief Opaque driver-defined state.
   /// This field is NULLPTR if the driver is unintialized/freed (but
   /// it need not have a value even if the driver is initialized).
   void* private_data;
-  // TODO: DriverRelease
+  /// \brief Opaque driver manager-defined state.
+  /// This field is NULLPTR if the driver is unintialized/freed (but
+  /// it need not have a value even if the driver is initialized).
+  void* private_manager;
+
+  /// \brief Release the driver and perform any cleanup.
+  ///
+  /// Unlike other structures, this is an embedded callback to make it
+  /// easier for the driver manager and driver to cooperate.
+  AdbcStatusCode (*release)(struct AdbcDriver* driver, struct AdbcError* error);
 
   AdbcStatusCode (*DatabaseNew)(struct AdbcDatabase*, struct AdbcError*);
   AdbcStatusCode (*DatabaseSetOption)(struct AdbcDatabase*, const char*, const char*,
