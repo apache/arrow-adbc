@@ -63,6 +63,12 @@ class DriverManager : public ::testing::Test {
 
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
     ASSERT_EQ(database.private_data, nullptr);
+
+    if (driver.release) {
+      ADBC_ASSERT_OK_WITH_ERROR(error, driver.release(&driver, &error));
+      ASSERT_EQ(driver.private_data, nullptr);
+      ASSERT_EQ(driver.private_manager, nullptr);
+    }
   }
 
  protected:

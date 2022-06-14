@@ -132,6 +132,7 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
                      database->private_driver, &initialized, error);
   if (status != ADBC_STATUS_OK) {
     delete args;
+    // TODO: call release callback
     delete database->private_driver;
     return status;
   } else if (initialized < ADBC_VERSION_0_0_1) {
@@ -165,6 +166,10 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
     return ADBC_STATUS_UNINITIALIZED;
   }
   auto status = database->private_driver->DatabaseRelease(database, error);
+  if (database->private_driver->release) {
+    // TODO: combine statuses
+    database->private_driver->release(database->private_driver, error);
+  }
   delete database->private_driver;
   return status;
 }
@@ -334,6 +339,7 @@ static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError*
     // TODO: report error
   }
 
+  driver->private_manager = nullptr;
   delete state;
   return status;
 }
