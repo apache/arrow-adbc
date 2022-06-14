@@ -777,127 +777,108 @@ AdbcStatusCode SqliteStatementSetSqlQuery(struct AdbcStatement* statement,
 
 }  // namespace
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
   return SqliteDatabaseInit(database, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
   return SqliteDatabaseNew(database, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                      const char* value, struct AdbcError* error) {
   return SqliteDatabaseSetOption(database, key, value, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
                                    struct AdbcError* error) {
   return SqliteDatabaseRelease(database, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
                                  struct AdbcConnection* connection,
                                  struct AdbcError* error) {
   return SqliteConnectionNew(database, connection, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
                                        const char* value, struct AdbcError* error) {
   return SqliteConnectionSetOption(connection, key, value, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
                                   struct AdbcError* error) {
   return SqliteConnectionInit(connection, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   return SqliteConnectionRelease(connection, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
                                  struct ArrowArray* values, struct ArrowSchema* schema,
                                  struct AdbcError* error) {
   return SqliteStatementBind(statement, values, schema, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
                                        struct ArrowArrayStream* stream,
                                        struct AdbcError* error) {
   return SqliteStatementBindStream(statement, stream, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
                                     struct AdbcError* error) {
   return SqliteStatementExecute(statement, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
                                              uint8_t* partition_desc,
                                              struct AdbcError* error) {
   return SqliteStatementGetPartitionDesc(statement, partition_desc, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
                                                  size_t* length,
                                                  struct AdbcError* error) {
   return SqliteStatementGetPartitionDescSize(statement, length, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
                                       struct ArrowArrayStream* out,
                                       struct AdbcError* error) {
   return SqliteStatementGetStream(statement, out, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement,
                                 struct AdbcError* error) {
   return SqliteStatementNew(connection, statement, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
                                     struct AdbcError* error) {
   return SqliteStatementPrepare(statement, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
                                     struct AdbcError* error) {
   return SqliteStatementRelease(statement, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
                                       const char* value, struct AdbcError* error) {
   return SqliteStatementSetOption(statement, key, value, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
                                         const char* query, struct AdbcError* error) {
   return SqliteStatementSetSqlQuery(statement, query, error);
 }
 
 extern "C" {
-ARROW_EXPORT
+ADBC_EXPORT
 AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
                                     size_t* initialized, struct AdbcError* error) {
   if (count < ADBC_VERSION_0_0_1) return ADBC_STATUS_NOT_IMPLEMENTED;

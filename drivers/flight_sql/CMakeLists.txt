@@ -34,6 +34,8 @@ find_package(ArrowFlightSql REQUIRED HINTS ${ARROW_CONFIG_PATH})
 add_arrow_lib(adbc_driver_flight_sql
               SOURCES
               flight_sql.cc
+              OUTPUTS
+              ADBC_LIBRARIES
               SHARED_LINK_LIBS
               arrow_flight_sql_shared
               arrow_flight_shared
@@ -43,6 +45,9 @@ add_arrow_lib(adbc_driver_flight_sql
               arrow_flight_static
               arrow_static)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
+foreach(LIB_TARGET ${ADBC_LIBRARIES})
+  target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+endforeach()
 
 if(ADBC_BUILD_TESTS)
   if(ADBC_TEST_LINKAGE STREQUAL "shared")

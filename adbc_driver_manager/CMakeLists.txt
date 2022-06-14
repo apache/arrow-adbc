@@ -27,8 +27,15 @@ project(adbc_driver_manager
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
 include(CTest)
-add_arrow_lib(adbc_driver_manager SOURCES adbc_driver_manager.cc)
+add_arrow_lib(adbc_driver_manager
+              SOURCES
+              adbc_driver_manager.cc
+              OUTPUTS
+              ADBC_LIBRARIES)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
+foreach(LIB_TARGET ${ADBC_LIBRARIES})
+  target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+endforeach()
 
 if(ADBC_BUILD_TESTS)
   find_package(Arrow REQUIRED)

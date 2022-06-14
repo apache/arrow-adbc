@@ -116,6 +116,17 @@ struct ArrowArrayStream {
 #ifndef ADBC
 #define ADBC
 
+// Storage class macros for Windows
+#if defined(_WIN32)
+#if defined(ADBC_EXPORTING)
+#define ADBC_EXPORT __declspec(dllexport)
+#else
+#define ADBC_EXPORT __declspec(dllimport)
+#endif  // defined(ADBC_EXPORTING)
+#else
+#define ADBC_EXPORT
+#endif  // defined(_WIN32)
+
 /// \file ADBC: Arrow DataBase connectivity (client API)
 ///
 /// Implemented by libadbc.so (provided by Arrow/C++), which in turn
@@ -160,7 +171,7 @@ typedef uint8_t AdbcStatusCode;
 #define ADBC_STATUS_IO 6
 
 /// \brief A detailed error message for an operation.
-struct AdbcError {
+struct ADBC_EXPORT AdbcError {
   /// \brief The error message.
   char* message;
 
@@ -184,7 +195,7 @@ struct AdbcError {
 /// \brief An instance of a database.
 ///
 /// Must be kept alive as long as any connections exist.
-struct AdbcDatabase {
+struct ADBC_EXPORT AdbcDatabase {
   /// \brief Opaque implementation-defined state.
   /// This field is NULLPTR iff the connection is unintialized/freed.
   void* private_data;
@@ -194,9 +205,11 @@ struct AdbcDatabase {
 };
 
 /// \brief Allocate a new (but uninitialized) database.
+ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error);
 
 /// \brief Set a char* option.
+ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                      const char* value, struct AdbcError* error);
 
@@ -204,12 +217,14 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
 ///
 /// Some backends may support setting options after initialization
 /// as well.
+ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error);
 
 /// \brief Destroy this database. No connections may exist.
 /// \param[in] database The database to release.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
+ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
                                    struct AdbcError* error);
 
@@ -219,7 +234,7 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
 /// @{
 
 /// \brief A set of connection options.
-struct AdbcConnectionOptions {
+struct ADBC_EXPORT AdbcConnectionOptions {
   /// \brief The database to connect to.
   struct AdbcDatabase* database;
 
@@ -236,7 +251,7 @@ struct AdbcConnectionOptions {
 ///
 /// Connections are not thread-safe and clients should take care to
 /// serialize accesses to a connection.
-struct AdbcConnection {
+struct ADBC_EXPORT AdbcConnection {
   /// \brief Opaque implementation-defined state.
   /// This field is NULLPTR iff the connection is unintialized/freed.
   void* private_data;
@@ -246,14 +261,17 @@ struct AdbcConnection {
 };
 
 /// \brief Allocate a new (but uninitialized) connection.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
                                  struct AdbcConnection* connection,
                                  struct AdbcError* error);
 
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
                                        const char* value, struct AdbcError* error);
 
 /// \brief Finish setting options and initialize the connection.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
                                   struct AdbcError* error);
 
@@ -261,6 +279,7 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
 /// \param[in] connection The connection to release.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error);
 
@@ -281,6 +300,7 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 ///   statement can then be read independently.
 ///
 /// A partition can be retrieved from AdbcStatementGetPartitionDesc.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* connection,
                                                       const uint8_t* serialized_partition,
                                                       size_t serialized_length,
@@ -318,6 +338,7 @@ AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* con
 /// \param[in] connection The database connection.
 /// \param[out] statement The result set.
 /// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetCatalogs(struct AdbcConnection* connection,
                                          struct AdbcStatement* statement,
                                          struct AdbcError* error);
@@ -334,6 +355,7 @@ AdbcStatusCode AdbcConnectionGetCatalogs(struct AdbcConnection* connection,
 /// \param[in] connection The database connection.
 /// \param[out] statement The result set.
 /// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetDbSchemas(struct AdbcConnection* connection,
                                           struct AdbcStatement* statement,
                                           struct AdbcError* error);
@@ -349,6 +371,7 @@ AdbcStatusCode AdbcConnectionGetDbSchemas(struct AdbcConnection* connection,
 /// \param[in] connection The database connection.
 /// \param[out] statement The result set.
 /// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct AdbcStatement* statement,
                                            struct AdbcError* error);
@@ -379,6 +402,7 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
 ///   from get_table_types.
 /// \param[out] statement The result set.
 /// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
                                        const char* catalog, const char* db_schema,
                                        const char* table_name, const char** table_types,
@@ -402,7 +426,7 @@ AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
 ///
 /// Statements are not thread-safe and clients should take care to
 /// serialize access.
-struct AdbcStatement {
+struct ADBC_EXPORT AdbcStatement {
   /// \brief Opaque implementation-defined state.
   /// This field is NULLPTR iff the connection is unintialized/freed.
   void* private_data;
@@ -416,6 +440,7 @@ struct AdbcStatement {
 ///
 /// Set options on the statement, then call AdbcStatementExecute or
 /// AdbcStatementPrepare.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement, struct AdbcError* error);
 
@@ -423,14 +448,17 @@ AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
 /// \param[in] statement The statement to release.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
                                     struct AdbcError* error);
 
 /// \brief Execute a statement.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
                                     struct AdbcError* error);
 
 /// \brief Create a prepared statement to be executed multiple times.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
                                     struct AdbcError* error);
 
@@ -450,6 +478,7 @@ AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
 /// \param[in] statement The statement.
 /// \param[in] query The query to execute.
 /// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
                                         const char* query, struct AdbcError* error);
 
@@ -472,6 +501,7 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
 /// \param[in] plan The serialized substrait.Plan to execute.
 /// \param[in] length The length of the serialized plan.
 /// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
                                              const uint8_t* plan, size_t length,
                                              struct AdbcError* error);
@@ -487,6 +517,7 @@ AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
 /// \param[in] schema The schema of the values to bind.
 /// \param[out] error An optional location to return an error message
 ///   if necessary.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
                                  struct ArrowArray* values, struct ArrowSchema* schema,
                                  struct AdbcError* error);
@@ -499,6 +530,7 @@ AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
 ///   statement is released.
 /// \param[out] error An optional location to return an error message
 ///   if necessary.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
                                        struct ArrowArrayStream* values,
                                        struct AdbcError* error);
@@ -511,11 +543,13 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
 ///
 /// \return out A stream of Arrow data. The stream itself must be
 ///   released before the statement is released.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
                                       struct ArrowArrayStream* out,
                                       struct AdbcError* error);
 
 /// \brief Set a string option on a statement.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
                                       const char* value, struct AdbcError* error);
 
@@ -564,6 +598,7 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
 ///   are no more partitions.
 /// \param[out] error An optional location to return an error message if
 ///   necessary.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
                                                  size_t* length, struct AdbcError* error);
 
@@ -583,6 +618,7 @@ AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement
 ///   queried with AdbcStatementGetPartitionDescSize.
 /// \param[out] error An optional location to return an error message if
 ///   necessary.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
                                              uint8_t* partition_desc,
                                              struct AdbcError* error);
@@ -601,12 +637,21 @@ AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
 /// struct, and applications can call ADBC functions through this
 /// struct, without worrying about multiple definitions of the same
 /// symbol.
-struct AdbcDriver {
-  /// \brief Opaque implementation-defined state.
+struct ADBC_EXPORT AdbcDriver {
+  /// \brief Opaque driver-defined state.
   /// This field is NULLPTR if the driver is unintialized/freed (but
   /// it need not have a value even if the driver is initialized).
   void* private_data;
-  // TODO: DriverRelease
+  /// \brief Opaque driver manager-defined state.
+  /// This field is NULLPTR if the driver is unintialized/freed (but
+  /// it need not have a value even if the driver is initialized).
+  void* private_manager;
+
+  /// \brief Release the driver and perform any cleanup.
+  ///
+  /// Unlike other structures, this is an embedded callback to make it
+  /// easier for the driver manager and driver to cooperate.
+  AdbcStatusCode (*release)(struct AdbcDriver* driver, struct AdbcError* error);
 
   AdbcStatusCode (*DatabaseNew)(struct AdbcDatabase*, struct AdbcError*);
   AdbcStatusCode (*DatabaseSetOption)(struct AdbcDatabase*, const char*, const char*,

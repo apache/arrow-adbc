@@ -17,11 +17,19 @@
 
 #include "adbc_driver_manager.h"
 
-#include <dlfcn.h>
 #include <algorithm>
 #include <cstring>
 #include <string>
 #include <unordered_map>
+
+#if defined(_WIN32)
+#include <windows.h>  // Must come first
+
+#include <libloaderapi.h>
+#include <strsafe.h>
+#else
+#include <dlfcn.h>
+#endif  // defined(_WIN32)
 
 namespace {
 void ReleaseError(struct AdbcError* error) {
@@ -32,9 +40,23 @@ void ReleaseError(struct AdbcError* error) {
 }
 
 void SetError(struct AdbcError* error, const std::string& message) {
-  error->message = new char[message.size() + 1];
-  message.copy(error->message, message.size());
-  error->message[message.size()] = '\0';
+  if (!error) return;
+  if (error->message) {
+    // Append
+    std::string buffer = error->message;
+    buffer.reserve(buffer.size() + message.size() + 1);
+    buffer += '\n';
+    buffer += message;
+    error->release(error);
+
+    error->message = new char[buffer.size() + 1];
+    buffer.copy(error->message, buffer.size());
+    error->message[buffer.size()] = '\0';
+  } else {
+    error->message = new char[message.size() + 1];
+    message.copy(error->message, message.size());
+    error->message[message.size()] = '\0';
+  }
   error->release = ReleaseError;
 }
 
@@ -74,6 +96,56 @@ struct TempDatabase {
   std::string driver;
   std::string entrypoint;
 };
+
+#if defined(_WIN32)
+/// Append a description of the Windows error to the buffer.
+void GetWinError(std::string* buffer) {
+  DWORD rc = GetLastError();
+  LPVOID message;
+
+  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                    FORMAT_MESSAGE_IGNORE_INSERTS,
+                /*lpSource=*/nullptr, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                reinterpret_cast<LPSTR>(&message), /*nSize=*/0, /*Arguments=*/nullptr);
+
+  (*buffer) += '(';
+  (*buffer) += std::to_string(rc);
+  (*buffer) += ") ";
+  (*buffer) += reinterpret_cast<char*>(message);
+  LocalFree(message);
+}
+
+/// Hold the driver DLL and the driver release callback in the driver struct.
+struct ManagerDriverState {
+  // The loaded DLL
+  HMODULE handle;
+  // The original release callback
+  AdbcStatusCode (*driver_release)(struct AdbcDriver* driver, struct AdbcError* error);
+};
+
+/// Unload the driver DLL.
+static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError* error) {
+  AdbcStatusCode status = ADBC_STATUS_OK;
+
+  if (!driver->private_manager) return status;
+  ManagerDriverState* state =
+      reinterpret_cast<ManagerDriverState*>(driver->private_manager);
+
+  if (state->driver_release) {
+    status = state->driver_release(driver, error);
+  }
+
+  if (!FreeLibrary(state->handle)) {
+    std::string message = "FreeLibrary() failed: ";
+    GetWinError(&message);
+    SetError(error, message);
+  }
+
+  driver->private_manager = nullptr;
+  delete state;
+  return status;
+}
+#endif
 }  // namespace
 
 // Direct implementations of API methods
@@ -125,17 +197,34 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
                      database->private_driver, &initialized, error);
   if (status != ADBC_STATUS_OK) {
     delete args;
+
+    if (database->private_driver->release) {
+      database->private_driver->release(database->private_driver, error);
+    }
     delete database->private_driver;
     return status;
   } else if (initialized < ADBC_VERSION_0_0_1) {
     delete args;
+
+    if (database->private_driver->release) {
+      database->private_driver->release(database->private_driver, error);
+    }
     delete database->private_driver;
-    SetError(error, "Database version is too old");  // TODO: clearer error
+
+    std::string message = "Database version is too old, expected ";
+    message += std::to_string(ADBC_VERSION_0_0_1);
+    message += " but got ";
+    message += std::to_string(initialized);
+    SetError(error, message);
     return status;
   }
   status = database->private_driver->DatabaseNew(database, error);
   if (status != ADBC_STATUS_OK) {
     delete args;
+
+    if (database->private_driver->release) {
+      database->private_driver->release(database->private_driver, error);
+    }
     delete database->private_driver;
     return status;
   }
@@ -144,6 +233,10 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
                                                          option.second.c_str(), error);
     if (status != ADBC_STATUS_OK) {
       delete args;
+
+      if (database->private_driver->release) {
+        database->private_driver->release(database->private_driver, error);
+      }
       delete database->private_driver;
       return status;
     }
@@ -158,6 +251,9 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
     return ADBC_STATUS_UNINITIALIZED;
   }
   auto status = database->private_driver->DatabaseRelease(database, error);
+  if (database->private_driver->release) {
+    database->private_driver->release(database->private_driver, error);
+  }
   delete database->private_driver;
   return status;
 }
@@ -176,7 +272,6 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
                                   struct AdbcError* error) {
   if (!connection->private_driver) {
-    // TODO: set error
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   return connection->private_driver->ConnectionInit(connection, error);
@@ -318,16 +413,54 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
     return ADBC_STATUS_INTERNAL;                                               \
   }
 
-  // TODO: handle Windows
+  AdbcDriverInitFunc init_func;
+  std::string error_message;
+
+#if defined(_WIN32)
+
+  HMODULE handle = LoadLibraryExA(driver_name, NULL, 0);
+  if (!handle) {
+    error_message += driver_name;
+    error_message += ": LoadLibraryExA() failed: ";
+    GetWinError(&error_message);
+
+    std::string full_driver_name = driver_name;
+    full_driver_name += ".lib";
+    handle = LoadLibraryExA(full_driver_name.c_str(), NULL, 0);
+    if (!handle) {
+      error_message += '\n';
+      error_message += full_driver_name;
+      error_message += ": LoadLibraryExA() failed: ";
+      GetWinError(&error_message);
+    }
+  }
+  if (!handle) {
+    SetError(error, error_message);
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  void* load_handle = GetProcAddress(handle, entrypoint);
+  init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
+  if (!init_func) {
+    std::string message = "GetProcAddress() failed: ";
+    GetWinError(&message);
+    if (!FreeLibrary(handle)) {
+      message += "\nFreeLibrary() failed: ";
+      GetWinError(&message);
+    }
+    SetError(error, message);
+    return ADBC_STATUS_INTERNAL;
+  }
+
+#else
+
 #if defined(__APPLE__)
   static const std::string kPlatformLibraryPrefix = "lib";
   static const std::string kPlatformLibrarySuffix = ".dylib";
 #else
   static const std::string kPlatformLibraryPrefix = "lib";
   static const std::string kPlatformLibrarySuffix = ".so";
-#endif
-
-  std::string error_message;
+#endif  // defined(__APPLE__)
 
   void* handle = dlopen(driver_name, RTLD_NOW | RTLD_LOCAL);
   if (!handle) {
@@ -359,19 +492,25 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   }
   if (!handle) {
     SetError(error, error_message);
-    return ADBC_STATUS_UNKNOWN;
+    return ADBC_STATUS_INTERNAL;
   }
 
   void* load_handle = dlsym(handle, entrypoint);
-  auto* load = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
-  if (!load) {
+  init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
+  if (!init_func) {
     std::string message = "dlsym() failed: ";
     message += dlerror();
     SetError(error, message);
     return ADBC_STATUS_INTERNAL;
   }
 
-  auto result = load(count, driver, initialized, error);
+#endif  // defined(_WIN32)
+
+  auto result = init_func(count, driver, initialized, error);
+#if defined(_WIN32)
+  driver->private_manager = new ManagerDriverState{handle, driver->release};
+  driver->release = &ReleaseDriver;
+#endif  // defined(_WIN32)
   if (result != ADBC_STATUS_OK) {
     return result;
   }

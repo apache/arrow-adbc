@@ -21,13 +21,6 @@
 #include "arrow/result.h"
 #include "arrow/util/string_view.h"
 
-// TODO: dllimport/dllexport for Windows. Should that go in adbc.h instead?
-#ifdef __linux__
-#define ADBC_DRIVER_EXPORT
-#else
-#define ADBC_DRIVER_EXPORT
-#endif  // ifdef __linux__
-
 #define ADBC_RETURN_NOT_OK(expr)         \
   do {                                   \
     auto _s = (expr);                    \

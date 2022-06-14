@@ -36,6 +36,8 @@ using arrow::PointeesEqual;
 class DriverManager : public ::testing::Test {
  public:
   void SetUp() override {
+    std::memset(&driver, 0, sizeof(driver));
+
     size_t initialized = 0;
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcLoadDriver("adbc_driver_sqlite", "AdbcSqliteDriverInit",
@@ -63,6 +65,12 @@ class DriverManager : public ::testing::Test {
 
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
     ASSERT_EQ(database.private_data, nullptr);
+
+    if (driver.release) {
+      ADBC_ASSERT_OK_WITH_ERROR(error, driver.release(&driver, &error));
+      ASSERT_EQ(driver.private_data, nullptr);
+      ASSERT_EQ(driver.private_manager, nullptr);
+    }
   }
 
  protected:
