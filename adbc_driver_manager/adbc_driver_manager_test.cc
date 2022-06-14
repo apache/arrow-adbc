@@ -36,6 +36,8 @@ using arrow::PointeesEqual;
 class DriverManager : public ::testing::Test {
  public:
   void SetUp() override {
+    std::memset(&driver, 0, sizeof(driver));
+
     size_t initialized = 0;
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcLoadDriver("adbc_driver_sqlite", "AdbcSqliteDriverInit",

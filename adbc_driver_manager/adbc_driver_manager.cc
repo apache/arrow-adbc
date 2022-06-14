@@ -384,14 +384,15 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
     return ADBC_STATUS_INTERNAL;
   }
 
-  driver->private_manager = new ManagerDriverState{handle, /*driver_release=*/nullptr};
-  driver->release = &ReleaseDriver;
-
   void* load_handle = GetProcAddress(handle, entrypoint);
   init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
   if (!init_func) {
     std::string message = "GetProcAddress() failed: ";
     message += std::to_string(GetLastError());
+    if (!FreeLibrary(handle)) {
+      message += "\nFreeLibrary() failed: ";
+      message += std::to_string(GetLastError());
+    }
     SetError(error, message);
     return ADBC_STATUS_INTERNAL;
   }
@@ -452,12 +453,9 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
   auto result = init_func(count, driver, initialized, error);
 #if defined(_WIN32)
-  // Reset the release callback
-  reinterpret_cast<ManagerDriverState*>(driver->private_manager)->driver_release =
-      driver->release;
+  driver->private_manager = new ManagerDriverState{handle, driver->release};
   driver->release = &ReleaseDriver;
 #endif  // defined(_WIN32)
-
   if (result != ADBC_STATUS_OK) {
     return result;
   }
