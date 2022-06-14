@@ -24,15 +24,15 @@ include(BuildUtils)
 include(DefineOptions)
 
 project(adbc_driver_manager
-        VERSION "${ARROW_BASE_VERSION}"
+        VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
 include(CTest)
 add_arrow_lib(adbc_driver_manager SOURCES adbc_driver_manager.cc)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 
-if(ARROW_BUILD_TESTS)
+if(ADBC_BUILD_TESTS)
   find_package(Arrow REQUIRED)
-  if(ARROW_TEST_LINKAGE STREQUAL "shared")
+  if(ADBC_TEST_LINKAGE STREQUAL "shared")
     set(TEST_LINK_LIBS adbc_driver_manager_shared arrow_shared)
   else()
     set(TEST_LINK_LIBS adbc_driver_manager_static arrow_static)
