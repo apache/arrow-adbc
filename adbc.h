@@ -399,7 +399,7 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
 ///   filter by name. May be a search pattern (see section documentation).
 /// \param[in] table_types Only show tables matching one of the given table
 ///   types. If NULL, show tables of any type. Valid table types can be fetched
-///   from get_table_types.
+///   from GetTableTypes.  Terminate the list with a NULL entry.
 /// \param[out] statement The result set.
 /// \param[out] error Error details, if an error occurs.
 ADBC_EXPORT
@@ -408,6 +408,78 @@ AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
                                        const char* table_name, const char** table_types,
                                        struct AdbcStatement* statement,
                                        struct AdbcError* error);
+
+/// \brief Get the Arrow schema of a table.
+///
+/// \param[in] connection The database connection.
+/// \param[in] catalog The catalog (or nullptr if not applicable).
+/// \param[in] db_schema The database schema (or nullptr if not applicable).
+/// \param[in] table_name The table name.
+/// \param[out] schema The table schema.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
+                                            const char* catalog, const char* db_schema,
+                                            const char* table_name,
+                                            struct ArrowSchema* schema,
+                                            struct AdbcError* error);
+
+/// \brief Get a list of table columns matching the given criteria.
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// Field Name               | Field Type     | Comments
+/// -------------------------|----------------|--------------------------------
+/// catalog_name             | utf8           | (1)
+/// db_schema_name           | utf8           | (1)
+/// table_name               | utf8 not null  |
+/// column_name              | utf8 not null  |
+/// ordinal_position         | int32          | (2)
+/// remarks                  | utf8           | (3)
+/// xdbc_data_type           | int16          | (4)
+/// xdbc_type_name           | utf8           | (4)
+/// xdbc_column_size         | int32          | (4)
+/// xdbc_decimal_digits      | int16          | (4)
+/// xdbc_num_prec_radix      | int16          | (4)
+/// xdbc_nullable            | int16          | (4)
+/// xdbc_column_def          | utf8           | (4)
+/// xdbc_sql_data_type       | int16          | (4)
+/// xdbc_datetime_sub        | int16          | (4)
+/// xdbc_char_octet_length   | int32          | (4)
+/// xdbc_is_nullable         | utf8           | (4)
+/// xdbc_scope_catalog       | utf8           | (4)
+/// xdbc_scope_schema        | utf8           | (4)
+/// xdbc_scope_table         | utf8           | (4)
+/// xdbc_is_autoincrement    | bool           | (4)
+/// xdbc_is_generatedcolumn  | bool           | (4)
+///
+/// 1. Null or empty if not present.
+/// 2. The column's ordinal position in the table (starting from 1).
+/// 3. Database-specific description of the column.
+/// 4. Optional, JDBC/ODBC-compatible value.
+///
+/// \param[in] connection The database connection.
+/// \param[in] catalog Only show columns from tables in the given
+///   catalog.  If NULL, do not filter by catalog.  If an empty
+///   string, only show tables without a catalog.
+/// \param[in] db_schema Only show columns from tables in the given
+///   database schema.  If NULL, do not filter by database schema.  If
+///   an empty string, only show tables without a database schema.
+///   May be a search pattern (see section documentation).
+/// \param[in] table_name Only show columns from tables with the given
+///   name.  If NULL, do not filter by name.  May be a search pattern
+///   (see section documentation).
+/// \param[in] column_name Only show columns with the given name.  If
+///   NULL, show all columns.  May be a search pattern (see section
+///   documentation).
+/// \param[out] statement The result set.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetColumns(struct AdbcConnection* connection,
+                                        const char* catalog, const char* db_schema,
+                                        const char* table_name, const char* column_name,
+                                        struct AdbcStatement* statement,
+                                        struct AdbcError* error);
 /// }@
 
 /// }@
@@ -672,8 +744,14 @@ struct ADBC_EXPORT AdbcDriver {
 
   AdbcStatusCode (*ConnectionGetCatalogs)(struct AdbcConnection*, struct AdbcStatement*,
                                           struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetColumns)(struct AdbcConnection*, const char*, const char*,
+                                         const char*, const char*, struct AdbcStatement*,
+                                         struct AdbcError*);
   AdbcStatusCode (*ConnectionGetDbSchemas)(struct AdbcConnection*, struct AdbcStatement*,
                                            struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetTableSchema)(struct AdbcConnection*, const char*,
+                                             const char*, const char*,
+                                             struct ArrowSchema*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetTableTypes)(struct AdbcConnection*, struct AdbcStatement*,
                                             struct AdbcError*);
   AdbcStatusCode (*ConnectionGetTables)(struct AdbcConnection*, const char*, const char*,
@@ -723,7 +801,7 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
 // struct/entrypoint instead?
 
 // For use with count
-#define ADBC_VERSION_0_0_1 25
+#define ADBC_VERSION_0_0_1 28
 
 /// }@
 
