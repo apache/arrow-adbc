@@ -72,7 +72,7 @@ class FlightSqlDatabaseImpl {
   AdbcStatusCode Init(struct AdbcError* error) {
     if (client_) {
       SetError(error, "Database already initialized");
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INVALID_STATE;
     }
     auto it = options_.find("location");
     if (it == options_.end()) {
@@ -102,7 +102,7 @@ class FlightSqlDatabaseImpl {
   AdbcStatusCode SetOption(const char* key, const char* value, struct AdbcError* error) {
     if (client_) {
       SetError(error, "Database already initialized");
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INVALID_STATE;
     }
     options_[key] = value;
     return ADBC_STATUS_OK;
@@ -156,7 +156,7 @@ class FlightSqlConnectionImpl {
     client_ = database_->Connect();
     if (!client_) {
       SetError(error, "Database not yet initialized!");
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INVALID_STATE;
     }
     return ADBC_STATUS_OK;
   }
@@ -225,7 +225,7 @@ class FlightSqlStatementImpl : public arrow::RecordBatchReader {
                            struct ArrowArrayStream* out, struct AdbcError* error) {
     if (!info_) {
       SetError(error, "Statement has not yet been executed");
-      return ADBC_STATUS_UNINITIALIZED;
+      return ADBC_STATUS_INVALID_STATE;
     }
 
     auto status = NextStream();
@@ -293,7 +293,7 @@ class FlightSqlStatementImpl : public arrow::RecordBatchReader {
   AdbcStatusCode GetPartitionDescSize(size_t* length, struct AdbcError* error) const {
     if (!info_) {
       SetError(error, "Statement has not yet been executed");
-      return ADBC_STATUS_UNINITIALIZED;
+      return ADBC_STATUS_INVALID_STATE;
     }
 
     // TODO: we're only encoding the ticket, not the actual locations
@@ -308,7 +308,7 @@ class FlightSqlStatementImpl : public arrow::RecordBatchReader {
   AdbcStatusCode GetPartitionDesc(uint8_t* partition_desc, struct AdbcError* error) {
     if (!info_) {
       SetError(error, "Statement has not yet been executed");
-      return ADBC_STATUS_UNINITIALIZED;
+      return ADBC_STATUS_INVALID_STATE;
     }
 
     if (next_endpoint_ >= info_->endpoints().size()) {
@@ -355,7 +355,7 @@ AdbcStatusCode FlightSqlDatabaseNew(struct AdbcDatabase* database,
 
 AdbcStatusCode FlightSqlDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                           const char* value, struct AdbcError* error) {
-  if (!database || !database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!database || !database->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlDatabaseImpl>*>(database->private_data);
   return (*ptr)->SetOption(key, value, error);
@@ -363,7 +363,7 @@ AdbcStatusCode FlightSqlDatabaseSetOption(struct AdbcDatabase* database, const c
 
 AdbcStatusCode FlightSqlDatabaseInit(struct AdbcDatabase* database,
                                      struct AdbcError* error) {
-  if (!database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlDatabaseImpl>*>(database->private_data);
   return (*ptr)->Init(error);
@@ -371,7 +371,7 @@ AdbcStatusCode FlightSqlDatabaseInit(struct AdbcDatabase* database,
 
 AdbcStatusCode FlightSqlDatabaseRelease(struct AdbcDatabase* database,
                                         struct AdbcError* error) {
-  if (!database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlDatabaseImpl>*>(database->private_data);
   AdbcStatusCode status = (*ptr)->Release(error);
@@ -383,7 +383,7 @@ AdbcStatusCode FlightSqlDatabaseRelease(struct AdbcDatabase* database,
 AdbcStatusCode FlightSqlConnectionDeserializePartitionDesc(
     struct AdbcConnection* connection, const uint8_t* serialized_partition,
     size_t serialized_length, struct AdbcStatement* statement, struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
   return (*ptr)->DeserializePartitionDesc(serialized_partition, serialized_length, error);
@@ -392,7 +392,7 @@ AdbcStatusCode FlightSqlConnectionDeserializePartitionDesc(
 AdbcStatusCode FlightSqlConnectionGetTableTypes(struct AdbcConnection* connection,
                                                 struct AdbcStatement* statement,
                                                 struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
   return (*ptr)->GetTableTypes(error);
@@ -416,7 +416,7 @@ AdbcStatusCode FlightSqlConnectionSetOption(struct AdbcConnection* connection,
 
 AdbcStatusCode FlightSqlConnectionInit(struct AdbcConnection* connection,
                                        struct AdbcError* error) {
-  if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr = reinterpret_cast<std::shared_ptr<FlightSqlConnectionImpl>*>(
       connection->private_data);
   return (*ptr)->Init(error);
@@ -424,7 +424,7 @@ AdbcStatusCode FlightSqlConnectionInit(struct AdbcConnection* connection,
 
 AdbcStatusCode FlightSqlConnectionRelease(struct AdbcConnection* connection,
                                           struct AdbcError* error) {
-  if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr = reinterpret_cast<std::shared_ptr<FlightSqlConnectionImpl>*>(
       connection->private_data);
   auto status = (*ptr)->Close(error);
@@ -435,7 +435,7 @@ AdbcStatusCode FlightSqlConnectionRelease(struct AdbcConnection* connection,
 
 AdbcStatusCode FlightSqlStatementExecute(struct AdbcStatement* statement,
                                          struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
   return (*ptr)->Execute(*ptr, error);
@@ -444,7 +444,7 @@ AdbcStatusCode FlightSqlStatementExecute(struct AdbcStatement* statement,
 AdbcStatusCode FlightSqlStatementGetPartitionDesc(struct AdbcStatement* statement,
                                                   uint8_t* partition_desc,
                                                   struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
   return (*ptr)->GetPartitionDesc(partition_desc, error);
@@ -453,7 +453,7 @@ AdbcStatusCode FlightSqlStatementGetPartitionDesc(struct AdbcStatement* statemen
 AdbcStatusCode FlightSqlStatementGetPartitionDescSize(struct AdbcStatement* statement,
                                                       size_t* length,
                                                       struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
   return (*ptr)->GetPartitionDescSize(length, error);
@@ -462,7 +462,7 @@ AdbcStatusCode FlightSqlStatementGetPartitionDescSize(struct AdbcStatement* stat
 AdbcStatusCode FlightSqlStatementGetStream(struct AdbcStatement* statement,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
   return (*ptr)->GetStream(*ptr, out, error);
@@ -480,7 +480,7 @@ AdbcStatusCode FlightSqlStatementNew(struct AdbcConnection* connection,
 
 AdbcStatusCode FlightSqlStatementRelease(struct AdbcStatement* statement,
                                          struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
   auto status = (*ptr)->Close(error);
@@ -491,7 +491,7 @@ AdbcStatusCode FlightSqlStatementRelease(struct AdbcStatement* statement,
 
 AdbcStatusCode FlightSqlStatementSetSqlQuery(struct AdbcStatement* statement,
                                              const char* query, struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
   return (*ptr)->SetSqlQuery(*ptr, query, error);
@@ -593,7 +593,7 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
 }
 
 extern "C" {
-ARROW_EXPORT
+ADBC_EXPORT
 AdbcStatusCode AdbcFlightSqlDriverInit(size_t count, struct AdbcDriver* driver,
                                        size_t* initialized, struct AdbcError* error) {
   if (count < ADBC_VERSION_0_0_1) return ADBC_STATUS_NOT_IMPLEMENTED;
