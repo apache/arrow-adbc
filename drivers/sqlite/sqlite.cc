@@ -22,6 +22,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <arrow/builder.h>
 #include <arrow/c/bridge.h>
@@ -76,6 +77,15 @@ void SetError(struct AdbcError* error, Args&&... args) {
   error->release = ReleaseError;
 }
 
+AdbcStatusCode CheckRc(sqlite3* db, int rc, const char* context,
+                       struct AdbcError* error) {
+  if (rc != SQLITE_OK) {
+    SetError(db, context, error);
+    return ADBC_STATUS_IO;
+  }
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode CheckRc(sqlite3* db, sqlite3_stmt* stmt, int rc, const char* context,
                        struct AdbcError* error) {
   if (rc != SQLITE_OK) {
@@ -87,6 +97,16 @@ AdbcStatusCode CheckRc(sqlite3* db, sqlite3_stmt* stmt, int rc, const char* cont
     return ADBC_STATUS_IO;
   }
   return ADBC_STATUS_OK;
+}
+
+template <typename CallbackFn>
+AdbcStatusCode DoQuery(sqlite3* db, const char* query, struct AdbcError* error,
+                       CallbackFn&& callback) {
+  sqlite3_stmt* stmt;
+  int rc = sqlite3_prepare_v2(db, query, std::strlen(query), &stmt, /*pzTail=*/nullptr);
+  auto status = std::move(callback)(stmt);
+  std::ignore = CheckRc(db, stmt, sqlite3_finalize(stmt), "sqlite3_finalize", error);
+  return status;
 }
 
 arrow::Status ToArrowStatus(AdbcStatusCode code, struct AdbcError* error) {
@@ -513,6 +533,224 @@ class SqliteStatementImpl {
         arrow::field("db_schema_name", arrow::utf8(), /*nullable=*/false),
     });
     auto status = arrow::RecordBatchReader::Make({}, schema).Value(&result_reader_);
+    ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode GetObjects(const std::shared_ptr<SqliteStatementImpl>& self, int depth,
+                            const char* catalog, const char* db_schema,
+                            const char* table_name, const char** table_type,
+                            const char* column_name, struct AdbcError* error) {
+    static std::shared_ptr<arrow::DataType> kColumnSchema = arrow::struct_({
+        arrow::field("column_name", arrow::utf8(), /*nullable=*/false),
+        arrow::field("ordinal_position", arrow::int32()),
+        arrow::field("remarks", arrow::utf8()),
+        arrow::field("xdbc_data_type", arrow::int16()),
+        arrow::field("xdbc_type_name", arrow::utf8()),
+        arrow::field("xdbc_column_size", arrow::int32()),
+        arrow::field("xdbc_decimal_digits", arrow::int16()),
+        arrow::field("xdbc_num_prec_radix", arrow::int16()),
+        arrow::field("xdbc_nullable", arrow::int16()),
+        arrow::field("xdbc_column_def", arrow::utf8()),
+        arrow::field("xdbc_sql_data_type", arrow::int16()),
+        arrow::field("xdbc_datetime_sub", arrow::int16()),
+        arrow::field("xdbc_char_octet_length", arrow::int32()),
+        arrow::field("xdbc_is_nullable", arrow::utf8()),
+        arrow::field("xdbc_scope_catalog", arrow::utf8()),
+        arrow::field("xdbc_scope_schema", arrow::utf8()),
+        arrow::field("xdbc_scope_table", arrow::utf8()),
+        arrow::field("xdbc_is_autoincrement", arrow::boolean()),
+        arrow::field("xdbc_is_generatedcolumn", arrow::boolean()),
+    });
+    static std::shared_ptr<arrow::DataType> kTableSchema = arrow::struct_({
+        arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
+        arrow::field("table_type", arrow::utf8(), /*nullable=*/false),
+        arrow::field("table_columns", arrow::list(kColumnSchema)),
+    });
+    static std::shared_ptr<arrow::DataType> kDbSchemaSchema = arrow::struct_({
+        arrow::field("db_schema_name", arrow::utf8()),
+        arrow::field("db_schema_tables", arrow::list(kTableSchema)),
+    });
+    static std::shared_ptr<arrow::Schema> kCatalogSchema = arrow::schema({
+        arrow::field("catalog_name", arrow::utf8()),
+        arrow::field("catalog_db_schemas", arrow::list(kDbSchemaSchema)),
+    });
+
+    static const char kTableQuery[] =
+        "SELECT name, type FROM sqlite_master WHERE name LIKE ?";
+    static const char kColumnQuery[] =
+        "SELECT cid, name FROM pragma_table_info(?) WHERE name LIKE ?";
+
+    arrow::StringBuilder catalog_name;
+    std::unique_ptr<arrow::ArrayBuilder> catalog_schemas_builder;
+    ADBC_RETURN_NOT_OK(FromArrowStatus(
+        MakeBuilder(arrow::default_memory_pool(), kCatalogSchema->field(1)->type(),
+                    &catalog_schemas_builder),
+        error));
+    auto* catalog_schemas =
+        static_cast<arrow::ListBuilder*>(catalog_schemas_builder.get());
+    auto* catalog_schemas_items =
+        static_cast<arrow::StructBuilder*>(catalog_schemas->value_builder());
+    auto* db_schema_name =
+        static_cast<arrow::StringBuilder*>(catalog_schemas_items->child_builder(0).get());
+    auto* db_schema_tables =
+        static_cast<arrow::ListBuilder*>(catalog_schemas_items->child_builder(1).get());
+    auto* db_schema_tables_items =
+        static_cast<arrow::StructBuilder*>(db_schema_tables->value_builder());
+    auto* table_names = static_cast<arrow::StringBuilder*>(
+        db_schema_tables_items->child_builder(0).get());
+    auto* table_types = static_cast<arrow::StringBuilder*>(
+        db_schema_tables_items->child_builder(1).get());
+    auto* table_columns =
+        static_cast<arrow::ListBuilder*>(db_schema_tables_items->child_builder(2).get());
+    auto* table_columns_items =
+        static_cast<arrow::StructBuilder*>(table_columns->value_builder());
+    auto* column_names =
+        static_cast<arrow::StringBuilder*>(table_columns_items->child_builder(0).get());
+    auto* ordinal_positions =
+        static_cast<arrow::Int32Builder*>(table_columns_items->child_builder(1).get());
+
+    if (!catalog || std::strlen(catalog) == 0) {
+      ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_name.AppendNull(), error));
+
+      if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+        ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_schemas->AppendNull(), error));
+      } else if (!db_schema || std::strlen(db_schema) == 0) {
+        ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_schemas->Append(), error));
+        ADBC_RETURN_NOT_OK(FromArrowStatus(db_schema_name->AppendNull(), error));
+        if (depth == ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
+          ADBC_RETURN_NOT_OK(FromArrowStatus(db_schema_tables->AppendNull(), error));
+        } else {
+          // Look up tables
+
+          std::unordered_set<std::string> table_type_filter;
+          if (table_type) {
+            while (*table_type) {
+              table_type_filter.insert(*table_type);
+              table_type++;
+            }
+          }
+
+          sqlite3* db = connection_->db();
+          ADBC_RETURN_NOT_OK(
+              DoQuery(db, kTableQuery, error, [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+                if (table_name) {
+                  ADBC_RETURN_NOT_OK(CheckRc(
+                      db,
+                      sqlite3_bind_text64(stmt, 1, table_name, std::strlen(table_name),
+                                          SQLITE_STATIC, SQLITE_UTF8),
+                      "sqlite3_bind_text64", error));
+                } else {
+                  ADBC_RETURN_NOT_OK(CheckRc(
+                      db,
+                      sqlite3_bind_text64(stmt, 1, "%", 1, SQLITE_STATIC, SQLITE_UTF8),
+                      "sqlite3_bind_text64", error));
+                }
+
+                int rc = SQLITE_OK;
+                ADBC_RETURN_NOT_OK(FromArrowStatus(db_schema_tables->Append(), error));
+                while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+                  const char* cur_table =
+                      reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                  const char* cur_table_type =
+                      reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+
+                  if (!table_type_filter.empty() &&
+                      table_type_filter.find(cur_table_type) == table_type_filter.end()) {
+                    continue;
+                  }
+
+                  ADBC_RETURN_NOT_OK(
+                      FromArrowStatus(table_names->Append(cur_table), error));
+                  ADBC_RETURN_NOT_OK(
+                      FromArrowStatus(table_types->Append(cur_table_type), error));
+                  if (depth == ADBC_OBJECT_DEPTH_TABLES) {
+                    ADBC_RETURN_NOT_OK(
+                        FromArrowStatus(table_columns->AppendNull(), error));
+                  } else {
+                    ADBC_RETURN_NOT_OK(DoQuery(
+                        db, kColumnQuery, error,
+                        [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+                          ADBC_RETURN_NOT_OK(
+                              CheckRc(db,
+                                      sqlite3_bind_text64(stmt, 1, cur_table,
+                                                          std::strlen(cur_table),
+                                                          SQLITE_STATIC, SQLITE_UTF8),
+                                      "sqlite3_bind_text64", error));
+
+                          if (column_name) {
+                            ADBC_RETURN_NOT_OK(
+                                CheckRc(db,
+                                        sqlite3_bind_text64(stmt, 2, column_name,
+                                                            std::strlen(column_name),
+                                                            SQLITE_STATIC, SQLITE_UTF8),
+                                        "sqlite3_bind_text64", error));
+                          } else {
+                            ADBC_RETURN_NOT_OK(
+                                CheckRc(db,
+                                        sqlite3_bind_text64(stmt, 2, "%", 1,
+                                                            SQLITE_STATIC, SQLITE_UTF8),
+                                        "sqlite3_bind_text64", error));
+                          }
+
+                          int rc = SQLITE_OK;
+                          ADBC_RETURN_NOT_OK(
+                              FromArrowStatus(table_columns->Append(), error));
+                          int64_t row_count = 0;
+                          while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+                            row_count++;
+                            const int32_t cur_ordinal_position =
+                                1 + sqlite3_column_int(stmt, 0);
+                            const char* cur_column_name = reinterpret_cast<const char*>(
+                                sqlite3_column_text(stmt, 1));
+
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                column_names->Append(cur_column_name), error));
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                ordinal_positions->Append(cur_ordinal_position), error));
+
+                            ADBC_RETURN_NOT_OK(
+                                FromArrowStatus(table_columns_items->Append(), error));
+                          }
+                          for (int i = 2; i < table_columns_items->num_children(); i++) {
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                table_columns_items->child_builder(i)->AppendNulls(
+                                    row_count),
+                                error));
+                          }
+                          if (rc != SQLITE_DONE) {
+                            return CheckRc(db, rc, "sqlite3_step", error);
+                          }
+                          return ADBC_STATUS_OK;
+                        }));
+                  }
+
+                  ADBC_RETURN_NOT_OK(
+                      FromArrowStatus(db_schema_tables_items->Append(), error));
+                }
+                if (rc != SQLITE_DONE) {
+                  return CheckRc(db, rc, "sqlite3_step", error);
+                }
+                return ADBC_STATUS_OK;
+              }));
+        }
+        ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_schemas_items->Append(), error));
+      } else {
+        ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_schemas->Append(), error));
+      }
+    }
+
+    arrow::ArrayVector arrays(2);
+    ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_name.Finish(&arrays[0]), error));
+    ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_schemas->Finish(&arrays[1]), error));
+    const int64_t rows = arrays[0]->length();
+    auto status =
+        arrow::RecordBatchReader::Make(
+            {
+                arrow::RecordBatch::Make(kCatalogSchema, rows, std::move(arrays)),
+            },
+            kCatalogSchema)
+            .Value(&result_reader_);
     ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
     return ADBC_STATUS_OK;
   }
@@ -995,6 +1233,17 @@ AdbcStatusCode SqliteConnectionGetDbSchemas(struct AdbcConnection* connection,
   return (*ptr)->GetDbSchemas(*ptr, error);
 }
 
+AdbcStatusCode SqliteConnectionGetObjects(
+    struct AdbcConnection* connection, int depth, const char* catalog,
+    const char* db_schema, const char* table_name, const char** table_types,
+    const char* column_name, struct AdbcStatement* statement, struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
+  return (*ptr)->GetObjects(*ptr, depth, catalog, db_schema, table_name, table_types,
+                            column_name, error);
+}
+
 AdbcStatusCode SqliteConnectionGetTableTypes(struct AdbcConnection* connection,
                                              struct AdbcStatement* statement,
                                              struct AdbcError* error) {
@@ -1193,6 +1442,16 @@ AdbcStatusCode AdbcConnectionGetDbSchemas(struct AdbcConnection* connection,
   return SqliteConnectionGetDbSchemas(connection, statement, error);
 }
 
+AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
+                                        const char* catalog, const char* db_schema,
+                                        const char* table_name, const char** table_types,
+                                        const char* column_name,
+                                        struct AdbcStatement* statement,
+                                        struct AdbcError* error) {
+  return SqliteConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
+                                    table_types, column_name, statement, error);
+}
+
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct AdbcStatement* statement,
                                            struct AdbcError* error) {
@@ -1314,6 +1573,7 @@ AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
   driver->ConnectionGetCatalogs = SqliteConnectionGetCatalogs;
   driver->ConnectionGetColumns = SqliteConnectionGetColumns;
   driver->ConnectionGetDbSchemas = SqliteConnectionGetDbSchemas;
+  driver->ConnectionGetObjects = SqliteConnectionGetObjects;
   driver->ConnectionGetTables = SqliteConnectionGetTables;
   driver->ConnectionGetTableSchema = SqliteConnectionGetTableSchema;
   driver->ConnectionGetTableTypes = SqliteConnectionGetTableTypes;

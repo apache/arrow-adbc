@@ -15,6 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -31,6 +34,18 @@
 namespace adbc {
 
 using arrow::PointeesEqual;
+
+using RecordBatchMatcher =
+    decltype(::testing::UnorderedPointwise(PointeesEqual(), arrow::RecordBatchVector{}));
+
+RecordBatchMatcher BatchesAre(const std::shared_ptr<arrow::Schema>& schema,
+                              const std::vector<std::string>& batch_json) {
+  arrow::RecordBatchVector batches;
+  for (const std::string& json : batch_json) {
+    batches.push_back(adbc::RecordBatchFromJSON(schema, json));
+  }
+  return ::testing::UnorderedPointwise(PointeesEqual(), std::move(batches));
+}
 
 class Sqlite : public ::testing::Test {
  public:
@@ -401,6 +416,228 @@ TEST_F(Sqlite, MetadataGetTableTypes) {
                                        adbc::RecordBatchFromJSON(
                                            expected_schema, R"([["table"], ["view"]])"),
                                    }));
+}
+
+TEST_F(Sqlite, MetadataGetObjects) {
+  std::shared_ptr<arrow::DataType> column_schema = arrow::struct_({
+      arrow::field("column_name", arrow::utf8(), /*nullable=*/false),
+      arrow::field("ordinal_position", arrow::int32()),
+      arrow::field("remarks", arrow::utf8()),
+      arrow::field("xdbc_data_type", arrow::int16()),
+      arrow::field("xdbc_type_name", arrow::utf8()),
+      arrow::field("xdbc_column_size", arrow::int32()),
+      arrow::field("xdbc_decimal_digits", arrow::int16()),
+      arrow::field("xdbc_num_prec_radix", arrow::int16()),
+      arrow::field("xdbc_nullable", arrow::int16()),
+      arrow::field("xdbc_column_def", arrow::utf8()),
+      arrow::field("xdbc_sql_data_type", arrow::int16()),
+      arrow::field("xdbc_datetime_sub", arrow::int16()),
+      arrow::field("xdbc_char_octet_length", arrow::int32()),
+      arrow::field("xdbc_is_nullable", arrow::utf8()),
+      arrow::field("xdbc_scope_catalog", arrow::utf8()),
+      arrow::field("xdbc_scope_schema", arrow::utf8()),
+      arrow::field("xdbc_scope_table", arrow::utf8()),
+      arrow::field("xdbc_is_autoincrement", arrow::boolean()),
+      arrow::field("xdbc_is_generatedcolumn", arrow::boolean()),
+  });
+  std::shared_ptr<arrow::DataType> table_schema = arrow::struct_({
+      arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
+      arrow::field("table_type", arrow::utf8(), /*nullable=*/false),
+      arrow::field("table_columns", arrow::list(column_schema)),
+  });
+  std::shared_ptr<arrow::DataType> db_schema_schema = arrow::struct_({
+      arrow::field("db_schema_name", arrow::utf8()),
+      arrow::field("db_schema_tables", arrow::list(table_schema)),
+  });
+  std::shared_ptr<arrow::Schema> catalog_schema = arrow::schema({
+      arrow::field("catalog_name", arrow::utf8()),
+      arrow::field("catalog_db_schemas", arrow::list(db_schema_schema)),
+  });
+
+  // Create a table via ingestion
+  {
+    ArrowArray export_table;
+    ArrowSchema export_schema;
+    auto bulk_schema = arrow::schema(
+        {arrow::field("ints", arrow::int64()), arrow::field("strs", arrow::utf8())});
+    auto bulk_table =
+        adbc::RecordBatchFromJSON(bulk_schema, R"([[1, "foo"], [2, "bar"]])");
+    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
+    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
+
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                      "bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+  }
+
+  // Query for catalogs
+  AdbcStatement statement;
+  std::memset(&statement, 0, sizeof(statement));
+  std::shared_ptr<arrow::Schema> schema;
+  arrow::RecordBatchVector batches;
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([[null, null]])"}));
+  batches.clear();
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, "catalog",
+                               nullptr, nullptr, nullptr, nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([])"}));
+  batches.clear();
+
+  // Query for schemas
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
+                               nullptr, nullptr, nullptr, nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(
+      batches,
+      BatchesAre(catalog_schema,
+                 {R"([[null, [{"db_schema_name": null, "db_schema_tables": null}]]])"}));
+  batches.clear();
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
+                               "schema", nullptr, nullptr, nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([[null, []]])"}));
+  batches.clear();
+
+  // Query for tables
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(batches,
+              BatchesAre(catalog_schema,
+                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+  {"table_name": "bulk_insert", "table_type": "table", "table_columns": null}
+]}]]])"}));
+  batches.clear();
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr, nullptr,
+                               "bulk_%", nullptr, nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(batches,
+              BatchesAre(catalog_schema,
+                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+  {"table_name": "bulk_insert", "table_type": "table", "table_columns": null}
+]}]]])"}));
+  batches.clear();
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr, nullptr,
+                               "asdf%", nullptr, nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(
+      batches,
+      BatchesAre(catalog_schema,
+                 {R"([[null, [{"db_schema_name": null, "db_schema_tables": []}]]])"}));
+  batches.clear();
+
+  // Query for table types
+  std::vector<const char*> table_types(2);
+  table_types[0] = "table";
+  table_types[1] = nullptr;
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
+                               nullptr, table_types.data(), nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(batches,
+              BatchesAre(catalog_schema,
+                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+  {
+    "table_name": "bulk_insert",
+    "table_type": "table",
+    "table_columns": [
+      ["ints", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+      ["strs", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+    ]
+  }
+]}]]])"}));
+  batches.clear();
+
+  table_types[0] = "view";
+  table_types[1] = nullptr;
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
+                               nullptr, table_types.data(), nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(
+      batches,
+      BatchesAre(catalog_schema,
+                 {R"([[null, [{"db_schema_name": null, "db_schema_tables": []}]]])"}));
+  batches.clear();
+
+  // Query for columns
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(batches,
+              BatchesAre(catalog_schema,
+                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+  {
+    "table_name": "bulk_insert",
+    "table_type": "table",
+    "table_columns": [
+      ["ints", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+      ["strs", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+    ]
+  }
+]}]]])"}));
+  batches.clear();
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
+                               nullptr, nullptr, "in%", &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(batches,
+              BatchesAre(catalog_schema,
+                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+  {
+    "table_name": "bulk_insert",
+    "table_type": "table",
+    "table_columns": [
+      ["ints", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+    ]
+  }
+]}]]])"}));
+  batches.clear();
 }
 
 TEST_F(Sqlite, MetadataGetTables) {

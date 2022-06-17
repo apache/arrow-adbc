@@ -117,6 +117,8 @@ struct ArrowArrayStream {
 #define ADBC
 
 // Storage class macros for Windows
+// Allow overriding/aliasing with application-defined macros
+#if !defined(ADBC_EXPORT)
 #if defined(_WIN32)
 #if defined(ADBC_EXPORTING)
 #define ADBC_EXPORT __declspec(dllexport)
@@ -126,6 +128,7 @@ struct ArrowArrayStream {
 #else
 #define ADBC_EXPORT
 #endif  // defined(_WIN32)
+#endif  // !defined(ADBC_EXPORT)
 
 /// \file ADBC: Arrow DataBase connectivity (client API)
 ///
@@ -201,7 +204,7 @@ struct ADBC_EXPORT AdbcDatabase {
   void* private_data;
   /// \brief The associated driver (used by the driver manager to help
   ///   track state).
-  AdbcDriver* private_driver;
+  struct AdbcDriver* private_driver;
 };
 
 /// \brief Allocate a new (but uninitialized) database.
@@ -233,17 +236,6 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
 /// \defgroup adbc-connection Connection establishment.
 /// @{
 
-/// \brief A set of connection options.
-struct ADBC_EXPORT AdbcConnectionOptions {
-  /// \brief The database to connect to.
-  struct AdbcDatabase* database;
-
-  /// \brief A driver-specific connection string.
-  ///
-  /// Should be in ODBC-style format ("Key1=Value1;Key2=Value2").
-  const char* target;
-};
-
 /// \brief An active database connection.
 ///
 /// Provides methods for query execution, managing prepared
@@ -257,7 +249,7 @@ struct ADBC_EXPORT AdbcConnection {
   void* private_data;
   /// \brief The associated driver (used by the driver manager to help
   ///   track state).
-  AdbcDriver* private_driver;
+  struct AdbcDriver* private_driver;
 };
 
 /// \brief Allocate a new (but uninitialized) connection.
@@ -409,6 +401,96 @@ AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
                                        struct AdbcStatement* statement,
                                        struct AdbcError* error);
 
+/// \brief Get a hierarchical view of all catalogs, database schemas,
+///   and tables.
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// Field Name               | Field Type
+/// -------------------------|-----------------------
+/// catalog_name             | utf8
+/// catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>
+///
+/// DB_SCHEMA_SCHEMA is a Struct with fields:
+///
+/// Field Name               | Field Type
+/// -------------------------|-----------------------
+/// db_schema_name           | utf8
+/// db_schema_tables         | list<TABLE_SCHEMA>
+///
+/// TABLE_SCHEMA is a Struct with fields:
+///
+/// Field Name               | Field Type
+/// -------------------------|-----------------------
+/// table_name               | utf8 not null
+/// table_type               | utf8 not null
+/// table_columns            | list<COLUMN_SCHEMA>
+///
+/// COLUMN_SCHEMA is a Struct with fields:
+///
+/// Field Name               | Field Type            | Comments
+/// -------------------------|-----------------------|---------
+/// column_name              | utf8 not null         |
+/// ordinal_position         | int32                 | (1)
+/// remarks                  | utf8                  | (2)
+/// xdbc_data_type           | int16                 | (3)
+/// xdbc_type_name           | utf8                  | (3)
+/// xdbc_column_size         | int32                 | (3)
+/// xdbc_decimal_digits      | int16                 | (3)
+/// xdbc_num_prec_radix      | int16                 | (3)
+/// xdbc_nullable            | int16                 | (3)
+/// xdbc_column_def          | utf8                  | (3)
+/// xdbc_sql_data_type       | int16                 | (3)
+/// xdbc_datetime_sub        | int16                 | (3)
+/// xdbc_char_octet_length   | int32                 | (3)
+/// xdbc_is_nullable         | utf8                  | (3)
+/// xdbc_scope_catalog       | utf8                  | (3)
+/// xdbc_scope_schema        | utf8                  | (3)
+/// xdbc_scope_table         | utf8                  | (3)
+/// xdbc_is_autoincrement    | bool                  | (3)
+/// xdbc_is_generatedcolumn  | bool                  | (3)
+///
+/// 1. The column's ordinal position in the table (starting from 1).
+/// 2. Database-specific description of the column.
+/// 3. Optional, JDBC/ODBC-compatible value.
+///
+/// \param[in] connection The database connection.
+/// \param[in] depth The level of nesting to display. If 0, display
+///   all levels. If 1, display only catalogs (i.e.  catalog_schemas
+///   will be null). If 2, display only catalogs and schemas
+///   (i.e. db_schema_tables will be null), and so on.
+/// \param[in] catalog Only show tables in the given catalog. If NULL, do not
+///   filter by catalog. If an empty string, only show tables without a
+///   catalog.
+/// \param[in] db_schema Only show tables in the given database schema. If
+///   NULL, do not filter by database schema. If an empty string, only show
+///   tables without a database schema. May be a search pattern (see section
+///   documentation).
+/// \param[in] table_name Only show tables with the given name. If NULL, do not
+///   filter by name. May be a search pattern (see section documentation).
+/// \param[in] table_type Only show tables matching one of the given table
+///   types. If NULL, show tables of any type. Valid table types can be fetched
+///   from GetTableTypes.  Terminate the list with a NULL entry.
+/// \param[in] column_name Only show columns with the given name. If
+///   NULL, do not filter by name.  May be a search pattern (see
+///   section documentation).
+/// \param[out] statement The result set. AdbcStatementGetStream can
+///   be called immediately; do not call Execute or Prepare.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
+                                        const char* catalog, const char* db_schema,
+                                        const char* table_name, const char** table_type,
+                                        const char* column_name,
+                                        struct AdbcStatement* statement,
+                                        struct AdbcError* error);
+
+#define ADBC_OBJECT_DEPTH_ALL 0
+#define ADBC_OBJECT_DEPTH_CATALOGS 1
+#define ADBC_OBJECT_DEPTH_DB_SCHEMAS 2
+#define ADBC_OBJECT_DEPTH_TABLES 3
+#define ADBC_OBJECT_DEPTH_COLUMNS ADBC_OBJECT_DEPTH_ALL
+
 /// \brief Get the Arrow schema of a table.
 ///
 /// \param[in] connection The database connection.
@@ -505,7 +587,7 @@ struct ADBC_EXPORT AdbcStatement {
 
   /// \brief The associated driver (used by the driver manager to help
   ///   track state).
-  AdbcDriver* private_driver;
+  struct AdbcDriver* private_driver;
 };
 
 /// \brief Create a new statement for a given connection.
@@ -749,6 +831,10 @@ struct ADBC_EXPORT AdbcDriver {
                                          struct AdbcError*);
   AdbcStatusCode (*ConnectionGetDbSchemas)(struct AdbcConnection*, struct AdbcStatement*,
                                            struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetObjects)(struct AdbcConnection*, int, const char*,
+                                         const char*, const char*, const char**,
+                                         const char*, struct AdbcStatement*,
+                                         struct AdbcError*);
   AdbcStatusCode (*ConnectionGetTableSchema)(struct AdbcConnection*, const char*,
                                              const char*, const char*,
                                              struct ArrowSchema*, struct AdbcError*);
