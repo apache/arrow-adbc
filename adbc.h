@@ -69,8 +69,6 @@ struct ArrowArray {
 
 #endif  // ARROW_C_DATA_INTERFACE
 
-// EXPERIMENTAL: C stream interface
-
 #ifndef ARROW_C_STREAM_INTERFACE
 #define ARROW_C_STREAM_INTERFACE
 
@@ -252,6 +250,11 @@ struct ADBC_EXPORT AdbcError {
 
 /// }@
 
+/// \brief Canonical option value for enabling an option.
+#define ADBC_OPTION_VALUE_ENABLED "true"
+/// \brief Canonical option value for disabling an option.
+#define ADBC_OPTION_VALUE_DISABLED "false"
+
 /// \defgroup adbc-database Database initialization.
 /// Clients first initialize a database, then connect to the database
 /// (below). For client-server databases, one of these steps may be a
@@ -339,32 +342,6 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error);
-
-/// \defgroup adbc-connection-partition Partitioned Results
-/// Some databases may internally partition the results. These
-/// partitions are exposed to clients who may wish to integrate them
-/// with a threaded or distributed execution model, where partitions
-/// can be divided among threads or machines for processing.
-///
-/// Drivers are not required to support partitioning.
-///
-/// Partitions are not ordered. If the result set is sorted,
-/// implementations should return a single partition.
-///
-/// @{
-
-/// \brief Construct a statement for a partition of a query. The
-///   statement can then be read independently.
-///
-/// A partition can be retrieved from AdbcStatementGetPartitionDesc.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* connection,
-                                                      const uint8_t* serialized_partition,
-                                                      size_t serialized_length,
-                                                      struct AdbcStatement* statement,
-                                                      struct AdbcError* error);
-
-/// }@
 
 /// \defgroup adbc-connection-metadata Metadata
 /// Functions for retrieving metadata about the database.
@@ -527,6 +504,64 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct AdbcStatement* statement,
                                            struct AdbcError* error);
+
+/// }@
+
+/// \defgroup adbc-connection-partition Partitioned Results
+/// Some databases may internally partition the results. These
+/// partitions are exposed to clients who may wish to integrate them
+/// with a threaded or distributed execution model, where partitions
+/// can be divided among threads or machines for processing.
+///
+/// Drivers are not required to support partitioning.
+///
+/// Partitions are not ordered. If the result set is sorted,
+/// implementations should return a single partition.
+///
+/// @{
+
+/// \brief Construct a statement for a partition of a query. The
+///   statement can then be read independently.
+///
+/// A partition can be retrieved from AdbcStatementGetPartitionDesc.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* connection,
+                                                      const uint8_t* serialized_partition,
+                                                      size_t serialized_length,
+                                                      struct AdbcStatement* statement,
+                                                      struct AdbcError* error);
+
+/// }@
+
+/// \defgroup adbc-connection-transaction Transaction Semantics
+///
+/// Connections start out in auto-commit mode by default (if
+/// applicable for the given vendor). Use
+/// ADBC_CONNECTION_OPTION_AUTO_COMMIT to change this.
+///
+/// @{
+
+/// \brief The name of the canonical option for whether autocommit is
+///   enabled.
+#define ADBC_CONNECTION_OPTION_AUTOCOMMIT "adbc.connection.autocommit"
+
+/// \brief Commit any pending transactions. Only used if autocommit is
+///   disabled.
+///
+/// Behavior is undefined if this is mixed with SQL transaction
+/// statements.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
+                                    struct AdbcError* error);
+
+/// \brief Roll back any pending transactions. Only used if autocommit
+///   is disabled.
+///
+/// Behavior is undefined if this is mixed with SQL transaction
+/// statements.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
+                                      struct AdbcError* error);
 
 /// }@
 
@@ -784,10 +819,14 @@ struct ADBC_EXPORT AdbcDriver {
                                         struct AdbcError*);
   AdbcStatusCode (*ConnectionInit)(struct AdbcConnection*, struct AdbcError*);
   AdbcStatusCode (*ConnectionRelease)(struct AdbcConnection*, struct AdbcError*);
+
   AdbcStatusCode (*ConnectionDeserializePartitionDesc)(struct AdbcConnection*,
                                                        const uint8_t*, size_t,
                                                        struct AdbcStatement*,
                                                        struct AdbcError*);
+
+  AdbcStatusCode (*ConnectionCommit)(struct AdbcConnection*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionRollback)(struct AdbcConnection*, struct AdbcError*);
 
   AdbcStatusCode (*ConnectionGetObjects)(struct AdbcConnection*, int, const char*,
                                          const char*, const char*, const char**,
@@ -842,7 +881,7 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
 // struct/entrypoint instead?
 
 // For use with count
-#define ADBC_VERSION_0_0_1 28
+#define ADBC_VERSION_0_0_1 26
 
 /// }@
 

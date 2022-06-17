@@ -70,9 +70,31 @@ class Sqlite : public ::testing::Test {
   }
 
  protected:
+  void IngestSampleTable(struct AdbcConnection* connection) {
+    ArrowArray export_table;
+    ArrowSchema export_schema;
+    auto bulk_table =
+        adbc::RecordBatchFromJSON(bulk_schema, R"([[1, "foo"], [2, "bar"]])");
+    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
+    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
+
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                      "bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+  }
+
   AdbcDatabase database;
   AdbcConnection connection;
   AdbcError error = {};
+
+  std::shared_ptr<arrow::Schema> bulk_schema = arrow::schema(
+      {arrow::field("ints", arrow::int64()), arrow::field("strs", arrow::utf8())});
 
   std::shared_ptr<arrow::DataType> column_schema = arrow::struct_({
       arrow::field("column_name", arrow::utf8(), /*nullable=*/false),
@@ -299,12 +321,9 @@ TEST_F(Sqlite, BulkIngestStream) {
 
 TEST_F(Sqlite, MultipleConnections) {
   struct AdbcConnection connection2;
-
-  {
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection2, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &error));
-    ASSERT_NE(connection.private_data, nullptr);
-  }
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection2, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &error));
+  ASSERT_NE(connection.private_data, nullptr);
 
   {
     std::string query = "CREATE TABLE foo (bar INTEGER)";
@@ -364,27 +383,7 @@ TEST_F(Sqlite, MetadataGetTableTypes) {
 }
 
 TEST_F(Sqlite, MetadataGetObjects) {
-  // Create a table via ingestion
-  {
-    ArrowArray export_table;
-    ArrowSchema export_schema;
-    auto bulk_schema = arrow::schema(
-        {arrow::field("ints", arrow::int64()), arrow::field("strs", arrow::utf8())});
-    auto bulk_table =
-        adbc::RecordBatchFromJSON(bulk_schema, R"([[1, "foo"], [2, "bar"]])");
-    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
-    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
-
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
-  }
+  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection));
 
   // Query for catalogs
   AdbcStatement statement;
@@ -633,27 +632,7 @@ TEST_F(Sqlite, MetadataGetObjectsColumns) {
 }
 
 TEST_F(Sqlite, MetadataGetTableSchema) {
-  // Create a table via ingestion
-  auto bulk_schema = arrow::schema(
-      {arrow::field("ints", arrow::int64()), arrow::field("strs", arrow::utf8())});
-  {
-    ArrowArray export_table;
-    ArrowSchema export_schema;
-    auto bulk_table =
-        adbc::RecordBatchFromJSON(bulk_schema, R"([[1, "foo"], [2, "bar"]])");
-    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
-    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
-
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
-  }
+  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection));
 
   ArrowSchema export_schema;
   ADBC_ASSERT_OK_WITH_ERROR(
@@ -663,6 +642,90 @@ TEST_F(Sqlite, MetadataGetTableSchema) {
 
   ASSERT_OK_AND_ASSIGN(auto schema, arrow::ImportSchema(&export_schema));
   ASSERT_SCHEMA_EQ(*schema, *bulk_schema);
+}
+
+TEST_F(Sqlite, Transactions) {
+  // For this test, we explicitly want a shared DB
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcDatabaseSetOption(&database, "filename",
+                            "file:Sqlite_Transactions?mode=memory&cache=shared", &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &error));
+
+  struct AdbcConnection connection2;
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection2, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &error));
+  ASSERT_NE(connection.private_data, nullptr);
+
+  AdbcStatement statement;
+  std::memset(&statement, 0, sizeof(statement));
+
+  const char* query = "SELECT * FROM bulk_insert";
+
+  // Invalid option value
+  ASSERT_NE(ADBC_STATUS_OK,
+            AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                    "invalid", &error));
+
+  // Can't call commit/rollback without disabling autocommit
+  ASSERT_EQ(ADBC_STATUS_INVALID_STATE, AdbcConnectionCommit(&connection, &error));
+  ASSERT_EQ(ADBC_STATUS_INVALID_STATE, AdbcConnectionRollback(&connection, &error));
+  error.release(&error);
+
+  // Ensure it's idempotent
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                     ADBC_OPTION_VALUE_ENABLED, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                     ADBC_OPTION_VALUE_ENABLED, &error));
+
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                     ADBC_OPTION_VALUE_DISABLED, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionCommit(&connection, &error));
+
+  // Uncommitted change
+  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection));
+
+  // SQLite prevents us from executing the query
+  {
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection2, &statement, &error));
+    ASSERT_NE(ADBC_STATUS_OK, AdbcStatementSetSqlQuery(&statement, query, &error));
+    ASSERT_THAT(error.message, ::testing::HasSubstr("database schema is locked"));
+    error.release(&error);
+  }
+
+  // Rollback
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRollback(&connection, &error));
+
+  // Now nothing's visible
+  {
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection2, &statement, &error));
+    ASSERT_NE(ADBC_STATUS_OK, AdbcStatementSetSqlQuery(&statement, query, &error));
+    ASSERT_THAT(error.message, ::testing::HasSubstr("no such table"));
+    error.release(&error);
+  }
+
+  // Commit, should now be visible on other connection
+  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionCommit(&connection, &error));
+
+  {
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection2, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementSetSqlQuery(&statement, query, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ArrowArrayStream stream;
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementGetStream(&statement, &stream, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
+  }
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection2, &error));
 }
 
 }  // namespace adbc
