@@ -562,10 +562,23 @@ class SqliteStatementImpl {
         arrow::field("xdbc_is_autoincrement", arrow::boolean()),
         arrow::field("xdbc_is_generatedcolumn", arrow::boolean()),
     });
+    static std::shared_ptr<arrow::DataType> kUsageSchema = arrow::struct_({
+        arrow::field("fk_catalog", arrow::utf8()),
+        arrow::field("fk_db_schema", arrow::utf8()),
+        arrow::field("fk_table", arrow::utf8()),
+        arrow::field("fk_column_name", arrow::utf8()),
+    });
+    static std::shared_ptr<arrow::DataType> kConstraintSchema = arrow::struct_({
+        arrow::field("constraint_name", arrow::utf8()),
+        arrow::field("constraint_type", arrow::utf8(), /*nullable=*/false),
+        arrow::field("column_names", arrow::list(arrow::utf8()), /*nullable=*/false),
+        arrow::field("column_names", arrow::list(kUsageSchema)),
+    });
     static std::shared_ptr<arrow::DataType> kTableSchema = arrow::struct_({
         arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
         arrow::field("table_type", arrow::utf8(), /*nullable=*/false),
         arrow::field("table_columns", arrow::list(kColumnSchema)),
+        arrow::field("table_constraints", arrow::list(kConstraintSchema)),
     });
     static std::shared_ptr<arrow::DataType> kDbSchemaSchema = arrow::struct_({
         arrow::field("db_schema_name", arrow::utf8()),
@@ -577,9 +590,24 @@ class SqliteStatementImpl {
     });
 
     static const char kTableQuery[] =
-        "SELECT name, type FROM sqlite_master WHERE name LIKE ?";
+        R"(SELECT name, type
+           FROM sqlite_master
+           WHERE name LIKE ? AND type <> "index"
+           ORDER BY name ASC)";
     static const char kColumnQuery[] =
-        "SELECT cid, name FROM pragma_table_info(?) WHERE name LIKE ?";
+        R"(SELECT cid, name
+           FROM pragma_table_info(?)
+           WHERE name LIKE ?
+           ORDER BY cid ASC)";
+    static const char kPrimaryKeyQuery[] =
+        R"(SELECT name
+           FROM pragma_table_info(?)
+           WHERE pk > 0
+           ORDER BY pk ASC)";
+    static const char kForeignKeyQuery[] =
+        R"(SELECT id, seq, "table", "from", "to"
+           FROM pragma_foreign_key_list(?)
+           ORDER BY id, seq ASC)";
 
     arrow::StringBuilder catalog_name;
     std::unique_ptr<arrow::ArrayBuilder> catalog_schemas_builder;
@@ -609,6 +637,30 @@ class SqliteStatementImpl {
         static_cast<arrow::StringBuilder*>(table_columns_items->child_builder(0).get());
     auto* ordinal_positions =
         static_cast<arrow::Int32Builder*>(table_columns_items->child_builder(1).get());
+    auto* table_constraints =
+        static_cast<arrow::ListBuilder*>(db_schema_tables_items->child_builder(3).get());
+    auto* table_constraints_items =
+        static_cast<arrow::StructBuilder*>(table_constraints->value_builder());
+    auto* constraint_names = static_cast<arrow::StringBuilder*>(
+        table_constraints_items->child_builder(0).get());
+    auto* constraint_types = static_cast<arrow::StringBuilder*>(
+        table_constraints_items->child_builder(1).get());
+    auto* constraint_column_names =
+        static_cast<arrow::ListBuilder*>(table_constraints_items->child_builder(2).get());
+    auto* constraint_column_names_items =
+        static_cast<arrow::StringBuilder*>(constraint_column_names->value_builder());
+    auto* constraint_column_usage =
+        static_cast<arrow::ListBuilder*>(table_constraints_items->child_builder(3).get());
+    auto* constraint_column_usage_items =
+        static_cast<arrow::StructBuilder*>(constraint_column_usage->value_builder());
+    auto* constraint_column_usage_fk_catalog = static_cast<arrow::StringBuilder*>(
+        constraint_column_usage_items->child_builder(0).get());
+    auto* constraint_column_usage_fk_db_schema = static_cast<arrow::StringBuilder*>(
+        constraint_column_usage_items->child_builder(1).get());
+    auto* constraint_column_usage_fk_table = static_cast<arrow::StringBuilder*>(
+        constraint_column_usage_items->child_builder(2).get());
+    auto* constraint_column_usage_fk_column_name = static_cast<arrow::StringBuilder*>(
+        constraint_column_usage_items->child_builder(3).get());
 
     if (!catalog || std::strlen(catalog) == 0) {
       ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_name.AppendNull(), error));
@@ -667,7 +719,10 @@ class SqliteStatementImpl {
                   if (depth == ADBC_OBJECT_DEPTH_TABLES) {
                     ADBC_RETURN_NOT_OK(
                         FromArrowStatus(table_columns->AppendNull(), error));
+                    ADBC_RETURN_NOT_OK(
+                        FromArrowStatus(table_constraints->AppendNull(), error));
                   } else {
+                    ADBC_RETURN_NOT_OK(FromArrowStatus(table_columns->Append(), error));
                     ADBC_RETURN_NOT_OK(DoQuery(
                         db, kColumnQuery, error,
                         [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
@@ -694,8 +749,6 @@ class SqliteStatementImpl {
                           }
 
                           int rc = SQLITE_OK;
-                          ADBC_RETURN_NOT_OK(
-                              FromArrowStatus(table_columns->Append(), error));
                           int64_t row_count = 0;
                           while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
                             row_count++;
@@ -717,6 +770,113 @@ class SqliteStatementImpl {
                                 table_columns_items->child_builder(i)->AppendNulls(
                                     row_count),
                                 error));
+                          }
+                          if (rc != SQLITE_DONE) {
+                            return CheckRc(db, rc, "sqlite3_step", error);
+                          }
+                          return ADBC_STATUS_OK;
+                        }));
+
+                    // We can get primary key and foreign keys, but not unique (without
+                    // parsing the table definition, at least)
+                    ADBC_RETURN_NOT_OK(
+                        FromArrowStatus(table_constraints->Append(), error));
+                    ADBC_RETURN_NOT_OK(DoQuery(
+                        db, kPrimaryKeyQuery, error,
+                        [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+                          ADBC_RETURN_NOT_OK(
+                              CheckRc(db,
+                                      sqlite3_bind_text64(stmt, 1, cur_table,
+                                                          std::strlen(cur_table),
+                                                          SQLITE_STATIC, SQLITE_UTF8),
+                                      "sqlite3_bind_text64", error));
+
+                          int rc = SQLITE_OK;
+                          bool has_primary_key = false;
+                          while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+                            if (!has_primary_key) {
+                              ADBC_RETURN_NOT_OK(
+                                  FromArrowStatus(constraint_names->AppendNull(), error));
+                              ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                  constraint_types->Append("PRIMARY KEY"), error));
+                              ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                  constraint_column_names->Append(), error));
+                              ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                  constraint_column_usage->Append(), error));
+                            }
+                            has_primary_key = true;
+                            const char* cur_column_name = reinterpret_cast<const char*>(
+                                sqlite3_column_text(stmt, 0));
+
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                constraint_column_names_items->Append(cur_column_name),
+                                error));
+                          }
+                          if (has_primary_key) {
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                table_constraints_items->Append(), error));
+                          }
+                          if (rc != SQLITE_DONE) {
+                            return CheckRc(db, rc, "sqlite3_step", error);
+                          }
+                          return ADBC_STATUS_OK;
+                        }));
+                    ADBC_RETURN_NOT_OK(DoQuery(
+                        db, kForeignKeyQuery, error,
+                        [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+                          ADBC_RETURN_NOT_OK(
+                              CheckRc(db,
+                                      sqlite3_bind_text64(stmt, 1, cur_table,
+                                                          std::strlen(cur_table),
+                                                          SQLITE_STATIC, SQLITE_UTF8),
+                                      "sqlite3_bind_text64", error));
+
+                          int rc = SQLITE_OK;
+                          int prev_key_id = -1;
+                          while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+                            const int key_id = sqlite3_column_int(stmt, 0);
+                            const int key_seq = sqlite3_column_int(stmt, 1);
+                            const char* to_table = reinterpret_cast<const char*>(
+                                sqlite3_column_text(stmt, 2));
+                            const char* from_col = reinterpret_cast<const char*>(
+                                sqlite3_column_text(stmt, 3));
+                            const char* to_col = reinterpret_cast<const char*>(
+                                sqlite3_column_text(stmt, 4));
+                            if (key_id != prev_key_id) {
+                              ADBC_RETURN_NOT_OK(
+                                  FromArrowStatus(constraint_names->AppendNull(), error));
+                              ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                  constraint_types->Append("FOREIGN KEY"), error));
+                              ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                  constraint_column_names->Append(), error));
+                              ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                  constraint_column_usage->Append(), error));
+                              if (prev_key_id != -1) {
+                                ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                    table_constraints_items->Append(), error));
+                              }
+                            }
+                            prev_key_id = key_id;
+
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                constraint_column_names_items->Append(from_col), error));
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                constraint_column_usage_fk_catalog->AppendNull(), error));
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                constraint_column_usage_fk_db_schema->AppendNull(),
+                                error));
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                constraint_column_usage_fk_table->Append(to_table),
+                                error));
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                constraint_column_usage_fk_column_name->Append(to_col),
+                                error));
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                constraint_column_usage_items->Append(), error));
+                          }
+                          if (prev_key_id != -1) {
+                            ADBC_RETURN_NOT_OK(FromArrowStatus(
+                                table_constraints_items->Append(), error));
                           }
                           if (rc != SQLITE_DONE) {
                             return CheckRc(db, rc, "sqlite3_step", error);

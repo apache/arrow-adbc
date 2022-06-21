@@ -425,6 +425,7 @@ AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
 /// table_name               | utf8 not null
 /// table_type               | utf8 not null
 /// table_columns            | list<COLUMN_SCHEMA>
+/// table_constraints        | list<CONSTRAINT_SCHEMA>
 ///
 /// COLUMN_SCHEMA is a Struct with fields:
 ///
@@ -453,6 +454,29 @@ AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
 /// 1. The column's ordinal position in the table (starting from 1).
 /// 2. Database-specific description of the column.
 /// 3. Optional, JDBC/ODBC-compatible value.
+///
+/// CONSTRAINT_SCHEMA is a Struct with fields:
+///
+/// Field Name               | Field Type            | Comments
+/// -------------------------|-----------------------|---------
+/// constraint_name          | utf8                  |
+/// constraint_type          | utf8 not null         | (1)
+/// constraint_column_names  | list<utf8> not null   | (2)
+/// constraint_column_usage  | list<USAGE_SCHEMA>    | (3)
+///
+/// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
+/// 2. The columns on the current table that are constrained, in
+///    order.
+/// 3. For FOREIGN KEY only, the referenced table and columns.
+///
+/// USAGE_SCHEMA is a Struct with fields:
+///
+/// Field Name               | Field Type            | Comments
+/// -------------------------|-----------------------|---------
+/// fk_catalog               | utf8                  |
+/// fk_db_schema             | utf8                  |
+/// fk_table                 | utf8 not null         |
+/// fk_column_name           | utf8 not null         |
 ///
 /// \param[in] connection The database connection.
 /// \param[in] depth The level of nesting to display. If 0, display

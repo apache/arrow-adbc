@@ -73,6 +73,54 @@ class Sqlite : public ::testing::Test {
   AdbcDatabase database;
   AdbcConnection connection;
   AdbcError error = {};
+
+  std::shared_ptr<arrow::DataType> column_schema = arrow::struct_({
+      arrow::field("column_name", arrow::utf8(), /*nullable=*/false),
+      arrow::field("ordinal_position", arrow::int32()),
+      arrow::field("remarks", arrow::utf8()),
+      arrow::field("xdbc_data_type", arrow::int16()),
+      arrow::field("xdbc_type_name", arrow::utf8()),
+      arrow::field("xdbc_column_size", arrow::int32()),
+      arrow::field("xdbc_decimal_digits", arrow::int16()),
+      arrow::field("xdbc_num_prec_radix", arrow::int16()),
+      arrow::field("xdbc_nullable", arrow::int16()),
+      arrow::field("xdbc_column_def", arrow::utf8()),
+      arrow::field("xdbc_sql_data_type", arrow::int16()),
+      arrow::field("xdbc_datetime_sub", arrow::int16()),
+      arrow::field("xdbc_char_octet_length", arrow::int32()),
+      arrow::field("xdbc_is_nullable", arrow::utf8()),
+      arrow::field("xdbc_scope_catalog", arrow::utf8()),
+      arrow::field("xdbc_scope_schema", arrow::utf8()),
+      arrow::field("xdbc_scope_table", arrow::utf8()),
+      arrow::field("xdbc_is_autoincrement", arrow::boolean()),
+      arrow::field("xdbc_is_generatedcolumn", arrow::boolean()),
+  });
+  std::shared_ptr<arrow::DataType> usage_schema = arrow::struct_({
+      arrow::field("fk_catalog", arrow::utf8()),
+      arrow::field("fk_db_schema", arrow::utf8()),
+      arrow::field("fk_table", arrow::utf8()),
+      arrow::field("fk_column_name", arrow::utf8()),
+  });
+  std::shared_ptr<arrow::DataType> constraint_schema = arrow::struct_({
+      arrow::field("constraint_name", arrow::utf8()),
+      arrow::field("constraint_type", arrow::utf8(), /*nullable=*/false),
+      arrow::field("column_names", arrow::list(arrow::utf8()), /*nullable=*/false),
+      arrow::field("column_names", arrow::list(usage_schema)),
+  });
+  std::shared_ptr<arrow::DataType> table_schema = arrow::struct_({
+      arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
+      arrow::field("table_type", arrow::utf8(), /*nullable=*/false),
+      arrow::field("table_columns", arrow::list(column_schema)),
+      arrow::field("table_constraints", arrow::list(constraint_schema)),
+  });
+  std::shared_ptr<arrow::DataType> db_schema_schema = arrow::struct_({
+      arrow::field("db_schema_name", arrow::utf8()),
+      arrow::field("db_schema_tables", arrow::list(table_schema)),
+  });
+  std::shared_ptr<arrow::Schema> catalog_schema = arrow::schema({
+      arrow::field("catalog_name", arrow::utf8()),
+      arrow::field("catalog_db_schemas", arrow::list(db_schema_schema)),
+  });
 };
 
 TEST_F(Sqlite, SqlExecute) {
@@ -419,41 +467,6 @@ TEST_F(Sqlite, MetadataGetTableTypes) {
 }
 
 TEST_F(Sqlite, MetadataGetObjects) {
-  std::shared_ptr<arrow::DataType> column_schema = arrow::struct_({
-      arrow::field("column_name", arrow::utf8(), /*nullable=*/false),
-      arrow::field("ordinal_position", arrow::int32()),
-      arrow::field("remarks", arrow::utf8()),
-      arrow::field("xdbc_data_type", arrow::int16()),
-      arrow::field("xdbc_type_name", arrow::utf8()),
-      arrow::field("xdbc_column_size", arrow::int32()),
-      arrow::field("xdbc_decimal_digits", arrow::int16()),
-      arrow::field("xdbc_num_prec_radix", arrow::int16()),
-      arrow::field("xdbc_nullable", arrow::int16()),
-      arrow::field("xdbc_column_def", arrow::utf8()),
-      arrow::field("xdbc_sql_data_type", arrow::int16()),
-      arrow::field("xdbc_datetime_sub", arrow::int16()),
-      arrow::field("xdbc_char_octet_length", arrow::int32()),
-      arrow::field("xdbc_is_nullable", arrow::utf8()),
-      arrow::field("xdbc_scope_catalog", arrow::utf8()),
-      arrow::field("xdbc_scope_schema", arrow::utf8()),
-      arrow::field("xdbc_scope_table", arrow::utf8()),
-      arrow::field("xdbc_is_autoincrement", arrow::boolean()),
-      arrow::field("xdbc_is_generatedcolumn", arrow::boolean()),
-  });
-  std::shared_ptr<arrow::DataType> table_schema = arrow::struct_({
-      arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
-      arrow::field("table_type", arrow::utf8(), /*nullable=*/false),
-      arrow::field("table_columns", arrow::list(column_schema)),
-  });
-  std::shared_ptr<arrow::DataType> db_schema_schema = arrow::struct_({
-      arrow::field("db_schema_name", arrow::utf8()),
-      arrow::field("db_schema_tables", arrow::list(table_schema)),
-  });
-  std::shared_ptr<arrow::Schema> catalog_schema = arrow::schema({
-      arrow::field("catalog_name", arrow::utf8()),
-      arrow::field("catalog_db_schemas", arrow::list(db_schema_schema)),
-  });
-
   // Create a table via ingestion
   {
     ArrowArray export_table;
@@ -532,7 +545,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
                          {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
-  {"table_name": "bulk_insert", "table_type": "table", "table_columns": null}
+  {"table_name": "bulk_insert", "table_type": "table", "table_columns": null, "table_constraints": null}
 ]}]]])"}));
   batches.clear();
 
@@ -545,7 +558,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
                          {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
-  {"table_name": "bulk_insert", "table_type": "table", "table_columns": null}
+  {"table_name": "bulk_insert", "table_type": "table", "table_columns": null, "table_constraints": null}
 ]}]]])"}));
   batches.clear();
 
@@ -580,7 +593,8 @@ TEST_F(Sqlite, MetadataGetObjects) {
     "table_columns": [
       ["ints", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
       ["strs", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-    ]
+    ],
+    "table_constraints": []
   }
 ]}]]])"}));
   batches.clear();
@@ -615,7 +629,8 @@ TEST_F(Sqlite, MetadataGetObjects) {
     "table_columns": [
       ["ints", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
       ["strs", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-    ]
+    ],
+    "table_constraints": []
   }
 ]}]]])"}));
   batches.clear();
@@ -634,6 +649,86 @@ TEST_F(Sqlite, MetadataGetObjects) {
     "table_type": "table",
     "table_columns": [
       ["ints", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+    ],
+    "table_constraints": []
+  }
+]}]]])"}));
+  batches.clear();
+}
+
+TEST_F(Sqlite, MetadataGetObjectsColumns) {
+  {
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error,
+        AdbcStatementSetSqlQuery(
+            &statement, "CREATE TABLE parent (a, b, c, PRIMARY KEY(c, b))", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetSqlQuery(&statement, "CREATE TABLE other (a)", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetSqlQuery(
+                   &statement,
+                   "CREATE TABLE child (a, b, c, PRIMARY KEY(a), FOREIGN KEY (c, b) "
+                   "REFERENCES parent (c, b), FOREIGN KEY (a) REFERENCES other(a))",
+                   &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
+  }
+
+  AdbcStatement statement;
+  std::memset(&statement, 0, sizeof(statement));
+  std::shared_ptr<arrow::Schema> schema;
+  arrow::RecordBatchVector batches;
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, &statement, &error));
+  ReadStatement(&statement, &schema, &batches);
+  EXPECT_THAT(batches,
+              BatchesAre(catalog_schema,
+                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+  {
+    "table_name": "child",
+    "table_type": "table",
+    "table_columns": [
+      ["a", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+      ["b", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+      ["c", 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+    ],
+    "table_constraints": [
+      [null, "PRIMARY KEY", ["a"], []],
+      [null, "FOREIGN KEY", ["a"], [[null, null, "other", "a"]]],
+      [null, "FOREIGN KEY", ["c", "b"], [[null, null, "parent", "c"], [null, null, "parent", "b"]]]
+    ]
+  },
+  {
+    "table_name": "other",
+    "table_type": "table",
+    "table_columns": [
+      ["a", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+    ],
+    "table_constraints": []
+  },
+  {
+    "table_name": "parent",
+    "table_type": "table",
+    "table_columns": [
+      ["a", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+      ["b", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+      ["c", 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+    ],
+    "table_constraints": [
+      [null, "PRIMARY KEY", ["c", "b"], []]
     ]
   }
 ]}]]])"}));
