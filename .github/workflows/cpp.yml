@@ -38,9 +38,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  cpp-conda:
-    name: "Conda"
-    runs-on: ubuntu-latest
+  cpp-conda-unix:
+    name: "Conda/${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["macos-latest", "ubuntu-latest"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -75,16 +78,71 @@ jobs:
         run: |
           mkdir -p build/driver_sqlite
           pushd build/driver_sqlite
-          cmake ../../drivers/sqlite -DARROW_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
+          cmake ../../drivers/sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
           cmake --build .
-          ctest --output-on-failure
+          export DYLD_LIBRARY_PATH=$(pwd)
+          # MacOS doesn't allow DYLD_LIBRARY_PATH to propagate through
+          # CTest, so call the test directly
+          ./adbc-driver-sqlite-test
           popd
       - name: Build/Test Driver Manager
         shell: bash -l {0}
         run: |
           mkdir -p build/driver_manager
           pushd build/driver_manager
-          cmake ../../adbc_driver_manager -DARROW_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
+          cmake ../../adbc_driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
           cmake --build .
-          env LD_LIBRARY_PATH=../driver_sqlite ctest --output-on-failure
+          export DYLD_LIBRARY_PATH=$(pwd):../driver_sqlite
+          export LD_LIBRARY_PATH=$(pwd):../driver_sqlite
+          ./adbc-driver-manager-test
           popd
+
+  cpp-conda-windows:
+    name: "Conda/${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["windows-latest"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+          # Required for caching
+          use-only-tar-bz2: true
+      - name: Install Dependencies
+        shell: cmd /C call {0}
+        run: |
+          mamba install --file ci/conda_env_cpp.txt
+      - name: Build/Test SQLite3 Driver
+        shell: cmd /C call {0}
+        run: |
+          mkdir build\driver_sqlite
+          cd build\driver_sqlite
+          cmake -GNinja ..\..\drivers\sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
+          if %errorlevel% neq 0 then exit /b %errorlevel%
+          cmake --build .
+          if %errorlevel% neq 0 then exit /b %errorlevel%
+          ctest --output-on-failure --no-tests=error
+          if %errorlevel% neq 0 then exit /b %errorlevel%
+          cd ..\..
+      - name: Build/Test Driver Manager
+        shell: cmd /C call {0}
+        run: |
+          mkdir build\driver_manager
+          cd build\driver_manager
+          cmake -GNinja ..\..\adbc_driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
+          if %errorlevel% neq 0 then exit /b %errorlevel%
+          cmake --build .
+          if %errorlevel% neq 0 then exit /b %errorlevel%
+          echo ${{ github.workspace }}\build\driver_sqlite
+          dir ${{ github.workspace }}\build\driver_sqlite
+          set PATH=%PATH%;${{ github.workspace }}\build\driver_sqlite
+          ctest --output-on-failure --no-tests=error
+          if %errorlevel% neq 0 then exit /b %errorlevel%
+          cd ..\..
