@@ -61,6 +61,22 @@ void SetError(struct AdbcError* error, const std::string& message) {
 }
 
 // Default stubs
+AdbcStatusCode ConnectionGetTableTypes(struct AdbcConnection*, struct AdbcStatement*,
+                                       struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, const char*,
+                                    const char*, const char**, const char*,
+                                    struct AdbcStatement*, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionGetTableSchema(struct AdbcConnection*, const char*, const char*,
+                                        const char*, struct ArrowSchema*,
+                                        struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
 
 AdbcStatusCode StatementBind(struct AdbcStatement*, struct ArrowArray*,
                              struct ArrowSchema*, struct AdbcError* error) {
@@ -518,6 +534,10 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   CHECK_REQUIRED(driver, DatabaseNew);
   CHECK_REQUIRED(driver, DatabaseInit);
   CHECK_REQUIRED(driver, DatabaseRelease);
+
+  FILL_DEFAULT(driver, ConnectionGetObjects);
+  FILL_DEFAULT(driver, ConnectionGetTableSchema);
+  FILL_DEFAULT(driver, ConnectionGetTableTypes);
 
   FILL_DEFAULT(driver, StatementBind);
   FILL_DEFAULT(driver, StatementExecute);
