@@ -78,7 +78,7 @@ jobs:
         run: |
           mkdir -p build/driver_sqlite
           pushd build/driver_sqlite
-          cmake ../../drivers/sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
+          cmake ../../drivers/sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
           cmake --build .
           export DYLD_LIBRARY_PATH=$(pwd)
           # MacOS doesn't allow DYLD_LIBRARY_PATH to propagate through
@@ -90,7 +90,7 @@ jobs:
         run: |
           mkdir -p build/driver_manager
           pushd build/driver_manager
-          cmake ../../adbc_driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
+          cmake ../../adbc_driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
           cmake --build .
           export DYLD_LIBRARY_PATH=$(pwd):../driver_sqlite
           export LD_LIBRARY_PATH=$(pwd):../driver_sqlite

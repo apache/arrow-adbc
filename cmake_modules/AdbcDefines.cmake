@@ -17,8 +17,12 @@
 
 # Common definitions for the CMake projects in this repository.
 
-enable_language(C)
+enable_language(C CXX)
+
+set(BUILD_SUPPORT_DIR "${REPOSITORY_ROOT}/ci/build_support")
+
 include(DefineOptions)
+include(san-config)
 
 set(ADBC_VERSION "9.0.0-SNAPSHOT")
 set(ADBC_BASE_VERSION "9.0.0")
@@ -38,5 +42,4 @@ add_custom_target(all-tests)
 if(ADBC_BUILD_TESTS)
   find_package(GTest)
   set(ADBC_TEST_LINK_LIBS GTest::gtest_main GTest::gtest GTest::gmock)
-  set(BUILD_SUPPORT_DIR "${REPOSITORY_ROOT}/ci/build_support")
 endif()

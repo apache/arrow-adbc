@@ -23,6 +23,10 @@
 #include <arrow/table.h>
 #include <arrow/testing/matchers.h>
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "adbc.h"
 #include "adbc_driver_manager.h"
 #include "drivers/test_util.h"
@@ -60,6 +64,10 @@ class DriverManager : public ::testing::Test {
   }
 
   void TearDown() override {
+    if (error.message) {
+      error.release(&error);
+    }
+
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
     ASSERT_EQ(connection.private_data, nullptr);
 
@@ -192,6 +200,7 @@ TEST_F(DriverManager, BulkIngestStream) {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBindStream(&statement, &export_stream, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
   {
