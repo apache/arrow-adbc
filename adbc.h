@@ -158,25 +158,90 @@ struct AdbcStatement;
 /// Error codes for operations that may fail.
 typedef uint8_t AdbcStatusCode;
 
-/// No error.
+/// \brief No error.
 #define ADBC_STATUS_OK 0
-/// An unknown error occurred.
+/// \brief An unknown error occurred.
+///
+/// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_UNKNOWN 1
-/// The operation is not implemented.
+/// \brief The operation is not implemented or supported.
+///
+/// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_NOT_IMPLEMENTED 2
-/// An operation was attempted on an uninitialized object.
-#define ADBC_STATUS_UNINITIALIZED 3
-/// The arguments are invalid.
-#define ADBC_STATUS_INVALID_ARGUMENT 4
-/// The object is in an invalid state for the given operation.
-#define ADBC_STATUS_INTERNAL 5
-/// An I/O error occurred.
-#define ADBC_STATUS_IO 6
+/// \brief A requested resource was not found.
+///
+/// May indicate a driver-side or database-side error.
+#define ADBC_STATUS_NOT_FOUND 3
+/// \brief A requested resource already exists.
+///
+/// May indicate a driver-side or database-side error.
+#define ADBC_STATUS_ALREADY_EXISTS 4
+/// \brief The arguments are invalid, likely a programming error.
+///
+/// For instance, they may be of the wrong format, or out of range.
+///
+/// May indicate a driver-side or database-side error.
+#define ADBC_STATUS_INVALID_ARGUMENT 5
+/// \brief The preconditions for the operation are not met, likely a
+///   programming error.
+///
+/// For instance, the object may be uninitialized, or may have not
+/// been fully configured.
+///
+/// May indicate a driver-side or database-side error.
+#define ADBC_STATUS_INVALID_STATE 6
+/// \brief Invalid data was processed (not a programming error).
+///
+/// For instance, a division by zero may have occurred during query
+/// execution.
+///
+/// May indicate a database-side error only.
+#define ADBC_STATUS_INVALID_DATA 7
+/// \brief The database's integrity was affected.
+///
+/// For instance, a foreign key check may have failed, or a uniqueness
+/// constraint may have been violated.
+///
+/// May indicate a database-side error only.
+#define ADBC_STATUS_INTEGRITY 8
+/// \brief An error internal to the driver or database occurred.
+///
+/// May indicate a driver-side or database-side error.
+#define ADBC_STATUS_INTERNAL 9
+/// \brief An I/O error occurred.
+///
+/// For instance, a remote service may be unavailable.
+///
+/// May indicate a driver-side or database-side error.
+#define ADBC_STATUS_IO 10
+/// \brief The operation was cancelled, not due to a timeout.
+///
+/// May indicate a driver-side or database-side error.
+#define ADBC_STATUS_CANCELLED 11
+/// \brief The operation was cancelled due to a timeout.
+///
+/// May indicate a driver-side or database-side error.
+#define ADBC_STATUS_TIMEOUT 12
+/// \brief Authentication failed.
+///
+/// May indicate a database-side error only.
+#define ADBC_STATUS_UNAUTHENTICATED 13
+/// \brief The client is not authorized to perform the given operation.
+///
+/// May indicate a database-side error only.
+#define ADBC_STATUS_UNAUTHORIZED 14
 
 /// \brief A detailed error message for an operation.
 struct ADBC_EXPORT AdbcError {
   /// \brief The error message.
   char* message;
+
+  /// \brief A vendor-specific error code, if applicable.
+  int32_t vendor_code;
+
+  /// \brief A SQLSTATE error code, if provided, as defined by the
+  ///   SQL:2003 standard.
+  char sqlstate[5];
 
   /// \brief Release the contained error.
   ///
@@ -687,11 +752,10 @@ AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
 
 /// \brief An instance of an initialized database driver.
 ///
-/// This provides a common interface for implementation-specific
-/// driver initialization routines. Drivers should populate this
-/// struct, and applications can call ADBC functions through this
-/// struct, without worrying about multiple definitions of the same
-/// symbol.
+/// This provides a common interface for vendor-specific driver
+/// initialization routines. Drivers should populate this struct, and
+/// applications can call ADBC functions through this struct, without
+/// worrying about multiple definitions of the same symbol.
 struct ADBC_EXPORT AdbcDriver {
   /// \brief Opaque driver-defined state.
   /// This field is NULLPTR if the driver is unintialized/freed (but

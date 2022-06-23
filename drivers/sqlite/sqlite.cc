@@ -165,7 +165,7 @@ class SqliteDatabaseImpl {
   AdbcStatusCode Init(struct AdbcError* error) {
     if (db_) {
       SetError(error, "Database already initialized");
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INVALID_STATE;
     }
     const char* filename = ":memory:";
     auto it = options_.find("filename");
@@ -181,7 +181,7 @@ class SqliteDatabaseImpl {
   AdbcStatusCode SetOption(const char* key, const char* value, struct AdbcError* error) {
     if (db_) {
       SetError(error, "Database already initialized");
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INVALID_STATE;
     }
     options_[key] = value;
     return ADBC_STATUS_OK;
@@ -191,7 +191,7 @@ class SqliteDatabaseImpl {
     std::lock_guard<std::mutex> guard(mutex_);
     if (--connection_count_ < 0) {
       SetError(error, "Connection count underflow");
-      return ADBC_STATUS_INTERNAL;
+      return ADBC_STATUS_INVALID_STATE;
     }
     return ADBC_STATUS_OK;
   }
@@ -202,13 +202,13 @@ class SqliteDatabaseImpl {
     if (connection_count_ > 0) {
       SetError(error, "Cannot release database with ", connection_count_,
                " open connections");
-      return ADBC_STATUS_INTERNAL;
+      return ADBC_STATUS_INVALID_STATE;
     }
 
     auto status = sqlite3_close(db_);
     if (status != SQLITE_OK) {
       if (db_) SetError(db_, "sqlite3_close", error);
-      return ADBC_STATUS_UNKNOWN;
+      return ADBC_STATUS_IO;
     }
     return ADBC_STATUS_OK;
   }
@@ -234,7 +234,7 @@ class SqliteConnectionImpl {
         (db_schema && std::strlen(db_schema) > 0)) {
       std::memset(schema, 0, sizeof(*schema));
       SetError(error, "Catalog/schema are not supported");
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
     std::string query = "SELECT * FROM ";
@@ -264,7 +264,7 @@ class SqliteConnectionImpl {
     db_ = database_->Connect();
     if (!db_) {
       SetError(error, "Database not yet initialized!");
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INVALID_STATE;
     }
     return ADBC_STATUS_OK;
   }
@@ -482,14 +482,14 @@ class SqliteStatementImpl {
     auto status = arrow::ImportRecordBatch(values, schema).Value(&batch);
     if (!status.ok()) {
       SetError(error, status);
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INTERNAL;
     }
 
     std::shared_ptr<arrow::Table> table;
     status = arrow::Table::FromRecordBatches({std::move(batch)}).Value(&table);
     if (!status.ok()) {
       SetError(error, status);
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INTERNAL;
     }
 
     bind_parameters_.reset(new arrow::TableBatchReader(std::move(table)));
@@ -501,7 +501,7 @@ class SqliteStatementImpl {
     auto status = arrow::ImportRecordBatchReader(stream).Value(&bind_parameters_);
     if (!status.ok()) {
       SetError(error, status);
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INTERNAL;
     }
     return ADBC_STATUS_OK;
   }
@@ -514,7 +514,7 @@ class SqliteStatementImpl {
       return ExecuteBulk(error);
     }
     SetError(error, "Cannot execute a statement without a query");
-    return ADBC_STATUS_UNINITIALIZED;
+    return ADBC_STATUS_INVALID_STATE;
   }
 
   AdbcStatusCode GetObjects(const std::shared_ptr<SqliteStatementImpl>& self, int depth,
@@ -921,7 +921,7 @@ class SqliteStatementImpl {
                            struct ArrowArrayStream* out, struct AdbcError* error) {
     if (!result_reader_) {
       SetError(error, "Statement has not yet been executed");
-      return ADBC_STATUS_UNINITIALIZED;
+      return ADBC_STATUS_INVALID_STATE;
     }
     auto status = arrow::ExportRecordBatchReader(result_reader_, out);
     if (!status.ok()) {
@@ -964,7 +964,7 @@ class SqliteStatementImpl {
   AdbcStatusCode ExecuteBulk(struct AdbcError* error) {
     if (!bind_parameters_) {
       SetError(error, "Must AdbcStatementBind for bulk insertion");
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_INVALID_STATE;
     }
 
     sqlite3* db = connection_->db();
@@ -1107,7 +1107,7 @@ AdbcStatusCode SqliteDatabaseNew(struct AdbcDatabase* database, struct AdbcError
 
 AdbcStatusCode SqliteDatabaseInit(struct AdbcDatabase* database,
                                   struct AdbcError* error) {
-  if (!database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteDatabaseImpl>*>(database->private_data);
   return (*ptr)->Init(error);
@@ -1115,7 +1115,7 @@ AdbcStatusCode SqliteDatabaseInit(struct AdbcDatabase* database,
 
 AdbcStatusCode SqliteDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                        const char* value, struct AdbcError* error) {
-  if (!database || !database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!database || !database->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteDatabaseImpl>*>(database->private_data);
   return (*ptr)->SetOption(key, value, error);
@@ -1123,7 +1123,7 @@ AdbcStatusCode SqliteDatabaseSetOption(struct AdbcDatabase* database, const char
 
 AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
                                      struct AdbcError* error) {
-  if (!database->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteDatabaseImpl>*>(database->private_data);
   AdbcStatusCode status = (*ptr)->Release(error);
@@ -1136,7 +1136,7 @@ AdbcStatusCode SqliteConnectionGetObjects(
     struct AdbcConnection* connection, int depth, const char* catalog,
     const char* db_schema, const char* table_name, const char** table_types,
     const char* column_name, struct AdbcStatement* statement, struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   return (*ptr)->GetObjects(*ptr, depth, catalog, db_schema, table_name, table_types,
@@ -1148,7 +1148,7 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
                                               const char* table_name,
                                               struct ArrowSchema* schema,
                                               struct AdbcError* error) {
-  if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
   return (*ptr)->GetTableSchema(catalog, db_schema, table_name, schema, error);
@@ -1157,7 +1157,7 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
 AdbcStatusCode SqliteConnectionGetTableTypes(struct AdbcConnection* connection,
                                              struct AdbcStatement* statement,
                                              struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   return (*ptr)->GetTableTypes(*ptr, error);
@@ -1165,7 +1165,7 @@ AdbcStatusCode SqliteConnectionGetTableTypes(struct AdbcConnection* connection,
 
 AdbcStatusCode SqliteConnectionInit(struct AdbcConnection* connection,
                                     struct AdbcError* error) {
-  if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
   return (*ptr)->Init(error);
@@ -1183,7 +1183,7 @@ AdbcStatusCode SqliteConnectionNew(struct AdbcDatabase* database,
 
 AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
                                        struct AdbcError* error) {
-  if (!connection->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
   AdbcStatusCode status = (*ptr)->Release(error);
@@ -1201,7 +1201,7 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
 AdbcStatusCode SqliteStatementBind(struct AdbcStatement* statement,
                                    struct ArrowArray* values, struct ArrowSchema* schema,
                                    struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   return (*ptr)->Bind(*ptr, values, schema, error);
@@ -1210,7 +1210,7 @@ AdbcStatusCode SqliteStatementBind(struct AdbcStatement* statement,
 AdbcStatusCode SqliteStatementBindStream(struct AdbcStatement* statement,
                                          struct ArrowArrayStream* stream,
                                          struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   return (*ptr)->Bind(*ptr, stream, error);
@@ -1218,7 +1218,7 @@ AdbcStatusCode SqliteStatementBindStream(struct AdbcStatement* statement,
 
 AdbcStatusCode SqliteStatementExecute(struct AdbcStatement* statement,
                                       struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   return (*ptr)->Execute(*ptr, error);
@@ -1239,7 +1239,7 @@ AdbcStatusCode SqliteStatementGetPartitionDescSize(struct AdbcStatement* stateme
 AdbcStatusCode SqliteStatementGetStream(struct AdbcStatement* statement,
                                         struct ArrowArrayStream* out,
                                         struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   return (*ptr)->GetStream(*ptr, out, error);
@@ -1257,14 +1257,14 @@ AdbcStatusCode SqliteStatementNew(struct AdbcConnection* connection,
 
 AdbcStatusCode SqliteStatementPrepare(struct AdbcStatement* statement,
                                       struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   // No-op
   return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode SqliteStatementRelease(struct AdbcStatement* statement,
                                       struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   auto status = (*ptr)->Close(error);
@@ -1275,7 +1275,7 @@ AdbcStatusCode SqliteStatementRelease(struct AdbcStatement* statement,
 
 AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const char* key,
                                         const char* value, struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   return (*ptr)->SetOption(*ptr, key, value, error);
@@ -1283,7 +1283,7 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
 
 AdbcStatusCode SqliteStatementSetSqlQuery(struct AdbcStatement* statement,
                                           const char* query, struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   return (*ptr)->SetSqlQuery(*ptr, query, error);
