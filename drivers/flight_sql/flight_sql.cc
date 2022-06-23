@@ -499,29 +499,24 @@ AdbcStatusCode FlightSqlStatementSetSqlQuery(struct AdbcStatement* statement,
 
 }  // namespace
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
   return FlightSqlDatabaseInit(database, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
   return FlightSqlDatabaseNew(database, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                      const char* value, struct AdbcError* error) {
   return FlightSqlDatabaseSetOption(database, key, value, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
                                    struct AdbcError* error) {
   return FlightSqlDatabaseRelease(database, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* connection,
                                                       const uint8_t* serialized_partition,
                                                       size_t serialized_length,
@@ -531,79 +526,67 @@ AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* con
                                                      serialized_length, statement, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct AdbcStatement* statement,
                                            struct AdbcError* error) {
   return FlightSqlConnectionGetTableTypes(connection, statement, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
                                   struct AdbcError* error) {
   return FlightSqlConnectionInit(connection, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
                                  struct AdbcConnection* connection,
                                  struct AdbcError* error) {
   return FlightSqlConnectionNew(database, connection, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
                                        const char* value, struct AdbcError* error) {
   return FlightSqlConnectionSetOption(connection, key, value, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   return FlightSqlConnectionRelease(connection, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
                                     struct AdbcError* error) {
   return FlightSqlStatementExecute(statement, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
                                              uint8_t* partition_desc,
                                              struct AdbcError* error) {
   return FlightSqlStatementGetPartitionDesc(statement, partition_desc, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
                                                  size_t* length,
                                                  struct AdbcError* error) {
   return FlightSqlStatementGetPartitionDescSize(statement, length, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
                                       struct ArrowArrayStream* out,
                                       struct AdbcError* error) {
   return FlightSqlStatementGetStream(statement, out, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement,
                                 struct AdbcError* error) {
   return FlightSqlStatementNew(connection, statement, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
                                     struct AdbcError* error) {
   return FlightSqlStatementRelease(statement, error);
 }
 
-ADBC_DRIVER_EXPORT
 AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
                                         const char* query, struct AdbcError* error) {
   return FlightSqlStatementSetSqlQuery(statement, query, error);

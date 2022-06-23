@@ -61,30 +61,14 @@ void SetError(struct AdbcError* error, const std::string& message) {
 }
 
 // Default stubs
-AdbcStatusCode ConnectionGetCatalogs(struct AdbcConnection*, struct AdbcStatement*,
-                                     struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionGetColumns(struct AdbcConnection*, const char*, const char*,
-                                    const char*, const char*, struct AdbcStatement*,
-                                    struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionGetDbSchemas(struct AdbcConnection*, struct AdbcStatement*,
-                                      struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
 AdbcStatusCode ConnectionGetTableTypes(struct AdbcConnection*, struct AdbcStatement*,
                                        struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-AdbcStatusCode ConnectionGetTables(struct AdbcConnection*, const char*, const char*,
-                                   const char*, const char**, struct AdbcStatement*,
-                                   struct AdbcError* error) {
+AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, const char*,
+                                    const char*, const char**, const char*,
+                                    struct AdbcStatement*, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -551,12 +535,9 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   CHECK_REQUIRED(driver, DatabaseInit);
   CHECK_REQUIRED(driver, DatabaseRelease);
 
-  FILL_DEFAULT(driver, ConnectionGetCatalogs);
-  FILL_DEFAULT(driver, ConnectionGetColumns);
-  FILL_DEFAULT(driver, ConnectionGetDbSchemas);
+  FILL_DEFAULT(driver, ConnectionGetObjects);
   FILL_DEFAULT(driver, ConnectionGetTableSchema);
   FILL_DEFAULT(driver, ConnectionGetTableTypes);
-  FILL_DEFAULT(driver, ConnectionGetTables);
 
   FILL_DEFAULT(driver, StatementBind);
   FILL_DEFAULT(driver, StatementExecute);

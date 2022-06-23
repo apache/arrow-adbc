@@ -309,100 +309,16 @@ AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* con
 /// schema given in the function docstring. Schema fields are nullable unless
 /// otherwise marked.
 ///
-/// Some functions accept a "search pattern" argument, which is a string that
+/// Some functions accept "search pattern" arguments, which are strings that
 /// can contain the special character "%" to match zero or more characters, or
-/// "_" to match exactly one character. (See the documentation of
+/// "_" to match exactly one character.  (See the documentation of
 /// DatabaseMetaData in JDBC or "Pattern Value Arguments" in the ODBC
-/// documentation.)
-///
-/// TODO: escaping in search patterns?
+/// documentation.)  Escaping is not currently supported.
 ///
 /// @{
 
-/// \brief Get a list of catalogs in the database.
-///
-/// The result is an Arrow dataset with the following schema:
-///
-/// Field Name     | Field Type
-/// ---------------|--------------
-/// catalog_name   | utf8 not null
-///
-/// \param[in] connection The database connection.
-/// \param[out] statement The result set.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetCatalogs(struct AdbcConnection* connection,
-                                         struct AdbcStatement* statement,
-                                         struct AdbcError* error);
-
-/// \brief Get a list of schemas in the database.
-///
-/// The result is an Arrow dataset with the following schema:
-///
-/// Field Name     | Field Type
-/// ---------------|--------------
-/// catalog_name   | utf8
-/// db_schema_name | utf8 not null
-///
-/// \param[in] connection The database connection.
-/// \param[out] statement The result set.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetDbSchemas(struct AdbcConnection* connection,
-                                          struct AdbcStatement* statement,
-                                          struct AdbcError* error);
-
-/// \brief Get a list of table types in the database.
-///
-/// The result is an Arrow dataset with the following schema:
-///
-/// Field Name     | Field Type
-/// ---------------|--------------
-/// table_type     | utf8 not null
-///
-/// \param[in] connection The database connection.
-/// \param[out] statement The result set.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
-                                           struct AdbcStatement* statement,
-                                           struct AdbcError* error);
-
-/// \brief Get a list of tables matching the given criteria.
-///
-/// The result is an Arrow dataset with the following schema:
-///
-/// Field Name     | Field Type
-/// ---------------|--------------
-/// catalog_name   | utf8
-/// db_schema_name | utf8
-/// table_name     | utf8 not null
-/// table_type     | utf8 not null
-///
-/// \param[in] connection The database connection.
-/// \param[in] catalog Only show tables in the given catalog. If NULL, do not
-///   filter by catalog. If an empty string, only show tables without a
-///   catalog.
-/// \param[in] db_schema Only show tables in the given database schema. If
-///   NULL, do not filter by database schema. If an empty string, only show
-///   tables without a database schema. May be a search pattern (see section
-///   documentation).
-/// \param[in] table_name Only show tables with the given name. If NULL, do not
-///   filter by name. May be a search pattern (see section documentation).
-/// \param[in] table_types Only show tables matching one of the given table
-///   types. If NULL, show tables of any type. Valid table types can be fetched
-///   from GetTableTypes.  Terminate the list with a NULL entry.
-/// \param[out] statement The result set.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
-                                       const char* catalog, const char* db_schema,
-                                       const char* table_name, const char** table_types,
-                                       struct AdbcStatement* statement,
-                                       struct AdbcError* error);
-
 /// \brief Get a hierarchical view of all catalogs, database schemas,
-///   and tables.
+///   tables, and columns.
 ///
 /// The result is an Arrow dataset with the following schema:
 ///
@@ -483,9 +399,10 @@ AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
 ///   all levels. If 1, display only catalogs (i.e.  catalog_schemas
 ///   will be null). If 2, display only catalogs and schemas
 ///   (i.e. db_schema_tables will be null), and so on.
-/// \param[in] catalog Only show tables in the given catalog. If NULL, do not
-///   filter by catalog. If an empty string, only show tables without a
-///   catalog.
+/// \param[in] catalog Only show tables in the given catalog. If NULL,
+///   do not filter by catalog. If an empty string, only show tables
+///   without a catalog.  May be a search pattern (see section
+///   documentation).
 /// \param[in] db_schema Only show tables in the given database schema. If
 ///   NULL, do not filter by database schema. If an empty string, only show
 ///   tables without a database schema. May be a search pattern (see section
@@ -530,62 +447,22 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
                                             struct ArrowSchema* schema,
                                             struct AdbcError* error);
 
-/// \brief Get a list of table columns matching the given criteria.
+/// \brief Get a list of table types in the database.
 ///
 /// The result is an Arrow dataset with the following schema:
 ///
-/// Field Name               | Field Type     | Comments
-/// -------------------------|----------------|--------------------------------
-/// catalog_name             | utf8           | (1)
-/// db_schema_name           | utf8           | (1)
-/// table_name               | utf8 not null  |
-/// column_name              | utf8 not null  |
-/// ordinal_position         | int32          | (2)
-/// remarks                  | utf8           | (3)
-/// xdbc_data_type           | int16          | (4)
-/// xdbc_type_name           | utf8           | (4)
-/// xdbc_column_size         | int32          | (4)
-/// xdbc_decimal_digits      | int16          | (4)
-/// xdbc_num_prec_radix      | int16          | (4)
-/// xdbc_nullable            | int16          | (4)
-/// xdbc_column_def          | utf8           | (4)
-/// xdbc_sql_data_type       | int16          | (4)
-/// xdbc_datetime_sub        | int16          | (4)
-/// xdbc_char_octet_length   | int32          | (4)
-/// xdbc_is_nullable         | utf8           | (4)
-/// xdbc_scope_catalog       | utf8           | (4)
-/// xdbc_scope_schema        | utf8           | (4)
-/// xdbc_scope_table         | utf8           | (4)
-/// xdbc_is_autoincrement    | bool           | (4)
-/// xdbc_is_generatedcolumn  | bool           | (4)
-///
-/// 1. Null or empty if not present.
-/// 2. The column's ordinal position in the table (starting from 1).
-/// 3. Database-specific description of the column.
-/// 4. Optional, JDBC/ODBC-compatible value.
+/// Field Name     | Field Type
+/// ---------------|--------------
+/// table_type     | utf8 not null
 ///
 /// \param[in] connection The database connection.
-/// \param[in] catalog Only show columns from tables in the given
-///   catalog.  If NULL, do not filter by catalog.  If an empty
-///   string, only show tables without a catalog.
-/// \param[in] db_schema Only show columns from tables in the given
-///   database schema.  If NULL, do not filter by database schema.  If
-///   an empty string, only show tables without a database schema.
-///   May be a search pattern (see section documentation).
-/// \param[in] table_name Only show columns from tables with the given
-///   name.  If NULL, do not filter by name.  May be a search pattern
-///   (see section documentation).
-/// \param[in] column_name Only show columns with the given name.  If
-///   NULL, show all columns.  May be a search pattern (see section
-///   documentation).
 /// \param[out] statement The result set.
 /// \param[out] error Error details, if an error occurs.
 ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetColumns(struct AdbcConnection* connection,
-                                        const char* catalog, const char* db_schema,
-                                        const char* table_name, const char* column_name,
-                                        struct AdbcStatement* statement,
-                                        struct AdbcError* error);
+AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
+                                           struct AdbcStatement* statement,
+                                           struct AdbcError* error);
+
 /// }@
 
 /// }@
@@ -848,13 +725,6 @@ struct ADBC_EXPORT AdbcDriver {
                                                        struct AdbcStatement*,
                                                        struct AdbcError*);
 
-  AdbcStatusCode (*ConnectionGetCatalogs)(struct AdbcConnection*, struct AdbcStatement*,
-                                          struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetColumns)(struct AdbcConnection*, const char*, const char*,
-                                         const char*, const char*, struct AdbcStatement*,
-                                         struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetDbSchemas)(struct AdbcConnection*, struct AdbcStatement*,
-                                           struct AdbcError*);
   AdbcStatusCode (*ConnectionGetObjects)(struct AdbcConnection*, int, const char*,
                                          const char*, const char*, const char**,
                                          const char*, struct AdbcStatement*,
@@ -864,9 +734,6 @@ struct ADBC_EXPORT AdbcDriver {
                                              struct ArrowSchema*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetTableTypes)(struct AdbcConnection*, struct AdbcStatement*,
                                             struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetTables)(struct AdbcConnection*, const char*, const char*,
-                                        const char*, const char**, struct AdbcStatement*,
-                                        struct AdbcError*);
 
   AdbcStatusCode (*StatementNew)(struct AdbcConnection*, struct AdbcStatement*,
                                  struct AdbcError*);

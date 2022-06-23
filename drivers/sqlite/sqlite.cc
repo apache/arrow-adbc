@@ -517,26 +517,6 @@ class SqliteStatementImpl {
     return ADBC_STATUS_UNINITIALIZED;
   }
 
-  AdbcStatusCode GetCatalogs(const std::shared_ptr<SqliteStatementImpl>& self,
-                             struct AdbcError* error) {
-    auto schema =
-        arrow::schema({arrow::field("catalog_name", arrow::utf8(), /*nullable=*/false)});
-    auto status = arrow::RecordBatchReader::Make({}, schema).Value(&result_reader_);
-    ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode GetDbSchemas(const std::shared_ptr<SqliteStatementImpl>& self,
-                              struct AdbcError* error) {
-    auto schema = arrow::schema({
-        arrow::field("catalog_name", arrow::utf8()),
-        arrow::field("db_schema_name", arrow::utf8(), /*nullable=*/false),
-    });
-    auto status = arrow::RecordBatchReader::Make({}, schema).Value(&result_reader_);
-    ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
-    return ADBC_STATUS_OK;
-  }
-
   AdbcStatusCode GetObjects(const std::shared_ptr<SqliteStatementImpl>& self, int depth,
                             const char* catalog, const char* db_schema,
                             const char* table_name, const char** table_type,
@@ -937,218 +917,6 @@ class SqliteStatementImpl {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode GetTables(const std::shared_ptr<SqliteStatementImpl>& self,
-                           const char* catalog, const char* db_schema,
-                           const char* table_name, const char** table_types,
-                           struct AdbcError* error) {
-    auto schema = arrow::schema({
-        arrow::field("catalog_name", arrow::utf8()),
-        arrow::field("db_schema_name", arrow::utf8()),
-        arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
-        arrow::field("table_type", arrow::utf8(), /*nullable=*/false),
-    });
-
-    if ((catalog && std::strlen(catalog) > 0) ||
-        (db_schema && std::strlen(db_schema) > 0)) {
-      // Return empty dataset
-      auto status = arrow::RecordBatchReader::Make({}, schema).Value(&result_reader_);
-      ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
-      return ADBC_STATUS_OK;
-    }
-
-    std::string query =
-        "SELECT NULL as catalog_name, NULL as db_schema_name, name, type from "
-        "sqlite_schema";
-    std::vector<std::shared_ptr<arrow::Array>> params;
-    arrow::StringBuilder builder;
-    std::shared_ptr<arrow::Array> array;
-
-    if (table_name || (table_types && *table_types != nullptr)) {
-      query += " WHERE ";
-    }
-    if (table_name) {
-      query += "name LIKE ?";
-      ADBC_RETURN_NOT_OK(FromArrowStatus(builder.Append(table_name), error));
-      ADBC_RETURN_NOT_OK(FromArrowStatus(builder.Finish(&array), error));
-      params.push_back(std::move(array));
-    }
-    if (table_types && *table_types != nullptr) {
-      if (table_name) query += " AND ";
-      query += '(';
-      bool first = true;
-      while (true) {
-        if (*table_types == nullptr) break;
-
-        if (!first) {
-          query += " OR ";
-        } else {
-          first = false;
-        }
-
-        query += "type = ?";
-
-        builder.Reset();
-        ADBC_RETURN_NOT_OK(FromArrowStatus(builder.Append(*table_types), error));
-        ADBC_RETURN_NOT_OK(FromArrowStatus(builder.Finish(&array), error));
-        params.push_back(std::move(array));
-
-        table_types++;
-      }
-      query += ')';
-    }
-
-    if (!params.empty()) {
-      std::vector<std::shared_ptr<arrow::Field>> param_fields(params.size());
-      for (size_t i = 0; i < params.size(); i++) {
-        param_fields[i] = arrow::field(std::to_string(i), arrow::utf8());
-      }
-      std::shared_ptr<arrow::Table> table =
-          arrow::Table::Make(arrow::schema(std::move(param_fields)), std::move(params));
-      bind_parameters_.reset(new arrow::TableBatchReader(std::move(table)));
-    }
-    ADBC_RETURN_NOT_OK(SetSqlQuery(self, query.c_str(), error));
-    ADBC_RETURN_NOT_OK(ExecutePrepared(error));
-    reinterpret_cast<SqliteStatementReader*>(result_reader_.get())
-        ->OverrideSchema(std::move(schema));
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode GetColumns(const std::shared_ptr<SqliteStatementImpl>& self,
-                            const char* catalog, const char* db_schema,
-                            const char* table_name, const char* column_name,
-                            struct AdbcError* error) {
-    auto schema = arrow::schema({
-        arrow::field("catalog_name", arrow::utf8()),
-        arrow::field("db_schema_name", arrow::utf8()),
-        arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
-        arrow::field("column_name", arrow::utf8(), /*nullable=*/false),
-        arrow::field("ordinal_position", arrow::int32()),
-        arrow::field("remarks", arrow::utf8()),
-        arrow::field("xdbc_data_type", arrow::int16()),
-        arrow::field("xdbc_type_name", arrow::utf8()),
-        arrow::field("xdbc_column_size", arrow::int32()),
-        arrow::field("xdbc_decimal_digits", arrow::int16()),
-        arrow::field("xdbc_num_prec_radix", arrow::int16()),
-        arrow::field("xdbc_nullable", arrow::int16()),
-        arrow::field("xdbc_column_def", arrow::utf8()),
-        arrow::field("xdbc_sql_data_type", arrow::int16()),
-        arrow::field("xdbc_datetime_sub", arrow::int16()),
-        arrow::field("xdbc_char_octet_length", arrow::int32()),
-        arrow::field("xdbc_is_nullable", arrow::utf8()),
-        arrow::field("xdbc_scope_catalog", arrow::utf8()),
-        arrow::field("xdbc_scope_schema", arrow::utf8()),
-        arrow::field("xdbc_scope_table", arrow::utf8()),
-        arrow::field("xdbc_is_autoincrement", arrow::boolean()),
-        arrow::field("xdbc_is_generatedcolumn", arrow::boolean()),
-    });
-
-    // SQLite doesn't have a single view of all tables and columns, so
-    // we'll have to assemble this ourselves
-
-    if ((catalog && std::strlen(catalog) > 0) ||
-        (db_schema && std::strlen(db_schema) > 0)) {
-      // Return empty dataset
-      auto status = arrow::RecordBatchReader::Make({}, schema).Value(&result_reader_);
-      ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
-      return ADBC_STATUS_OK;
-    }
-
-    arrow::StringBuilder col_table_name;
-    arrow::StringBuilder col_column_name;
-    arrow::Int32Builder col_ordinal_position;
-    arrow::StringBuilder col_xdbc_column_def;
-
-    sqlite3* db = connection_->db();
-    // TODO: both of these need to be cleaned up on error
-    sqlite3_stmt* stmt = nullptr;
-    sqlite3_stmt* col_stmt = nullptr;
-
-    const char* query = "SELECT name FROM sqlite_schema WHERE name LIKE ?";
-    const char* col_query =
-        "SELECT cid, name, dflt_value FROM pragma_table_info(?) WHERE name LIKE ?";
-    int rc = sqlite3_prepare_v2(db, query, static_cast<int>(std::strlen(query)), &stmt,
-                                /*pzTail=*/nullptr);
-    ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_prepare_v2", error));
-    if (table_name) {
-      rc = sqlite3_bind_text64(stmt, 1, table_name, std::strlen(table_name),
-                               SQLITE_STATIC, SQLITE_UTF8);
-    } else {
-      rc = sqlite3_bind_text64(stmt, 1, "%", 1, SQLITE_STATIC, SQLITE_UTF8);
-    }
-    ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_bind_text64", error));
-
-    rc = sqlite3_prepare_v2(db, col_query, static_cast<int>(std::strlen(col_query)),
-                            &col_stmt, /*pzTail=*/nullptr);
-    ADBC_RETURN_NOT_OK(CheckRc(db, col_stmt, rc, "sqlite3_prepare_v2", error));
-
-    int64_t row_count = 0;
-    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-      const std::string cur_table =
-          reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-
-      rc = sqlite3_bind_text64(col_stmt, 1, cur_table.c_str(), cur_table.size(),
-                               SQLITE_STATIC, SQLITE_UTF8);
-      ADBC_RETURN_NOT_OK(CheckRc(db, col_stmt, rc, "sqlite3_bind_text64", error));
-      if (column_name) {
-        rc = sqlite3_bind_text64(col_stmt, 2, column_name, std::strlen(column_name),
-                                 SQLITE_STATIC, SQLITE_UTF8);
-      } else {
-        rc = sqlite3_bind_text64(col_stmt, 2, "%", 1, SQLITE_STATIC, SQLITE_UTF8);
-      }
-      ADBC_RETURN_NOT_OK(CheckRc(db, col_stmt, rc, "sqlite3_bind_text64", error));
-
-      while ((rc = sqlite3_step(col_stmt)) == SQLITE_ROW) {
-        ADBC_RETURN_NOT_OK(FromArrowStatus(col_table_name.Append(cur_table), error));
-        ADBC_RETURN_NOT_OK(FromArrowStatus(
-            col_ordinal_position.Append(1 + sqlite3_column_int(col_stmt, 0)), error));
-        const char* col_name =
-            reinterpret_cast<const char*>(sqlite3_column_text(col_stmt, 1));
-        ADBC_RETURN_NOT_OK(FromArrowStatus(
-            col_column_name.Append(col_name, std::strlen(col_name)), error));
-        const char* column_def =
-            reinterpret_cast<const char*>(sqlite3_column_text(col_stmt, 2));
-        if (column_def) {
-          ADBC_RETURN_NOT_OK(FromArrowStatus(
-              col_xdbc_column_def.Append(column_def, std::strlen(column_def)), error));
-        } else {
-          ADBC_RETURN_NOT_OK(FromArrowStatus(col_xdbc_column_def.AppendNull(), error));
-        }
-        row_count++;
-      }
-      if (rc != SQLITE_DONE) return CheckRc(db, col_stmt, rc, "sqlite3_step", error);
-      rc = sqlite3_reset(col_stmt);
-      ADBC_RETURN_NOT_OK(CheckRc(db, col_stmt, rc, "sqlite3_reset", error));
-    }
-    if (rc != SQLITE_DONE) return CheckRc(db, stmt, rc, "sqlite3_step", error);
-
-    // Assemble the result
-    std::vector<std::shared_ptr<arrow::Array>> arrays(schema->num_fields());
-    for (int i = 0; i < schema->num_fields(); i++) {
-      const arrow::Field& field = *schema->field(i);
-      Status status;
-      if (field.name() == "table_name") {
-        status = col_table_name.Finish().Value(&arrays[i]);
-      } else if (field.name() == "column_name") {
-        status = col_column_name.Finish().Value(&arrays[i]);
-      } else if (field.name() == "ordinal_position") {
-        status = col_ordinal_position.Finish().Value(&arrays[i]);
-      } else if (field.name() == "xdbc_column_def") {
-        status = col_xdbc_column_def.Finish().Value(&arrays[i]);
-      } else {
-        status = arrow::MakeArrayOfNull(field.type(), row_count).Value(&arrays[i]);
-      }
-      ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
-    }
-    std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema, std::move(arrays));
-    result_reader_.reset(new arrow::TableBatchReader(std::move(table)));
-
-    ADBC_RETURN_NOT_OK(
-        CheckRc(db, col_stmt, sqlite3_finalize(col_stmt), "sqlite3_finalize", error));
-    ADBC_RETURN_NOT_OK(
-        CheckRc(db, stmt, sqlite3_finalize(stmt), "sqlite3_finalize", error));
-    return ADBC_STATUS_OK;
-  }
-
   AdbcStatusCode GetStream(const std::shared_ptr<SqliteStatementImpl>& self,
                            struct ArrowArrayStream* out, struct AdbcError* error) {
     if (!result_reader_) {
@@ -1364,35 +1132,6 @@ AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
   return status;
 }
 
-AdbcStatusCode SqliteConnectionGetColumns(struct AdbcConnection* connection,
-                                          const char* catalog, const char* db_schema,
-                                          const char* table_name, const char* column_name,
-                                          struct AdbcStatement* statement,
-                                          struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto ptr =
-      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
-  return (*ptr)->GetColumns(*ptr, catalog, db_schema, table_name, column_name, error);
-}
-
-AdbcStatusCode SqliteConnectionGetCatalogs(struct AdbcConnection* connection,
-                                           struct AdbcStatement* statement,
-                                           struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto ptr =
-      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
-  return (*ptr)->GetCatalogs(*ptr, error);
-}
-
-AdbcStatusCode SqliteConnectionGetDbSchemas(struct AdbcConnection* connection,
-                                            struct AdbcStatement* statement,
-                                            struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto ptr =
-      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
-  return (*ptr)->GetDbSchemas(*ptr, error);
-}
-
 AdbcStatusCode SqliteConnectionGetObjects(
     struct AdbcConnection* connection, int depth, const char* catalog,
     const char* db_schema, const char* table_name, const char** table_types,
@@ -1404,26 +1143,6 @@ AdbcStatusCode SqliteConnectionGetObjects(
                             column_name, error);
 }
 
-AdbcStatusCode SqliteConnectionGetTableTypes(struct AdbcConnection* connection,
-                                             struct AdbcStatement* statement,
-                                             struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto ptr =
-      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
-  return (*ptr)->GetTableTypes(*ptr, error);
-}
-
-AdbcStatusCode SqliteConnectionGetTables(struct AdbcConnection* connection,
-                                         const char* catalog, const char* db_schema,
-                                         const char* table_name, const char** table_types,
-                                         struct AdbcStatement* statement,
-                                         struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
-  auto ptr =
-      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
-  return (*ptr)->GetTables(*ptr, catalog, db_schema, table_name, table_types, error);
-}
-
 AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
                                               const char* catalog, const char* db_schema,
                                               const char* table_name,
@@ -1433,6 +1152,15 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
   return (*ptr)->GetTableSchema(catalog, db_schema, table_name, schema, error);
+}
+
+AdbcStatusCode SqliteConnectionGetTableTypes(struct AdbcConnection* connection,
+                                             struct AdbcStatement* statement,
+                                             struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_UNINITIALIZED;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
+  return (*ptr)->GetTableTypes(*ptr, error);
 }
 
 AdbcStatusCode SqliteConnectionInit(struct AdbcConnection* connection,
@@ -1581,27 +1309,6 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
   return SqliteDatabaseRelease(database, error);
 }
 
-AdbcStatusCode AdbcConnectionGetColumns(struct AdbcConnection* connection,
-                                        const char* catalog, const char* db_schema,
-                                        const char* table_name, const char* column_name,
-                                        struct AdbcStatement* statement,
-                                        struct AdbcError* error) {
-  return SqliteConnectionGetColumns(connection, catalog, db_schema, table_name,
-                                    column_name, statement, error);
-}
-
-AdbcStatusCode AdbcConnectionGetCatalogs(struct AdbcConnection* connection,
-                                         struct AdbcStatement* statement,
-                                         struct AdbcError* error) {
-  return SqliteConnectionGetCatalogs(connection, statement, error);
-}
-
-AdbcStatusCode AdbcConnectionGetDbSchemas(struct AdbcConnection* connection,
-                                          struct AdbcStatement* statement,
-                                          struct AdbcError* error) {
-  return SqliteConnectionGetDbSchemas(connection, statement, error);
-}
-
 AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
                                         const char* catalog, const char* db_schema,
                                         const char* table_name, const char** table_types,
@@ -1612,21 +1319,6 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                     table_types, column_name, statement, error);
 }
 
-AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
-                                           struct AdbcStatement* statement,
-                                           struct AdbcError* error) {
-  return SqliteConnectionGetTableTypes(connection, statement, error);
-}
-
-AdbcStatusCode AdbcConnectionGetTables(struct AdbcConnection* connection,
-                                       const char* catalog, const char* db_schema,
-                                       const char* table_name, const char** table_types,
-                                       struct AdbcStatement* statement,
-                                       struct AdbcError* error) {
-  return SqliteConnectionGetTables(connection, catalog, db_schema, table_name,
-                                   table_types, statement, error);
-}
-
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
                                             const char* catalog, const char* db_schema,
                                             const char* table_name,
@@ -1634,6 +1326,12 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
                                             struct AdbcError* error) {
   return SqliteConnectionGetTableSchema(connection, catalog, db_schema, table_name,
                                         schema, error);
+}
+
+AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
+                                           struct AdbcStatement* statement,
+                                           struct AdbcError* error) {
+  return SqliteConnectionGetTableTypes(connection, statement, error);
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
@@ -1730,11 +1428,7 @@ AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
   driver->DatabaseRelease = SqliteDatabaseRelease;
   driver->DatabaseSetOption = SqliteDatabaseSetOption;
 
-  driver->ConnectionGetCatalogs = SqliteConnectionGetCatalogs;
-  driver->ConnectionGetColumns = SqliteConnectionGetColumns;
-  driver->ConnectionGetDbSchemas = SqliteConnectionGetDbSchemas;
   driver->ConnectionGetObjects = SqliteConnectionGetObjects;
-  driver->ConnectionGetTables = SqliteConnectionGetTables;
   driver->ConnectionGetTableSchema = SqliteConnectionGetTableSchema;
   driver->ConnectionGetTableTypes = SqliteConnectionGetTableTypes;
   driver->ConnectionInit = SqliteConnectionInit;
