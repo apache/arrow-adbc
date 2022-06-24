@@ -18,6 +18,8 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <utility>
 
 #include <arrow/c/bridge.h>
 #include <arrow/ipc/json_simple.h>

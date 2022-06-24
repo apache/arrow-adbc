@@ -62,6 +62,10 @@ class Sqlite : public ::testing::Test {
   }
 
   void TearDown() override {
+    if (error.message) {
+      error.release(&error);
+    }
+
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
     ASSERT_EQ(connection.private_data, nullptr);
 
@@ -87,6 +91,7 @@ class Sqlite : public ::testing::Test {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
   AdbcDatabase database;
@@ -254,6 +259,7 @@ TEST_F(Sqlite, BulkIngestTable) {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
   {
@@ -294,6 +300,7 @@ TEST_F(Sqlite, BulkIngestStream) {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBindStream(&statement, &export_stream, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
   {
@@ -699,6 +706,7 @@ TEST_F(Sqlite, Transactions) {
     ASSERT_NE(ADBC_STATUS_OK, AdbcStatementSetSqlQuery(&statement, query, &error));
     ASSERT_THAT(error.message, ::testing::HasSubstr("database schema is locked"));
     error.release(&error);
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
   // Rollback
@@ -710,6 +718,7 @@ TEST_F(Sqlite, Transactions) {
     ASSERT_NE(ADBC_STATUS_OK, AdbcStatementSetSqlQuery(&statement, query, &error));
     ASSERT_THAT(error.message, ::testing::HasSubstr("no such table"));
     error.release(&error);
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
   // Commit, should now be visible on other connection
@@ -722,6 +731,7 @@ TEST_F(Sqlite, Transactions) {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
     ArrowArrayStream stream;
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementGetStream(&statement, &stream, &error));
+    stream.release(&stream);
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 

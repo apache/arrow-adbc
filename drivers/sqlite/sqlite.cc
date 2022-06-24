@@ -44,22 +44,6 @@ void ReleaseError(struct AdbcError* error) {
   error->message = nullptr;
 }
 
-void SetError(sqlite3* db, const std::string& source, struct AdbcError* error) {
-  if (!error) return;
-  std::string message =
-      arrow::util::StringBuilder("[SQLite3] ", source, ": ", sqlite3_errmsg(db));
-  if (error->message) {
-    message.reserve(message.size() + 1 + std::strlen(error->message));
-    message.append(1, '\n');
-    message.append(error->message);
-    delete[] error->message;
-  }
-  error->message = new char[message.size() + 1];
-  message.copy(error->message, message.size());
-  error->message[message.size()] = '\0';
-  error->release = ReleaseError;
-}
-
 template <typename... Args>
 void SetError(struct AdbcError* error, Args&&... args) {
   if (!error) return;
@@ -75,6 +59,10 @@ void SetError(struct AdbcError* error, Args&&... args) {
   message.copy(error->message, message.size());
   error->message[message.size()] = '\0';
   error->release = ReleaseError;
+}
+
+void SetError(sqlite3* db, const std::string& source, struct AdbcError* error) {
+  return SetError(error, source, ": ", sqlite3_errmsg(db));
 }
 
 AdbcStatusCode CheckRc(sqlite3* db, int rc, const char* context,
@@ -154,7 +142,7 @@ std::shared_ptr<arrow::Schema> StatementToSchema(sqlite3_stmt* stmt) {
 
 class SqliteDatabaseImpl {
  public:
-  explicit SqliteDatabaseImpl() : db_(nullptr), connection_count_(0) {}
+  SqliteDatabaseImpl() : db_(nullptr), connection_count_(0) {}
 
   AdbcStatusCode Connect(sqlite3** db, struct AdbcError* error) {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -271,6 +259,7 @@ class SqliteConnectionImpl {
       return ADBC_STATUS_INTERNAL;
     }
     query += escaped;
+    sqlite3_free(escaped);
 
     std::shared_ptr<arrow::Schema> arrow_schema;
     ADBC_RETURN_NOT_OK(

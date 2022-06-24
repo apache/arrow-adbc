@@ -31,12 +31,12 @@ namespace adbc {
 
 using arrow::PointeesEqual;
 
-static std::string kServerEnvVar = "ADBC_FLIGHT_SQL_LOCATION";
+static const char kServerEnvVar[] = "ADBC_FLIGHT_SQL_LOCATION";
 
 class AdbcFlightSqlTest : public ::testing::Test {
  public:
   void SetUp() override {
-    if (const char* location = std::getenv(kServerEnvVar.c_str())) {
+    if (const char* location = std::getenv(kServerEnvVar)) {
       ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
       ADBC_ASSERT_OK_WITH_ERROR(
           error, AdbcDatabaseSetOption(&database, "location", location, &error));

@@ -61,7 +61,7 @@ void SetError(struct AdbcError* error, Args&&... args) {
 
 class FlightSqlDatabaseImpl {
  public:
-  explicit FlightSqlDatabaseImpl() : client_(nullptr), connection_count_(0) {}
+  FlightSqlDatabaseImpl() : client_(nullptr), connection_count_(0) {}
 
   flightsql::FlightSqlClient* Connect() {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -170,7 +170,7 @@ class FlightSqlConnectionImpl {
 
 class FlightSqlStatementImpl : public arrow::RecordBatchReader {
  public:
-  FlightSqlStatementImpl(std::shared_ptr<FlightSqlConnectionImpl> connection)
+  explicit FlightSqlStatementImpl(std::shared_ptr<FlightSqlConnectionImpl> connection)
       : connection_(std::move(connection)), info_() {}
 
   void Init(std::unique_ptr<flight::FlightInfo> info) { info_ = std::move(info); }
