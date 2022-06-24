@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: C/C++
+name: C/C++/Python
 
 on:
   pull_request:
@@ -72,7 +72,7 @@ jobs:
       - name: Install Dependencies
         shell: bash -l {0}
         run: |
-          mamba install --file ci/conda_env_cpp.txt
+          mamba install --file ci/conda_env_cpp.txt --file ci/conda_env_python.txt
       - name: Build/Test SQLite3 Driver
         shell: bash -l {0}
         run: |
@@ -96,6 +96,26 @@ jobs:
           export LD_LIBRARY_PATH=$(pwd):../driver_sqlite
           ./adbc-driver-manager-test
           popd
+      - name: Build/Test SQLite3 Driver (No ASan)
+        shell: bash -l {0}
+        run: |
+          # Build a no-ASan version that Python can easily load
+          mkdir -p build/driver_sqlite_no_asan
+          pushd build/driver_sqlite_no_asan
+          cmake ../../drivers/sqlite -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
+          cmake --build .
+          popd
+      - name: Build/Test Python Driver Manager
+        shell: bash -l {0}
+        run: |
+          pushd python/adbc_driver_manager
+          python setup.py build_ext --inplace
+          export PYTHONPATH=$(pwd)
+          export DYLD_LIBRARY_PATH=$(pwd)/../../build/driver_sqlite_no_asan
+          export LD_LIBRARY_PATH=$(pwd)/../../build/driver_sqlite_no_asan
+          python -m pytest -vv
+          popd
+
 
   cpp-conda-windows:
     name: "Conda/${{ matrix.os }}"
@@ -140,9 +160,16 @@ jobs:
           if %errorlevel% neq 0 then exit /b %errorlevel%
           cmake --build .
           if %errorlevel% neq 0 then exit /b %errorlevel%
-          echo ${{ github.workspace }}\build\driver_sqlite
-          dir ${{ github.workspace }}\build\driver_sqlite
           set PATH=%PATH%;${{ github.workspace }}\build\driver_sqlite
           ctest --output-on-failure --no-tests=error
           if %errorlevel% neq 0 then exit /b %errorlevel%
+          cd ..\..
+      - name: Build/Test Python Driver Manager
+        shell: cmd /C call {0}
+        run: |
+          cd python\adbc_driver_manager
+          python setup.py build_ext --inplace
+          set PATH=%PATH%;${{ github.workspace }}\build\driver_sqlite
+          set PYTHONPATH=${{ github.workspace }}\python\adbc_driver_manager
+          python -m pytest -vv
           cd ..\..

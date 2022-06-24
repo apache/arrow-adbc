@@ -87,6 +87,11 @@ AdbcStatusCode ConnectionRollback(struct AdbcConnection*, struct AdbcError* erro
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode ConnectionSetOption(struct AdbcConnection*, const char*, const char*,
+                                   struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode StatementBind(struct AdbcStatement*, struct ArrowArray*,
                              struct ArrowSchema*, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -431,7 +436,7 @@ const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
 #define STRINGIFY_VALUE(s) STRINGIFY(s)
 #define CASE(CONSTANT) \
   case CONSTANT:       \
-    return STRINGIFY(CONSTANT) " (" STRINGIFY_VALUE(CONSTANT) ")";
+    return #CONSTANT " (" STRINGIFY_VALUE(CONSTANT) ")";
 
   switch (code) {
     CASE(ADBC_STATUS_OK);
@@ -584,12 +589,14 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   FILL_DEFAULT(driver, ConnectionGetTableSchema);
   FILL_DEFAULT(driver, ConnectionGetTableTypes);
   FILL_DEFAULT(driver, ConnectionRollback);
+  FILL_DEFAULT(driver, ConnectionSetOption);
 
   CHECK_REQUIRED(driver, StatementNew);
   CHECK_REQUIRED(driver, StatementRelease);
   FILL_DEFAULT(driver, StatementBind);
   FILL_DEFAULT(driver, StatementExecute);
   FILL_DEFAULT(driver, StatementPrepare);
+  FILL_DEFAULT(driver, StatementSetOption);
   FILL_DEFAULT(driver, StatementSetSqlQuery);
   FILL_DEFAULT(driver, StatementSetSubstraitPlan);
 
