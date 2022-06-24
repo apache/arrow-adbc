@@ -61,6 +61,11 @@ void SetError(struct AdbcError* error, const std::string& message) {
 }
 
 // Default stubs
+
+AdbcStatusCode ConnectionCommit(struct AdbcConnection*, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode ConnectionGetTableTypes(struct AdbcConnection*, struct AdbcStatement*,
                                        struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -75,6 +80,10 @@ AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, co
 AdbcStatusCode ConnectionGetTableSchema(struct AdbcConnection*, const char*, const char*,
                                         const char*, struct ArrowSchema*,
                                         struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionRollback(struct AdbcConnection*, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -274,6 +283,22 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
   return status;
 }
 
+AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
+                                    struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionCommit(connection, error);
+}
+
+AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
+                                  struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionInit(connection, error);
+}
+
 AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
                                  struct AdbcConnection* connection,
                                  struct AdbcError* error) {
@@ -285,14 +310,6 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
   return status;
 }
 
-AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
-                                  struct AdbcError* error) {
-  if (!connection->private_driver) {
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  return connection->private_driver->ConnectionInit(connection, error);
-}
-
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   if (!connection->private_driver) {
@@ -301,6 +318,22 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
   auto status = connection->private_driver->ConnectionRelease(connection, error);
   connection->private_driver = nullptr;
   return status;
+}
+
+AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
+                                      struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionRollback(connection, error);
+}
+
+AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
+                                       const char* value, struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionSetOption(connection, key, value, error);
 }
 
 AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
@@ -543,10 +576,17 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   CHECK_REQUIRED(driver, DatabaseInit);
   CHECK_REQUIRED(driver, DatabaseRelease);
 
+  CHECK_REQUIRED(driver, ConnectionNew);
+  CHECK_REQUIRED(driver, ConnectionInit);
+  CHECK_REQUIRED(driver, ConnectionRelease);
+  FILL_DEFAULT(driver, ConnectionCommit);
   FILL_DEFAULT(driver, ConnectionGetObjects);
   FILL_DEFAULT(driver, ConnectionGetTableSchema);
   FILL_DEFAULT(driver, ConnectionGetTableTypes);
+  FILL_DEFAULT(driver, ConnectionRollback);
 
+  CHECK_REQUIRED(driver, StatementNew);
+  CHECK_REQUIRED(driver, StatementRelease);
   FILL_DEFAULT(driver, StatementBind);
   FILL_DEFAULT(driver, StatementExecute);
   FILL_DEFAULT(driver, StatementPrepare);

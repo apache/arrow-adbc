@@ -156,10 +156,25 @@ class SqliteDatabaseImpl {
  public:
   explicit SqliteDatabaseImpl() : db_(nullptr), connection_count_(0) {}
 
-  sqlite3* Connect() {
+  AdbcStatusCode Connect(sqlite3** db, struct AdbcError* error) {
     std::lock_guard<std::mutex> guard(mutex_);
-    if (db_) ++connection_count_;
-    return db_;
+    if (!db_) {
+      SetError(error, "Database not yet initialized, call AdbcDatabaseInit");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    // Create a new connection
+    if (database_uri_ == ":memory:") {
+      // unless the special ":memory:" filename is used
+      *db = db_;
+    } else {
+      int rc =
+          sqlite3_open_v2(database_uri_.c_str(), db,
+                          SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI,
+                          /*zVfs=*/nullptr);
+      ADBC_RETURN_NOT_OK(CheckRc(*db, nullptr, rc, "sqlite3_open_v2", error));
+    }
+    ++connection_count_;
+    return ADBC_STATUS_OK;
   }
 
   AdbcStatusCode Init(struct AdbcError* error) {
@@ -167,11 +182,14 @@ class SqliteDatabaseImpl {
       SetError(error, "Database already initialized");
       return ADBC_STATUS_INVALID_STATE;
     }
-    const char* filename = ":memory:";
+    database_uri_ = "file:adbc_sqlite_driver?mode=memory&cache=shared";
     auto it = options_.find("filename");
-    if (it != options_.end()) filename = it->second.c_str();
+    if (it != options_.end()) {
+      database_uri_ = it->second;
+    }
 
-    int rc = sqlite3_open_v2(filename, &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+    int rc = sqlite3_open_v2(database_uri_.c_str(), &db_,
+                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI,
                              /*zVfs=*/nullptr);
     ADBC_RETURN_NOT_OK(CheckRc(db_, nullptr, rc, "sqlite3_open_v2", error));
     options_.clear();
@@ -187,11 +205,18 @@ class SqliteDatabaseImpl {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Disconnect(struct AdbcError* error) {
+  AdbcStatusCode Disconnect(sqlite3* db, struct AdbcError* error) {
     std::lock_guard<std::mutex> guard(mutex_);
     if (--connection_count_ < 0) {
       SetError(error, "Connection count underflow");
       return ADBC_STATUS_INVALID_STATE;
+    }
+    // Close the database unless :memory:
+    if (database_uri_ != ":memory:") {
+      if (sqlite3_close(db) != SQLITE_OK) {
+        if (db) SetError(db, "sqlite3_close", error);
+        return ADBC_STATUS_IO;
+      }
     }
     return ADBC_STATUS_OK;
   }
@@ -216,6 +241,7 @@ class SqliteDatabaseImpl {
  private:
   sqlite3* db_;
   int connection_count_;
+  std::string database_uri_;
   std::unordered_map<std::string, std::string> options_;
   std::mutex mutex_;
 };
@@ -223,7 +249,7 @@ class SqliteDatabaseImpl {
 class SqliteConnectionImpl {
  public:
   explicit SqliteConnectionImpl(std::shared_ptr<SqliteDatabaseImpl> database)
-      : database_(std::move(database)), db_(nullptr) {}
+      : database_(std::move(database)), db_(nullptr), autocommit_(true) {}
 
   sqlite3* db() const { return db_; }
 
@@ -246,34 +272,75 @@ class SqliteConnectionImpl {
     }
     query += escaped;
 
-    sqlite3_stmt* stmt;
-    int rc = sqlite3_prepare_v2(db_, query.c_str(), static_cast<int>(query.size()), &stmt,
-                                /*pzTail=*/nullptr);
-    ADBC_RETURN_NOT_OK(CheckRc(db_, stmt, rc, "sqlite3_prepare_v2", error));
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_ERROR) {
-      return CheckRc(db_, stmt, rc, "sqlite3_step", error);
-    }
-    auto arrow_schema = StatementToSchema(stmt);
+    std::shared_ptr<arrow::Schema> arrow_schema;
     ADBC_RETURN_NOT_OK(
-        CheckRc(db_, stmt, sqlite3_finalize(stmt), "sqlite3_finalize", error));
+        DoQuery(db_, query.c_str(), error, [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+          if (sqlite3_step(stmt) == SQLITE_ERROR) {
+            SetError(db_, "sqlite3_step", error);
+            return ADBC_STATUS_IO;
+          }
+          arrow_schema = StatementToSchema(stmt);
+          return ADBC_STATUS_OK;
+        }));
     return FromArrowStatus(arrow::ExportSchema(*arrow_schema, schema), error);
   }
 
-  AdbcStatusCode Init(struct AdbcError* error) {
-    db_ = database_->Connect();
-    if (!db_) {
-      SetError(error, "Database not yet initialized!");
+  AdbcStatusCode Init(struct AdbcError* error) { return database_->Connect(&db_, error); }
+
+  AdbcStatusCode Release(struct AdbcError* error) {
+    return database_->Disconnect(db_, error);
+  }
+
+  AdbcStatusCode SetAutocommit(bool autocommit, struct AdbcError* error) {
+    if (autocommit == autocommit_) return ADBC_STATUS_OK;
+    autocommit_ = autocommit;
+
+    const char* query = autocommit_ ? "COMMIT" : "BEGIN TRANSACTION";
+    return DoQuery(db_, query, error, [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+      return StepStatement(stmt, error);
+    });
+  }
+
+  AdbcStatusCode Commit(struct AdbcError* error) {
+    if (autocommit_) {
+      SetError(error, "Cannot commit when in autocommit mode");
       return ADBC_STATUS_INVALID_STATE;
+    }
+    ADBC_RETURN_NOT_OK(
+        DoQuery(db_, "COMMIT", error, [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+          return StepStatement(stmt, error);
+        }));
+    return DoQuery(db_, "BEGIN TRANSACTION", error,
+                   [&](sqlite3_stmt* stmt) { return StepStatement(stmt, error); });
+  }
+
+  AdbcStatusCode Rollback(struct AdbcError* error) {
+    if (autocommit_) {
+      SetError(error, "Cannot rollback when in autocommit mode");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    ADBC_RETURN_NOT_OK(
+        DoQuery(db_, "ROLLBACK", error, [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+          return StepStatement(stmt, error);
+        }));
+    return DoQuery(db_, "BEGIN TRANSACTION", error,
+                   [&](sqlite3_stmt* stmt) { return StepStatement(stmt, error); });
+  }
+
+ private:
+  AdbcStatusCode StepStatement(sqlite3_stmt* stmt, struct AdbcError* error) {
+    int rc = SQLITE_OK;
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+    }
+    if (rc != SQLITE_DONE) {
+      return CheckRc(db_, rc, "sqlite3_step", error);
     }
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Release(struct AdbcError* error) { return database_->Disconnect(error); }
-
- private:
   std::shared_ptr<SqliteDatabaseImpl> database_;
   sqlite3* db_;
+  bool autocommit_;
 };
 
 AdbcStatusCode BindParameters(sqlite3_stmt* stmt, const arrow::RecordBatch& data,
@@ -1132,6 +1199,14 @@ AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
   return status;
 }
 
+AdbcStatusCode SqliteConnectionCommit(struct AdbcConnection* connection,
+                                      struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
+  return (*ptr)->Commit(error);
+}
+
 AdbcStatusCode SqliteConnectionGetObjects(
     struct AdbcConnection* connection, int depth, const char* catalog,
     const char* db_schema, const char* table_name, const char** table_types,
@@ -1192,10 +1267,36 @@ AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
   return status;
 }
 
+AdbcStatusCode SqliteConnectionRollback(struct AdbcConnection* connection,
+                                        struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
+  return (*ptr)->Rollback(error);
+}
+
 AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
                                          const char* key, const char* value,
                                          struct AdbcError* error) {
-  return ADBC_STATUS_OK;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
+
+  if (std::strcmp(key, ADBC_CONNECTION_OPTION_AUTOCOMMIT) == 0) {
+    bool autocommit = false;
+    if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      autocommit = false;
+    } else if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      autocommit = true;
+    } else {
+      SetError(error, "Invalid option value for autocommit: ", value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    return (*ptr)->SetAutocommit(autocommit, error);
+  } else {
+    SetError(error, "Unknown option");
+  }
+  return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode SqliteStatementBind(struct AdbcStatement* statement,
@@ -1309,6 +1410,11 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
   return SqliteDatabaseRelease(database, error);
 }
 
+AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
+                                    struct AdbcError* error) {
+  return SqliteConnectionCommit(connection, error);
+}
+
 AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
                                         const char* catalog, const char* db_schema,
                                         const char* table_name, const char** table_types,
@@ -1348,6 +1454,11 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   return SqliteConnectionRelease(connection, error);
+}
+
+AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
+                                      struct AdbcError* error) {
+  return SqliteConnectionRollback(connection, error);
 }
 
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
@@ -1428,12 +1539,14 @@ AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
   driver->DatabaseRelease = SqliteDatabaseRelease;
   driver->DatabaseSetOption = SqliteDatabaseSetOption;
 
+  driver->ConnectionCommit = SqliteConnectionCommit;
   driver->ConnectionGetObjects = SqliteConnectionGetObjects;
   driver->ConnectionGetTableSchema = SqliteConnectionGetTableSchema;
   driver->ConnectionGetTableTypes = SqliteConnectionGetTableTypes;
   driver->ConnectionInit = SqliteConnectionInit;
   driver->ConnectionNew = SqliteConnectionNew;
   driver->ConnectionRelease = SqliteConnectionRelease;
+  driver->ConnectionRollback = SqliteConnectionRollback;
   driver->ConnectionSetOption = SqliteConnectionSetOption;
 
   driver->StatementBind = SqliteStatementBind;

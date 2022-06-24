@@ -217,4 +217,15 @@ TEST_F(DriverManager, BulkIngestStream) {
   }
 }
 
+TEST_F(DriverManager, Transactions) {
+  // Invalid option value
+  ASSERT_NE(ADBC_STATUS_OK,
+            AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                    "invalid", &error));
+
+  // Can't commit/rollback without disabling autocommit
+  ASSERT_EQ(ADBC_STATUS_INVALID_STATE, AdbcConnectionCommit(&connection, &error));
+  ASSERT_EQ(ADBC_STATUS_INVALID_STATE, AdbcConnectionRollback(&connection, &error));
+}
+
 }  // namespace adbc
