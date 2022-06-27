@@ -56,8 +56,8 @@ class Sqlite : public ::testing::Test {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
     ASSERT_NE(database.private_data, nullptr);
 
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &database, &error));
     ASSERT_NE(connection.private_data, nullptr);
   }
 
@@ -328,8 +328,8 @@ TEST_F(Sqlite, BulkIngestStream) {
 
 TEST_F(Sqlite, MultipleConnections) {
   struct AdbcConnection connection2;
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection2, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection2, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &database, &error));
   ASSERT_NE(connection.private_data, nullptr);
 
   {
@@ -661,12 +661,12 @@ TEST_F(Sqlite, Transactions) {
       AdbcDatabaseSetOption(&database, "filename",
                             "file:Sqlite_Transactions?mode=memory&cache=shared", &error));
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &database, &error));
 
   struct AdbcConnection connection2;
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection2, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection2, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &database, &error));
   ASSERT_NE(connection.private_data, nullptr);
 
   AdbcStatement statement;

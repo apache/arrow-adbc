@@ -322,8 +322,7 @@ struct ADBC_EXPORT AdbcConnection {
 
 /// \brief Allocate a new (but uninitialized) connection.
 ADBC_EXPORT
-AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
-                                 struct AdbcConnection* connection,
+AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
                                  struct AdbcError* error);
 
 ADBC_EXPORT
@@ -333,7 +332,7 @@ AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const 
 /// \brief Finish setting options and initialize the connection.
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
-                                  struct AdbcError* error);
+                                  struct AdbcDatabase* database, struct AdbcError* error);
 
 /// \brief Destroy this connection.
 /// \param[in] connection The connection to release.
@@ -813,11 +812,11 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*DatabaseInit)(struct AdbcDatabase*, struct AdbcError*);
   AdbcStatusCode (*DatabaseRelease)(struct AdbcDatabase*, struct AdbcError*);
 
-  AdbcStatusCode (*ConnectionNew)(struct AdbcDatabase*, struct AdbcConnection*,
-                                  struct AdbcError*);
+  AdbcStatusCode (*ConnectionNew)(struct AdbcConnection*, struct AdbcError*);
   AdbcStatusCode (*ConnectionSetOption)(struct AdbcConnection*, const char*, const char*,
                                         struct AdbcError*);
-  AdbcStatusCode (*ConnectionInit)(struct AdbcConnection*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionInit)(struct AdbcConnection*, struct AdbcDatabase*,
+                                   struct AdbcError*);
   AdbcStatusCode (*ConnectionRelease)(struct AdbcConnection*, struct AdbcError*);
 
   AdbcStatusCode (*ConnectionDeserializePartitionDesc)(struct AdbcConnection*,

@@ -143,8 +143,7 @@ class FlightSqlDatabaseImpl {
 
 class FlightSqlConnectionImpl {
  public:
-  explicit FlightSqlConnectionImpl(std::shared_ptr<FlightSqlDatabaseImpl> database)
-      : database_(std::move(database)), client_(nullptr) {}
+  FlightSqlConnectionImpl() : database_(nullptr), client_(nullptr) {}
 
   //----------------------------------------------------------
   // Common Functions
@@ -152,7 +151,14 @@ class FlightSqlConnectionImpl {
 
   flightsql::FlightSqlClient* client() const { return client_; }
 
-  AdbcStatusCode Init(struct AdbcError* error) {
+  AdbcStatusCode Init(struct AdbcDatabase* database, struct AdbcError* error) {
+    if (!database->private_data) {
+      SetError(error, "database is not initialized");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
+    database_ = *reinterpret_cast<std::shared_ptr<FlightSqlDatabaseImpl>*>(
+        database->private_data);
     client_ = database_->Connect();
     if (!client_) {
       SetError(error, "Database not yet initialized!");
@@ -398,12 +404,9 @@ AdbcStatusCode FlightSqlConnectionGetTableTypes(struct AdbcConnection* connectio
   return (*ptr)->GetTableTypes(error);
 }
 
-AdbcStatusCode FlightSqlConnectionNew(struct AdbcDatabase* database,
-                                      struct AdbcConnection* connection,
+AdbcStatusCode FlightSqlConnectionNew(struct AdbcConnection* connection,
                                       struct AdbcError* error) {
-  auto ptr =
-      reinterpret_cast<std::shared_ptr<FlightSqlDatabaseImpl>*>(database->private_data);
-  auto impl = std::make_shared<FlightSqlConnectionImpl>(*ptr);
+  auto impl = std::make_shared<FlightSqlConnectionImpl>();
   connection->private_data = new std::shared_ptr<FlightSqlConnectionImpl>(impl);
   return ADBC_STATUS_OK;
 }
@@ -415,11 +418,12 @@ AdbcStatusCode FlightSqlConnectionSetOption(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode FlightSqlConnectionInit(struct AdbcConnection* connection,
+                                       struct AdbcDatabase* database,
                                        struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr = reinterpret_cast<std::shared_ptr<FlightSqlConnectionImpl>*>(
       connection->private_data);
-  return (*ptr)->Init(error);
+  return (*ptr)->Init(database, error);
 }
 
 AdbcStatusCode FlightSqlConnectionRelease(struct AdbcConnection* connection,
@@ -533,14 +537,14 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
+                                  struct AdbcDatabase* database,
                                   struct AdbcError* error) {
-  return FlightSqlConnectionInit(connection, error);
+  return FlightSqlConnectionInit(connection, database, error);
 }
 
-AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
-                                 struct AdbcConnection* connection,
+AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
                                  struct AdbcError* error) {
-  return FlightSqlConnectionNew(database, connection, error);
+  return FlightSqlConnectionNew(connection, error);
 }
 
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,

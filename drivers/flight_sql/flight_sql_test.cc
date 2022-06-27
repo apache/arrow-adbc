@@ -41,8 +41,9 @@ class AdbcFlightSqlTest : public ::testing::Test {
       ADBC_ASSERT_OK_WITH_ERROR(
           error, AdbcDatabaseSetOption(&database, "location", location, &error));
       ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
-      ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection, &error));
-      ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &error));
+      ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection, &error));
+      ADBC_ASSERT_OK_WITH_ERROR(error,
+                                AdbcConnectionInit(&connection, &database, &error));
     } else {
       FAIL() << "Must provide location of Flight SQL server at " << kServerEnvVar;
     }

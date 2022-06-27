@@ -58,8 +58,8 @@ class DriverManager : public ::testing::Test {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
     ASSERT_NE(database.private_data, nullptr);
 
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&database, &connection, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &database, &error));
     ASSERT_NE(connection.private_data, nullptr);
   }
 
@@ -87,6 +87,24 @@ class DriverManager : public ::testing::Test {
   AdbcConnection connection;
   AdbcError error = {};
 };
+
+TEST_F(DriverManager, DatabaseInitRelease) {
+  AdbcError error = {};
+  AdbcDatabase database;
+  std::memset(&database, 0, sizeof(database));
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
+}
+
+TEST_F(DriverManager, ConnectionInitRelease) {
+  AdbcError error = {};
+  AdbcConnection connection;
+  std::memset(&connection, 0, sizeof(connection));
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
+}
 
 TEST_F(DriverManager, SqlExecute) {
   std::string query = "SELECT 1";
