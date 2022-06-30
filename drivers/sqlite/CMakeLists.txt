@@ -53,11 +53,13 @@ else()
 endif()
 
 if(ADBC_BUILD_TESTS)
+  include_directories(SYSTEM ${REPOSITORY_ROOT}/validation)
   add_test_case(driver_sqlite_test
                 PREFIX
                 adbc
                 SOURCES
                 sqlite_test.cc
+                ../../validation/adbc_validation.c
                 EXTRA_LINK_LIBS
                 ${TEST_LINK_LIBS})
 endif()

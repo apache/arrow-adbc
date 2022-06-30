@@ -284,6 +284,7 @@ class SqliteConnectionImpl {
   }
 
   AdbcStatusCode Release(struct AdbcError* error) {
+    if (!database_) return ADBC_STATUS_OK;
     return database_->Disconnect(db_, error);
   }
 
@@ -577,6 +578,19 @@ class SqliteStatementImpl {
       return ExecuteBulk(error);
     }
     SetError(error, "Cannot execute a statement without a query");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+
+  AdbcStatusCode Prepare(const std::shared_ptr<SqliteStatementImpl>& self,
+                         struct AdbcError* error) {
+    if (stmt_) {
+      // No-op
+      return ADBC_STATUS_OK;
+    } else if (!bulk_table_.empty()) {
+      SetError(error, "Cannot prepare with bulk insert");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    SetError(error, "Cannot prepare a statement without a query");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -1353,8 +1367,9 @@ AdbcStatusCode SqliteStatementNew(struct AdbcConnection* connection,
 AdbcStatusCode SqliteStatementPrepare(struct AdbcStatement* statement,
                                       struct AdbcError* error) {
   if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  // No-op
-  return ADBC_STATUS_OK;
+  auto* ptr =
+      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
+  return (*ptr)->Prepare(*ptr, error);
 }
 
 AdbcStatusCode SqliteStatementRelease(struct AdbcStatement* statement,

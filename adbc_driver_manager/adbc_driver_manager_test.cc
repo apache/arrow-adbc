@@ -29,6 +29,7 @@
 
 #include "adbc.h"
 #include "adbc_driver_manager.h"
+#include "adbc_validation.h"
 #include "drivers/test_util.h"
 
 // Tests of the SQLite example driver, except using the driver manager
@@ -253,6 +254,29 @@ TEST_F(DriverManager, Transactions) {
   // Can't commit/rollback without disabling autocommit
   ASSERT_EQ(ADBC_STATUS_INVALID_STATE, AdbcConnectionCommit(&connection, &error));
   ASSERT_EQ(ADBC_STATUS_INVALID_STATE, AdbcConnectionRollback(&connection, &error));
+}
+
+AdbcStatusCode SetupDatabase(struct AdbcDatabase* database, struct AdbcError* error) {
+  AdbcStatusCode status;
+  if ((status = AdbcDatabaseSetOption(database, "driver", "adbc_driver_sqlite", error)) !=
+      ADBC_STATUS_OK) {
+    return status;
+  }
+  return AdbcDatabaseSetOption(database, "entrypoint", "AdbcSqliteDriverInit", error);
+}
+
+TEST_F(DriverManager, ValidationSuite) {
+  struct AdbcValidateTestContext ctx;
+  std::memset(&ctx, 0, sizeof(ctx));
+  ctx.setup_database = &SetupDatabase;
+  AdbcValidateDatabaseNewRelease(&ctx);
+  AdbcValidateConnectionNewRelease(&ctx);
+  AdbcValidateConnectionAutocommit(&ctx);
+  AdbcValidateStatementNewRelease(&ctx);
+  AdbcValidateStatementSqlExecute(&ctx);
+  AdbcValidateStatementSqlPrepare(&ctx);
+  ASSERT_EQ(ctx.failed, 0);
+  ASSERT_EQ(ctx.total, ctx.passed);
 }
 
 }  // namespace adbc

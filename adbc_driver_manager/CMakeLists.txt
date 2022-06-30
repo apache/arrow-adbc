@@ -44,12 +44,14 @@ if(ADBC_BUILD_TESTS)
   else()
     set(TEST_LINK_LIBS adbc_driver_manager_static arrow_static)
   endif()
+  include_directories(SYSTEM ${REPOSITORY_ROOT}/validation)
 
   add_test_case(driver_manager_test
                 PREFIX
                 adbc
                 SOURCES
                 adbc_driver_manager_test.cc
+                ../validation/adbc_validation.c
                 EXTRA_LINK_LIBS
                 ${TEST_LINK_LIBS})
 endif()
