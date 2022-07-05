@@ -236,8 +236,7 @@ class SqliteDatabaseImpl {
 
 class SqliteConnectionImpl {
  public:
-  explicit SqliteConnectionImpl(std::shared_ptr<SqliteDatabaseImpl> database)
-      : database_(std::move(database)), db_(nullptr), autocommit_(true) {}
+  SqliteConnectionImpl() : database_(nullptr), db_(nullptr), autocommit_(true) {}
 
   sqlite3* db() const { return db_; }
 
@@ -274,7 +273,15 @@ class SqliteConnectionImpl {
     return FromArrowStatus(arrow::ExportSchema(*arrow_schema, schema), error);
   }
 
-  AdbcStatusCode Init(struct AdbcError* error) { return database_->Connect(&db_, error); }
+  AdbcStatusCode Init(struct AdbcDatabase* database, struct AdbcError* error) {
+    if (!database->private_data) {
+      SetError(error, "database is not initialized");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    database_ =
+        *reinterpret_cast<std::shared_ptr<SqliteDatabaseImpl>*>(database->private_data);
+    return database_->Connect(&db_, error);
+  }
 
   AdbcStatusCode Release(struct AdbcError* error) {
     return database_->Disconnect(db_, error);
@@ -1228,19 +1235,17 @@ AdbcStatusCode SqliteConnectionGetTableTypes(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode SqliteConnectionInit(struct AdbcConnection* connection,
+                                    struct AdbcDatabase* database,
                                     struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr =
       reinterpret_cast<std::shared_ptr<SqliteConnectionImpl>*>(connection->private_data);
-  return (*ptr)->Init(error);
+  return (*ptr)->Init(database, error);
 }
 
-AdbcStatusCode SqliteConnectionNew(struct AdbcDatabase* database,
-                                   struct AdbcConnection* connection,
+AdbcStatusCode SqliteConnectionNew(struct AdbcConnection* connection,
                                    struct AdbcError* error) {
-  auto ptr =
-      reinterpret_cast<std::shared_ptr<SqliteDatabaseImpl>*>(database->private_data);
-  auto impl = std::make_shared<SqliteConnectionImpl>(*ptr);
+  auto impl = std::make_shared<SqliteConnectionImpl>();
   connection->private_data = new std::shared_ptr<SqliteConnectionImpl>(impl);
   return ADBC_STATUS_OK;
 }
@@ -1430,14 +1435,14 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
+                                  struct AdbcDatabase* database,
                                   struct AdbcError* error) {
-  return SqliteConnectionInit(connection, error);
+  return SqliteConnectionInit(connection, database, error);
 }
 
-AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
-                                 struct AdbcConnection* connection,
+AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
                                  struct AdbcError* error) {
-  return SqliteConnectionNew(database, connection, error);
+  return SqliteConnectionNew(connection, error);
 }
 
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,

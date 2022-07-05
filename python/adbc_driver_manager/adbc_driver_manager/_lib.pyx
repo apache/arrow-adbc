@@ -79,9 +79,9 @@ cdef extern from "adbc.h":
     AdbcStatusCode AdbcDatabaseInit(CAdbcDatabase* database, CAdbcError* error)
     AdbcStatusCode AdbcDatabaseRelease(CAdbcDatabase* database, CAdbcError* error)
 
-    AdbcStatusCode AdbcConnectionNew(CAdbcDatabase* database, CAdbcConnection* connection, CAdbcError* error)
+    AdbcStatusCode AdbcConnectionNew(CAdbcConnection* connection, CAdbcError* error)
     AdbcStatusCode AdbcConnectionSetOption(CAdbcConnection* connection, const char* key, const char* value, CAdbcError* error)
-    AdbcStatusCode AdbcConnectionInit(CAdbcConnection* connection, CAdbcError* error)
+    AdbcStatusCode AdbcConnectionInit(CAdbcConnection* connection, CAdbcDatabase* database, CAdbcError* error)
     AdbcStatusCode AdbcConnectionRelease(CAdbcConnection* connection, CAdbcError* error)
 
     AdbcStatusCode AdbcStatementBind(CAdbcStatement* statement, CArrowArray*, CArrowSchema*, CAdbcError* error)
@@ -247,7 +247,7 @@ cdef class AdbcConnection(_AdbcHandle):
         cdef const char* c_value
         memset(&self.connection, 0, cython.sizeof(CAdbcConnection))
 
-        status = AdbcConnectionNew(&database.database, &self.connection, &c_error)
+        status = AdbcConnectionNew(&self.connection, &c_error)
         check_error(status, &c_error)
 
         for key, value in kwargs.items():
@@ -258,7 +258,7 @@ cdef class AdbcConnection(_AdbcHandle):
             status = AdbcConnectionSetOption(&self.connection, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
-        status = AdbcConnectionInit(&self.connection, &c_error)
+        status = AdbcConnectionInit(&self.connection, &database.database, &c_error)
         check_error(status, &c_error)
 
     def close(self) -> None:

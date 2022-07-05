@@ -21,6 +21,7 @@
 #include <cstring>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #if defined(_WIN32)
 #include <windows.h>  // Must come first
@@ -125,6 +126,11 @@ struct TempDatabase {
   std::unordered_map<std::string, std::string> options;
   std::string driver;
   std::string entrypoint;
+};
+
+/// Temporary state while the database is being configured.
+struct TempConnection {
+  std::unordered_map<std::string, std::string> options;
 };
 
 #if defined(_WIN32)
@@ -278,7 +284,12 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
 AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
                                    struct AdbcError* error) {
   if (!database->private_driver) {
-    return ADBC_STATUS_INVALID_STATE;
+    if (database->private_data) {
+      TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
+      delete args;
+      database->private_data = nullptr;
+    }
+    return ADBC_STATUS_OK;
   }
   auto status = database->private_driver->DatabaseRelease(database, error);
   if (database->private_driver->release) {
@@ -297,28 +308,45 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
+                                  struct AdbcDatabase* database,
                                   struct AdbcError* error) {
-  if (!connection->private_driver) {
+  if (!connection->private_data) {
+    SetError(error, "Must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
-  return connection->private_driver->ConnectionInit(connection, error);
+  TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
+  std::unordered_map<std::string, std::string> options = std::move(args->options);
+  delete args;
+
+  auto status = database->private_driver->ConnectionNew(connection, error);
+  if (status != ADBC_STATUS_OK) return status;
+  connection->private_driver = database->private_driver;
+
+  for (const auto& option : options) {
+    status = database->private_driver->ConnectionSetOption(
+        connection, option.first.c_str(), option.second.c_str(), error);
+    if (status != ADBC_STATUS_OK) return status;
+  }
+  return connection->private_driver->ConnectionInit(connection, database, error);
 }
 
-AdbcStatusCode AdbcConnectionNew(struct AdbcDatabase* database,
-                                 struct AdbcConnection* connection,
+AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
                                  struct AdbcError* error) {
-  if (!database->private_driver) {
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  auto status = database->private_driver->ConnectionNew(database, connection, error);
-  connection->private_driver = database->private_driver;
-  return status;
+  // Allocate a temporary structure to store options pre-Init
+  connection->private_data = new TempConnection;
+  connection->private_driver = nullptr;
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   if (!connection->private_driver) {
-    return ADBC_STATUS_INVALID_STATE;
+    if (connection->private_data) {
+      TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
+      delete args;
+      connection->private_data = nullptr;
+    }
+    return ADBC_STATUS_OK;
   }
   auto status = connection->private_driver->ConnectionRelease(connection, error);
   connection->private_driver = nullptr;
