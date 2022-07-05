@@ -22,6 +22,7 @@ enable_language(C CXX)
 set(BUILD_SUPPORT_DIR "${REPOSITORY_ROOT}/ci/build_support")
 
 include(DefineOptions)
+include(GNUInstallDirs) # Populates CMAKE_INSTALL_INCLUDEDIR
 include(san-config)
 
 set(ADBC_VERSION "9.0.0-SNAPSHOT")
