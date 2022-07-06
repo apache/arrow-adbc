@@ -88,3 +88,5 @@ java-dist/
 java-native-c/
 java-native-cpp/
 target/
+
+*.log

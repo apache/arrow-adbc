@@ -29,6 +29,7 @@
 
   <properties>
     <dep.arrow.version>8.0.0</dep.arrow.version>
+    <adbc.version>9.0.0-SNAPSHOT</adbc.version>
   </properties>
 
   <scm>
@@ -67,7 +68,8 @@
 
   <modules>
     <module>core</module>
-    <module>driver/derby</module>
+    <module>driver/jdbc</module>
+    <module>driver/jdbc-util</module>
     <module>driver-manager</module>
   </modules>
 
@@ -93,12 +95,17 @@
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-core</artifactId>
-        <version>9.0.0-SNAPSHOT</version>
+        <version>${adbc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.arrow.adbc</groupId>
+        <artifactId>adbc-driver-jdbc-util</artifactId>
+        <version>${adbc.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-driver-manager</artifactId>
-        <version>9.0.0-SNAPSHOT</version>
+        <version>${adbc.version}</version>
       </dependency>
 
       <!-- Testing -->
@@ -156,6 +163,14 @@
             </goals>
           </execution>
         </executions>
+        <configuration>
+          <excludeSubProjects>false</excludeSubProjects>
+          <excludes>
+            <exclude>**/*.iml</exclude>
+            <exclude>**/*.log</exclude>
+            <exclude>**/target/**</exclude>
+          </excludes>
+        </configuration>
       </plugin>
     </plugins>
   </build>

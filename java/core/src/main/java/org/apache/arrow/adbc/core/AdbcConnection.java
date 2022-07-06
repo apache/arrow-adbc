@@ -18,6 +18,28 @@ package org.apache.arrow.adbc.core;
 
 /** A connection to a {@link AdbcDatabase}. */
 public interface AdbcConnection extends AutoCloseable {
+  /**
+   * Commit the pending transaction.
+   *
+   * @throws AdbcException if a database error occurs
+   * @throws IllegalStateException if autocommit is enabled
+   * @throws UnsupportedOperationException if the database does not support transactions
+   */
+  default void commit() throws AdbcException {
+    throw new UnsupportedOperationException("Connection does not support transactions");
+  }
+
   /** Create a new statement that can be executed. */
   AdbcStatement createStatement() throws AdbcException;
+
+  /**
+   * Rollback the pending transaction.
+   *
+   * @throws AdbcException if a database error occurs
+   * @throws IllegalStateException if autocommit is enabled
+   * @throws UnsupportedOperationException if the database does not support transactions
+   */
+  default void rollback() throws AdbcException {
+    throw new UnsupportedOperationException("Connection does not support transactions");
+  }
 }

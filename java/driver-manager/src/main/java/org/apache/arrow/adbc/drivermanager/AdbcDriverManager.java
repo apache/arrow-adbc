@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
+import org.apache.arrow.adbc.core.AdbcStatusCode;
 
 public final class AdbcDriverManager {
   private static final AdbcDriverManager INSTANCE = new AdbcDriverManager();
@@ -45,7 +46,8 @@ public final class AdbcDriverManager {
       throws AdbcException {
     final AdbcDriver driver = lookupDriver(driverName);
     if (driver == null) {
-      throw new AdbcException("Driver not found for '" + driverName + "'");
+      throw new AdbcException(
+          "Driver not found for '" + driverName + "'", null, AdbcStatusCode.NOT_FOUND, null, 0);
     }
     return driver.connect(parameters);
   }
