@@ -15,20 +15,20 @@
     <artifactId>arrow-adbc-java-root</artifactId>
     <groupId>org.apache.arrow.adbc</groupId>
     <version>9.0.0-SNAPSHOT</version>
-    <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>adbc-driver-jdbc</artifactId>
+  <artifactId>adbc-driver-testsuite</artifactId>
   <packaging>jar</packaging>
-  <name>Arrow ADBC Driver JDBC</name>
-  <description>An ADBC driver wrapping the JDBC API.</description>
+  <name>Arrow ADBC Driver Test Suite</name>
+  <description>A reusable ADBC driver compliance/test suite.</description>
 
   <dependencies>
-    <!-- Arrow -->
     <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-jdbc</artifactId>
+      <groupId>org.apache.arrow.adbc</groupId>
+      <artifactId>adbc-core</artifactId>
     </dependency>
+
+    <!-- Arrow -->
     <dependency>
       <groupId>org.apache.arrow</groupId>
       <artifactId>arrow-memory-core</artifactId>
@@ -38,49 +38,14 @@
       <artifactId>arrow-vector</artifactId>
     </dependency>
 
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-jdbc-util</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-manager</artifactId>
-    </dependency>
-
-    <!-- Derby -->
-    <!-- Cannot upgrade beyond this version for Java 8 support -->
-    <dependency>
-      <groupId>org.apache.derby</groupId>
-      <artifactId>derby</artifactId>
-      <version>10.14.2.0</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.derby</groupId>
-      <artifactId>derbytools</artifactId>
-      <version>10.14.2.0</version>
-      <scope>test</scope>
-    </dependency>
-
     <!-- Testing -->
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-testsuite</artifactId>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

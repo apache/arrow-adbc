@@ -70,6 +70,7 @@
     <module>core</module>
     <module>driver/jdbc</module>
     <module>driver/jdbc-util</module>
+    <module>driver/testsuite</module>
     <module>driver-manager</module>
   </modules>
 
@@ -99,7 +100,17 @@
       </dependency>
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
+        <artifactId>adbc-driver-jdbc</artifactId>
+        <version>${adbc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-driver-jdbc-util</artifactId>
+        <version>${adbc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.arrow.adbc</groupId>
+        <artifactId>adbc-driver-testsuite</artifactId>
         <version>${adbc.version}</version>
       </dependency>
       <dependency>
