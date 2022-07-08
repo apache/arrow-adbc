@@ -288,14 +288,17 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
       TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
       delete args;
       database->private_data = nullptr;
+      return ADBC_STATUS_OK;
     }
-    return ADBC_STATUS_OK;
+    return ADBC_STATUS_INVALID_STATE;
   }
   auto status = database->private_driver->DatabaseRelease(database, error);
   if (database->private_driver->release) {
     database->private_driver->release(database->private_driver, error);
   }
   delete database->private_driver;
+  database->private_data = nullptr;
+  database->private_driver = nullptr;
   return status;
 }
 
@@ -345,8 +348,9 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
       TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
       delete args;
       connection->private_data = nullptr;
+      return ADBC_STATUS_OK;
     }
-    return ADBC_STATUS_OK;
+    return ADBC_STATUS_INVALID_STATE;
   }
   auto status = connection->private_driver->ConnectionRelease(connection, error);
   connection->private_driver = nullptr;

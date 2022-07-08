@@ -27,6 +27,7 @@
 #include <arrow/testing/matchers.h>
 
 #include "adbc.h"
+#include "adbc_validation.h"
 #include "drivers/test_util.h"
 
 // Tests of the SQLite example driver
@@ -736,6 +737,19 @@ TEST_F(Sqlite, Transactions) {
   }
 
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection2, &error));
+}
+
+TEST_F(Sqlite, ValidationSuite) {
+  struct AdbcValidateTestContext ctx;
+  std::memset(&ctx, 0, sizeof(ctx));
+  AdbcValidateDatabaseNewRelease(&ctx);
+  AdbcValidateConnectionNewRelease(&ctx);
+  AdbcValidateConnectionAutocommit(&ctx);
+  AdbcValidateStatementNewRelease(&ctx);
+  AdbcValidateStatementSqlExecute(&ctx);
+  AdbcValidateStatementSqlPrepare(&ctx);
+  ASSERT_EQ(ctx.failed, 0);
+  ASSERT_EQ(ctx.total, ctx.passed);
 }
 
 }  // namespace adbc
