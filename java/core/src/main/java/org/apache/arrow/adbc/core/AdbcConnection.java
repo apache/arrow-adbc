@@ -16,6 +16,8 @@
  */
 package org.apache.arrow.adbc.core;
 
+import org.apache.arrow.vector.VectorSchemaRoot;
+
 /** A connection to a {@link AdbcDatabase}. */
 public interface AdbcConnection extends AutoCloseable {
   /**
@@ -32,6 +34,11 @@ public interface AdbcConnection extends AutoCloseable {
   /** Create a new statement that can be executed. */
   AdbcStatement createStatement() throws AdbcException;
 
+  /** Create a new statement to bulk insert a {@link VectorSchemaRoot} into a table. */
+  default AdbcStatement bulkIngest(String targetTableName) throws AdbcException {
+    throw new UnsupportedOperationException("Connection does not support bulk ingestion");
+  }
+
   /**
    * Rollback the pending transaction.
    *
@@ -40,6 +47,24 @@ public interface AdbcConnection extends AutoCloseable {
    * @throws UnsupportedOperationException if the database does not support transactions
    */
   default void rollback() throws AdbcException {
+    throw new UnsupportedOperationException("Connection does not support transactions");
+  }
+
+  /**
+   * Get the autocommit state.
+   *
+   * <p>Connections start in autocommit mode by default.
+   */
+  default boolean getAutoCommit() throws AdbcException {
+    return true;
+  }
+
+  /**
+   * Toggle whether autocommit is enabled.
+   *
+   * @throws UnsupportedOperationException if the database does not support toggling autocommit
+   */
+  default void setAutoCommit(boolean enableAutoCommit) throws AdbcException {
     throw new UnsupportedOperationException("Connection does not support transactions");
   }
 }

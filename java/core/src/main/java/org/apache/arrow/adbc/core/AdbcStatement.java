@@ -24,13 +24,6 @@ import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 
 public interface AdbcStatement extends AutoCloseable {
-  /**
-   * The name of the target table for a bulk insert.
-   *
-   * @see #setOption(String, String)
-   */
-  String INGEST_OPTION_TARGET_TABLE = "adbc.ingest.target_table";
-
   /** Set a generic query option. */
   default void setOption(String key, String value) {
     throw new UnsupportedOperationException("Unsupported option " + key);

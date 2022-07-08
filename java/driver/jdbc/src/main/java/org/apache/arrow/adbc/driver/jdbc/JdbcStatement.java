@@ -27,6 +27,7 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.driver.jdbc.util.JdbcParameterBinder;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -36,6 +37,7 @@ public class JdbcStatement implements AdbcStatement {
   private final Connection connection;
 
   // State for SQL queries
+  private Statement statement;
   private String sqlQuery;
   private ResultSet resultSet;
   // State for bulk ingest
@@ -48,14 +50,12 @@ public class JdbcStatement implements AdbcStatement {
     this.sqlQuery = null;
   }
 
-  @Override
-  public void setOption(String key, String value) {
-    if (AdbcStatement.INGEST_OPTION_TARGET_TABLE.equals(key)) {
-      bulkTargetTable = Objects.requireNonNull(value);
-      sqlQuery = null;
-      return;
-    }
-    AdbcStatement.super.setOption(key, value);
+  static AdbcStatement ingestRoot(
+      BufferAllocator allocator, Connection connection, String targetTableName) {
+    Objects.requireNonNull(targetTableName);
+    final JdbcStatement statement = new JdbcStatement(allocator, connection);
+    statement.bulkTargetTable = targetTableName;
+    return statement;
   }
 
   @Override
@@ -109,7 +109,10 @@ public class JdbcStatement implements AdbcStatement {
           create.append(" INT");
           break;
         case FloatingPoint:
+          throw new UnsupportedOperationException("Type " + field);
         case Utf8:
+          create.append(" CLOB");
+          break;
         case LargeUtf8:
         case Binary:
         case LargeBinary:
@@ -164,7 +167,7 @@ public class JdbcStatement implements AdbcStatement {
       if (resultSet != null) {
         resultSet.close();
       }
-      final Statement statement =
+      statement =
           connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
       resultSet = statement.executeQuery(sqlQuery);
     } catch (SQLException e) {
@@ -189,8 +192,6 @@ public class JdbcStatement implements AdbcStatement {
 
   @Override
   public void close() throws Exception {
-    if (resultSet != null) {
-      resultSet.close();
-    }
+    AutoCloseables.close(resultSet, statement);
   }
 }

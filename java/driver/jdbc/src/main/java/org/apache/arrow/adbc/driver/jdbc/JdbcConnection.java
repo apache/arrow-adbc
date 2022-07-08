@@ -35,6 +35,7 @@ public class JdbcConnection implements AdbcConnection {
   @Override
   public void commit() throws AdbcException {
     try {
+      checkAutoCommit();
       connection.commit();
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
@@ -47,9 +48,33 @@ public class JdbcConnection implements AdbcConnection {
   }
 
   @Override
+  public AdbcStatement bulkIngest(String targetTableName) throws AdbcException {
+    return JdbcStatement.ingestRoot(allocator, connection, targetTableName);
+  }
+
+  @Override
   public void rollback() throws AdbcException {
     try {
+      checkAutoCommit();
       connection.rollback();
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public boolean getAutoCommit() throws AdbcException {
+    try {
+      return connection.getAutoCommit();
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public void setAutoCommit(boolean enableAutoCommit) throws AdbcException {
+    try {
+      connection.setAutoCommit(enableAutoCommit);
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
@@ -58,5 +83,16 @@ public class JdbcConnection implements AdbcConnection {
   @Override
   public void close() throws Exception {
     connection.close();
+  }
+
+  private void checkAutoCommit() throws SQLException {
+    if (connection.getAutoCommit()) {
+      throw new IllegalStateException("Cannot perform operation in autocommit mode");
+    }
+  }
+
+  @Override
+  public String toString() {
+    return "JdbcConnection{" + "connection=" + connection + '}';
   }
 }

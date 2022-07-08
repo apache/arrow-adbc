@@ -158,6 +158,7 @@ class MockPreparedStatement implements PreparedStatement {
   }
 
   @Override
+  @Deprecated
   public void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException {
     parameters.put(parameterIndex, new ParameterHolder(x, null));
   }
