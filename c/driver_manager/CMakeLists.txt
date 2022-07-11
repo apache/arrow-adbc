@@ -15,52 +15,46 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.10)
 get_filename_component(REPOSITORY_ROOT "../.." ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/cmake_modules/")
+message(STATUS "${REPOSITORY_ROOT}")
+list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
+include(DefineOptions)
 
-project(adbc_driver_flight_sql
+project(adbc_driver_manager
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
+include(CTest)
 
-find_package(Arrow REQUIRED)
-# ARROW-12175: Arrow libraries are not CMake components
-get_filename_component(ARROW_CONFIG_PATH ${Arrow_CONFIG} DIRECTORY)
-find_package(ArrowFlight REQUIRED HINTS ${ARROW_CONFIG_PATH})
-find_package(ArrowFlightSql REQUIRED HINTS ${ARROW_CONFIG_PATH})
-
-add_arrow_lib(adbc_driver_flight_sql
+add_arrow_lib(adbc_driver_manager
               SOURCES
-              flight_sql.cc
+              adbc_driver_manager.cc
               OUTPUTS
-              ADBC_LIBRARIES
-              SHARED_LINK_LIBS
-              arrow_flight_sql_shared
-              arrow_flight_shared
-              arrow_shared
-              STATIC_LINK_LIBS
-              arrow_flight_sql_static
-              arrow_flight_static
-              arrow_static)
+              ADBC_LIBRARIES)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
 
+install(FILES "${REPOSITORY_ROOT}/adbc.h" adbc_driver_manager.h DESTINATION include)
+
 if(ADBC_BUILD_TESTS)
+  find_package(Arrow REQUIRED)
   if(ADBC_TEST_LINKAGE STREQUAL "shared")
-    set(TEST_LINK_LIBS adbc_driver_flight_sql_shared)
+    set(TEST_LINK_LIBS adbc_driver_manager_shared arrow_shared)
   else()
-    set(TEST_LINK_LIBS adbc_driver_flight_sql_static)
+    set(TEST_LINK_LIBS adbc_driver_manager_static arrow_static)
   endif()
 
-  add_test_case(driver_flight_sql_test
+  add_test_case(driver_manager_test
                 PREFIX
                 adbc
                 SOURCES
-                flight_sql_test.cc
+                adbc_driver_manager_test.cc
+                ../validation/adbc_validation.c
                 EXTRA_LINK_LIBS
                 ${TEST_LINK_LIBS})
 endif()

@@ -78,7 +78,7 @@ jobs:
         run: |
           mkdir -p build/driver_sqlite
           pushd build/driver_sqlite
-          cmake ../../drivers/sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
+          cmake ../../c/drivers/sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
           cmake --build .
           export DYLD_LIBRARY_PATH=$(pwd)
           # MacOS doesn't allow DYLD_LIBRARY_PATH to propagate through
@@ -90,7 +90,7 @@ jobs:
         run: |
           mkdir -p build/driver_manager
           pushd build/driver_manager
-          cmake ../../adbc_driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
+          cmake ../../c/driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
           cmake --build .
           export DYLD_LIBRARY_PATH=$(pwd):../driver_sqlite
           export LD_LIBRARY_PATH=$(pwd):../driver_sqlite
@@ -102,7 +102,7 @@ jobs:
           # Build a no-ASan version that Python can easily load
           mkdir -p build/driver_sqlite_no_asan
           pushd build/driver_sqlite_no_asan
-          cmake ../../drivers/sqlite -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
+          cmake ../../c/drivers/sqlite -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
           cmake --build .
           popd
       - name: Build/Test Python Driver Manager
@@ -144,7 +144,7 @@ jobs:
         run: |
           mkdir build\driver_sqlite
           cd build\driver_sqlite
-          cmake -GNinja ..\..\drivers\sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
+          cmake -GNinja ..\..\c\drivers\sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
           if %errorlevel% neq 0 then exit /b %errorlevel%
           cmake --build .
           if %errorlevel% neq 0 then exit /b %errorlevel%
@@ -156,7 +156,7 @@ jobs:
         run: |
           mkdir build\driver_manager
           cd build\driver_manager
-          cmake -GNinja ..\..\adbc_driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
+          cmake -GNinja ..\..\c\driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
           if %errorlevel% neq 0 then exit /b %errorlevel%
           cmake --build .
           if %errorlevel% neq 0 then exit /b %errorlevel%

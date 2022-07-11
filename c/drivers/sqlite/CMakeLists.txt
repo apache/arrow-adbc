@@ -15,46 +15,51 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.10)
-get_filename_component(REPOSITORY_ROOT ".." ABSOLUTE)
-message(STATUS "${REPOSITORY_ROOT}")
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/cmake_modules/")
+cmake_minimum_required(VERSION 3.14)
+get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
+list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
-include(DefineOptions)
 
-project(adbc_driver_manager
+project(adbc_driver_sqlite
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
 include(CTest)
 
-add_arrow_lib(adbc_driver_manager
+find_package(Arrow REQUIRED)
+find_package(SQLite3 REQUIRED)
+
+add_arrow_lib(adbc_driver_sqlite
               SOURCES
-              adbc_driver_manager.cc
+              sqlite.cc
               OUTPUTS
-              ADBC_LIBRARIES)
+              ADBC_LIBRARIES
+              SHARED_LINK_LIBS
+              SQLite::SQLite3
+              arrow_shared
+              STATIC_LINK_LIBS
+              SQLite::SQLite3
+              arrow_static)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
+include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
 
-install(FILES "${REPOSITORY_ROOT}/adbc.h" adbc_driver_manager.h DESTINATION include)
+if(ADBC_TEST_LINKAGE STREQUAL "shared")
+  set(TEST_LINK_LIBS adbc_driver_sqlite_shared)
+else()
+  set(TEST_LINK_LIBS adbc_driver_sqlite_static)
+endif()
 
 if(ADBC_BUILD_TESTS)
-  find_package(Arrow REQUIRED)
-  if(ADBC_TEST_LINKAGE STREQUAL "shared")
-    set(TEST_LINK_LIBS adbc_driver_manager_shared arrow_shared)
-  else()
-    set(TEST_LINK_LIBS adbc_driver_manager_static arrow_static)
-  endif()
-  include_directories(SYSTEM ${REPOSITORY_ROOT}/validation)
-
-  add_test_case(driver_manager_test
+  add_test_case(driver_sqlite_test
                 PREFIX
                 adbc
                 SOURCES
-                adbc_driver_manager_test.cc
-                ../validation/adbc_validation.c
+                sqlite_test.cc
+                ../../validation/adbc_validation.c
                 EXTRA_LINK_LIBS
                 ${TEST_LINK_LIBS})
 endif()

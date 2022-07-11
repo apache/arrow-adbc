@@ -27,9 +27,9 @@ setup(
             name="adbc_driver_manager._lib",
             sources=[
                 "adbc_driver_manager/_lib.pyx",
-                "../../adbc_driver_manager/adbc_driver_manager.cc",
+                "../../c/driver_manager/adbc_driver_manager.cc",
             ],
-            include_dirs=["../../", "../../adbc_driver_manager"],
+            include_dirs=["../../", "../../c/driver_manager"],
             # extra_compile_args=["-ggdb", "-Og"],
         ),
     ),
