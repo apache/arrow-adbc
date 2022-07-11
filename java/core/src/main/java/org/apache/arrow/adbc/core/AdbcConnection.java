@@ -34,7 +34,14 @@ public interface AdbcConnection extends AutoCloseable {
   /** Create a new statement that can be executed. */
   AdbcStatement createStatement() throws AdbcException;
 
-  /** Create a new statement to bulk insert a {@link VectorSchemaRoot} into a table. */
+  /**
+   * Create a new statement to bulk insert a {@link VectorSchemaRoot} into a table.
+   *
+   * <p>Bind data to the statement, then call {@link AdbcStatement#execute()}. The table will be
+   * created if it does not exist. Otherwise data will be appended. <tt>execute()</tt> will throw
+   * AdbcException with status {@link AdbcStatusCode#ALREADY_EXISTS} if the schema of the bound data
+   * does not match the table schema.
+   */
   default AdbcStatement bulkIngest(String targetTableName) throws AdbcException {
     throw new UnsupportedOperationException("Connection does not support bulk ingestion");
   }

@@ -18,6 +18,7 @@
 package org.apache.arrow.adbc.driver.jdbc;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -25,6 +26,7 @@ import java.sql.Statement;
 import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.driver.jdbc.util.JdbcParameterBinder;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
@@ -80,12 +82,7 @@ public class JdbcStatement implements AdbcStatement {
     }
   }
 
-  private void executeBulk() throws AdbcException {
-    if (bindRoot == null) {
-      throw new IllegalStateException("Must bind() before bulk insert");
-    }
-
-    // TODO: also create the table
+  private void createBulkTable() throws AdbcException {
     final StringBuilder create = new StringBuilder("CREATE TABLE ");
     create.append(bulkTargetTable);
     create.append(" (");
@@ -135,6 +132,27 @@ public class JdbcStatement implements AdbcStatement {
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
+  }
+
+  private void executeBulk() throws AdbcException {
+    if (bindRoot == null) {
+      throw new IllegalStateException("Must bind() before bulk insert");
+    }
+
+    // Check if table exists, create it if necessary.
+    // XXX: TOC/TOU fallacy.
+    try {
+      final DatabaseMetaData dbmd = connection.getMetaData();
+      try (final ResultSet rs =
+          dbmd.getTables(/*catalog*/ null, /*schema*/ null, bulkTargetTable, /*types*/ null)) {
+        if (!rs.next()) {
+          createBulkTable();
+        }
+      }
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(
+          "Could not determine if table %s exists: ", e, bulkTargetTable);
+    }
 
     // XXX: potential injection
     // TODO: consider (optionally?) depending on jOOQ to generate SQL and support different dialects
@@ -149,14 +167,28 @@ public class JdbcStatement implements AdbcStatement {
     }
     insert.append(")");
 
-    try (final PreparedStatement statement = connection.prepareStatement(insert.toString())) {
-      final JdbcParameterBinder binder =
-          JdbcParameterBinder.builder(statement, bindRoot).bindAll().build();
-      statement.clearBatch();
-      while (binder.next()) {
-        statement.addBatch();
+    final PreparedStatement statement;
+    try {
+      statement = connection.prepareStatement(insert.toString());
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(
+          AdbcStatusCode.ALREADY_EXISTS,
+          "Could not bulk insert into table %s: ",
+          e,
+          bulkTargetTable);
+    }
+    try {
+      try {
+        final JdbcParameterBinder binder =
+            JdbcParameterBinder.builder(statement, bindRoot).bindAll().build();
+        statement.clearBatch();
+        while (binder.next()) {
+          statement.addBatch();
+        }
+        statement.executeBatch();
+      } finally {
+        statement.close();
       }
-      statement.executeBatch();
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }

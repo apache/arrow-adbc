@@ -19,13 +19,16 @@ package org.apache.arrow.adbc.driver.testsuite;
 
 import static org.apache.arrow.adbc.driver.testsuite.ArrowAssertions.assertRoot;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
@@ -82,7 +85,9 @@ public abstract class AbstractStatementTest {
       strs.setSafe(3, "asdf".getBytes(StandardCharsets.UTF_8));
       root.setRowCount(4);
 
-      try (final AdbcStatement stmt = connection.bulkIngest("foo")) {
+      // TODO: XXX: need a "quirks" system to handle idiosyncracies. For example: Derby forces table
+      // names to uppercase, but does not do case folding in all places.
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO")) {
         stmt.bind(root);
         stmt.execute();
       }
@@ -93,6 +98,42 @@ public abstract class AbstractStatementTest {
           assertThat(arrowReader.loadNextBatch()).isTrue();
           assertRoot(arrowReader.getVectorSchemaRoot()).isEqualTo(root);
         }
+      }
+
+      // Append
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO")) {
+        stmt.bind(root);
+        stmt.execute();
+      }
+      try (final AdbcStatement stmt = connection.createStatement()) {
+        stmt.setSqlQuery("SELECT * FROM FOO");
+        stmt.execute();
+        try (ArrowReader arrowReader = stmt.getArrowReader()) {
+          assertThat(arrowReader.loadNextBatch()).isTrue();
+          root.setRowCount(8);
+          ints.setSafe(4, 0);
+          ints.setSafe(5, 1);
+          ints.setSafe(6, 2);
+          ints.setNull(7);
+          strs.setNull(4);
+          strs.setSafe(5, "foo".getBytes(StandardCharsets.UTF_8));
+          strs.setSafe(6, "".getBytes(StandardCharsets.UTF_8));
+          strs.setSafe(7, "asdf".getBytes(StandardCharsets.UTF_8));
+          assertRoot(arrowReader.getVectorSchemaRoot()).isEqualTo(root);
+        }
+      }
+    }
+
+    // Conflict
+    final Schema schema2 =
+        new Schema(
+            Collections.singletonList(
+                Field.nullable("INTS", new ArrowType.Int(32, /*signed=*/ true))));
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema2, allocator)) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO")) {
+        stmt.bind(root);
+        final AdbcException e = assertThrows(AdbcException.class, stmt::execute);
+        assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.ALREADY_EXISTS);
       }
     }
   }

@@ -29,11 +29,25 @@ final class JdbcDriverUtil {
     return "[JDBC] " + s;
   }
 
-  static AdbcException fromSqlException(final SQLException e) {
+  static AdbcException fromSqlException(SQLException e) {
     return new AdbcException(
         prefixExceptionMessage(e.getMessage()),
         e.getCause(),
         AdbcStatusCode.UNKNOWN,
+        e.getSQLState(),
+        e.getErrorCode());
+  }
+
+  static AdbcException fromSqlException(String format, SQLException e, Object... values) {
+    return fromSqlException(AdbcStatusCode.UNKNOWN, format, e, values);
+  }
+
+  static AdbcException fromSqlException(
+      AdbcStatusCode status, String format, SQLException e, Object... values) {
+    return new AdbcException(
+        String.format(format, values) + prefixExceptionMessage(e.getMessage()),
+        e.getCause(),
+        status,
         e.getSQLState(),
         e.getErrorCode());
   }
