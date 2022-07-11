@@ -16,50 +16,52 @@
 # under the License.
 
 cmake_minimum_required(VERSION 3.14)
-get_filename_component(REPOSITORY_ROOT "../.." ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/cmake_modules/")
+get_filename_component(REPOSITORY_ROOT "../../.." ABSOLUTE)
+list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
 
-project(adbc_driver_sqlite
+project(adbc_driver_flight_sql
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
-include(CTest)
 
 find_package(Arrow REQUIRED)
-find_package(SQLite3 REQUIRED)
+# ARROW-12175: Arrow libraries are not CMake components
+get_filename_component(ARROW_CONFIG_PATH ${Arrow_CONFIG} DIRECTORY)
+find_package(ArrowFlight REQUIRED HINTS ${ARROW_CONFIG_PATH})
+find_package(ArrowFlightSql REQUIRED HINTS ${ARROW_CONFIG_PATH})
 
-add_arrow_lib(adbc_driver_sqlite
+add_arrow_lib(adbc_driver_flight_sql
               SOURCES
-              sqlite.cc
+              flight_sql.cc
               OUTPUTS
               ADBC_LIBRARIES
               SHARED_LINK_LIBS
-              SQLite::SQLite3
+              arrow_flight_sql_shared
+              arrow_flight_shared
               arrow_shared
               STATIC_LINK_LIBS
-              SQLite::SQLite3
+              arrow_flight_sql_static
+              arrow_flight_static
               arrow_static)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
-include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
 
-if(ADBC_TEST_LINKAGE STREQUAL "shared")
-  set(TEST_LINK_LIBS adbc_driver_sqlite_shared)
-else()
-  set(TEST_LINK_LIBS adbc_driver_sqlite_static)
-endif()
-
 if(ADBC_BUILD_TESTS)
-  include_directories(SYSTEM ${REPOSITORY_ROOT}/validation)
-  add_test_case(driver_sqlite_test
+  if(ADBC_TEST_LINKAGE STREQUAL "shared")
+    set(TEST_LINK_LIBS adbc_driver_flight_sql_shared)
+  else()
+    set(TEST_LINK_LIBS adbc_driver_flight_sql_static)
+  endif()
+
+  add_test_case(driver_flight_sql_test
                 PREFIX
                 adbc
                 SOURCES
-                sqlite_test.cc
-                ../../validation/adbc_validation.c
+                flight_sql_test.cc
                 EXTRA_LINK_LIBS
                 ${TEST_LINK_LIBS})
 endif()
