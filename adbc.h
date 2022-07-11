@@ -410,7 +410,9 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 ///
 /// 1. The column's ordinal position in the table (starting from 1).
 /// 2. Database-specific description of the column.
-/// 3. Optional, JDBC/ODBC-compatible value.
+/// 3. Optional value.  Should be null if not supported by the driver.
+///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
+///    in an agnostic manner.
 ///
 /// CONSTRAINT_SCHEMA is a Struct with fields:
 ///
@@ -719,6 +721,11 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
 /// @{
 
 /// \brief The name of the target table for a bulk insert.
+///
+/// The driver should attempt to create the table if it does not
+/// exist.  If the table exists but has a different schema,
+/// ADBC_STATUS_ALREADY_EXISTS should be raised.  Else, data should be
+/// appended to the target table.
 #define ADBC_INGEST_OPTION_TARGET_TABLE "adbc.ingest.target_table"
 
 /// }@

@@ -88,10 +88,19 @@ AdbcStatusCode CheckRc(sqlite3* db, sqlite3_stmt* stmt, int rc, const char* cont
 }
 
 template <typename CallbackFn>
+AdbcStatusCode DoQuery(sqlite3* db, sqlite3_stmt* stmt, struct AdbcError* error,
+                       CallbackFn&& callback) {
+  auto status = std::move(callback)();
+  std::ignore = CheckRc(db, stmt, sqlite3_finalize(stmt), "sqlite3_finalize", error);
+  return status;
+}
+
+template <typename CallbackFn>
 AdbcStatusCode DoQuery(sqlite3* db, const char* query, struct AdbcError* error,
                        CallbackFn&& callback) {
   sqlite3_stmt* stmt;
   int rc = sqlite3_prepare_v2(db, query, std::strlen(query), &stmt, /*pzTail=*/nullptr);
+  if (rc != SQLITE_OK) return CheckRc(db, stmt, rc, "sqlite3_prepare_v2", error);
   auto status = std::move(callback)(stmt);
   std::ignore = CheckRc(db, stmt, sqlite3_finalize(stmt), "sqlite3_finalize", error);
   return status;
@@ -1045,28 +1054,11 @@ class SqliteStatementImpl {
     }
 
     sqlite3* db = connection_->db();
-    sqlite3_stmt* stmt = nullptr;
-    int rc = SQLITE_OK;
-
-    auto check_status = [&](const arrow::Status& st) mutable {
-      if (!st.ok()) {
-        SetError(error, st);
-        if (stmt) {
-          rc = sqlite3_finalize(stmt);
-          if (rc != SQLITE_OK) {
-            SetError(db, "sqlite3_finalize", error);
-          }
-        }
-        return ADBC_STATUS_IO;
-      }
-      return ADBC_STATUS_OK;
-    };
 
     // Create the table
-    // TODO: parameter to choose append/overwrite/error
     {
       // XXX: not injection-safe
-      std::string query = "CREATE TABLE ";
+      std::string query = "CREATE TABLE IF NOT EXISTS ";
       query += bulk_table_;
       query += " (";
       const auto& fields = bind_parameters_->schema()->fields();
@@ -1076,19 +1068,15 @@ class SqliteStatementImpl {
       }
       query += ')';
 
-      rc = sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.size()), &stmt,
-                              /*pzTail=*/nullptr);
-      ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_prepare_v2", error));
-
-      rc = sqlite3_step(stmt);
-      if (rc != SQLITE_DONE) return CheckRc(db, stmt, rc, "sqlite3_step", error);
-
-      rc = sqlite3_finalize(stmt);
-      ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_finalize", error));
+      ADBC_RETURN_NOT_OK(
+          DoQuery(db, query.c_str(), error, [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+            const int rc = sqlite3_step(stmt);
+            if (rc == SQLITE_DONE) return ADBC_STATUS_OK;
+            return CheckRc(db, stmt, rc, "sqlite3_step", error);
+          }));
     }
 
     // Insert the rows
-
     {
       std::string query = "INSERT INTO ";
       query += bulk_table_;
@@ -1099,37 +1087,43 @@ class SqliteStatementImpl {
         query += '?';
       }
       query += ')';
-      rc = sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.size()), &stmt,
-                              /*pzTail=*/nullptr);
-      ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, query.c_str(), error));
-    }
 
-    while (true) {
-      std::shared_ptr<arrow::RecordBatch> batch;
-      auto status = bind_parameters_->Next().Value(&batch);
-      ADBC_RETURN_NOT_OK(check_status(status));
-      if (!batch) break;
-
-      for (int64_t row = 0; row < batch->num_rows(); row++) {
-        // TODO: if this fails we won't release the statement
-        ADBC_RETURN_NOT_OK(BindParameters(stmt, *batch, row, &rc, error));
-        ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_bind", error));
-
-        rc = sqlite3_step(stmt);
-        if (rc != SQLITE_DONE) {
-          return CheckRc(db, stmt, rc, "sqlite3_step", error);
-        }
-
-        rc = sqlite3_reset(stmt);
-        ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_reset", error));
-
-        rc = sqlite3_clear_bindings(stmt);
-        ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_clear_bindings", error));
+      sqlite3_stmt* stmt;
+      int rc = sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.size()),
+                                  &stmt, /*pzTail=*/nullptr);
+      if (rc != SQLITE_OK) {
+        std::ignore = CheckRc(db, stmt, rc, "sqlite3_prepare_v2", error);
+        return ADBC_STATUS_ALREADY_EXISTS;
       }
+      ADBC_RETURN_NOT_OK(DoQuery(db, stmt, error, [&]() -> AdbcStatusCode {
+        int rc = SQLITE_OK;
+        while (true) {
+          std::shared_ptr<arrow::RecordBatch> batch;
+          ADBC_RETURN_NOT_OK(
+              FromArrowStatus(bind_parameters_->Next().Value(&batch), error));
+          if (!batch) break;
+
+          for (int64_t row = 0; row < batch->num_rows(); row++) {
+            ADBC_RETURN_NOT_OK(BindParameters(stmt, *batch, row, &rc, error));
+            ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_bind", error));
+
+            rc = sqlite3_step(stmt);
+            if (rc != SQLITE_DONE) {
+              return CheckRc(db, stmt, rc, "sqlite3_step", error);
+            }
+
+            rc = sqlite3_reset(stmt);
+            ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_reset", error));
+
+            rc = sqlite3_clear_bindings(stmt);
+            ADBC_RETURN_NOT_OK(CheckRc(db, stmt, rc, "sqlite3_clear_bindings", error));
+          }
+        }
+        return ADBC_STATUS_OK;
+      }));
     }
 
-    rc = sqlite3_finalize(stmt);
-    return CheckRc(db, nullptr, rc, "sqlite3_finalize", error);
+    return ADBC_STATUS_OK;
   }
 
   AdbcStatusCode ExecutePrepared(struct AdbcError* error) {

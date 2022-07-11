@@ -17,7 +17,9 @@
 
 package org.apache.arrow.adbc.driver.testsuite;
 
+import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.compare.VectorEqualsVisitor;
 import org.assertj.core.api.AbstractAssert;
 
 /** AssertJ assertions for Arrow. */
@@ -41,13 +43,27 @@ public final class ArrowAssertions {
             expected.getClass().getName());
       }
       final VectorSchemaRoot expectedRoot = (VectorSchemaRoot) expected;
-      if (!actual.equals(expectedRoot)) {
+      if (!actual.getSchema().equals(expectedRoot.getSchema())) {
         throw failureWithActualExpected(
             actual,
             expected,
-            "Expected Root:\n%sActual Root:\n%s",
-            expectedRoot.contentToTSVString(),
-            actual.contentToTSVString());
+            "Expected Schema:\n%sActual Schema:\n%s",
+            expectedRoot.getSchema(),
+            actual.getSchema());
+      }
+
+      for (int i = 0; i < expectedRoot.getSchema().getFields().size(); i++) {
+        final FieldVector expectedVector = expectedRoot.getVector(i);
+        final FieldVector actualVector = actual.getVector(i);
+        if (!VectorEqualsVisitor.vectorEquals(expectedVector, actualVector)) {
+          throw failureWithActualExpected(
+              actual,
+              expected,
+              "Vector %s does not match.\nExpected vector: %s\nActual vector  : %s",
+              expectedVector.getField(),
+              expectedVector,
+              actualVector);
+        }
       }
       return this;
     }
