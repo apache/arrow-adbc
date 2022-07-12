@@ -212,7 +212,8 @@ public class JdbcStatement implements AdbcStatement {
     if (resultSet == null) {
       throw new IllegalStateException("Must call execute() before getArrowIterator()");
     }
-    final JdbcArrowReader reader = new JdbcArrowReader(allocator, resultSet);
+    final JdbcArrowReader reader =
+        new JdbcArrowReader(allocator, resultSet, /*overrideSchema*/ null);
     resultSet = null;
     return reader;
   }

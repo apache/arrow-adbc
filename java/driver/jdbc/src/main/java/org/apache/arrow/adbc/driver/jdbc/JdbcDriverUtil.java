@@ -44,11 +44,7 @@ final class JdbcDriverUtil {
 
   static AdbcException fromSqlException(
       AdbcStatusCode status, String format, SQLException e, Object... values) {
-    return new AdbcException(
-        String.format(format, values) + prefixExceptionMessage(e.getMessage()),
-        e.getCause(),
-        status,
-        e.getSQLState(),
-        e.getErrorCode());
+    final String message = "[JDBC] " + String.format(format, values) + e.getMessage();
+    return new AdbcException(message, e.getCause(), status, e.getSQLState(), e.getErrorCode());
   }
 }

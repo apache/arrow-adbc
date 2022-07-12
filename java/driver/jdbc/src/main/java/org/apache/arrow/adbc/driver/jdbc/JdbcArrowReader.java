@@ -33,30 +33,37 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 import org.apache.arrow.vector.types.pojo.Schema;
 
+/** An ArrowReader that wraps a JDBC ResultSet. */
 public class JdbcArrowReader extends ArrowReader {
   private final ArrowVectorIterator delegate;
   private final Schema schema;
   private long bytesRead;
 
-  JdbcArrowReader(BufferAllocator allocator, ResultSet resultSet) throws AdbcException {
+  JdbcArrowReader(BufferAllocator allocator, ResultSet resultSet, Schema overrideSchema)
+      throws AdbcException {
     super(allocator);
+    final JdbcToArrowConfig config =
+        new JdbcToArrowConfigBuilder()
+            .setAllocator(allocator)
+            .setCalendar(JdbcToArrowUtils.getUtcCalendar())
+            .setTargetBatchSize(1024)
+            .build();
     try {
-      this.delegate = JdbcToArrow.sqlToArrowVectorIterator(resultSet, allocator);
+      this.delegate = JdbcToArrow.sqlToArrowVectorIterator(resultSet, config);
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     } catch (IOException e) {
       throw new AdbcException(
           JdbcDriverUtil.prefixExceptionMessage(e.getMessage()), e, AdbcStatusCode.IO, null, -1);
     }
-    final JdbcToArrowConfig config =
-        new JdbcToArrowConfigBuilder()
-            .setAllocator(allocator)
-            .setCalendar(JdbcToArrowUtils.getUtcCalendar())
-            .build();
-    try {
-      this.schema = JdbcToArrowUtils.jdbcToArrowSchema(resultSet.getMetaData(), config);
-    } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(e);
+    if (overrideSchema != null) {
+      this.schema = overrideSchema;
+    } else {
+      try {
+        this.schema = JdbcToArrowUtils.jdbcToArrowSchema(resultSet.getMetaData(), config);
+      } catch (SQLException e) {
+        throw JdbcDriverUtil.fromSqlException("Failed to convert JDBC schema to Arrow schema:", e);
+      }
     }
     this.bytesRead = 0;
 
