@@ -17,6 +17,7 @@
 package org.apache.arrow.adbc.core;
 
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.types.pojo.Schema;
 
 /** A connection to a {@link AdbcDatabase}. */
 public interface AdbcConnection extends AutoCloseable {
@@ -43,7 +44,173 @@ public interface AdbcConnection extends AutoCloseable {
    * does not match the table schema.
    */
   default AdbcStatement bulkIngest(String targetTableName) throws AdbcException {
-    throw new UnsupportedOperationException("Connection does not support bulk ingestion");
+    throw new UnsupportedOperationException("Connection does not support bulkIngest(String)");
+  }
+
+  /**
+   * Get a hierarchical view of all catalogs, database schemas, tables, and columns.
+   *
+   * <p>The result is an Arrow dataset with the following schema:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
+   *   <tr><td>catalog_name</td>            <td>utf8</td>                   </tr>
+   *   <tr><td>catalog_db_schemas</td>      <td>list[DB_SCHEMA_SCHEMA]</td> </tr>
+   * </table>
+   *
+   * DB_SCHEMA_SCHEMA is a Struct with fields:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
+   *   <tr><td>db_schema_name</td>          <td>utf8</td>                   </tr>
+   *   <tr><td>db_schema_tables</td>        <td>list[TABLE_SCHEMA]</td>     </tr>
+   * </table>
+   *
+   * TABLE_SCHEMA is a Struct with fields:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
+   *   <tr><td>table_name</td>              <td>utf8 not null</td>          </tr>
+   *   <tr><td>table_type</td>              <td>utf8 not null</td>          </tr>
+   *   <tr><td>table_columns</td>           <td>list[COLUMN_SCHEMA]</td>    </tr>
+   *   <tr><td>table_constraints</td>       <td>list[CONSTRAINT_SCHEMA]</td></tr>
+   * </table>
+   *
+   * COLUMN_SCHEMA is a Struct with fields:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>             <th>Comments</th></tr>
+   *   <tr><td>column_name</td>             <td>utf8 not null</td>          <td></td></tr>
+   *   <tr><td>ordinal_position</td>        <td>int32</td>                  <td>(1)</td></tr>
+   *   <tr><td>remarks</td>                 <td>utf8</td>                   <td>(2)</td></tr>
+   *   <tr><td>xdbc_data_type</td>          <td>int16</td>                  <td>(3)</td></tr>
+   *   <tr><td>xdbc_type_name</td>          <td>utf8 </td>                  <td>(3)</td></tr>
+   *   <tr><td>xdbc_column_size</td>        <td>int32</td>                  <td>(3)</td></tr>
+   *   <tr><td>xdbc_decimal_digits</td>     <td>int16</td>                  <td>(3)</td></tr>
+   *   <tr><td>xdbc_num_prec_radix</td>     <td>int16</td>                  <td>(3)</td></tr>
+   *   <tr><td>xdbc_nullable</td>           <td>int16</td>                  <td>(3)</td></tr>
+   *   <tr><td>xdbc_column_def</td>         <td>utf8</td>                   <td>(3)</td></tr>
+   *   <tr><td>xdbc_sql_data_type</td>      <td>int16</td>                  <td>(3)</td></tr>
+   *   <tr><td>xdbc_datetime_sub</td>       <td>int16</td>                  <td>(3)</td></tr>
+   *   <tr><td>xdbc_char_octet_length</td>  <td>int32</td>                  <td>(3)</td></tr>
+   *   <tr><td>xdbc_is_nullable</td>        <td>utf8</td>                   <td>(3)</td></tr>
+   *   <tr><td>xdbc_scope_catalog</td>      <td>utf8</td>                   <td>(3)</td></tr>
+   *   <tr><td>xdbc_scope_schema</td>       <td>utf8</td>                   <td>(3)</td></tr>
+   *   <tr><td>xdbc_scope_table</td>        <td>utf8</td>                   <td>(3)</td></tr>
+   *   <tr><td>xdbc_is_autoincrement</td>   <td>bool</td>                   <td>(3)</td></tr>
+   *   <tr><td>xdbc_is_generatedcolumn</td> <td>bool</td>                   <td>(3)</td></tr>
+   * </table>
+   *
+   * Notes:
+   *
+   * <ol>
+   *   <li>The column's ordinal position in the table (starting from 1).
+   *   <li>Database-specific description of the column.
+   *   <li>Optional value. Should be null if not supported by the driver. xdbc_ values are meant to
+   *       provide JDBC/ODBC-compatible metadata in an agnostic manner.
+   * </ol>
+   *
+   * CONSTRAINT_SCHEMA is a Struct with fields:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>             <th>Comments</th></tr>
+   *   <tr><td>constraint_name</td>         <td>utf8 not null</td>          <td></td></tr>
+   *   <tr><td>constraint_type</td>         <td>utf8 not null</td>          <td>(1)</td></tr>
+   *   <tr><td>constraint_column_names</td> <td>list[utf8] not null</td>    <td>(2)</td></tr>
+   *   <tr><td>constraint_column_usage</td> <td>list[USAGE_SCHEMA]</td>     <td>(3)</td></tr>
+   * </table>
+   *
+   * <ol>
+   *   <li>One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
+   *   <li>The columns on the current table that are constrained, in order.
+   *   <li>For FOREIGN KEY only, the referenced table and columns.
+   * </ol>
+   *
+   * USAGE_SCHEMA is a Struct with fields:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
+   *   <tr><td>fk_catalog</td>              <td>utf8</td>                   </tr>
+   *   <tr><td>fk_db_schema</td>            <td>utf8</td>                   </tr>
+   *   <tr><td>fk_table</td>                <td>utf8 not null</td>          </tr>
+   *   <tr><td>fk_column_name</td>          <td>utf8 not null</td>          </tr>
+   * </table>
+   *
+   * @param depth The level of nesting to display. If ALL, display all levels (up through columns).
+   *     If CATALOGS, display only catalogs (i.e. catalog_schemas will be null), and so on. May be a
+   *     search pattern (see class documentation).
+   * @param catalogPattern Only show tables in the given catalog. If null, do not filter by catalog.
+   *     If an empty string, only show tables without a catalog. May be a search pattern (see class
+   *     documentation).
+   * @param dbSchemaPattern Only show tables in the given database schema. If null, do not filter by
+   *     database schema. If an empty string, only show tables without a database schema. May be a
+   *     search pattern (see class documentation).
+   * @param tableNamePattern Only show tables with the given name. If an empty string, only show
+   *     tables without a catalog. May be a search pattern (see class documentation).
+   * @param tableTypes Only show tables matching one of the given table types. If null, show tables
+   *     of any type. Valid table types can be fetched from {@link #getTableTypes()}.
+   * @param columnNamePattern Only show columns with the given name. If null, do not filter by name.
+   *     May be a search pattern (see class documentation).
+   */
+  default AdbcStatement getObjects(
+      GetObjectsDepth depth,
+      String catalogPattern,
+      String dbSchemaPattern,
+      String tableNamePattern,
+      String[] tableTypes,
+      String columnNamePattern)
+      throws AdbcException {
+    throw new UnsupportedOperationException(
+        "Connection does not support getTableSchema(String, String, String)");
+  }
+
+  /**
+   * The level of nesting to retrieve for {@link #getObjects(GetObjectsDepth, String, String,
+   * String, String[], String)}.
+   */
+  enum GetObjectsDepth {
+    /** Display ALL objects (catalog, database schemas, tables, and columns). */
+    ALL,
+    /** Display only catalogs. */
+    CATALOGS,
+    /** Display catalogs and database schemas. */
+    DB_SCHEMAS,
+    /** Display catalogs, database schemas, and tables. */
+    TABLES,
+  }
+
+  /**
+   * Get the Arrow schema of a database table.
+   *
+   * @param catalog The catalog of the table (or null).
+   * @param dbSchema The database schema of the table (or null).
+   * @param tableName The table name.
+   * @return The table schema.
+   */
+  default Schema getTableSchema(String catalog, String dbSchema, String tableName)
+      throws AdbcException {
+    throw new UnsupportedOperationException(
+        "Connection does not support getTableSchema(String, String, String)");
+  }
+
+  /**
+   * Get a list of table types supported by the database.
+   *
+   * <p>The result is an Arrow dataset with the following schema:
+   *
+   * <table border="1">
+   *   <tr>
+   *     <th>Field Name</th>
+   *     <th>Field Type</th>
+   *   </tr>
+   *   <tr>
+   *     <td>table_type</td>
+   *     <td>utf8 not null</td>
+   *   </tr>
+   * </table>
+   */
+  default AdbcStatement getTableTypes() throws AdbcException {
+    throw new UnsupportedOperationException("Connection does not support getTableTypes()");
   }
 
   /**
