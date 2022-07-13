@@ -35,7 +35,7 @@ public enum JdbcDriver implements AdbcDriver {
   }
 
   @Override
-  public AdbcDatabase connect(Map<String, String> parameters) throws AdbcException {
+  public AdbcDatabase open(Map<String, String> parameters) throws AdbcException {
     return new JdbcDatabase(allocator, "jdbc:derby:" + parameters.get("path"));
   }
 }

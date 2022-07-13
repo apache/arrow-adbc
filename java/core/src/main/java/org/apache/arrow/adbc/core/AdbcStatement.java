@@ -25,7 +25,7 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 
 public interface AdbcStatement extends AutoCloseable {
   /** Set a generic query option. */
-  default void setOption(String key, String value) {
+  default void setOption(String key, Object value) {
     throw new UnsupportedOperationException("Unsupported option " + key);
   }
 
@@ -52,8 +52,18 @@ public interface AdbcStatement extends AutoCloseable {
     throw new UnsupportedOperationException("Statement does not support bind");
   }
 
-  /** Execute the query. */
+  /**
+   * Execute the query.
+   *
+   * <p>Usually you will want to use {@link #executeQuery()}.
+   */
   void execute() throws AdbcException;
+
+  /** Execute a result set-generating query and get the result. */
+  default ArrowReader executeQuery() throws AdbcException {
+    execute();
+    return getArrowReader();
+  }
 
   /**
    * Get the result of executing a query.
@@ -75,7 +85,6 @@ public interface AdbcStatement extends AutoCloseable {
    * @return The list of descriptors, or an empty list if unsupported.
    */
   default List<PartitionDescriptor> getPartitionDescriptors() {
-    // TODO: throw UnsupportedOperationException instead?
     return Collections.emptyList();
   }
 

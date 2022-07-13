@@ -31,6 +31,6 @@ public class JdbcConnectionMetadataTest extends AbstractConnectionMetadataTest {
   protected AdbcDatabase init() throws AdbcException {
     final Map<String, String> parameters = new HashMap<>();
     parameters.put("path", tempDir.toString() + "/db;create=true");
-    return JdbcDriver.INSTANCE.connect(parameters);
+    return JdbcDriver.INSTANCE.open(parameters);
   }
 }

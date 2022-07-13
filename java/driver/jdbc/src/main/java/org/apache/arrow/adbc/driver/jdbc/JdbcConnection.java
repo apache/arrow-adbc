@@ -27,6 +27,7 @@ import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -60,8 +61,9 @@ public class JdbcConnection implements AdbcConnection {
   }
 
   @Override
-  public AdbcStatement bulkIngest(String targetTableName) throws AdbcException {
-    return JdbcStatement.ingestRoot(allocator, connection, targetTableName);
+  public AdbcStatement bulkIngest(String targetTableName, BulkIngestMode mode)
+      throws AdbcException {
+    return JdbcStatement.ingestRoot(allocator, connection, targetTableName, mode);
   }
 
   @Override

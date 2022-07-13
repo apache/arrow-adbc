@@ -29,6 +29,7 @@ import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
+import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
@@ -63,7 +64,7 @@ public abstract class AbstractStatementTest {
   }
 
   @Test
-  public void bulkInsert() throws Exception {
+  public void bulkInsertAppend() throws Exception {
     final Schema schema =
         new Schema(
             Arrays.asList(
@@ -87,28 +88,26 @@ public abstract class AbstractStatementTest {
 
       // TODO: XXX: need a "quirks" system to handle idiosyncracies. For example: Derby forces table
       // names to uppercase, but does not do case folding in all places.
-      try (final AdbcStatement stmt = connection.bulkIngest("FOO")) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO", BulkIngestMode.CREATE)) {
         stmt.bind(root);
         stmt.execute();
       }
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM foo");
-        stmt.execute();
-        try (ArrowReader arrowReader = stmt.getArrowReader()) {
+        try (ArrowReader arrowReader = stmt.executeQuery()) {
           assertThat(arrowReader.loadNextBatch()).isTrue();
           assertRoot(arrowReader.getVectorSchemaRoot()).isEqualTo(root);
         }
       }
 
       // Append
-      try (final AdbcStatement stmt = connection.bulkIngest("FOO")) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO", BulkIngestMode.APPEND)) {
         stmt.bind(root);
         stmt.execute();
       }
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM FOO");
-        stmt.execute();
-        try (ArrowReader arrowReader = stmt.getArrowReader()) {
+        try (ArrowReader arrowReader = stmt.executeQuery()) {
           assertThat(arrowReader.loadNextBatch()).isTrue();
           root.setRowCount(8);
           ints.setSafe(4, 0);
@@ -123,14 +122,65 @@ public abstract class AbstractStatementTest {
         }
       }
     }
+  }
 
-    // Conflict
+  @Test
+  public void bulkIngestAppendConflict() throws Exception {
+    final Schema schema =
+        new Schema(
+            Arrays.asList(
+                Field.nullable("INTS", new ArrowType.Int(32, /*signed=*/ true)),
+                Field.nullable("STRS", new ArrowType.Utf8())));
     final Schema schema2 =
         new Schema(
             Collections.singletonList(
                 Field.nullable("INTS", new ArrowType.Int(32, /*signed=*/ true))));
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO", BulkIngestMode.CREATE)) {
+        stmt.bind(root);
+        stmt.execute();
+      }
+    }
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema2, allocator)) {
-      try (final AdbcStatement stmt = connection.bulkIngest("FOO")) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO", BulkIngestMode.APPEND)) {
+        stmt.bind(root);
+        final AdbcException e = assertThrows(AdbcException.class, stmt::execute);
+        assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.ALREADY_EXISTS);
+      }
+    }
+  }
+
+  @Test
+  public void bulkIngestAppendNotFound() throws Exception {
+    final Schema schema =
+        new Schema(
+            Arrays.asList(
+                Field.nullable("INTS", new ArrowType.Int(32, /*signed=*/ true)),
+                Field.nullable("STRS", new ArrowType.Utf8())));
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO", BulkIngestMode.APPEND)) {
+        stmt.bind(root);
+        final AdbcException e = assertThrows(AdbcException.class, stmt::execute);
+        assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.NOT_FOUND);
+      }
+    }
+  }
+
+  @Test
+  public void bulkIngestCreateConflict() throws Exception {
+    final Schema schema =
+        new Schema(
+            Arrays.asList(
+                Field.nullable("INTS", new ArrowType.Int(32, /*signed=*/ true)),
+                Field.nullable("STRS", new ArrowType.Utf8())));
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO", BulkIngestMode.CREATE)) {
+        stmt.bind(root);
+        stmt.execute();
+      }
+    }
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO", BulkIngestMode.CREATE)) {
         stmt.bind(root);
         final AdbcException e = assertThrows(AdbcException.class, stmt::execute);
         assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.ALREADY_EXISTS);

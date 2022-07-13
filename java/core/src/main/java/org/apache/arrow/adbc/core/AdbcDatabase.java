@@ -17,7 +17,13 @@
 
 package org.apache.arrow.adbc.core;
 
-/** An instance of a database (e.g. a handle to an in-memory database). */
+/**
+ * An instance of a database (e.g. a handle to an in-memory database).
+ *
+ * <p>A database can have multiple open connections. While this is likely redundant structure for
+ * remote/networked databases, for in-memory databases, this object provides an explicit point of
+ * ownership.
+ */
 public interface AdbcDatabase extends AutoCloseable {
   /** Create a new connection to the database. */
   AdbcConnection connect() throws AdbcException;
