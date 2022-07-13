@@ -25,17 +25,4 @@ EXPERIMENTAL. Please see the [mailing list discussion](https://lists.apache.org/
 
 ## Building
 
-The libraries here are all **individual** CMake projects.
-
-```shell
-$ mkdir -p build/driver_manager
-$ cd build/driver_manager
-$ cmake ../../adbc_driver_manager
-$ make
-```
-
-Some of Arrow's build options are supported (under a different prefix):
-
-- `ADBC_BUILD_SHARED`, `ADBC_BUILD_STATIC`: build the shared/static libraries
-- `ADBC_BUILD_TESTS`: build the unit tests
-- `ADBC_INSTALL_NAME_RPATH`: set `install_name` to `@rpath` on MacOS
+For detailed instructions, see CONTRIBUTING.md.

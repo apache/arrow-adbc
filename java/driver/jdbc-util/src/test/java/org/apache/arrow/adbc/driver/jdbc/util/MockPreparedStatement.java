@@ -42,8 +42,8 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
+/** A PreparedStatement that just stores parameters set on it. */
 class MockPreparedStatement implements PreparedStatement {
-  /** A PreparedStatement that just stores parameters set on it. */
   static class ParameterHolder {
     final Object value;
     final Integer sqlType;
