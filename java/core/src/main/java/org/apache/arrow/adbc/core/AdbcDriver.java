@@ -26,5 +26,5 @@ public interface AdbcDriver {
    *
    * @param parameters Driver-specific parameters.
    */
-  AdbcDatabase open(Map<String, String> parameters) throws AdbcException;
+  AdbcDatabase open(Map<String, Object> parameters) throws AdbcException;
 }

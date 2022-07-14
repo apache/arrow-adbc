@@ -39,10 +39,12 @@ import org.apache.arrow.vector.types.pojo.Schema;
 public class JdbcConnection implements AdbcConnection {
   private final BufferAllocator allocator;
   private final Connection connection;
+  private final JdbcDriverQuirks quirks;
 
-  JdbcConnection(BufferAllocator allocator, Connection connection) {
+  JdbcConnection(BufferAllocator allocator, Connection connection, JdbcDriverQuirks quirks) {
     this.allocator = allocator;
     this.connection = connection;
+    this.quirks = quirks;
   }
 
   @Override
@@ -57,13 +59,13 @@ public class JdbcConnection implements AdbcConnection {
 
   @Override
   public AdbcStatement createStatement() throws AdbcException {
-    return new JdbcStatement(allocator, connection);
+    return new JdbcStatement(allocator, connection, quirks);
   }
 
   @Override
   public AdbcStatement bulkIngest(String targetTableName, BulkIngestMode mode)
       throws AdbcException {
-    return JdbcStatement.ingestRoot(allocator, connection, targetTableName, mode);
+    return JdbcStatement.ingestRoot(allocator, connection, quirks, targetTableName, mode);
   }
 
   @Override
@@ -171,9 +173,9 @@ public class JdbcConnection implements AdbcConnection {
     connection.close();
   }
 
-  private void checkAutoCommit() throws SQLException {
+  private void checkAutoCommit() throws AdbcException, SQLException {
     if (connection.getAutoCommit()) {
-      throw new IllegalStateException("Cannot perform operation in autocommit mode");
+      throw AdbcException.invalidState("[JDBC] Cannot perform operation in autocommit mode");
     }
   }
 

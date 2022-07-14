@@ -22,15 +22,9 @@ import org.apache.arrow.vector.types.pojo.Schema;
 
 /** A connection to a {@link AdbcDatabase}. */
 public interface AdbcConnection extends AutoCloseable {
-  /**
-   * Commit the pending transaction.
-   *
-   * @throws AdbcException if a database error occurs
-   * @throws IllegalStateException if autocommit is enabled
-   * @throws UnsupportedOperationException if the database does not support transactions
-   */
+  /** Commit the pending transaction. */
   default void commit() throws AdbcException {
-    throw new UnsupportedOperationException("Connection does not support transactions");
+    throw AdbcException.notImplemented("Connection does not support transactions");
   }
 
   /** Create a new statement that can be executed. */
@@ -44,7 +38,7 @@ public interface AdbcConnection extends AutoCloseable {
    */
   default AdbcStatement bulkIngest(String targetTableName, BulkIngestMode mode)
       throws AdbcException {
-    throw new UnsupportedOperationException(
+    throw AdbcException.notImplemented(
         "Connection does not support bulkIngest(String, BulkIngestMode)");
   }
 
@@ -56,7 +50,7 @@ public interface AdbcConnection extends AutoCloseable {
    * @see AdbcStatement#getPartitionDescriptors()
    */
   default AdbcStatement deserializePartitionDescriptor(ByteBuffer descriptor) throws AdbcException {
-    throw new UnsupportedOperationException(
+    throw AdbcException.notImplemented(
         "Connection does not support deserializePartitionDescriptor(ByteBuffer)");
   }
 
@@ -173,7 +167,7 @@ public interface AdbcConnection extends AutoCloseable {
       String[] tableTypes,
       String columnNamePattern)
       throws AdbcException {
-    throw new UnsupportedOperationException(
+    throw AdbcException.notImplemented(
         "Connection does not support getTableSchema(String, String, String)");
   }
 
@@ -202,7 +196,7 @@ public interface AdbcConnection extends AutoCloseable {
    */
   default Schema getTableSchema(String catalog, String dbSchema, String tableName)
       throws AdbcException {
-    throw new UnsupportedOperationException(
+    throw AdbcException.notImplemented(
         "Connection does not support getTableSchema(String, String, String)");
   }
 
@@ -223,18 +217,16 @@ public interface AdbcConnection extends AutoCloseable {
    * </table>
    */
   default AdbcStatement getTableTypes() throws AdbcException {
-    throw new UnsupportedOperationException("Connection does not support getTableTypes()");
+    throw AdbcException.notImplemented("Connection does not support getTableTypes()");
   }
 
   /**
    * Rollback the pending transaction.
    *
    * @throws AdbcException if a database error occurs
-   * @throws IllegalStateException if autocommit is enabled
-   * @throws UnsupportedOperationException if the database does not support transactions
    */
   default void rollback() throws AdbcException {
-    throw new UnsupportedOperationException("Connection does not support transactions");
+    throw AdbcException.notImplemented("Connection does not support transactions");
   }
 
   /**
@@ -246,12 +238,8 @@ public interface AdbcConnection extends AutoCloseable {
     return true;
   }
 
-  /**
-   * Toggle whether autocommit is enabled.
-   *
-   * @throws UnsupportedOperationException if the database does not support toggling autocommit
-   */
+  /** Toggle whether autocommit is enabled. */
   default void setAutoCommit(boolean enableAutoCommit) throws AdbcException {
-    throw new UnsupportedOperationException("Connection does not support transactions");
+    throw AdbcException.notImplemented("Connection does not support transactions");
   }
 }
