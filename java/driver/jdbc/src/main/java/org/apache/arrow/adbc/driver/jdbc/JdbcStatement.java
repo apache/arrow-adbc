@@ -17,6 +17,7 @@
 
 package org.apache.arrow.adbc.driver.jdbc;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -53,6 +54,7 @@ public class JdbcStatement implements AdbcStatement {
   // State for SQL queries
   private Statement statement;
   private String sqlQuery;
+  private ArrowReader reader;
   private ResultSet resultSet;
   // State for bulk ingest
   private BulkState bulkOperation;
@@ -211,12 +213,33 @@ public class JdbcStatement implements AdbcStatement {
 
   private void executeSqlQuery() throws AdbcException {
     try {
+      if (reader != null) {
+        try {
+          reader.close();
+        } catch (IOException e) {
+          throw new AdbcException(
+              "Failed to close unread result set", e, AdbcStatusCode.IO, null, /*vendorCode*/ 0);
+        }
+      }
       if (resultSet != null) {
         resultSet.close();
       }
-      statement =
-          connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-      resultSet = statement.executeQuery(sqlQuery);
+      if (statement instanceof PreparedStatement) {
+        PreparedStatement preparedStatement = (PreparedStatement) statement;
+        if (bindRoot != null) {
+          reader = new JdbcBindReader(allocator, preparedStatement, bindRoot);
+        } else {
+          resultSet = preparedStatement.executeQuery();
+        }
+      } else {
+        if (statement != null) {
+          statement.close();
+        }
+        statement =
+            connection.createStatement(
+                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        resultSet = statement.executeQuery(sqlQuery);
+      }
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
@@ -224,6 +247,11 @@ public class JdbcStatement implements AdbcStatement {
 
   @Override
   public ArrowReader getArrowReader() throws AdbcException {
+    if (reader != null) {
+      ArrowReader result = reader;
+      reader = null;
+      return result;
+    }
     if (resultSet == null) {
       throw new IllegalStateException("Must call execute() before getArrowIterator()");
     }
@@ -234,13 +262,22 @@ public class JdbcStatement implements AdbcStatement {
   }
 
   @Override
-  public void prepare() {
-    throw new UnsupportedOperationException("prepare");
+  public void prepare() throws AdbcException {
+    try {
+      if (resultSet != null) {
+        resultSet.close();
+      }
+      statement =
+          connection.prepareStatement(
+              sqlQuery, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
   }
 
   @Override
   public void close() throws Exception {
-    AutoCloseables.close(resultSet, statement);
+    AutoCloseables.close(reader, resultSet, statement);
   }
 
   private static final class BulkState {

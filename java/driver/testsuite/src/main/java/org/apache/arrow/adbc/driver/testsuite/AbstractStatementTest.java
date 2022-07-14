@@ -40,6 +40,7 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.apache.arrow.vector.util.Text;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -184,6 +185,63 @@ public abstract class AbstractStatementTest {
         stmt.bind(root);
         final AdbcException e = assertThrows(AdbcException.class, stmt::execute);
         assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.ALREADY_EXISTS);
+      }
+    }
+  }
+
+  @Test
+  public void prepareQuery() throws Exception {
+    TestUtil.ingestTableIntsStrs(allocator, connection, "FOO");
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery("SELECT * FROM FOO");
+      stmt.prepare();
+      try (final ArrowReader reader = stmt.executeQuery()) {
+        assertThat(reader.getVectorSchemaRoot().getSchema()).isEqualTo(TestUtil.INTS_STRS_SCHEMA);
+        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(reader.getVectorSchemaRoot().getRowCount()).isEqualTo(4);
+        assertThat(reader.loadNextBatch()).isFalse();
+      }
+    }
+  }
+
+  @Test
+  public void prepareQueryWithParameters() throws Exception {
+    TestUtil.ingestTableIntsStrs(allocator, connection, "FOO");
+    final Schema paramsSchema =
+        new Schema(Collections.singletonList(TestUtil.INTS_STRS_SCHEMA.getFields().get(0)));
+    try (final AdbcStatement stmt = connection.createStatement();
+        final VectorSchemaRoot params = VectorSchemaRoot.create(paramsSchema, allocator)) {
+      stmt.setSqlQuery("SELECT * FROM FOO WHERE INTS = ?");
+      stmt.prepare();
+      stmt.bind(params);
+      IntVector param0 = (IntVector) params.getVector(0);
+      param0.setSafe(0, 1);
+      param0.setSafe(1, 2);
+      params.setRowCount(2);
+      try (final ArrowReader reader = stmt.executeQuery()) {
+        VectorSchemaRoot root = reader.getVectorSchemaRoot();
+        assertThat(root.getSchema()).isEqualTo(TestUtil.INTS_STRS_SCHEMA);
+        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(root.getRowCount()).isEqualTo(1);
+        assertThat(root.getVector(1).getObject(0)).isEqualTo(new Text("foo"));
+
+        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(root.getRowCount()).isEqualTo(1);
+        assertThat(root.getVector(1).getObject(0)).isEqualTo(new Text(""));
+
+        assertThat(reader.loadNextBatch()).isFalse();
+      }
+
+      param0.setSafe(0, 0);
+      params.setRowCount(1);
+      try (final ArrowReader reader = stmt.executeQuery()) {
+        VectorSchemaRoot root = reader.getVectorSchemaRoot();
+        assertThat(root.getSchema()).isEqualTo(TestUtil.INTS_STRS_SCHEMA);
+        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(root.getRowCount()).isEqualTo(1);
+        assertThat(root.getVector(1).getObject(0)).isNull();
+
+        assertThat(reader.loadNextBatch()).isFalse();
       }
     }
   }

@@ -16,6 +16,7 @@
  */
 package org.apache.arrow.adbc.core;
 
+import java.nio.ByteBuffer;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.Schema;
 
@@ -45,6 +46,18 @@ public interface AdbcConnection extends AutoCloseable {
       throws AdbcException {
     throw new UnsupportedOperationException(
         "Connection does not support bulkIngest(String, BulkIngestMode)");
+  }
+
+  /**
+   * Create a statement from a serialized PartitionDescriptor.
+   *
+   * @param descriptor The descriptor to load ({@link PartitionDescriptor#getDescriptor()}.
+   * @return A statement that can be immediately executed.
+   * @see AdbcStatement#getPartitionDescriptors()
+   */
+  default AdbcStatement deserializePartitionDescriptor(ByteBuffer descriptor) throws AdbcException {
+    throw new UnsupportedOperationException(
+        "Connection does not support deserializePartitionDescriptor(ByteBuffer)");
   }
 
   /**
