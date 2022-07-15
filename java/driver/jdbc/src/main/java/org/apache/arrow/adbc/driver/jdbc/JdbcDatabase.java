@@ -30,12 +30,15 @@ import org.apache.arrow.memory.BufferAllocator;
 public final class JdbcDatabase implements AdbcDatabase {
   private final BufferAllocator allocator;
   private final String target;
+  private final JdbcDriverQuirks quirks;
   private final Connection connection;
   private final AtomicInteger counter;
 
-  JdbcDatabase(BufferAllocator allocator, final String target) throws AdbcException {
+  JdbcDatabase(BufferAllocator allocator, final String target, JdbcDriverQuirks quirks)
+      throws AdbcException {
     this.allocator = allocator;
     this.target = target;
+    this.quirks = quirks;
     try {
       this.connection = DriverManager.getConnection(target);
     } catch (SQLException e) {
@@ -55,7 +58,8 @@ public final class JdbcDatabase implements AdbcDatabase {
     final int count = counter.getAndIncrement();
     return new JdbcConnection(
         allocator.newChildAllocator("adbc-jdbc-connection-" + count, 0, allocator.getLimit()),
-        connection);
+        connection,
+        quirks);
   }
 
   @Override

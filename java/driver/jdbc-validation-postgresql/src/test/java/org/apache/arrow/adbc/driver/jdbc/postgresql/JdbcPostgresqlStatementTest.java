@@ -14,38 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.arrow.adbc.core;
 
-/**
- * A status code indicating the general category of error that occurred.
- *
- * <p>Also see the ADBC C API definition, which has similar status codes.
- */
-public enum AdbcStatusCode {
-  /**
-   * An unknown error occurred.
-   *
-   * <p>May indicate client-side or database-side error.
-   */
-  UNKNOWN,
-  /**
-   * The operation is not supported.
-   *
-   * <p>May indicate client-side or database-side error.
-   */
-  NOT_IMPLEMENTED,
-  /** */
-  NOT_FOUND,
-  ALREADY_EXISTS,
-  INVALID_ARGUMENT,
-  INVALID_STATE,
-  INVALID_DATA,
-  INTEGRITY,
-  INTERNAL,
-  IO,
-  CANCELLED,
-  TIMEOUT,
-  UNAUTHENTICATED,
-  UNAUTHORIZED,
-  ;
+package org.apache.arrow.adbc.driver.jdbc.postgresql;
+
+import org.apache.arrow.adbc.driver.testsuite.AbstractStatementTest;
+import org.junit.jupiter.api.BeforeAll;
+
+class JdbcPostgresqlStatementTest extends AbstractStatementTest {
+  @BeforeAll
+  public static void beforeAll() {
+    quirks = new PostgresqlQuirks();
+  }
 }

@@ -25,8 +25,8 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 
 public interface AdbcStatement extends AutoCloseable {
   /** Set a generic query option. */
-  default void setOption(String key, Object value) {
-    throw new UnsupportedOperationException("Unsupported option " + key);
+  default void setOption(String key, Object value) throws AdbcException {
+    throw AdbcException.notImplemented("Unsupported option " + key);
   }
 
   /**
@@ -34,8 +34,8 @@ public interface AdbcStatement extends AutoCloseable {
    *
    * @param query The SQL query.
    */
-  default void setSqlQuery(String query) {
-    throw new UnsupportedOperationException("Statement does not support SQL queries");
+  default void setSqlQuery(String query) throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support SQL queries");
   }
 
   /**
@@ -43,13 +43,13 @@ public interface AdbcStatement extends AutoCloseable {
    *
    * @param plan The serialized Substrait plan.
    */
-  default void setSubstraitPlan(ByteBuffer plan) {
-    throw new UnsupportedOperationException("Statement does not support Substrait plans");
+  default void setSubstraitPlan(ByteBuffer plan) throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support Substrait plans");
   }
 
   /** Bind this statement to a VectorSchemaRoot to provide parameter values/bulk data ingestion. */
-  default void bind(VectorSchemaRoot root) {
-    throw new UnsupportedOperationException("Statement does not support bind");
+  default void bind(VectorSchemaRoot root) throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support bind");
   }
 
   /**
@@ -70,7 +70,8 @@ public interface AdbcStatement extends AutoCloseable {
    *
    * <p>Must be called after {@link #execute()}.
    *
-   * @throws IllegalStateException if the statement has not been executed.
+   * @throws AdbcException with {@link AdbcStatusCode#INVALID_STATE} if the statement has not been
+   *     executed.
    */
   ArrowReader getArrowReader() throws AdbcException;
 
@@ -81,10 +82,11 @@ public interface AdbcStatement extends AutoCloseable {
    *
    * <p>Must be called after {@link #execute()}.
    *
-   * @throws IllegalStateException if the statement has not been executed.
+   * @throws AdbcException with {@link AdbcStatusCode#INVALID_STATE} if the statement has not been
+   *     executed.
    * @return The list of descriptors, or an empty list if unsupported.
    */
-  default List<PartitionDescriptor> getPartitionDescriptors() {
+  default List<PartitionDescriptor> getPartitionDescriptors() throws AdbcException {
     return Collections.emptyList();
   }
 

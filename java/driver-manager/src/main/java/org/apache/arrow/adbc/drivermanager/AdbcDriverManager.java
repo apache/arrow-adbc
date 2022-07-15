@@ -42,7 +42,7 @@ public final class AdbcDriverManager {
    * @return The AdbcDatabase instance.
    * @throws AdbcException if the driver was not found or if connection fails.
    */
-  public AdbcDatabase connect(String driverName, Map<String, String> parameters)
+  public AdbcDatabase connect(String driverName, Map<String, Object> parameters)
       throws AdbcException {
     final AdbcDriver driver = lookupDriver(driverName);
     if (driver == null) {
@@ -64,7 +64,8 @@ public final class AdbcDriverManager {
 
   public void registerDriver(String driverName, AdbcDriver driver) {
     if (drivers.putIfAbsent(driverName, driver) != null) {
-      throw new IllegalStateException("Driver already registered for '" + driverName + "'");
+      throw new IllegalStateException(
+          "[DriverManager] Driver already registered for '" + driverName + "'");
     }
   }
 

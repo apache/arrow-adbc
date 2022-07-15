@@ -18,51 +18,27 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>adbc-driver-jdbc</artifactId>
+  <artifactId>adbc-driver-jdbc-validation-postgresql</artifactId>
   <packaging>jar</packaging>
-  <name>Arrow ADBC Driver JDBC</name>
-  <description>An ADBC driver wrapping the JDBC API.</description>
+  <name>Arrow ADBC Driver JDBC Validation with PostgreSQL</name>
+  <description>Tests validating the JDBC driver against Postgresql.</description>
 
   <dependencies>
-    <!-- Arrow -->
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-jdbc</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-vector</artifactId>
-    </dependency>
-
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
       <artifactId>adbc-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-jdbc-util</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-manager</artifactId>
-    </dependency>
-
-    <!-- Derby -->
-    <!-- Cannot upgrade beyond this version for Java 8 support -->
-    <dependency>
-      <groupId>org.apache.derby</groupId>
-      <artifactId>derby</artifactId>
-      <version>10.14.2.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.derby</groupId>
-      <artifactId>derbytools</artifactId>
-      <version>10.14.2.0</version>
+      <groupId>org.apache.arrow.adbc</groupId>
+      <artifactId>adbc-driver-jdbc</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.4.0</version>
       <scope>test</scope>
     </dependency>
 

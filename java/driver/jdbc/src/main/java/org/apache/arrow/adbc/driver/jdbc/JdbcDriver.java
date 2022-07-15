@@ -23,6 +23,7 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.util.Preconditions;
 
 public enum JdbcDriver implements AdbcDriver {
   INSTANCE;
@@ -35,7 +36,19 @@ public enum JdbcDriver implements AdbcDriver {
   }
 
   @Override
-  public AdbcDatabase open(Map<String, String> parameters) throws AdbcException {
-    return new JdbcDatabase(allocator, "jdbc:derby:" + parameters.get("path"));
+  public AdbcDatabase open(Map<String, Object> parameters) throws AdbcException {
+    Object target = parameters.get("adbc.jdbc.url");
+    if (!(target instanceof String)) {
+      throw AdbcException.invalidArgument("[JDBC] Must provide String adbc.jdbc.url parameter");
+    }
+    Object quirks = parameters.get("adbc.jdbc.quirks");
+    if (quirks != null) {
+      Preconditions.checkArgument(
+          quirks instanceof JdbcDriverQuirks,
+          "[JDBC] adbc.jdbc.quirks must be a JdbcDriverQuirks instance");
+    } else {
+      quirks = new JdbcDriverQuirks();
+    }
+    return new JdbcDatabase(allocator, (String) target, (JdbcDriverQuirks) quirks);
   }
 }

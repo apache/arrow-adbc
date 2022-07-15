@@ -17,13 +17,12 @@
 
 package org.apache.arrow.adbc.driver.jdbc;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
@@ -37,40 +36,34 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Field;
 
 public class JdbcStatement implements AdbcStatement {
-  // Do our best to properly map database-specific errors to NOT_FOUND status.
-  private static final List<String> SQLSTATE_TABLE_NOT_FOUND =
-      Arrays.asList(
-          // Apache Derby https://db.apache.org/derby/docs/10.4/ref/rrefexcept71493.html
-          "42X05",
-          // MySQL
-          // https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-error-sqlstates.html
-          "42S02",
-          // Postgres https://www.postgresql.org/docs/current/errcodes-appendix.html
-          "42P01");
   private final BufferAllocator allocator;
   private final Connection connection;
+  private final JdbcDriverQuirks quirks;
 
   // State for SQL queries
   private Statement statement;
   private String sqlQuery;
+  private ArrowReader reader;
   private ResultSet resultSet;
   // State for bulk ingest
   private BulkState bulkOperation;
   private VectorSchemaRoot bindRoot;
 
-  JdbcStatement(BufferAllocator allocator, Connection connection) {
+  JdbcStatement(BufferAllocator allocator, Connection connection, JdbcDriverQuirks quirks) {
     this.allocator = allocator;
     this.connection = connection;
+    this.quirks = quirks;
     this.sqlQuery = null;
   }
 
   static JdbcStatement ingestRoot(
       BufferAllocator allocator,
       Connection connection,
+      JdbcDriverQuirks quirks,
       String targetTableName,
       BulkIngestMode mode) {
     Objects.requireNonNull(targetTableName);
-    final JdbcStatement statement = new JdbcStatement(allocator, connection);
+    final JdbcStatement statement = new JdbcStatement(allocator, connection, quirks);
     statement.bulkOperation = new BulkState();
     statement.bulkOperation.mode = mode;
     statement.bulkOperation.targetTable = targetTableName;
@@ -78,9 +71,10 @@ public class JdbcStatement implements AdbcStatement {
   }
 
   @Override
-  public void setSqlQuery(String query) {
+  public void setSqlQuery(String query) throws AdbcException {
     if (bulkOperation != null) {
-      throw new IllegalStateException("Statement is configured for a bulk ingest/append operation");
+      throw AdbcException.invalidState(
+          "[JDBC] Statement is configured for a bulk ingest/append operation");
     }
     sqlQuery = query;
   }
@@ -97,7 +91,7 @@ public class JdbcStatement implements AdbcStatement {
     } else if (sqlQuery != null) {
       executeSqlQuery();
     } else {
-      throw new IllegalStateException("Must setSqlQuery first");
+      throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
     }
   }
 
@@ -111,38 +105,13 @@ public class JdbcStatement implements AdbcStatement {
       }
       final Field field = bindRoot.getVector(col).getField();
       create.append(field.getName());
-      switch (field.getType().getTypeID()) {
-        case Null:
-        case Struct:
-        case List:
-        case LargeList:
-        case FixedSizeList:
-        case Union:
-        case Map:
-          throw new UnsupportedOperationException("Type " + field);
-        case Int:
-          // TODO:
-          create.append(" INT");
-          break;
-        case FloatingPoint:
-          throw new UnsupportedOperationException("Type " + field);
-        case Utf8:
-          create.append(" CLOB");
-          break;
-        case LargeUtf8:
-        case Binary:
-        case LargeBinary:
-        case FixedSizeBinary:
-        case Bool:
-        case Decimal:
-        case Date:
-        case Time:
-        case Timestamp:
-        case Interval:
-        case Duration:
-        case NONE:
-          throw new UnsupportedOperationException("Type " + field);
+      create.append(' ');
+      String typeName = quirks.getArrowToSqlTypeNameMapping().apply(field.getType());
+      if (typeName == null) {
+        throw AdbcException.notImplemented(
+            "[JDBC] Cannot generate CREATE TABLE statement for field " + field);
       }
+      create.append(typeName);
     }
     create.append(")");
 
@@ -150,13 +119,16 @@ public class JdbcStatement implements AdbcStatement {
       statement.execute(create.toString());
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(
-          AdbcStatusCode.ALREADY_EXISTS, "Could not create table %s", e, bulkOperation.targetTable);
+          AdbcStatusCode.ALREADY_EXISTS,
+          "Could not create table %s: ",
+          e,
+          bulkOperation.targetTable);
     }
   }
 
   private void executeBulk() throws AdbcException {
     if (bindRoot == null) {
-      throw new IllegalStateException("Must bind() before bulk insert");
+      throw AdbcException.invalidState("[JDBC] Must call bind() before bulk insert");
     }
 
     if (bulkOperation.mode == BulkIngestMode.CREATE) {
@@ -180,17 +152,8 @@ public class JdbcStatement implements AdbcStatement {
     try {
       statement = connection.prepareStatement(insert.toString());
     } catch (SQLException e) {
-      // It's hard to differentiate between 'table not found' and parameter type/count mismatch here
-      // because SQLState is inconsistent (see SQLSTATE_TABLE_NOT_FOUND above). We could query for
-      // table existence but that's another roundtrip and leads to a TOC/TOU
-      // error. Instead, we hard-code some common codes here.
-
-      final AdbcStatusCode code =
-          SQLSTATE_TABLE_NOT_FOUND.contains(e.getSQLState())
-              ? AdbcStatusCode.NOT_FOUND
-              : AdbcStatusCode.ALREADY_EXISTS;
       throw JdbcDriverUtil.fromSqlException(
-          code, "Could not bulk insert into table %s: ", e, bulkOperation.targetTable);
+          "Could not bulk insert into table %s: ", e, bulkOperation.targetTable);
     }
     try {
       try {
@@ -211,12 +174,33 @@ public class JdbcStatement implements AdbcStatement {
 
   private void executeSqlQuery() throws AdbcException {
     try {
+      if (reader != null) {
+        try {
+          reader.close();
+        } catch (IOException e) {
+          throw new AdbcException(
+              "Failed to close unread result set", e, AdbcStatusCode.IO, null, /*vendorCode*/ 0);
+        }
+      }
       if (resultSet != null) {
         resultSet.close();
       }
-      statement =
-          connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-      resultSet = statement.executeQuery(sqlQuery);
+      if (statement instanceof PreparedStatement) {
+        PreparedStatement preparedStatement = (PreparedStatement) statement;
+        if (bindRoot != null) {
+          reader = new JdbcBindReader(allocator, preparedStatement, bindRoot);
+        } else {
+          resultSet = preparedStatement.executeQuery();
+        }
+      } else {
+        if (statement != null) {
+          statement.close();
+        }
+        statement =
+            connection.createStatement(
+                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        resultSet = statement.executeQuery(sqlQuery);
+      }
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
@@ -224,8 +208,13 @@ public class JdbcStatement implements AdbcStatement {
 
   @Override
   public ArrowReader getArrowReader() throws AdbcException {
+    if (reader != null) {
+      ArrowReader result = reader;
+      reader = null;
+      return result;
+    }
     if (resultSet == null) {
-      throw new IllegalStateException("Must call execute() before getArrowIterator()");
+      throw AdbcException.invalidState("[JDBC] Must call execute() before getArrowReader()");
     }
     final JdbcArrowReader reader =
         new JdbcArrowReader(allocator, resultSet, /*overrideSchema*/ null);
@@ -234,13 +223,22 @@ public class JdbcStatement implements AdbcStatement {
   }
 
   @Override
-  public void prepare() {
-    throw new UnsupportedOperationException("prepare");
+  public void prepare() throws AdbcException {
+    try {
+      if (resultSet != null) {
+        resultSet.close();
+      }
+      statement =
+          connection.prepareStatement(
+              sqlQuery, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
   }
 
   @Override
   public void close() throws Exception {
-    AutoCloseables.close(resultSet, statement);
+    AutoCloseables.close(reader, resultSet, statement);
   }
 
   private static final class BulkState {

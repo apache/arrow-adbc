@@ -51,7 +51,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-testsuite</artifactId>
+      <artifactId>adbc-driver-validation</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

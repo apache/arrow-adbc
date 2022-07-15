@@ -14,38 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.arrow.adbc.core;
 
-/**
- * A status code indicating the general category of error that occurred.
- *
- * <p>Also see the ADBC C API definition, which has similar status codes.
- */
-public enum AdbcStatusCode {
-  /**
-   * An unknown error occurred.
-   *
-   * <p>May indicate client-side or database-side error.
-   */
-  UNKNOWN,
-  /**
-   * The operation is not supported.
-   *
-   * <p>May indicate client-side or database-side error.
-   */
-  NOT_IMPLEMENTED,
-  /** */
-  NOT_FOUND,
-  ALREADY_EXISTS,
-  INVALID_ARGUMENT,
-  INVALID_STATE,
-  INVALID_DATA,
-  INTEGRITY,
-  INTERNAL,
-  IO,
-  CANCELLED,
-  TIMEOUT,
-  UNAUTHENTICATED,
-  UNAUTHORIZED,
-  ;
+package org.apache.arrow.adbc.driver.testsuite;
+
+import org.apache.arrow.adbc.core.AdbcDatabase;
+import org.apache.arrow.adbc.core.AdbcException;
+
+/** Account for driver/vendor-specific quirks in implementing validation tests. */
+public abstract class SqlValidationQuirks {
+  public abstract AdbcDatabase initDatabase() throws AdbcException;
+
+  public void cleanupTable(String name) throws Exception {}
+
+  /** Normalize a table name. */
+  public String caseFoldTableName(String name) {
+    return name;
+  }
+
+  /** Normalize a column name. */
+  public String caseFoldColumnName(String name) {
+    return name;
+  }
 }

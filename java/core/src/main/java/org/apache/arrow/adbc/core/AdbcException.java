@@ -28,15 +28,6 @@ package org.apache.arrow.adbc.core;
  *   <li>A SQLSTATE string
  *   <li>A vendor-specific status code
  * </ul>
- *
- * Driver implementations should also use the following standard exception classes to indicate
- * invalid API usage:
- *
- * <ul>
- *   <li>{@link IllegalArgumentException} for invalid argument values
- *   <li>{@link UnsupportedOperationException} for unimplemented operations
- *   <li>{@link IllegalStateException} for other invalid use of the API (e.g. preconditions not met)
- * </ul>
  */
 public class AdbcException extends Exception {
   private final AdbcStatusCode status;
@@ -50,6 +41,21 @@ public class AdbcException extends Exception {
     this.status = status;
     this.sqlState = sqlState;
     this.vendorCode = vendorCode;
+  }
+
+  /** Create a new exception with code {@link AdbcStatusCode#INVALID_ARGUMENT}. */
+  public static AdbcException invalidArgument(String message) {
+    return new AdbcException(message, /*cause*/ null, AdbcStatusCode.INVALID_ARGUMENT, null, 0);
+  }
+
+  /** Create a new exception with code {@link AdbcStatusCode#INVALID_STATE}. */
+  public static AdbcException invalidState(String message) {
+    return new AdbcException(message, /*cause*/ null, AdbcStatusCode.INVALID_STATE, null, 0);
+  }
+
+  /** Create a new exception with code {@link AdbcStatusCode#NOT_IMPLEMENTED}. */
+  public static AdbcException notImplemented(String message) {
+    return new AdbcException(message, /*cause*/ null, AdbcStatusCode.NOT_IMPLEMENTED, null, 0);
   }
 
   public AdbcStatusCode getStatus() {

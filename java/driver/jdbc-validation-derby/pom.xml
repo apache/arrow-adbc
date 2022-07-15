@@ -18,37 +18,21 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>adbc-driver-jdbc</artifactId>
+  <artifactId>adbc-driver-jdbc-validation-derby</artifactId>
   <packaging>jar</packaging>
-  <name>Arrow ADBC Driver JDBC</name>
-  <description>An ADBC driver wrapping the JDBC API.</description>
+  <name>Arrow ADBC Driver JDBC Validation with Derby</name>
+  <description>Tests validating the JDBC driver against Apache Derby.</description>
 
   <dependencies>
-    <!-- Arrow -->
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-jdbc</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-vector</artifactId>
-    </dependency>
-
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
       <artifactId>adbc-core</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-jdbc-util</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-manager</artifactId>
+      <artifactId>adbc-driver-jdbc</artifactId>
+      <scope>test</scope>
     </dependency>
 
     <!-- Derby -->

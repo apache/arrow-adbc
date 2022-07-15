@@ -51,7 +51,7 @@ class FixedJdbcStatement implements AdbcStatement {
 
   @Override
   public void execute() throws AdbcException {
-    throw new UnsupportedOperationException("Cannot execute() this statement.");
+    throw AdbcException.invalidState("[JDBC] Cannot execute() this statement");
   }
 
   @Override
@@ -70,7 +70,7 @@ class FixedJdbcStatement implements AdbcStatement {
 
   @Override
   public void prepare() throws AdbcException {
-    throw new UnsupportedOperationException("Cannot prepare() this statement.");
+    throw AdbcException.invalidState("[JDBC] Cannot execute() this statement");
   }
 
   @Override

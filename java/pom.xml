@@ -79,7 +79,9 @@
     <module>core</module>
     <module>driver/jdbc</module>
     <module>driver/jdbc-util</module>
-    <module>driver/testsuite</module>
+    <module>driver/jdbc-validation-derby</module>
+    <module>driver/jdbc-validation-postgresql</module>
+    <module>driver/validation</module>
     <module>driver-manager</module>
   </modules>
 
@@ -119,7 +121,7 @@
       </dependency>
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
-        <artifactId>adbc-driver-testsuite</artifactId>
+        <artifactId>adbc-driver-validation</artifactId>
         <version>${adbc.version}</version>
       </dependency>
       <dependency>
