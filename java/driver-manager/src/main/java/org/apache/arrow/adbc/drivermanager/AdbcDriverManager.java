@@ -49,7 +49,7 @@ public final class AdbcDriverManager {
       throw new AdbcException(
           "Driver not found for '" + driverName + "'", null, AdbcStatusCode.NOT_FOUND, null, 0);
     }
-    return driver.connect(parameters);
+    return driver.open(parameters);
   }
 
   /**

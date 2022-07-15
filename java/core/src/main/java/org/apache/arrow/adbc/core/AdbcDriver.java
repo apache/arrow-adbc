@@ -19,6 +19,12 @@ package org.apache.arrow.adbc.core;
 
 import java.util.Map;
 
+/** A handle to an ADBC database driver. */
 public interface AdbcDriver {
-  AdbcDatabase connect(Map<String, String> parameters) throws AdbcException;
+  /**
+   * Open a database via this driver.
+   *
+   * @param parameters Driver-specific parameters.
+   */
+  AdbcDatabase open(Map<String, String> parameters) throws AdbcException;
 }

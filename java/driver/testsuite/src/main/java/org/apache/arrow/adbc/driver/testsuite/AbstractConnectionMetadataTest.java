@@ -29,6 +29,7 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
@@ -168,7 +169,7 @@ public abstract class AbstractConnectionMetadataTest {
                 Field.nullable("INTS", new ArrowType.Int(32, /*signed=*/ true)),
                 Field.nullable("STRS", new ArrowType.Utf8())));
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
-      try (final AdbcStatement stmt = connection.bulkIngest("FOO")) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO", BulkIngestMode.CREATE)) {
         stmt.bind(root);
         stmt.execute();
       }
@@ -220,7 +221,7 @@ public abstract class AbstractConnectionMetadataTest {
 
       // TODO: XXX: need a "quirks" system to handle idiosyncracies. For example: Derby forces table
       // names to uppercase, but does not do case folding in all places.
-      try (final AdbcStatement stmt = connection.bulkIngest("FOO")) {
+      try (final AdbcStatement stmt = connection.bulkIngest("FOO", BulkIngestMode.CREATE)) {
         stmt.bind(root);
         stmt.execute();
       }

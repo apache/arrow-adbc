@@ -25,6 +25,7 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
@@ -87,7 +88,7 @@ public abstract class AbstractTransactionTest {
       ints.setSafe(0, 1);
       ints.setSafe(1, 2);
       root.setRowCount(2);
-      try (final AdbcStatement stmt = connection.bulkIngest("foo")) {
+      try (final AdbcStatement stmt = connection.bulkIngest("foo", BulkIngestMode.CREATE)) {
         stmt.bind(root);
         stmt.execute();
       }
@@ -116,7 +117,7 @@ public abstract class AbstractTransactionTest {
       ints.setSafe(0, 1);
       ints.setSafe(1, 2);
       root.setRowCount(2);
-      try (final AdbcStatement stmt = connection.bulkIngest("foo")) {
+      try (final AdbcStatement stmt = connection.bulkIngest("foo", BulkIngestMode.CREATE)) {
         stmt.bind(root);
         stmt.execute();
       }
@@ -146,7 +147,7 @@ public abstract class AbstractTransactionTest {
       ints.setSafe(0, 1);
       ints.setSafe(1, 2);
       root.setRowCount(2);
-      try (final AdbcStatement stmt = connection.bulkIngest("foo")) {
+      try (final AdbcStatement stmt = connection.bulkIngest("foo", BulkIngestMode.CREATE)) {
         stmt.bind(root);
         stmt.execute();
       }

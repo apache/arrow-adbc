@@ -18,15 +18,17 @@
 package org.apache.arrow.adbc.driver.jdbc;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
+import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.driver.jdbc.util.JdbcParameterBinder;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
@@ -35,6 +37,16 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Field;
 
 public class JdbcStatement implements AdbcStatement {
+  // Do our best to properly map database-specific errors to NOT_FOUND status.
+  private static final List<String> SQLSTATE_TABLE_NOT_FOUND =
+      Arrays.asList(
+          // Apache Derby https://db.apache.org/derby/docs/10.4/ref/rrefexcept71493.html
+          "42X05",
+          // MySQL
+          // https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-error-sqlstates.html
+          "42S02",
+          // Postgres https://www.postgresql.org/docs/current/errcodes-appendix.html
+          "42P01");
   private final BufferAllocator allocator;
   private final Connection connection;
 
@@ -43,7 +55,7 @@ public class JdbcStatement implements AdbcStatement {
   private String sqlQuery;
   private ResultSet resultSet;
   // State for bulk ingest
-  private String bulkTargetTable;
+  private BulkState bulkOperation;
   private VectorSchemaRoot bindRoot;
 
   JdbcStatement(BufferAllocator allocator, Connection connection) {
@@ -52,17 +64,24 @@ public class JdbcStatement implements AdbcStatement {
     this.sqlQuery = null;
   }
 
-  static AdbcStatement ingestRoot(
-      BufferAllocator allocator, Connection connection, String targetTableName) {
+  static JdbcStatement ingestRoot(
+      BufferAllocator allocator,
+      Connection connection,
+      String targetTableName,
+      BulkIngestMode mode) {
     Objects.requireNonNull(targetTableName);
     final JdbcStatement statement = new JdbcStatement(allocator, connection);
-    statement.bulkTargetTable = targetTableName;
+    statement.bulkOperation = new BulkState();
+    statement.bulkOperation.mode = mode;
+    statement.bulkOperation.targetTable = targetTableName;
     return statement;
   }
 
   @Override
   public void setSqlQuery(String query) {
-    bulkTargetTable = null;
+    if (bulkOperation != null) {
+      throw new IllegalStateException("Statement is configured for a bulk ingest/append operation");
+    }
     sqlQuery = query;
   }
 
@@ -73,7 +92,7 @@ public class JdbcStatement implements AdbcStatement {
 
   @Override
   public void execute() throws AdbcException {
-    if (bulkTargetTable != null) {
+    if (bulkOperation != null) {
       executeBulk();
     } else if (sqlQuery != null) {
       executeSqlQuery();
@@ -84,7 +103,7 @@ public class JdbcStatement implements AdbcStatement {
 
   private void createBulkTable() throws AdbcException {
     final StringBuilder create = new StringBuilder("CREATE TABLE ");
-    create.append(bulkTargetTable);
+    create.append(bulkOperation.targetTable);
     create.append(" (");
     for (int col = 0; col < bindRoot.getFieldVectors().size(); col++) {
       if (col > 0) {
@@ -130,7 +149,8 @@ public class JdbcStatement implements AdbcStatement {
     try (final Statement statement = connection.createStatement()) {
       statement.execute(create.toString());
     } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(e);
+      throw JdbcDriverUtil.fromSqlException(
+          AdbcStatusCode.ALREADY_EXISTS, "Could not create table %s", e, bulkOperation.targetTable);
     }
   }
 
@@ -139,25 +159,14 @@ public class JdbcStatement implements AdbcStatement {
       throw new IllegalStateException("Must bind() before bulk insert");
     }
 
-    // Check if table exists, create it if necessary.
-    // XXX: TOC/TOU fallacy.
-    try {
-      final DatabaseMetaData dbmd = connection.getMetaData();
-      try (final ResultSet rs =
-          dbmd.getTables(/*catalog*/ null, /*schema*/ null, bulkTargetTable, /*types*/ null)) {
-        if (!rs.next()) {
-          createBulkTable();
-        }
-      }
-    } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(
-          "Could not determine if table %s exists: ", e, bulkTargetTable);
+    if (bulkOperation.mode == BulkIngestMode.CREATE) {
+      createBulkTable();
     }
 
     // XXX: potential injection
     // TODO: consider (optionally?) depending on jOOQ to generate SQL and support different dialects
     final StringBuilder insert = new StringBuilder("INSERT INTO ");
-    insert.append(bulkTargetTable);
+    insert.append(bulkOperation.targetTable);
     insert.append(" VALUES (");
     for (int col = 0; col < bindRoot.getFieldVectors().size(); col++) {
       if (col > 0) {
@@ -171,11 +180,17 @@ public class JdbcStatement implements AdbcStatement {
     try {
       statement = connection.prepareStatement(insert.toString());
     } catch (SQLException e) {
+      // It's hard to differentiate between 'table not found' and parameter type/count mismatch here
+      // because SQLState is inconsistent (see SQLSTATE_TABLE_NOT_FOUND above). We could query for
+      // table existence but that's another roundtrip and leads to a TOC/TOU
+      // error. Instead, we hard-code some common codes here.
+
+      final AdbcStatusCode code =
+          SQLSTATE_TABLE_NOT_FOUND.contains(e.getSQLState())
+              ? AdbcStatusCode.NOT_FOUND
+              : AdbcStatusCode.ALREADY_EXISTS;
       throw JdbcDriverUtil.fromSqlException(
-          AdbcStatusCode.ALREADY_EXISTS,
-          "Could not bulk insert into table %s: ",
-          e,
-          bulkTargetTable);
+          code, "Could not bulk insert into table %s: ", e, bulkOperation.targetTable);
     }
     try {
       try {
@@ -226,5 +241,10 @@ public class JdbcStatement implements AdbcStatement {
   @Override
   public void close() throws Exception {
     AutoCloseables.close(resultSet, statement);
+  }
+
+  private static final class BulkState {
+    public BulkIngestMode mode;
+    String targetTable;
   }
 }
