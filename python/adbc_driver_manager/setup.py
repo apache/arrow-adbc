@@ -30,7 +30,7 @@ setup(
                 "../../c/driver_manager/adbc_driver_manager.cc",
             ],
             include_dirs=["../../", "../../c/driver_manager"],
-            # extra_compile_args=["-ggdb", "-Og"],
+            extra_compile_args=["-ggdb", "-Og"],
         ),
     ),
     packages=["adbc_driver_manager"],

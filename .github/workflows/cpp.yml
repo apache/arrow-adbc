@@ -23,14 +23,14 @@ on:
       - main
     paths:
       - "adbc.h"
-      - "adbc_driver_manager/**"
-      - "drivers/**"
+      - "c/**"
+      - "python/**"
       - ".github/workflows/cpp.yml"
   push:
     paths:
       - "adbc.h"
-      - "adbc_driver_manager/**"
-      - "drivers/**"
+      - "c/**"
+      - "python/**"
       - ".github/workflows/cpp.yml"
 
 concurrency:
