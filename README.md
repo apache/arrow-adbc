@@ -21,7 +21,22 @@
 
 [![License](http://img.shields.io/:license-Apache%202-blue.svg)](https://github.com/apache/arrow-adbc/blob/master/LICENSE.txt)
 
-EXPERIMENTAL. Please see the [mailing list discussion](https://lists.apache.org/thread/gnz1kz2rj3rb8rh8qz7l0mv8lvzq254w).
+EXPERIMENTAL. Please see the [mailing list discussion][ml-discussion] and the original [proposal][proposal] for context.
+
+ADBC is an API standard for database access libraries ("drivers") in C and Java that uses Arrow for data.
+Instead of writing code for each individual database, applications can build against the ADBC APIs, and link against drivers that implement the standard.
+Additionally, a JDBC/ODBC-style driver manager is provided. This also implements the ADBC APIs, but dynamically loads drivers and dispatches calls to them.
+
+Like JDBC/ODBC, the goal is to provide a generic API for multiple databases, but ADBC is focused on Arrow-based data access for analytics use cases (bulk data retrieval/ingestion), and not the full spectrum of use cases that JDBC/ODBC drivers handle.
+Hence, ADBC is complementary to those existing standards.
+
+Like [Flight SQL][flight-sql], ADBC is an Arrow-based database access API.
+But Flight SQL also specifies the wire format and network transport (Flight RPC), while ADBC lets drivers make their own decisions.
+Together, ADBC and Flight SQL offer a fully Arrow-native solution for clients and database vendors.
+
+[flight-sql]: https://arrow.apache.org/docs/format/FlightSql.html
+[ml-discussion]: https://lists.apache.org/thread/gnz1kz2rj3rb8rh8qz7l0mv8lvzq254w
+[proposal]: https://docs.google.com/document/d/1t7NrC76SyxL_OffATmjzZs2xcj1owdUsIF2WKL_Zw1U/edit#heading=h.r6o6j2navi4c
 
 ## Building
 
