@@ -102,6 +102,16 @@ AdbcStatusCode StatementExecute(struct AdbcStatement*, struct AdbcError* error) 
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode StatementGetPartitionDesc(struct AdbcStatement*, uint8_t*,
+                                         struct AdbcError*) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode StatementGetPartitionDescSize(struct AdbcStatement*, size_t*,
+                                             struct AdbcError*) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode StatementPrepare(struct AdbcStatement*, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
@@ -435,6 +445,26 @@ AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
   return statement->private_driver->StatementExecute(statement, error);
 }
 
+AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
+                                             uint8_t* partition_desc,
+                                             struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return statement->private_driver->StatementGetPartitionDesc(statement, partition_desc,
+                                                              error);
+}
+
+AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
+                                                 size_t* length,
+                                                 struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return statement->private_driver->StatementGetPartitionDescSize(statement, length,
+                                                                  error);
+}
+
 AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
                                       struct ArrowArrayStream* out,
                                       struct AdbcError* error) {
@@ -663,6 +693,8 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   CHECK_REQUIRED(driver, StatementRelease);
   FILL_DEFAULT(driver, StatementBind);
   FILL_DEFAULT(driver, StatementExecute);
+  FILL_DEFAULT(driver, StatementGetPartitionDesc);
+  FILL_DEFAULT(driver, StatementGetPartitionDescSize);
   FILL_DEFAULT(driver, StatementPrepare);
   FILL_DEFAULT(driver, StatementSetOption);
   FILL_DEFAULT(driver, StatementSetSqlQuery);

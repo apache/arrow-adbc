@@ -64,6 +64,17 @@ repos:
     hooks:
     - id: flake8
       types_or: [python]
+  # Older versions of flake8 can be bent into linting Cython code.
+  - repo: https://github.com/PyCQA/flake8
+    rev: 3.9.2
+    hooks:
+    - id: flake8
+      name: "flake8 (Cython)"
+      files: \.(pyx|pxd)$
+      types:
+        - file
+      args:
+        - "--append-config=.flake8.cython"
   - repo: https://github.com/PyCQA/isort
     rev: 5.10.1
     hooks:
