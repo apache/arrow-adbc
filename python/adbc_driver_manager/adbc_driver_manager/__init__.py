@@ -14,3 +14,24 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
+from ._lib import (  # noqa: F401
+    INGEST_OPTION_TARGET_TABLE,
+    AdbcConnection,
+    AdbcDatabase,
+    AdbcStatement,
+    AdbcStatusCode,
+    ArrowArrayHandle,
+    ArrowArrayStreamHandle,
+    ArrowSchemaHandle,
+    DatabaseError,
+    DataError,
+    Error,
+    GetObjectsDepth,
+    IntegrityError,
+    InterfaceError,
+    InternalError,
+    NotSupportedError,
+    OperationalError,
+    ProgrammingError,
+)

@@ -67,11 +67,6 @@ AdbcStatusCode ConnectionCommit(struct AdbcConnection*, struct AdbcError* error)
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-AdbcStatusCode ConnectionGetTableTypes(struct AdbcConnection*, struct AdbcStatement*,
-                                       struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
 AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, const char*,
                                     const char*, const char**, const char*,
                                     struct AdbcStatement*, struct AdbcError* error) {
@@ -81,6 +76,11 @@ AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, co
 AdbcStatusCode ConnectionGetTableSchema(struct AdbcConnection*, const char*, const char*,
                                         const char*, struct ArrowSchema*,
                                         struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionGetTableTypes(struct AdbcConnection*, struct AdbcStatement*,
+                                       struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -308,6 +308,42 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
     return ADBC_STATUS_INVALID_STATE;
   }
   return connection->private_driver->ConnectionCommit(connection, error);
+}
+
+AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
+                                        const char* catalog, const char* db_schema,
+                                        const char* table_name, const char** table_types,
+                                        const char* column_name,
+                                        struct AdbcStatement* statement,
+                                        struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionGetObjects(
+      connection, depth, catalog, db_schema, table_name, table_types, column_name,
+      statement, error);
+}
+
+AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
+                                            const char* catalog, const char* db_schema,
+                                            const char* table_name,
+                                            struct ArrowSchema* schema,
+                                            struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionGetTableSchema(
+      connection, catalog, db_schema, table_name, schema, error);
+}
+
+AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
+                                           struct AdbcStatement* statement,
+                                           struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionGetTableTypes(connection, statement,
+                                                             error);
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,

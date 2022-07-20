@@ -19,10 +19,10 @@
 
 """Low-level ADBC API."""
 
+import enum
 import typing
 
 import cython
-import pyarrow
 from libc.stdint cimport int32_t, uint8_t, uintptr_t
 from libc.string cimport memset
 
@@ -40,22 +40,34 @@ cdef extern from "adbc.h":
         pass
 
     # ADBC
-    ctypedef uint8_t AdbcStatusCode
-    cdef AdbcStatusCode ADBC_STATUS_OK
-    cdef AdbcStatusCode ADBC_STATUS_UNKNOWN
-    cdef AdbcStatusCode ADBC_STATUS_NOT_IMPLEMENTED
-    cdef AdbcStatusCode ADBC_STATUS_NOT_FOUND
-    cdef AdbcStatusCode ADBC_STATUS_ALREADY_EXISTS
-    cdef AdbcStatusCode ADBC_STATUS_INVALID_ARGUMENT
-    cdef AdbcStatusCode ADBC_STATUS_INVALID_STATE
-    cdef AdbcStatusCode ADBC_STATUS_INVALID_DATA
-    cdef AdbcStatusCode ADBC_STATUS_INTEGRITY
-    cdef AdbcStatusCode ADBC_STATUS_INTERNAL
-    cdef AdbcStatusCode ADBC_STATUS_IO
-    cdef AdbcStatusCode ADBC_STATUS_CANCELLED
-    cdef AdbcStatusCode ADBC_STATUS_TIMEOUT
-    cdef AdbcStatusCode ADBC_STATUS_UNAUTHENTICATED
-    cdef AdbcStatusCode ADBC_STATUS_UNAUTHORIZED
+    ctypedef uint8_t CAdbcStatusCode"AdbcStatusCode"
+    cdef CAdbcStatusCode ADBC_STATUS_OK
+    cdef CAdbcStatusCode ADBC_STATUS_UNKNOWN
+    cdef CAdbcStatusCode ADBC_STATUS_NOT_IMPLEMENTED
+    cdef CAdbcStatusCode ADBC_STATUS_NOT_FOUND
+    cdef CAdbcStatusCode ADBC_STATUS_ALREADY_EXISTS
+    cdef CAdbcStatusCode ADBC_STATUS_INVALID_ARGUMENT
+    cdef CAdbcStatusCode ADBC_STATUS_INVALID_STATE
+    cdef CAdbcStatusCode ADBC_STATUS_INVALID_DATA
+    cdef CAdbcStatusCode ADBC_STATUS_INTEGRITY
+    cdef CAdbcStatusCode ADBC_STATUS_INTERNAL
+    cdef CAdbcStatusCode ADBC_STATUS_IO
+    cdef CAdbcStatusCode ADBC_STATUS_CANCELLED
+    cdef CAdbcStatusCode ADBC_STATUS_TIMEOUT
+    cdef CAdbcStatusCode ADBC_STATUS_UNAUTHENTICATED
+    cdef CAdbcStatusCode ADBC_STATUS_UNAUTHORIZED
+
+    cdef const char* ADBC_OPTION_VALUE_DISABLED
+    cdef const char* ADBC_OPTION_VALUE_ENABLED
+
+    cdef const char* ADBC_CONNECTION_OPTION_AUTOCOMMIT
+    cdef const char* ADBC_INGEST_OPTION_TARGET_TABLE
+
+    cdef int ADBC_OBJECT_DEPTH_ALL
+    cdef int ADBC_OBJECT_DEPTH_CATALOGS
+    cdef int ADBC_OBJECT_DEPTH_DB_SCHEMAS
+    cdef int ADBC_OBJECT_DEPTH_TABLES
+    cdef int ADBC_OBJECT_DEPTH_COLUMNS
 
     ctypedef void (*CAdbcErrorRelease)(CAdbcError*)
 
@@ -74,32 +86,56 @@ cdef extern from "adbc.h":
     cdef struct CAdbcStatement"AdbcStatement":
         void* private_data
 
-    AdbcStatusCode AdbcDatabaseNew(CAdbcDatabase* database, CAdbcError* error)
-    AdbcStatusCode AdbcDatabaseSetOption(CAdbcDatabase* database, const char* key, const char* value, CAdbcError* error)
-    AdbcStatusCode AdbcDatabaseInit(CAdbcDatabase* database, CAdbcError* error)
-    AdbcStatusCode AdbcDatabaseRelease(CAdbcDatabase* database, CAdbcError* error)
+    CAdbcStatusCode AdbcDatabaseNew(CAdbcDatabase* database, CAdbcError* error)
+    CAdbcStatusCode AdbcDatabaseSetOption(CAdbcDatabase* database, const char* key, const char* value, CAdbcError* error)
+    CAdbcStatusCode AdbcDatabaseInit(CAdbcDatabase* database, CAdbcError* error)
+    CAdbcStatusCode AdbcDatabaseRelease(CAdbcDatabase* database, CAdbcError* error)
 
-    AdbcStatusCode AdbcConnectionNew(CAdbcConnection* connection, CAdbcError* error)
-    AdbcStatusCode AdbcConnectionSetOption(CAdbcConnection* connection, const char* key, const char* value, CAdbcError* error)
-    AdbcStatusCode AdbcConnectionInit(CAdbcConnection* connection, CAdbcDatabase* database, CAdbcError* error)
-    AdbcStatusCode AdbcConnectionRelease(CAdbcConnection* connection, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionCommit(CAdbcConnection* connection, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionRollback(CAdbcConnection* connection, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionDeserializePartitionDesc(CAdbcConnection* connection, const uint8_t* serialized_partition, size_t serialized_length, CAdbcStatement* statement, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionGetObjects(CAdbcConnection* connection, int depth, const char* catalog, const char* db_schema, const char* table_name, const char** table_type, const char* column_name, CAdbcStatement* statement, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionGetTableSchema(CAdbcConnection* connection, const char* catalog, const char* db_schema, const char* table_name, CArrowSchema* schema, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionGetTableTypes(CAdbcConnection* connection, CAdbcStatement* statement, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionInit(CAdbcConnection* connection, CAdbcDatabase* database, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionNew(CAdbcConnection* connection, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionSetOption(CAdbcConnection* connection, const char* key, const char* value, CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionRelease(CAdbcConnection* connection, CAdbcError* error)
 
-    AdbcStatusCode AdbcStatementBind(CAdbcStatement* statement, CArrowArray*, CArrowSchema*, CAdbcError* error)
-    AdbcStatusCode AdbcStatementBindStream(CAdbcStatement* statement, CArrowArrayStream*, CAdbcError* error)
-    AdbcStatusCode AdbcStatementExecute(CAdbcStatement* statement, CAdbcError* error)
-    AdbcStatusCode AdbcStatementGetStream(CAdbcStatement* statement, CArrowArrayStream* c_stream, CAdbcError* error)
-    AdbcStatusCode AdbcStatementNew(CAdbcConnection* connection, CAdbcStatement* statement, CAdbcError* error)
-    AdbcStatusCode AdbcStatementPrepare(CAdbcStatement* statement, CAdbcError* error)
-    AdbcStatusCode AdbcStatementSetOption(CAdbcStatement* statement, const char* key, const char* value, CAdbcError* error)
-    AdbcStatusCode AdbcStatementSetSqlQuery(CAdbcStatement* statement, const char* query, CAdbcError* error)
-    AdbcStatusCode AdbcStatementRelease(CAdbcStatement* statement, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementBind(CAdbcStatement* statement, CArrowArray*, CArrowSchema*, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementBindStream(CAdbcStatement* statement, CArrowArrayStream*, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementExecute(CAdbcStatement* statement, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementGetPartitionDesc(CAdbcStatement* statement, uint8_t* partition_desc, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementGetPartitionDescSize(CAdbcStatement* statement, size_t* length, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementGetStream(CAdbcStatement* statement, CArrowArrayStream* c_stream, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementNew(CAdbcConnection* connection, CAdbcStatement* statement, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementPrepare(CAdbcStatement* statement, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementSetOption(CAdbcStatement* statement, const char* key, const char* value, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementSetSqlQuery(CAdbcStatement* statement, const char* query, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementSetSubstraitPlan(CAdbcStatement* statement, const uint8_t* plan, size_t length, CAdbcError* error)
+    CAdbcStatusCode AdbcStatementRelease(CAdbcStatement* statement, CAdbcError* error)
 
 
 cdef extern from "adbc_driver_manager.h":
-    const char* AdbcStatusCodeMessage(AdbcStatusCode code)
+    const char* CAdbcStatusCodeMessage"AdbcStatusCodeMessage"(CAdbcStatusCode code)
 
 
-INGEST_OPTION_TARGET_TABLE = "adbc.ingest.target_table"
+class AdbcStatusCode(enum.IntEnum):
+    OK = ADBC_STATUS_OK
+    UNKNOWN = ADBC_STATUS_UNKNOWN
+    NOT_IMPLEMENTED = ADBC_STATUS_NOT_IMPLEMENTED
+    NOT_FOUND = ADBC_STATUS_NOT_FOUND
+    ALREADY_EXISTS = ADBC_STATUS_ALREADY_EXISTS
+    INVALID_ARGUMENT = ADBC_STATUS_INVALID_ARGUMENT
+    INVALID_STATE = ADBC_STATUS_INVALID_STATE
+    INVALID_DATA = ADBC_STATUS_INVALID_DATA
+    INTEGRITY = ADBC_STATUS_INTEGRITY
+    INTERNAL = ADBC_STATUS_INTERNAL
+    IO = ADBC_STATUS_IO
+    CANCELLED = ADBC_STATUS_CANCELLED
+    TIMEOUT = ADBC_STATUS_TIMEOUT
+    UNAUTHENTICATED = ADBC_STATUS_UNAUTHENTICATED
+    UNAUTHORIZED = ADBC_STATUS_UNAUTHORIZED
 
 
 class Error(Exception):
@@ -107,7 +143,7 @@ class Error(Exception):
 
     Attributes
     ----------
-    status_code : int
+    status_code : CAdbcStatusCode
         The original ADBC status code.
     vendor_code : int, optional
         A vendor-specific status code if present.
@@ -117,7 +153,7 @@ class Error(Exception):
 
     def __init__(self, message, *, status_code, vendor_code=None, sqlstate=None):
         super().__init__(message)
-        self.status_code = status_code
+        self.status_code = AdbcStatusCode(status_code)
         self.vendor_code = None
         self.sqlstate = None
 
@@ -154,11 +190,14 @@ class NotSupportedError(DatabaseError):
     pass
 
 
-cdef void check_error(AdbcStatusCode status, CAdbcError* error) except *:
+INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
+
+
+cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
     if status == ADBC_STATUS_OK:
         return
 
-    message = AdbcStatusCodeMessage(status).decode("utf-8")
+    message = CAdbcStatusCodeMessage(status).decode("utf-8")
     vendor_code = None
     sqlstate = None
 
@@ -170,7 +209,8 @@ cdef void check_error(AdbcStatusCode status, CAdbcError* error) except *:
             vendor_code = error.vendor_code
         if error.sqlstate[0] != 0:
             sqlstate = error.sqlstate.decode("ascii")
-        error.release(error)
+        if error.release:
+            error.release(error)
 
     klass = Error
     if status in (ADBC_STATUS_INVALID_DATA,):
@@ -194,7 +234,18 @@ cdef CAdbcError empty_error():
     return error
 
 
+cdef bytes _to_bytes(obj, str name):
+    if isinstance(obj, bytes):
+        return obj
+    elif isinstance(obj, str):
+        return obj.encode("utf-8")
+    raise ValueError(f"{name} must be str or bytes")
+
+
 cdef class _AdbcHandle:
+    """
+    Base class for ADBC handles, which are context managers.
+    """
     def __enter__(self) -> "Self":
         return self
 
@@ -202,13 +253,70 @@ cdef class _AdbcHandle:
         self.close()
 
 
+cdef class ArrowSchemaHandle:
+    """
+    A wrapper for an allocated ArrowSchema.
+    """
+    cdef:
+        CArrowSchema schema
+
+    @property
+    def address(self) -> int:
+        """The address of the ArrowSchema."""
+        return <uintptr_t> &self.schema
+
+
+cdef class ArrowArrayHandle:
+    """
+    A wrapper for an allocated ArrowArray.
+    """
+    cdef:
+        CArrowArray array
+
+    @property
+    def address(self) -> int:
+        """The address of the ArrowArray."""
+        return <uintptr_t> &self.array
+
+
+cdef class ArrowArrayStreamHandle:
+    """
+    A wrapper for an allocated ArrowArrayStream.
+    """
+    cdef:
+        CArrowArrayStream stream
+
+    @property
+    def address(self) -> int:
+        """The address of the ArrowArrayStream."""
+        return <uintptr_t> &self.stream
+
+
+class GetObjectsDepth(enum.IntEnum):
+    ALL = ADBC_OBJECT_DEPTH_ALL
+    CATALOGS = ADBC_OBJECT_DEPTH_CATALOGS
+    DB_SCHEMAS = ADBC_OBJECT_DEPTH_DB_SCHEMAS
+    TABLES = ADBC_OBJECT_DEPTH_TABLES
+    COLUMNS = ADBC_OBJECT_DEPTH_COLUMNS
+
+
 cdef class AdbcDatabase(_AdbcHandle):
+    """
+    An instance of a database.
+
+    Parameters
+    ----------
+    kwargs : dict
+        String key-value options to pass to the underlying database.
+        Must include at least "driver" and "entrypoint" to identify
+        the underlying database driver to load.
+    """
     cdef:
         CAdbcDatabase database
 
     def __init__(self, **kwargs) -> None:
         cdef CAdbcError c_error = empty_error()
-        cdef AdbcStatusCode status
+        cdef CAdbcStatusCode status
         cdef const char* c_key
         cdef const char* c_value
         memset(&self.database, 0, cython.sizeof(CAdbcDatabase))
@@ -228,23 +336,40 @@ cdef class AdbcDatabase(_AdbcHandle):
         check_error(status, &c_error)
 
     def close(self) -> None:
+        """Release the handle to the database."""
         if self.database.private_data == NULL:
             return
 
         cdef CAdbcError c_error = empty_error()
-        cdef AdbcStatusCode status = AdbcDatabaseRelease(&self.database, &c_error)
+        cdef CAdbcStatusCode status = AdbcDatabaseRelease(&self.database, &c_error)
         check_error(status, &c_error)
 
 
 cdef class AdbcConnection(_AdbcHandle):
+    """
+    An active database connection.
+
+    Connections are not thread-safe and clients should take care to
+    serialize accesses to a connection.
+
+    Parameters
+    ----------
+    database : AdbcDatabase
+        The database to connect to.
+    kwargs : dict
+        String key-value options to pass to the underlying database.
+    """
     cdef:
+        AdbcDatabase database
         CAdbcConnection connection
 
     def __init__(self, AdbcDatabase database, **kwargs) -> None:
         cdef CAdbcError c_error = empty_error()
-        cdef AdbcStatusCode status
+        cdef CAdbcStatusCode status
         cdef const char* c_key
         cdef const char* c_value
+
+        self.database = database
         memset(&self.connection, 0, cython.sizeof(CAdbcConnection))
 
         status = AdbcConnectionNew(&self.connection, &c_error)
@@ -261,58 +386,202 @@ cdef class AdbcConnection(_AdbcHandle):
         status = AdbcConnectionInit(&self.connection, &database.database, &c_error)
         check_error(status, &c_error)
 
+    def commit(self) -> None:
+        """Commit the current transaction."""
+        cdef CAdbcError c_error = empty_error()
+        check_error(AdbcConnectionCommit(&self.connection, &c_error), &c_error)
+
+    def get_objects(self, depth, catalog=None, db_schema=None, table_name=None, table_types=None, column_name=None) -> AdbcStatement:
+        """
+        Get a hierarchical view of database objects.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        cdef AdbcStatement statement = AdbcStatement(self)
+
+        cdef char* c_catalog = NULL
+        if catalog is not None:
+            catalog = _to_bytes(catalog, "catalog")
+            c_catalog = catalog
+
+        cdef char* c_db_schema = NULL
+        if db_schema is not None:
+            db_schema = _to_bytes(db_schema, "db_schema")
+            c_db_schema = db_schema
+
+        cdef char* c_table_name = NULL
+        if table_name is not None:
+            table_name = _to_bytes(table_name, "table_name")
+            c_table_name = table_name
+
+        cdef char* c_column_name = NULL
+        if column_name is not None:
+            column_name = _to_bytes(column_name, "column_name")
+            c_column_name = column_name
+
+        status = AdbcConnectionGetObjects(
+            &self.connection,
+            GetObjectsDepth(depth).value,
+            c_catalog,
+            c_db_schema,
+            c_table_name,
+            NULL, # TODO: support table_types
+            c_column_name,
+            &statement.statement,
+            &c_error)
+        check_error(status, &c_error)
+
+        return statement
+
+    def get_table_schema(self, catalog, db_schema, table_name) -> ArrowSchemaHandle:
+        """
+        Get the Arrow schema of a table.
+
+        Returns
+        -------
+        ArrowSchemaHandle
+            A C Data Interface ArrowSchema struct containing the schema.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        cdef ArrowSchemaHandle handle = ArrowSchemaHandle()
+
+        cdef char* c_catalog = NULL
+        if catalog is not None:
+            catalog = _to_bytes(catalog, "catalog")
+            c_catalog = catalog
+
+        cdef char* c_db_schema = NULL
+        if db_schema is not None:
+            db_schema = _to_bytes(db_schema, "db_schema")
+            c_db_schema = db_schema
+
+        status = AdbcConnectionGetTableSchema(
+            &self.connection,
+            c_catalog,
+            c_db_schema,
+            _to_bytes(table_name, "table_name"),
+            &handle.schema,
+            &c_error)
+        check_error(status, &c_error)
+
+        return handle
+
+    def get_table_types(self) -> AdbcStatement:
+        """
+        Get the list of supported table types.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        cdef AdbcStatement statement = AdbcStatement(self)
+
+        status = AdbcConnectionGetTableTypes(
+            &self.connection, &statement.statement, &c_error)
+        check_error(status, &c_error)
+
+        return statement
+
+    def rollback(self) -> None:
+        """Rollback the current transaction."""
+        cdef CAdbcError c_error = empty_error()
+        check_error(AdbcConnectionRollback(&self.connection, &c_error), &c_error)
+
+    def set_autocommit(self, bint enabled) -> None:
+        """Toggle whether autocommit is enabled."""
+        cdef CAdbcError c_error = empty_error()
+        if enabled:
+            value = ADBC_OPTION_VALUE_ENABLED
+        else:
+            value = ADBC_OPTION_VALUE_DISABLED
+        check_error(AdbcConnectionSetOption(&self.connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT, value, &c_error), &c_error)
+
     def close(self) -> None:
+        """Release the handle to the connection."""
         if self.connection.private_data == NULL:
             return
 
         cdef CAdbcError c_error = empty_error()
-        cdef AdbcStatusCode status = AdbcConnectionRelease(&self.connection, &c_error)
+        cdef CAdbcStatusCode status = AdbcConnectionRelease(&self.connection, &c_error)
         check_error(status, &c_error)
 
 
 cdef class AdbcStatement(_AdbcHandle):
+    """
+    A database statement.
+
+    Statements are not thread-safe and clients should take care to
+    serialize accesses to a connection.
+
+    Parameters
+    ----------
+    connection : AdbcConnection
+        The connection to create the statement for.
+    """
     cdef:
         CAdbcStatement statement
 
     def __init__(self, AdbcConnection connection) -> None:
         cdef CAdbcError c_error = empty_error()
-        cdef const char* c_key
-        cdef const char* c_value
         memset(&self.statement, 0, cython.sizeof(CAdbcStatement))
 
         status = AdbcStatementNew(&connection.connection, &self.statement, &c_error)
         check_error(status, &c_error)
 
-    def bind(self, data) -> None:
+    def bind(self, data, schema) -> None:
         """
+        Bind an ArrowArray to this statement.
+
         Parameters
         ----------
-        data : pyarrow.RecordBatch, pyarrow.RecordBatchReader, or pyarrow.Table
+        data : int or ArrowArrayHandle
+        schema : int or ArrowSchemaHandle
         """
         cdef CAdbcError c_error = empty_error()
-        cdef CArrowArray c_array
-        cdef CArrowSchema c_schema
-        cdef CArrowArrayStream c_stream
-        if isinstance(data, pyarrow.RecordBatch):
-            data._export_to_c(<uintptr_t> &c_array, <uintptr_t>&c_schema)
-            status = AdbcStatementBind(&self.statement, &c_array, &c_schema, &c_error)
-        else:
-            if isinstance(data, pyarrow.Table):
-                # Table lacks the export function
-                data = data.to_reader()
-            elif not isinstance(data, pyarrow.RecordBatchReader):
-                raise TypeError("data must be RecordBatch(Reader) or Table")
-            data._export_to_c(<uintptr_t> &c_stream)
-            status = AdbcStatementBindStream(&self.statement, &c_stream, &c_error)
+        cdef CArrowArray* c_array
+        cdef CArrowSchema* c_schema
 
-        check_error(status, &c_error)
+        if isinstance(data, ArrowArrayHandle):
+            c_array = &(<ArrowArrayHandle> data).array
+        elif isinstance(data, int):
+            c_array = <CArrowArray*> data
+        else:
+            raise TypeError(f"data must be int or ArrowArrayHandle, not {type(data)}")
+
+        if isinstance(schema, ArrowSchemaHandle):
+            c_schema = &(<ArrowSchemaHandle> schema).schema
+        elif isinstance(schema, int):
+            c_schema = <CArrowSchema*> schema
+        else:
+            raise TypeError(f"schema must be int or ArrowSchemaHandle, not {type(schema)}")
+
+        check_error(AdbcStatementBind(&self.statement, c_array, c_schema, &c_error), &c_error)
+
+    def bind_stream(self, stream) -> None:
+        """
+        Bind an ArrowArrayStream to this statement.
+
+        Parameters
+        ----------
+        stream : int or ArrowArrayStreamHandle
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef CArrowArrayStream* c_stream
+
+        if isinstance(stream, ArrowArrayStreamHandle):
+            c_stream = &(<ArrowArrayStreamHandle> stream).stream
+        elif isinstance(stream, int):
+            c_stream = <CArrowArrayStream*> stream
+        else:
+            raise TypeError(f"data must be int or ArrowArrayStreamHandle, not {type(stream)}")
+
+        check_error(AdbcStatementBindStream(&self.statement, c_stream, &c_error), &c_error)
 
     def close(self) -> None:
         if self.statement.private_data == NULL:
             return
 
         cdef CAdbcError c_error = empty_error()
-        cdef AdbcStatusCode status = AdbcStatementRelease(&self.statement, &c_error)
+        cdef CAdbcStatusCode status = AdbcStatementRelease(&self.statement, &c_error)
         check_error(status, &c_error)
 
     def execute(self) -> None:
@@ -320,12 +589,12 @@ cdef class AdbcStatement(_AdbcHandle):
         status = AdbcStatementExecute(&self.statement, &c_error)
         check_error(status, &c_error)
 
-    def get_stream(self) -> pyarrow.RecordBatchReader:
+    def get_stream(self) -> ArrowArrayStreamHandle:
         cdef CAdbcError c_error = empty_error()
-        cdef CArrowArrayStream c_stream
-        status = AdbcStatementGetStream(&self.statement, &c_stream, &c_error)
+        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
+        status = AdbcStatementGetStream(&self.statement, &stream.stream, &c_error)
         check_error(status, &c_error)
-        return pyarrow.RecordBatchReader._import_from_c(<uintptr_t> &c_stream)
+        return stream
 
     def prepare(self) -> None:
         cdef CAdbcError c_error = empty_error()
@@ -345,4 +614,9 @@ cdef class AdbcStatement(_AdbcHandle):
     def set_sql_query(self, query: str) -> None:
         cdef CAdbcError c_error = empty_error()
         status = AdbcStatementSetSqlQuery(&self.statement, query.encode("utf-8"), &c_error)
+        check_error(status, &c_error)
+
+    def set_substrait_plan(self, plan: bytes) -> None:
+        cdef CAdbcError c_error = empty_error()
+        status = AdbcStatementSetSubstraitPlan(&self.statement, plan, len(plan), &c_error)
         check_error(status, &c_error)
