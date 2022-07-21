@@ -19,6 +19,7 @@ from ._lib import (  # noqa: F401
     INGEST_OPTION_TARGET_TABLE,
     AdbcConnection,
     AdbcDatabase,
+    AdbcInfoCode,
     AdbcStatement,
     AdbcStatusCode,
     ArrowArrayHandle,

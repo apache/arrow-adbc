@@ -24,8 +24,9 @@ import typing
 from typing import List
 
 import cython
-from libc.stdint cimport int32_t, uint8_t, uintptr_t
+from libc.stdint cimport int32_t, uint8_t, uint32_t, uintptr_t
 from libc.string cimport memset
+from libcpp.vector cimport vector as c_vector
 
 if typing.TYPE_CHECKING:
     from typing import Self
@@ -70,6 +71,13 @@ cdef extern from "adbc.h" nogil:
     cdef int ADBC_OBJECT_DEPTH_TABLES
     cdef int ADBC_OBJECT_DEPTH_COLUMNS
 
+    cdef uint32_t ADBC_INFO_VENDOR_NAME
+    cdef uint32_t ADBC_INFO_VENDOR_VERSION
+    cdef uint32_t ADBC_INFO_VENDOR_ARROW_VERSION
+    cdef uint32_t ADBC_INFO_DRIVER_NAME
+    cdef uint32_t ADBC_INFO_DRIVER_VERSION
+    cdef uint32_t ADBC_INFO_DRIVER_ARROW_VERSION
+
     ctypedef void (*CAdbcErrorRelease)(CAdbcError*)
 
     cdef struct CAdbcError"AdbcError":
@@ -106,6 +114,12 @@ cdef extern from "adbc.h" nogil:
         CAdbcConnection* connection,
         const uint8_t* serialized_partition,
         size_t serialized_length,
+        CAdbcStatement* statement,
+        CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionGetInfo(
+        CAdbcConnection* connection,
+        uint32_t* info_codes,
+        size_t info_codes_length,
         CAdbcStatement* statement,
         CAdbcError* error)
     CAdbcStatusCode AdbcConnectionGetObjects(
@@ -215,6 +229,15 @@ class AdbcStatusCode(enum.IntEnum):
     TIMEOUT = ADBC_STATUS_TIMEOUT
     UNAUTHENTICATED = ADBC_STATUS_UNAUTHENTICATED
     UNAUTHORIZED = ADBC_STATUS_UNAUTHORIZED
+
+
+class AdbcInfoCode(enum.IntEnum):
+    VENDOR_NAME = ADBC_INFO_VENDOR_NAME
+    VENDOR_VERSION = ADBC_INFO_VENDOR_VERSION
+    VENDOR_ARROW_VERSION = ADBC_INFO_VENDOR_ARROW_VERSION
+    DRIVER_NAME = ADBC_INFO_DRIVER_NAME
+    DRIVER_VERSION = ADBC_INFO_DRIVER_VERSION
+    DRIVER_ARROW_VERSION = ADBC_INFO_DRIVER_ARROW_VERSION
 
 
 class Error(Exception):
@@ -473,6 +496,39 @@ cdef class AdbcConnection(_AdbcHandle):
         """Commit the current transaction."""
         cdef CAdbcError c_error = empty_error()
         check_error(AdbcConnectionCommit(&self.connection, &c_error), &c_error)
+
+    def get_info(self, info_codes=None):
+        """
+        Get metadata about the database/driver.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        cdef AdbcStatement statement = AdbcStatement(self)
+        cdef c_vector[uint32_t] c_info_codes
+
+        if info_codes:
+            for info_code in info_codes:
+                if isinstance(info_code, int):
+                    c_info_codes.push_back(info_code)
+                else:
+                    c_info_codes.push_back(info_code.value)
+
+            status = AdbcConnectionGetInfo(
+                &self.connection,
+                c_info_codes.data(),
+                c_info_codes.size(),
+                &statement.statement,
+                &c_error)
+        else:
+            status = AdbcConnectionGetInfo(
+                &self.connection,
+                NULL,
+                0,
+                &statement.statement,
+                &c_error)
+
+        check_error(status, &c_error)
+        return statement
 
     def get_objects(self, depth, catalog=None, db_schema=None, table_name=None,
                     table_types=None, column_name=None) -> AdbcStatement:

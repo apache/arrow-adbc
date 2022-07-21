@@ -29,6 +29,7 @@
 #include <arrow/record_batch.h>
 #include <arrow/status.h>
 #include <arrow/table.h>
+#include <arrow/util/config.h>
 #include <arrow/util/logging.h>
 #include <arrow/util/string_builder.h>
 
@@ -619,6 +620,102 @@ class SqliteStatementImpl {
     }
     SetError(error, "Cannot prepare a statement without a query");
     return ADBC_STATUS_INVALID_STATE;
+  }
+
+  AdbcStatusCode GetInfo(const std::shared_ptr<SqliteStatementImpl>& self,
+                         uint32_t* info_codes, size_t info_codes_length,
+                         struct AdbcError* error) {
+    static std::shared_ptr<arrow::Schema> kInfoSchema = arrow::schema({
+        arrow::field("info_name", arrow::uint32(), /*nullable=*/false),
+        arrow::field(
+            "info_value",
+            arrow::dense_union({
+                arrow::field("string_value", arrow::utf8()),
+                arrow::field("bool_value", arrow::boolean()),
+                arrow::field("int64_value", arrow::int64()),
+                arrow::field("int32_bitmask", arrow::int32()),
+                arrow::field("string_list", arrow::list(arrow::utf8())),
+                arrow::field("int32_to_int32_list_map",
+                             arrow::map(arrow::int32(), arrow::list(arrow::int32()))),
+            })),
+    });
+    static int kStringValueCode = 0;
+
+    static std::vector<uint32_t> kSupported = {
+        ADBC_INFO_VENDOR_NAME,    ADBC_INFO_VENDOR_VERSION,       ADBC_INFO_DRIVER_NAME,
+        ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ARROW_VERSION,
+    };
+
+    if (!info_codes) {
+      info_codes = kSupported.data();
+      info_codes_length = kSupported.size();
+    }
+
+    arrow::UInt32Builder info_name;
+    std::unique_ptr<arrow::ArrayBuilder> info_value_builder;
+    ADBC_RETURN_NOT_OK(
+        FromArrowStatus(MakeBuilder(arrow::default_memory_pool(),
+                                    kInfoSchema->field(1)->type(), &info_value_builder),
+                        error));
+    arrow::DenseUnionBuilder* info_value =
+        static_cast<arrow::DenseUnionBuilder*>(info_value_builder.get());
+    arrow::StringBuilder* info_string =
+        static_cast<arrow::StringBuilder*>(info_value->child_builder(0).get());
+
+    for (size_t i = 0; i < info_codes_length; i++) {
+      switch (info_codes[i]) {
+        case ADBC_INFO_VENDOR_NAME:
+          ADBC_RETURN_NOT_OK(FromArrowStatus(info_name.Append(info_codes[i]), error));
+          ADBC_RETURN_NOT_OK(
+              FromArrowStatus(info_value->Append(kStringValueCode), error));
+          ADBC_RETURN_NOT_OK(FromArrowStatus(info_string->Append("SQLite3"), error));
+          break;
+        case ADBC_INFO_VENDOR_VERSION:
+          ADBC_RETURN_NOT_OK(FromArrowStatus(info_name.Append(info_codes[i]), error));
+          ADBC_RETURN_NOT_OK(
+              FromArrowStatus(info_value->Append(kStringValueCode), error));
+          ADBC_RETURN_NOT_OK(
+              FromArrowStatus(info_string->Append(sqlite3_libversion()), error));
+          break;
+        case ADBC_INFO_DRIVER_NAME:
+          ADBC_RETURN_NOT_OK(FromArrowStatus(info_name.Append(info_codes[i]), error));
+          ADBC_RETURN_NOT_OK(
+              FromArrowStatus(info_value->Append(kStringValueCode), error));
+          ADBC_RETURN_NOT_OK(
+              FromArrowStatus(info_string->Append("ADBC C SQLite3"), error));
+          break;
+        case ADBC_INFO_DRIVER_VERSION:
+          // TODO: set up CMake to embed version info
+          ADBC_RETURN_NOT_OK(FromArrowStatus(info_name.Append(info_codes[i]), error));
+          ADBC_RETURN_NOT_OK(
+              FromArrowStatus(info_value->Append(kStringValueCode), error));
+          ADBC_RETURN_NOT_OK(FromArrowStatus(info_string->Append("0.0.1"), error));
+          break;
+        case ADBC_INFO_DRIVER_ARROW_VERSION:
+          ADBC_RETURN_NOT_OK(FromArrowStatus(info_name.Append(info_codes[i]), error));
+          ADBC_RETURN_NOT_OK(
+              FromArrowStatus(info_value->Append(kStringValueCode), error));
+          ADBC_RETURN_NOT_OK(FromArrowStatus(
+              info_string->Append("Arrow/C++ " ARROW_VERSION_STRING), error));
+          break;
+        default:
+          // Unrecognized
+          break;
+      }
+    }
+
+    arrow::ArrayVector arrays(2);
+    ADBC_RETURN_NOT_OK(FromArrowStatus(info_name.Finish(&arrays[0]), error));
+    ADBC_RETURN_NOT_OK(FromArrowStatus(info_value->Finish(&arrays[1]), error));
+    const int64_t rows = arrays[0]->length();
+    auto status = arrow::RecordBatchReader::Make(
+                      {
+                          arrow::RecordBatch::Make(kInfoSchema, rows, std::move(arrays)),
+                      },
+                      kInfoSchema)
+                      .Value(&result_reader_);
+    ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
+    return ADBC_STATUS_OK;
   }
 
   AdbcStatusCode GetObjects(const std::shared_ptr<SqliteStatementImpl>& self, int depth,
@@ -1234,6 +1331,16 @@ AdbcStatusCode SqliteConnectionCommit(struct AdbcConnection* connection,
   return (*ptr)->Commit(error);
 }
 
+AdbcStatusCode SqliteConnectionGetInfo(struct AdbcConnection* connection,
+                                       uint32_t* info_codes, size_t info_codes_length,
+                                       struct AdbcStatement* statement,
+                                       struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
+  return (*ptr)->GetInfo(*ptr, info_codes, info_codes_length, error);
+}
+
 AdbcStatusCode SqliteConnectionGetObjects(
     struct AdbcConnection* connection, int depth, const char* catalog,
     const char* db_schema, const char* table_name, const char** table_types,
@@ -1441,6 +1548,14 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
   return SqliteConnectionCommit(connection, error);
 }
 
+AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
+                                     uint32_t* info_codes, size_t info_codes_length,
+                                     struct AdbcStatement* statement,
+                                     struct AdbcError* error) {
+  return SqliteConnectionGetInfo(connection, info_codes, info_codes_length, statement,
+                                 error);
+}
+
 AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
                                         const char* catalog, const char* db_schema,
                                         const char* table_name, const char** table_types,
@@ -1566,6 +1681,7 @@ AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
   driver->DatabaseSetOption = SqliteDatabaseSetOption;
 
   driver->ConnectionCommit = SqliteConnectionCommit;
+  driver->ConnectionGetInfo = SqliteConnectionGetInfo;
   driver->ConnectionGetObjects = SqliteConnectionGetObjects;
   driver->ConnectionGetTableSchema = SqliteConnectionGetTableSchema;
   driver->ConnectionGetTableTypes = SqliteConnectionGetTableTypes;

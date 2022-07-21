@@ -16,4 +16,5 @@
 # under the License.
 
 adbc_driver_manager/*.c
+adbc_driver_manager/*.cpp
 build/
