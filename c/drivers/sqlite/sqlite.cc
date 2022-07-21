@@ -120,6 +120,9 @@ AdbcStatusCode FromArrowStatus(const Status& status, struct AdbcError* error) {
 }
 
 std::shared_ptr<arrow::Schema> StatementToSchema(sqlite3_stmt* stmt) {
+  // TODO: this is fundamentally the wrong way to go about
+  // this. instead, we need to act like the CSV/JSON readers: sample
+  // several rows and dynamically update the column type as we go.
   const int num_columns = sqlite3_column_count(stmt);
   arrow::FieldVector fields(num_columns);
   for (int i = 0; i < num_columns; i++) {
@@ -394,6 +397,8 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
         done_(false) {}
 
   AdbcStatusCode Init(struct AdbcError* error) {
+    // TODO: this crashes if the statement is closed while the reader
+    // is still open.
     // Step the statement and get the schema (SQLite doesn't
     // necessarily know the schema until it begins to execute it)
 
@@ -451,11 +456,24 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
       for (int col = 0; col < schema_->num_fields(); col++) {
         const auto& field = schema_->field(col);
         switch (field->type()->id()) {
+          case arrow::Type::DOUBLE: {
+            // TODO: handle null values
+            const sqlite3_int64 value = sqlite3_column_double(stmt_, col);
+            ARROW_RETURN_NOT_OK(
+                dynamic_cast<arrow::DoubleBuilder*>(builders[col].get())->Append(value));
+            break;
+          }
           case arrow::Type::INT64: {
             // TODO: handle null values
             const sqlite3_int64 value = sqlite3_column_int64(stmt_, col);
             ARROW_RETURN_NOT_OK(
                 dynamic_cast<arrow::Int64Builder*>(builders[col].get())->Append(value));
+            break;
+          }
+          case arrow::Type::NA: {
+            // TODO: handle null values
+            ARROW_RETURN_NOT_OK(
+                dynamic_cast<arrow::NullBuilder*>(builders[col].get())->AppendNull());
             break;
           }
           case arrow::Type::STRING: {
@@ -728,8 +746,13 @@ class SqliteStatementImpl {
     auto* constraint_column_usage_fk_column_name = static_cast<arrow::StringBuilder*>(
         constraint_column_usage_items->child_builder(3).get());
 
+    // TODO: filter properly, also implement other attached databases
     if (!catalog || std::strlen(catalog) == 0) {
-      ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_name.AppendNull(), error));
+      // https://www.sqlite.org/cli.html
+      // > The ".databases" command shows a list of all databases open
+      // > in the current connection. There will always be at least
+      // > 2. The first one is "main", the original database opened.
+      ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_name.Append("main"), error));
 
       if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
         ADBC_RETURN_NOT_OK(FromArrowStatus(catalog_schemas->AppendNull(), error));

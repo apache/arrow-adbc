@@ -458,7 +458,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr, nullptr,
                                nullptr, nullptr, nullptr, &statement, &error));
   ReadStatement(&statement, &schema, &batches);
-  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([[null, null]])"}));
+  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([["main", null]])"}));
   batches.clear();
 
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
@@ -479,8 +479,9 @@ TEST_F(Sqlite, MetadataGetObjects) {
   ReadStatement(&statement, &schema, &batches);
   EXPECT_THAT(
       batches,
-      BatchesAre(catalog_schema,
-                 {R"([[null, [{"db_schema_name": null, "db_schema_tables": null}]]])"}));
+      BatchesAre(
+          catalog_schema,
+          {R"([["main", [{"db_schema_name": null, "db_schema_tables": null}]]])"}));
   batches.clear();
 
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
@@ -489,7 +490,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
                                "schema", nullptr, nullptr, nullptr, &statement, &error));
   ReadStatement(&statement, &schema, &batches);
-  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([[null, []]])"}));
+  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([["main", []]])"}));
   batches.clear();
 
   // Query for tables
@@ -501,7 +502,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
   ReadStatement(&statement, &schema, &batches);
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
-                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
   {"table_name": "bulk_insert", "table_type": "table", "table_columns": null, "table_constraints": null}
 ]}]]])"}));
   batches.clear();
@@ -514,7 +515,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
   ReadStatement(&statement, &schema, &batches);
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
-                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
   {"table_name": "bulk_insert", "table_type": "table", "table_columns": null, "table_constraints": null}
 ]}]]])"}));
   batches.clear();
@@ -528,7 +529,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
   EXPECT_THAT(
       batches,
       BatchesAre(catalog_schema,
-                 {R"([[null, [{"db_schema_name": null, "db_schema_tables": []}]]])"}));
+                 {R"([["main", [{"db_schema_name": null, "db_schema_tables": []}]]])"}));
   batches.clear();
 
   // Query for table types
@@ -543,7 +544,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
   ReadStatement(&statement, &schema, &batches);
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
-                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
   {
     "table_name": "bulk_insert",
     "table_type": "table",
@@ -567,7 +568,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
   EXPECT_THAT(
       batches,
       BatchesAre(catalog_schema,
-                 {R"([[null, [{"db_schema_name": null, "db_schema_tables": []}]]])"}));
+                 {R"([["main", [{"db_schema_name": null, "db_schema_tables": []}]]])"}));
   batches.clear();
 
   // Query for columns
@@ -579,7 +580,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
   ReadStatement(&statement, &schema, &batches);
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
-                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
   {
     "table_name": "bulk_insert",
     "table_type": "table",
@@ -600,7 +601,7 @@ TEST_F(Sqlite, MetadataGetObjects) {
   ReadStatement(&statement, &schema, &batches);
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
-                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
   {
     "table_name": "bulk_insert",
     "table_type": "table",
@@ -653,7 +654,7 @@ TEST_F(Sqlite, MetadataGetObjectsColumns) {
   ReadStatement(&statement, &schema, &batches);
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
-                         {R"([[null, [{"db_schema_name": null, "db_schema_tables": [
+                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
   {
     "table_name": "child",
     "table_type": "table",
