@@ -652,6 +652,8 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   }
   if (!handle) {
     SetError(error, error_message);
+    // AdbcDatabaseInit tries to call this if set
+    driver->release = nullptr;
     return ADBC_STATUS_INTERNAL;
   }
 
