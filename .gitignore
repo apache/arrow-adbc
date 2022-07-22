@@ -70,6 +70,9 @@ docker_cache
 
 site/
 
+# Python
+dist/
+
 # R files
 **/.Rproj.user
 **/*.Rcheck/

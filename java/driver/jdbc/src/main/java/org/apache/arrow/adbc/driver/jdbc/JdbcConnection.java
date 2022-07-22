@@ -69,6 +69,17 @@ public class JdbcConnection implements AdbcConnection {
   }
 
   @Override
+  public AdbcStatement getInfo(int[] infoCodes) throws AdbcException {
+    try {
+      final VectorSchemaRoot root =
+          new InfoMetadataBuilder(allocator, connection, infoCodes).build();
+      return new FixedJdbcStatement(allocator, root);
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
   public AdbcStatement getObjects(
       final GetObjectsDepth depth,
       final String catalogPattern,
@@ -80,7 +91,7 @@ public class JdbcConnection implements AdbcConnection {
     // Build up the metadata in-memory and then return a constant reader.
     try {
       final VectorSchemaRoot root =
-          new JdbcMetadataBuilder(
+          new ObjectMetadataBuilder(
                   allocator,
                   connection,
                   depth,

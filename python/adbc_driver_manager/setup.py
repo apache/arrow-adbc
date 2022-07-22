@@ -25,12 +25,13 @@ setup(
     ext_modules=cythonize(
         Extension(
             name="adbc_driver_manager._lib",
+            extra_compile_args=["-ggdb", "-Og"],
+            include_dirs=["../../", "../../c/driver_manager"],
+            language="c++",
             sources=[
                 "adbc_driver_manager/_lib.pyx",
                 "../../c/driver_manager/adbc_driver_manager.cc",
             ],
-            include_dirs=["../../", "../../c/driver_manager"],
-            extra_compile_args=["-ggdb", "-Og"],
         ),
     ),
     packages=["adbc_driver_manager"],

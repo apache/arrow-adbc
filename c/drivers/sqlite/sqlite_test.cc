@@ -421,6 +421,51 @@ TEST_F(Sqlite, MultipleConnections) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection2, &error));
 }
 
+TEST_F(Sqlite, MetadataGetInfo) {
+  static std::shared_ptr<arrow::Schema> kInfoSchema = arrow::schema({
+      arrow::field("info_name", arrow::uint32(), /*nullable=*/false),
+      arrow::field(
+          "info_value",
+          arrow::dense_union({
+              arrow::field("string_value", arrow::utf8()),
+              arrow::field("bool_value", arrow::boolean()),
+              arrow::field("int64_value", arrow::int64()),
+              arrow::field("int32_bitmask", arrow::int32()),
+              arrow::field("string_list", arrow::list(arrow::utf8())),
+              arrow::field("int32_to_int32_list_map",
+                           arrow::map(arrow::int32(), arrow::list(arrow::int32()))),
+          })),
+  });
+
+  AdbcStatement statement;
+  std::memset(&statement, 0, sizeof(statement));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcConnectionGetInfo(&connection, nullptr, 0, &statement, &error));
+
+  std::shared_ptr<arrow::Schema> schema;
+  arrow::RecordBatchVector batches;
+  ReadStatement(&statement, &schema, &batches);
+  ASSERT_SCHEMA_EQ(*schema, *kInfoSchema);
+  ASSERT_EQ(1, batches.size());
+
+  std::vector<uint32_t> info = {
+      ADBC_INFO_DRIVER_NAME,
+      ADBC_INFO_DRIVER_VERSION,
+      ADBC_INFO_VENDOR_NAME,
+      ADBC_INFO_VENDOR_VERSION,
+  };
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcConnectionGetInfo(&connection, info.data(), info.size(), &statement, &error));
+  batches.clear();
+  ReadStatement(&statement, &schema, &batches);
+  ASSERT_SCHEMA_EQ(*schema, *kInfoSchema);
+  ASSERT_EQ(1, batches.size());
+  ASSERT_EQ(4, batches[0]->num_rows());
+}
+
 TEST_F(Sqlite, MetadataGetTableTypes) {
   AdbcStatement statement;
   std::memset(&statement, 0, sizeof(statement));
