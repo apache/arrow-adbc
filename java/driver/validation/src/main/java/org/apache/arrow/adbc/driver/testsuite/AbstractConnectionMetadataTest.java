@@ -79,7 +79,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getInfo() throws Exception {
+  public void getInfo() throws Exception {
     try (final AdbcStatement stmt = connection.getInfo()) {
       try (final ArrowReader reader = stmt.getArrowReader()) {
         assertThat(reader.getVectorSchemaRoot().getSchema())
@@ -91,7 +91,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getInfoByCode() throws Exception {
+  public void getInfoByCode() throws Exception {
     try (final AdbcStatement stmt =
         connection.getInfo(new AdbcInfoCode[] {AdbcInfoCode.DRIVER_NAME})) {
       try (final ArrowReader reader = stmt.getArrowReader()) {
@@ -112,7 +112,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getObjectsColumns() throws Exception {
+  public void getObjectsColumns() throws Exception {
     final Schema schema = util.ingestTableIntsStrs(allocator, connection, tableName);
     boolean tableFound = false;
     try (final AdbcStatement stmt =
@@ -153,7 +153,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getObjectsCatalogs() throws Exception {
+  public void getObjectsCatalogs() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
     try (final AdbcStatement stmt =
         connection.getObjects(
@@ -171,7 +171,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getObjectsDbSchemas() throws Exception {
+  public void getObjectsDbSchemas() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
     try (final AdbcStatement stmt =
         connection.getObjects(
@@ -186,7 +186,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getObjectsTables() throws Exception {
+  public void getObjectsTables() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
     try (final AdbcStatement stmt =
         connection.getObjects(
@@ -208,7 +208,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getTableSchema() throws Exception {
+  public void getTableSchema() throws Exception {
     final Schema schema =
         new Schema(
             Arrays.asList(
@@ -226,7 +226,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getTableTypes() throws Exception {
+  public void getTableTypes() throws Exception {
     try (final AdbcStatement stmt = connection.getTableTypes()) {
       try (final ArrowReader reader = stmt.getArrowReader()) {
         assertThat(reader.getVectorSchemaRoot().getSchema())

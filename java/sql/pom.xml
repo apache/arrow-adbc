@@ -15,44 +15,29 @@
     <artifactId>arrow-adbc-java-root</artifactId>
     <groupId>org.apache.arrow.adbc</groupId>
     <version>9.0.0-SNAPSHOT</version>
-    <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>adbc-driver-jdbc</artifactId>
+  <artifactId>adbc-sql</artifactId>
   <packaging>jar</packaging>
-  <name>Arrow ADBC Driver JDBC</name>
-  <description>An ADBC driver wrapping the JDBC API.</description>
+  <name>Arrow ADBC SQL</name>
+  <description>Common utilities for SQL-based ADBC drivers.</description>
 
   <dependencies>
-    <!-- Arrow -->
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-jdbc</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-core</artifactId>
-    </dependency>
     <dependency>
       <groupId>org.apache.arrow</groupId>
       <artifactId>arrow-vector</artifactId>
     </dependency>
 
+    <!-- Testing -->
     <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-core</artifactId>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-jdbc-util</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-manager</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-sql</artifactId>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

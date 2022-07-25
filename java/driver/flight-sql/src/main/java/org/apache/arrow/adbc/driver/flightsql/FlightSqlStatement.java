@@ -15,56 +15,54 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.adbc.driver.jdbc;
+package org.apache.arrow.adbc.driver.flightsql;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
-import org.apache.arrow.adbc.driver.jdbc.util.JdbcParameterBinder;
 import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.apache.arrow.flight.FlightInfo;
+import org.apache.arrow.flight.FlightRuntimeException;
+import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Field;
 
-public class JdbcStatement implements AdbcStatement {
+public class FlightSqlStatement implements AdbcStatement {
   private final BufferAllocator allocator;
-  private final Connection connection;
+  private final FlightSqlClient client;
   private final SqlQuirks quirks;
 
   // State for SQL queries
-  private Statement statement;
   private String sqlQuery;
+  private FlightSqlClient.PreparedStatement preparedStatement;
+  private FlightInfo flightInfo;
   private ArrowReader reader;
-  private ResultSet resultSet;
   // State for bulk ingest
   private BulkState bulkOperation;
   private VectorSchemaRoot bindRoot;
 
-  JdbcStatement(BufferAllocator allocator, Connection connection, SqlQuirks quirks) {
+  FlightSqlStatement(BufferAllocator allocator, FlightSqlClient client, SqlQuirks quirks) {
     this.allocator = allocator;
-    this.connection = connection;
+    this.client = client;
     this.quirks = quirks;
     this.sqlQuery = null;
   }
 
-  static JdbcStatement ingestRoot(
+  static FlightSqlStatement ingestRoot(
       BufferAllocator allocator,
-      Connection connection,
+      FlightSqlClient connection,
       SqlQuirks quirks,
       String targetTableName,
       BulkIngestMode mode) {
     Objects.requireNonNull(targetTableName);
-    final JdbcStatement statement = new JdbcStatement(allocator, connection, quirks);
+    final FlightSqlStatement statement = new FlightSqlStatement(allocator, connection, quirks);
     statement.bulkOperation = new BulkState();
     statement.bulkOperation.mode = mode;
     statement.bulkOperation.targetTable = targetTableName;
@@ -75,7 +73,7 @@ public class JdbcStatement implements AdbcStatement {
   public void setSqlQuery(String query) throws AdbcException {
     if (bulkOperation != null) {
       throw AdbcException.invalidState(
-          "[JDBC] Statement is configured for a bulk ingest/append operation");
+          "[Flight SQL] Statement is configured for a bulk ingest/append operation");
     }
     sqlQuery = query;
   }
@@ -92,7 +90,7 @@ public class JdbcStatement implements AdbcStatement {
     } else if (sqlQuery != null) {
       executeSqlQuery();
     } else {
-      throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
+      throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() first");
     }
   }
 
@@ -110,26 +108,27 @@ public class JdbcStatement implements AdbcStatement {
       String typeName = quirks.getArrowToSqlTypeNameMapping().apply(field.getType());
       if (typeName == null) {
         throw AdbcException.notImplemented(
-            "[JDBC] Cannot generate CREATE TABLE statement for field " + field);
+            "[Flight SQL] Cannot generate CREATE TABLE statement for field " + field);
       }
       create.append(typeName);
     }
     create.append(")");
 
-    try (final Statement statement = connection.createStatement()) {
-      statement.execute(create.toString());
-    } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(
-          AdbcStatusCode.ALREADY_EXISTS,
-          "Could not create table %s: ",
+    try {
+      client.executeUpdate(create.toString());
+    } catch (FlightRuntimeException e) {
+      throw new AdbcException(
+          "[Flight SQL] Could not create table for bulk ingestion: " + bulkOperation.targetTable,
           e,
-          bulkOperation.targetTable);
+          AdbcStatusCode.ALREADY_EXISTS,
+          null,
+          0);
     }
   }
 
   private void executeBulk() throws AdbcException {
     if (bindRoot == null) {
-      throw AdbcException.invalidState("[JDBC] Must call bind() before bulk insert");
+      throw AdbcException.invalidState("[Flight SQL] Must call bind() before bulk insert");
     }
 
     if (bulkOperation.mode == BulkIngestMode.CREATE) {
@@ -137,7 +136,6 @@ public class JdbcStatement implements AdbcStatement {
     }
 
     // XXX: potential injection
-    // TODO: consider (optionally?) depending on jOOQ to generate SQL and support different dialects
     final StringBuilder insert = new StringBuilder("INSERT INTO ");
     insert.append(bulkOperation.targetTable);
     insert.append(" VALUES (");
@@ -149,27 +147,27 @@ public class JdbcStatement implements AdbcStatement {
     }
     insert.append(")");
 
-    final PreparedStatement statement;
+    final FlightSqlClient.PreparedStatement statement;
     try {
-      statement = connection.prepareStatement(insert.toString());
-    } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(
-          "Could not bulk insert into table %s: ", e, bulkOperation.targetTable);
+      statement = client.prepare(insert.toString());
+    } catch (FlightRuntimeException e) {
+      throw new AdbcException(
+          "[Flight SQL] Could not prepare statement for bulk ingestion into "
+              + bulkOperation.targetTable,
+          e,
+          AdbcStatusCode.NOT_FOUND,
+          null,
+          0);
     }
     try {
       try {
-        final JdbcParameterBinder binder =
-            JdbcParameterBinder.builder(statement, bindRoot).bindAll().build();
-        statement.clearBatch();
-        while (binder.next()) {
-          statement.addBatch();
-        }
-        statement.executeBatch();
+        statement.setParameters(new NonOwningRoot(bindRoot));
+        statement.executeUpdate();
       } finally {
         statement.close();
       }
-    } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(e);
+    } catch (FlightRuntimeException e) {
+      throw FlightSqlDriverUtil.fromFlightException(e);
     }
   }
 
@@ -180,34 +178,28 @@ public class JdbcStatement implements AdbcStatement {
           reader.close();
         } catch (IOException e) {
           throw new AdbcException(
-              "[JDBC] Failed to close unread result set",
+              "[Flight SQL] Failed to close unread result set",
               e,
               AdbcStatusCode.IO,
               null, /*vendorCode*/
               0);
         }
       }
-      if (resultSet != null) {
-        resultSet.close();
-      }
-      if (statement instanceof PreparedStatement) {
-        PreparedStatement preparedStatement = (PreparedStatement) statement;
+
+      if (preparedStatement != null) {
+        // TODO: This binds only the LAST row
         if (bindRoot != null) {
-          reader = new JdbcBindReader(allocator, preparedStatement, bindRoot);
-        } else {
-          resultSet = preparedStatement.executeQuery();
+          preparedStatement.setParameters(new NonOwningRoot(bindRoot));
         }
+        // XXX: why does this throw SQLException?
+        flightInfo = preparedStatement.execute();
       } else {
-        if (statement != null) {
-          statement.close();
-        }
-        statement =
-            connection.createStatement(
-                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        resultSet = statement.executeQuery(sqlQuery);
+        flightInfo = client.execute(sqlQuery);
       }
+    } catch (FlightRuntimeException e) {
+      throw FlightSqlDriverUtil.fromFlightException(e);
     } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(e);
+      throw FlightSqlDriverUtil.fromSqlException(e);
     }
   }
 
@@ -218,12 +210,11 @@ public class JdbcStatement implements AdbcStatement {
       reader = null;
       return result;
     }
-    if (resultSet == null) {
-      throw AdbcException.invalidState("[JDBC] Must call execute() before getArrowReader()");
+    if (flightInfo == null) {
+      throw AdbcException.invalidState("[Flight SQL] Must call execute() before getArrowReader()");
     }
-    final JdbcArrowReader reader =
-        new JdbcArrowReader(allocator, resultSet, /*overrideSchema*/ null);
-    resultSet = null;
+    final ArrowReader reader = new FlightInfoReader(allocator, client, flightInfo);
+    flightInfo = null;
     return reader;
   }
 
@@ -234,24 +225,42 @@ public class JdbcStatement implements AdbcStatement {
         throw AdbcException.invalidArgument(
             "[Flight SQL] Must call setSqlQuery(String) before prepare()");
       }
-      if (resultSet != null) {
-        resultSet.close();
+      if (reader != null) {
+        try {
+          reader.close();
+        } catch (IOException e) {
+          throw new AdbcException(
+              "[Flight SQL] Failed to close unread result set",
+              e,
+              AdbcStatusCode.IO,
+              null, /*vendorCode*/
+              0);
+        }
       }
-      statement =
-          connection.prepareStatement(
-              sqlQuery, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-    } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(e);
+
+      preparedStatement = client.prepare(sqlQuery);
+    } catch (FlightRuntimeException e) {
+      throw FlightSqlDriverUtil.fromFlightException(e);
     }
   }
 
   @Override
   public void close() throws Exception {
-    AutoCloseables.close(reader, resultSet, statement);
+    AutoCloseables.close(reader, preparedStatement);
   }
 
   private static final class BulkState {
     public BulkIngestMode mode;
     String targetTable;
+  }
+
+  /** A VectorSchemaRoot which does not own its data. */
+  private static final class NonOwningRoot extends VectorSchemaRoot {
+    public NonOwningRoot(VectorSchemaRoot parent) {
+      super(parent.getSchema(), parent.getFieldVectors(), parent.getRowCount());
+    }
+
+    @Override
+    public void close() {}
   }
 }

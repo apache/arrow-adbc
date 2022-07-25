@@ -15,61 +15,61 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.adbc.driver.jdbc;
+package org.apache.arrow.adbc.driver.flightsql;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.apache.arrow.flight.FlightClient;
+import org.apache.arrow.flight.FlightRuntimeException;
+import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
 
 /** An instance of a database (e.g. a handle to an in-memory database). */
-public final class JdbcDatabase implements AdbcDatabase {
+public final class FlightSqlDatabase implements AdbcDatabase {
   private final BufferAllocator allocator;
-  private final String target;
+  private final Location location;
   private final SqlQuirks quirks;
-  private final Connection connection;
+  private final FlightClient client;
   private final AtomicInteger counter;
 
-  JdbcDatabase(BufferAllocator allocator, final String target, SqlQuirks quirks)
+  FlightSqlDatabase(BufferAllocator allocator, Location location, SqlQuirks quirks)
       throws AdbcException {
     this.allocator = allocator;
-    this.target = target;
+    this.location = location;
     this.quirks = quirks;
     try {
-      this.connection = DriverManager.getConnection(target);
-    } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(e);
+      this.client = FlightClient.builder(allocator, location).build();
+    } catch (FlightRuntimeException e) {
+      throw FlightSqlDriverUtil.fromFlightException(e);
     }
     this.counter = new AtomicInteger();
   }
 
   @Override
   public AdbcConnection connect() throws AdbcException {
-    final Connection connection;
+    final FlightClient client;
     try {
-      connection = DriverManager.getConnection(target);
-    } catch (SQLException e) {
-      throw JdbcDriverUtil.fromSqlException(e);
+      client = FlightClient.builder(allocator, location).build();
+    } catch (FlightRuntimeException e) {
+      throw FlightSqlDriverUtil.fromFlightException(e);
     }
     final int count = counter.getAndIncrement();
-    return new JdbcConnection(
+    return new FlightSqlConnection(
         allocator.newChildAllocator("adbc-jdbc-connection-" + count, 0, allocator.getLimit()),
-        connection,
+        client,
         quirks);
   }
 
   @Override
   public void close() throws Exception {
-    connection.close();
+    client.close();
   }
 
   @Override
   public String toString() {
-    return "JdbcDatabase{" + "target='" + target + '\'' + '}';
+    return "FlightSqlDatabase{" + "target='" + location + '\'' + '}';
   }
 }

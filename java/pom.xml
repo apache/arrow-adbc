@@ -77,12 +77,15 @@
 
   <modules>
     <module>core</module>
+    <module>driver/flight-sql</module>
+    <module>driver/flight-sql-validation</module>
     <module>driver/jdbc</module>
     <module>driver/jdbc-util</module>
     <module>driver/jdbc-validation-derby</module>
     <module>driver/jdbc-validation-postgresql</module>
     <module>driver/validation</module>
     <module>driver-manager</module>
+    <module>sql</module>
   </modules>
 
   <dependencyManagement>
@@ -103,10 +106,25 @@
         <artifactId>arrow-vector</artifactId>
         <version>${dep.arrow.version}</version>
       </dependency>
+      <dependency>
+        <groupId>org.apache.arrow</groupId>
+        <artifactId>flight-core</artifactId>
+        <version>${dep.arrow.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.arrow</groupId>
+        <artifactId>flight-sql</artifactId>
+        <version>${dep.arrow.version}</version>
+      </dependency>
 
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-core</artifactId>
+        <version>${adbc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.arrow.adbc</groupId>
+        <artifactId>adbc-driver-flight-sql</artifactId>
         <version>${adbc.version}</version>
       </dependency>
       <dependency>
@@ -127,6 +145,11 @@
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-driver-manager</artifactId>
+        <version>${adbc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.arrow.adbc</groupId>
+        <artifactId>adbc-sql</artifactId>
         <version>${adbc.version}</version>
       </dependency>
 

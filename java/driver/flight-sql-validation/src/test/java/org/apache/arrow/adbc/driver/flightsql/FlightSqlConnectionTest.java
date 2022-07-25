@@ -15,21 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.adbc.core;
+package org.apache.arrow.adbc.driver.flightsql;
 
-import java.util.Map;
+import org.apache.arrow.adbc.driver.testsuite.AbstractConnectionTest;
+import org.junit.jupiter.api.BeforeAll;
 
-/** A handle to an ADBC database driver. */
-public interface AdbcDriver {
-  /** The standard parameter name for a connection URL (type String). */
-  String PARAM_URL = "adbc.url";
-  /** The standard parameter name for SQL quirks configuration (type SqlQuirks). */
-  String PARAM_SQL_QUIRKS = "adbc.sql.quirks";
-
-  /**
-   * Open a database via this driver.
-   *
-   * @param parameters Driver-specific parameters.
-   */
-  AdbcDatabase open(Map<String, Object> parameters) throws AdbcException;
+public class FlightSqlConnectionTest extends AbstractConnectionTest {
+  @BeforeAll
+  public static void beforeAll() {
+    quirks = new FlightSqlQuirks();
+  }
 }
