@@ -17,9 +17,10 @@
 package org.apache.arrow.adbc.driver.flightsql;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
-import org.apache.arrow.flight.FlightInfo;
+import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.flight.sql.FlightSqlClient;
@@ -34,22 +35,23 @@ import org.apache.arrow.vector.types.pojo.Schema;
 public class FlightInfoReader extends ArrowReader {
   private final Schema schema;
   private final FlightSqlClient client;
-  private final FlightInfo info;
+  private final List<FlightEndpoint> flightEndpoints;
   private int nextEndpointIndex;
   private FlightStream currentStream;
   private long bytesRead;
 
-  FlightInfoReader(BufferAllocator allocator, FlightSqlClient client, FlightInfo info)
+  FlightInfoReader(
+      BufferAllocator allocator, FlightSqlClient client, List<FlightEndpoint> flightEndpoints)
       throws AdbcException {
     super(allocator);
     this.client = client;
-    this.info = info;
+    this.flightEndpoints = flightEndpoints;
     this.nextEndpointIndex = 0;
     this.bytesRead = 0;
 
     try {
       this.currentStream =
-          client.getStream(info.getEndpoints().get(this.nextEndpointIndex++).getTicket());
+          client.getStream(flightEndpoints.get(this.nextEndpointIndex++).getTicket());
       this.schema = this.currentStream.getSchema();
     } catch (FlightRuntimeException e) {
       throw FlightSqlDriverUtil.fromFlightException(e);
@@ -70,14 +72,13 @@ public class FlightInfoReader extends ArrowReader {
   @Override
   public boolean loadNextBatch() throws IOException {
     if (!currentStream.next()) {
-      if (nextEndpointIndex >= info.getEndpoints().size()) {
+      if (nextEndpointIndex >= flightEndpoints.size()) {
         return false;
       } else {
         try {
           // TODO: this should account for the location property
           currentStream.close();
-          currentStream =
-              client.getStream(info.getEndpoints().get(nextEndpointIndex++).getTicket());
+          currentStream = client.getStream(flightEndpoints.get(nextEndpointIndex++).getTicket());
           if (!schema.equals(currentStream.getSchema())) {
             throw new IOException(
                 "Stream has inconsistent schema. Expected: "

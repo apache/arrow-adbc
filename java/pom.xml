@@ -117,6 +117,7 @@
         <version>${dep.arrow.version}</version>
       </dependency>
 
+      <!-- ADBC -->
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-core</artifactId>

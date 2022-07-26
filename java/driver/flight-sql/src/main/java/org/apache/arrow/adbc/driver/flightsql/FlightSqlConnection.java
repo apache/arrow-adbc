@@ -16,12 +16,20 @@
  */
 package org.apache.arrow.adbc.driver.flightsql;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.flight.FlightClient;
+import org.apache.arrow.flight.FlightEndpoint;
+import org.apache.arrow.flight.Location;
+import org.apache.arrow.flight.Ticket;
+import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -45,6 +53,31 @@ public class FlightSqlConnection implements AdbcConnection {
   @Override
   public AdbcStatement createStatement() throws AdbcException {
     return new FlightSqlStatement(allocator, client, quirks);
+  }
+
+  @Override
+  public AdbcStatement deserializePartitionDescriptor(ByteBuffer descriptor) throws AdbcException {
+    final FlightEndpoint endpoint;
+    try {
+      final Flight.FlightEndpoint protoEndpoint = Flight.FlightEndpoint.parseFrom(descriptor);
+      Location[] locations = new Location[protoEndpoint.getLocationCount()];
+      int index = 0;
+      for (Flight.Location protoLocation : protoEndpoint.getLocationList()) {
+        Location location = new Location(protoLocation.getUri());
+        locations[index++] = location;
+      }
+
+      endpoint =
+          new FlightEndpoint(
+              new Ticket(protoEndpoint.getTicket().getTicket().toByteArray()), locations);
+    } catch (InvalidProtocolBufferException | URISyntaxException e) {
+      throw AdbcException.invalidArgument(
+              "[Flight SQL] Partition descriptor is invalid: " + e.getMessage())
+          .withCause(e);
+    }
+
+    return FlightSqlStatement.fromDescriptor(
+        allocator, client, quirks, Collections.singletonList(endpoint));
   }
 
   @Override

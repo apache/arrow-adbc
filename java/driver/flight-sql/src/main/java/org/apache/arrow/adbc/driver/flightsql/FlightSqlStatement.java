@@ -17,16 +17,22 @@
 
 package org.apache.arrow.adbc.driver.flightsql;
 
+import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
+import org.apache.arrow.adbc.core.PartitionDescriptor;
 import org.apache.arrow.adbc.sql.SqlQuirks;
-import org.apache.arrow.flight.FlightInfo;
+import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightRuntimeException;
+import org.apache.arrow.flight.Location;
+import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
@@ -42,7 +48,7 @@ public class FlightSqlStatement implements AdbcStatement {
   // State for SQL queries
   private String sqlQuery;
   private FlightSqlClient.PreparedStatement preparedStatement;
-  private FlightInfo flightInfo;
+  private List<FlightEndpoint> flightEndpoints;
   private ArrowReader reader;
   // State for bulk ingest
   private BulkState bulkOperation;
@@ -57,15 +63,25 @@ public class FlightSqlStatement implements AdbcStatement {
 
   static FlightSqlStatement ingestRoot(
       BufferAllocator allocator,
-      FlightSqlClient connection,
+      FlightSqlClient client,
       SqlQuirks quirks,
       String targetTableName,
       BulkIngestMode mode) {
     Objects.requireNonNull(targetTableName);
-    final FlightSqlStatement statement = new FlightSqlStatement(allocator, connection, quirks);
+    final FlightSqlStatement statement = new FlightSqlStatement(allocator, client, quirks);
     statement.bulkOperation = new BulkState();
     statement.bulkOperation.mode = mode;
     statement.bulkOperation.targetTable = targetTableName;
+    return statement;
+  }
+
+  public static AdbcStatement fromDescriptor(
+      BufferAllocator allocator,
+      FlightSqlClient client,
+      SqlQuirks quirks,
+      List<FlightEndpoint> flightEndpoints) {
+    final FlightSqlStatement statement = new FlightSqlStatement(allocator, client, quirks);
+    statement.flightEndpoints = flightEndpoints;
     return statement;
   }
 
@@ -192,9 +208,9 @@ public class FlightSqlStatement implements AdbcStatement {
           preparedStatement.setParameters(new NonOwningRoot(bindRoot));
         }
         // XXX: why does this throw SQLException?
-        flightInfo = preparedStatement.execute();
+        flightEndpoints = preparedStatement.execute().getEndpoints();
       } else {
-        flightInfo = client.execute(sqlQuery);
+        flightEndpoints = client.execute(sqlQuery).getEndpoints();
       }
     } catch (FlightRuntimeException e) {
       throw FlightSqlDriverUtil.fromFlightException(e);
@@ -210,12 +226,36 @@ public class FlightSqlStatement implements AdbcStatement {
       reader = null;
       return result;
     }
-    if (flightInfo == null) {
+    if (flightEndpoints == null) {
       throw AdbcException.invalidState("[Flight SQL] Must call execute() before getArrowReader()");
     }
-    final ArrowReader reader = new FlightInfoReader(allocator, client, flightInfo);
-    flightInfo = null;
+    final ArrowReader reader = new FlightInfoReader(allocator, client, flightEndpoints);
+    flightEndpoints = null;
     return reader;
+  }
+
+  @Override
+  public List<PartitionDescriptor> getPartitionDescriptors() throws AdbcException {
+    if (flightEndpoints == null) {
+      throw AdbcException.invalidState(
+          "[Flight SQL] Must call execute() before getPartitionDescriptors()");
+    }
+    final List<PartitionDescriptor> result = new ArrayList<>();
+    for (final FlightEndpoint endpoint : flightEndpoints) {
+      // FlightEndpoint doesn't expose its serializer, so do it manually
+      Flight.FlightEndpoint.Builder protoEndpoint =
+          Flight.FlightEndpoint.newBuilder()
+              .setTicket(
+                  Flight.Ticket.newBuilder()
+                      .setTicket(ByteString.copyFrom(endpoint.getTicket().getBytes())));
+      for (final Location location : endpoint.getLocations()) {
+        protoEndpoint.addLocation(
+            Flight.Location.newBuilder().setUri(location.getUri().toString()).build());
+      }
+      result.add(
+          new PartitionDescriptor(protoEndpoint.build().toByteString().asReadOnlyByteBuffer()));
+    }
+    return result;
   }
 
   @Override

@@ -21,11 +21,9 @@ import java.util.Objects;
 
 /** An opaque descriptor for a part of a potentially distributed or partitioned result set. */
 public final class PartitionDescriptor {
-  private final String friendlyName;
   private final ByteBuffer descriptor;
 
-  public PartitionDescriptor(final String friendlyName, final ByteBuffer descriptor) {
-    this.friendlyName = friendlyName;
+  public PartitionDescriptor(final ByteBuffer descriptor) {
     this.descriptor = Objects.requireNonNull(descriptor);
   }
 
@@ -42,23 +40,16 @@ public final class PartitionDescriptor {
       return false;
     }
     PartitionDescriptor that = (PartitionDescriptor) o;
-    return Objects.equals(friendlyName, that.friendlyName)
-        && getDescriptor().equals(that.getDescriptor());
+    return descriptor.equals(that.descriptor);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(friendlyName, getDescriptor());
+    return Objects.hash(descriptor);
   }
 
   @Override
   public String toString() {
-    return "PartitionDescriptor{"
-        + "friendlyName='"
-        + friendlyName
-        + '\''
-        + ", descriptor="
-        + descriptor
-        + '}';
+    return "PartitionDescriptor{" + "descriptor=" + descriptor + '}';
   }
 }
