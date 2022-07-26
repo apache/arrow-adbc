@@ -16,10 +16,14 @@
  */
 package org.apache.arrow.adbc.driver.flightsql;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.google.protobuf.InvalidProtocolBufferException;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
@@ -38,11 +42,26 @@ public class FlightSqlConnection implements AdbcConnection {
   private final BufferAllocator allocator;
   private final FlightSqlClient client;
   private final SqlQuirks quirks;
+  private final LoadingCache<Location, FlightClient> clientCache;
 
   FlightSqlConnection(BufferAllocator allocator, FlightClient client, SqlQuirks quirks) {
     this.allocator = allocator;
     this.client = new FlightSqlClient(client);
     this.quirks = quirks;
+    this.clientCache =
+        Caffeine.newBuilder()
+            .expireAfterAccess(5, TimeUnit.MINUTES)
+            .removalListener(
+                (Location key, FlightClient value, RemovalCause cause) -> {
+                  if (value == null) return;
+                  try {
+                    value.close();
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                  }
+                })
+            .build(location -> FlightClient.builder(allocator, location).build());
   }
 
   @Override
@@ -52,7 +71,7 @@ public class FlightSqlConnection implements AdbcConnection {
 
   @Override
   public AdbcStatement createStatement() throws AdbcException {
-    return new FlightSqlStatement(allocator, client, quirks);
+    return new FlightSqlStatement(allocator, client, clientCache, quirks);
   }
 
   @Override
@@ -77,13 +96,14 @@ public class FlightSqlConnection implements AdbcConnection {
     }
 
     return FlightSqlStatement.fromDescriptor(
-        allocator, client, quirks, Collections.singletonList(endpoint));
+        allocator, client, clientCache, quirks, Collections.singletonList(endpoint));
   }
 
   @Override
   public AdbcStatement bulkIngest(String targetTableName, BulkIngestMode mode)
       throws AdbcException {
-    return FlightSqlStatement.ingestRoot(allocator, client, quirks, targetTableName, mode);
+    return FlightSqlStatement.ingestRoot(
+        allocator, client, clientCache, quirks, targetTableName, mode);
   }
 
   @Override

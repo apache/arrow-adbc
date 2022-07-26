@@ -16,13 +16,18 @@
  */
 package org.apache.arrow.adbc.driver.flightsql;
 
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
+import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightStream;
+import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -35,16 +40,21 @@ import org.apache.arrow.vector.types.pojo.Schema;
 public class FlightInfoReader extends ArrowReader {
   private final Schema schema;
   private final FlightSqlClient client;
+  private final LoadingCache<Location, FlightClient> clientCache;
   private final List<FlightEndpoint> flightEndpoints;
   private int nextEndpointIndex;
   private FlightStream currentStream;
   private long bytesRead;
 
   FlightInfoReader(
-      BufferAllocator allocator, FlightSqlClient client, List<FlightEndpoint> flightEndpoints)
+      BufferAllocator allocator,
+      FlightSqlClient client,
+      LoadingCache<Location, FlightClient> clientCache,
+      List<FlightEndpoint> flightEndpoints)
       throws AdbcException {
     super(allocator);
     this.client = client;
+    this.clientCache = clientCache;
     this.flightEndpoints = flightEndpoints;
     this.nextEndpointIndex = 0;
     this.bytesRead = 0;
@@ -76,9 +86,18 @@ public class FlightInfoReader extends ArrowReader {
         return false;
       } else {
         try {
-          // TODO: this should account for the location property
           currentStream.close();
-          currentStream = client.getStream(flightEndpoints.get(nextEndpointIndex++).getTicket());
+          FlightEndpoint endpoint = flightEndpoints.get(nextEndpointIndex++);
+          if (endpoint.getLocations().isEmpty()) {
+            currentStream = client.getStream(endpoint.getTicket());
+          } else {
+            // TODO: this could also retry/loop over locations
+            // TODO: filter out non-gRPC locations
+            final int index = ThreadLocalRandom.current().nextInt(endpoint.getLocations().size());
+            final Location location = endpoint.getLocations().get(index);
+            currentStream =
+                Objects.requireNonNull(clientCache.get(location)).getStream(endpoint.getTicket());
+          }
           if (!schema.equals(currentStream.getSchema())) {
             throw new IOException(
                 "Stream has inconsistent schema. Expected: "

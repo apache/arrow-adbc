@@ -17,6 +17,7 @@
 
 package org.apache.arrow.adbc.driver.flightsql;
 
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -29,6 +30,7 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.PartitionDescriptor;
 import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.Location;
@@ -43,6 +45,7 @@ import org.apache.arrow.vector.types.pojo.Field;
 public class FlightSqlStatement implements AdbcStatement {
   private final BufferAllocator allocator;
   private final FlightSqlClient client;
+  private final LoadingCache<Location, FlightClient> clientCache;
   private final SqlQuirks quirks;
 
   // State for SQL queries
@@ -54,9 +57,14 @@ public class FlightSqlStatement implements AdbcStatement {
   private BulkState bulkOperation;
   private VectorSchemaRoot bindRoot;
 
-  FlightSqlStatement(BufferAllocator allocator, FlightSqlClient client, SqlQuirks quirks) {
+  FlightSqlStatement(
+      BufferAllocator allocator,
+      FlightSqlClient client,
+      LoadingCache<Location, FlightClient> clientCache,
+      SqlQuirks quirks) {
     this.allocator = allocator;
     this.client = client;
+    this.clientCache = clientCache;
     this.quirks = quirks;
     this.sqlQuery = null;
   }
@@ -64,11 +72,13 @@ public class FlightSqlStatement implements AdbcStatement {
   static FlightSqlStatement ingestRoot(
       BufferAllocator allocator,
       FlightSqlClient client,
+      LoadingCache<Location, FlightClient> clientCache,
       SqlQuirks quirks,
       String targetTableName,
       BulkIngestMode mode) {
     Objects.requireNonNull(targetTableName);
-    final FlightSqlStatement statement = new FlightSqlStatement(allocator, client, quirks);
+    final FlightSqlStatement statement =
+        new FlightSqlStatement(allocator, client, clientCache, quirks);
     statement.bulkOperation = new BulkState();
     statement.bulkOperation.mode = mode;
     statement.bulkOperation.targetTable = targetTableName;
@@ -78,9 +88,11 @@ public class FlightSqlStatement implements AdbcStatement {
   public static AdbcStatement fromDescriptor(
       BufferAllocator allocator,
       FlightSqlClient client,
+      LoadingCache<Location, FlightClient> clientCache,
       SqlQuirks quirks,
       List<FlightEndpoint> flightEndpoints) {
-    final FlightSqlStatement statement = new FlightSqlStatement(allocator, client, quirks);
+    final FlightSqlStatement statement =
+        new FlightSqlStatement(allocator, client, clientCache, quirks);
     statement.flightEndpoints = flightEndpoints;
     return statement;
   }
@@ -207,7 +219,7 @@ public class FlightSqlStatement implements AdbcStatement {
         if (bindRoot != null) {
           preparedStatement.setParameters(new NonOwningRoot(bindRoot));
         }
-        // XXX: why does this throw SQLException?
+        // XXX(ARROW-17199): why does this throw SQLException?
         flightEndpoints = preparedStatement.execute().getEndpoints();
       } else {
         flightEndpoints = client.execute(sqlQuery).getEndpoints();
@@ -229,7 +241,8 @@ public class FlightSqlStatement implements AdbcStatement {
     if (flightEndpoints == null) {
       throw AdbcException.invalidState("[Flight SQL] Must call execute() before getArrowReader()");
     }
-    final ArrowReader reader = new FlightInfoReader(allocator, client, flightEndpoints);
+    final ArrowReader reader =
+        new FlightInfoReader(allocator, client, clientCache, flightEndpoints);
     flightEndpoints = null;
     return reader;
   }
