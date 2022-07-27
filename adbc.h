@@ -358,6 +358,61 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 ///
 /// @{
 
+/// \brief Get metadata about the database/driver.
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// Field Name                  | Field Type
+/// ----------------------------|------------------------
+/// info_name                   | uint32 not null
+/// info_value                  | INFO_SCHEMA
+///
+/// INFO_SCHEMA is a dense union with members:
+///
+/// Field Name (Type Code)      | Field Type
+/// ----------------------------|------------------------
+/// string_value (0)            | utf8
+/// bool_value (1)              | bool
+/// int64_value (2)             | int64
+/// int32_bitmask (3)           | int32
+/// string_list (4)             | list<utf8>
+/// int32_to_int32_list_map (5) | map<int32, list<int32>>
+///
+/// Each metadatum is identified by an integer code.  The recognized
+/// codes are defined as constants.  Codes [0, 10_000) are reserved
+/// for ADBC usage.  Drivers/vendors will ignore requests for
+/// unrecognized codes (the row will be omitted from the result).
+///
+/// \param[in] connection The connection to query.
+/// \param[in] info_codes A list of metadata codes to fetch, or NULL
+///   to fetch all.
+/// \param[in] info_codes_length The length of the info_codes
+///   parameter.  Ignored if info_codes is NULL.
+/// \param[out] statement The result set. AdbcStatementGetStream can
+///   be called immediately; do not call Execute or Prepare.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
+                                     uint32_t* info_codes, size_t info_codes_length,
+                                     struct AdbcStatement* statement,
+                                     struct AdbcError* error);
+
+/// \brief The database vendor/product name (e.g. the server name).
+///   (type: utf8).
+#define ADBC_INFO_VENDOR_NAME 0
+/// \brief The database vendor/product version (type: utf8).
+#define ADBC_INFO_VENDOR_VERSION 1
+/// \brief The database vendor/product Arrow library version (type:
+///   utf8).
+#define ADBC_INFO_VENDOR_ARROW_VERSION 2
+
+/// \brief The driver name (type: utf8).
+#define ADBC_INFO_DRIVER_NAME 100
+/// \brief The driver version (type: utf8).
+#define ADBC_INFO_DRIVER_VERSION 101
+/// \brief The driver Arrow library version (type: utf8).
+#define ADBC_INFO_DRIVER_ARROW_VERSION 102
+
 /// \brief Get a hierarchical view of all catalogs, database schemas,
 ///   tables, and columns.
 ///
@@ -819,6 +874,8 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*DatabaseInit)(struct AdbcDatabase*, struct AdbcError*);
   AdbcStatusCode (*DatabaseRelease)(struct AdbcDatabase*, struct AdbcError*);
 
+  AdbcStatusCode (*ConnectionGetInfo)(struct AdbcConnection*, uint32_t*, size_t,
+                                      struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*ConnectionNew)(struct AdbcConnection*, struct AdbcError*);
   AdbcStatusCode (*ConnectionSetOption)(struct AdbcConnection*, const char*, const char*,
                                         struct AdbcError*);

@@ -19,7 +19,7 @@ package org.apache.arrow.adbc.core;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.arrow.vector.complex.BaseRepeatedValueVector;
+import org.apache.arrow.vector.types.UnionMode;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
@@ -32,6 +32,38 @@ public final class StandardSchemas {
 
   private static final ArrowType INT16 = new ArrowType.Int(16, true);
   private static final ArrowType INT32 = new ArrowType.Int(32, true);
+  private static final ArrowType INT64 = new ArrowType.Int(64, true);
+  private static final ArrowType UINT32 = new ArrowType.Int(32, false);
+
+  /** The schema of the result set of {@link AdbcConnection#getInfo(int[])}}. */
+  public static final Schema GET_INFO_SCHEMA =
+      new Schema(
+          Arrays.asList(
+              Field.notNullable("info_name", UINT32),
+              new Field(
+                  "info_value",
+                  FieldType.nullable(
+                      new ArrowType.Union(UnionMode.Dense, new int[] {0, 1, 2, 3, 4, 5})),
+                  Arrays.asList(
+                      Field.nullable("string_value", ArrowType.Utf8.INSTANCE),
+                      Field.nullable("bool_value", ArrowType.Bool.INSTANCE),
+                      Field.nullable("int64_value", INT64),
+                      Field.nullable("int32_bitmask", INT32),
+                      new Field(
+                          "string_list",
+                          FieldType.nullable(ArrowType.List.INSTANCE),
+                          Collections.singletonList(
+                              Field.nullable("item", ArrowType.Utf8.INSTANCE))),
+                      new Field(
+                          "int32_to_int32_list_map",
+                          FieldType.nullable(new ArrowType.Map(/*keysSorted*/ false)),
+                          Collections.singletonList(
+                              new Field(
+                                  "entries",
+                                  FieldType.notNullable(ArrowType.Struct.INSTANCE),
+                                  Arrays.asList(
+                                      Field.notNullable("key", INT32),
+                                      Field.nullable("value", INT32)))))))));
 
   /** The schema of the result set of {@link AdbcConnection#getTableTypes()}. */
   public static final Schema TABLE_TYPES_SCHEMA =
@@ -52,16 +84,12 @@ public final class StandardSchemas {
           new Field(
               "constraint_column_names",
               FieldType.notNullable(ArrowType.List.INSTANCE),
-              Collections.singletonList(
-                  Field.nullable(BaseRepeatedValueVector.DATA_VECTOR_NAME, new ArrowType.Utf8()))),
+              Collections.singletonList(Field.nullable("item", new ArrowType.Utf8()))),
           new Field(
               "constraint_column_usage",
               FieldType.notNullable(ArrowType.List.INSTANCE),
               Collections.singletonList(
-                  new Field(
-                      BaseRepeatedValueVector.DATA_VECTOR_NAME,
-                      FieldType.nullable(ArrowType.Struct.INSTANCE),
-                      USAGE_SCHEMA))));
+                  new Field("item", FieldType.nullable(ArrowType.Struct.INSTANCE), USAGE_SCHEMA))));
 
   public static final List<Field> COLUMN_SCHEMA =
       Arrays.asList(
@@ -93,18 +121,13 @@ public final class StandardSchemas {
               "table_columns",
               FieldType.notNullable(ArrowType.List.INSTANCE),
               Collections.singletonList(
-                  new Field(
-                      BaseRepeatedValueVector.DATA_VECTOR_NAME,
-                      FieldType.nullable(ArrowType.Struct.INSTANCE),
-                      COLUMN_SCHEMA))),
+                  new Field("item", FieldType.nullable(ArrowType.Struct.INSTANCE), COLUMN_SCHEMA))),
           new Field(
               "table_constraints",
               FieldType.notNullable(ArrowType.List.INSTANCE),
               Collections.singletonList(
                   new Field(
-                      BaseRepeatedValueVector.DATA_VECTOR_NAME,
-                      FieldType.nullable(ArrowType.Struct.INSTANCE),
-                      CONSTRAINT_SCHEMA))));
+                      "item", FieldType.nullable(ArrowType.Struct.INSTANCE), CONSTRAINT_SCHEMA))));
 
   public static final List<Field> DB_SCHEMA_SCHEMA =
       Arrays.asList(
@@ -113,10 +136,7 @@ public final class StandardSchemas {
               "db_schema_tables",
               FieldType.notNullable(ArrowType.List.INSTANCE),
               Collections.singletonList(
-                  new Field(
-                      BaseRepeatedValueVector.DATA_VECTOR_NAME,
-                      FieldType.nullable(ArrowType.Struct.INSTANCE),
-                      TABLE_SCHEMA))));
+                  new Field("item", FieldType.nullable(ArrowType.Struct.INSTANCE), TABLE_SCHEMA))));
 
   public static final Schema GET_OBJECTS_SCHEMA =
       new Schema(
@@ -127,7 +147,7 @@ public final class StandardSchemas {
                   FieldType.notNullable(ArrowType.List.INSTANCE),
                   Collections.singletonList(
                       new Field(
-                          BaseRepeatedValueVector.DATA_VECTOR_NAME,
+                          "item",
                           FieldType.nullable(ArrowType.Struct.INSTANCE),
                           DB_SCHEMA_SCHEMA)))));
 }

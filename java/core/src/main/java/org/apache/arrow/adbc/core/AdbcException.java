@@ -48,6 +48,11 @@ public class AdbcException extends Exception {
     return new AdbcException(message, /*cause*/ null, AdbcStatusCode.INVALID_ARGUMENT, null, 0);
   }
 
+  /** Create a new exception with code {@link AdbcStatusCode#IO}. */
+  public static AdbcException io(String message) {
+    return new AdbcException(message, /*cause*/ null, AdbcStatusCode.IO, null, 0);
+  }
+
   /** Create a new exception with code {@link AdbcStatusCode#INVALID_STATE}. */
   public static AdbcException invalidState(String message) {
     return new AdbcException(message, /*cause*/ null, AdbcStatusCode.INVALID_STATE, null, 0);
@@ -68,6 +73,13 @@ public class AdbcException extends Exception {
 
   public int getVendorCode() {
     return vendorCode;
+  }
+
+  /**
+   * Copy this exception with a different cause (a convenience for use with the static factories).
+   */
+  public AdbcException withCause(Throwable cause) {
+    return new AdbcException(this.getMessage(), cause, status, sqlState, vendorCode);
   }
 
   @Override

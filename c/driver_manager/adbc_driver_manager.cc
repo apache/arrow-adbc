@@ -320,6 +320,17 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
   return connection->private_driver->ConnectionCommit(connection, error);
 }
 
+AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
+                                     uint32_t* info_codes, size_t info_codes_length,
+                                     struct AdbcStatement* statement,
+                                     struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionGetInfo(
+      connection, info_codes, info_codes_length, statement, error);
+}
+
 AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
                                         const char* catalog, const char* db_schema,
                                         const char* table_name, const char** table_types,
@@ -681,6 +692,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   CHECK_REQUIRED(driver, DatabaseInit);
   CHECK_REQUIRED(driver, DatabaseRelease);
 
+  CHECK_REQUIRED(driver, ConnectionGetInfo);
   CHECK_REQUIRED(driver, ConnectionNew);
   CHECK_REQUIRED(driver, ConnectionInit);
   CHECK_REQUIRED(driver, ConnectionRelease);

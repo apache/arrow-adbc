@@ -24,10 +24,11 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcDatabase;
+import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
-import org.apache.arrow.adbc.driver.jdbc.JdbcDriverQuirks;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
+import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.junit.jupiter.api.Assumptions;
 
@@ -52,17 +53,16 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
     String url = makeJdbcUrl();
 
     final Map<String, Object> parameters = new HashMap<>();
-    parameters.put("adbc.jdbc.url", url);
+    parameters.put(AdbcDriver.PARAM_URL, url);
     parameters.put(
-        "adbc.jdbc.quirks",
-        JdbcDriverQuirks.builder()
+        AdbcDriver.PARAM_SQL_QUIRKS,
+        SqlQuirks.builder()
             .arrowToSqlTypeNameMapping(
                 (arrowType -> {
                   if (arrowType.getTypeID() == ArrowType.ArrowTypeID.Utf8) {
                     return "TEXT";
                   }
-                  return JdbcDriverQuirks.DEFAULT_ARROW_TYPE_TO_SQL_TYPE_NAME_MAPPING.apply(
-                      arrowType);
+                  return SqlQuirks.DEFAULT_ARROW_TYPE_TO_SQL_TYPE_NAME_MAPPING.apply(arrowType);
                 }))
             .build());
     return JdbcDriver.INSTANCE.open(parameters);

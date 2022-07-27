@@ -21,10 +21,12 @@ import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
+import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.Preconditions;
 
+/** An ADBC driver wrapping the JDBC API. */
 public enum JdbcDriver implements AdbcDriver {
   INSTANCE;
 
@@ -37,18 +39,20 @@ public enum JdbcDriver implements AdbcDriver {
 
   @Override
   public AdbcDatabase open(Map<String, Object> parameters) throws AdbcException {
-    Object target = parameters.get("adbc.jdbc.url");
+    Object target = parameters.get(PARAM_URL);
     if (!(target instanceof String)) {
-      throw AdbcException.invalidArgument("[JDBC] Must provide String adbc.jdbc.url parameter");
+      throw AdbcException.invalidArgument("[JDBC] Must provide String " + PARAM_URL + " parameter");
     }
-    Object quirks = parameters.get("adbc.jdbc.quirks");
+    Object quirks = parameters.get(PARAM_SQL_QUIRKS);
     if (quirks != null) {
       Preconditions.checkArgument(
-          quirks instanceof JdbcDriverQuirks,
-          "[JDBC] adbc.jdbc.quirks must be a JdbcDriverQuirks instance");
+          quirks instanceof SqlQuirks,
+          String.format(
+              "[JDBC] %s must be a SqlQuirks instance, not %s",
+              PARAM_SQL_QUIRKS, quirks.getClass().getName()));
     } else {
-      quirks = new JdbcDriverQuirks();
+      quirks = new SqlQuirks();
     }
-    return new JdbcDatabase(allocator, (String) target, (JdbcDriverQuirks) quirks);
+    return new JdbcDatabase(allocator, (String) target, (SqlQuirks) quirks);
   }
 }

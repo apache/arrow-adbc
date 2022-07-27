@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
+import org.apache.arrow.adbc.core.AdbcInfoCode;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.StandardSchemas;
@@ -35,8 +36,10 @@ import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.util.Preconditions;
 import org.apache.arrow.vector.FieldVector;
+import org.apache.arrow.vector.UInt4Vector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.complex.DenseUnionVector;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.StructVector;
 import org.apache.arrow.vector.ipc.ArrowReader;
@@ -76,7 +79,40 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getObjectsColumns() throws Exception {
+  public void getInfo() throws Exception {
+    try (final AdbcStatement stmt = connection.getInfo()) {
+      try (final ArrowReader reader = stmt.getArrowReader()) {
+        assertThat(reader.getVectorSchemaRoot().getSchema())
+            .isEqualTo(StandardSchemas.GET_INFO_SCHEMA);
+        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(reader.getVectorSchemaRoot().getRowCount()).isGreaterThan(0);
+      }
+    }
+  }
+
+  @Test
+  public void getInfoByCode() throws Exception {
+    try (final AdbcStatement stmt =
+        connection.getInfo(new AdbcInfoCode[] {AdbcInfoCode.DRIVER_NAME})) {
+      try (final ArrowReader reader = stmt.getArrowReader()) {
+        final VectorSchemaRoot root = reader.getVectorSchemaRoot();
+        assertThat(root.getSchema()).isEqualTo(StandardSchemas.GET_INFO_SCHEMA);
+        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(root.getRowCount()).isEqualTo(1);
+        assertThat(((UInt4Vector) root.getVector(0)).getObject(0))
+            .isEqualTo(AdbcInfoCode.DRIVER_NAME.getValue());
+        assertThat(
+                ((DenseUnionVector) root.getVector(1))
+                    .getVarCharVector((byte) 0)
+                    .getObject(0)
+                    .toString())
+            .isNotEmpty();
+      }
+    }
+  }
+
+  @Test
+  public void getObjectsColumns() throws Exception {
     final Schema schema = util.ingestTableIntsStrs(allocator, connection, tableName);
     boolean tableFound = false;
     try (final AdbcStatement stmt =
@@ -117,7 +153,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getObjectsCatalogs() throws Exception {
+  public void getObjectsCatalogs() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
     try (final AdbcStatement stmt =
         connection.getObjects(
@@ -135,7 +171,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getObjectsDbSchemas() throws Exception {
+  public void getObjectsDbSchemas() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
     try (final AdbcStatement stmt =
         connection.getObjects(
@@ -150,7 +186,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getObjectsTables() throws Exception {
+  public void getObjectsTables() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
     try (final AdbcStatement stmt =
         connection.getObjects(
@@ -172,7 +208,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getTableSchema() throws Exception {
+  public void getTableSchema() throws Exception {
     final Schema schema =
         new Schema(
             Arrays.asList(
@@ -190,7 +226,7 @@ public abstract class AbstractConnectionMetadataTest {
   }
 
   @Test
-  void getTableTypes() throws Exception {
+  public void getTableTypes() throws Exception {
     try (final AdbcStatement stmt = connection.getTableTypes()) {
       try (final ArrowReader reader = stmt.getArrowReader()) {
         assertThat(reader.getVectorSchemaRoot().getSchema())

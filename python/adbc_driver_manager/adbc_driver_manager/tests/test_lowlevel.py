@@ -56,6 +56,28 @@ def test_database_init():
             pass
 
 
+def test_connection_get_info(sqlite):
+    _, conn = sqlite
+    codes = [
+        adbc_driver_manager.AdbcInfoCode.VENDOR_NAME,
+        adbc_driver_manager.AdbcInfoCode.VENDOR_VERSION.value,
+        adbc_driver_manager.AdbcInfoCode.DRIVER_NAME,
+        adbc_driver_manager.AdbcInfoCode.DRIVER_VERSION.value,
+    ]
+    with conn.get_info() as stmt:
+        table = _import(stmt.get_stream()).read_all()
+        assert table.num_rows > 0
+        data = dict(zip(table[0].to_pylist(), table[1].to_pylist()))
+        for code in codes:
+            assert code in data
+            assert data[code]
+
+    with conn.get_info(codes) as stmt:
+        table = _import(stmt.get_stream()).read_all()
+        assert table.num_rows > 0
+        assert set(codes) == set(table[0].to_pylist())
+
+
 def test_connection_get_objects(sqlite):
     _, conn = sqlite
     data = pyarrow.record_batch(

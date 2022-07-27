@@ -29,6 +29,7 @@ import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.driver.jdbc.util.JdbcParameterBinder;
+import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -38,7 +39,7 @@ import org.apache.arrow.vector.types.pojo.Field;
 public class JdbcStatement implements AdbcStatement {
   private final BufferAllocator allocator;
   private final Connection connection;
-  private final JdbcDriverQuirks quirks;
+  private final SqlQuirks quirks;
 
   // State for SQL queries
   private Statement statement;
@@ -49,7 +50,7 @@ public class JdbcStatement implements AdbcStatement {
   private BulkState bulkOperation;
   private VectorSchemaRoot bindRoot;
 
-  JdbcStatement(BufferAllocator allocator, Connection connection, JdbcDriverQuirks quirks) {
+  JdbcStatement(BufferAllocator allocator, Connection connection, SqlQuirks quirks) {
     this.allocator = allocator;
     this.connection = connection;
     this.quirks = quirks;
@@ -59,7 +60,7 @@ public class JdbcStatement implements AdbcStatement {
   static JdbcStatement ingestRoot(
       BufferAllocator allocator,
       Connection connection,
-      JdbcDriverQuirks quirks,
+      SqlQuirks quirks,
       String targetTableName,
       BulkIngestMode mode) {
     Objects.requireNonNull(targetTableName);
@@ -179,7 +180,11 @@ public class JdbcStatement implements AdbcStatement {
           reader.close();
         } catch (IOException e) {
           throw new AdbcException(
-              "Failed to close unread result set", e, AdbcStatusCode.IO, null, /*vendorCode*/ 0);
+              "[JDBC] Failed to close unread result set",
+              e,
+              AdbcStatusCode.IO,
+              null, /*vendorCode*/
+              0);
         }
       }
       if (resultSet != null) {
@@ -225,6 +230,10 @@ public class JdbcStatement implements AdbcStatement {
   @Override
   public void prepare() throws AdbcException {
     try {
+      if (sqlQuery == null) {
+        throw AdbcException.invalidArgument(
+            "[Flight SQL] Must call setSqlQuery(String) before prepare()");
+      }
       if (resultSet != null) {
         resultSet.close();
       }

@@ -21,6 +21,11 @@ import java.util.Map;
 
 /** A handle to an ADBC database driver. */
 public interface AdbcDriver {
+  /** The standard parameter name for a connection URL (type String). */
+  String PARAM_URL = "adbc.url";
+  /** The standard parameter name for SQL quirks configuration (type SqlQuirks). */
+  String PARAM_SQL_QUIRKS = "adbc.sql.quirks";
+
   /**
    * Open a database via this driver.
    *

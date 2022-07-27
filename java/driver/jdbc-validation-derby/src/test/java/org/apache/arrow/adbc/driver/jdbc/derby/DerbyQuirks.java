@@ -25,6 +25,7 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcDatabase;
+import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
@@ -39,7 +40,7 @@ public class DerbyQuirks extends SqlValidationQuirks {
   @Override
   public AdbcDatabase initDatabase() throws AdbcException {
     final Map<String, Object> parameters = new HashMap<>();
-    parameters.put("adbc.jdbc.url", jdbcUrl);
+    parameters.put(AdbcDriver.PARAM_URL, jdbcUrl);
     return JdbcDriver.INSTANCE.open(parameters);
   }
 

@@ -24,17 +24,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
+import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 
 /** An instance of a database (e.g. a handle to an in-memory database). */
 public final class JdbcDatabase implements AdbcDatabase {
   private final BufferAllocator allocator;
   private final String target;
-  private final JdbcDriverQuirks quirks;
+  private final SqlQuirks quirks;
   private final Connection connection;
   private final AtomicInteger counter;
 
-  JdbcDatabase(BufferAllocator allocator, final String target, JdbcDriverQuirks quirks)
+  JdbcDatabase(BufferAllocator allocator, final String target, SqlQuirks quirks)
       throws AdbcException {
     this.allocator = allocator;
     this.target = target;
