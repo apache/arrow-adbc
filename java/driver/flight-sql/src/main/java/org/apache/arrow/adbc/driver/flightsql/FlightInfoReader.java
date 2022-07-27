@@ -18,9 +18,10 @@ package org.apache.arrow.adbc.driver.flightsql;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ThreadLocalRandom;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.flight.FlightClient;
@@ -88,16 +89,7 @@ public class FlightInfoReader extends ArrowReader {
         try {
           currentStream.close();
           FlightEndpoint endpoint = flightEndpoints.get(nextEndpointIndex++);
-          if (endpoint.getLocations().isEmpty()) {
-            currentStream = client.getStream(endpoint.getTicket());
-          } else {
-            // TODO: this could also retry/loop over locations
-            // TODO: filter out non-gRPC locations
-            final int index = ThreadLocalRandom.current().nextInt(endpoint.getLocations().size());
-            final Location location = endpoint.getLocations().get(index);
-            currentStream =
-                Objects.requireNonNull(clientCache.get(location)).getStream(endpoint.getTicket());
-          }
+          currentStream = tryLoadNextStream(endpoint);
           if (!schema.equals(currentStream.getSchema())) {
             throw new IOException(
                 "Stream has inconsistent schema. Expected: "
@@ -105,6 +97,8 @@ public class FlightInfoReader extends ArrowReader {
                     + "\nFound: "
                     + currentStream.getSchema());
           }
+        } catch (IOException e) {
+          throw e;
         } catch (Exception e) {
           throw new IOException(e);
         }
@@ -116,6 +110,40 @@ public class FlightInfoReader extends ArrowReader {
     bytesRead += recordBatch.computeBodyLength();
     loadRecordBatch(recordBatch);
     return true;
+  }
+
+  private FlightStream tryLoadNextStream(FlightEndpoint endpoint) throws IOException {
+    if (endpoint.getLocations().isEmpty()) {
+      return client.getStream(endpoint.getTicket());
+    } else {
+      List<Location> locations = new ArrayList<>(endpoint.getLocations());
+      Collections.shuffle(locations);
+      IOException failure = null;
+      for (final Location location : locations) {
+        try {
+          return Objects.requireNonNull(clientCache.get(location)).getStream(endpoint.getTicket());
+        } catch (FlightRuntimeException fre) {
+          if (failure == null) {
+            failure =
+                new IOException(
+                    "Failed to load next stream for location " + location + ": " + fre, fre);
+          } else {
+            failure.addSuppressed(
+                new IOException(
+                    "Failed to load next stream for location " + location + ": " + fre, fre));
+          }
+        } catch (RuntimeException e) {
+          // Also handles CompletionException (from clientCache#get)
+          if (failure == null) {
+            failure = new IOException("Failed to connect to location " + location + ": " + e, e);
+          } else {
+            failure.addSuppressed(
+                new IOException("Failed to connect to location " + location + ": " + e, e));
+          }
+        }
+      }
+      throw Objects.requireNonNull(failure);
+    }
   }
 
   @Override
