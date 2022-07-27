@@ -122,23 +122,14 @@ public class FlightInfoReader extends ArrowReader {
       for (final Location location : locations) {
         try {
           return Objects.requireNonNull(clientCache.get(location)).getStream(endpoint.getTicket());
-        } catch (FlightRuntimeException fre) {
+        } catch (RuntimeException e) {
+          // Also handles CompletionException (from clientCache#get), FlightRuntimeException
           if (failure == null) {
             failure =
-                new IOException(
-                    "Failed to load next stream for location " + location + ": " + fre, fre);
+                new IOException("Failed to get stream from location " + location + ": " + e, e);
           } else {
             failure.addSuppressed(
-                new IOException(
-                    "Failed to load next stream for location " + location + ": " + fre, fre));
-          }
-        } catch (RuntimeException e) {
-          // Also handles CompletionException (from clientCache#get)
-          if (failure == null) {
-            failure = new IOException("Failed to connect to location " + location + ": " + e, e);
-          } else {
-            failure.addSuppressed(
-                new IOException("Failed to connect to location " + location + ": " + e, e));
+                new IOException("Failed to get stream from location " + location + ": " + e, e));
           }
         }
       }
