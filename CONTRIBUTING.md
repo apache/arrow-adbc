@@ -30,6 +30,11 @@ https://github.com/apache/arrow-adbc/issues
 
 The libraries here are all **individual** CMake projects.
 
+_Note:_ unlike the Arrow C++ build system, the CMake projects will
+**not** automatically download and build dependencies—you should
+configure CMake appropriately to find dependencies in system or
+package manager locations.
+
 For example, the driver manager is built as follows:
 
 ```shell
@@ -39,7 +44,11 @@ $ cmake ../../c/driver_manager
 $ make -j
 ```
 
-The SQLite3 and Apache Arrow Flight SQL drivers can be built similarly.
+The SQLite3 and Apache Arrow Flight SQL drivers can be built
+similarly.  Both drivers require an installation of the Arrow C++
+libraries (in the case of the Flight SQL driver, with Flight SQL
+enabled), and of course, the SQLite3 driver requires an installation
+of SQLite.
 
 To find dependencies, use CMake options such as `CMAKE_PREFIX_PATH`.
 A list of dependencies for Conda (conda-forge) is included, and can be
@@ -63,12 +72,18 @@ For example, to build and run tests for the SQLite3 driver:
 ```shell
 $ mkdir -p build/sqlite
 $ cd build/sqlite
+# You may need to set -DCMAKE_PREFIX_PATH such that googletest can be found
 $ cmake ../../c/drivers/sqlite -DADBC_BUILD_TESTS=ON
 $ make -j
 $ ctest
 ```
 
 ### Python
+
+The Python libraries require Cython during build time; they have no
+other build or runtime dependencies.  (The C++ sources for the driver
+manager are inlined into the Cython compilation process—so there is no
+need to separately build the driver manager.)
 
 ```shell
 $ cd python/adbc_driver_manager
