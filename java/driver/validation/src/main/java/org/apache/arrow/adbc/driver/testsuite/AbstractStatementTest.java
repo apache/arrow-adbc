@@ -71,6 +71,7 @@ public abstract class AbstractStatementTest {
                 Field.nullable(
                     quirks.caseFoldColumnName("ints"), new ArrowType.Int(32, /*signed=*/ true)),
                 Field.nullable(quirks.caseFoldColumnName("strs"), new ArrowType.Utf8())));
+    quirks.cleanupTable(tableName);
   }
 
   @AfterEach
@@ -80,7 +81,7 @@ public abstract class AbstractStatementTest {
   }
 
   @Test
-  public void bulkInsertAppend() throws Exception {
+  public void bulkIngestAppend() throws Exception {
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
       final IntVector ints = (IntVector) root.getVector(0);
       final VarCharVector strs = (VarCharVector) root.getVector(1);
@@ -140,6 +141,7 @@ public abstract class AbstractStatementTest {
             Collections.singletonList(
                 Field.nullable(quirks.caseFoldColumnName("ints"), new ArrowType.Utf8())));
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+      root.setRowCount(1);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
         stmt.execute();
@@ -169,6 +171,7 @@ public abstract class AbstractStatementTest {
   @Test
   public void bulkIngestCreateConflict() throws Exception {
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+      root.setRowCount(1);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
         stmt.execute();
@@ -178,7 +181,7 @@ public abstract class AbstractStatementTest {
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
         final AdbcException e = assertThrows(AdbcException.class, stmt::execute);
-        assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.ALREADY_EXISTS);
+        assertThat(e.getStatus()).describedAs("%s", e).isEqualTo(AdbcStatusCode.ALREADY_EXISTS);
       }
     }
   }
@@ -193,7 +196,9 @@ public abstract class AbstractStatementTest {
         assertThat(reader.getVectorSchemaRoot().getSchema()).isEqualTo(expectedSchema);
         assertThat(reader.loadNextBatch()).isTrue();
         assertThat(reader.getVectorSchemaRoot().getRowCount()).isEqualTo(4);
-        assertThat(reader.loadNextBatch()).isFalse();
+        while (reader.loadNextBatch()) {
+          assertThat(reader.getVectorSchemaRoot().getRowCount()).isEqualTo(0);
+        }
       }
     }
   }

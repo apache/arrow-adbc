@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.adbc.driver.jdbc;
+package org.apache.arrow.adbc.sql;
 
 import java.util.function.Function;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 
-/** Parameters to pass to the ADBC JDBC driver to account for driver/vendor-specific quirks. */
-public final class JdbcDriverQuirks {
+/** Parameters to pass to SQL-based drivers to account for driver/vendor-specific SQL quirks. */
+public final class SqlQuirks {
   public static final Function<ArrowType, String> DEFAULT_ARROW_TYPE_TO_SQL_TYPE_NAME_MAPPING =
       (arrowType) -> {
         switch (arrowType.getTypeID()) {
@@ -58,7 +58,7 @@ public final class JdbcDriverQuirks {
       };
   Function<ArrowType, String> arrowToSqlTypeNameMapping;
 
-  public JdbcDriverQuirks() {
+  public SqlQuirks() {
     this.arrowToSqlTypeNameMapping = DEFAULT_ARROW_TYPE_TO_SQL_TYPE_NAME_MAPPING;
   }
 
@@ -80,8 +80,8 @@ public final class JdbcDriverQuirks {
       return this;
     }
 
-    public JdbcDriverQuirks build() {
-      final JdbcDriverQuirks quirks = new JdbcDriverQuirks();
+    public SqlQuirks build() {
+      final SqlQuirks quirks = new SqlQuirks();
       if (arrowToSqlTypeNameMapping != null) {
         quirks.arrowToSqlTypeNameMapping = arrowToSqlTypeNameMapping;
       }

@@ -18,41 +18,38 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>adbc-driver-jdbc</artifactId>
+  <artifactId>adbc-driver-flight-sql-validation</artifactId>
   <packaging>jar</packaging>
-  <name>Arrow ADBC Driver JDBC</name>
-  <description>An ADBC driver wrapping the JDBC API.</description>
+  <name>Arrow ADBC Driver Flight SQL Validation</name>
+  <description>Tests validating the Flight SQL driver.</description>
 
   <dependencies>
-    <!-- Arrow -->
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-jdbc</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-vector</artifactId>
-    </dependency>
-
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
       <artifactId>adbc-core</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-jdbc-util</artifactId>
+      <artifactId>adbc-driver-flight-sql</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Testing -->
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-manager</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-sql</artifactId>
+      <artifactId>adbc-driver-validation</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

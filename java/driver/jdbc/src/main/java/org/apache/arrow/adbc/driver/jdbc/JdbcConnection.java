@@ -29,6 +29,7 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.StandardSchemas;
+import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.ArrowType;
@@ -39,9 +40,9 @@ import org.apache.arrow.vector.types.pojo.Schema;
 public class JdbcConnection implements AdbcConnection {
   private final BufferAllocator allocator;
   private final Connection connection;
-  private final JdbcDriverQuirks quirks;
+  private final SqlQuirks quirks;
 
-  JdbcConnection(BufferAllocator allocator, Connection connection, JdbcDriverQuirks quirks) {
+  JdbcConnection(BufferAllocator allocator, Connection connection, SqlQuirks quirks) {
     this.allocator = allocator;
     this.connection = connection;
     this.quirks = quirks;
