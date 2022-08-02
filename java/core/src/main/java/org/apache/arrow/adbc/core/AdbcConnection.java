@@ -54,6 +54,20 @@ public interface AdbcConnection extends AutoCloseable {
         "Connection does not support deserializePartitionDescriptor(ByteBuffer)");
   }
 
+  AdbcStatement getInfo(int[] infoCodes) throws AdbcException;
+
+  default AdbcStatement getInfo(AdbcInfoCode[] infoCodes) throws AdbcException {
+    int[] codes = new int[infoCodes.length];
+    for (int i = 0; i < infoCodes.length; i++) {
+      codes[i] = infoCodes[i].getValue();
+    }
+    return getInfo(codes);
+  }
+
+  default AdbcStatement getInfo() throws AdbcException {
+    return getInfo((int[]) null);
+  }
+
   /**
    * Get a hierarchical view of all catalogs, database schemas, tables, and columns.
    *

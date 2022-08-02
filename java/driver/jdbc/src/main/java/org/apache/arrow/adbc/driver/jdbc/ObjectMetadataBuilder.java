@@ -35,8 +35,8 @@ import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.StructVector;
 
-/** Helper class to track state needed to build up the metadata structure. */
-final class JdbcMetadataBuilder implements AutoCloseable {
+/** Helper class to track state needed to build up the object metadata structure. */
+final class ObjectMetadataBuilder implements AutoCloseable {
   private final AdbcConnection.GetObjectsDepth depth;
   private final String catalogPattern;
   private final String dbSchemaPattern;
@@ -73,7 +73,7 @@ final class JdbcMetadataBuilder implements AutoCloseable {
   final VarCharVector columnUsageFkTables;
   final VarCharVector columnUsageFkColumns;
 
-  JdbcMetadataBuilder(
+  ObjectMetadataBuilder(
       BufferAllocator allocator,
       Connection connection,
       final AdbcConnection.GetObjectsDepth depth,
