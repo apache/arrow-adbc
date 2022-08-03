@@ -108,12 +108,11 @@ jobs:
       - name: Build/Test Python Driver Manager
         shell: bash -l {0}
         run: |
-          pushd python/adbc_driver_manager
-          python setup.py build_ext --inplace
-          export PYTHONPATH=$(pwd)
-          export DYLD_LIBRARY_PATH=$(pwd)/../../build/driver_sqlite_no_asan
-          export LD_LIBRARY_PATH=$(pwd)/../../build/driver_sqlite_no_asan
-          python -m pytest -vv
+          pushd python
+          pip install -e adbc_driver_manager
+          export DYLD_LIBRARY_PATH=$(pwd)/../build/driver_sqlite_no_asan
+          export LD_LIBRARY_PATH=$(pwd)/../build/driver_sqlite_no_asan
+          python -m pytest -vv adbc_driver_manager
           popd
 
 
@@ -168,8 +167,7 @@ jobs:
         shell: cmd /C call {0}
         run: |
           cd python\adbc_driver_manager
-          python setup.py build_ext --inplace
+          pip install -e .
           set PATH=%PATH%;${{ github.workspace }}\build\driver_sqlite
-          set PYTHONPATH=${{ github.workspace }}\python\adbc_driver_manager
           python -m pytest -vv
           cd ..\..
