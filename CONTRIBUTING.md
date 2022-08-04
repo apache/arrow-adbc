@@ -80,24 +80,33 @@ $ ctest
 
 ### Python
 
-The Python libraries require Cython during build time; they have no
-other build or runtime dependencies.  (The C++ sources for the driver
-manager are inlined into the Cython compilation process—so there is no
-need to separately build the driver manager.)
+The Python driver manager is managed with [Poetry][poetry] and
+requires a C++ compiler.  (The C++ sources for the driver manager are
+inlined into the Cython compilation process—so there is no need to
+separately build the driver manager.)
+
+```shell
+$ cd python
+$ pip install -r adbc_driver_manager/requirements-dev.txt
+$ pip install -e adbc_driver_manager
+```
+
+When adding/updating dependencies, please regenerate the lockfile:
 
 ```shell
 $ cd python/adbc_driver_manager
-$ pip install -r requirements-dev.txt
-$ python setup.py build_ext --inplace
+$ poetry update
+$ poetry export --dev -o requirements-dev.txt
 ```
 
 To run tests, you will need a build of the SQLite3 driver above.
 
 ```shell
 $ export LD_LIBRARY_PATH=path/to/sqlite/driver/
-$ export PYTHONPATH=$(pwd)
-$ pytest -vvx
+$ pytest -vvx adbc_driver_manager
 ```
+
+[poetry]: https://python-poetry.org
 
 ### Java
 

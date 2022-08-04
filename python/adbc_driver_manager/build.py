@@ -18,11 +18,12 @@
 # under the License.
 
 from Cython.Build import cythonize
-from setuptools import Extension, setup
+from setuptools import Extension
 
-setup(
-    name="ADBC Driver Manager",
-    ext_modules=cythonize(
+
+def build(setup_kwargs):
+    """Configure build for Poetry."""
+    setup_kwargs["ext_modules"] = cythonize(
         Extension(
             name="adbc_driver_manager._lib",
             extra_compile_args=["-ggdb", "-Og"],
@@ -33,7 +34,5 @@ setup(
                 "../../c/driver_manager/adbc_driver_manager.cc",
             ],
         ),
-    ),
-    packages=["adbc_driver_manager"],
-    zip_safe=False,
-)
+    )
+    setup_kwargs["zip_safe"] = False
