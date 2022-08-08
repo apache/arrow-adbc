@@ -91,6 +91,9 @@ cdef extern from "adbc.h" nogil:
         char[5] sqlstate
         CAdbcErrorRelease release
 
+    cdef struct CAdbcDriver"AdbcDriver":
+        pass
+
     cdef struct CAdbcDatabase"AdbcDatabase":
         void* private_data
 
@@ -115,6 +118,12 @@ cdef extern from "adbc.h" nogil:
         CAdbcError* error)
     CAdbcStatusCode AdbcDatabaseInit(CAdbcDatabase* database, CAdbcError* error)
     CAdbcStatusCode AdbcDatabaseRelease(CAdbcDatabase* database, CAdbcError* error)
+
+    ctypedef void (*CAdbcDriverInitFunc "AdbcDriverInitFunc")(size_t, CAdbcDriver*, size_t*, CAdbcError*)
+    CAdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(
+        CAdbcDatabase* database,
+        CAdbcDriverInitFunc init_func,
+        CAdbcError* error)
 
     CAdbcStatusCode AdbcConnectionCommit(
         CAdbcConnection* connection,
@@ -458,11 +467,16 @@ cdef class AdbcDatabase(_AdbcHandle):
         check_error(status, &c_error)
 
         for key, value in kwargs.items():
-            key = key.encode("utf-8")
-            value = value.encode("utf-8")
-            c_key = key
-            c_value = value
-            status = AdbcDatabaseSetOption(&self.database, c_key, c_value, &c_error)
+            if key == "init_func":
+                status = AdbcDriverManagerDatabaseSetInitFunc(
+                    &self.database, <CAdbcDriverInitFunc> (<uintptr_t> value), &c_error)
+            else:
+                key = key.encode("utf-8")
+                value = value.encode("utf-8")
+                c_key = key
+                c_value = value
+                status = AdbcDatabaseSetOption(
+                    &self.database, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
         with nogil:

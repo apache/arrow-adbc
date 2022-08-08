@@ -15,6 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_manager, adbc_driver_postgres
-profile = black
+# cython: language_level = 3
+
+"""Shim package to distribute the libpq-based driver."""
+
+from libc.stdint cimport uintptr_t
+
+cdef extern int AdbcDriverInit()
+
+def get_entrypoint():
+    return <uintptr_t> &AdbcDriverInit

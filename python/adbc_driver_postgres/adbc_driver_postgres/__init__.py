@@ -15,6 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_manager, adbc_driver_postgres
-profile = black
+
+def connect():
+    pass

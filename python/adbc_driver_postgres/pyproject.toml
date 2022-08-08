@@ -15,6 +15,28 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_manager, adbc_driver_postgres
-profile = black
+[tool.poetry]
+name = "adbc_driver_postgres"
+version = "0.0.0-alpha0"
+description = ""
+authors = ["David Li <li.davidm96@gmail.com>"]
+license = "Apache-2.0"
+homepage = "https://arrow.apache.org"
+repository = "https://github.com/apache/arrow-adbc"
+
+[tool.poetry.build]
+script = "build.py"
+
+[tool.poetry.dependencies]
+# XXX: setuptools/build.py don't like path dependencies
+# adbc_driver_manager = { path = "../adbc_driver_manager/", develop = false }
+python = ">=3.8"
+
+[tool.poetry.dev-dependencies]
+Cython = "^0.29.32"
+pytest = "^7.1.2"
+setuptools = "^63.4.0"
+
+[build-system]
+requires = ["Cython", "poetry-core>=1.0.0", "setuptools"]
+build-backend = "poetry.core.masonry.api"

@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_manager, adbc_driver_postgres
-profile = black
+from adbc_driver_postgres import _lib
+
+
+def test_entrypoint():
+    assert _lib.get_entrypoint()

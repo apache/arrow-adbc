@@ -49,6 +49,38 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
                               size_t count, struct AdbcDriver* driver,
                               size_t* initialized, struct AdbcError* error);
 
+/// \brief Common entry point for drivers via the driver manager.
+///
+/// The driver manager can fill in default implementations of some
+/// ADBC functions for drivers. Drivers must implement a minimum level
+/// of functionality for this to be possible, however, and some
+/// functions must be implemented by the driver.
+///
+/// \param[in] entrypoint The entrypoint to call.
+/// \param[in] count The number of entries to initialize. Provides
+///   backwards compatibility if the struct definition is changed.
+/// \param[out] driver The table of function pointers to initialize.
+/// \param[out] initialized How much of the table was actually
+///   initialized (can be less than count).
+/// \param[out] error An optional location to return an error message
+///   if necessary.
+ADBC_EXPORT
+AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, size_t count,
+                                          struct AdbcDriver* driver, size_t* initialized,
+                                          struct AdbcError* error);
+
+/// \brief Set the AdbcDriverInitFunc to use.
+///
+/// This is an extension to the ADBC API. The driver manager shims
+/// the AdbcDatabase* functions to allow you to specify the
+/// driver/entrypoint dynamically. This function lets you set the
+/// entrypoint explicitly, for applications that can dynamically
+/// load drivers on their own.
+ADBC_EXPORT
+AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* database,
+                                                    AdbcDriverInitFunc init_func,
+                                                    struct AdbcError* error);
+
 /// \brief Get a human-friendly description of a status code.
 ADBC_EXPORT
 const char* AdbcStatusCodeMessage(AdbcStatusCode code);

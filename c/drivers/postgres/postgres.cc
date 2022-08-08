@@ -25,6 +25,7 @@
 #include "connection.h"
 #include "database.h"
 #include "statement.h"
+#include "util.h"
 
 using adbcpq::PostgresConnection;
 using adbcpq::PostgresDatabase;
@@ -50,6 +51,7 @@ using adbcpq::PostgresStatement;
 // AdbcDatabase
 
 namespace {
+using adbcpq::SetError;
 AdbcStatusCode PostgresDatabaseInit(struct AdbcDatabase* database,
                                     struct AdbcError* error) {
   if (!database || !database->private_data) return ADBC_STATUS_INVALID_STATE;
@@ -59,7 +61,14 @@ AdbcStatusCode PostgresDatabaseInit(struct AdbcDatabase* database,
 
 AdbcStatusCode PostgresDatabaseNew(struct AdbcDatabase* database,
                                    struct AdbcError* error) {
-  if (!database || database->private_data) return ADBC_STATUS_INVALID_STATE;
+  if (!database) {
+    SetError(error, "database must not be null");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  if (database->private_data) {
+    SetError(error, "database is already initialized");
+    return ADBC_STATUS_INVALID_STATE;
+  }
   auto impl = std::make_shared<PostgresDatabase>();
   database->private_data = new std::shared_ptr<PostgresDatabase>(impl);
   return ADBC_STATUS_OK;
@@ -115,7 +124,7 @@ AdbcStatusCode PostgresConnectionCommit(struct AdbcConnection* connection,
 
 AdbcStatusCode PostgresConnectionGetInfo(struct AdbcConnection* connection,
                                          uint32_t* info_codes, size_t info_codes_length,
-                                         struct AdbcStatement* statement,
+                                         struct ArrowArrayStream* stream,
                                          struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
   // if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
@@ -206,9 +215,9 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
                                      uint32_t* info_codes, size_t info_codes_length,
-                                     struct AdbcStatement* statement,
+                                     struct ArrowArrayStream* stream,
                                      struct AdbcError* error) {
-  return PostgresConnectionGetInfo(connection, info_codes, info_codes_length, statement,
+  return PostgresConnectionGetInfo(connection, info_codes, info_codes_length, stream,
                                    error);
 }
 
@@ -453,7 +462,7 @@ AdbcStatusCode AdbcDriverInit(size_t count, struct AdbcDriver* driver,
   driver->DatabaseSetOption = PostgresDatabaseSetOption;
 
   driver->ConnectionCommit = PostgresConnectionCommit;
-  // driver->ConnectionGetInfo = PostgresConnectionGetInfo;
+  driver->ConnectionGetInfo = PostgresConnectionGetInfo;
   // driver->ConnectionGetObjects = PostgresConnectionGetObjects;
   driver->ConnectionGetTableSchema = PostgresConnectionGetTableSchema;
   // driver->ConnectionGetTableTypes = PostgresConnectionGetTableTypes;
