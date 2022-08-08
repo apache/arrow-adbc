@@ -361,6 +361,12 @@ AdbcStatusCode BindParameters(sqlite3_stmt* stmt, const arrow::RecordBatch& data
       *rc = sqlite3_bind_null(stmt, col_index);
     } else {
       switch (column->type()->id()) {
+        case arrow::Type::DOUBLE: {
+          *rc = sqlite3_bind_double(
+              stmt, col_index,
+              static_cast<const arrow::DoubleArray&>(*column).Value(row));
+          break;
+        }
         case arrow::Type::INT64: {
           *rc = sqlite3_bind_int64(
               stmt, col_index, static_cast<const arrow::Int64Array&>(*column).Value(row));
@@ -459,7 +465,7 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
         switch (field->type()->id()) {
           case arrow::Type::DOUBLE: {
             // TODO: handle null values
-            const sqlite3_int64 value = sqlite3_column_double(stmt_, col);
+            const double value = sqlite3_column_double(stmt_, col);
             ARROW_RETURN_NOT_OK(
                 dynamic_cast<arrow::DoubleBuilder*>(builders[col].get())->Append(value));
             break;
