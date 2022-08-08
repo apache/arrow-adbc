@@ -21,16 +21,18 @@ version = "0.0.1-alpha.1"
 description = ""
 authors = ["David Li <li.davidm96@gmail.com>"]
 license = "Apache-2.0"
+homepage = "https://arrow.apache.org"
+repository = "https://github.com/apache/arrow-adbc"
 
 [tool.poetry.build]
 script = "build.py"
 
 [tool.poetry.dependencies]
+pyarrow = "^9.0.0"
 python = ">=3.8"
 
 [tool.poetry.dev-dependencies]
 Cython = "^0.29.32"
-pyarrow = "^8.0.0"
 pytest = "^7.1.2"
 setuptools = "^63.4.0"
 
