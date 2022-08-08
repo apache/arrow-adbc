@@ -72,6 +72,7 @@ site/
 
 # Python
 dist/
+.hypothesis/
 
 # R files
 **/.Rproj.user
