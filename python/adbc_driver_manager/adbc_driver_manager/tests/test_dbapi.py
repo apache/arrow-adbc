@@ -68,11 +68,6 @@ def test_query_fetch_py(sqlite):
 def test_query_fetch_arrow(sqlite):
     with sqlite.cursor() as cur:
         cur.execute('SELECT 1, "foo", 2.0')
-        assert cur.description == [
-            ("1", dbapi.NUMBER, None, None, None, None, None),
-            ('"foo"', dbapi.STRING, None, None, None, None, None),
-            ("2.0", dbapi.NUMBER, None, None, None, None, None),
-        ]
         assert cur.fetch_arrow_table() == pyarrow.table(
             {
                 "1": [1],
@@ -85,11 +80,6 @@ def test_query_fetch_arrow(sqlite):
 def test_query_fetch_df(sqlite):
     with sqlite.cursor() as cur:
         cur.execute('SELECT 1, "foo", 2.0')
-        assert cur.description == [
-            ("1", dbapi.NUMBER, None, None, None, None, None),
-            ('"foo"', dbapi.STRING, None, None, None, None, None),
-            ("2.0", dbapi.NUMBER, None, None, None, None, None),
-        ]
         assert_frame_equal(
             cur.fetch_df(),
             pandas.DataFrame(
