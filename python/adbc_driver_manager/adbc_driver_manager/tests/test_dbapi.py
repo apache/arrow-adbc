@@ -15,8 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pandas
 import pyarrow
 import pytest
+from pandas.testing import assert_frame_equal
 
 from adbc_driver_manager import dbapi
 
@@ -38,8 +40,12 @@ def test_type_objects():
     assert dbapi.STRING == pyarrow.string()
     assert pyarrow.string() == dbapi.STRING
 
+    assert dbapi.STRING != dbapi.NUMBER
+    assert dbapi.NUMBER != dbapi.DATETIME
+    assert dbapi.NUMBER == dbapi.ROWID
 
-def test_query(sqlite):
+
+def test_query_fetch_py(sqlite):
     with sqlite.cursor() as cur:
         cur.execute('SELECT 1, "foo", 2.0')
         assert cur.description == [
@@ -49,3 +55,48 @@ def test_query(sqlite):
         ]
         assert cur.fetchone() == (1, "foo", 2.0)
         assert cur.fetchone() is None
+
+        cur.execute('SELECT 1, "foo", 2.0')
+        assert cur.fetchmany() == [(1, "foo", 2.0)]
+        assert cur.fetchmany() == []
+
+        cur.execute('SELECT 1, "foo", 2.0')
+        assert cur.fetchall() == [(1, "foo", 2.0)]
+        assert cur.fetchall() == []
+
+
+def test_query_fetch_arrow(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute('SELECT 1, "foo", 2.0')
+        assert cur.description == [
+            ("1", dbapi.NUMBER, None, None, None, None, None),
+            ('"foo"', dbapi.STRING, None, None, None, None, None),
+            ("2.0", dbapi.NUMBER, None, None, None, None, None),
+        ]
+        assert cur.fetch_arrow_table() == pyarrow.table(
+            {
+                "1": [1],
+                '"foo"': ["foo"],
+                "2.0": [2.0],
+            }
+        )
+
+
+def test_query_fetch_df(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute('SELECT 1, "foo", 2.0')
+        assert cur.description == [
+            ("1", dbapi.NUMBER, None, None, None, None, None),
+            ('"foo"', dbapi.STRING, None, None, None, None, None),
+            ("2.0", dbapi.NUMBER, None, None, None, None, None),
+        ]
+        assert_frame_equal(
+            cur.fetch_df(),
+            pandas.DataFrame(
+                {
+                    "1": [1],
+                    '"foo"': ["foo"],
+                    "2.0": [2.0],
+                }
+            ),
+        )

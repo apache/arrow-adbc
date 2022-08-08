@@ -23,7 +23,8 @@ import datetime
 import functools
 import time
 import typing
-from typing import Any, List, Optional
+import warnings
+from typing import Any, Dict, List, Optional
 
 import pyarrow
 
@@ -35,12 +36,12 @@ if typing.TYPE_CHECKING:
 # ----------------------------------------------------------
 # Globals
 
-#:
+#: The DBAPI API level (2.0).
 apilevel = "2.0"
-#:
+#: The thread safety level (connections may not be shared).
 threadsafety = 1
-# XXX: can this vary based on the driver?
-#:
+#: The parameter style (qmark). This is hardcoded, but actually
+#: depends on the driver.
 paramstyle = "qmark"
 
 Warning = _lib.Warning
@@ -117,7 +118,31 @@ ROWID = _TypeSet([pyarrow.int64().id])
 # Functions
 
 
-def connect(*, driver, entrypoint, db_kwargs=None, conn_kwargs=None):
+def connect(
+    *,
+    driver: str,
+    entrypoint: str,
+    db_kwargs: Optional[Dict[str, str]] = None,
+    conn_kwargs: Optional[Dict[str, str]] = None
+) -> "Connection":
+    """
+    Connect to a database via ADBC.
+
+    Parameters
+    ----------
+    driver
+        The driver name. For example, "adbc_driver_sqlite" will
+        attempt to load libadbc_driver_sqlite.so on Unix-like systems,
+        and adbc_driver_sqlite.dll on Windows.
+    entrypoint
+        The driver-specific entrypoint.
+    db_kwargs
+        Key-value parameters to pass to the driver to initialize the
+        database.
+    conn_kwargs
+        Key-value parameters to pass to the driver to initialize the
+        connection.
+    """
     db = None
     conn = None
 
@@ -164,17 +189,34 @@ class Connection(_Closeable):
         self._db = db
         self._conn = conn
 
+        try:
+            self._conn.set_autocommit(False)
+        except _lib.NotSupportedError:
+            self._commit_supported = False
+            warnings.warn(
+                "Cannot disable autocommit; conn will not be DBAPI 2.0 compliant",
+                category=Warning,
+            )
+        else:
+            self._commit_supported = True
+
     def close(self) -> None:
+        """Close the connection."""
         self._conn.close()
         self._db.close()
 
     def commit(self) -> None:
-        self._conn.commit()
+        """Explicitly commit."""
+        if self._commit_supported:
+            self._conn.commit()
 
     def rollback(self) -> None:
-        self._conn.rollback()
+        """Explicitly rollback."""
+        if self._commit_supported:
+            self._conn.rollback()
 
     def cursor(self) -> "Cursor":
+        """Create a new cursor for querying the database."""
         return Cursor(self)
 
 
@@ -193,6 +235,7 @@ class Cursor(_Closeable):
 
     @property
     def arraysize(self) -> int:
+        """The number of rows to fetch at a time with fetchmany()."""
         return self._arraysize
 
     @arraysize.setter
@@ -201,6 +244,7 @@ class Cursor(_Closeable):
 
     @property
     def description(self) -> Optional[List[tuple]]:
+        """The schema of the result set."""
         if self._results is None:
             return None
         return self._results.description
@@ -218,11 +262,13 @@ class Cursor(_Closeable):
         raise NotSupportedError("Cursor.callproc")
 
     def close(self):
+        """Close the cursor and free resources."""
         if self._results is not None:
             self._results.close()
         self._stmt.close()
 
     def execute(self, operation, parameters=None) -> None:
+        """Execute a query."""
         self._results = None
         if operation != self._last_query:
             self._last_query = operation
@@ -254,6 +300,7 @@ class Cursor(_Closeable):
         raise NotSupportedError("Cursor.executemany")
 
     def fetchone(self) -> tuple:
+        """Fetch one row of the result."""
         if self._results is None:
             raise ProgrammingError(
                 "Cannot fetchone() before execute()",
@@ -262,6 +309,7 @@ class Cursor(_Closeable):
         return self._results.fetchone()
 
     def fetchmany(self, size: Optional[int] = None) -> List[tuple]:
+        """Fetch some rows of the result."""
         if self._results is None:
             raise ProgrammingError(
                 "Cannot fetchmany() before execute()",
@@ -272,6 +320,7 @@ class Cursor(_Closeable):
         return self._results.fetchmany(size)
 
     def fetchall(self) -> List[tuple]:
+        """Fetch all rows of the result."""
         if self._results is None:
             raise ProgrammingError(
                 "Cannot fetchall() before execute()",
@@ -279,8 +328,33 @@ class Cursor(_Closeable):
             )
         return self._results.fetchall()
 
+    def fetchallarrow(self) -> pyarrow.Table:
+        """
+        Fetch all rows of the result as a PyArrow Table.
+
+        This implements a similar API as turbodbc.
+        """
+        return self.fetch_arrow_table()
+
+    def fetch_arrow_table(self) -> pyarrow.Table:
+        """
+        Fetch all rows of the result as a PyArrow Table.
+
+        This implements a similar API as DuckDB.
+        """
+        if self._results is None:
+            raise ProgrammingError(
+                "Cannot fetch_df() before execute()",
+                status_code=_lib.AdbcStatusCode.INVALID_STATE,
+            )
+        return self._results.fetch_arrow_table()
+
     def fetch_df(self):
-        # DuckDB-compatible
+        """
+        Fetch all rows of the result as a Pandas DataFrame.
+
+        This implements a similar API as DuckDB.
+        """
         if self._results is None:
             raise ProgrammingError(
                 "Cannot fetch_df() before execute()",
@@ -301,6 +375,8 @@ class Cursor(_Closeable):
 
 
 class _RowIterator(_Closeable):
+    """Track state needed to iterate over the result set."""
+
     def __init__(self, reader: pyarrow.RecordBatchReader) -> None:
         self._reader = reader
         self._current_batch = None
@@ -353,6 +429,9 @@ class _RowIterator(_Closeable):
                 break
             rows.append(row)
         return rows
+
+    def fetch_arrow_table(self):
+        return self._reader.read_all()
 
     def fetch_df(self):
         return self._reader.read_pandas()

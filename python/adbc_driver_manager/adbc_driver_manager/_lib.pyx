@@ -240,7 +240,7 @@ class AdbcInfoCode(enum.IntEnum):
     DRIVER_ARROW_VERSION = ADBC_INFO_DRIVER_ARROW_VERSION
 
 
-class Warning(Exception):
+class Warning(UserWarning):
     """
     PEP 249-compliant base warning class.
     """

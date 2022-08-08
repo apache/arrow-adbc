@@ -28,11 +28,13 @@ repository = "https://github.com/apache/arrow-adbc"
 script = "build.py"
 
 [tool.poetry.dependencies]
-pyarrow = "^9.0.0"
+pandas = { version = ">=1.2,<2", optional = true }
+pyarrow = ">=8.0.0"
 python = ">=3.8"
 
 [tool.poetry.dev-dependencies]
 Cython = "^0.29.32"
+pandas = ">=1.2"
 pytest = "^7.1.2"
 setuptools = "^63.4.0"
 
