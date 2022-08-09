@@ -401,7 +401,8 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
         schema_(nullptr),
         next_parameters_(nullptr),
         bind_index_(0),
-        done_(false) {}
+        done_(false),
+        rc_(SQLITE_OK) {}
 
   AdbcStatusCode Init(struct AdbcError* error) {
     // TODO: this crashes if the statement is closed while the reader
@@ -411,23 +412,21 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
 
     sqlite3* db = connection_->db();
     Status status;
-    int rc = SQLITE_OK;
     if (bind_parameters_) {
       status = bind_parameters_->ReadNext(&next_parameters_);
       ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
-      ADBC_RETURN_NOT_OK(BindNext(&rc, error));
-      ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_bind", error));
+      ADBC_RETURN_NOT_OK(BindNext(&rc_, error));
+      ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc_, "sqlite3_bind", error));
     }
     // XXX: with parameters, inferring the schema from the first
     // argument is inaccurate (what if one is null?). Is there a way
     // to hint to SQLite the real type?
 
-    rc = sqlite3_step(stmt_);
-    if (rc == SQLITE_ERROR) {
-      return CheckRc(db, stmt_, rc, "sqlite3_step", error);
+    rc_ = sqlite3_step(stmt_);
+    if (rc_ == SQLITE_ERROR) {
+      return CheckRc(db, stmt_, rc_, "sqlite3_step", error);
     }
     schema_ = StatementToSchema(stmt_);
-    done_ = rc != SQLITE_ROW;
     return ADBC_STATUS_OK;
   }
 
@@ -460,6 +459,32 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
     // The statement was stepped once at the start, so step at the end of the loop
     int64_t num_rows = 0;
     for (int64_t row = 0; row < kBatchSize; row++) {
+      if (rc_ == SQLITE_DONE) {
+        if (bind_parameters_ &&
+            (!next_parameters_ || bind_index_ >= next_parameters_->num_rows())) {
+          ARROW_RETURN_NOT_OK(bind_parameters_->ReadNext(&next_parameters_));
+          bind_index_ = 0;
+        }
+
+        if (next_parameters_ && bind_index_ < next_parameters_->num_rows()) {
+          rc_ = sqlite3_reset(stmt_);
+          if (rc_ != SQLITE_OK) {
+            return Status::IOError("[SQLite3] sqlite3_reset: ", sqlite3_errmsg(db));
+          }
+          struct AdbcError error;
+          ARROW_RETURN_NOT_OK(ToArrowStatus(BindNext(&rc_, &error), &error));
+          rc_ = sqlite3_step(stmt_);
+        } else {
+          done_ = true;
+          next_parameters_.reset();
+          break;
+        }
+      }
+
+      if (rc_ == SQLITE_ERROR) {
+        return Status::IOError("[SQLite3] sqlite3_step: ", sqlite3_errmsg(db));
+      }  // else SQLITE_ROW
+
       for (int col = 0; col < schema_->num_fields(); col++) {
         const auto& field = schema_->field(col);
         switch (field->type()->id()) {
@@ -504,39 +529,18 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
       }
       num_rows++;
 
-      int status = sqlite3_step(stmt_);
-      if (status == SQLITE_ROW) {
-        continue;
-      } else if (status == SQLITE_DONE) {
-        if (bind_parameters_ &&
-            (!next_parameters_ || bind_index_ >= next_parameters_->num_rows())) {
-          ARROW_RETURN_NOT_OK(bind_parameters_->ReadNext(&next_parameters_));
-          bind_index_ = 0;
-        }
+      rc_ = sqlite3_step(stmt_);
+    }
 
-        if (next_parameters_ && bind_index_ < next_parameters_->num_rows()) {
-          status = sqlite3_reset(stmt_);
-          if (status != SQLITE_OK) {
-            return Status::IOError("[SQLite3] sqlite3_reset: ", sqlite3_errmsg(db));
-          }
-          struct AdbcError error;
-          ARROW_RETURN_NOT_OK(ToArrowStatus(BindNext(&status, &error), &error));
-          status = sqlite3_step(stmt_);
-          if (status == SQLITE_ROW) continue;
-        } else {
-          done_ = true;
-          next_parameters_.reset();
-        }
-        break;
+    if (done_ && num_rows == 0) {
+      *batch = nullptr;
+    } else {
+      arrow::ArrayVector arrays(builders.size());
+      for (size_t i = 0; i < builders.size(); i++) {
+        ARROW_RETURN_NOT_OK(builders[i]->Finish(&arrays[i]));
       }
-      return Status::IOError("[SQLite3] sqlite3_step: ", sqlite3_errmsg(db));
+      *batch = arrow::RecordBatch::Make(schema_, num_rows, std::move(arrays));
     }
-
-    arrow::ArrayVector arrays(builders.size());
-    for (size_t i = 0; i < builders.size(); i++) {
-      ARROW_RETURN_NOT_OK(builders[i]->Finish(&arrays[i]));
-    }
-    *batch = arrow::RecordBatch::Make(schema_, num_rows, std::move(arrays));
     return Status::OK();
   }
 
@@ -556,6 +560,7 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
   std::shared_ptr<arrow::RecordBatch> next_parameters_;
   int64_t bind_index_;
   bool done_;
+  int rc_;
 };
 
 class SqliteStatementImpl {

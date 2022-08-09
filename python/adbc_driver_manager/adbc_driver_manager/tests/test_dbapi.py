@@ -45,6 +45,25 @@ def test_type_objects():
     assert dbapi.NUMBER == dbapi.ROWID
 
 
+def test_attrs(sqlite):
+    assert sqlite.Warning == dbapi.Warning
+    assert sqlite.Error == dbapi.Error
+    assert sqlite.InterfaceError == dbapi.InterfaceError
+    assert sqlite.DatabaseError == dbapi.DatabaseError
+    assert sqlite.DataError == dbapi.DataError
+    assert sqlite.OperationalError == dbapi.OperationalError
+    assert sqlite.IntegrityError == dbapi.IntegrityError
+    assert sqlite.InternalError == dbapi.InternalError
+    assert sqlite.ProgrammingError == dbapi.ProgrammingError
+    assert sqlite.NotSupportedError == dbapi.NotSupportedError
+
+    with sqlite.cursor() as cur:
+        assert cur.arraysize == 1
+        assert cur.connection is sqlite
+        assert cur.description is None
+        assert cur.rowcount == -1
+
+
 def test_query_fetch_py(sqlite):
     with sqlite.cursor() as cur:
         cur.execute('SELECT 1, "foo", 2.0')
@@ -53,7 +72,9 @@ def test_query_fetch_py(sqlite):
             ('"foo"', dbapi.STRING, None, None, None, None, None),
             ("2.0", dbapi.NUMBER, None, None, None, None, None),
         ]
+        assert cur.rownumber == 0
         assert cur.fetchone() == (1, "foo", 2.0)
+        assert cur.rownumber == 1
         assert cur.fetchone() is None
 
         cur.execute('SELECT 1, "foo", 2.0')
@@ -63,6 +84,9 @@ def test_query_fetch_py(sqlite):
         cur.execute('SELECT 1, "foo", 2.0')
         assert cur.fetchall() == [(1, "foo", 2.0)]
         assert cur.fetchall() == []
+
+        cur.execute('SELECT 1, "foo", 2.0')
+        assert list(cur) == [(1, "foo", 2.0)]
 
 
 def test_query_fetch_arrow(sqlite):
@@ -90,3 +114,31 @@ def test_query_fetch_df(sqlite):
                 }
             ),
         )
+
+
+def test_query_parameters(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT ? + 1, ?", (1.0, 2))
+        assert cur.fetchall() == [(2.0, 2)]
+
+
+def test_executemany(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("CREATE TABLE foo (a, b)")
+        cur.executemany(
+            "INSERT INTO foo VALUES (?, ?)",
+            [
+                (1, 2),
+                (3, 4),
+                (5, 6),
+            ],
+        )
+        cur.execute("SELECT COUNT(*) FROM foo")
+        assert cur.fetchone() == (3,)
+        cur.execute("SELECT * FROM foo ORDER BY a ASC")
+        assert cur.rownumber == 0
+        assert next(cur) == (1, 2)
+        assert cur.rownumber == 1
+        assert next(cur) == (3, 4)
+        assert cur.rownumber == 2
+        assert next(cur) == (5, 6)

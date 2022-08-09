@@ -16,7 +16,7 @@
 # under the License.
 
 """
-PEP 249 (DBAPI 2.0) API wrapper for the ADBC Driver Manager.
+PEP 249 (DB-API 2.0) API wrapper for the ADBC Driver Manager.
 """
 
 import datetime
@@ -36,7 +36,7 @@ if typing.TYPE_CHECKING:
 # ----------------------------------------------------------
 # Globals
 
-#: The DBAPI API level (2.0).
+#: The DB-API API level (2.0).
 apilevel = "2.0"
 #: The thread safety level (connections may not be shared).
 threadsafety = 1
@@ -154,16 +154,13 @@ def connect(
     try:
         db = _lib.AdbcDatabase(driver=driver, entrypoint=entrypoint, **db_kwargs)
         conn = _lib.AdbcConnection(db, **conn_kwargs)
-        # TODO: if this fails, emit a warning, then have the connection ignore
-        # commit/rollback calls
-        conn.set_autocommit(False)
+        return Connection(db, conn)
     except Exception:
         if conn:
             conn.close()
         if db:
             db.close()
         raise
-    return Connection(db, conn)
 
 
 # ----------------------------------------------------------
@@ -180,10 +177,22 @@ class _Closeable:
 
 class Connection(_Closeable):
     """
-    A DBAPI 2.0 (PEP 249) connection.
+    A DB-API 2.0 (PEP 249) connection.
 
     Do not create this object directly; use connect().
     """
+
+    # Optional extension: expose exception classes on Connection
+    Warning = _lib.Warning
+    Error = _lib.Error
+    InterfaceError = _lib.InterfaceError
+    DatabaseError = _lib.DatabaseError
+    DataError = _lib.DataError
+    OperationalError = _lib.OperationalError
+    IntegrityError = _lib.IntegrityError
+    InternalError = _lib.InternalError
+    ProgrammingError = _lib.ProgrammingError
+    NotSupportedError = _lib.NotSupportedError
 
     def __init__(self, db: _lib.AdbcDatabase, conn: _lib.AdbcConnection) -> None:
         self._db = db
@@ -194,7 +203,7 @@ class Connection(_Closeable):
         except _lib.NotSupportedError:
             self._commit_supported = False
             warnings.warn(
-                "Cannot disable autocommit; conn will not be DBAPI 2.0 compliant",
+                "Cannot disable autocommit; conn will not be DB-API 2.0 compliant",
                 category=Warning,
             )
         else:
@@ -222,12 +231,13 @@ class Connection(_Closeable):
 
 class Cursor(_Closeable):
     """
-    A DBAPI 2.0 (PEP 249) cursor.
+    A DB-API 2.0 (PEP 249) cursor.
 
     Do not create this object directly; use Connection.cursor().
     """
 
     def __init__(self, conn: Connection) -> None:
+        self._conn = conn
         self._stmt = _lib.AdbcStatement(conn._conn)
         self._last_query: Optional[str] = None
         self._results: Optional["_RowIterator"] = None
@@ -241,6 +251,15 @@ class Cursor(_Closeable):
     @arraysize.setter
     def arraysize(self, size: int) -> None:
         self._arraysize = size
+
+    @property
+    def connection(self) -> Connection:
+        """
+        Get the connection associated with this cursor.
+
+        This is an optional DB-API extension.
+        """
+        return self._conn
 
     @property
     def description(self) -> Optional[List[tuple]]:
@@ -257,6 +276,12 @@ class Cursor(_Closeable):
         This is always -1 since ADBC returns results as a stream.
         """
         return -1
+
+    @property
+    def rownumber(self):
+        if self._results is not None:
+            return self._results.rownumber
+        return None
 
     def callproc(self, procname, parameters):
         raise NotSupportedError("Cursor.callproc")
@@ -297,7 +322,32 @@ class Cursor(_Closeable):
         )
 
     def executemany(self, operation, seq_of_parameters):
-        raise NotSupportedError("Cursor.executemany")
+        self._results = None
+        if operation != self._last_query:
+            self._last_query = operation
+            self._stmt.set_sql_query(operation)
+            self._stmt.prepare()
+
+        if seq_of_parameters:
+            rb = pyarrow.record_batch(
+                [
+                    pyarrow.array([row[col_idx] for row in seq_of_parameters])
+                    for col_idx in range(len(seq_of_parameters[0]))
+                ],
+                names=[str(i) for i in range(len(seq_of_parameters[0]))],
+            )
+        else:
+            rb = pyarrow.record_batch([])
+
+        arr_handle = _lib.ArrowArrayHandle()
+        sch_handle = _lib.ArrowSchemaHandle()
+        rb._export_to_c(arr_handle.address, sch_handle.address)
+        self._stmt.bind(arr_handle, sch_handle)
+        self._stmt.execute()
+        # XXX: must step through results to fully execute query
+        handle = self._stmt.get_stream()
+        reader = pyarrow.RecordBatchReader._import_from_c(handle.address)
+        reader.read_all()
 
     def fetchone(self) -> tuple:
         """Fetch one row of the result."""
@@ -362,6 +412,13 @@ class Cursor(_Closeable):
             )
         return self._results.fetch_df()
 
+    def next(self):
+        """Fetch the next row, or raise StopIteration."""
+        row = self.fetchone()
+        if row is None:
+            raise StopIteration
+        return row
+
     def nextset(self):
         raise NotSupportedError("Cursor.nextset")
 
@@ -373,6 +430,12 @@ class Cursor(_Closeable):
         # Not used
         pass
 
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
+
 
 class _RowIterator(_Closeable):
     """Track state needed to iterate over the result set."""
@@ -382,6 +445,7 @@ class _RowIterator(_Closeable):
         self._current_batch = None
         self._next_row = 0
         self._finished = False
+        self.rownumber = 0
 
     def close(self) -> None:
         self._reader.close()
@@ -410,6 +474,7 @@ class _RowIterator(_Closeable):
             for arr in self._current_batch.columns
         )
         self._next_row += 1
+        self.rownumber += 1
         return row
 
     def fetchmany(self, size: int):
