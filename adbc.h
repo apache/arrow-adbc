@@ -782,6 +782,14 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
 /// ADBC_STATUS_ALREADY_EXISTS should be raised.  Else, data should be
 /// appended to the target table.
 #define ADBC_INGEST_OPTION_TARGET_TABLE "adbc.ingest.target_table"
+/// \brief Whether to create (the default) or append.
+#define ADBC_INGEST_OPTION_MODE "adbc.ingest.mode"
+/// \brief Create the table and insert data; error if the table exists.
+#define ADBC_INGEST_OPTION_MODE_CREATE "adbc.ingest.mode.create"
+/// \brief Do not create the table, and insert data; error if the
+///   table does not exist (ADBC_STATUS_NOT_FOUND) or does not match
+///   the schema of the data to append (ADBC_STATUS_ALREADY_EXISTS).
+#define ADBC_INGEST_OPTION_MODE_APPEND "adbc.ingest.mode.append"
 
 /// }@
 
