@@ -240,8 +240,15 @@ class AdbcInfoCode(enum.IntEnum):
     DRIVER_ARROW_VERSION = ADBC_INFO_DRIVER_ARROW_VERSION
 
 
+class Warning(UserWarning):
+    """
+    PEP 249-compliant base warning class.
+    """
+
+
 class Error(Exception):
-    """PEP-249 compliant base exception class.
+    """
+    PEP 249-compliant base exception class.
 
     Attributes
     ----------
@@ -289,7 +296,13 @@ class ProgrammingError(DatabaseError):
 
 
 class NotSupportedError(DatabaseError):
-    pass
+    def __init__(self, message, *, vendor_code=None, sqlstate=None):
+        super().__init__(
+            message,
+            status_code=AdbcStatusCode.NOT_IMPLEMENTED,
+            vendor_code=vendor_code,
+            sqlstate=sqlstate,
+        )
 
 
 INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
@@ -330,7 +343,7 @@ cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
                     ADBC_STATUS_UNAUTHORIZED):
         klass = ProgrammingError
     elif status == ADBC_STATUS_NOT_IMPLEMENTED:
-        klass = NotSupportedError
+        raise NotSupportedError(message)
     raise klass(message, status_code=status)
 
 
