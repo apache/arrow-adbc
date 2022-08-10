@@ -278,7 +278,7 @@ TEST_F(Sqlite, BulkIngestTable) {
     EXPECT_THAT(batches, ::testing::UnorderedPointwise(PointeesEqual(), {bulk_table}));
   }
 
-  // Append
+  // Append (already exists)
   {
     ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
     ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
@@ -289,6 +289,26 @@ TEST_F(Sqlite, BulkIngestTable) {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
                                       "bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
+    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
+  }
+
+  // Append (proper option)
+  {
+    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
+    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
+
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                      "bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                      ADBC_INGEST_OPTION_MODE_APPEND, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
@@ -312,7 +332,7 @@ TEST_F(Sqlite, BulkIngestTable) {
                 bulk_schema, R"([[1, "foo"], [2, "bar"], [1, "foo"], [2, "bar"]])")}));
   }
 
-  // Conflict
+  // Conflict (table exists)
   {
     auto bulk_schema = arrow::schema({arrow::field("ints", arrow::int64())});
     auto bulk_table = adbc::RecordBatchFromJSON(bulk_schema, R"([[1], [2]])");
@@ -325,6 +345,48 @@ TEST_F(Sqlite, BulkIngestTable) {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
                                       "bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
+    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
+  }
+
+  // Append (table does not exist)
+  {
+    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
+    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
+
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                      "this_table_does_not_exist", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                      ADBC_INGEST_OPTION_MODE_APPEND, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
+    ASSERT_EQ(ADBC_STATUS_NOT_FOUND, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
+  }
+
+  // Append (schema conflict)
+  {
+    auto bulk_schema = arrow::schema({arrow::field("ints", arrow::int64())});
+    auto bulk_table = adbc::RecordBatchFromJSON(bulk_schema, R"([[1], [2]])");
+    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
+    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
+
+    AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                      "bulk_insert", &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                      ADBC_INGEST_OPTION_MODE_APPEND, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS, AdbcStatementExecute(&statement, &error));

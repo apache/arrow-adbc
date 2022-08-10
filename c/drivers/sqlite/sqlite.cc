@@ -570,7 +570,7 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
 class SqliteStatementImpl {
  public:
   explicit SqliteStatementImpl(std::shared_ptr<SqliteConnectionImpl> connection)
-      : connection_(std::move(connection)), stmt_(nullptr) {}
+      : connection_(std::move(connection)), append_(false), stmt_(nullptr) {}
 
   AdbcStatusCode Close(struct AdbcError* error) {
     if (stmt_) {
@@ -1164,6 +1164,16 @@ class SqliteStatementImpl {
       if (std::strlen(value) == 0) return ADBC_STATUS_INVALID_ARGUMENT;
       bulk_table_ = value;
       return ADBC_STATUS_OK;
+    } else if (std::strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
+      if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_APPEND) == 0) {
+        append_ = true;
+      } else if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE) == 0) {
+        append_ = false;
+      } else {
+        SetError(error, "Unknown value '", value, "' for option: ", key);
+        return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+      return ADBC_STATUS_OK;
     }
     SetError(error, "Unknown option: ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -1191,9 +1201,9 @@ class SqliteStatementImpl {
     sqlite3* db = connection_->db();
 
     // Create the table
-    {
+    if (!append_) {
       // XXX: not injection-safe
-      std::string query = "CREATE TABLE IF NOT EXISTS ";
+      std::string query = "CREATE TABLE ";
       query += bulk_table_;
       query += " (";
       const auto& fields = bind_parameters_->schema()->fields();
@@ -1203,12 +1213,13 @@ class SqliteStatementImpl {
       }
       query += ')';
 
-      ADBC_RETURN_NOT_OK(
-          DoQuery(db, query.c_str(), error, [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
+      if (DoQuery(db, query.c_str(), error, [&](sqlite3_stmt* stmt) -> AdbcStatusCode {
             const int rc = sqlite3_step(stmt);
             if (rc == SQLITE_DONE) return ADBC_STATUS_OK;
             return CheckRc(db, stmt, rc, "sqlite3_step", error);
-          }));
+          }) != ADBC_STATUS_OK) {
+        return ADBC_STATUS_ALREADY_EXISTS;
+      }
     }
 
     // Insert the rows
@@ -1227,8 +1238,14 @@ class SqliteStatementImpl {
       int rc = sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.size()),
                                   &stmt, /*pzTail=*/nullptr);
       if (rc != SQLITE_OK) {
+        // XXX: not a great way to try to figure out the right error
+        AdbcStatusCode code = ADBC_STATUS_ALREADY_EXISTS;
+        if (std::strstr(sqlite3_errmsg(db), "no such table:")) {
+          code = ADBC_STATUS_NOT_FOUND;
+        }
+        // Clean up
         std::ignore = CheckRc(db, stmt, rc, "sqlite3_prepare_v2", error);
-        return ADBC_STATUS_ALREADY_EXISTS;
+        return code;
       }
       ADBC_RETURN_NOT_OK(DoQuery(db, stmt, error, [&]() -> AdbcStatusCode {
         int rc = SQLITE_OK;
@@ -1282,6 +1299,7 @@ class SqliteStatementImpl {
   // Bulk ingestion
   // Target of bulk ingestion (rather janky to store state like this, though…)
   std::string bulk_table_;
+  bool append_;
 
   // Prepared statements
   sqlite3_stmt* stmt_;

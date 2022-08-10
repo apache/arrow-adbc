@@ -64,6 +64,9 @@ cdef extern from "adbc.h" nogil:
 
     cdef const char* ADBC_CONNECTION_OPTION_AUTOCOMMIT
     cdef const char* ADBC_INGEST_OPTION_TARGET_TABLE
+    cdef const char* ADBC_INGEST_OPTION_MODE
+    cdef const char* ADBC_INGEST_OPTION_MODE_APPEND
+    cdef const char* ADBC_INGEST_OPTION_MODE_CREATE
 
     cdef int ADBC_OBJECT_DEPTH_ALL
     cdef int ADBC_OBJECT_DEPTH_CATALOGS
@@ -306,6 +309,9 @@ class NotSupportedError(DatabaseError):
 
 
 INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
+INGEST_OPTION_MODE = ADBC_INGEST_OPTION_MODE.decode("utf-8")
+INGEST_OPTION_MODE_APPEND = ADBC_INGEST_OPTION_MODE_APPEND.decode("utf-8")
+INGEST_OPTION_MODE_CREATE = ADBC_INGEST_OPTION_MODE_CREATE.decode("utf-8")
 
 
 cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
