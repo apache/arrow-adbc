@@ -448,7 +448,9 @@ class _RowIterator(_Closeable):
         self.rownumber = 0
 
     def close(self) -> None:
-        self._reader.close()
+        if hasattr(self._reader, "close"):
+            # Only in recent PyArrow
+            self._reader.close()
 
     @property
     def description(self) -> List[tuple]:
