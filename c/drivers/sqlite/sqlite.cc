@@ -34,6 +34,7 @@
 #include <arrow/util/string_builder.h>
 
 #include "adbc.h"
+#include "arrow/type_fwd.h"
 #include "drivers/util.h"
 
 namespace {
@@ -1138,6 +1139,24 @@ class SqliteStatementImpl {
     return ADBC_STATUS_OK;
   }
 
+  AdbcStatusCode GetParameterSchema(const std::shared_ptr<SqliteStatementImpl>& self,
+                                    struct ArrowSchema* schema, struct AdbcError* error) {
+    if (!stmt_) {
+      SetError(error, "Cannot get parameter schema before preparing");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
+    const int num_params = sqlite3_bind_parameter_count(stmt_);
+    arrow::FieldVector fields(num_params);
+    for (int i = 0; i < num_params; i++) {
+      const char* name = sqlite3_bind_parameter_name(stmt_, i);
+      fields[i] = arrow::field(name ? name : "", arrow::null());
+    }
+    ADBC_RETURN_NOT_OK(FromArrowStatus(
+        arrow::ExportSchema(arrow::Schema(std::move(fields)), schema), error));
+    return ADBC_STATUS_OK;
+  }
+
   AdbcStatusCode GetStream(const std::shared_ptr<SqliteStatementImpl>& self,
                            struct ArrowArrayStream* out, struct AdbcError* error) {
     if (!result_reader_) {
@@ -1502,6 +1521,15 @@ AdbcStatusCode SqliteStatementGetPartitionDescSize(struct AdbcStatement* stateme
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode SqliteStatementGetParameterSchema(struct AdbcStatement* statement,
+                                                 struct ArrowSchema* schema,
+                                                 struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto* ptr =
+      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
+  return (*ptr)->GetParameterSchema(*ptr, schema, error);
+}
+
 AdbcStatusCode SqliteStatementGetStream(struct AdbcStatement* statement,
                                         struct ArrowArrayStream* out,
                                         struct AdbcError* error) {
@@ -1669,6 +1697,12 @@ AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement
   return SqliteStatementGetPartitionDescSize(statement, length, error);
 }
 
+AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
+                                               struct ArrowSchema* schema,
+                                               struct AdbcError* error) {
+  return SqliteStatementGetParameterSchema(statement, schema, error);
+}
+
 AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
                                       struct ArrowArrayStream* out,
                                       struct AdbcError* error) {
@@ -1727,6 +1761,7 @@ AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
   driver->StatementBind = SqliteStatementBind;
   driver->StatementBindStream = SqliteStatementBindStream;
   driver->StatementExecute = SqliteStatementExecute;
+  driver->StatementGetParameterSchema = SqliteStatementGetParameterSchema;
   driver->StatementGetPartitionDesc = SqliteStatementGetPartitionDesc;
   driver->StatementGetPartitionDescSize = SqliteStatementGetPartitionDescSize;
   driver->StatementGetStream = SqliteStatementGetStream;

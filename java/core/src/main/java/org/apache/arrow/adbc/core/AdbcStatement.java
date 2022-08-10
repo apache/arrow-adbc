@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
+import org.apache.arrow.vector.types.pojo.Schema;
 
 public interface AdbcStatement extends AutoCloseable {
   /** Set a generic query option. */
@@ -74,6 +75,22 @@ public interface AdbcStatement extends AutoCloseable {
    *     executed.
    */
   ArrowReader getArrowReader() throws AdbcException;
+
+  /**
+   * Get the schema for bound parameters.
+   *
+   * <p>This should be called after AdbcStatementPrepare. This retrieves an Arrow schema describing
+   * the number, names, and types of the parameters in a parameterized statement. Not all drivers
+   * will support this. If the name of a parameter cannot be determined, the name of the
+   * corresponding field in the schema will be an empty string. Similarly, if the type cannot be
+   * statically determined, the type of the corresponding field will be NA (NullType).
+   *
+   * @throws AdbcException with {@link AdbcStatusCode#NOT_IMPLEMENTED} if the parameters cannot be
+   *     determined at all.
+   */
+  default Schema getParameterSchema() throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support getParameterSchema");
+  }
 
   /**
    * Get a list of partitions of the result set.

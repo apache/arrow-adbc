@@ -102,6 +102,12 @@ AdbcStatusCode StatementExecute(struct AdbcStatement*, struct AdbcError* error) 
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode StatementGetParameterSchema(struct AdbcStatement* statement,
+                                           struct ArrowSchema* schema,
+                                           struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode StatementGetPartitionDesc(struct AdbcStatement*, uint8_t*,
                                          struct AdbcError*) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -476,6 +482,15 @@ AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement
                                                                   error);
 }
 
+AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
+                                               struct ArrowSchema* schema,
+                                               struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return statement->private_driver->StatementGetParameterSchema(statement, schema, error);
+}
+
 AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
                                       struct ArrowArrayStream* out,
                                       struct AdbcError* error) {
@@ -707,6 +722,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   CHECK_REQUIRED(driver, StatementRelease);
   FILL_DEFAULT(driver, StatementBind);
   FILL_DEFAULT(driver, StatementExecute);
+  FILL_DEFAULT(driver, StatementGetParameterSchema);
   FILL_DEFAULT(driver, StatementGetPartitionDesc);
   FILL_DEFAULT(driver, StatementGetPartitionDescSize);
   FILL_DEFAULT(driver, StatementPrepare);

@@ -41,6 +41,7 @@ import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Field;
+import org.apache.arrow.vector.types.pojo.Schema;
 
 public class FlightSqlStatement implements AdbcStatement {
   private final BufferAllocator allocator;
@@ -245,6 +246,15 @@ public class FlightSqlStatement implements AdbcStatement {
         new FlightInfoReader(allocator, client, clientCache, flightEndpoints);
     flightEndpoints = null;
     return reader;
+  }
+
+  @Override
+  public Schema getParameterSchema() throws AdbcException {
+    if (preparedStatement == null) {
+      throw AdbcException.invalidState(
+          "[Flight SQL] Must call prepare() before getParameterSchema()");
+    }
+    return preparedStatement.getParameterSchema();
   }
 
   @Override
