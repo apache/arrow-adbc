@@ -55,8 +55,11 @@ if(ADBC_BUILD_TESTS)
                 SOURCES
                 adbc_driver_manager_test.cc
                 ../validation/adbc_validation.c
+                ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c
                 EXTRA_LINK_LIBS
                 ${TEST_LINK_LIBS})
+  target_include_directories(adbc-driver-manager-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
 endif()
 
 validate_config()

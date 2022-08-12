@@ -69,3 +69,5 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
+
+exclude: "^c/vendor/.*"

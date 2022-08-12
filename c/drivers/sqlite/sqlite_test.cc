@@ -908,6 +908,7 @@ TEST_F(Sqlite, ValidationSuite) {
   AdbcValidateConnectionAutocommit(&ctx);
   AdbcValidateStatementNewRelease(&ctx);
   AdbcValidateStatementSqlExecute(&ctx);
+  AdbcValidateStatementSqlIngest(&ctx);
   AdbcValidateStatementSqlPrepare(&ctx);
   ASSERT_EQ(ctx.failed, 0);
   ASSERT_EQ(ctx.total, ctx.passed);

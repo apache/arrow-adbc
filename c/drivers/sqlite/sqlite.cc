@@ -461,48 +461,44 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
     for (int64_t row = 0; row < kBatchSize; row++) {
       if (rc_ != SQLITE_DONE) {
         for (int col = 0; col < schema_->num_fields(); col++) {
-          const auto& field = schema_->field(col);
-          switch (field->type()->id()) {
-            case arrow::Type::DOUBLE: {
-              // TODO: handle null values
-              const double value = sqlite3_column_double(stmt_, col);
-              ARROW_RETURN_NOT_OK(dynamic_cast<arrow::DoubleBuilder*>(builders[col].get())
-                                      ->Append(value));
-              break;
-            }
-            case arrow::Type::INT64: {
-              // TODO: handle null values
-              const sqlite3_int64 value = sqlite3_column_int64(stmt_, col);
-              ARROW_RETURN_NOT_OK(
-                  dynamic_cast<arrow::Int64Builder*>(builders[col].get())->Append(value));
-              break;
-            }
-            case arrow::Type::NA: {
-              // TODO: handle null values
-              ARROW_RETURN_NOT_OK(
-                  dynamic_cast<arrow::NullBuilder*>(builders[col].get())->AppendNull());
-              break;
-            }
-            case arrow::Type::STRING: {
-              const char* value =
-                  reinterpret_cast<const char*>(sqlite3_column_text(stmt_, col));
-              if (!value) {
-                // TODO: check field nullability
+          if (sqlite3_column_type(stmt_, col) == SQLITE_NULL) {
+            ARROW_RETURN_NOT_OK(builders[col]->AppendNull());
+          } else {
+            const auto& field = schema_->field(col);
+            switch (field->type()->id()) {
+              case arrow::Type::DOUBLE: {
+                const double value = sqlite3_column_double(stmt_, col);
                 ARROW_RETURN_NOT_OK(
-                    dynamic_cast<arrow::StringBuilder*>(builders[col].get())
-                        ->AppendNull());
-              } else {
+                    dynamic_cast<arrow::DoubleBuilder*>(builders[col].get())
+                        ->Append(value));
+                break;
+              }
+              case arrow::Type::INT64: {
+                const sqlite3_int64 value = sqlite3_column_int64(stmt_, col);
+                ARROW_RETURN_NOT_OK(
+                    dynamic_cast<arrow::Int64Builder*>(builders[col].get())
+                        ->Append(value));
+                break;
+              }
+              case arrow::Type::NA: {
+                ARROW_RETURN_NOT_OK(
+                    dynamic_cast<arrow::NullBuilder*>(builders[col].get())->AppendNull());
+                break;
+              }
+              case arrow::Type::STRING: {
+                const char* value =
+                    reinterpret_cast<const char*>(sqlite3_column_text(stmt_, col));
                 const arrow::util::string_view view(value, std::strlen(value));
                 ARROW_RETURN_NOT_OK(
                     dynamic_cast<arrow::StringBuilder*>(builders[col].get())
                         ->Append(value));
+                break;
               }
-              break;
+              default:
+                return Status::NotImplemented("[SQLite3] Cannot read field '",
+                                              field->name(), "' of type ",
+                                              field->type()->ToString());
             }
-            default:
-              return Status::NotImplemented("[SQLite3] Cannot read field '",
-                                            field->name(), "' of type ",
-                                            field->type()->ToString());
           }
         }
         num_rows++;

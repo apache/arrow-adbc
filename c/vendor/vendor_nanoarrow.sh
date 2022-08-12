@@ -1,3 +1,4 @@
+#!/bin/bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,6 +16,21 @@
 # specific language governing permissions and limitations
 # under the License.
 
-c/vendor/* linguist-vendored
-python/adbc_driver_manager/poetry.lock linguist-generated=true
-python/adbc_driver_manager/requirements-dev.txt linguist-generated=true
+# Download and extract the latest Nanoarrow.
+
+main() {
+    local -r repo_url="https://github.com/apache/arrow-nanoarrow"
+    local -r commit_sha=$(git ls-remote "$repo_url" HEAD | awk '{print $2}')
+    TARBALL="$(pwd)/nanoarrow.tar.gz"
+
+    echo "Fetching $commit_sha from $repo_url"
+    wget -O "$TARBALL" "$repo_url/archive/$commit_sha.tar.gz"
+    trap 'rm "$TARBALL"' EXIT
+
+    mkdir -p nanoarrow
+    # Keep only the sources
+    tar --strip-components 3 -C nanoarrow -xf "$TARBALL"
+    rm nanoarrow/*_test.cc
+}
+
+main "$@"

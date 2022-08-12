@@ -37,6 +37,7 @@ void AdbcValidateConnectionNewRelease(struct AdbcValidateTestContext* adbc_conte
 void AdbcValidateConnectionAutocommit(struct AdbcValidateTestContext* adbc_context);
 void AdbcValidateStatementNewRelease(struct AdbcValidateTestContext* adbc_context);
 void AdbcValidateStatementSqlExecute(struct AdbcValidateTestContext* adbc_context);
+void AdbcValidateStatementSqlIngest(struct AdbcValidateTestContext* adbc_context);
 void AdbcValidateStatementSqlPrepare(struct AdbcValidateTestContext* adbc_context);
 
 #ifdef __cplusplus
