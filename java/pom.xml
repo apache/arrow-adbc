@@ -20,25 +20,16 @@
 
   <groupId>org.apache.arrow.adbc</groupId>
   <artifactId>arrow-adbc-java-root</artifactId>
-  <version>9.0.0-SNAPSHOT</version>
+  <version>10.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Arrow ADBC Java Root POM</name>
   <description>Apache Arrow is open source, in-memory columnar data structures and low-overhead messaging</description>
   <url>https://arrow.apache.org/</url>
 
-  <!-- Get nightly Arrow for now to pick up bug fixes -->
-  <repositories>
-    <repository>
-      <id>arrow-apache-nightlies</id>
-      <url>https://nightlies.apache.org/arrow/java</url>
-    </repository>
-  </repositories>
-
   <properties>
-    <!-- Nightly build 2022/07/11 -->
-    <dep.arrow.version>9.0.0.dev363</dep.arrow.version>
-    <adbc.version>9.0.0-SNAPSHOT</adbc.version>
+    <dep.arrow.version>9.0.0</dep.arrow.version>
+    <adbc.version>10.0.0-SNAPSHOT</adbc.version>
   </properties>
 
   <scm>

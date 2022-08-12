@@ -746,6 +746,26 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
                                        struct ArrowArrayStream* values,
                                        struct AdbcError* error);
 
+/// \brief Get the schema for bound parameters.
+///
+/// This retrieves an Arrow schema describing the number, names, and
+/// types of the parameters in a parameterized statement.  The fields
+/// of the schema should be in order of the ordinal position of the
+/// parameters; named parameters should appear only once.
+///
+/// If the parameter does not have a name, or the name cannot be
+/// determined, the name of the corresponding field in the schema will
+/// be an empty string.  If the type cannot be determined, the type of
+/// the corresponding field will be NA (NullType).
+///
+/// This should be called after AdbcStatementPrepare.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the schema cannot be determined.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
+                                               struct ArrowSchema* schema,
+                                               struct AdbcError* error);
+
 /// \brief Read the result of a statement.
 ///
 /// This method can be called only once per execution of the
@@ -918,6 +938,8 @@ struct ADBC_EXPORT AdbcDriver {
                                         struct AdbcError*);
   AdbcStatusCode (*StatementExecute)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementPrepare)(struct AdbcStatement*, struct AdbcError*);
+  AdbcStatusCode (*StatementGetParameterSchema)(struct AdbcStatement*,
+                                                struct ArrowSchema*, struct AdbcError*);
   AdbcStatusCode (*StatementGetStream)(struct AdbcStatement*, struct ArrowArrayStream*,
                                        struct AdbcError*);
   AdbcStatusCode (*StatementGetPartitionDescSize)(struct AdbcStatement*, size_t*,

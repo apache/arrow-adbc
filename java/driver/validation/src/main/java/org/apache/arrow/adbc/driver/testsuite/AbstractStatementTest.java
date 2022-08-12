@@ -244,4 +244,15 @@ public abstract class AbstractStatementTest {
       }
     }
   }
+
+  @Test
+  public void getParameterSchema() throws Exception {
+    util.ingestTableIntsStrs(allocator, connection, tableName);
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery(String.format("SELECT * FROM %s WHERE INTS = ?", tableName));
+      stmt.prepare();
+      final Schema paramsSchema = stmt.getParameterSchema();
+      assertThat(paramsSchema.getFields().size()).isEqualTo(1);
+    }
+  }
 }

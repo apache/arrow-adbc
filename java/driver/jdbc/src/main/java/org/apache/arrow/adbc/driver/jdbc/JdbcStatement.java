@@ -19,11 +19,16 @@ package org.apache.arrow.adbc.driver.jdbc;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.ParameterMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import org.apache.arrow.adapter.jdbc.JdbcFieldInfo;
+import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
@@ -34,7 +39,9 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
+import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
+import org.apache.arrow.vector.types.pojo.Schema;
 
 public class JdbcStatement implements AdbcStatement {
   private final BufferAllocator allocator;
@@ -225,6 +232,33 @@ public class JdbcStatement implements AdbcStatement {
         new JdbcArrowReader(allocator, resultSet, /*overrideSchema*/ null);
     resultSet = null;
     return reader;
+  }
+
+  @Override
+  public Schema getParameterSchema() throws AdbcException {
+    if (statement instanceof PreparedStatement) {
+      final PreparedStatement preparedStatement = (PreparedStatement) statement;
+      try {
+        final ParameterMetaData md = preparedStatement.getParameterMetaData();
+        final List<Field> fields = new ArrayList<>(md.getParameterCount());
+        for (int i = 0; i < md.getParameterCount(); i++) {
+          final int paramIndex = i + 1;
+          JdbcFieldInfo fieldInfo =
+              new JdbcFieldInfo(
+                  md.getParameterType(paramIndex),
+                  md.getPrecision(paramIndex),
+                  md.getScale(paramIndex));
+          ArrowType arrowType =
+              JdbcToArrowUtils.getArrowTypeFromJdbcType(
+                  fieldInfo, JdbcToArrowUtils.getUtcCalendar());
+          fields.add(Field.nullable("", arrowType));
+        }
+        return new Schema(fields);
+      } catch (SQLException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    throw AdbcException.invalidState("[JDBC] Must call prepare() before getParameterSchema()");
   }
 
   @Override

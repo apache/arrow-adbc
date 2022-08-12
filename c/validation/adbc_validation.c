@@ -28,7 +28,7 @@ const char* AdbcValidateStatusCodeMessage(AdbcStatusCode code) {
 #define STRINGIFY_VALUE(s) ADBCV_STRINGIFY(s)
 #define CASE(CONSTANT)         \
   case ADBC_STATUS_##CONSTANT: \
-    return #CONSTANT " (" STRINGIFY_VALUE(ADBC_STATUS_##CONSTANT) ")";
+    return STRINGIFY_VALUE(ADBC_STATUS_##CONSTANT) " (" #CONSTANT ")";
 
   switch (code) {
     CASE(OK);
@@ -85,14 +85,20 @@ void AdbcValidateFail(struct AdbcValidateTestContext* ctx, const char* file, int
   }
 }
 
-#define ADBCV_ASSERT_FAILS_WITH(STATUS, ERROR, EXPR)                            \
+#define ADBCV_CONCAT(a, b) a##b
+#define ADBCV_NAME(a, b) ADBCV_CONCAT(a, b)
+#define ADBCV_ASSERT_FAILS_WITH_IMPL(STATUS, ERROR, NAME, EXPR)                 \
   AdbcValidateBeginAssert(adbc_context, "%s == %s", #EXPR,                      \
                           AdbcValidateStatusCodeMessage(ADBC_STATUS_##STATUS)); \
-  if (ADBC_STATUS_##STATUS != (EXPR)) {                                         \
+  AdbcStatusCode NAME = (EXPR);                                                 \
+  if (ADBC_STATUS_##STATUS != NAME) {                                           \
+    printf("(was %s) ", AdbcValidateStatusCodeMessage(NAME));                   \
     AdbcValidateFail(adbc_context, __FILE__, __LINE__, ERROR);                  \
     return;                                                                     \
   }                                                                             \
   AdbcValidatePass(adbc_context);
+#define ADBCV_ASSERT_FAILS_WITH(STATUS, ERROR, EXPR) \
+  ADBCV_ASSERT_FAILS_WITH_IMPL(STATUS, ERROR, ADBCV_NAME(adbc_status_, __COUNTER__), EXPR)
 #define ADBCV_ASSERT_OK(ERROR, EXPR)                                      \
   AdbcValidateBeginAssert(adbc_context, "%s == %s", #EXPR,                \
                           AdbcValidateStatusCodeMessage(ADBC_STATUS_OK)); \
@@ -352,10 +358,14 @@ void AdbcValidateStatementSqlPrepare(struct AdbcValidateTestContext* adbc_contex
   ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
   ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
 
+  struct ArrowSchema schema;
+  memset(&schema, 0, sizeof(schema));
   AdbcValidateBeginCase(adbc_context, "StatementSql", "prepare");
   ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
   ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error));
   ADBCV_ASSERT_OK(&error, AdbcStatementPrepare(&statement, &error));
+  ADBCV_ASSERT_OK(&error, AdbcStatementGetParameterSchema(&statement, &schema, &error));
+  schema.release(&schema);
   ADBCV_ASSERT_OK(&error, AdbcStatementExecute(&statement, &error));
   ADBCV_ASSERT_OK(&error, AdbcStatementGetStream(&statement, &out, &error));
   ADBCV_ASSERT_NE(NULL, out.release);
