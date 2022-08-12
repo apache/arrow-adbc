@@ -79,11 +79,15 @@ public interface AdbcStatement extends AutoCloseable {
   /**
    * Get the schema for bound parameters.
    *
-   * <p>This should be called after AdbcStatementPrepare. This retrieves an Arrow schema describing
-   * the number, names, and types of the parameters in a parameterized statement. Not all drivers
-   * will support this. If the name of a parameter cannot be determined, the name of the
-   * corresponding field in the schema will be an empty string. Similarly, if the type cannot be
-   * statically determined, the type of the corresponding field will be NA (NullType).
+   * <p>This retrieves an Arrow schema describing the number, names, and types of the parameters in
+   * a parameterized statement. The fields of the schema should be in order of the ordinal position
+   * of the parameters; named parameters should appear only once.
+   *
+   * <p>If the parameter does not have a name, or the name cannot be determined, the name of the
+   * corresponding field in the schema will be an empty string. If the type cannot be determined,
+   * the type of the corresponding field will be NA (NullType).
+   *
+   * <p>This should be called after AdbcStatementPrepare.
    *
    * @throws AdbcException with {@link AdbcStatusCode#NOT_IMPLEMENTED} if the parameters cannot be
    *     determined at all.
