@@ -15,5 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
+c/vendor/* linguist-vendored
 python/adbc_driver_manager/poetry.lock linguist-generated=true
 python/adbc_driver_manager/requirements-dev.txt linguist-generated=true

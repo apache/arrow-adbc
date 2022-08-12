@@ -367,11 +367,11 @@ void AdbcValidateStatementSqlExecute(struct AdbcValidateTestContext* adbc_contex
   struct ArrowArray array;
   ADBCV_ASSERT_EQ(0, out.get_next(&out, &array));
   ADBCV_ASSERT_NE(NULL, array.release);
-  array.release(&array);
 
   ADBCV_ASSERT_TRUE(AdbcValidationIsSet(array.children[0], 0));
   ADBCV_ASSERT_EQ(42, ((int64_t*)array.children[0]->buffers[1])[0]);
 
+  array.release(&array);
   ADBCV_ASSERT_EQ(0, out.get_next(&out, &array));
   ADBCV_ASSERT_EQ(NULL, array.release);
 
@@ -460,7 +460,6 @@ void AdbcValidateStatementSqlIngest(struct AdbcValidateTestContext* adbc_context
   struct ArrowArray array;
   NA_ASSERT_OK(out.get_next(&out, &array));
   ADBCV_ASSERT_NE(NULL, array.release);
-  array.release(&array);
 
   ADBCV_ASSERT_EQ(5, array.length);
   const int64_t* data = ((const int64_t*)array.children[0]->buffers[1]);
@@ -473,6 +472,7 @@ void AdbcValidateStatementSqlIngest(struct AdbcValidateTestContext* adbc_context
   ADBCV_ASSERT_EQ(-1, data[1]);
   ADBCV_ASSERT_EQ(42, data[4]);
 
+  array.release(&array);
   NA_ASSERT_OK(out.get_next(&out, &array));
   ADBCV_ASSERT_EQ(NULL, array.release);
 
@@ -531,11 +531,11 @@ void AdbcValidateStatementSqlPrepare(struct AdbcValidateTestContext* adbc_contex
   struct ArrowArray array;
   NA_ASSERT_OK(out.get_next(&out, &array));
   ADBCV_ASSERT_NE(NULL, array.release);
-  array.release(&array);
 
   ADBCV_ASSERT_TRUE(AdbcValidationIsSet(array.children[0], 0));
   ADBCV_ASSERT_EQ(42, ((int64_t*)array.children[0]->buffers[1])[0]);
 
+  array.release(&array);
   NA_ASSERT_OK(out.get_next(&out, &array));
   ADBCV_ASSERT_EQ(NULL, array.release);
 
