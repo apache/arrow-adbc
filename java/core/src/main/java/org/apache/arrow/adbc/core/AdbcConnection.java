@@ -20,7 +20,12 @@ import java.nio.ByteBuffer;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.Schema;
 
-/** A connection to a {@link AdbcDatabase}. */
+/**
+ * A connection to a {@link AdbcDatabase}.
+ *
+ * <p>Connections are not required to be thread-safe, but they can be used from multiple threads so
+ * long as clients take care to serialize accesses to a connection.
+ */
 public interface AdbcConnection extends AutoCloseable {
   /** Commit the pending transaction. */
   default void commit() throws AdbcException {
@@ -54,8 +59,20 @@ public interface AdbcConnection extends AutoCloseable {
         "Connection does not support deserializePartitionDescriptor(ByteBuffer)");
   }
 
+  /**
+   * Get metadata about the driver/database.
+   *
+   * @param infoCodes The metadata items to fetch.
+   * @return A statement that can be immediately executed.
+   */
   AdbcStatement getInfo(int[] infoCodes) throws AdbcException;
 
+  /**
+   * Get metadata about the driver/database.
+   *
+   * @param infoCodes The metadata items to fetch.
+   * @return A statement that can be immediately executed.
+   */
   default AdbcStatement getInfo(AdbcInfoCode[] infoCodes) throws AdbcException {
     int[] codes = new int[infoCodes.length];
     for (int i = 0; i < infoCodes.length; i++) {
@@ -64,6 +81,11 @@ public interface AdbcConnection extends AutoCloseable {
     return getInfo(codes);
   }
 
+  /**
+   * Get metadata about the driver/database.
+   *
+   * @return A statement that can be immediately executed.
+   */
   default AdbcStatement getInfo() throws AdbcException {
     return getInfo((int[]) null);
   }

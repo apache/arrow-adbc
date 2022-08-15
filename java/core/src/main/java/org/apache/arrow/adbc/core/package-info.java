@@ -18,6 +18,15 @@
 /**
  * ADBC (Arrow Database Connectivity) is an API standard for Arrow-based database access.
  *
- * <p>ADBC is currently experimental.
+ * <p>An Arrow-based interface between applications and database drivers. ADBC aims to provide a
+ * vendor-independent API for SQL and Substrait-based database access that is targeted at
+ * analytics/OLAP use cases.
+ *
+ * <p>This API is intended to be implemented directly by drivers and used directly by client
+ * applications. To assist portability between different vendors, a "driver manager" library is also
+ * provided, which implements this same API, but dynamically loads drivers internally and forwards
+ * calls appropriately.
+ *
+ * <p>ADBC is currently experimental. Interface is subject to change.
  */
 package org.apache.arrow.adbc.core;
