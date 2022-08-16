@@ -24,6 +24,22 @@ import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Schema;
 
+/**
+ * A container for all state needed to execute a database query, such as the query itself,
+ * parameters for prepared statements, driver parameters, etc.
+ *
+ * <p>Statements may represent queries or prepared statements.
+ *
+ * <p>Statements may be used multiple times and can be reconfigured (e.g. they can be reused to
+ * execute multiple different queries). However, executing a statement (and changing certain other
+ * state) will invalidate result sets obtained prior to that execution.
+ *
+ * <p>Multiple statements may be created from a single connection. However, the driver may block or
+ * error if they are used concurrently (whether from a single thread or multiple threads).
+ *
+ * <p>Statements are not required to be thread-safe, but they can be used from multiple threads so
+ * long as clients take care to serialize accesses to a statement.
+ */
 public interface AdbcStatement extends AutoCloseable {
   /** Set a generic query option. */
   default void setOption(String key, Object value) throws AdbcException {
@@ -57,10 +73,16 @@ public interface AdbcStatement extends AutoCloseable {
    * Execute the query.
    *
    * <p>Usually you will want to use {@link #executeQuery()}.
+   *
+   * <p>This invalidates any prior result sets.
    */
   void execute() throws AdbcException;
 
-  /** Execute a result set-generating query and get the result. */
+  /**
+   * Execute a result set-generating query and get the result.
+   *
+   * <p>This invalidates any prior result sets.
+   */
   default ArrowReader executeQuery() throws AdbcException {
     execute();
     return getArrowReader();

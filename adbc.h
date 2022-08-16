@@ -15,10 +15,34 @@
 // specific language governing permissions and limitations
 // under the License.
 
+/// \file ADBC: Arrow Database connectivity
+///
+/// An Arrow-based interface between applications and database
+/// drivers.  ADBC aims to provide a vendor-independent API for SQL
+/// and Substrait-based database access that is targeted at
+/// analytics/OLAP use cases.
+///
+/// This API is intended to be implemented directly by drivers and
+/// used directly by client applications.  To assist portability
+/// between different vendors, a "driver manager" library is also
+/// provided, which implements this same API, but dynamically loads
+/// drivers internally and forwards calls appropriately.
+///
+/// EXPERIMENTAL. Interface subject to change.
+
 #pragma once
 
 #include <stddef.h>
 #include <stdint.h>
+
+/// \defgroup Arrow C Data Interface
+/// Definitions for the C Data Interface/C Stream Interface.
+///
+/// See https://arrow.apache.org/docs/format/CDataInterface.html
+///
+/// @{
+
+//! @cond Doxygen_Suppress
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,6 +135,10 @@ struct ArrowArrayStream {
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
+//! @endcond
+
+/// @}
+
 #ifndef ADBC
 #define ADBC
 
@@ -128,23 +156,20 @@ struct ArrowArrayStream {
 #endif  // defined(_WIN32)
 #endif  // !defined(ADBC_EXPORT)
 
-/// \file ADBC: Arrow DataBase connectivity (client API)
-///
-/// Implemented by libadbc.so (provided by Arrow/C++), which in turn
-/// dynamically loads the appropriate database driver.
-///
-/// EXPERIMENTAL. Interface subject to change.
-
 /// \page object-model Object Model
 ///
-/// Except where noted, objects are not thread-safe and clients should
-/// take care to serialize accesses to methods.
+/// ADBC uses structs with free functions that operate on those
+/// structs to model objects.
+///
+/// In general, objects allow serialized access from multiple threads,
+/// but not concurrent access.  Specific implementations may permit
+/// multiple threads.
 
 // Forward declarations
 struct AdbcDriver;
 struct AdbcStatement;
 
-/// \defgroup adbc-error-handling Error handling primitives.
+/// \defgroup adbc-error-handling Error Handling
 /// ADBC uses integer error codes to signal errors. To provide more
 /// detail about errors, functions may also return an AdbcError via an
 /// optional out parameter, which can be inspected. If provided, it is
@@ -153,7 +178,7 @@ struct AdbcStatement;
 ///
 /// @{
 
-/// Error codes for operations that may fail.
+/// \brief Error codes for operations that may fail.
 typedef uint8_t AdbcStatusCode;
 
 /// \brief No error.
@@ -238,7 +263,8 @@ struct ADBC_EXPORT AdbcError {
   int32_t vendor_code;
 
   /// \brief A SQLSTATE error code, if provided, as defined by the
-  ///   SQL:2003 standard.
+  ///   SQL:2003 standard.  If not set, it should be set to
+  ///   "\0\0\0\0\0".
   char sqlstate[5];
 
   /// \brief Release the contained error.
@@ -248,19 +274,18 @@ struct ADBC_EXPORT AdbcError {
   void (*release)(struct AdbcError* error);
 };
 
-/// }@
+/// @}
 
 /// \brief Canonical option value for enabling an option.
 #define ADBC_OPTION_VALUE_ENABLED "true"
 /// \brief Canonical option value for disabling an option.
 #define ADBC_OPTION_VALUE_DISABLED "false"
 
-/// \defgroup adbc-database Database initialization.
-/// Clients first initialize a database, then connect to the database
-/// (below). For client-server databases, one of these steps may be a
-/// no-op; for in-memory or otherwise non-client-server databases,
-/// this gives the implementation a place to initialize and own any
-/// common connection state.
+/// \defgroup adbc-database Database Initialization
+/// Clients first initialize a database, then create a connection
+/// (below).  This gives the implementation a place to initialize and
+/// own any common connection state.  For example, in-memory databases
+/// can place ownership of the actual database in this object.
 /// @{
 
 /// \brief An instance of a database.
@@ -280,13 +305,18 @@ ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error);
 
 /// \brief Set a char* option.
+///
+/// Options may be set before AdbcDatabaseInit.  Some drivers may
+/// support setting options after initialization as well.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                      const char* value, struct AdbcError* error);
 
 /// \brief Finish setting options and initialize the database.
 ///
-/// Some backends may support setting options after initialization
+/// Some drivers may support setting options after initialization
 /// as well.
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error);
@@ -299,9 +329,10 @@ ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
                                    struct AdbcError* error);
 
-/// }@
+/// @}
 
-/// \defgroup adbc-connection Connection establishment.
+/// \defgroup adbc-connection Connection Establishment
+/// Functions for creating, using, and releasing database connections.
 /// @{
 
 /// \brief An active database connection.
@@ -309,7 +340,8 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
 /// Provides methods for query execution, managing prepared
 /// statements, using transactions, and so on.
 ///
-/// Connections are not thread-safe and clients should take care to
+/// Connections are not required to be thread-safe, but they can be
+/// used from multiple threads so long as clients take care to
 /// serialize accesses to a connection.
 struct ADBC_EXPORT AdbcConnection {
   /// \brief Opaque implementation-defined state.
@@ -325,16 +357,26 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
                                  struct AdbcError* error);
 
+/// \brief Set a char* option.
+///
+/// Options may be set before AdbcConnectionInit.  Some drivers may
+/// support setting options after initialization as well.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
                                        const char* value, struct AdbcError* error);
 
 /// \brief Finish setting options and initialize the connection.
+///
+/// Some drivers may support setting options after initialization
+/// as well.
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
                                   struct AdbcDatabase* database, struct AdbcError* error);
 
 /// \brief Destroy this connection.
+///
 /// \param[in] connection The connection to release.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
@@ -561,7 +603,7 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct AdbcStatement* statement,
                                            struct AdbcError* error);
 
-/// }@
+/// @}
 
 /// \defgroup adbc-connection-partition Partitioned Results
 /// Some databases may internally partition the results. These
@@ -587,12 +629,12 @@ AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* con
                                                       struct AdbcStatement* statement,
                                                       struct AdbcError* error);
 
-/// }@
+/// @}
 
 /// \defgroup adbc-connection-transaction Transaction Semantics
 ///
 /// Connections start out in auto-commit mode by default (if
-/// applicable for the given vendor). Use
+/// applicable for the given vendor). Use AdbcConnectionSetOption and
 /// ADBC_CONNECTION_OPTION_AUTO_COMMIT to change this.
 ///
 /// @{
@@ -619,11 +661,11 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
                                       struct AdbcError* error);
 
-/// }@
+/// @}
 
-/// }@
+/// @}
 
-/// \defgroup adbc-statement Managing statements.
+/// \defgroup adbc-statement Managing Statements
 /// Applications should first initialize a statement with
 /// AdbcStatementNew. Then, the statement should be configured with
 /// functions like AdbcStatementSetSqlQuery and
@@ -632,11 +674,24 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
 /// turn it into a prepared statement instead).
 /// @{
 
-/// \brief An instance of a database query, from parameters set before
-///   execution to the result of execution.
+/// \brief A container for all state needed to execute a database
+/// query, such as the query itself, parameters for prepared
+/// statements, driver parameters, etc.
 ///
-/// Statements are not thread-safe and clients should take care to
-/// serialize access.
+/// Statements may represent queries or prepared statements.
+///
+/// Statements may be used multiple times and can be reconfigured
+/// (e.g. they can be reused to execute multiple different queries).
+/// However, executing a statement (and changing certain other state)
+/// will invalidate result sets obtained prior to that execution.
+///
+/// Multiple statements may be created from a single connection.
+/// However, the driver may block or error if they are used
+/// concurrently (whether from a single thread or multiple threads).
+///
+/// Statements are not required to be thread-safe, but they can be
+/// used from multiple threads so long as clients take care to
+/// serialize accesses to a statement.
 struct ADBC_EXPORT AdbcStatement {
   /// \brief Opaque implementation-defined state.
   /// This field is NULLPTR iff the connection is unintialized/freed.
@@ -664,11 +719,16 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
                                     struct AdbcError* error);
 
 /// \brief Execute a statement.
+///
+/// This invalidates any prior result sets (AdbcStatementGetStream).
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
                                     struct AdbcError* error);
 
-/// \brief Create a prepared statement to be executed multiple times.
+/// \brief Turn this statement into a prepared statement to be
+///   executed multiple times.
+///
+/// This invalidates any prior result sets (AdbcStatementGetStream).
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
                                     struct AdbcError* error);
@@ -693,7 +753,7 @@ ADBC_EXPORT
 AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
                                         const char* query, struct AdbcError* error);
 
-/// }@
+/// @}
 
 /// \defgroup adbc-statement-substrait Substrait Semantics
 /// Functions for executing Substrait plans, or querying
@@ -717,10 +777,11 @@ AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
                                              const uint8_t* plan, size_t length,
                                              struct AdbcError* error);
 
-/// }@
+/// @}
 
 /// \brief Bind Arrow data. This can be used for bulk inserts or
 ///   prepared statements.
+///
 /// \param[in] statement The statement to bind to.
 /// \param[in] values The values to bind. The driver will call the
 ///   release callback itself, although it may not do this until the
@@ -743,7 +804,7 @@ AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
 ///   if necessary.
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
-                                       struct ArrowArrayStream* values,
+                                       struct ArrowArrayStream* stream,
                                        struct AdbcError* error);
 
 /// \brief Get the schema for bound parameters.
@@ -771,6 +832,8 @@ AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
 /// This method can be called only once per execution of the
 /// statement. It may not be called if any of the partitioning methods
 /// have been called (see below).
+///
+/// This invalidates any prior result sets (AdbcStatementGetStream).
 ///
 /// \return out A stream of Arrow data. The stream itself must be
 ///   released before the statement is released.
@@ -811,10 +874,7 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
 ///   the schema of the data to append (ADBC_STATUS_ALREADY_EXISTS).
 #define ADBC_INGEST_OPTION_MODE_APPEND "adbc.ingest.mode.append"
 
-/// }@
-
-// TODO: methods to get a particular result set from the statement,
-// etc. especially for prepared statements with parameter batches
+/// @}
 
 /// \defgroup adbc-statement-partition Partitioned Results
 /// Some backends may internally partition the results. These
@@ -852,9 +912,10 @@ AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement
 /// This method may block and perform I/O.
 ///
 /// A partition can be turned back into a statement via
-/// AdbcConnectionDeserializePartitionDesc. Effectively, this means AdbcStatement
-/// is similar to arrow::flight::FlightInfo in Flight/Flight SQL and
-/// get_partitions is similar to getting the arrow::flight::Ticket.
+/// AdbcConnectionDeserializePartitionDesc. Effectively, this means
+/// AdbcStatement is similar to arrow::flight::FlightInfo in
+/// Flight/Flight SQL and AdbcStatementGetPartitionDesc is similar to
+/// getting the arrow::flight::Ticket.
 ///
 /// \param[in] statement The statement.
 /// \param[out] partition_desc A caller-allocated buffer, to which the
@@ -867,11 +928,14 @@ AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
                                              uint8_t* partition_desc,
                                              struct AdbcError* error);
 
-/// }@
+/// @}
 
-/// }@
+/// @}
 
-/// \defgroup adbc-driver Driver initialization.
+/// \defgroup adbc-driver Driver Initialization
+///
+/// These functions are intended to help support integration between a
+/// driver and the driver manager.
 /// @{
 
 /// \brief An instance of an initialized database driver.
@@ -976,26 +1040,144 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
 // For use with count
 #define ADBC_VERSION_0_0_1 26
 
-/// }@
-
-/// \page typical-usage Typical Usage Patterns
-/// (TODO: describe request sequences)
-
-/// \page decoder-ring Decoder Ring
-///
-/// ADBC - Flight SQL - JDBC - ODBC
-///
-/// AdbcConnection - FlightClient - Connection - Connection handle
-///
-/// AdbcStatement - FlightInfo - Statement - Statement handle
-///
-/// ArrowArrayStream - FlightStream (Java)/RecordBatchReader (C++) -
-/// ResultSet - Statement handle
-
-/// \page compatibility Backwards and Forwards Compatibility
+/// @}
 
 #endif  // ADBC
 
 #ifdef __cplusplus
 }
 #endif
+
+/// \page typical-usage Typical Usage Patterns
+/// (TODO: describe request sequences)
+
+/// \page decoder-ring Comparison with Other APIs
+///
+/// <table>
+///   <caption>Equivalent concepts between ADBC and other APIs</caption>
+///   <tr>
+///     <th>Concept/API              </th>
+///     <th>ADBC                     </th>
+///     <th>database/sql (Golang)    </th>
+///     <th>DBAPI 2.0 (PEP 249)      </th>
+///     <th>Flight SQL               </th>
+///     <th>JDBC                     </th>
+///     <th>ODBC                     </th>
+///   </tr>
+///   <tr>
+///     <td>Shared connection state  </td>
+///     <td>AdbcDatabase             </td>
+///     <td>DB                       </td>
+///     <td>-                        </td>
+///     <td>-                        </td>
+///     <td>-                        </td>
+///     <td>-                        </td>
+///   </tr>
+///   <tr>
+///     <td>Database connection      </td>
+///     <td>AdbcConnection           </td>
+///     <td>Conn                     </td>
+///     <td>Connection               </td>
+///     <td>FlightSqlClient          </td>
+///     <td>Connection               </td>
+///     <td>SQLHANDLE (connection)   </td>
+///   </tr>
+///   <tr>
+///     <td>Query state              </td>
+///     <td>AdbcStatement            </td>
+///     <td>-                        </td>
+///     <td>Cursor                   </td>
+///     <td>-                        </td>
+///     <td>Statement                </td>
+///     <td>SQLHANDLE (statement)    </td>
+///   </tr>
+///   <tr>
+///     <td>Prepared statement handle</td>
+///     <td>AdbcStatement            </td>
+///     <td>Stmt                     </td>
+///     <td>Cursor                   </td>
+///     <td>PreparedStatement        </td>
+///     <td>PreparedStatement        </td>
+///     <td>SQLHANDLE (statement)    </td>
+///   </tr>
+///   <tr>
+///     <td>Result set               </td>
+///     <td>ArrowArrayStream         </td>
+///     <td>*Rows                    </td>
+///     <td>Cursor                   </td>
+///     <td>FlightInfo               </td>
+///     <td>ResultSet                </td>
+///     <td>SQLHANDLE (statement)    </td>
+///   </tr>
+/// </table>
+
+/// \page compatibility Backwards and Forwards Compatibility
+
+/// \page concurrency Concurrency and Thread Safety
+///
+/// In general, objects allow serialized access from multiple threads:
+/// one thread may make a call, and once finished, another thread may
+/// make a call.  They do not allow concurrent access from multiple
+/// threads.
+///
+/// Somewhat related is the question of overlapping/concurrent
+/// execution of multi-step operations, from a single thread or
+/// multiple threads.  For example, two AdbcStatement objects can be
+/// created from the same AdbcConnection:
+///
+/// ```c
+/// struct AdbcStatement stmt1;
+/// struct AdbcStatement stmt2;
+///
+/// // Ignoring error handling for brevity
+/// AdbcStatementNew(&conn, &stmt1, NULL);
+/// AdbcStatementNew(&conn, &stmt2, NULL);
+/// AdbcStatementSetSqlQuery(&stmt1, "SELECT * FROM a", NULL);
+/// AdbcStatementSetSqlQuery(&stmt2, "SELECT * FROM b", NULL);
+///
+/// AdbcStatementExecute(&stmt1, NULL);
+/// AdbcStatementExecute(&stmt2, NULL);
+/// // What happens to the result set of stmt1?
+/// ```
+///
+/// What happens if the client application calls
+/// `AdbcStatementExecute` on `stmt1`, then on `stmt2`, without
+/// reading the result set of `stmt1`?  Some existing client
+/// libraries/protocols, like libpq, don't support concurrent
+/// execution of queries from a single connection.  So the driver
+/// would have to either 1) buffer all results into memory during the
+/// first `Execute` 2) issue an error on the second `Execute`, or 3)
+/// invalidate the first statement's result set on the second
+/// `Execute`.
+///
+/// In this case, ADBC allows drivers to choose 1) or 2).  If possible
+/// and reasonable, the driver should allow concurrent execution,
+/// whether because the underlying protocol is designed for it or by
+/// buffering result sets.  But the driver is allowed to error if it
+/// is not possible to support it.
+///
+/// Another use case is having a single statement, but executing it
+/// multiple times and reading the result sets concurrently.  A client
+/// might desire to do this with a prepared statement, for instance:
+///
+/// ```c
+/// // Ignoring error handling for brevity
+/// struct AdbcStatement stmt;
+/// AdbcStatementNew(&conn, &stmt, NULL);
+/// AdbcStatementSetSqlQuery(&stmt, "SELECT * FROM a WHERE foo > ?", NULL);
+/// AdbcStatementPrepare(&stmt, NULL);
+///
+/// AdbcStatementBind(&stmt, &array1, &schema, NULL);
+/// AdbcStatementExecute(&stmt, NULL);
+/// AdbcStatementGetStream(&stmt, &stream, NULL);
+/// // Spawn a thread to process `stream`
+///
+/// AdbcStatementBind(&stmt, &array2, &schema, NULL);
+/// AdbcStatementExecute(&stmt, NULL);
+/// // What happens to `stream` here?
+/// ```
+///
+/// ADBC chooses to disallow this (specifically: the second call to
+/// `Execute` must invalidate the result set of the first call),
+/// because generally, existing APIs do not support 'overlapping'
+/// usage of a single prepared statement in this way.

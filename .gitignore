@@ -49,7 +49,9 @@ cpp/.idea/
 cpp/.clangd/
 .cache/clangd/
 cpp/.cache/clangd/
-cpp/apidoc/xml/
+c/apidoc/html/
+c/apidoc/latex/
+c/apidoc/xml/
 docs/example.gz
 docs/example1.dat
 docs/example3.dat
