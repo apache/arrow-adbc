@@ -307,15 +307,9 @@ void AdbcValidateStatementNewRelease(struct AdbcValidateTestContext* adbc_contex
 
   AdbcValidateBeginCase(adbc_context, "StatementNewRelease", "new, execute, release");
   ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcStatementExecute(&statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
-
-  AdbcValidateBeginCase(adbc_context, "StatementNewRelease", "new, get stream, release");
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  struct ArrowArrayStream out;
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcStatementGetStream(&statement, &out, &error));
+  ADBCV_ASSERT_FAILS_WITH(
+      INVALID_STATE, &error,
+      AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, NULL, NULL, &error));
   ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
 
   AdbcValidateBeginCase(adbc_context, "StatementNewRelease", "new, prepare, release");
@@ -353,8 +347,8 @@ void AdbcValidateStatementSqlExecute(struct AdbcValidateTestContext* adbc_contex
   AdbcValidateBeginCase(adbc_context, "StatementSql", "execute");
   ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
   ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementExecute(&statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementGetStream(&statement, &out, &error));
+  ADBCV_ASSERT_OK(&error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_ARROW, &out,
+                                               NULL, &error));
   ADBCV_ASSERT_NE(NULL, out.release);
 
   struct ArrowSchema schema;
@@ -439,15 +433,16 @@ void AdbcValidateStatementSqlIngest(struct AdbcValidateTestContext* adbc_context
                                          "bulk_insert", &error));
   ADBCV_ASSERT_OK(&error,
                   AdbcStatementBind(&statement, &export_array, &export_schema, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementExecute(&statement, &error));
+  ADBCV_ASSERT_OK(&error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, NULL,
+                                               NULL, &error));
   ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
 
   AdbcValidateBeginCase(adbc_context, "StatementSqlIngest", "read back data");
   ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
   ADBCV_ASSERT_OK(
       &error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementExecute(&statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementGetStream(&statement, &out, &error));
+  ADBCV_ASSERT_OK(&error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_ARROW, &out,
+                                               NULL, &error));
 
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -520,8 +515,8 @@ void AdbcValidateStatementSqlPrepare(struct AdbcValidateTestContext* adbc_contex
   ADBCV_ASSERT_EQ(0, schema.n_children);
   schema.release(&schema);
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementExecute(&statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementGetStream(&statement, &out, &error));
+  ADBCV_ASSERT_OK(&error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_ARROW, &out,
+                                               NULL, &error));
 
   NA_ASSERT_OK(out.get_schema(&out, &schema));
   ADBCV_ASSERT_EQ(1, schema.n_children);
@@ -543,15 +538,6 @@ void AdbcValidateStatementSqlPrepare(struct AdbcValidateTestContext* adbc_contex
   schema.release(&schema);
   ADBCV_ASSERT_NE(NULL, out.release);
   out.release(&out);
-  ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
-
-  AdbcValidateBeginCase(adbc_context, "StatementSql", "prepare without execute");
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementPrepare(&statement, &error));
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcStatementGetStream(&statement, &out, &error));
-  ADBCV_ASSERT_EQ(NULL, out.release);
   ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
 
   AdbcValidateBeginCase(adbc_context, "StatementSql", "teardown");

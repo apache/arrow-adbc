@@ -21,10 +21,10 @@
 
 import enum
 import typing
-from typing import List
+from typing import List, Tuple
 
 import cython
-from libc.stdint cimport int32_t, uint8_t, uint32_t, uintptr_t
+from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
 from libc.string cimport memset
 from libcpp.vector cimport vector as c_vector
 
@@ -73,6 +73,10 @@ cdef extern from "adbc.h" nogil:
     cdef int ADBC_OBJECT_DEPTH_DB_SCHEMAS
     cdef int ADBC_OBJECT_DEPTH_TABLES
     cdef int ADBC_OBJECT_DEPTH_COLUMNS
+
+    cdef int ADBC_OUTPUT_TYPE_ARROW
+    cdef int ADBC_OUTPUT_TYPE_PARTITIONS
+    cdef int ADBC_OUTPUT_TYPE_UPDATE
 
     cdef uint32_t ADBC_INFO_VENDOR_NAME
     cdef uint32_t ADBC_INFO_VENDOR_VERSION
@@ -123,7 +127,7 @@ cdef extern from "adbc.h" nogil:
         CAdbcConnection* connection,
         uint32_t* info_codes,
         size_t info_codes_length,
-        CAdbcStatement* statement,
+        CArrowArrayStream* stream,
         CAdbcError* error)
     CAdbcStatusCode AdbcConnectionGetObjects(
         CAdbcConnection* connection,
@@ -133,7 +137,7 @@ cdef extern from "adbc.h" nogil:
         const char* table_name,
         const char** table_type,
         const char* column_name,
-        CAdbcStatement* statement,
+        CArrowArrayStream* stream,
         CAdbcError* error)
     CAdbcStatusCode AdbcConnectionGetTableSchema(
         CAdbcConnection* connection,
@@ -144,7 +148,7 @@ cdef extern from "adbc.h" nogil:
         CAdbcError* error)
     CAdbcStatusCode AdbcConnectionGetTableTypes(
         CAdbcConnection* connection,
-        CAdbcStatement* statement,
+        CArrowArrayStream* stream,
         CAdbcError* error)
     CAdbcStatusCode AdbcConnectionInit(
         CAdbcConnection* connection,
@@ -173,18 +177,17 @@ cdef extern from "adbc.h" nogil:
         CAdbcError* error)
     CAdbcStatusCode AdbcStatementExecute(
         CAdbcStatement* statement,
+        int output_type, void* out, int64_t* rows_affected,
         CAdbcError* error)
     CAdbcStatusCode AdbcStatementGetPartitionDesc(
         CAdbcStatement* statement,
+        size_t index,
         uint8_t* partition_desc,
         CAdbcError* error)
     CAdbcStatusCode AdbcStatementGetPartitionDescSize(
         CAdbcStatement* statement,
+        size_t index,
         size_t* length,
-        CAdbcError* error)
-    CAdbcStatusCode AdbcStatementGetStream(
-        CAdbcStatement* statement,
-        CArrowArrayStream* c_stream,
         CAdbcError* error)
     CAdbcStatusCode AdbcStatementNew(
         CAdbcConnection* connection,
@@ -516,13 +519,13 @@ cdef class AdbcConnection(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         check_error(AdbcConnectionCommit(&self.connection, &c_error), &c_error)
 
-    def get_info(self, info_codes=None):
+    def get_info(self, info_codes=None) -> ArrowArrayStreamHandle:
         """
         Get metadata about the database/driver.
         """
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
-        cdef AdbcStatement statement = AdbcStatement(self)
+        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
         cdef c_vector[uint32_t] c_info_codes
 
         if info_codes:
@@ -536,27 +539,27 @@ cdef class AdbcConnection(_AdbcHandle):
                 &self.connection,
                 c_info_codes.data(),
                 c_info_codes.size(),
-                &statement.statement,
+                &stream.stream,
                 &c_error)
         else:
             status = AdbcConnectionGetInfo(
                 &self.connection,
                 NULL,
                 0,
-                &statement.statement,
+                &stream.stream,
                 &c_error)
 
         check_error(status, &c_error)
-        return statement
+        return stream
 
     def get_objects(self, depth, catalog=None, db_schema=None, table_name=None,
-                    table_types=None, column_name=None) -> AdbcStatement:
+                    table_types=None, column_name=None) -> ArrowArrayStreamHandle:
         """
         Get a hierarchical view of database objects.
         """
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
-        cdef AdbcStatement statement = AdbcStatement(self)
+        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
 
         cdef char* c_catalog = NULL
         if catalog is not None:
@@ -586,11 +589,11 @@ cdef class AdbcConnection(_AdbcHandle):
             c_table_name,
             NULL,  # TODO: support table_types
             c_column_name,
-            &statement.statement,
+            &stream.stream,
             &c_error)
         check_error(status, &c_error)
 
-        return statement
+        return stream
 
     def get_table_schema(self, catalog, db_schema, table_name) -> ArrowSchemaHandle:
         """
@@ -626,19 +629,19 @@ cdef class AdbcConnection(_AdbcHandle):
 
         return handle
 
-    def get_table_types(self) -> AdbcStatement:
+    def get_table_types(self) -> ArrowArrayStreamHandle:
         """
         Get the list of supported table types.
         """
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
-        cdef AdbcStatement statement = AdbcStatement(self)
+        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
 
         status = AdbcConnectionGetTableTypes(
-            &self.connection, &statement.statement, &c_error)
+            &self.connection, &stream.stream, &c_error)
         check_error(status, &c_error)
 
-        return statement
+        return stream
 
     def rollback(self) -> None:
         """Rollback the current transaction."""
@@ -752,52 +755,107 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef CAdbcStatusCode status = AdbcStatementRelease(&self.statement, &c_error)
         check_error(status, &c_error)
 
-    def execute(self) -> None:
-        """Execute the query."""
-        cdef CAdbcError c_error = empty_error()
-        with nogil:
-            status = AdbcStatementExecute(&self.statement, &c_error)
-        check_error(status, &c_error)
+    def execute_query(self) -> Tuple[ArrowArrayStreamHandle, int]:
+        """
+        Execute the query and get the result set.
 
-    def get_partitions(self) -> List[bytes]:
-        """Get the partitions of a distributed result set."""
+        Returns
+        -------
+        ArrowArrayStreamHandle
+            The result set.
+        int
+            The number of rows if known, else -1.
+        """
         cdef CAdbcError c_error = empty_error()
+        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
+        cdef int64_t rows_affected = 0
+        with nogil:
+            status = AdbcStatementExecute(
+                &self.statement,
+                ADBC_OUTPUT_TYPE_ARROW,
+                &stream.stream,
+                &rows_affected,
+                &c_error)
+        check_error(status, &c_error)
+        return (stream, rows_affected)
+
+    def execute_partitions(self) -> Tuple[List[bytes], ArrowSchemaHandle, int]:
+        """
+        Execute the query and get the partitions of the result set.
+
+        Not all drivers will support this.
+
+        Returns
+        -------
+        list of byte
+            The partitions of the distributed result set.
+        ArrowSchemaHandle
+            The schema of the result set.
+        int
+            The number of rows if known, else -1.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef size_t num_partitions
+        cdef int64_t rows_affected = 0
         cdef size_t length = 0
         cdef bytes buf
         cdef uint8_t* c_buf
 
+        with nogil:
+            status = AdbcStatementExecute(
+                &self.statement,
+                ADBC_OUTPUT_TYPE_UPDATE,
+                &num_partitions,
+                &rows_affected,
+                &c_error)
+        check_error(status, &c_error)
+
         result = []
-        while True:
+        for index in range(num_partitions):
             with nogil:
                 status = AdbcStatementGetPartitionDescSize(
                         &self.statement,
+                        index,
                         &length,
                         &c_error,
                     )
             check_error(status, &c_error)
-            if length == 0:
-                break
 
             buf = bytes(length)
             c_buf = <uint8_t*> buf
             with nogil:
                 status = AdbcStatementGetPartitionDesc(
                     &self.statement,
+                    index,
                     c_buf,
                     &c_error,
                 )
             check_error(status, &c_error)
             result.append(buf)
 
-        return result
+        # TODO(lidavidm): apache/arrow-adbc#68
+        return (result, None, rows_affected)
 
-    def get_stream(self) -> ArrowArrayStreamHandle:
-        """Get a reader for the result set."""
+    def execute_update(self) -> int:
+        """
+        Execute the query without a result set.
+
+        Returns
+        -------
+        int
+            The number of affected rows if known, else -1.
+        """
         cdef CAdbcError c_error = empty_error()
-        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
-        status = AdbcStatementGetStream(&self.statement, &stream.stream, &c_error)
+        cdef int64_t rows_affected = 0
+        with nogil:
+            status = AdbcStatementExecute(
+                &self.statement,
+                ADBC_OUTPUT_TYPE_UPDATE,
+                NULL,
+                &rows_affected,
+                &c_error)
         check_error(status, &c_error)
-        return stream
+        return rows_affected
 
     def prepare(self) -> None:
         """Turn this statement into a prepared statement."""

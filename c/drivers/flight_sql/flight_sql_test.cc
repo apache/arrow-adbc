@@ -62,15 +62,13 @@ class AdbcFlightSqlTest : public ::testing::Test {
 };
 
 TEST_F(AdbcFlightSqlTest, Metadata) {
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  struct ArrowArrayStream stream;
   ADBC_ASSERT_OK_WITH_ERROR(error,
-                            AdbcConnectionGetTableTypes(&connection, &statement, &error));
+                            AdbcConnectionGetTableTypes(&connection, &stream, &error));
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   ASSERT_SCHEMA_EQ(
       *schema,
       *arrow::schema({arrow::field("table_type", arrow::utf8(), /*nullable=*/false)}));
@@ -88,11 +86,10 @@ TEST_F(AdbcFlightSqlTest, SqlExecute) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("1", arrow::int64())}));
   EXPECT_THAT(batches,
               ::testing::UnorderedPointwise(
@@ -108,12 +105,16 @@ TEST_F(AdbcFlightSqlTest, SqlExecuteInvalid) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ASSERT_NE(AdbcStatementExecute(&statement, &error), ADBC_STATUS_OK);
+  struct ArrowArrayStream stream;
+  ASSERT_NE(
+      AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_ARROW, &stream, nullptr, &error),
+      ADBC_STATUS_OK);
   ADBC_ASSERT_ERROR_THAT(error, ::testing::HasSubstr("syntax error"));
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
 }
 
-TEST_F(AdbcFlightSqlTest, Partitions) {
+// TODO(lidavidm): apache/arrow-adbc#68
+TEST_F(AdbcFlightSqlTest, DISABLED_Partitions) {
   // Serialize the query result handle into a partition so it can be
   // retrieved separately. (With multiple partitions we could
   // distribute them across multiple machines or fetch data in
@@ -124,18 +125,20 @@ TEST_F(AdbcFlightSqlTest, Partitions) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+  size_t num_descs = 0;
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_PARTITIONS, &num_descs,
+                                  nullptr, &error));
 
   std::vector<std::vector<uint8_t>> descs;
 
-  while (true) {
+  for (size_t i = 0; i < num_descs; i++) {
     size_t length = 0;
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementGetPartitionDescSize(&statement, &length, &error));
-    if (length == 0) break;
+        error, AdbcStatementGetPartitionDescSize(&statement, i, &length, &error));
     descs.emplace_back(length);
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementGetPartitionDesc(&statement, descs.back().data(), &error));
+        error, AdbcStatementGetPartitionDesc(&statement, i, descs.back().data(), &error));
   }
 
   ASSERT_EQ(descs.size(), 1);
@@ -149,7 +152,7 @@ TEST_F(AdbcFlightSqlTest, Partitions) {
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("42", arrow::int64())}));
   EXPECT_THAT(batches,
               ::testing::UnorderedPointwise(

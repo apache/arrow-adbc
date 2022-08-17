@@ -27,6 +27,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.LongStream;
 import org.apache.arrow.adapter.jdbc.JdbcFieldInfo;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.adbc.core.AdbcException;
@@ -92,17 +93,6 @@ public class JdbcStatement implements AdbcStatement {
     bindRoot = root;
   }
 
-  @Override
-  public void execute() throws AdbcException {
-    if (bulkOperation != null) {
-      executeBulk();
-    } else if (sqlQuery != null) {
-      executeSqlQuery();
-    } else {
-      throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
-    }
-  }
-
   private void createBulkTable() throws AdbcException {
     final StringBuilder create = new StringBuilder("CREATE TABLE ");
     create.append(bulkOperation.targetTable);
@@ -134,7 +124,7 @@ public class JdbcStatement implements AdbcStatement {
     }
   }
 
-  private void executeBulk() throws AdbcException {
+  private UpdateResult executeBulk() throws AdbcException {
     if (bindRoot == null) {
       throw AdbcException.invalidState("[JDBC] Must call bind() before bulk insert");
     }
@@ -178,9 +168,10 @@ public class JdbcStatement implements AdbcStatement {
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
+    return new UpdateResult(bindRoot.getRowCount());
   }
 
-  private void executeSqlQuery() throws AdbcException {
+  private void invalidatePriorQuery() throws AdbcException {
     try {
       if (reader != null) {
         try {
@@ -193,25 +184,15 @@ public class JdbcStatement implements AdbcStatement {
               null, /*vendorCode*/
               0);
         }
+        reader = null;
       }
       if (resultSet != null) {
         resultSet.close();
+        resultSet = null;
       }
-      if (statement instanceof PreparedStatement) {
-        PreparedStatement preparedStatement = (PreparedStatement) statement;
-        if (bindRoot != null) {
-          reader = new JdbcBindReader(allocator, preparedStatement, bindRoot);
-        } else {
-          resultSet = preparedStatement.executeQuery();
-        }
-      } else {
-        if (statement != null) {
-          statement.close();
-        }
-        statement =
-            connection.createStatement(
-                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        resultSet = statement.executeQuery(sqlQuery);
+      if (!(statement instanceof PreparedStatement) && statement != null) {
+        statement.close();
+        statement = null;
       }
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
@@ -219,19 +200,68 @@ public class JdbcStatement implements AdbcStatement {
   }
 
   @Override
-  public ArrowReader getArrowReader() throws AdbcException {
-    if (reader != null) {
-      ArrowReader result = reader;
-      reader = null;
-      return result;
+  public UpdateResult executeUpdate() throws AdbcException {
+    if (bulkOperation != null) {
+      return executeBulk();
+    } else if (sqlQuery == null) {
+      throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
     }
-    if (resultSet == null) {
-      throw AdbcException.invalidState("[JDBC] Must call execute() before getArrowReader()");
+    long affectedRows = 0;
+    try {
+      invalidatePriorQuery();
+      if (statement instanceof PreparedStatement) {
+        PreparedStatement preparedStatement = (PreparedStatement) statement;
+        if (bindRoot != null) {
+          final JdbcParameterBinder binder =
+              JdbcParameterBinder.builder(preparedStatement, bindRoot).bindAll().build();
+          preparedStatement.clearBatch();
+          while (binder.next()) {
+            preparedStatement.addBatch();
+          }
+          affectedRows = LongStream.of(preparedStatement.executeLargeBatch()).sum();
+        } else {
+          affectedRows = preparedStatement.executeUpdate();
+        }
+      } else {
+        statement =
+            connection.createStatement(
+                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        affectedRows = statement.executeUpdate(sqlQuery);
+      }
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
     }
-    final JdbcArrowReader reader =
-        new JdbcArrowReader(allocator, resultSet, /*overrideSchema*/ null);
-    resultSet = null;
-    return reader;
+    return new UpdateResult(affectedRows);
+  }
+
+  @Override
+  public QueryResult executeQuery() throws AdbcException {
+    if (bulkOperation != null) {
+      throw AdbcException.invalidState("[JDBC] Call executeUpdate() for bulk operations");
+    } else if (sqlQuery == null) {
+      throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
+    }
+    try {
+      invalidatePriorQuery();
+      if (statement instanceof PreparedStatement) {
+        PreparedStatement preparedStatement = (PreparedStatement) statement;
+        if (bindRoot != null) {
+          reader = new JdbcBindReader(allocator, preparedStatement, bindRoot);
+        } else {
+          resultSet = preparedStatement.executeQuery();
+          reader = new JdbcArrowReader(allocator, resultSet, /*overrideSchema*/ null);
+        }
+      } else {
+        statement =
+            connection.createStatement(
+                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        resultSet = statement.executeQuery(sqlQuery);
+        reader = new JdbcArrowReader(allocator, resultSet, /*overrideSchema*/ null);
+      }
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+    return new QueryResult(/*affectedRows=*/ -1, reader);
   }
 
   @Override
@@ -258,15 +288,14 @@ public class JdbcStatement implements AdbcStatement {
         throw new RuntimeException(e);
       }
     }
-    throw AdbcException.invalidState("[JDBC] Must call prepare() before getParameterSchema()");
+    throw AdbcException.invalidState("[JDBC] Must prepare() before getParameterSchema()");
   }
 
   @Override
   public void prepare() throws AdbcException {
     try {
       if (sqlQuery == null) {
-        throw AdbcException.invalidArgument(
-            "[Flight SQL] Must call setSqlQuery(String) before prepare()");
+        throw AdbcException.invalidArgument("[JDBC] Must setSqlQuery(String) before prepare()");
       }
       if (resultSet != null) {
         resultSet.close();

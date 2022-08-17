@@ -64,19 +64,20 @@ def test_connection_get_info(sqlite):
         adbc_driver_manager.AdbcInfoCode.VENDOR_VERSION.value,
         adbc_driver_manager.AdbcInfoCode.DRIVER_NAME,
         adbc_driver_manager.AdbcInfoCode.DRIVER_VERSION.value,
+        adbc_driver_manager.AdbcInfoCode.DRIVER_ARROW_VERSION.value,
     ]
-    with conn.get_info() as stmt:
-        table = _import(stmt.get_stream()).read_all()
-        assert table.num_rows > 0
-        data = dict(zip(table[0].to_pylist(), table[1].to_pylist()))
-        for code in codes:
-            assert code in data
-            assert data[code]
+    handle = conn.get_info()
+    table = _import(handle).read_all()
+    assert table.num_rows > 0
+    data = dict(zip(table[0].to_pylist(), table[1].to_pylist()))
+    for code in codes:
+        assert code in data
+        assert data[code]
 
-    with conn.get_info(codes) as stmt:
-        table = _import(stmt.get_stream()).read_all()
-        assert table.num_rows > 0
-        assert set(codes) == set(table[0].to_pylist())
+    handle = conn.get_info()
+    table = _import(handle).read_all()
+    assert table.num_rows > 0
+    assert set(codes) == set(table[0].to_pylist())
 
 
 def test_connection_get_objects(sqlite):
@@ -91,10 +92,10 @@ def test_connection_get_objects(sqlite):
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "foo"})
         _bind(stmt, data)
-        stmt.execute()
+        stmt.execute_update()
 
-    with conn.get_objects(adbc_driver_manager.GetObjectsDepth.ALL) as stmt:
-        table = _import(stmt.get_stream()).read_all()
+    handle = conn.get_objects(adbc_driver_manager.GetObjectsDepth.ALL)
+    table = _import(handle).read_all()
 
     db_schemas = pyarrow.concat_arrays(table[1].chunks).flatten()
     tables = db_schemas.flatten()[1].flatten()
@@ -119,7 +120,7 @@ def test_connection_get_table_schema(sqlite):
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "foo"})
         _bind(stmt, data)
-        stmt.execute()
+        stmt.execute_update()
 
     handle = conn.get_table_schema(catalog=None, db_schema=None, table_name="foo")
     assert data.schema == _import(handle)
@@ -127,17 +128,17 @@ def test_connection_get_table_schema(sqlite):
 
 def test_connection_get_table_types(sqlite):
     _, conn = sqlite
-    with conn.get_table_types() as stmt:
-        table = _import(stmt.get_stream()).read_all()
-        assert "table" in table[0].to_pylist()
+    handle = conn.get_table_types()
+    table = _import(handle).read_all()
+    assert "table" in table[0].to_pylist()
 
 
 def test_query(sqlite):
     _, conn = sqlite
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_sql_query("SELECT 1")
-        stmt.execute()
-        table = _import(stmt.get_stream()).read_all()
+        handle, _ = stmt.execute_query()
+        table = _import(handle).read_all()
         assert table == pyarrow.table([[1]], names=["1"])
 
 
@@ -148,8 +149,8 @@ def test_prepared(sqlite):
         stmt.prepare()
 
         _bind(stmt, pyarrow.record_batch([[1, 2, 3, 4]], names=["1"]))
-        stmt.execute()
-        table = _import(stmt.get_stream()).read_all()
+        handle, _ = stmt.execute_query()
+        table = _import(handle).read_all()
         assert table == pyarrow.table([[1, 2, 3, 4]], names=["?"])
 
 
@@ -165,11 +166,11 @@ def test_ingest(sqlite):
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "foo"})
         _bind(stmt, data)
-        stmt.execute()
+        stmt.execute_update()
 
         stmt.set_sql_query("SELECT * FROM foo")
-        stmt.execute()
-        table = _import(stmt.get_stream()).read_all()
+        handle, _ = stmt.execute_query()
+        table = _import(handle).read_all()
         assert table == pyarrow.Table.from_batches([data])
 
 
@@ -204,11 +205,11 @@ def test_autocommit(sqlite):
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "foo"})
         _bind(stmt, data)
-        stmt.execute()
+        stmt.execute_update()
 
         stmt.set_sql_query("SELECT * FROM foo")
-        stmt.execute()
-        table = _import(stmt.get_stream()).read_all()
+        handle, _ = stmt.execute_query()
+        table = _import(handle).read_all()
         assert table == pyarrow.Table.from_batches([data])
 
     conn.rollback()
@@ -222,24 +223,25 @@ def test_autocommit(sqlite):
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "foo"})
         _bind(stmt, data)
-        stmt.execute()
+        stmt.execute_update()
 
     # Enabling autocommit should implicitly commit
     conn.set_autocommit(True)
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_sql_query("SELECT * FROM foo")
-        stmt.execute()
+        handle, _ = stmt.execute_query()
+        table = _import(handle).read_all()
 
     conn.set_autocommit(False)
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "bar"})
         _bind(stmt, data)
-        stmt.execute()
+        stmt.execute_update()
 
     # Explicit commit
     conn.commit()
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_sql_query("SELECT * FROM foo")
-        stmt.execute()
-        table = _import(stmt.get_stream()).read_all()
+        handle, _ = stmt.execute_query()
+        table = _import(handle).read_all()
         assert table == pyarrow.Table.from_batches([data])

@@ -18,6 +18,7 @@ package org.apache.arrow.adbc.core;
 
 import java.nio.ByteBuffer;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Schema;
 
 /**
@@ -52,9 +53,10 @@ public interface AdbcConnection extends AutoCloseable {
    *
    * @param descriptor The descriptor to load ({@link PartitionDescriptor#getDescriptor()}.
    * @return A statement that can be immediately executed.
-   * @see AdbcStatement#getPartitionDescriptors()
+   * @see AdbcStatement.PartitionResult
    */
-  default AdbcStatement deserializePartitionDescriptor(ByteBuffer descriptor) throws AdbcException {
+  default AdbcStatement.QueryResult deserializePartitionDescriptor(ByteBuffer descriptor)
+      throws AdbcException {
     throw AdbcException.notImplemented(
         "Connection does not support deserializePartitionDescriptor(ByteBuffer)");
   }
@@ -63,9 +65,8 @@ public interface AdbcConnection extends AutoCloseable {
    * Get metadata about the driver/database.
    *
    * @param infoCodes The metadata items to fetch.
-   * @return A statement that can be immediately executed.
    */
-  AdbcStatement getInfo(int[] infoCodes) throws AdbcException;
+  ArrowReader getInfo(int[] infoCodes) throws AdbcException;
 
   /**
    * Get metadata about the driver/database.
@@ -73,7 +74,7 @@ public interface AdbcConnection extends AutoCloseable {
    * @param infoCodes The metadata items to fetch.
    * @return A statement that can be immediately executed.
    */
-  default AdbcStatement getInfo(AdbcInfoCode[] infoCodes) throws AdbcException {
+  default ArrowReader getInfo(AdbcInfoCode[] infoCodes) throws AdbcException {
     int[] codes = new int[infoCodes.length];
     for (int i = 0; i < infoCodes.length; i++) {
       codes[i] = infoCodes[i].getValue();
@@ -86,7 +87,7 @@ public interface AdbcConnection extends AutoCloseable {
    *
    * @return A statement that can be immediately executed.
    */
-  default AdbcStatement getInfo() throws AdbcException {
+  default ArrowReader getInfo() throws AdbcException {
     return getInfo((int[]) null);
   }
 
@@ -195,7 +196,7 @@ public interface AdbcConnection extends AutoCloseable {
    * @param columnNamePattern Only show columns with the given name. If null, do not filter by name.
    *     May be a search pattern (see class documentation).
    */
-  default AdbcStatement getObjects(
+  default ArrowReader getObjects(
       GetObjectsDepth depth,
       String catalogPattern,
       String dbSchemaPattern,
@@ -252,7 +253,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   </tr>
    * </table>
    */
-  default AdbcStatement getTableTypes() throws AdbcException {
+  default ArrowReader getTableTypes() throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support getTableTypes()");
   }
 

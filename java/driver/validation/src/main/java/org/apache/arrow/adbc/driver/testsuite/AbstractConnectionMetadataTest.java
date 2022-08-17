@@ -80,34 +80,30 @@ public abstract class AbstractConnectionMetadataTest {
 
   @Test
   public void getInfo() throws Exception {
-    try (final AdbcStatement stmt = connection.getInfo()) {
-      try (final ArrowReader reader = stmt.getArrowReader()) {
-        assertThat(reader.getVectorSchemaRoot().getSchema())
-            .isEqualTo(StandardSchemas.GET_INFO_SCHEMA);
-        assertThat(reader.loadNextBatch()).isTrue();
-        assertThat(reader.getVectorSchemaRoot().getRowCount()).isGreaterThan(0);
-      }
+    try (final ArrowReader reader = connection.getInfo()) {
+      assertThat(reader.getVectorSchemaRoot().getSchema())
+          .isEqualTo(StandardSchemas.GET_INFO_SCHEMA);
+      assertThat(reader.loadNextBatch()).isTrue();
+      assertThat(reader.getVectorSchemaRoot().getRowCount()).isGreaterThan(0);
     }
   }
 
   @Test
   public void getInfoByCode() throws Exception {
-    try (final AdbcStatement stmt =
+    try (final ArrowReader reader =
         connection.getInfo(new AdbcInfoCode[] {AdbcInfoCode.DRIVER_NAME})) {
-      try (final ArrowReader reader = stmt.getArrowReader()) {
-        final VectorSchemaRoot root = reader.getVectorSchemaRoot();
-        assertThat(root.getSchema()).isEqualTo(StandardSchemas.GET_INFO_SCHEMA);
-        assertThat(reader.loadNextBatch()).isTrue();
-        assertThat(root.getRowCount()).isEqualTo(1);
-        assertThat(((UInt4Vector) root.getVector(0)).getObject(0))
-            .isEqualTo(AdbcInfoCode.DRIVER_NAME.getValue());
-        assertThat(
-                ((DenseUnionVector) root.getVector(1))
-                    .getVarCharVector((byte) 0)
-                    .getObject(0)
-                    .toString())
-            .isNotEmpty();
-      }
+      final VectorSchemaRoot root = reader.getVectorSchemaRoot();
+      assertThat(root.getSchema()).isEqualTo(StandardSchemas.GET_INFO_SCHEMA);
+      assertThat(reader.loadNextBatch()).isTrue();
+      assertThat(root.getRowCount()).isEqualTo(1);
+      assertThat(((UInt4Vector) root.getVector(0)).getObject(0))
+          .isEqualTo(AdbcInfoCode.DRIVER_NAME.getValue());
+      assertThat(
+              ((DenseUnionVector) root.getVector(1))
+                  .getVarCharVector((byte) 0)
+                  .getObject(0)
+                  .toString())
+          .isNotEmpty();
     }
   }
 
@@ -115,37 +111,35 @@ public abstract class AbstractConnectionMetadataTest {
   public void getObjectsColumns() throws Exception {
     final Schema schema = util.ingestTableIntsStrs(allocator, connection, tableName);
     boolean tableFound = false;
-    try (final AdbcStatement stmt =
+    try (final ArrowReader reader =
         connection.getObjects(AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, null)) {
-      try (final ArrowReader reader = stmt.getArrowReader()) {
-        assertThat(reader.getVectorSchemaRoot().getSchema())
-            .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
-        assertThat(reader.loadNextBatch()).isTrue();
+      assertThat(reader.getVectorSchemaRoot().getSchema())
+          .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
+      assertThat(reader.loadNextBatch()).isTrue();
 
-        final ListVector dbSchemas = (ListVector) reader.getVectorSchemaRoot().getVector(1);
-        final ListVector dbSchemaTables =
-            (ListVector) ((StructVector) dbSchemas.getDataVector()).getVectorById(1);
-        final StructVector tables = (StructVector) dbSchemaTables.getDataVector();
-        final VarCharVector tableNames = (VarCharVector) tables.getVectorById(0);
-        final ListVector tableColumns = (ListVector) tables.getVectorById(2);
+      final ListVector dbSchemas = (ListVector) reader.getVectorSchemaRoot().getVector(1);
+      final ListVector dbSchemaTables =
+          (ListVector) ((StructVector) dbSchemas.getDataVector()).getVectorById(1);
+      final StructVector tables = (StructVector) dbSchemaTables.getDataVector();
+      final VarCharVector tableNames = (VarCharVector) tables.getVectorById(0);
+      final ListVector tableColumns = (ListVector) tables.getVectorById(2);
 
-        for (int i = 0; i < tables.getValueCount(); i++) {
-          if (tables.isNull(i)) {
-            continue;
-          }
-          final Text tableName = tableNames.getObject(i);
-          if (tableName != null && tableName.toString().equalsIgnoreCase(this.tableName)) {
-            tableFound = true;
-            @SuppressWarnings("unchecked")
-            final List<Map<String, ?>> columns = (List<Map<String, ?>>) tableColumns.getObject(i);
-            assertThat(columns)
-                .extracting("column_name")
-                .containsExactlyInAnyOrderElementsOf(
-                    schema.getFields().stream()
-                        .map(field -> new Text(field.getName()))
-                        .collect(Collectors.toList()));
-            assertThat(columns).extracting("ordinal_position").containsExactlyInAnyOrder(1, 2);
-          }
+      for (int i = 0; i < tables.getValueCount(); i++) {
+        if (tables.isNull(i)) {
+          continue;
+        }
+        final Text tableName = tableNames.getObject(i);
+        if (tableName != null && tableName.toString().equalsIgnoreCase(this.tableName)) {
+          tableFound = true;
+          @SuppressWarnings("unchecked")
+          final List<Map<String, ?>> columns = (List<Map<String, ?>>) tableColumns.getObject(i);
+          assertThat(columns)
+              .extracting("column_name")
+              .containsExactlyInAnyOrderElementsOf(
+                  schema.getFields().stream()
+                      .map(field -> new Text(field.getName()))
+                      .collect(Collectors.toList()));
+          assertThat(columns).extracting("ordinal_position").containsExactlyInAnyOrder(1, 2);
         }
       }
     }
@@ -155,55 +149,49 @@ public abstract class AbstractConnectionMetadataTest {
   @Test
   public void getObjectsCatalogs() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
-    try (final AdbcStatement stmt =
+    try (final ArrowReader reader =
         connection.getObjects(
             AdbcConnection.GetObjectsDepth.CATALOGS, null, null, null, null, null)) {
-      try (final ArrowReader reader = stmt.getArrowReader()) {
-        assertThat(reader.getVectorSchemaRoot().getSchema())
-            .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
-        assertThat(reader.loadNextBatch()).isTrue();
-        assertThat(reader.getVectorSchemaRoot().getRowCount()).isGreaterThan(0);
-        final FieldVector dbSchemas = reader.getVectorSchemaRoot().getVector(1);
-        // We requested depth == CATALOGS, so the db_schemas field should be all null
-        assertThat(dbSchemas.getNullCount()).isEqualTo(dbSchemas.getValueCount());
-      }
+      assertThat(reader.getVectorSchemaRoot().getSchema())
+          .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
+      assertThat(reader.loadNextBatch()).isTrue();
+      assertThat(reader.getVectorSchemaRoot().getRowCount()).isGreaterThan(0);
+      final FieldVector dbSchemas = reader.getVectorSchemaRoot().getVector(1);
+      // We requested depth == CATALOGS, so the db_schemas field should be all null
+      assertThat(dbSchemas.getNullCount()).isEqualTo(dbSchemas.getValueCount());
     }
   }
 
   @Test
   public void getObjectsDbSchemas() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
-    try (final AdbcStatement stmt =
+    try (final ArrowReader reader =
         connection.getObjects(
             AdbcConnection.GetObjectsDepth.DB_SCHEMAS, null, null, null, null, null)) {
-      try (final ArrowReader reader = stmt.getArrowReader()) {
-        assertThat(reader.getVectorSchemaRoot().getSchema())
-            .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
-        assertThat(reader.loadNextBatch()).isTrue();
-        assertThat(reader.getVectorSchemaRoot().getRowCount()).isGreaterThan(0);
-      }
+      assertThat(reader.getVectorSchemaRoot().getSchema())
+          .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
+      assertThat(reader.loadNextBatch()).isTrue();
+      assertThat(reader.getVectorSchemaRoot().getRowCount()).isGreaterThan(0);
     }
   }
 
   @Test
   public void getObjectsTables() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
-    try (final AdbcStatement stmt =
+    try (final ArrowReader reader =
         connection.getObjects(
             AdbcConnection.GetObjectsDepth.TABLES, null, null, null, null, null)) {
-      try (final ArrowReader reader = stmt.getArrowReader()) {
-        assertThat(reader.getVectorSchemaRoot().getSchema())
-            .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
-        assertThat(reader.loadNextBatch()).isTrue();
+      assertThat(reader.getVectorSchemaRoot().getSchema())
+          .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
+      assertThat(reader.loadNextBatch()).isTrue();
 
-        final ListVector dbSchemas = (ListVector) reader.getVectorSchemaRoot().getVector(1);
-        final ListVector dbSchemaTables =
-            (ListVector) ((StructVector) dbSchemas.getDataVector()).getVectorById(1);
-        final StructVector tables = (StructVector) dbSchemaTables.getDataVector();
-        final VarCharVector tableNames = (VarCharVector) tables.getVectorById(0);
-        assertThat(IntStream.range(0, tableNames.getValueCount()).mapToObj(tableNames::getObject))
-            .containsAnyOf(new Text(quirks.caseFoldTableName(tableName)));
-      }
+      final ListVector dbSchemas = (ListVector) reader.getVectorSchemaRoot().getVector(1);
+      final ListVector dbSchemaTables =
+          (ListVector) ((StructVector) dbSchemas.getDataVector()).getVectorById(1);
+      final StructVector tables = (StructVector) dbSchemaTables.getDataVector();
+      final VarCharVector tableNames = (VarCharVector) tables.getVectorById(0);
+      assertThat(IntStream.range(0, tableNames.getValueCount()).mapToObj(tableNames::getObject))
+          .containsAnyOf(new Text(quirks.caseFoldTableName(tableName)));
     }
   }
 
@@ -215,11 +203,10 @@ public abstract class AbstractConnectionMetadataTest {
                 Field.nullable(
                     quirks.caseFoldColumnName("INTS"), new ArrowType.Int(32, /*signed=*/ true)),
                 Field.nullable(quirks.caseFoldColumnName("STRS"), new ArrowType.Utf8())));
-    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
-      try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
-        stmt.bind(root);
-        stmt.execute();
-      }
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator);
+        final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
+      stmt.bind(root);
+      stmt.executeUpdate();
     }
     assertThat(connection.getTableSchema(/*catalog*/ null, /*dbSchema*/ null, tableName))
         .isEqualTo(schema);
@@ -227,20 +214,18 @@ public abstract class AbstractConnectionMetadataTest {
 
   @Test
   public void getTableTypes() throws Exception {
-    try (final AdbcStatement stmt = connection.getTableTypes()) {
-      try (final ArrowReader reader = stmt.getArrowReader()) {
-        assertThat(reader.getVectorSchemaRoot().getSchema())
-            .isEqualTo(StandardSchemas.TABLE_TYPES_SCHEMA);
-        List<String> tableTypes = new ArrayList<>();
-        while (reader.loadNextBatch()) {
-          final VarCharVector types = (VarCharVector) reader.getVectorSchemaRoot().getVector(0);
-          for (int i = 0; i < types.getValueCount(); i++) {
-            assertThat(types.isNull(i)).isFalse();
-            tableTypes.add(types.getObject(i).toString());
-          }
+    try (final ArrowReader reader = connection.getTableTypes()) {
+      assertThat(reader.getVectorSchemaRoot().getSchema())
+          .isEqualTo(StandardSchemas.TABLE_TYPES_SCHEMA);
+      List<String> tableTypes = new ArrayList<>();
+      while (reader.loadNextBatch()) {
+        final VarCharVector types = (VarCharVector) reader.getVectorSchemaRoot().getVector(0);
+        for (int i = 0; i < types.getValueCount(); i++) {
+          assertThat(types.isNull(i)).isFalse();
+          tableTypes.add(types.getObject(i).toString());
         }
-        assertThat(tableTypes).anyMatch("table"::equalsIgnoreCase);
       }
+      assertThat(tableTypes).anyMatch("table"::equalsIgnoreCase);
     }
   }
 }

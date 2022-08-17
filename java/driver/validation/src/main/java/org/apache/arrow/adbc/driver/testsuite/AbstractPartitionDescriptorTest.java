@@ -22,12 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.List;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
-import org.apache.arrow.adbc.core.PartitionDescriptor;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
@@ -35,7 +33,6 @@ import org.apache.arrow.util.Preconditions;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
-import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -97,25 +94,25 @@ public abstract class AbstractPartitionDescriptorTest {
 
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
-        stmt.execute();
+        stmt.executeUpdate();
       }
-      final List<PartitionDescriptor> descriptors;
+      final AdbcStatement.PartitionResult partitionResult;
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM " + tableName);
-        stmt.execute();
-        descriptors = stmt.getPartitionDescriptors();
+        partitionResult = stmt.executePartitioned();
         // For convenience, assume database won't shard 4 rows over more than 1 partition…
-        assertThat(descriptors).hasSize(1);
+        assertThat(partitionResult.getPartitionDescriptors()).hasSize(1);
       }
 
       // The serialized partition descriptor should be executable on a separate connection
       try (final AdbcConnection connection2 = database.connect();
-          final AdbcStatement stmt =
-              connection2.deserializePartitionDescriptor(descriptors.get(0).getDescriptor());
-          final ArrowReader reader = stmt.getArrowReader()) {
-        assertThat(reader.loadNextBatch()).isTrue();
-        assertThat(reader.getVectorSchemaRoot().getSchema()).isEqualTo(root.getSchema());
-        assertRoot(reader.getVectorSchemaRoot()).isEqualTo(root);
+          final AdbcStatement.QueryResult queryResult =
+              connection2.deserializePartitionDescriptor(
+                  partitionResult.getPartitionDescriptors().get(0).getDescriptor())) {
+        assertThat(queryResult.getReader().loadNextBatch()).isTrue();
+        assertThat(queryResult.getReader().getVectorSchemaRoot().getSchema())
+            .isEqualTo(root.getSchema());
+        assertRoot(queryResult.getReader().getVectorSchemaRoot()).isEqualTo(root);
       }
     }
   }

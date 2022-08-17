@@ -15,12 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <memory>
 #include <mutex>
 #include <string>
 
 #include <arrow/c/bridge.h>
 #include <arrow/flight/client.h>
 #include <arrow/flight/sql/client.h>
+#include <arrow/ipc/dictionary.h>
 #include <arrow/record_batch.h>
 #include <arrow/result.h>
 #include <arrow/status.h>
@@ -141,6 +143,89 @@ class FlightSqlDatabaseImpl {
   std::mutex mutex_;
 };
 
+class FlightInfoReader : public arrow::RecordBatchReader {
+ public:
+  explicit FlightInfoReader(flightsql::FlightSqlClient* client,
+                            std::unique_ptr<flight::FlightInfo> info)
+      : client_(client), info_(std::move(info)), next_endpoint_(0) {}
+
+  std::shared_ptr<arrow::Schema> schema() const override { return schema_; }
+
+  Status ReadNext(std::shared_ptr<arrow::RecordBatch>* batch) override {
+    flight::FlightStreamChunk chunk;
+    while (current_stream_ && !chunk.data) {
+      ARROW_ASSIGN_OR_RAISE(chunk, current_stream_->Next());
+      if (chunk.data) {
+        *batch = chunk.data;
+        break;
+      }
+      if (!chunk.data && !chunk.app_metadata) {
+        RETURN_NOT_OK(NextStream());
+      }
+    }
+    if (!current_stream_) *batch = nullptr;
+    return Status::OK();
+  }
+
+  Status Close() override {
+    if (current_stream_) {
+      current_stream_->Cancel();
+    }
+    return Status::OK();
+  }
+
+  static AdbcStatusCode Export(flightsql::FlightSqlClient* client,
+                               std::unique_ptr<flight::FlightInfo> info,
+                               struct ArrowArrayStream* stream, struct AdbcError* error) {
+    auto reader = std::make_shared<FlightInfoReader>(client, std::move(info));
+    auto status = reader->NextStream();
+    if (!status.ok()) {
+      SetError(error, status);
+      return ADBC_STATUS_IO;
+    }
+    if (!reader->schema_) {
+      // Empty result set - fall back on schema in FlightInfo
+      arrow::ipc::DictionaryMemo memo;
+      status = info->GetSchema(&memo).Value(&reader->schema_);
+      if (!status.ok()) {
+        SetError(error, status);
+        return ADBC_STATUS_INTERNAL;
+      }
+    }
+
+    status = arrow::ExportRecordBatchReader(std::move(reader), stream);
+    if (!status.ok()) {
+      SetError(error, status);
+      return ADBC_STATUS_INTERNAL;
+    }
+    return ADBC_STATUS_OK;
+  }
+
+ private:
+  Status NextStream() {
+    if (next_endpoint_ >= info_->endpoints().size()) {
+      current_stream_ = nullptr;
+      return Status::OK();
+    }
+    // TODO: this needs to account for location
+    flight::FlightCallOptions call_options;
+    ARROW_ASSIGN_OR_RAISE(
+        current_stream_,
+        client_->DoGet(call_options, info_->endpoints()[next_endpoint_].ticket));
+    next_endpoint_++;
+    if (!schema_) {
+      ARROW_ASSIGN_OR_RAISE(schema_, current_stream_->GetSchema());
+    }
+    return Status::OK();
+  }
+
+  flightsql::FlightSqlClient* client_;
+  std::unique_ptr<flight::FlightInfo> info_;
+  size_t next_endpoint_;
+  std::shared_ptr<arrow::Schema> schema_;
+  std::unique_ptr<flight::FlightStreamReader> current_stream_;
+};
+
 class FlightSqlConnectionImpl {
  public:
   FlightSqlConnectionImpl() : database_(nullptr), client_(nullptr) {}
@@ -169,38 +254,30 @@ class FlightSqlConnectionImpl {
 
   AdbcStatusCode Close(struct AdbcError* error) { return database_->Disconnect(error); }
 
+  //----------------------------------------------------------
+  // Metadata
+  //----------------------------------------------------------
+
+  AdbcStatusCode GetTableTypes(struct ArrowArrayStream* stream, struct AdbcError* error) {
+    flight::FlightCallOptions call_options;
+    std::unique_ptr<flight::FlightInfo> flight_info;
+    auto status = client_->GetTableTypes(call_options).Value(&flight_info);
+    if (!status.ok()) {
+      SetError(error, status);
+      return ADBC_STATUS_IO;
+    }
+    return FlightInfoReader::Export(client_, std::move(flight_info), stream, error);
+  }
+
  private:
   std::shared_ptr<FlightSqlDatabaseImpl> database_;
   flightsql::FlightSqlClient* client_;
 };
 
-class FlightSqlStatementImpl : public arrow::RecordBatchReader {
+class FlightSqlStatementImpl {
  public:
   explicit FlightSqlStatementImpl(std::shared_ptr<FlightSqlConnectionImpl> connection)
-      : connection_(std::move(connection)), info_() {}
-
-  void Init(std::unique_ptr<flight::FlightInfo> info) { info_ = std::move(info); }
-
-  //----------------------------------------------------------
-  // arrow::RecordBatchReader Methods
-  //----------------------------------------------------------
-
-  std::shared_ptr<arrow::Schema> schema() const override { return schema_; }
-
-  Status ReadNext(std::shared_ptr<arrow::RecordBatch>* batch) override {
-    flight::FlightStreamChunk chunk;
-    while (current_stream_ && !chunk.data) {
-      ARROW_ASSIGN_OR_RAISE(chunk, current_stream_->Next());
-      if (chunk.data) {
-        *batch = chunk.data;
-        break;
-      }
-      if (!chunk.data && !chunk.app_metadata) {
-        RETURN_NOT_OK(NextStream());
-      }
-    }
-    return Status::OK();
-  }
+      : connection_(std::move(connection)) {}
 
   //----------------------------------------------------------
   // Common Functions
@@ -214,62 +291,53 @@ class FlightSqlStatementImpl : public arrow::RecordBatchReader {
   //----------------------------------------------------------
 
   AdbcStatusCode Execute(const std::shared_ptr<FlightSqlStatementImpl>& self,
+                         int output_type, void* out, int64_t* rows_affected,
                          struct AdbcError* error) {
     flight::FlightCallOptions call_options;
-    std::unique_ptr<flight::FlightInfo> flight_info;
-    auto status =
-        connection_->client()->Execute(call_options, query_).Value(&flight_info);
-    if (!status.ok()) {
-      SetError(error, status);
-      return ADBC_STATUS_IO;
-    }
-    Init(std::move(flight_info));
-    return ADBC_STATUS_OK;
-  }
+    switch (output_type) {
+      case ADBC_OUTPUT_TYPE_ARROW:
+      case ADBC_OUTPUT_TYPE_PARTITIONS: {
+        if (!out) {
+          SetError(error, "Must provide out for output type ", output_type);
+          return ADBC_STATUS_INVALID_ARGUMENT;
+        }
+        auto status = connection_->client()->Execute(call_options, query_).Value(&info_);
+        if (!status.ok()) {
+          SetError(error, status);
+          return ADBC_STATUS_IO;
+        }
+        if (rows_affected) {
+          if (info_->total_records() >= 0) {
+            *rows_affected = static_cast<size_t>(info_->total_records());
+          } else {
+            *rows_affected = -1;
+          }
+        }
 
-  AdbcStatusCode GetStream(const std::shared_ptr<FlightSqlStatementImpl>& self,
-                           struct ArrowArrayStream* out, struct AdbcError* error) {
-    if (!info_) {
-      SetError(error, "Statement has not yet been executed");
-      return ADBC_STATUS_INVALID_STATE;
+        if (output_type == ADBC_OUTPUT_TYPE_ARROW) {
+          auto* stream = static_cast<struct ArrowArrayStream*>(out);
+          return FlightInfoReader::Export(connection_->client(), std::move(info_), stream,
+                                          error);
+        } else {
+          *static_cast<size_t*>(out) = info_->endpoints().size();
+        }
+        break;
+      }
+      case ADBC_OUTPUT_TYPE_UPDATE:
+        // TODO: update query
+        // TODO: bulk ingest isn't implemented
+        return ADBC_STATUS_NOT_IMPLEMENTED;
+      default:
+        SetError(error, "Unknown output type ", output_type);
+        return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
-    auto status = NextStream();
-    if (!status.ok()) {
-      SetError(error, status);
-      return ADBC_STATUS_IO;
-    }
-    if (!schema_) {
-      return ADBC_STATUS_UNKNOWN;
-    }
-
-    status = arrow::ExportRecordBatchReader(self, out);
-    if (!status.ok()) {
-      SetError(error, status);
-      return ADBC_STATUS_UNKNOWN;
-    }
     return ADBC_STATUS_OK;
   }
 
   AdbcStatusCode SetSqlQuery(const std::shared_ptr<FlightSqlStatementImpl>&,
                              const char* query, struct AdbcError* error) {
     query_ = query;
-    return ADBC_STATUS_OK;
-  }
-
-  //----------------------------------------------------------
-  // Metadata
-  //----------------------------------------------------------
-
-  AdbcStatusCode GetTableTypes(struct AdbcError* error) {
-    flight::FlightCallOptions call_options;
-    std::unique_ptr<flight::FlightInfo> flight_info;
-    auto status = connection_->client()->GetTableTypes(call_options).Value(&flight_info);
-    if (!status.ok()) {
-      SetError(error, status);
-      return ADBC_STATUS_IO;
-    }
-    Init(std::move(flight_info));
     return ADBC_STATUS_OK;
   }
 
@@ -290,66 +358,48 @@ class FlightSqlStatementImpl : public arrow::RecordBatchReader {
       SetError(error, maybe_info.status());
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
+    // TODO:
     std::unique_ptr<flight::FlightInfo> flight_info(
         new flight::FlightInfo(maybe_info.MoveValueUnsafe()));
-    Init(std::move(flight_info));
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode GetPartitionDescSize(size_t* length, struct AdbcError* error) const {
+  AdbcStatusCode GetPartitionDescSize(size_t index, size_t* length,
+                                      struct AdbcError* error) const {
     if (!info_) {
       SetError(error, "Statement has not yet been executed");
       return ADBC_STATUS_INVALID_STATE;
     }
 
     // TODO: we're only encoding the ticket, not the actual locations
-    if (next_endpoint_ >= info_->endpoints().size()) {
-      *length = 0;
-      return ADBC_STATUS_OK;
+    if (index >= info_->endpoints().size()) {
+      SetError(error, "Index is out of bounds");
+      return ADBC_STATUS_INVALID_ARGUMENT;
     }
-    *length = info_->endpoints()[next_endpoint_].ticket.ticket.size();
+    *length = info_->endpoints()[index].ticket.ticket.size();
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode GetPartitionDesc(uint8_t* partition_desc, struct AdbcError* error) {
+  AdbcStatusCode GetPartitionDesc(size_t index, uint8_t* partition_desc,
+                                  struct AdbcError* error) {
     if (!info_) {
       SetError(error, "Statement has not yet been executed");
       return ADBC_STATUS_INVALID_STATE;
     }
 
-    if (next_endpoint_ >= info_->endpoints().size()) {
+    if (index >= info_->endpoints().size()) {
+      SetError(error, "Index is out of bounds");
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
-    const std::string& ticket = info_->endpoints()[next_endpoint_].ticket.ticket;
+    const std::string& ticket = info_->endpoints()[index].ticket.ticket;
     std::memcpy(partition_desc, ticket.data(), ticket.size());
-    next_endpoint_++;
     return ADBC_STATUS_OK;
   }
 
  private:
-  Status NextStream() {
-    if (next_endpoint_ >= info_->endpoints().size()) {
-      current_stream_ = nullptr;
-      return Status::OK();
-    }
-    // TODO: this needs to account for location
-    flight::FlightCallOptions call_options;
-    ARROW_ASSIGN_OR_RAISE(current_stream_,
-                          connection_->client()->DoGet(
-                              call_options, info_->endpoints()[next_endpoint_].ticket));
-    next_endpoint_++;
-    if (!schema_) {
-      ARROW_ASSIGN_OR_RAISE(schema_, current_stream_->GetSchema());
-    }
-    return Status::OK();
-  }
-
   std::shared_ptr<FlightSqlConnectionImpl> connection_;
-  std::unique_ptr<flight::FlightInfo> info_;
   std::string query_;
-  std::shared_ptr<arrow::Schema> schema_;
-  size_t next_endpoint_ = 0;
-  std::unique_ptr<flight::FlightStreamReader> current_stream_;
+  std::unique_ptr<flight::FlightInfo> info_;
 };
 
 AdbcStatusCode FlightSqlDatabaseNew(struct AdbcDatabase* database,
@@ -396,12 +446,12 @@ AdbcStatusCode FlightSqlConnectionDeserializePartitionDesc(
 }
 
 AdbcStatusCode FlightSqlConnectionGetTableTypes(struct AdbcConnection* connection,
-                                                struct AdbcStatement* statement,
+                                                struct ArrowArrayStream* stream,
                                                 struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
-  return (*ptr)->GetTableTypes(error);
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto* ptr = reinterpret_cast<std::shared_ptr<FlightSqlConnectionImpl>*>(
+      connection->private_data);
+  return (*ptr)->GetTableTypes(stream, error);
 }
 
 AdbcStatusCode FlightSqlConnectionNew(struct AdbcConnection* connection,
@@ -437,39 +487,31 @@ AdbcStatusCode FlightSqlConnectionRelease(struct AdbcConnection* connection,
   return status;
 }
 
-AdbcStatusCode FlightSqlStatementExecute(struct AdbcStatement* statement,
+AdbcStatusCode FlightSqlStatementExecute(struct AdbcStatement* statement, int output_type,
+                                         void* out, int64_t* rows_affected,
                                          struct AdbcError* error) {
   if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
-  return (*ptr)->Execute(*ptr, error);
+  return (*ptr)->Execute(*ptr, output_type, out, rows_affected, error);
 }
 
 AdbcStatusCode FlightSqlStatementGetPartitionDesc(struct AdbcStatement* statement,
-                                                  uint8_t* partition_desc,
+                                                  size_t index, uint8_t* partition_desc,
                                                   struct AdbcError* error) {
   if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
-  return (*ptr)->GetPartitionDesc(partition_desc, error);
+  return (*ptr)->GetPartitionDesc(index, partition_desc, error);
 }
 
 AdbcStatusCode FlightSqlStatementGetPartitionDescSize(struct AdbcStatement* statement,
-                                                      size_t* length,
+                                                      size_t index, size_t* length,
                                                       struct AdbcError* error) {
   if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
-  return (*ptr)->GetPartitionDescSize(length, error);
-}
-
-AdbcStatusCode FlightSqlStatementGetStream(struct AdbcStatement* statement,
-                                           struct ArrowArrayStream* out,
-                                           struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
-  return (*ptr)->GetStream(*ptr, out, error);
+  return (*ptr)->GetPartitionDescSize(index, length, error);
 }
 
 AdbcStatusCode FlightSqlStatementNew(struct AdbcConnection* connection,
@@ -531,9 +573,9 @@ AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* con
 }
 
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
-                                           struct AdbcStatement* statement,
+                                           struct ArrowArrayStream* stream,
                                            struct AdbcError* error) {
-  return FlightSqlConnectionGetTableTypes(connection, statement, error);
+  return FlightSqlConnectionGetTableTypes(connection, stream, error);
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
@@ -557,27 +599,22 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
   return FlightSqlConnectionRelease(connection, error);
 }
 
-AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
+AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement, int output_type,
+                                    void* out, int64_t* rows_affected,
                                     struct AdbcError* error) {
-  return FlightSqlStatementExecute(statement, error);
+  return FlightSqlStatementExecute(statement, output_type, out, rows_affected, error);
 }
 
 AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
-                                             uint8_t* partition_desc,
+                                             size_t index, uint8_t* partition_desc,
                                              struct AdbcError* error) {
-  return FlightSqlStatementGetPartitionDesc(statement, partition_desc, error);
+  return FlightSqlStatementGetPartitionDesc(statement, index, partition_desc, error);
 }
 
 AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
-                                                 size_t* length,
+                                                 size_t index, size_t* length,
                                                  struct AdbcError* error) {
-  return FlightSqlStatementGetPartitionDescSize(statement, length, error);
-}
-
-AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
-                                      struct ArrowArrayStream* out,
-                                      struct AdbcError* error) {
-  return FlightSqlStatementGetStream(statement, out, error);
+  return FlightSqlStatementGetPartitionDescSize(statement, index, length, error);
 }
 
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
@@ -603,25 +640,25 @@ AdbcStatusCode AdbcFlightSqlDriverInit(size_t count, struct AdbcDriver* driver,
   if (count < ADBC_VERSION_0_0_1) return ADBC_STATUS_NOT_IMPLEMENTED;
 
   std::memset(driver, 0, sizeof(*driver));
-  driver->DatabaseNew = AdbcDatabaseNew;
-  driver->DatabaseSetOption = AdbcDatabaseSetOption;
-  driver->DatabaseInit = AdbcDatabaseInit;
-  driver->DatabaseRelease = AdbcDatabaseRelease;
+  driver->DatabaseNew = FlightSqlDatabaseNew;
+  driver->DatabaseSetOption = FlightSqlDatabaseSetOption;
+  driver->DatabaseInit = FlightSqlDatabaseInit;
+  driver->DatabaseRelease = FlightSqlDatabaseRelease;
 
-  driver->ConnectionNew = AdbcConnectionNew;
-  driver->ConnectionSetOption = AdbcConnectionSetOption;
-  driver->ConnectionInit = AdbcConnectionInit;
-  driver->ConnectionRelease = AdbcConnectionRelease;
-  driver->ConnectionDeserializePartitionDesc = AdbcConnectionDeserializePartitionDesc;
-  driver->ConnectionGetTableTypes = AdbcConnectionGetTableTypes;
+  driver->ConnectionNew = FlightSqlConnectionNew;
+  driver->ConnectionSetOption = FlightSqlConnectionSetOption;
+  driver->ConnectionInit = FlightSqlConnectionInit;
+  driver->ConnectionRelease = FlightSqlConnectionRelease;
+  driver->ConnectionDeserializePartitionDesc =
+      FlightSqlConnectionDeserializePartitionDesc;
+  driver->ConnectionGetTableTypes = FlightSqlConnectionGetTableTypes;
 
-  driver->StatementExecute = AdbcStatementExecute;
-  driver->StatementGetPartitionDesc = AdbcStatementGetPartitionDesc;
-  driver->StatementGetPartitionDescSize = AdbcStatementGetPartitionDescSize;
-  driver->StatementGetStream = AdbcStatementGetStream;
-  driver->StatementNew = AdbcStatementNew;
-  driver->StatementRelease = AdbcStatementRelease;
-  driver->StatementSetSqlQuery = AdbcStatementSetSqlQuery;
+  driver->StatementExecute = FlightSqlStatementExecute;
+  driver->StatementGetPartitionDesc = FlightSqlStatementGetPartitionDesc;
+  driver->StatementGetPartitionDescSize = FlightSqlStatementGetPartitionDescSize;
+  driver->StatementNew = FlightSqlStatementNew;
+  driver->StatementRelease = FlightSqlStatementRelease;
+  driver->StatementSetSqlQuery = FlightSqlStatementSetSqlQuery;
   *initialized = ADBC_VERSION_0_0_1;
   return ADBC_STATUS_OK;
 }

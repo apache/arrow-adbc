@@ -37,7 +37,6 @@ import org.apache.arrow.util.Preconditions;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
-import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -100,25 +99,25 @@ public abstract class AbstractStatementTest {
 
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
-        stmt.execute();
+        stmt.executeUpdate();
       }
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM " + tableName);
-        try (ArrowReader arrowReader = stmt.executeQuery()) {
-          assertThat(arrowReader.loadNextBatch()).isTrue();
-          assertRoot(arrowReader.getVectorSchemaRoot()).isEqualTo(root);
+        try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
+          assertThat(queryResult.getReader().loadNextBatch()).isTrue();
+          assertRoot(queryResult.getReader().getVectorSchemaRoot()).isEqualTo(root);
         }
       }
 
       // Append
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.APPEND)) {
         stmt.bind(root);
-        stmt.execute();
+        stmt.executeUpdate();
       }
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM " + tableName);
-        try (ArrowReader arrowReader = stmt.executeQuery()) {
-          assertThat(arrowReader.loadNextBatch()).isTrue();
+        try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
+          assertThat(queryResult.getReader().loadNextBatch()).isTrue();
           root.setRowCount(8);
           ints.setSafe(4, 0);
           ints.setSafe(5, 1);
@@ -128,7 +127,7 @@ public abstract class AbstractStatementTest {
           strs.setSafe(5, "foo".getBytes(StandardCharsets.UTF_8));
           strs.setSafe(6, "".getBytes(StandardCharsets.UTF_8));
           strs.setSafe(7, "asdf".getBytes(StandardCharsets.UTF_8));
-          assertRoot(arrowReader.getVectorSchemaRoot()).isEqualTo(root);
+          assertRoot(queryResult.getReader().getVectorSchemaRoot()).isEqualTo(root);
         }
       }
     }
@@ -144,14 +143,14 @@ public abstract class AbstractStatementTest {
       root.setRowCount(1);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
-        stmt.execute();
+        stmt.executeUpdate();
       }
     }
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema2, allocator)) {
       root.setRowCount(1);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.APPEND)) {
         stmt.bind(root);
-        assertThrows(AdbcException.class, stmt::execute);
+        assertThrows(AdbcException.class, stmt::executeUpdate);
       }
     }
   }
@@ -162,7 +161,7 @@ public abstract class AbstractStatementTest {
       root.setRowCount(1);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.APPEND)) {
         stmt.bind(root);
-        final AdbcException e = assertThrows(AdbcException.class, stmt::execute);
+        final AdbcException e = assertThrows(AdbcException.class, stmt::executeUpdate);
         assertThat(e.getStatus()).describedAs("%s", e).isEqualTo(AdbcStatusCode.NOT_FOUND);
       }
     }
@@ -174,13 +173,13 @@ public abstract class AbstractStatementTest {
       root.setRowCount(1);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
-        stmt.execute();
+        stmt.executeUpdate();
       }
     }
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
-        final AdbcException e = assertThrows(AdbcException.class, stmt::execute);
+        final AdbcException e = assertThrows(AdbcException.class, stmt::executeUpdate);
         assertThat(e.getStatus()).describedAs("%s", e).isEqualTo(AdbcStatusCode.ALREADY_EXISTS);
       }
     }
@@ -192,12 +191,13 @@ public abstract class AbstractStatementTest {
     try (final AdbcStatement stmt = connection.createStatement()) {
       stmt.setSqlQuery("SELECT * FROM " + tableName);
       stmt.prepare();
-      try (final ArrowReader reader = stmt.executeQuery()) {
-        assertThat(reader.getVectorSchemaRoot().getSchema()).isEqualTo(expectedSchema);
-        assertThat(reader.loadNextBatch()).isTrue();
-        assertThat(reader.getVectorSchemaRoot().getRowCount()).isEqualTo(4);
-        while (reader.loadNextBatch()) {
-          assertThat(reader.getVectorSchemaRoot().getRowCount()).isEqualTo(0);
+      try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
+        assertThat(queryResult.getReader().getVectorSchemaRoot().getSchema())
+            .isEqualTo(expectedSchema);
+        assertThat(queryResult.getReader().loadNextBatch()).isTrue();
+        assertThat(queryResult.getReader().getVectorSchemaRoot().getRowCount()).isEqualTo(4);
+        while (queryResult.getReader().loadNextBatch()) {
+          assertThat(queryResult.getReader().getVectorSchemaRoot().getRowCount()).isEqualTo(0);
         }
       }
     }
@@ -217,30 +217,30 @@ public abstract class AbstractStatementTest {
       param0.setSafe(0, 1);
       param0.setSafe(1, 2);
       params.setRowCount(2);
-      try (final ArrowReader reader = stmt.executeQuery()) {
-        VectorSchemaRoot root = reader.getVectorSchemaRoot();
+      try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
+        VectorSchemaRoot root = queryResult.getReader().getVectorSchemaRoot();
         assertThat(root.getSchema()).isEqualTo(expectedSchema);
-        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(queryResult.getReader().loadNextBatch()).isTrue();
         assertThat(root.getRowCount()).isEqualTo(1);
         assertThat(root.getVector(1).getObject(0)).isEqualTo(new Text("foo"));
 
-        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(queryResult.getReader().loadNextBatch()).isTrue();
         assertThat(root.getRowCount()).isEqualTo(1);
         assertThat(root.getVector(1).getObject(0)).isEqualTo(new Text(""));
 
-        assertThat(reader.loadNextBatch()).isFalse();
+        assertThat(queryResult.getReader().loadNextBatch()).isFalse();
       }
 
       param0.setSafe(0, 0);
       params.setRowCount(1);
-      try (final ArrowReader reader = stmt.executeQuery()) {
-        VectorSchemaRoot root = reader.getVectorSchemaRoot();
+      try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
+        VectorSchemaRoot root = queryResult.getReader().getVectorSchemaRoot();
         assertThat(root.getSchema()).isEqualTo(expectedSchema);
-        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(queryResult.getReader().loadNextBatch()).isTrue();
         assertThat(root.getRowCount()).isEqualTo(1);
         assertThat(root.getVector(1).getObject(0)).isNull();
 
-        assertThat(reader.loadNextBatch()).isFalse();
+        assertThat(queryResult.getReader().loadNextBatch()).isFalse();
       }
     }
   }

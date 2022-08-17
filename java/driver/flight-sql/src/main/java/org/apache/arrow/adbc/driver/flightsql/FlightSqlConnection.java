@@ -37,6 +37,7 @@ import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.ipc.ArrowReader;
 
 public class FlightSqlConnection implements AdbcConnection {
   private final BufferAllocator allocator;
@@ -75,7 +76,8 @@ public class FlightSqlConnection implements AdbcConnection {
   }
 
   @Override
-  public AdbcStatement deserializePartitionDescriptor(ByteBuffer descriptor) throws AdbcException {
+  public AdbcStatement.QueryResult deserializePartitionDescriptor(ByteBuffer descriptor)
+      throws AdbcException {
     final FlightEndpoint endpoint;
     try {
       final Flight.FlightEndpoint protoEndpoint = Flight.FlightEndpoint.parseFrom(descriptor);
@@ -94,9 +96,9 @@ public class FlightSqlConnection implements AdbcConnection {
               "[Flight SQL] Partition descriptor is invalid: " + e.getMessage())
           .withCause(e);
     }
-
-    return FlightSqlStatement.fromDescriptor(
-        allocator, client, clientCache, quirks, Collections.singletonList(endpoint));
+    return new AdbcStatement.QueryResult(
+        /*affectedRows*/ -1,
+        new FlightInfoReader(allocator, client, clientCache, Collections.singletonList(endpoint)));
   }
 
   @Override
@@ -107,9 +109,11 @@ public class FlightSqlConnection implements AdbcConnection {
   }
 
   @Override
-  public AdbcStatement getInfo(int[] infoCodes) throws AdbcException {
-    final VectorSchemaRoot root = new InfoMetadataBuilder(allocator, client, infoCodes).build();
-    return new FixedRootStatement(allocator, root);
+  public ArrowReader getInfo(int[] infoCodes) throws AdbcException {
+    try (final VectorSchemaRoot root =
+        new InfoMetadataBuilder(allocator, client, infoCodes).build()) {
+      return RootArrowReader.fromRoot(allocator, root);
+    }
   }
 
   @Override

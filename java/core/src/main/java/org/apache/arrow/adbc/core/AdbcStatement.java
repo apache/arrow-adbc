@@ -17,8 +17,8 @@
 
 package org.apache.arrow.adbc.core;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
@@ -70,33 +70,29 @@ public interface AdbcStatement extends AutoCloseable {
   }
 
   /**
-   * Execute the query.
-   *
-   * <p>Usually you will want to use {@link #executeQuery()}.
-   *
-   * <p>This invalidates any prior result sets.
-   */
-  void execute() throws AdbcException;
-
-  /**
    * Execute a result set-generating query and get the result.
    *
-   * <p>This invalidates any prior result sets.
+   * <p>This may invalidate any prior result sets.
    */
-  default ArrowReader executeQuery() throws AdbcException {
-    execute();
-    return getArrowReader();
-  }
+  QueryResult executeQuery() throws AdbcException;
 
   /**
-   * Get the result of executing a query.
+   * Execute a query.
    *
-   * <p>Must be called after {@link #execute()}.
-   *
-   * @throws AdbcException with {@link AdbcStatusCode#INVALID_STATE} if the statement has not been
-   *     executed.
+   * <p>This may invalidate any prior result sets.
    */
-  ArrowReader getArrowReader() throws AdbcException;
+  UpdateResult executeUpdate() throws AdbcException;
+
+  /**
+   * Execute a result set-generating query and get a list of partitions of the result set.
+   *
+   * <p>These can be serialized and deserialized for parallel and/or distributed fetching.
+   *
+   * <p>This may invalidate any prior result sets.
+   */
+  default PartitionResult executePartitioned() throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support executePartitioned");
+  }
 
   /**
    * Get the schema for bound parameters.
@@ -119,24 +115,100 @@ public interface AdbcStatement extends AutoCloseable {
   }
 
   /**
-   * Get a list of partitions of the result set.
-   *
-   * <p>These can be serialized and deserialized for parallel and/or distributed fetching.
-   *
-   * <p>Must be called after {@link #execute()}.
-   *
-   * @throws AdbcException with {@link AdbcStatusCode#INVALID_STATE} if the statement has not been
-   *     executed.
-   * @return The list of descriptors, or an empty list if unsupported.
-   */
-  default List<PartitionDescriptor> getPartitionDescriptors() throws AdbcException {
-    return Collections.emptyList();
-  }
-
-  /**
    * Turn this statement into a prepared statement.
    *
-   * <p>Call {@link #execute()} to execute the statement.
+   * <p>Call {@link #executeQuery()}, {@link #executeUpdate()}, or {@link #executePartitioned()} to
+   * execute the query.
    */
   void prepare() throws AdbcException;
+
+  /** The result of executing a query with a result set. */
+  class QueryResult implements AutoCloseable {
+    private final long affectedRows;
+
+    private final ArrowReader reader;
+
+    public QueryResult(long affectedRows, ArrowReader reader) {
+      this.affectedRows = affectedRows;
+      this.reader = reader;
+    }
+
+    public long getAffectedRows() {
+      return affectedRows;
+    }
+
+    public ArrowReader getReader() {
+      return reader;
+    }
+
+    @Override
+    public String toString() {
+      return "QueryResult{" + "affectedRows=" + affectedRows + ", reader=" + reader + '}';
+    }
+
+    /** Close the contained reader. */
+    @Override
+    public void close() throws IOException {
+      reader.close();
+    }
+  }
+
+  /** The result of executing a query without a result set. */
+  class UpdateResult {
+    private final long affectedRows;
+
+    public UpdateResult(long affectedRows) {
+      this.affectedRows = affectedRows;
+    }
+
+    public long getAffectedRows() {
+      return affectedRows;
+    }
+
+    @Override
+    public String toString() {
+      return "UpdateResult{" + "affectedRows=" + affectedRows + '}';
+    }
+  }
+
+  /** The partitions of a result set. */
+  class PartitionResult {
+    private final Schema schema;
+    private final long affectedRows;
+    private final List<PartitionDescriptor> partitionDescriptors;
+
+    public PartitionResult(
+        Schema schema, long affectedRows, List<PartitionDescriptor> partitionDescriptors) {
+      this.schema = schema;
+      this.affectedRows = affectedRows;
+      this.partitionDescriptors = partitionDescriptors;
+    }
+
+    /** Get the schema of the eventual result set. */
+    public Schema getSchema() {
+      return schema;
+    }
+
+    /** Get the number of affected rows, or -1 if not known. */
+    public long getAffectedRows() {
+      return affectedRows;
+    }
+
+    /** Get partitions. */
+    public List<PartitionDescriptor> getPartitionDescriptors() {
+      return partitionDescriptors;
+    }
+
+    @Override
+    public String toString() {
+      return "Partitions{"
+          + "schema="
+          + schema
+          + ", affectedRows="
+          + affectedRows
+          + ", partitionDescriptors="
+          + partitionDescriptors
+          + '}';
+    }
+  }
 }
