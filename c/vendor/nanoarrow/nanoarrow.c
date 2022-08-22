@@ -17,7 +17,9 @@
 
 #include "allocator.c"
 #include "array.c"
+#include "array_view.c"
 #include "error.c"
 #include "metadata.c"
 #include "schema.c"
 #include "schema_view.c"
+#include "utils.c"

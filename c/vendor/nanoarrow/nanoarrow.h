@@ -61,7 +61,18 @@ void ArrowFree(void* ptr);
 ///
 /// The default allocator uses ArrowMalloc(), ArrowRealloc(), and
 /// ArrowFree().
-struct ArrowBufferAllocator* ArrowBufferAllocatorDefault();
+struct ArrowBufferAllocator ArrowBufferAllocatorDefault();
+
+/// \brief Create a custom deallocator
+///
+/// Creates a buffer allocator with only a free method that can be used to
+/// attach a custom deallocator to an ArrowBuffer. This may be used to
+/// avoid copying an existing buffer that was not allocated using the
+/// infrastructure provided here (e.g., by an R or Python object).
+struct ArrowBufferAllocator ArrowBufferDeallocator(
+    void (*custom_free)(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                        int64_t size),
+    void* private_data);
 
 /// }@
 
@@ -86,6 +97,9 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 /// }@
 
 /// \defgroup nanoarrow-utils Utility data structures
+
+/// \brief Initialize a description of buffer arrangements from a storage type
+void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
 
 /// \brief Create a string view from a null-terminated string
 static inline struct ArrowStringView ArrowCharView(const char* value);
@@ -259,6 +273,9 @@ struct ArrowSchemaView {
   /// interpret the buffers in the array.
   enum ArrowType storage_data_type;
 
+  /// \brief The storage layout represented by the schema
+  struct ArrowLayout layout;
+
   /// \brief The extension type name if it exists
   ///
   /// If the ARROW:extension:name key is present in schema.metadata,
@@ -270,21 +287,6 @@ struct ArrowSchemaView {
   /// If the ARROW:extension:metadata key is present in schema.metadata,
   /// extension_metadata.data will be non-NULL.
   struct ArrowStringView extension_metadata;
-
-  /// \brief The expected number of buffers in a paired ArrowArray
-  int32_t n_buffers;
-
-  /// \brief The index of the validity buffer or -1 if one does not exist
-  int32_t validity_buffer_id;
-
-  /// \brief The index of the offset buffer or -1 if one does not exist
-  int32_t offset_buffer_id;
-
-  /// \brief The index of the data buffer or -1 if one does not exist
-  int32_t data_buffer_id;
-
-  /// \brief The index of the type_ids buffer or -1 if one does not exist
-  int32_t type_id_buffer_id;
 
   /// \brief Format fixed size parameter
   ///
@@ -352,7 +354,7 @@ static inline void ArrowBufferInit(struct ArrowBuffer* buffer);
 ///
 /// Returns EINVAL if the buffer has already been allocated.
 static inline ArrowErrorCode ArrowBufferSetAllocator(
-    struct ArrowBuffer* buffer, struct ArrowBufferAllocator* allocator);
+    struct ArrowBuffer* buffer, struct ArrowBufferAllocator allocator);
 
 /// \brief Reset an ArrowBuffer
 ///
@@ -398,6 +400,13 @@ static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const voi
 /// overallocate when reallocation is required.
 static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
                                                const void* data, int64_t size_bytes);
+
+/// \brief Write fill to buffer and increment the buffer size
+///
+/// This function writes the specified number of fill bytes and
+/// ensures that the buffer has the required capacity,
+static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
+                                                   uint8_t value, int64_t size_bytes);
 
 /// \brief Write an 8-bit integer to a buffer
 static inline ArrowErrorCode ArrowBufferAppendInt8(struct ArrowBuffer* buffer,
@@ -521,6 +530,14 @@ static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type);
 
+/// \brief Initialize the contents of an ArrowArray from an ArrowSchema
+///
+/// Caller is responsible for calling the array->release callback if
+/// NANOARROW_OK is returned.
+ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
+                                        struct ArrowSchema* schema,
+                                        struct ArrowError* error);
+
 /// \brief Allocate the array->children array
 ///
 /// Includes the memory for each child struct ArrowArray,
@@ -558,11 +575,119 @@ static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* ar
 /// array must have been allocated using ArrowArrayInit
 static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
 
+/// \brief Start element-wise appending to an ArrowArray
+///
+/// Initializes any values needed to use ArrowArrayAppend*() functions.
+/// All element-wise appenders append by value and return EINVAL if the exact value
+/// cannot be represented by the underlying storage type.
+/// array must have been allocated using ArrowArrayInit
+static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array);
+
+/// \brief Reserve space for future appends
+///
+/// For buffer sizes that can be calculated (i.e., not string data buffers or
+/// child array sizes for non-fixed-size arrays), recursively reserve space for
+/// additional elements. This is useful for reducing the number of reallocations
+/// that occur using the item-wise appenders.
+ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
+                                 int64_t additional_size_elements);
+
+/// \brief Append a null value to an array
+static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n);
+
+/// \brief Append a signed integer value to an array
+///
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g., value
+/// is outside the valid array range).
+static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array, int64_t value);
+
+/// \brief Append an unsigned integer value to an array
+///
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g., value
+/// is outside the valid array range).
+static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
+                                                  uint64_t value);
+
+/// \brief Append a double value to an array
+///
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g., value
+/// is outside the valid array range or there is an attempt to append
+/// a non-integer to an array with an integer storage type).
+static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
+                                                    double value);
+
+/// \brief Append a string of bytes to an array
+///
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g.,
+/// the underlying array is not a binary, string, large binary, large string,
+/// or fixed-size binary array, or value is the wrong size for a fixed-size
+/// binary array).
+static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
+                                                   struct ArrowBufferView value);
+
+/// \brief Append a string value to an array
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g.,
+/// the underlying array is not a string or large string array).
+static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
+                                                    struct ArrowStringView value);
+
+/// \brief Finish a nested array element
+///
+/// Appends a non-null element to the array based on the first child's current
+/// length. Returns NANOARROW_OK if the item was successfully added or EINVAL
+/// if the underlying storage type is not a struct, list, large list, or fixed-size
+/// list, or if there was an attempt to add a struct or fixed-size list element where the
+/// length of the child array(s) did not match the expected length.
+static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array);
+
+/// \brief Shrink buffer capacity to the size required
+///
+/// Also applies shrinking to any child arrays. array must have been allocated using
+/// ArrowArrayInit
+static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
+
 /// \brief Finish building an ArrowArray
 ///
+/// Flushes any pointers from internal buffers that may have been reallocated
+/// into the array->buffers array and checks the actual size of the buffers
+/// against the expected size based on the final length.
 /// array must have been allocated using ArrowArrayInit
-static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
-                                                      char shrink_to_fit);
+ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
+                                        struct ArrowError* error);
+
+/// }@
+
+/// \defgroup nanoarrow-array Array consumer helpers
+/// These functions read and validate the contents ArrowArray structures
+
+/// \brief Initialize the contents of an ArrowArrayView
+void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type);
+
+/// \brief Initialize the contents of an ArrowArrayView from an ArrowSchema
+ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
+                                            struct ArrowSchema* schema,
+                                            struct ArrowError* error);
+
+/// \brief Allocate the schema_view->children array
+///
+/// Includes the memory for each child struct ArrowArrayView
+ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
+                                              int64_t n_children);
+
+/// \brief Set data-independent buffer sizes from length
+void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
+
+/// \brief Set buffer sizes and data pointers from an ArrowArray
+ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
+                                      struct ArrowArray* array, struct ArrowError* error);
+
+/// \brief Reset the contents of an ArrowArrayView and frees resources
+void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
 /// }@
 

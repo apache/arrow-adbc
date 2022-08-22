@@ -420,15 +420,15 @@ void AdbcValidateStatementSqlIngest(struct AdbcValidateTestContext* adbc_context
 
   struct ArrowBitmap* bitmap = ArrowArrayValidityBitmap(export_array.children[0]);
   struct ArrowBuffer* buffer = ArrowArrayBuffer(export_array.children[0], 1);
+  NA_ASSERT_OK(ArrowArrayReserve(&export_array, 5));
+  // XXX: ArrowArrayReserve never allocates bitmaps
   NA_ASSERT_OK(ArrowBitmapReserve(bitmap, 5));
-  NA_ASSERT_OK(ArrowBufferReserve(buffer, 5 * sizeof(int64_t)));
   ArrowBitmapAppendInt8Unsafe(bitmap, (int8_t[]){1, 1, 0, 0, 1}, 5);
   NA_ASSERT_OK(ArrowBufferAppendInt64(buffer, 16));
   NA_ASSERT_OK(ArrowBufferAppendInt64(buffer, -1));
   NA_ASSERT_OK(ArrowBufferAppendInt64(buffer, 0));
   NA_ASSERT_OK(ArrowBufferAppendInt64(buffer, 0));
   NA_ASSERT_OK(ArrowBufferAppendInt64(buffer, 42));
-  NA_ASSERT_OK(ArrowArrayFinishBuilding(export_array.children[0], 0));
   NA_ASSERT_OK(ArrowArrayFinishBuilding(&export_array, 0));
   export_array.children[0]->length = 5;
   export_array.length = 5;

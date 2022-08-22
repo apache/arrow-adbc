@@ -23,6 +23,10 @@
 #include "nanoarrow.h"
 
 int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
+  if (error == NULL) {
+    return NANOARROW_OK;
+  }
+
   memset(error->message, 0, sizeof(error->message));
 
   va_list args;

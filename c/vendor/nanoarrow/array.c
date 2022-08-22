@@ -16,7 +16,6 @@
 // under the License.
 
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,12 +23,13 @@
 
 static void ArrowArrayRelease(struct ArrowArray* array) {
   // Release buffers held by this array
-  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
-  if (data != NULL) {
-    ArrowBitmapReset(&data->bitmap);
-    ArrowBufferReset(&data->buffers[0]);
-    ArrowBufferReset(&data->buffers[1]);
-    ArrowFree(data);
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+  if (private_data != NULL) {
+    ArrowBitmapReset(&private_data->bitmap);
+    ArrowBufferReset(&private_data->buffers[0]);
+    ArrowBufferReset(&private_data->buffers[1]);
+    ArrowFree(private_data);
   }
 
   // This object owns the memory for all the children, but those
@@ -72,8 +72,6 @@ ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
       array->n_buffers = 0;
       break;
 
-    case NANOARROW_TYPE_LIST:
-    case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
     case NANOARROW_TYPE_STRUCT:
     case NANOARROW_TYPE_MAP:
@@ -81,6 +79,8 @@ ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
       array->n_buffers = 1;
       break;
 
+    case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_BOOL:
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT8:
@@ -93,6 +93,8 @@ ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
     case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_DOUBLE:
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256:
     case NANOARROW_TYPE_INTERVAL_MONTHS:
     case NANOARROW_TYPE_INTERVAL_DAY_TIME:
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
@@ -110,16 +112,19 @@ ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
 
     default:
       return EINVAL;
+
+      return NANOARROW_OK;
   }
 
-  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
-  data->storage_type = storage_type;
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+  private_data->storage_type = storage_type;
   return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type) {
   array->length = 0;
-  array->null_count = -1;
+  array->null_count = 0;
   array->offset = 0;
   array->n_buffers = 0;
   array->n_children = 0;
@@ -129,22 +134,22 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
   array->release = &ArrowArrayRelease;
   array->private_data = NULL;
 
-  struct ArrowArrayPrivateData* data =
+  struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)ArrowMalloc(sizeof(struct ArrowArrayPrivateData));
-  if (data == NULL) {
+  if (private_data == NULL) {
     array->release = NULL;
     return ENOMEM;
   }
 
-  ArrowBitmapInit(&data->bitmap);
-  ArrowBufferInit(&data->buffers[0]);
-  ArrowBufferInit(&data->buffers[1]);
-  data->buffer_data[0] = NULL;
-  data->buffer_data[1] = NULL;
-  data->buffer_data[2] = NULL;
+  ArrowBitmapInit(&private_data->bitmap);
+  ArrowBufferInit(&private_data->buffers[0]);
+  ArrowBufferInit(&private_data->buffers[1]);
+  private_data->buffer_data[0] = NULL;
+  private_data->buffer_data[1] = NULL;
+  private_data->buffer_data[2] = NULL;
 
-  array->private_data = data;
-  array->buffers = (const void**)(&data->buffer_data);
+  array->private_data = private_data;
+  array->buffers = (const void**)(&private_data->buffer_data);
 
   int result = ArrowArraySetStorageType(array, storage_type);
   if (result != NANOARROW_OK) {
@@ -152,6 +157,44 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
     return result;
   }
 
+  ArrowLayoutInit(&private_data->layout, storage_type);
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
+                                                  struct ArrowArrayView* array_view,
+                                                  struct ArrowError* error) {
+  ArrowArrayInit(array, array_view->storage_type);
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  int result = ArrowArrayAllocateChildren(array, array_view->n_children);
+  if (result != NANOARROW_OK) {
+    array->release(array);
+    return result;
+  }
+
+  private_data->layout = array_view->layout;
+
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    int result =
+        ArrowArrayInitFromArrayView(array->children[i], array_view->children[i], error);
+    if (result != NANOARROW_OK) {
+      array->release(array);
+      return result;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
+                                        struct ArrowSchema* schema,
+                                        struct ArrowError* error) {
+  struct ArrowArrayView array_view;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(array, &array_view, error));
+  ArrowArrayViewReset(&array_view);
   return NANOARROW_OK;
 }
 
@@ -201,30 +244,189 @@ ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array) {
 }
 
 void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* bitmap) {
-  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
-  ArrowBufferMove(&bitmap->buffer, &data->bitmap.buffer);
-  data->bitmap.size_bits = bitmap->size_bits;
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+  ArrowBufferMove(&bitmap->buffer, &private_data->bitmap.buffer);
+  private_data->bitmap.size_bits = bitmap->size_bits;
   bitmap->size_bits = 0;
-  data->buffer_data[0] = data->bitmap.buffer.data;
+  private_data->buffer_data[0] = private_data->bitmap.buffer.data;
+  array->null_count = -1;
 }
 
 ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                    struct ArrowBuffer* buffer) {
-  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
 
   switch (i) {
     case 0:
-      ArrowBufferMove(buffer, &data->bitmap.buffer);
-      data->buffer_data[i] = data->bitmap.buffer.data;
+      ArrowBufferMove(buffer, &private_data->bitmap.buffer);
+      private_data->buffer_data[i] = private_data->bitmap.buffer.data;
       break;
     case 1:
     case 2:
-      ArrowBufferMove(buffer, &data->buffers[i - 1]);
-      data->buffer_data[i] = data->buffers[i - 1].data;
+      ArrowBufferMove(buffer, &private_data->buffers[i - 1]);
+      private_data->buffer_data[i] = private_data->buffers[i - 1].data;
       break;
     default:
       return EINVAL;
   }
 
   return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_view,
+                                                  struct ArrowArray* array) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  ArrowArrayViewInit(array_view, private_data->storage_type);
+  array_view->layout = private_data->layout;
+  array_view->array = array;
+
+  int result = ArrowArrayViewAllocateChildren(array_view, array->n_children);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(array_view);
+    return result;
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    result = ArrowArrayViewInitFromArray(array_view->children[i], array->children[i]);
+    if (result != NANOARROW_OK) {
+      ArrowArrayViewReset(array_view);
+      return result;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowArrayReserveInternal(struct ArrowArray* array,
+                                                struct ArrowArrayView* array_view) {
+  // Loop through buffers and reserve the extra space that we know about
+  for (int64_t i = 0; i < array->n_buffers; i++) {
+    // Don't reserve on a validity buffer that hasn't been allocated yet
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
+        ArrowArrayBuffer(array, i)->data == NULL) {
+      continue;
+    }
+
+    int64_t additional_size_bytes =
+        array_view->buffer_views[i].n_bytes - ArrowArrayBuffer(array, i)->size_bytes;
+
+    if (additional_size_bytes > 0) {
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferReserve(ArrowArrayBuffer(array, i), additional_size_bytes));
+    }
+  }
+
+  // Recursively reserve children
+  for (int64_t i = 0; i < array->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayReserveInternal(array->children[i], array_view->children[i]));
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
+                                 int64_t additional_size_elements) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  struct ArrowArrayView array_view;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromArray(&array_view, array));
+
+  // Calculate theoretical buffer sizes (recursively)
+  ArrowArrayViewSetLength(&array_view, array->length + additional_size_elements);
+
+  // Walk the structure (recursively)
+  int result = ArrowArrayReserveInternal(array, &array_view);
+  ArrowArrayViewReset(&array_view);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  return NANOARROW_OK;
+}
+
+static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  for (int64_t i = 0; i < 3; i++) {
+    private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    ArrowArrayFlushInternalPointers(array->children[i]);
+  }
+}
+
+static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
+    struct ArrowArray* array, struct ArrowArrayView* array_view,
+    char set_length, struct ArrowError* error) {
+  if (set_length) {
+    ArrowArrayViewSetLength(array_view, array->offset + array->length);
+  }
+
+  for (int64_t i = 0; i < array->n_buffers; i++) {
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
+        array->null_count == 0 && array->buffers[i] == NULL) {
+      continue;
+    }
+
+    int64_t expected_size = array_view->buffer_views[i].n_bytes;
+    int64_t actual_size = ArrowArrayBuffer(array, i)->size_bytes;
+
+    if (actual_size < expected_size) {
+      ArrowErrorSet(
+          error,
+          "Expected buffer %d to size >= %ld bytes but found buffer with %ld bytes", i,
+          (long)expected_size, (long)actual_size);
+      return EINVAL;
+    }
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayCheckInternalBufferSizes(
+        array->children[i], array_view->children[i], set_length, error));
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
+                                        struct ArrowError* error) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  // Make sure the value we get with array->buffers[i] is set to the actual
+  // pointer (which may have changed from the original due to reallocation)
+  ArrowArrayFlushInternalPointers(array);
+
+  // Check buffer sizes to make sure we are not sending an ArrowArray
+  // into the wild that is going to segfault
+  struct ArrowArrayView array_view;
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromArray(&array_view, array));
+
+  // Check buffer sizes once without using internal buffer data since
+  // ArrowArrayViewSetArray() assumes that all the buffers are long enough
+  // and issues invalid reads on offset buffers if they are not
+  int result = ArrowArrayCheckInternalBufferSizes(array, &array_view, 1, error);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(&array_view);
+    return result;
+  }
+
+  result = ArrowArrayViewSetArray(&array_view, array, error);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(&array_view);
+    return result;
+  }
+
+  result = ArrowArrayCheckInternalBufferSizes(array, &array_view, 0, error);
+  ArrowArrayViewReset(&array_view);
+  return result;
 }

@@ -166,6 +166,33 @@ enum ArrowType {
   NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 };
 
+/// \brief Functional types of buffers as described in the Arrow Columnar Specification
+enum ArrowBufferType {
+  NANOARROW_BUFFER_TYPE_NONE,
+  NANOARROW_BUFFER_TYPE_VALIDITY,
+  NANOARROW_BUFFER_TYPE_TYPE_ID,
+  NANOARROW_BUFFER_TYPE_UNION_OFFSET,
+  NANOARROW_BUFFER_TYPE_DATA_OFFSET,
+  NANOARROW_BUFFER_TYPE_DATA
+};
+
+/// \brief A description of an arrangement of buffers
+///
+/// Contains the minimum amount of information required to
+/// calculate the size of each buffer in an ArrowArray knowing only
+/// the length and offset of the array.
+struct ArrowLayout {
+  /// \brief The function of each buffer
+  enum ArrowBufferType buffer_type[3];
+
+  /// \brief The size of an element each buffer or 0 if this size is variable or unknown
+  int64_t element_size_bits[3];
+
+  /// \brief The number of elements in the child array per element in this array for a
+  /// fixed-size list
+  int64_t child_size_elements;
+};
+
 /// \brief An non-owning view of a string
 struct ArrowStringView {
   /// \brief A pointer to the start of the string
@@ -179,15 +206,33 @@ struct ArrowStringView {
   int64_t n_bytes;
 };
 
+/// \brief An non-owning view of a buffer
+struct ArrowBufferView {
+  /// \brief A pointer to the start of the buffer
+  ///
+  /// If n_bytes is 0, this value may be NULL.
+  union {
+    const void* data;
+    const int8_t* as_int8;
+    const uint8_t* as_uint8;
+    const int16_t* as_int16;
+    const uint16_t* as_uint16;
+    const int32_t* as_int32;
+    const uint32_t* as_uint32;
+    const int64_t* as_int64;
+    const uint64_t* as_uint64;
+  } data;
+
+  /// \brief The size of the buffer in bytes
+  int64_t n_bytes;
+};
+
 /// \brief Array buffer allocation and deallocation
 ///
 /// Container for allocate, reallocate, and free methods that can be used
 /// to customize allocation and deallocation of buffers when constructing
 /// an ArrowArray.
 struct ArrowBufferAllocator {
-  /// \brief Allocate a buffer or return NULL if it cannot be allocated
-  uint8_t* (*allocate)(struct ArrowBufferAllocator* allocator, int64_t size);
-
   /// \brief Reallocate a buffer or return NULL if it cannot be reallocated
   uint8_t* (*reallocate)(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                          int64_t old_size, int64_t new_size);
@@ -213,7 +258,7 @@ struct ArrowBuffer {
   int64_t capacity_bytes;
 
   /// \brief The allocator that will be used to reallocate and/or free the buffer
-  struct ArrowBufferAllocator* allocator;
+  struct ArrowBufferAllocator allocator;
 };
 
 /// \brief An owning mutable view of a bitmap
@@ -242,6 +287,18 @@ struct ArrowArrayPrivateData {
 
   // The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
   enum ArrowType storage_type;
+
+  // The buffer arrangement for the storage type
+  struct ArrowLayout layout;
+};
+
+struct ArrowArrayView {
+  struct ArrowArray* array;
+  enum ArrowType storage_type;
+  struct ArrowLayout layout;
+  struct ArrowBufferView buffer_views[3];
+  int64_t n_children;
+  struct ArrowArrayView** children;
 };
 
 /// }@
