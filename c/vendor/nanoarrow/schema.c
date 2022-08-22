@@ -164,10 +164,7 @@ ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType data_t
 
 ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
                                         enum ArrowType data_type, int32_t fixed_size) {
-  int result = ArrowSchemaInit(schema, NANOARROW_TYPE_UNINITIALIZED);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInit(schema, NANOARROW_TYPE_UNINITIALIZED));
 
   if (fixed_size <= 0) {
     schema->release(schema);
@@ -189,21 +186,19 @@ ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
   }
 
   buffer[n_chars] = '\0';
-  result = ArrowSchemaSetFormat(schema, buffer);
+  int result = ArrowSchemaSetFormat(schema, buffer);
   if (result != NANOARROW_OK) {
     schema->release(schema);
+    return result;
   }
 
-  return result;
+  return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
                                       enum ArrowType data_type, int32_t decimal_precision,
                                       int32_t decimal_scale) {
-  int result = ArrowSchemaInit(schema, NANOARROW_TYPE_UNINITIALIZED);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInit(schema, NANOARROW_TYPE_UNINITIALIZED));
 
   if (decimal_precision <= 0) {
     schema->release(schema);
@@ -228,7 +223,7 @@ ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
 
   buffer[n_chars] = '\0';
 
-  result = ArrowSchemaSetFormat(schema, buffer);
+  int result = ArrowSchemaSetFormat(schema, buffer);
   if (result != NANOARROW_OK) {
     schema->release(schema);
     return result;
@@ -419,13 +414,9 @@ ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema) {
 }
 
 int ArrowSchemaDeepCopy(struct ArrowSchema* schema, struct ArrowSchema* schema_out) {
-  int result;
-  result = ArrowSchemaInit(schema_out, NANOARROW_TYPE_NA);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInit(schema_out, NANOARROW_TYPE_NA));
 
-  result = ArrowSchemaSetFormat(schema_out, schema->format);
+  int result = ArrowSchemaSetFormat(schema_out, schema->format);
   if (result != NANOARROW_OK) {
     schema_out->release(schema_out);
     return result;

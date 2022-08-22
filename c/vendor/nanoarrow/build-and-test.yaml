@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: build-deps
-          key: ${{ runner.os }}-3
+          key: ${{ runner.os }}-5
 
       - name: Init build dir
         if: steps.cache-deps-build.outputs.cache-hit != 'true'
@@ -62,8 +62,13 @@ jobs:
         if: steps.cache-deps-build.outputs.cache-hit != 'true'
         run: |
           cd build-deps/googletest
-          cmake .
+          cmake . -DCMAKE_CXX_FLAGS=-fPIC
           cmake --build .
+          cmake --install . --prefix ../../dist
+
+      - name: Install googletest
+        run: |
+          cd build-deps/googletest
           cmake --install . --prefix ../../dist
 
       - name: Fetch Arrow
@@ -80,19 +85,19 @@ jobs:
         run: |
           mkdir build-deps/arrow-build
           cd build-deps/arrow-build
-          cmake ../arrow/cpp -DARROW_JSON=ON -DARROW_TESTING=ON -DBoost_SOURCE=BUNDLED
+          cmake ../arrow/cpp -DARROW_JSON=ON -DARROW_TESTING=ON -DBoost_SOURCE=BUNDLED -DGTest_DIR=`pwd`/../../dist/lib/cmake/GTest
           cmake --build .
           cmake --install . --prefix ../../dist
 
-      - name: Install Dependencies
+      - name: Install arrow
         run: |
           cd build-deps/arrow-build
-          cmake --install . --prefix ../../dist
-          cd ../googletest
           cmake --install . --prefix ../../dist
 
       - name: Build nanoarrow
         run: |
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
           mkdir build
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON
@@ -100,13 +105,24 @@ jobs:
 
       - name: Run tests
         run: |
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
           cd build
           ctest -T test --output-on-failure .
 
       - name: Run tests with valgrind
         run: |
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
           cd build
-          ctest -T memcheck .
+          ctest -T memcheck . 
+      
+      - name: Upload memcheck results
+        if: failure()
+        uses: actions/upload-artifact@main
+        with:
+          name: nanoarrow-memcheck
+          path: build/Testing/Temporary/MemoryChecker.*.log
 
       - name: Calculate coverage
         run: |

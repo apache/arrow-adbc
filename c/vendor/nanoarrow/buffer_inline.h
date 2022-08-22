@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "typedefs_inline.h"
+#include "utils_inline.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,7 +46,7 @@ static inline void ArrowBufferInit(struct ArrowBuffer* buffer) {
 }
 
 static inline ArrowErrorCode ArrowBufferSetAllocator(
-    struct ArrowBuffer* buffer, struct ArrowBufferAllocator* allocator) {
+    struct ArrowBuffer* buffer, struct ArrowBufferAllocator allocator) {
   if (buffer->data == NULL) {
     buffer->allocator = allocator;
     return NANOARROW_OK;
@@ -56,8 +57,8 @@ static inline ArrowErrorCode ArrowBufferSetAllocator(
 
 static inline void ArrowBufferReset(struct ArrowBuffer* buffer) {
   if (buffer->data != NULL) {
-    buffer->allocator->free(buffer->allocator, (uint8_t*)buffer->data,
-                            buffer->capacity_bytes);
+    buffer->allocator.free(&buffer->allocator, (uint8_t*)buffer->data,
+                           buffer->capacity_bytes);
     buffer->data = NULL;
   }
 
@@ -80,8 +81,8 @@ static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
   }
 
   if (new_capacity_bytes > buffer->capacity_bytes || shrink_to_fit) {
-    buffer->data = buffer->allocator->reallocate(
-        buffer->allocator, buffer->data, buffer->capacity_bytes, new_capacity_bytes);
+    buffer->data = buffer->allocator.reallocate(
+        &buffer->allocator, buffer->data, buffer->capacity_bytes, new_capacity_bytes);
     if (buffer->data == NULL && new_capacity_bytes > 0) {
       buffer->capacity_bytes = 0;
       buffer->size_bytes = 0;
@@ -120,10 +121,7 @@ static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const voi
 
 static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
                                                const void* data, int64_t size_bytes) {
-  int result = ArrowBufferReserve(buffer, size_bytes);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
 
   ArrowBufferAppendUnsafe(buffer, data, size_bytes);
   return NANOARROW_OK;
@@ -177,6 +175,15 @@ static inline ArrowErrorCode ArrowBufferAppendDouble(struct ArrowBuffer* buffer,
 static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
                                                     float value) {
   return ArrowBufferAppend(buffer, &value, sizeof(float));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
+                                                   uint8_t value, int64_t size_bytes) {
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
+
+  memset(buffer->data + buffer->size_bytes, value, size_bytes);
+  buffer->size_bytes += size_bytes;
+  return NANOARROW_OK;
 }
 
 #ifdef __cplusplus
