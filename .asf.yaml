@@ -22,3 +22,9 @@ github:
     squash: true
   features:
     issues: true
+
+notifications:
+  commits:      commits@arrow.apache.org
+  issues:       github@arrow.apache.org
+  pullrequests: github@arrow.apache.org
+  jira_options: link label worklog
