@@ -21,16 +21,23 @@
 main() {
     local -r repo_url="https://github.com/apache/arrow-nanoarrow"
     local -r commit_sha=$(git ls-remote "$repo_url" HEAD | awk '{print $2}')
-    TARBALL="$(pwd)/nanoarrow.tar.gz"
 
     echo "Fetching $commit_sha from $repo_url"
-    wget -O "$TARBALL" "$repo_url/archive/$commit_sha.tar.gz"
-    trap 'rm "$TARBALL"' EXIT
+    SCRATCH=$(mktemp -d)
+    trap 'rm -rf "$SCRATCH"' EXIT
+    local -r tarball="$SCRATCH/nanoarrow.tar.gz"
+    wget -O "$tarball" "$repo_url/archive/$commit_sha.tar.gz"
 
+    rm -rf nanoarrow
     mkdir -p nanoarrow
-    # Keep only the sources
-    tar --strip-components 3 -C nanoarrow -xf "$TARBALL"
-    rm nanoarrow/*_test.cc
+    tar --strip-components 1 -C "$SCRATCH" -xf "$tarball"
+    mkdir "$SCRATCH/build"
+    pushd "$SCRATCH/build"
+    cmake .. -DNANOARROW_BUNDLE=ON
+    popd
+
+    cp "$SCRATCH/build/amalgamation/nanoarrow/nanoarrow.c" nanoarrow/
+    cp "$SCRATCH/build/amalgamation/nanoarrow/nanoarrow.h" nanoarrow/
 }
 
 main "$@"
