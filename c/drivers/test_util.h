@@ -78,8 +78,8 @@ static inline void ReadStatement(AdbcStatement* statement,
                                  arrow::RecordBatchVector* batches) {
   AdbcError error = {};
   ArrowArrayStream stream;
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(statement, ADBC_OUTPUT_TYPE_ARROW,
-                                                        &stream, nullptr, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcStatementExecuteQuery(statement, &stream, nullptr, &error));
   ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, schema, batches));
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(statement, &error));
 }

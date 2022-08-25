@@ -1114,46 +1114,69 @@ class SqliteStatementImpl {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Execute(const std::shared_ptr<SqliteStatementImpl>& self,
-                         int output_type, void* out, int64_t* rows_affected,
-                         struct AdbcError* error) {
-    switch (output_type) {
-      case ADBC_OUTPUT_TYPE_ARROW: {
-        if (!bulk_table_.empty()) {
-          SetError(error, "Bulk ingestion does not return a result set");
-          return ADBC_STATUS_INVALID_STATE;
-        }
-        if (!stmt_) {
-          SetError(error, "Cannot execute a statement without a query");
-          return ADBC_STATUS_INVALID_STATE;
-        }
-        if (rows_affected) {
-          *rows_affected = -1;
-        }
-        if (!out) {
-          SetError(error, "Must provide out for output type ADBC_OUTPUT_TYPE_ARROW");
-          return ADBC_STATUS_INVALID_ARGUMENT;
-        }
-        return ExecutePrepared(static_cast<struct ArrowArrayStream*>(out), error);
-      }
-      case ADBC_OUTPUT_TYPE_PARTITIONS: {
-        SetError(error, "SQLite does not support partitioned data");
-        return ADBC_STATUS_NOT_IMPLEMENTED;
-      }
-      case ADBC_OUTPUT_TYPE_UPDATE: {
-        if (!bulk_table_.empty()) {
-          return ExecuteBulk(rows_affected, error);
-        }
-        if (!stmt_) {
-          SetError(error, "Cannot execute a statement without a query");
-          return ADBC_STATUS_INVALID_STATE;
-        }
-        return ExecuteUpdate(rows_affected, error);
-      }
-      default:
-        SetError(error, "Unknown output type ", output_type);
-        return ADBC_STATUS_NOT_IMPLEMENTED;
+  AdbcStatusCode ExecuteQuery(const std::shared_ptr<SqliteStatementImpl>& self,
+                              struct ArrowArrayStream* out, int64_t* rows_affected,
+                              struct AdbcError* error) {
+    if (!bulk_table_.empty()) {
+      SetError(error, "Bulk ingestion does not return a result set");
+      return ADBC_STATUS_INVALID_STATE;
     }
+    if (!stmt_) {
+      SetError(error, "Cannot execute a statement without a query");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    if (!out) {
+      SetError(error, "Must provide out");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    sqlite3* db = connection_->db();
+    int rc = sqlite3_clear_bindings(stmt_);
+    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_clear_bindings", error));
+
+    rc = sqlite3_reset(stmt_);
+    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_reset", error));
+    auto reader = std::make_shared<SqliteStatementReader>(connection_, stmt_,
+                                                          std::move(bind_parameters_));
+    ADBC_RETURN_NOT_OK(reader->Init(error));
+
+    Status status = arrow::ExportRecordBatchReader(std::move(reader), out);
+    ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
+    if (rows_affected) *rows_affected = -1;
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode ExecuteUpdate(const std::shared_ptr<SqliteStatementImpl>& self,
+                               int64_t* rows_affected, struct AdbcError* error) {
+    if (!bulk_table_.empty()) {
+      return ExecuteBulk(rows_affected, error);
+    }
+    if (!stmt_) {
+      SetError(error, "Cannot execute a statement without a query");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    sqlite3* db = connection_->db();
+    int rc = sqlite3_clear_bindings(stmt_);
+    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_clear_bindings", error));
+
+    rc = sqlite3_reset(stmt_);
+    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_reset", error));
+    auto reader = std::make_shared<SqliteStatementReader>(connection_, stmt_,
+                                                          std::move(bind_parameters_));
+    ADBC_RETURN_NOT_OK(reader->Init(error));
+
+    // XXX: the logic for the reader is heavily intertwined into everything
+    // For now, just initialize and step it for the side effect
+
+    while (true) {
+      std::shared_ptr<arrow::RecordBatch> batch;
+      ADBC_RETURN_NOT_OK(FromArrowStatus(reader->ReadNext(&batch), error));
+      if (!batch) break;
+    }
+    // TODO(lidavidm): we could get this
+    if (rows_affected) *rows_affected = -1;
+
+    return ADBC_STATUS_OK;
   }
 
   AdbcStatusCode Prepare(const std::shared_ptr<SqliteStatementImpl>& self,
@@ -1312,48 +1335,6 @@ class SqliteStatementImpl {
         return ADBC_STATUS_OK;
       }));
     }
-
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode ExecutePrepared(struct ArrowArrayStream* stream,
-                                 struct AdbcError* error) {
-    sqlite3* db = connection_->db();
-    int rc = sqlite3_clear_bindings(stmt_);
-    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_clear_bindings", error));
-
-    rc = sqlite3_reset(stmt_);
-    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_reset", error));
-    auto reader = std::make_shared<SqliteStatementReader>(connection_, stmt_,
-                                                          std::move(bind_parameters_));
-    ADBC_RETURN_NOT_OK(reader->Init(error));
-
-    Status status = arrow::ExportRecordBatchReader(std::move(reader), stream);
-    ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode ExecuteUpdate(int64_t* rows_affected, struct AdbcError* error) {
-    sqlite3* db = connection_->db();
-    int rc = sqlite3_clear_bindings(stmt_);
-    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_clear_bindings", error));
-
-    rc = sqlite3_reset(stmt_);
-    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_reset", error));
-    auto reader = std::make_shared<SqliteStatementReader>(connection_, stmt_,
-                                                          std::move(bind_parameters_));
-    ADBC_RETURN_NOT_OK(reader->Init(error));
-
-    // XXX: the logic for the reader is heavily intertwined into everything
-    // For now, just initialize and step it for the side effect
-
-    while (true) {
-      std::shared_ptr<arrow::RecordBatch> batch;
-      ADBC_RETURN_NOT_OK(FromArrowStatus(reader->ReadNext(&batch), error));
-      if (!batch) break;
-    }
-    // TODO(lidavidm): we could get this
-    if (rows_affected) *rows_affected = -1;
 
     return ADBC_STATUS_OK;
   }
@@ -1546,13 +1527,23 @@ AdbcStatusCode SqliteStatementBindStream(struct AdbcStatement* statement,
   return (*ptr)->Bind(*ptr, stream, error);
 }
 
-AdbcStatusCode SqliteStatementExecute(struct AdbcStatement* statement, int output_type,
-                                      void* out, int64_t* rows_affected,
-                                      struct AdbcError* error) {
+AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
+                                           struct ArrowArrayStream* out,
+                                           int64_t* rows_affected,
+                                           struct AdbcError* error) {
   if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
   auto* ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
-  return (*ptr)->Execute(*ptr, output_type, out, rows_affected, error);
+  return (*ptr)->ExecuteQuery(*ptr, out, rows_affected, error);
+}
+
+AdbcStatusCode SqliteStatementExecuteUpdate(struct AdbcStatement* statement,
+                                            int64_t* rows_affected,
+                                            struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto* ptr =
+      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
+  return (*ptr)->ExecuteUpdate(*ptr, rows_affected, error);
 }
 
 AdbcStatusCode SqliteStatementGetPartitionDesc(struct AdbcStatement* statement,
@@ -1717,10 +1708,17 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
   return SqliteStatementBindStream(statement, stream, error);
 }
 
-AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement, int output_type,
-                                    void* out, int64_t* rows_affected,
-                                    struct AdbcError* error) {
-  return SqliteStatementExecute(statement, output_type, out, rows_affected, error);
+AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
+                                         struct ArrowArrayStream* out,
+                                         int64_t* rows_affected,
+                                         struct AdbcError* error) {
+  return SqliteStatementExecuteQuery(statement, out, rows_affected, error);
+}
+
+AdbcStatusCode AdbcStatementExecuteUpdate(struct AdbcStatement* statement,
+                                          int64_t* rows_affected,
+                                          struct AdbcError* error) {
+  return SqliteStatementExecuteUpdate(statement, rows_affected, error);
 }
 
 AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
@@ -1792,10 +1790,9 @@ AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
 
   driver->StatementBind = SqliteStatementBind;
   driver->StatementBindStream = SqliteStatementBindStream;
-  driver->StatementExecute = SqliteStatementExecute;
+  driver->StatementExecuteQuery = SqliteStatementExecuteQuery;
+  driver->StatementExecuteUpdate = SqliteStatementExecuteUpdate;
   driver->StatementGetParameterSchema = SqliteStatementGetParameterSchema;
-  driver->StatementGetPartitionDesc = SqliteStatementGetPartitionDesc;
-  driver->StatementGetPartitionDescSize = SqliteStatementGetPartitionDescSize;
   driver->StatementNew = SqliteStatementNew;
   driver->StatementPrepare = SqliteStatementPrepare;
   driver->StatementRelease = SqliteStatementRelease;

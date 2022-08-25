@@ -106,15 +106,13 @@ TEST_F(AdbcFlightSqlTest, SqlExecuteInvalid) {
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
   struct ArrowArrayStream stream;
-  ASSERT_NE(
-      AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_ARROW, &stream, nullptr, &error),
-      ADBC_STATUS_OK);
+  ASSERT_NE(AdbcStatementExecuteQuery(&statement, &stream, nullptr, &error),
+            ADBC_STATUS_OK);
   ADBC_ASSERT_ERROR_THAT(error, ::testing::HasSubstr("syntax error"));
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
 }
 
-// TODO(lidavidm): apache/arrow-adbc#68
-TEST_F(AdbcFlightSqlTest, DISABLED_Partitions) {
+TEST_F(AdbcFlightSqlTest, Partitions) {
   // Serialize the query result handle into a partition so it can be
   // retrieved separately. (With multiple partitions we could
   // distribute them across multiple machines or fetch data in
@@ -125,34 +123,27 @@ TEST_F(AdbcFlightSqlTest, DISABLED_Partitions) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  size_t num_descs = 0;
+  struct ArrowSchema result_set_schema;
+  struct AdbcPartitions partitions;
+  std::memset(&partitions, 0, sizeof(partitions));
   ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_PARTITIONS, &num_descs,
-                                  nullptr, &error));
+      error, AdbcStatementExecutePartitions(&statement, &result_set_schema, &partitions,
+                                            /*rows_affected=*/nullptr, &error));
 
-  std::vector<std::vector<uint8_t>> descs;
-
-  for (size_t i = 0; i < num_descs; i++) {
-    size_t length = 0;
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementGetPartitionDescSize(&statement, i, &length, &error));
-    descs.emplace_back(length);
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementGetPartitionDesc(&statement, i, descs.back().data(), &error));
-  }
-
-  ASSERT_EQ(descs.size(), 1);
+  ASSERT_EQ(partitions.num_partitions, 1);
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
 
   // Reconstruct the partition
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionDeserializePartitionDesc(
-                                       &connection, descs.back().data(),
-                                       descs.back().size(), &statement, &error));
+  struct ArrowArrayStream stream;
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionReadPartition(
+                                       &connection, partitions.partitions[0],
+                                       partitions.partition_lengths[0], &stream, &error));
+  partitions.release(&partitions);
+  result_set_schema.release(&result_set_schema);
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("42", arrow::int64())}));
   EXPECT_THAT(batches,
               ::testing::UnorderedPointwise(

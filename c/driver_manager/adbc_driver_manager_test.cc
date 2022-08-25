@@ -255,9 +255,8 @@ TEST_F(DriverManager, BulkIngestStream) {
                                       "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBindStream(&statement, &export_stream, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                    &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -267,9 +266,8 @@ TEST_F(DriverManager, BulkIngestStream) {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                    &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;

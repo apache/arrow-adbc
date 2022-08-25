@@ -93,8 +93,7 @@ class Sqlite : public ::testing::Test {
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     int64_t rows_affected = 0;
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr,
-                                    &rows_affected, &error));
+        error, AdbcStatementExecuteUpdate(&statement, &rows_affected, &error));
     ASSERT_EQ(bulk_table->num_rows(), rows_affected);
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
@@ -259,9 +258,8 @@ TEST_F(Sqlite, BulkIngestTable) {
                                       "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                    &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -293,8 +291,7 @@ TEST_F(Sqlite, BulkIngestTable) {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS,
-              AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                   &error));
+              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -314,9 +311,8 @@ TEST_F(Sqlite, BulkIngestTable) {
                                       ADBC_INGEST_OPTION_MODE_APPEND, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                    &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
 
     std::memset(&statement, 0, sizeof(statement));
@@ -352,8 +348,7 @@ TEST_F(Sqlite, BulkIngestTable) {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS,
-              AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                   &error));
+              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -374,8 +369,7 @@ TEST_F(Sqlite, BulkIngestTable) {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     ASSERT_EQ(ADBC_STATUS_NOT_FOUND,
-              AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                   &error));
+              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -398,8 +392,7 @@ TEST_F(Sqlite, BulkIngestTable) {
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
     ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS,
-              AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                   &error));
+              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 }
@@ -425,9 +418,8 @@ TEST_F(Sqlite, BulkIngestStream) {
                                       "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBindStream(&statement, &export_stream, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                    &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -722,15 +714,13 @@ TEST_F(Sqlite, MetadataGetObjectsColumns) {
         error,
         AdbcStatementSetSqlQuery(
             &statement, "CREATE TABLE parent (a, b, c, PRIMARY KEY(c, b))", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                    &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
 
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(&statement, "CREATE TABLE other (a)", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                    &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
 
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(
@@ -738,9 +728,8 @@ TEST_F(Sqlite, MetadataGetObjectsColumns) {
                    "CREATE TABLE child (a, b, c, PRIMARY KEY(a), FOREIGN KEY (c, b) "
                    "REFERENCES parent (c, b), FOREIGN KEY (a) REFERENCES other(a))",
                    &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_UPDATE, nullptr, nullptr,
-                                    &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
 
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
@@ -887,8 +876,7 @@ TEST_F(Sqlite, Transactions) {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementSetSqlQuery(&statement, query, &error));
     struct ArrowArrayStream stream;
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecute(&statement, ADBC_OUTPUT_TYPE_ARROW, &stream, nullptr,
-                                    &error));
+        error, AdbcStatementExecuteQuery(&statement, &stream, nullptr, &error));
     stream.release(&stream);
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }

@@ -1,4 +1,4 @@
-// Licensed to the Apache Software Foundation (ASF) under one
+
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
 // regarding copyright ownership.  The ASF licenses this file
@@ -623,15 +623,22 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
 /// @{
 
 /// \brief Construct a statement for a partition of a query. The
-///   statement can then be read independently.
+///   results can then be read independently.
 ///
-/// A partition can be retrieved from AdbcStatementGetPartitionDesc.
+/// A partition can be retrieved from AdbcPartitions.
+///
+/// \param[in] connection The connection to use.  This does not have
+///   to be the same connection that the partition was created on.
+/// \param[in] serialized_partition The partition descriptor.
+/// \param[in] serialized_length The partition descriptor length.
+/// \param[out] out The result set.
+/// \param[out] error Error details, if an error occurs.
 ADBC_EXPORT
-AdbcStatusCode AdbcConnectionDeserializePartitionDesc(struct AdbcConnection* connection,
-                                                      const uint8_t* serialized_partition,
-                                                      size_t serialized_length,
-                                                      struct AdbcStatement* statement,
-                                                      struct AdbcError* error);
+AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
+                                           const uint8_t* serialized_partition,
+                                           size_t serialized_length,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error);
 
 /// @}
 
@@ -674,8 +681,8 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
 /// AdbcStatementNew. Then, the statement should be configured with
 /// functions like AdbcStatementSetSqlQuery and
 /// AdbcStatementSetOption. Finally, the statement can be executed
-/// with AdbcStatementExecute (or call AdbcStatementPrepare first to
-/// turn it into a prepared statement instead).
+/// with AdbcStatementExecuteQuery (or call AdbcStatementPrepare first
+/// to turn it into a prepared statement instead).
 /// @{
 
 /// \brief A container for all state needed to execute a database
@@ -708,8 +715,8 @@ struct ADBC_EXPORT AdbcStatement {
 
 /// \brief Create a new statement for a given connection.
 ///
-/// Set options on the statement, then call AdbcStatementExecute or
-/// AdbcStatementPrepare.
+/// Set options on the statement, then call AdbcStatementExecuteQuery
+/// or AdbcStatementPrepare.
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement, struct AdbcError* error);
@@ -727,38 +734,27 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 /// This invalidates any prior result sets.
 ///
 /// \param[in] statement The statement to execute.
-/// \param[in] out_type The expected result type:
-///   - ADBC_OUTPUT_TYPE_ARROW for an ArrowArrayStream;
-///   - ADBC_OUTPUT_TYPE_PARTITIONS for a count of partitions (see \ref
-///     adbc-statement-partition below).
-///   - ADBC_OUTPUT_TYPE_UPDATE if the query should not generate a
-///     result set;
-///   The result set will be in out.
-/// \param[out] out The results. Must be NULL for output type UPDATE, a
-///   pointer to an ArrowArrayStream for ARROW_ARRAY_STREAM, or a
-///   pointer to a size_t for PARTITIONS.
+/// \param[out] out The results.
 /// \param[out] rows_affected The number of rows affected if known,
 ///   else -1. Pass NULL if the client does not want this information.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 ADBC_EXPORT
-AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement, int output_type,
-                                    void* out, int64_t* rows_affected,
-                                    struct AdbcError* error);
+AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
+                                         struct ArrowArrayStream* out,
+                                         int64_t* rows_affected, struct AdbcError* error);
 
-/// \brief Arrow data is expected from AdbcStatementExecute.  Pass
-///   ArrowArrayStream* to out.
-#define ADBC_OUTPUT_TYPE_ARROW 0
-/// \brief Partitions are expected from AdbcStatementExecute.  Pass
-///   size_t* to out to get the number of partitions, and use
-///   AdbcStatementGetPartitionDesc to get a partition.
+/// \brief Execute a statement that does not generate a result set.
 ///
-/// Drivers are not required to support partitioning.  In that case,
-/// AdbcStatementExecute will return ADBC_STATUS_NOT_IMPLEMENTED.
-#define ADBC_OUTPUT_TYPE_PARTITIONS 1
-/// \brief No results are expected from AdbcStatementExecute.  Pass
-///   NULL to out.
-#define ADBC_OUTPUT_TYPE_UPDATE 2
+/// \param[in] statement The statement to execute.
+/// \param[out] rows_affected The number of rows affected if known,
+///   else -1. Pass NULL if the client does not want this information.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementExecuteUpdate(struct AdbcStatement* statement,
+                                          int64_t* rows_affected,
+                                          struct AdbcError* error);
 
 /// \brief Turn this statement into a prepared statement to be
 ///   executed multiple times.
@@ -903,46 +899,59 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
 /// with a threaded or distributed execution model, where partitions
 /// can be divided among threads or machines and fetched in parallel.
 ///
-/// To use partitioning, pass ADBC_OUTPUT_TYPE_PARTITIONS to
-/// AdbcStatementExecute.  Then, use these functions to get the actual
-/// partition descriptors.  Call AdbcConnectionDeserializePartitionDesc
-/// to turn the individual descriptors into AdbcStatement instances.
+/// To use partitioning, execute the statement with
+/// AdbcStatementExecutePartitions to get the partition descriptors.
+/// Call AdbcConnectionReadPartition to turn the individual
+/// descriptors into ArrowArrayStream instances.  This may be done on
+/// a different connection than the one the partition was created
+/// with, or even in a different process on another machine.
 ///
 /// Drivers are not required to support partitioning.
 ///
 /// @{
 
-/// \brief Get the length of a serialized descriptor for a partition.
-///
-/// \param[in] statement The statement.
-/// \param[in] index Which partition to get.
-/// \param[out] length The length of the serialized partition.
-/// \param[out] error An optional location to return an error message if
-///   necessary.
-ADBC_EXPORT
-AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
-                                                 size_t index, size_t* length,
-                                                 struct AdbcError* error);
+/// \brief The partitions of a distributed/partitioned result set.
+struct AdbcPartitions {
+  /// \brief The number of partitions.
+  size_t num_partitions;
 
-/// \brief Get the serialized descriptor for a partition.
+  /// \brief The partitions of the result set, where each entry (up to
+  ///   num_partitions entries) is an opaque identifier that can be
+  ///   passed to AdbcConnectionReadPartition.
+  const uint8_t** partitions;
+
+  /// \brief The length of each corresponding entry in partitions.
+  const size_t* partition_lengths;
+
+  /// \brief Opaque implementation-defined state.
+  /// This field is NULLPTR iff the connection is unintialized/freed.
+  void* private_data;
+
+  /// \brief Release the contained partitions.
+  ///
+  /// Unlike other structures, this is an embedded callback to make it
+  /// easier for the driver manager and driver to cooperate.
+  void (*release)(struct AdbcPartitions* partitions);
+};
+
+/// \brief Execute a statement and get the results as a partitioned
+///   result set.
 ///
-/// A partition can be turned back into a statement via
-/// AdbcConnectionDeserializePartitionDesc. Effectively, this means
-/// AdbcStatement is similar to arrow::flight::FlightInfo in
-/// Flight/Flight SQL and AdbcStatementGetPartitionDesc is similar to
-/// getting the arrow::flight::Ticket.
-///
-/// \param[in] statement The statement.
-/// \param[in] index Which partition to get.
-/// \param[out] partition_desc A caller-allocated buffer, to which the
-///   serialized partition will be written. The length to allocate can be
-///   queried with AdbcStatementGetPartitionDescSize.
-/// \param[out] error An optional location to return an error message if
-///   necessary.
+/// \param[in] statement The statement to execute.
+/// \param[out] schema The schema of the result set.
+/// \param[out] partitions The result partitions.
+/// \param[out] rows_affected The number of rows affected if known,
+///   else -1. Pass NULL if the client does not want this information.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support
+///   partitioned results
 ADBC_EXPORT
-AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
-                                             size_t index, uint8_t* partition_desc,
-                                             struct AdbcError* error);
+AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
+                                              struct ArrowSchema* schema,
+                                              struct AdbcPartitions* partitions,
+                                              int64_t* rows_affected,
+                                              struct AdbcError* error);
 
 /// @}
 
@@ -962,39 +971,27 @@ AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
 /// worrying about multiple definitions of the same symbol.
 struct ADBC_EXPORT AdbcDriver {
   /// \brief Opaque driver-defined state.
-  /// This field is NULLPTR if the driver is unintialized/freed (but
+  /// This field is NULL if the driver is unintialized/freed (but
   /// it need not have a value even if the driver is initialized).
   void* private_data;
   /// \brief Opaque driver manager-defined state.
-  /// This field is NULLPTR if the driver is unintialized/freed (but
+  /// This field is NULL if the driver is unintialized/freed (but
   /// it need not have a value even if the driver is initialized).
   void* private_manager;
 
   /// \brief Release the driver and perform any cleanup.
   ///
-  /// Unlike other structures, this is an embedded callback to make it
-  /// easier for the driver manager and driver to cooperate.
+  /// This is an embedded callback to make it easier for the driver
+  /// manager and driver to cooperate.
   AdbcStatusCode (*release)(struct AdbcDriver* driver, struct AdbcError* error);
 
+  AdbcStatusCode (*DatabaseInit)(struct AdbcDatabase*, struct AdbcError*);
   AdbcStatusCode (*DatabaseNew)(struct AdbcDatabase*, struct AdbcError*);
   AdbcStatusCode (*DatabaseSetOption)(struct AdbcDatabase*, const char*, const char*,
                                       struct AdbcError*);
-  AdbcStatusCode (*DatabaseInit)(struct AdbcDatabase*, struct AdbcError*);
   AdbcStatusCode (*DatabaseRelease)(struct AdbcDatabase*, struct AdbcError*);
 
-  AdbcStatusCode (*ConnectionNew)(struct AdbcConnection*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionSetOption)(struct AdbcConnection*, const char*, const char*,
-                                        struct AdbcError*);
-  AdbcStatusCode (*ConnectionInit)(struct AdbcConnection*, struct AdbcDatabase*,
-                                   struct AdbcError*);
-  AdbcStatusCode (*ConnectionRelease)(struct AdbcConnection*, struct AdbcError*);
-
   AdbcStatusCode (*ConnectionCommit)(struct AdbcConnection*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionDeserializePartitionDesc)(struct AdbcConnection*,
-                                                       const uint8_t*, size_t,
-                                                       struct AdbcStatement*,
-                                                       struct AdbcError*);
-  AdbcStatusCode (*ConnectionRollback)(struct AdbcConnection*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetInfo)(struct AdbcConnection*, uint32_t*, size_t,
                                       struct ArrowArrayStream*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetObjects)(struct AdbcConnection*, int, const char*,
@@ -1006,29 +1003,41 @@ struct ADBC_EXPORT AdbcDriver {
                                              struct ArrowSchema*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetTableTypes)(struct AdbcConnection*,
                                             struct ArrowArrayStream*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionInit)(struct AdbcConnection*, struct AdbcDatabase*,
+                                   struct AdbcError*);
+  AdbcStatusCode (*ConnectionNew)(struct AdbcConnection*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionSetOption)(struct AdbcConnection*, const char*, const char*,
+                                        struct AdbcError*);
+  AdbcStatusCode (*ConnectionReadPartition)(struct AdbcConnection*, const uint8_t*,
+                                            size_t, struct ArrowArrayStream*,
+                                            struct AdbcError*);
+  AdbcStatusCode (*ConnectionRelease)(struct AdbcConnection*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionRollback)(struct AdbcConnection*, struct AdbcError*);
 
-  AdbcStatusCode (*StatementNew)(struct AdbcConnection*, struct AdbcStatement*,
-                                 struct AdbcError*);
-  AdbcStatusCode (*StatementRelease)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementBind)(struct AdbcStatement*, struct ArrowArray*,
                                   struct ArrowSchema*, struct AdbcError*);
   AdbcStatusCode (*StatementBindStream)(struct AdbcStatement*, struct ArrowArrayStream*,
                                         struct AdbcError*);
-  AdbcStatusCode (*StatementExecute)(struct AdbcStatement*, int, void*, int64_t*,
-                                     struct AdbcError*);
-  AdbcStatusCode (*StatementPrepare)(struct AdbcStatement*, struct AdbcError*);
+  AdbcStatusCode (*StatementExecuteQuery)(struct AdbcStatement*, struct ArrowArrayStream*,
+                                          int64_t*, struct AdbcError*);
+  AdbcStatusCode (*StatementExecuteUpdate)(struct AdbcStatement*, int64_t*,
+                                           struct AdbcError*);
+  AdbcStatusCode (*StatementExecutePartitions)(struct AdbcStatement*, struct ArrowSchema*,
+                                               struct AdbcPartitions*, int64_t*,
+                                               struct AdbcError*);
   AdbcStatusCode (*StatementGetParameterSchema)(struct AdbcStatement*,
                                                 struct ArrowSchema*, struct AdbcError*);
-  AdbcStatusCode (*StatementGetPartitionDescSize)(struct AdbcStatement*, size_t, size_t*,
-                                                  struct AdbcError*);
-  AdbcStatusCode (*StatementGetPartitionDesc)(struct AdbcStatement*, size_t, uint8_t*,
-                                              struct AdbcError*);
+  AdbcStatusCode (*StatementNew)(struct AdbcConnection*, struct AdbcStatement*,
+                                 struct AdbcError*);
+  AdbcStatusCode (*StatementPrepare)(struct AdbcStatement*, struct AdbcError*);
+  AdbcStatusCode (*StatementRelease)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementSetOption)(struct AdbcStatement*, const char*, const char*,
                                        struct AdbcError*);
   AdbcStatusCode (*StatementSetSqlQuery)(struct AdbcStatement*, const char*,
                                          struct AdbcError*);
   AdbcStatusCode (*StatementSetSubstraitPlan)(struct AdbcStatement*, const uint8_t*,
                                               size_t, struct AdbcError*);
+
   // Do not edit fields. New fields can only be appended to the end.
 };
 
@@ -1047,8 +1056,6 @@ struct ADBC_EXPORT AdbcDriver {
 typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* driver,
                                              size_t* initialized,
                                              struct AdbcError* error);
-// TODO: use sizeof() instead of count, or version the
-// struct/entrypoint instead?
 
 // For use with count
 #define ADBC_VERSION_0_0_1 27

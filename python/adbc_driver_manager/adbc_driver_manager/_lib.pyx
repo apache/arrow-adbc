@@ -117,11 +117,11 @@ cdef extern from "adbc.h" nogil:
     CAdbcStatusCode AdbcConnectionRollback(
         CAdbcConnection* connection,
         CAdbcError* error)
-    CAdbcStatusCode AdbcConnectionDeserializePartitionDesc(
+    CAdbcStatusCode AdbcConnectionReadPartition(
         CAdbcConnection* connection,
         const uint8_t* serialized_partition,
         size_t serialized_length,
-        CAdbcStatement* statement,
+        CArrowArrayStream* out,
         CAdbcError* error)
     CAdbcStatusCode AdbcConnectionGetInfo(
         CAdbcConnection* connection,
@@ -175,19 +175,13 @@ cdef extern from "adbc.h" nogil:
         CAdbcStatement* statement,
         CArrowArrayStream*,
         CAdbcError* error)
-    CAdbcStatusCode AdbcStatementExecute(
+    CAdbcStatusCode AdbcStatementExecuteQuery(
         CAdbcStatement* statement,
-        int output_type, void* out, int64_t* rows_affected,
+        CArrowArrayStream* out, int64_t* rows_affected,
         CAdbcError* error)
-    CAdbcStatusCode AdbcStatementGetPartitionDesc(
+    CAdbcStatusCode AdbcStatementExecuteUpdate(
         CAdbcStatement* statement,
-        size_t index,
-        uint8_t* partition_desc,
-        CAdbcError* error)
-    CAdbcStatusCode AdbcStatementGetPartitionDescSize(
-        CAdbcStatement* statement,
-        size_t index,
-        size_t* length,
+        int64_t* rows_affected,
         CAdbcError* error)
     CAdbcStatusCode AdbcStatementNew(
         CAdbcConnection* connection,
@@ -770,9 +764,8 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
         cdef int64_t rows_affected = 0
         with nogil:
-            status = AdbcStatementExecute(
+            status = AdbcStatementExecuteQuery(
                 &self.statement,
-                ADBC_OUTPUT_TYPE_ARROW,
                 &stream.stream,
                 &rows_affected,
                 &c_error)
@@ -794,47 +787,8 @@ cdef class AdbcStatement(_AdbcHandle):
         int
             The number of rows if known, else -1.
         """
-        cdef CAdbcError c_error = empty_error()
-        cdef size_t num_partitions
-        cdef int64_t rows_affected = 0
-        cdef size_t length = 0
-        cdef bytes buf
-        cdef uint8_t* c_buf
-
-        with nogil:
-            status = AdbcStatementExecute(
-                &self.statement,
-                ADBC_OUTPUT_TYPE_UPDATE,
-                &num_partitions,
-                &rows_affected,
-                &c_error)
-        check_error(status, &c_error)
-
-        result = []
-        for index in range(num_partitions):
-            with nogil:
-                status = AdbcStatementGetPartitionDescSize(
-                        &self.statement,
-                        index,
-                        &length,
-                        &c_error,
-                    )
-            check_error(status, &c_error)
-
-            buf = bytes(length)
-            c_buf = <uint8_t*> buf
-            with nogil:
-                status = AdbcStatementGetPartitionDesc(
-                    &self.statement,
-                    index,
-                    c_buf,
-                    &c_error,
-                )
-            check_error(status, &c_error)
-            result.append(buf)
-
         # TODO(lidavidm): apache/arrow-adbc#68
-        return (result, None, rows_affected)
+        raise NotImplementedError
 
     def execute_update(self) -> int:
         """
@@ -848,10 +802,8 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         cdef int64_t rows_affected = 0
         with nogil:
-            status = AdbcStatementExecute(
+            status = AdbcStatementExecuteUpdate(
                 &self.statement,
-                ADBC_OUTPUT_TYPE_UPDATE,
-                NULL,
                 &rows_affected,
                 &c_error)
         check_error(status, &c_error)
