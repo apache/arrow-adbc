@@ -24,6 +24,7 @@ import typing
 from typing import List, Tuple
 
 import cython
+from cpython.bytes cimport PyBytes_FromStringAndSize
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
 from libc.string cimport memset
 from libcpp.vector cimport vector as c_vector
@@ -74,10 +75,6 @@ cdef extern from "adbc.h" nogil:
     cdef int ADBC_OBJECT_DEPTH_TABLES
     cdef int ADBC_OBJECT_DEPTH_COLUMNS
 
-    cdef int ADBC_OUTPUT_TYPE_ARROW
-    cdef int ADBC_OUTPUT_TYPE_PARTITIONS
-    cdef int ADBC_OUTPUT_TYPE_UPDATE
-
     cdef uint32_t ADBC_INFO_VENDOR_NAME
     cdef uint32_t ADBC_INFO_VENDOR_VERSION
     cdef uint32_t ADBC_INFO_VENDOR_ARROW_VERSION
@@ -86,6 +83,7 @@ cdef extern from "adbc.h" nogil:
     cdef uint32_t ADBC_INFO_DRIVER_ARROW_VERSION
 
     ctypedef void (*CAdbcErrorRelease)(CAdbcError*)
+    ctypedef void (*CAdbcPartitionsRelease)(CAdbcPartitions*)
 
     cdef struct CAdbcError"AdbcError":
         char* message
@@ -101,6 +99,13 @@ cdef extern from "adbc.h" nogil:
 
     cdef struct CAdbcStatement"AdbcStatement":
         void* private_data
+
+    cdef struct CAdbcPartitions"AdbcPartitions":
+        size_t num_partitions
+        const uint8_t** partitions
+        const size_t* partition_lengths
+        void* private_data
+        CAdbcPartitionsRelease release
 
     CAdbcStatusCode AdbcDatabaseNew(CAdbcDatabase* database, CAdbcError* error)
     CAdbcStatusCode AdbcDatabaseSetOption(
@@ -174,6 +179,11 @@ cdef extern from "adbc.h" nogil:
     CAdbcStatusCode AdbcStatementBindStream(
         CAdbcStatement* statement,
         CArrowArrayStream*,
+        CAdbcError* error)
+    CAdbcStatusCode AdbcStatementExecutePartitions(
+        CAdbcStatement* statement,
+        CArrowSchema* schema, CAdbcPartitions* partitions,
+        int64_t* rows_affected,
         CAdbcError* error)
     CAdbcStatusCode AdbcStatementExecuteQuery(
         CAdbcStatement* statement,
@@ -443,7 +453,8 @@ cdef class AdbcDatabase(_AdbcHandle):
         cdef const char* c_value
         memset(&self.database, 0, cython.sizeof(CAdbcDatabase))
 
-        status = AdbcDatabaseNew(&self.database, &c_error)
+        with nogil:
+            status = AdbcDatabaseNew(&self.database, &c_error)
         check_error(status, &c_error)
 
         for key, value in kwargs.items():
@@ -454,7 +465,8 @@ cdef class AdbcDatabase(_AdbcHandle):
             status = AdbcDatabaseSetOption(&self.database, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
-        status = AdbcDatabaseInit(&self.database, &c_error)
+        with nogil:
+            status = AdbcDatabaseInit(&self.database, &c_error)
         check_error(status, &c_error)
 
     def close(self) -> None:
@@ -463,7 +475,9 @@ cdef class AdbcDatabase(_AdbcHandle):
             return
 
         cdef CAdbcError c_error = empty_error()
-        cdef CAdbcStatusCode status = AdbcDatabaseRelease(&self.database, &c_error)
+        cdef CAdbcStatusCode status
+        with nogil:
+            status = AdbcDatabaseRelease(&self.database, &c_error)
         check_error(status, &c_error)
 
 
@@ -494,7 +508,8 @@ cdef class AdbcConnection(_AdbcHandle):
         self.database = database
         memset(&self.connection, 0, cython.sizeof(CAdbcConnection))
 
-        status = AdbcConnectionNew(&self.connection, &c_error)
+        with nogil:
+            status = AdbcConnectionNew(&self.connection, &c_error)
         check_error(status, &c_error)
 
         for key, value in kwargs.items():
@@ -505,13 +520,17 @@ cdef class AdbcConnection(_AdbcHandle):
             status = AdbcConnectionSetOption(&self.connection, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
-        status = AdbcConnectionInit(&self.connection, &database.database, &c_error)
+        with nogil:
+            status = AdbcConnectionInit(&self.connection, &database.database, &c_error)
         check_error(status, &c_error)
 
     def commit(self) -> None:
         """Commit the current transaction."""
         cdef CAdbcError c_error = empty_error()
-        check_error(AdbcConnectionCommit(&self.connection, &c_error), &c_error)
+        cdef CAdbcStatusCode status
+        with nogil:
+            status = AdbcConnectionCommit(&self.connection, &c_error)
+        check_error(status, &c_error)
 
     def get_info(self, info_codes=None) -> ArrowArrayStreamHandle:
         """
@@ -529,19 +548,21 @@ cdef class AdbcConnection(_AdbcHandle):
                 else:
                     c_info_codes.push_back(info_code.value)
 
-            status = AdbcConnectionGetInfo(
-                &self.connection,
-                c_info_codes.data(),
-                c_info_codes.size(),
-                &stream.stream,
-                &c_error)
+            with nogil:
+                status = AdbcConnectionGetInfo(
+                    &self.connection,
+                    c_info_codes.data(),
+                    c_info_codes.size(),
+                    &stream.stream,
+                    &c_error)
         else:
-            status = AdbcConnectionGetInfo(
-                &self.connection,
-                NULL,
-                0,
-                &stream.stream,
-                &c_error)
+            with nogil:
+                status = AdbcConnectionGetInfo(
+                    &self.connection,
+                    NULL,
+                    0,
+                    &stream.stream,
+                    &c_error)
 
         check_error(status, &c_error)
         return stream
@@ -554,6 +575,7 @@ cdef class AdbcConnection(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
         cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
+        cdef int c_depth = GetObjectsDepth(depth).value
 
         cdef char* c_catalog = NULL
         if catalog is not None:
@@ -575,16 +597,17 @@ cdef class AdbcConnection(_AdbcHandle):
             column_name = _to_bytes(column_name, "column_name")
             c_column_name = column_name
 
-        status = AdbcConnectionGetObjects(
-            &self.connection,
-            GetObjectsDepth(depth).value,
-            c_catalog,
-            c_db_schema,
-            c_table_name,
-            NULL,  # TODO: support table_types
-            c_column_name,
-            &stream.stream,
-            &c_error)
+        with nogil:
+            status = AdbcConnectionGetObjects(
+                &self.connection,
+                c_depth,
+                c_catalog,
+                c_db_schema,
+                c_table_name,
+                NULL,  # TODO: support table_types
+                c_column_name,
+                &stream.stream,
+                &c_error)
         check_error(status, &c_error)
 
         return stream
@@ -601,6 +624,8 @@ cdef class AdbcConnection(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
         cdef ArrowSchemaHandle handle = ArrowSchemaHandle()
+        table_name = _to_bytes(table_name, "table_name")
+        cdef char* c_table_name = table_name
 
         cdef char* c_catalog = NULL
         if catalog is not None:
@@ -612,15 +637,15 @@ cdef class AdbcConnection(_AdbcHandle):
             db_schema = _to_bytes(db_schema, "db_schema")
             c_db_schema = db_schema
 
-        status = AdbcConnectionGetTableSchema(
-            &self.connection,
-            c_catalog,
-            c_db_schema,
-            _to_bytes(table_name, "table_name"),
-            &handle.schema,
-            &c_error)
+        with nogil:
+            status = AdbcConnectionGetTableSchema(
+                &self.connection,
+                c_catalog,
+                c_db_schema,
+                c_table_name,
+                &handle.schema,
+                &c_error)
         check_error(status, &c_error)
-
         return handle
 
     def get_table_types(self) -> ArrowArrayStreamHandle:
@@ -631,10 +656,28 @@ cdef class AdbcConnection(_AdbcHandle):
         cdef CAdbcStatusCode status
         cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
 
-        status = AdbcConnectionGetTableTypes(
-            &self.connection, &stream.stream, &c_error)
+        with nogil:
+            status = AdbcConnectionGetTableTypes(
+                &self.connection, &stream.stream, &c_error)
         check_error(status, &c_error)
+        return stream
 
+    def read_partition(self, bytes partition not None) -> ArrowArrayStreamHandle:
+        """Fetch a single partition from execute_partitions."""
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
+        cdef const uint8_t* data = <const uint8_t*> partition
+        cdef size_t length = len(partition)
+
+        with nogil:
+            status = AdbcConnectionReadPartition(
+                &self.connection,
+                data,
+                length,
+                &stream.stream,
+                &c_error)
+        check_error(status, &c_error)
         return stream
 
     def rollback(self) -> None:
@@ -649,11 +692,13 @@ cdef class AdbcConnection(_AdbcHandle):
             value = ADBC_OPTION_VALUE_ENABLED
         else:
             value = ADBC_OPTION_VALUE_DISABLED
-        status = AdbcConnectionSetOption(
-            &self.connection,
-            ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-            value,
-            &c_error)
+
+        with nogil:
+            status = AdbcConnectionSetOption(
+                &self.connection,
+                ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                value,
+                &c_error)
         check_error(status, &c_error)
 
     def close(self) -> None:
@@ -662,7 +707,10 @@ cdef class AdbcConnection(_AdbcHandle):
             return
 
         cdef CAdbcError c_error = empty_error()
-        cdef CAdbcStatusCode status = AdbcConnectionRelease(&self.connection, &c_error)
+        cdef CAdbcStatusCode status
+
+        with nogil:
+            status = AdbcConnectionRelease(&self.connection, &c_error)
         check_error(status, &c_error)
 
 
@@ -685,7 +733,11 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         memset(&self.statement, 0, cython.sizeof(CAdbcStatement))
 
-        status = AdbcStatementNew(&connection.connection, &self.statement, &c_error)
+        with nogil:
+            status = AdbcStatementNew(
+                &connection.connection,
+                &self.statement,
+                &c_error)
         check_error(status, &c_error)
 
     def bind(self, data, schema) -> None:
@@ -716,7 +768,12 @@ cdef class AdbcStatement(_AdbcHandle):
             raise TypeError(f"schema must be int or ArrowSchemaHandle, "
                             f"not {type(schema)}")
 
-        status = AdbcStatementBind(&self.statement, c_array, c_schema, &c_error)
+        with nogil:
+            status = AdbcStatementBind(
+                &self.statement,
+                c_array,
+                c_schema,
+                &c_error)
         check_error(status, &c_error)
 
     def bind_stream(self, stream) -> None:
@@ -738,7 +795,11 @@ cdef class AdbcStatement(_AdbcHandle):
             raise TypeError(f"data must be int or ArrowArrayStreamHandle, "
                             f"not {type(stream)}")
 
-        status = AdbcStatementBindStream(&self.statement, c_stream, &c_error)
+        with nogil:
+            status = AdbcStatementBindStream(
+                &self.statement,
+                c_stream,
+                &c_error)
         check_error(status, &c_error)
 
     def close(self) -> None:
@@ -746,7 +807,9 @@ cdef class AdbcStatement(_AdbcHandle):
             return
 
         cdef CAdbcError c_error = empty_error()
-        cdef CAdbcStatusCode status = AdbcStatementRelease(&self.statement, &c_error)
+        cdef CAdbcStatusCode status
+        with nogil:
+            status = AdbcStatementRelease(&self.statement, &c_error)
         check_error(status, &c_error)
 
     def execute_query(self) -> Tuple[ArrowArrayStreamHandle, int]:
@@ -787,8 +850,29 @@ cdef class AdbcStatement(_AdbcHandle):
         int
             The number of rows if known, else -1.
         """
-        # TODO(lidavidm): apache/arrow-adbc#68
-        raise NotImplementedError
+        cdef CAdbcError c_error = empty_error()
+        cdef ArrowSchemaHandle schema = ArrowSchemaHandle()
+        cdef CAdbcPartitions c_partitions = CAdbcPartitions(
+            0, NULL, NULL, NULL, NULL)
+        cdef int64_t rows_affected = 0
+
+        with nogil:
+            status = AdbcStatementExecutePartitions(
+                &self.statement,
+                &schema.schema,
+                &c_partitions,
+                &rows_affected,
+                &c_error)
+        check_error(status, &c_error)
+
+        partitions = []
+        for i in range(c_partitions.num_partitions):
+            length = c_partitions.partition_lengths[i]
+            data = <const char*> c_partitions.partitions[i]
+            partitions.append(PyBytes_FromStringAndSize(data, length))
+        c_partitions.release(&c_partitions)
+
+        return (partitions, schema, rows_affected)
 
     def execute_update(self) -> int:
         """
@@ -812,7 +896,8 @@ cdef class AdbcStatement(_AdbcHandle):
     def prepare(self) -> None:
         """Turn this statement into a prepared statement."""
         cdef CAdbcError c_error = empty_error()
-        status = AdbcStatementPrepare(&self.statement, &c_error)
+        with nogil:
+            status = AdbcStatementPrepare(&self.statement, &c_error)
         check_error(status, &c_error)
 
     def set_options(self, **kwargs) -> None:
@@ -827,16 +912,22 @@ cdef class AdbcStatement(_AdbcHandle):
                 &self.statement, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
-    def set_sql_query(self, query: str) -> None:
+    def set_sql_query(self, str query not None) -> None:
         """Set a SQL query to be executed."""
         cdef CAdbcError c_error = empty_error()
-        status = AdbcStatementSetSqlQuery(
-            &self.statement, query.encode("utf-8"), &c_error)
+        cdef bytes query_data = query.encode("utf-8")
+        cdef const char* c_query = query_data
+        with nogil:
+            status = AdbcStatementSetSqlQuery(
+                &self.statement, c_query, &c_error)
         check_error(status, &c_error)
 
-    def set_substrait_plan(self, plan: bytes) -> None:
+    def set_substrait_plan(self, bytes plan not None) -> None:
         """Set a Substrait plan to be executed."""
         cdef CAdbcError c_error = empty_error()
-        status = AdbcStatementSetSubstraitPlan(
-            &self.statement, plan, len(plan), &c_error)
+        cdef const uint8_t* c_plan = <const uint8_t*> plan
+        cdef size_t length = len(plan)
+        with nogil:
+            status = AdbcStatementSetSubstraitPlan(
+                &self.statement, c_plan, length, &c_error)
         check_error(status, &c_error)

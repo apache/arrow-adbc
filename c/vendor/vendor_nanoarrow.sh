@@ -31,13 +31,9 @@ main() {
     rm -rf nanoarrow
     mkdir -p nanoarrow
     tar --strip-components 1 -C "$SCRATCH" -xf "$tarball"
-    mkdir "$SCRATCH/build"
-    pushd "$SCRATCH/build"
-    cmake .. -DNANOARROW_BUNDLE=ON
-    popd
 
-    cp "$SCRATCH/build/amalgamation/nanoarrow/nanoarrow.c" nanoarrow/
-    cp "$SCRATCH/build/amalgamation/nanoarrow/nanoarrow.h" nanoarrow/
+    cp "$SCRATCH/dist/nanoarrow.c" nanoarrow/
+    cp "$SCRATCH/dist/nanoarrow.h" nanoarrow/
 }
 
 main "$@"

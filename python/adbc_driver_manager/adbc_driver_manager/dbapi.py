@@ -24,9 +24,12 @@ import functools
 import time
 import typing
 import warnings
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-import pyarrow
+try:
+    import pyarrow
+except ImportError as e:
+    raise ImportError("PyArrow is required for the DBAPI-compatible interface") from e
 
 from . import _lib
 
@@ -291,8 +294,7 @@ class Cursor(_Closeable):
             self._results.close()
         self._stmt.close()
 
-    def execute(self, operation, parameters=None) -> None:
-        """Execute a query."""
+    def _prepare_execute(self, operation, parameters=None) -> None:
         self._results = None
         if operation != self._last_query:
             self._last_query = operation
@@ -314,6 +316,9 @@ class Cursor(_Closeable):
             rb._export_to_c(arr_handle.address, sch_handle.address)
             self._stmt.bind(arr_handle, sch_handle)
 
+    def execute(self, operation, parameters=None) -> None:
+        """Execute a query."""
+        self._prepare_execute(operation, parameters)
         handle, self._rowcount = self._stmt.execute_query()
         self._results = _RowIterator(
             pyarrow.RecordBatchReader._import_from_c(handle.address)
@@ -342,6 +347,37 @@ class Cursor(_Closeable):
         rb._export_to_c(arr_handle.address, sch_handle.address)
         self._stmt.bind(arr_handle, sch_handle)
         self._rowcount = self._stmt.execute_update()
+
+    def execute_partitions(
+        self, operation, parameters=None
+    ) -> Tuple[List[bytes], pyarrow.Schema]:
+        """
+        Execute a query and get the partitions of a distributed result set.
+
+        This is an extension method, not present in DBAPI.
+
+        Return
+        ------
+        partitions : list of byte
+            A list of partition descriptors, which can be read with
+            read_partition.
+        schema : pyarrow.Schema
+            The schema of the result set.
+        """
+        self._prepare_execute(operation, parameters)
+        partitions, schema, self._rowcount = self._stmt.execute_partitions()
+        return partitions, pyarrow.Schema._import_from_c(schema.address())
+
+    def read_partition(self, partition: bytes) -> None:
+        """
+        Read a partition of a distributed result set.
+        """
+        self._results = None
+        handle = self.conn._conn.read_partition(partition)
+        self._rowcount = -1
+        self._results = _RowIterator(
+            pyarrow.RecordBatchReader._import_from_c(handle.address)
+        )
 
     def fetchone(self) -> tuple:
         """Fetch one row of the result."""
