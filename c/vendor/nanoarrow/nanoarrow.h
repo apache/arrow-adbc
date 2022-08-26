@@ -19,6 +19,7 @@
 #define NANOARROW_NANOARROW_TYPES_H_INCLUDED
 
 #include <stdint.h>
+#include <string.h>
 
 
 

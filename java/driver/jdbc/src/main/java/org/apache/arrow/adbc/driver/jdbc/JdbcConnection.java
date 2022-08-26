@@ -32,6 +32,7 @@ import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
@@ -70,18 +71,19 @@ public class JdbcConnection implements AdbcConnection {
   }
 
   @Override
-  public AdbcStatement getInfo(int[] infoCodes) throws AdbcException {
+  public ArrowReader getInfo(int[] infoCodes) throws AdbcException {
     try {
-      final VectorSchemaRoot root =
-          new InfoMetadataBuilder(allocator, connection, infoCodes).build();
-      return new FixedJdbcStatement(allocator, root);
+      try (final VectorSchemaRoot root =
+          new InfoMetadataBuilder(allocator, connection, infoCodes).build()) {
+        return RootArrowReader.fromRoot(allocator, root);
+      }
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
   }
 
   @Override
-  public AdbcStatement getObjects(
+  public ArrowReader getObjects(
       final GetObjectsDepth depth,
       final String catalogPattern,
       final String dbSchemaPattern,
@@ -90,19 +92,18 @@ public class JdbcConnection implements AdbcConnection {
       final String columnNamePattern)
       throws AdbcException {
     // Build up the metadata in-memory and then return a constant reader.
-    try {
-      final VectorSchemaRoot root =
-          new ObjectMetadataBuilder(
-                  allocator,
-                  connection,
-                  depth,
-                  catalogPattern,
-                  dbSchemaPattern,
-                  tableNamePattern,
-                  tableTypes,
-                  columnNamePattern)
-              .build();
-      return new FixedJdbcStatement(allocator, root);
+    try (final VectorSchemaRoot root =
+        new ObjectMetadataBuilder(
+                allocator,
+                connection,
+                depth,
+                catalogPattern,
+                dbSchemaPattern,
+                tableNamePattern,
+                tableTypes,
+                columnNamePattern)
+            .build()) {
+      return RootArrowReader.fromRoot(allocator, root);
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
@@ -142,10 +143,9 @@ public class JdbcConnection implements AdbcConnection {
   }
 
   @Override
-  public AdbcStatement getTableTypes() throws AdbcException {
-    // XXX: this is nonconforming since we don't currently have a way to rename the columns
+  public ArrowReader getTableTypes() throws AdbcException {
     try {
-      return new FixedJdbcStatement(
+      return new JdbcArrowReader(
           allocator, connection.getMetaData().getTableTypes(), StandardSchemas.TABLE_TYPES_SCHEMA);
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);

@@ -62,15 +62,13 @@ class AdbcFlightSqlTest : public ::testing::Test {
 };
 
 TEST_F(AdbcFlightSqlTest, Metadata) {
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  struct ArrowArrayStream stream;
   ADBC_ASSERT_OK_WITH_ERROR(error,
-                            AdbcConnectionGetTableTypes(&connection, &statement, &error));
+                            AdbcConnectionGetTableTypes(&connection, &stream, &error));
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   ASSERT_SCHEMA_EQ(
       *schema,
       *arrow::schema({arrow::field("table_type", arrow::utf8(), /*nullable=*/false)}));
@@ -88,11 +86,10 @@ TEST_F(AdbcFlightSqlTest, SqlExecute) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("1", arrow::int64())}));
   EXPECT_THAT(batches,
               ::testing::UnorderedPointwise(
@@ -108,7 +105,9 @@ TEST_F(AdbcFlightSqlTest, SqlExecuteInvalid) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ASSERT_NE(AdbcStatementExecute(&statement, &error), ADBC_STATUS_OK);
+  struct ArrowArrayStream stream;
+  ASSERT_NE(AdbcStatementExecuteQuery(&statement, &stream, nullptr, &error),
+            ADBC_STATUS_OK);
   ADBC_ASSERT_ERROR_THAT(error, ::testing::HasSubstr("syntax error"));
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
 }
@@ -124,32 +123,27 @@ TEST_F(AdbcFlightSqlTest, Partitions) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+  struct ArrowSchema result_set_schema;
+  struct AdbcPartitions partitions;
+  std::memset(&partitions, 0, sizeof(partitions));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcStatementExecutePartitions(&statement, &result_set_schema, &partitions,
+                                            /*rows_affected=*/nullptr, &error));
 
-  std::vector<std::vector<uint8_t>> descs;
-
-  while (true) {
-    size_t length = 0;
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementGetPartitionDescSize(&statement, &length, &error));
-    if (length == 0) break;
-    descs.emplace_back(length);
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementGetPartitionDesc(&statement, descs.back().data(), &error));
-  }
-
-  ASSERT_EQ(descs.size(), 1);
+  ASSERT_EQ(partitions.num_partitions, 1);
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
 
   // Reconstruct the partition
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionDeserializePartitionDesc(
-                                       &connection, descs.back().data(),
-                                       descs.back().size(), &statement, &error));
+  struct ArrowArrayStream stream;
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionReadPartition(
+                                       &connection, partitions.partitions[0],
+                                       partitions.partition_lengths[0], &stream, &error));
+  partitions.release(&partitions);
+  result_set_schema.release(&result_set_schema);
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("42", arrow::int64())}));
   EXPECT_THAT(batches,
               ::testing::UnorderedPointwise(

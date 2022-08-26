@@ -64,7 +64,7 @@ public final class SqlTestUtil {
       root.setRowCount(4);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
-        stmt.execute();
+        stmt.executeUpdate();
       }
     }
     return schema;

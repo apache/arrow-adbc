@@ -19,7 +19,6 @@ package org.apache.arrow.adbc.driver.flightsql;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.protobuf.ByteString;
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +31,7 @@ import org.apache.arrow.adbc.core.PartitionDescriptor;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightEndpoint;
+import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.impl.Flight;
@@ -39,7 +39,6 @@ import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
-import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 
@@ -52,8 +51,6 @@ public class FlightSqlStatement implements AdbcStatement {
   // State for SQL queries
   private String sqlQuery;
   private FlightSqlClient.PreparedStatement preparedStatement;
-  private List<FlightEndpoint> flightEndpoints;
-  private ArrowReader reader;
   // State for bulk ingest
   private BulkState bulkOperation;
   private VectorSchemaRoot bindRoot;
@@ -86,18 +83,6 @@ public class FlightSqlStatement implements AdbcStatement {
     return statement;
   }
 
-  public static AdbcStatement fromDescriptor(
-      BufferAllocator allocator,
-      FlightSqlClient client,
-      LoadingCache<Location, FlightClient> clientCache,
-      SqlQuirks quirks,
-      List<FlightEndpoint> flightEndpoints) {
-    final FlightSqlStatement statement =
-        new FlightSqlStatement(allocator, client, clientCache, quirks);
-    statement.flightEndpoints = flightEndpoints;
-    return statement;
-  }
-
   @Override
   public void setSqlQuery(String query) throws AdbcException {
     if (bulkOperation != null) {
@@ -110,17 +95,6 @@ public class FlightSqlStatement implements AdbcStatement {
   @Override
   public void bind(VectorSchemaRoot root) {
     bindRoot = root;
-  }
-
-  @Override
-  public void execute() throws AdbcException {
-    if (bulkOperation != null) {
-      executeBulk();
-    } else if (sqlQuery != null) {
-      executeSqlQuery();
-    } else {
-      throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() first");
-    }
   }
 
   private void createBulkTable() throws AdbcException {
@@ -155,7 +129,7 @@ public class FlightSqlStatement implements AdbcStatement {
     }
   }
 
-  private void executeBulk() throws AdbcException {
+  private UpdateResult executeBulk() throws AdbcException {
     if (bindRoot == null) {
       throw AdbcException.invalidState("[Flight SQL] Must call bind() before bulk insert");
     }
@@ -198,54 +172,102 @@ public class FlightSqlStatement implements AdbcStatement {
     } catch (FlightRuntimeException e) {
       throw FlightSqlDriverUtil.fromFlightException(e);
     }
+    return new UpdateResult(bindRoot.getRowCount());
   }
 
-  private void executeSqlQuery() throws AdbcException {
-    try {
-      if (reader != null) {
-        try {
-          reader.close();
-        } catch (IOException e) {
-          throw new AdbcException(
-              "[Flight SQL] Failed to close unread result set",
-              e,
-              AdbcStatusCode.IO,
-              null, /*vendorCode*/
-              0);
-        }
-      }
+  @FunctionalInterface
+  interface Execute<T, R> {
+    R execute(T t) throws AdbcException;
+  }
 
+  private <R> R execute(
+      Execute<FlightSqlClient.PreparedStatement, R> doPrepared,
+      Execute<FlightSqlClient, R> doRegular)
+      throws AdbcException {
+    try {
       if (preparedStatement != null) {
         // TODO: This binds only the LAST row
+        // See https://lists.apache.org/thread/47zfk3xooojckvfjq2h6ldlqkjrqnsjt
+        // "[DISC] Flight SQL: clarifying prepared statements with parameters and result sets"
         if (bindRoot != null) {
           preparedStatement.setParameters(new NonOwningRoot(bindRoot));
         }
-        // XXX(ARROW-17199): why does this throw SQLException?
-        flightEndpoints = preparedStatement.execute().getEndpoints();
+        return doPrepared.execute(preparedStatement);
       } else {
-        flightEndpoints = client.execute(sqlQuery).getEndpoints();
+        return doRegular.execute(client);
       }
     } catch (FlightRuntimeException e) {
       throw FlightSqlDriverUtil.fromFlightException(e);
-    } catch (SQLException e) {
-      throw FlightSqlDriverUtil.fromSqlException(e);
     }
   }
 
+  private FlightInfo executeFlightInfo() throws AdbcException {
+    if (bulkOperation != null) {
+      throw AdbcException.invalidState("[Flight SQL] Must executeUpdate() for bulk ingestion");
+    } else if (sqlQuery == null) {
+      throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() before execute");
+    }
+    return execute(
+        (preparedStatement) -> {
+          // XXX(ARROW-17199): why does this throw SQLException?
+          try {
+            return preparedStatement.execute();
+          } catch (SQLException e) {
+            throw FlightSqlDriverUtil.fromSqlException(e);
+          }
+        },
+        (client) -> client.execute(sqlQuery));
+  }
+
   @Override
-  public ArrowReader getArrowReader() throws AdbcException {
-    if (reader != null) {
-      ArrowReader result = reader;
-      reader = null;
-      return result;
+  public PartitionResult executePartitioned() throws AdbcException {
+    final FlightInfo info = executeFlightInfo();
+
+    final List<PartitionDescriptor> descriptors = new ArrayList<>();
+    for (final FlightEndpoint endpoint : info.getEndpoints()) {
+      // FlightEndpoint doesn't expose its serializer, so do it manually
+      Flight.FlightEndpoint.Builder protoEndpoint =
+          Flight.FlightEndpoint.newBuilder()
+              .setTicket(
+                  Flight.Ticket.newBuilder()
+                      .setTicket(ByteString.copyFrom(endpoint.getTicket().getBytes())));
+      for (final Location location : endpoint.getLocations()) {
+        protoEndpoint.addLocation(
+            Flight.Location.newBuilder().setUri(location.getUri().toString()).build());
+      }
+      descriptors.add(
+          new PartitionDescriptor(protoEndpoint.build().toByteString().asReadOnlyByteBuffer()));
     }
-    if (flightEndpoints == null) {
-      throw AdbcException.invalidState("[Flight SQL] Must call execute() before getArrowReader()");
+    return new PartitionResult(info.getSchema(), info.getRecords(), descriptors);
+  }
+
+  @Override
+  public QueryResult executeQuery() throws AdbcException {
+    final FlightInfo info = executeFlightInfo();
+    return new QueryResult(
+        info.getRecords(),
+        new FlightInfoReader(allocator, client, clientCache, info.getEndpoints()));
+  }
+
+  @Override
+  public UpdateResult executeUpdate() throws AdbcException {
+    if (bulkOperation != null) {
+      return executeBulk();
+    } else if (sqlQuery == null) {
+      throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() before executeUpdate");
     }
-    final ArrowReader reader =
-        new FlightInfoReader(allocator, client, clientCache, flightEndpoints);
-    flightEndpoints = null;
-    return reader;
+    long updatedRows =
+        execute(
+            (preparedStatement) -> {
+              // XXX(ARROW-17199): why does this throw SQLException?
+              try {
+                return preparedStatement.executeUpdate();
+              } catch (FlightRuntimeException e) {
+                throw FlightSqlDriverUtil.fromFlightException(e);
+              }
+            },
+            (client) -> client.executeUpdate(sqlQuery));
+    return new UpdateResult(updatedRows);
   }
 
   @Override
@@ -258,49 +280,12 @@ public class FlightSqlStatement implements AdbcStatement {
   }
 
   @Override
-  public List<PartitionDescriptor> getPartitionDescriptors() throws AdbcException {
-    if (flightEndpoints == null) {
-      throw AdbcException.invalidState(
-          "[Flight SQL] Must call execute() before getPartitionDescriptors()");
-    }
-    final List<PartitionDescriptor> result = new ArrayList<>();
-    for (final FlightEndpoint endpoint : flightEndpoints) {
-      // FlightEndpoint doesn't expose its serializer, so do it manually
-      Flight.FlightEndpoint.Builder protoEndpoint =
-          Flight.FlightEndpoint.newBuilder()
-              .setTicket(
-                  Flight.Ticket.newBuilder()
-                      .setTicket(ByteString.copyFrom(endpoint.getTicket().getBytes())));
-      for (final Location location : endpoint.getLocations()) {
-        protoEndpoint.addLocation(
-            Flight.Location.newBuilder().setUri(location.getUri().toString()).build());
-      }
-      result.add(
-          new PartitionDescriptor(protoEndpoint.build().toByteString().asReadOnlyByteBuffer()));
-    }
-    return result;
-  }
-
-  @Override
   public void prepare() throws AdbcException {
     try {
       if (sqlQuery == null) {
         throw AdbcException.invalidArgument(
             "[Flight SQL] Must call setSqlQuery(String) before prepare()");
       }
-      if (reader != null) {
-        try {
-          reader.close();
-        } catch (IOException e) {
-          throw new AdbcException(
-              "[Flight SQL] Failed to close unread result set",
-              e,
-              AdbcStatusCode.IO,
-              null, /*vendorCode*/
-              0);
-        }
-      }
-
       preparedStatement = client.prepare(sqlQuery);
     } catch (FlightRuntimeException e) {
       throw FlightSqlDriverUtil.fromFlightException(e);
@@ -309,7 +294,7 @@ public class FlightSqlStatement implements AdbcStatement {
 
   @Override
   public void close() throws Exception {
-    AutoCloseables.close(reader, preparedStatement);
+    AutoCloseables.close(preparedStatement);
   }
 
   private static final class BulkState {

@@ -16,6 +16,7 @@
 // under the License.
 
 #include "adbc_driver_manager.h"
+#include <adbc.h>
 
 #include <algorithm>
 #include <cstring>
@@ -69,7 +70,7 @@ AdbcStatusCode ConnectionCommit(struct AdbcConnection*, struct AdbcError* error)
 
 AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, const char*,
                                     const char*, const char**, const char*,
-                                    struct AdbcStatement*, struct AdbcError* error) {
+                                    struct ArrowArrayStream*, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -79,7 +80,15 @@ AdbcStatusCode ConnectionGetTableSchema(struct AdbcConnection*, const char*, con
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-AdbcStatusCode ConnectionGetTableTypes(struct AdbcConnection*, struct AdbcStatement*,
+AdbcStatusCode ConnectionGetTableTypes(struct AdbcConnection*, struct ArrowArrayStream*,
+                                       struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionReadPartition(struct AdbcConnection* connection,
+                                       const uint8_t* serialized_partition,
+                                       size_t serialized_length,
+                                       struct ArrowArrayStream* out,
                                        struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
@@ -98,23 +107,17 @@ AdbcStatusCode StatementBind(struct AdbcStatement*, struct ArrowArray*,
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-AdbcStatusCode StatementExecute(struct AdbcStatement*, struct AdbcError* error) {
+AdbcStatusCode StatementExecutePartitions(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcPartitions* partitions,
+                                          int64_t* rows_affected,
+                                          struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode StatementGetParameterSchema(struct AdbcStatement* statement,
                                            struct ArrowSchema* schema,
                                            struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementGetPartitionDesc(struct AdbcStatement*, uint8_t*,
-                                         struct AdbcError*) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementGetPartitionDescSize(struct AdbcStatement*, size_t*,
-                                             struct AdbcError*) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -328,27 +331,27 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
                                      uint32_t* info_codes, size_t info_codes_length,
-                                     struct AdbcStatement* statement,
+                                     struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
-  return connection->private_driver->ConnectionGetInfo(
-      connection, info_codes, info_codes_length, statement, error);
+  return connection->private_driver->ConnectionGetInfo(connection, info_codes,
+                                                       info_codes_length, out, error);
 }
 
 AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
                                         const char* catalog, const char* db_schema,
                                         const char* table_name, const char** table_types,
                                         const char* column_name,
-                                        struct AdbcStatement* statement,
+                                        struct ArrowArrayStream* stream,
                                         struct AdbcError* error) {
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
   return connection->private_driver->ConnectionGetObjects(
-      connection, depth, catalog, db_schema, table_name, table_types, column_name,
-      statement, error);
+      connection, depth, catalog, db_schema, table_name, table_types, column_name, stream,
+      error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -364,13 +367,12 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
-                                           struct AdbcStatement* statement,
+                                           struct ArrowArrayStream* stream,
                                            struct AdbcError* error) {
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
-  return connection->private_driver->ConnectionGetTableTypes(connection, statement,
-                                                             error);
+  return connection->private_driver->ConnectionGetTableTypes(connection, stream, error);
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
@@ -402,6 +404,18 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
   connection->private_data = new TempConnection;
   connection->private_driver = nullptr;
   return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
+                                           const uint8_t* serialized_partition,
+                                           size_t serialized_length,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionReadPartition(
+      connection, serialized_partition, serialized_length, out, error);
 }
 
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
@@ -454,32 +468,38 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
   return statement->private_driver->StatementBindStream(statement, stream, error);
 }
 
-AdbcStatusCode AdbcStatementExecute(struct AdbcStatement* statement,
-                                    struct AdbcError* error) {
+// XXX: cpplint gets confused here if declared as 'struct ArrowSchema* schema'
+AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
+                                              ArrowSchema* schema,
+                                              struct AdbcPartitions* partitions,
+                                              int64_t* rows_affected,
+                                              struct AdbcError* error) {
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
-  return statement->private_driver->StatementExecute(statement, error);
+  return statement->private_driver->StatementExecutePartitions(
+      statement, schema, partitions, rows_affected, error);
 }
 
-AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
-                                             uint8_t* partition_desc,
-                                             struct AdbcError* error) {
+AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
+                                         struct ArrowArrayStream* out,
+                                         int64_t* rows_affected,
+                                         struct AdbcError* error) {
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
-  return statement->private_driver->StatementGetPartitionDesc(statement, partition_desc,
-                                                              error);
+  return statement->private_driver->StatementExecuteQuery(statement, out, rows_affected,
+                                                          error);
 }
 
-AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
-                                                 size_t* length,
-                                                 struct AdbcError* error) {
+AdbcStatusCode AdbcStatementExecuteUpdate(struct AdbcStatement* statement,
+                                          int64_t* rows_affected,
+                                          struct AdbcError* error) {
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
-  return statement->private_driver->StatementGetPartitionDescSize(statement, length,
-                                                                  error);
+  return statement->private_driver->StatementExecuteUpdate(statement, rows_affected,
+                                                           error);
 }
 
 AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
@@ -489,15 +509,6 @@ AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
     return ADBC_STATUS_INVALID_STATE;
   }
   return statement->private_driver->StatementGetParameterSchema(statement, schema, error);
-}
-
-AdbcStatusCode AdbcStatementGetStream(struct AdbcStatement* statement,
-                                      struct ArrowArrayStream* out,
-                                      struct AdbcError* error) {
-  if (!statement->private_driver) {
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  return statement->private_driver->StatementGetStream(statement, out, error);
 }
 
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
@@ -715,16 +726,17 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   FILL_DEFAULT(driver, ConnectionGetObjects);
   FILL_DEFAULT(driver, ConnectionGetTableSchema);
   FILL_DEFAULT(driver, ConnectionGetTableTypes);
+  FILL_DEFAULT(driver, ConnectionReadPartition);
   FILL_DEFAULT(driver, ConnectionRollback);
   FILL_DEFAULT(driver, ConnectionSetOption);
 
+  FILL_DEFAULT(driver, StatementExecutePartitions);
+  CHECK_REQUIRED(driver, StatementExecuteQuery);
+  CHECK_REQUIRED(driver, StatementExecuteUpdate);
   CHECK_REQUIRED(driver, StatementNew);
   CHECK_REQUIRED(driver, StatementRelease);
   FILL_DEFAULT(driver, StatementBind);
-  FILL_DEFAULT(driver, StatementExecute);
   FILL_DEFAULT(driver, StatementGetParameterSchema);
-  FILL_DEFAULT(driver, StatementGetPartitionDesc);
-  FILL_DEFAULT(driver, StatementGetPartitionDescSize);
   FILL_DEFAULT(driver, StatementPrepare);
   FILL_DEFAULT(driver, StatementSetOption);
   FILL_DEFAULT(driver, StatementSetSqlQuery);

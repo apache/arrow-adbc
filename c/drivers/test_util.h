@@ -59,13 +59,10 @@ namespace adbc {
   ASSERT_TRUE((schema1).Equals((schema2))) \
       << "LHS: " << (schema1).ToString() << "RHS: " << (schema2).ToString()
 
-static inline void ReadStatement(AdbcStatement* statement,
-                                 std::shared_ptr<arrow::Schema>* schema,
-                                 arrow::RecordBatchVector* batches) {
-  AdbcError error = {};
-  ArrowArrayStream stream;
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementGetStream(statement, &stream, &error));
-  ASSERT_OK_AND_ASSIGN(auto reader, arrow::ImportRecordBatchReader(&stream));
+static inline void ReadStream(struct ArrowArrayStream* stream,
+                              std::shared_ptr<arrow::Schema>* schema,
+                              arrow::RecordBatchVector* batches) {
+  ASSERT_OK_AND_ASSIGN(auto reader, arrow::ImportRecordBatchReader(stream));
 
   *schema = reader->schema();
 
@@ -74,6 +71,16 @@ static inline void ReadStatement(AdbcStatement* statement,
     if (!batch) break;
     batches->push_back(std::move(batch));
   }
+}
+
+static inline void ReadStatement(AdbcStatement* statement,
+                                 std::shared_ptr<arrow::Schema>* schema,
+                                 arrow::RecordBatchVector* batches) {
+  AdbcError error = {};
+  ArrowArrayStream stream;
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcStatementExecuteQuery(statement, &stream, nullptr, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, schema, batches));
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(statement, &error));
 }
 

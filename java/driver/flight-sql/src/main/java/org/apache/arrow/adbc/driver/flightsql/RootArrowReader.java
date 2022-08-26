@@ -17,10 +17,13 @@
 package org.apache.arrow.adbc.driver.flightsql;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorLoader;
+import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -36,6 +39,11 @@ class RootArrowReader extends ArrowReader {
     this.schema = schema;
     this.batches = batches;
     this.nextIndex = 0;
+  }
+
+  public static ArrowReader fromRoot(BufferAllocator allocator, VectorSchemaRoot root) {
+    final ArrowRecordBatch recordBatch = new VectorUnloader(root).getRecordBatch();
+    return new RootArrowReader(allocator, root.getSchema(), Collections.singletonList(recordBatch));
   }
 
   @Override

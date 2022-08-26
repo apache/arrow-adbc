@@ -91,7 +91,10 @@ class Sqlite : public ::testing::Test {
                                       "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    int64_t rows_affected = 0;
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementExecuteUpdate(&statement, &rows_affected, &error));
+    ASSERT_EQ(bulk_table->num_rows(), rows_affected);
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -158,11 +161,10 @@ TEST_F(Sqlite, SqlExecute) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("1", arrow::int64())}));
   EXPECT_THAT(batches,
               ::testing::UnorderedPointwise(
@@ -191,8 +193,6 @@ TEST_F(Sqlite, SqlPrepare) {
   ADBC_ASSERT_OK_WITH_ERROR(error,
                             AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementPrepare(&statement, &error));
-
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
@@ -226,7 +226,6 @@ TEST_F(Sqlite, SqlPrepareMultipleParams) {
 
   ADBC_ASSERT_OK_WITH_ERROR(
       error, AdbcStatementBind(&statement, &export_params, &export_schema, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
@@ -259,7 +258,8 @@ TEST_F(Sqlite, BulkIngestTable) {
                                       "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -269,7 +269,6 @@ TEST_F(Sqlite, BulkIngestTable) {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;
@@ -291,7 +290,8 @@ TEST_F(Sqlite, BulkIngestTable) {
                                       "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS, AdbcStatementExecute(&statement, &error));
+    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS,
+              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -311,14 +311,14 @@ TEST_F(Sqlite, BulkIngestTable) {
                                       ADBC_INGEST_OPTION_MODE_APPEND, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
 
     std::memset(&statement, 0, sizeof(statement));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;
@@ -347,7 +347,8 @@ TEST_F(Sqlite, BulkIngestTable) {
                                       "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS, AdbcStatementExecute(&statement, &error));
+    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS,
+              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -367,7 +368,8 @@ TEST_F(Sqlite, BulkIngestTable) {
                                       ADBC_INGEST_OPTION_MODE_APPEND, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ASSERT_EQ(ADBC_STATUS_NOT_FOUND, AdbcStatementExecute(&statement, &error));
+    ASSERT_EQ(ADBC_STATUS_NOT_FOUND,
+              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -389,7 +391,8 @@ TEST_F(Sqlite, BulkIngestTable) {
                                       ADBC_INGEST_OPTION_MODE_APPEND, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS, AdbcStatementExecute(&statement, &error));
+    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS,
+              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 }
@@ -415,7 +418,8 @@ TEST_F(Sqlite, BulkIngestStream) {
                                       "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBindStream(&statement, &export_stream, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -425,7 +429,6 @@ TEST_F(Sqlite, BulkIngestStream) {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;
@@ -455,7 +458,6 @@ TEST_F(Sqlite, MultipleConnections) {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;
@@ -471,7 +473,6 @@ TEST_F(Sqlite, MultipleConnections) {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;
@@ -499,15 +500,13 @@ TEST_F(Sqlite, MetadataGetInfo) {
           })),
   });
 
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  struct ArrowArrayStream stream;
   ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionGetInfo(&connection, nullptr, 0, &statement, &error));
+      error, AdbcConnectionGetInfo(&connection, nullptr, 0, &stream, &error));
 
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *kInfoSchema);
   ASSERT_EQ(1, batches.size());
 
@@ -517,30 +516,27 @@ TEST_F(Sqlite, MetadataGetInfo) {
       ADBC_INFO_VENDOR_NAME,
       ADBC_INFO_VENDOR_VERSION,
   };
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetInfo(&connection, info.data(), info.size(), &statement, &error));
+
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionGetInfo(&connection, info.data(),
+                                                         info.size(), &stream, &error));
   batches.clear();
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *kInfoSchema);
   ASSERT_EQ(1, batches.size());
   ASSERT_EQ(4, batches[0]->num_rows());
 }
 
 TEST_F(Sqlite, MetadataGetTableTypes) {
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
+  struct ArrowArrayStream stream;
   ADBC_ASSERT_OK_WITH_ERROR(error,
-                            AdbcConnectionGetTableTypes(&connection, &statement, &error));
+                            AdbcConnectionGetTableTypes(&connection, &stream, &error));
 
   auto expected_schema = arrow::schema({
       arrow::field("table_type", arrow::utf8(), /*nullable=*/false),
   });
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
-  ReadStatement(&statement, &schema, &batches);
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   ASSERT_SCHEMA_EQ(*schema, *expected_schema);
   EXPECT_THAT(batches,
               ::testing::UnorderedPointwise(
@@ -554,36 +550,32 @@ TEST_F(Sqlite, MetadataGetObjects) {
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection));
 
   // Query for catalogs
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
+  struct ArrowArrayStream stream;
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr, nullptr,
-                               nullptr, nullptr, nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               nullptr, nullptr, nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([["main", null]])"}));
   batches.clear();
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, "catalog",
-                               nullptr, nullptr, nullptr, nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               nullptr, nullptr, nullptr, nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([])"}));
   batches.clear();
 
   // Query for schemas
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
-                               nullptr, nullptr, nullptr, nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               nullptr, nullptr, nullptr, nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(
       batches,
       BatchesAre(
@@ -591,22 +583,20 @@ TEST_F(Sqlite, MetadataGetObjects) {
           {R"([["main", [{"db_schema_name": null, "db_schema_tables": null}]]])"}));
   batches.clear();
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
-                               "schema", nullptr, nullptr, nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               "schema", nullptr, nullptr, nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([["main", []]])"}));
   batches.clear();
 
   // Query for tables
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr, nullptr,
-                               nullptr, nullptr, nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               nullptr, nullptr, nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
                          {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
@@ -614,12 +604,11 @@ TEST_F(Sqlite, MetadataGetObjects) {
 ]}]]])"}));
   batches.clear();
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr, nullptr,
-                               "bulk_%", nullptr, nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               "bulk_%", nullptr, nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
                          {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
@@ -627,12 +616,11 @@ TEST_F(Sqlite, MetadataGetObjects) {
 ]}]]])"}));
   batches.clear();
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr, nullptr,
-                               "asdf%", nullptr, nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               "asdf%", nullptr, nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(
       batches,
       BatchesAre(catalog_schema,
@@ -643,12 +631,11 @@ TEST_F(Sqlite, MetadataGetObjects) {
   std::vector<const char*> table_types(2);
   table_types[0] = "table";
   table_types[1] = nullptr;
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
-                               nullptr, table_types.data(), nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               nullptr, table_types.data(), nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
                          {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
@@ -666,12 +653,11 @@ TEST_F(Sqlite, MetadataGetObjects) {
 
   table_types[0] = "view";
   table_types[1] = nullptr;
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
-                               nullptr, table_types.data(), nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               nullptr, table_types.data(), nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(
       batches,
       BatchesAre(catalog_schema,
@@ -679,12 +665,11 @@ TEST_F(Sqlite, MetadataGetObjects) {
   batches.clear();
 
   // Query for columns
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
-                               nullptr, nullptr, nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               nullptr, nullptr, nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
                          {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
@@ -700,12 +685,10 @@ TEST_F(Sqlite, MetadataGetObjects) {
 ]}]]])"}));
   batches.clear();
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
-                               nullptr, nullptr, "in%", &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+      error, AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr,
+                                      nullptr, nullptr, nullptr, "in%", &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
                          {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
@@ -731,11 +714,13 @@ TEST_F(Sqlite, MetadataGetObjectsColumns) {
         error,
         AdbcStatementSetSqlQuery(
             &statement, "CREATE TABLE parent (a, b, c, PRIMARY KEY(c, b))", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
 
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(&statement, "CREATE TABLE other (a)", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
 
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(
@@ -743,22 +728,21 @@ TEST_F(Sqlite, MetadataGetObjectsColumns) {
                    "CREATE TABLE child (a, b, c, PRIMARY KEY(a), FOREIGN KEY (c, b) "
                    "REFERENCES parent (c, b), FOREIGN KEY (a) REFERENCES other(a))",
                    &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(error,
+                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
 
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
+  struct ArrowArrayStream stream;
   std::shared_ptr<arrow::Schema> schema;
   arrow::RecordBatchVector batches;
 
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
   ADBC_ASSERT_OK_WITH_ERROR(
       error,
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
-                               nullptr, nullptr, nullptr, &statement, &error));
-  ReadStatement(&statement, &schema, &batches);
+                               nullptr, nullptr, nullptr, &stream, &error));
+  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
   EXPECT_THAT(batches,
               BatchesAre(catalog_schema,
                          {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
@@ -890,9 +874,9 @@ TEST_F(Sqlite, Transactions) {
   {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection2, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementSetSqlQuery(&statement, query, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementExecute(&statement, &error));
-    ArrowArrayStream stream;
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementGetStream(&statement, &stream, &error));
+    struct ArrowArrayStream stream;
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementExecuteQuery(&statement, &stream, nullptr, &error));
     stream.release(&stream);
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }

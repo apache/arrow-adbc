@@ -97,16 +97,16 @@ public abstract class AbstractTransactionTest {
       root.setRowCount(2);
       try (final AdbcStatement stmt = connection.bulkIngest("foo", BulkIngestMode.CREATE)) {
         stmt.bind(root);
-        stmt.execute();
+        stmt.executeUpdate();
       }
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM foo");
-        stmt.execute();
+        stmt.executeQuery().close();
       }
       connection.rollback();
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM foo");
-        assertThrows(AdbcException.class, stmt::execute);
+        assertThrows(AdbcException.class, stmt::executeQuery);
       }
     }
 
@@ -129,16 +129,16 @@ public abstract class AbstractTransactionTest {
       root.setRowCount(2);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
-        stmt.execute();
+        stmt.executeUpdate();
       }
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM " + tableName);
-        stmt.execute();
+        stmt.executeQuery().close();
       }
       connection.commit();
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM " + tableName);
-        stmt.execute();
+        stmt.executeQuery().close();
       }
       connection.commit();
     }
@@ -162,16 +162,16 @@ public abstract class AbstractTransactionTest {
       root.setRowCount(2);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
-        stmt.execute();
+        stmt.executeUpdate();
       }
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM " + tableName);
-        stmt.execute();
+        stmt.executeQuery().close();
       }
       connection.setAutoCommit(true);
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM " + tableName);
-        stmt.execute();
+        stmt.executeQuery().close();
       }
     }
 

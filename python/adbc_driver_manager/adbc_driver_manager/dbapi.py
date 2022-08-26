@@ -242,6 +242,7 @@ class Cursor(_Closeable):
         self._last_query: Optional[str] = None
         self._results: Optional["_RowIterator"] = None
         self._arraysize = 1
+        self._rowcount = -1
 
     @property
     def arraysize(self) -> int:
@@ -271,11 +272,9 @@ class Cursor(_Closeable):
     @property
     def rowcount(self):
         """
-        Get the row count of the result set.
-
-        This is always -1 since ADBC returns results as a stream.
+        Get the row count of the result set, or -1 if not known.
         """
-        return -1
+        return self._rowcount
 
     @property
     def rownumber(self):
@@ -315,8 +314,7 @@ class Cursor(_Closeable):
             rb._export_to_c(arr_handle.address, sch_handle.address)
             self._stmt.bind(arr_handle, sch_handle)
 
-        self._stmt.execute()
-        handle = self._stmt.get_stream()
+        handle, self._rowcount = self._stmt.execute_query()
         self._results = _RowIterator(
             pyarrow.RecordBatchReader._import_from_c(handle.address)
         )
@@ -343,11 +341,7 @@ class Cursor(_Closeable):
         sch_handle = _lib.ArrowSchemaHandle()
         rb._export_to_c(arr_handle.address, sch_handle.address)
         self._stmt.bind(arr_handle, sch_handle)
-        self._stmt.execute()
-        # XXX: must step through results to fully execute query
-        handle = self._stmt.get_stream()
-        reader = pyarrow.RecordBatchReader._import_from_c(handle.address)
-        reader.read_all()
+        self._rowcount = self._stmt.execute_update()
 
     def fetchone(self) -> tuple:
         """Fetch one row of the result."""
