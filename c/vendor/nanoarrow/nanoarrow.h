@@ -362,7 +362,7 @@ struct ArrowArrayView {
 #ifndef NANOARROW_BUILD_ID_H_INCLUDED
 #define NANOARROW_BUILD_ID_H_INCLUDED
 
-#define NANOARROW_BUILD_ID "OFF"
+#define NANOARROW_BUILD_ID "gha6953efeb0657c72fd66af8f34be66e0a3ed0e26a"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -1660,9 +1660,6 @@ static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) 
 }
 
 static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array) {
-  struct ArrowArrayPrivateData* private_data =
-      (struct ArrowArrayPrivateData*)array->private_data;
-
   for (int64_t i = 0; i < 3; i++) {
     struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
     NANOARROW_RETURN_NOT_OK(ArrowBufferResize(buffer, buffer->size_bytes, 1));

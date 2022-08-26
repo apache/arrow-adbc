@@ -163,11 +163,6 @@ void* ArrowRealloc(void* ptr, int64_t size) { return realloc(ptr, size); }
 
 void ArrowFree(void* ptr) { free(ptr); }
 
-static uint8_t* ArrowBufferAllocatorMallocAllocate(struct ArrowBufferAllocator* allocator,
-                                                   int64_t size) {
-  return ArrowMalloc(size);
-}
-
 static uint8_t* ArrowBufferAllocatorMallocReallocate(
     struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
     int64_t new_size) {
@@ -184,11 +179,6 @@ static struct ArrowBufferAllocator ArrowBufferAllocatorMalloc = {
 
 struct ArrowBufferAllocator ArrowBufferAllocatorDefault() {
   return ArrowBufferAllocatorMalloc;
-}
-
-static uint8_t* ArrowBufferAllocatorNeverAllocate(struct ArrowBufferAllocator* allocator,
-                                                  int64_t size) {
-  return NULL;
 }
 
 static uint8_t* ArrowBufferAllocatorNeverReallocate(
@@ -1362,7 +1352,6 @@ static ArrowErrorCode ArrowMetadataGetValueInternal(const char* metadata,
   struct ArrowStringView existing_value;
   ArrowMetadataReaderInit(&reader, metadata);
 
-  int64_t size = sizeof(int32_t);
   while (ArrowMetadataReaderRead(&reader, &existing_key, &existing_value) ==
          NANOARROW_OK) {
     int key_equal = key->n_bytes == existing_key.n_bytes &&
@@ -1835,9 +1824,6 @@ static ArrowErrorCode ArrowArrayReserveInternal(struct ArrowArray* array,
 
 ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
                                  int64_t additional_size_elements) {
-  struct ArrowArrayPrivateData* private_data =
-      (struct ArrowArrayPrivateData*)array->private_data;
-
   struct ArrowArrayView array_view;
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromArray(&array_view, array));
 
@@ -1902,9 +1888,6 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
 
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error) {
-  struct ArrowArrayPrivateData* private_data =
-      (struct ArrowArrayPrivateData*)array->private_data;
-
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
   ArrowArrayFlushInternalPointers(array);
