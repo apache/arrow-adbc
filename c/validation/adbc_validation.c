@@ -76,12 +76,15 @@ void AdbcValidatePass(struct AdbcValidateTestContext* ctx) {
 }
 
 void AdbcValidateFail(struct AdbcValidateTestContext* ctx, const char* file, int lineno,
-                      struct AdbcError* error) {
+                      struct AdbcError* error, const char* message) {
   ctx->failed++;
   printf("\n%s:%d: FAIL\n", file, lineno);
   if (error && error->release) {
     printf("%s\n", error->message);
     error->release(error);
+  }
+  if (message) {
+    printf("%s\n", message);
   }
 }
 
@@ -100,7 +103,7 @@ int AdbcValidationIsSet(struct ArrowArray* array, int64_t i) {
   AdbcStatusCode NAME = (EXPR);                                                 \
   if (ADBC_STATUS_##STATUS != NAME) {                                           \
     printf("\nActual value: %s\n", AdbcValidateStatusCodeMessage(NAME));        \
-    AdbcValidateFail(adbc_context, __FILE__, __LINE__, ERROR);                  \
+    AdbcValidateFail(adbc_context, __FILE__, __LINE__, ERROR, NULL);            \
     return;                                                                     \
   }                                                                             \
   AdbcValidatePass(adbc_context);
@@ -110,44 +113,62 @@ int AdbcValidationIsSet(struct ArrowArray* array, int64_t i) {
 #define ADBCV_ASSERT_EQ(EXPECTED, ACTUAL)                                \
   AdbcValidateBeginAssert(adbc_context, "%s == %s", #ACTUAL, #EXPECTED); \
   if ((EXPECTED) != (ACTUAL)) {                                          \
-    AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL);            \
+    AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL, NULL);      \
     return;                                                              \
   }                                                                      \
   AdbcValidatePass(adbc_context);
 #define ADBCV_ASSERT_NE(EXPECTED, ACTUAL)                                \
-  AdbcValidateBeginAssert(adbc_context, "%s == %s", #ACTUAL, #EXPECTED); \
+  AdbcValidateBeginAssert(adbc_context, "%s != %s", #ACTUAL, #EXPECTED); \
   if ((EXPECTED) == (ACTUAL)) {                                          \
-    AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL);            \
+    AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL, NULL);      \
     return;                                                              \
   }                                                                      \
   AdbcValidatePass(adbc_context);
-#define ADBCV_ASSERT_TRUE(ACTUAL)                               \
-  AdbcValidateBeginAssert(adbc_context, "%s is true", #ACTUAL); \
-  if (!(ACTUAL)) {                                              \
-    AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL);   \
-    return;                                                     \
-  }                                                             \
+#define ADBCV_ASSERT_TRUE(ACTUAL)                                   \
+  AdbcValidateBeginAssert(adbc_context, "%s is true", #ACTUAL);     \
+  if (!(ACTUAL)) {                                                  \
+    AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL, NULL); \
+    return;                                                         \
+  }                                                                 \
   AdbcValidatePass(adbc_context);
-#define ADBCV_ASSERT_FALSE(ACTUAL)                               \
-  AdbcValidateBeginAssert(adbc_context, "%s is false", #ACTUAL); \
-  if (ACTUAL) {                                                  \
-    AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL);    \
-    return;                                                      \
-  }                                                              \
+#define ADBCV_ASSERT_FALSE(ACTUAL)                                  \
+  AdbcValidateBeginAssert(adbc_context, "%s is false", #ACTUAL);    \
+  if (ACTUAL) {                                                     \
+    AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL, NULL); \
+    return;                                                         \
+  }                                                                 \
   AdbcValidatePass(adbc_context);
+#define ADBCV_FAIL()                                              \
+  AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL, NULL); \
+  return
 
-#define NA_ASSERT_OK_IMPL(ERROR_NAME, EXPR)                       \
+#define NA_ASSERT_OK_IMPL(ERROR_NAME, EXPR)                           \
+  do {                                                                \
+    AdbcValidateBeginAssert(adbc_context, "%s is OK (0)", #EXPR);     \
+    ArrowErrorCode ERROR_NAME = (EXPR);                               \
+    if (ERROR_NAME) {                                                 \
+      AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL, NULL); \
+      return;                                                         \
+    }                                                                 \
+    AdbcValidatePass(adbc_context);                                   \
+  } while (0)
+
+#define NA_ASSERT_OK(EXPR) NA_ASSERT_OK_IMPL(ADBCV_NAME(na_status_, __COUNTER__), EXPR)
+
+#define AAS_ASSERT_OK_IMPL(ERROR_NAME, STREAM, EXPR)              \
   do {                                                            \
     AdbcValidateBeginAssert(adbc_context, "%s is OK (0)", #EXPR); \
     ArrowErrorCode ERROR_NAME = (EXPR);                           \
     if (ERROR_NAME) {                                             \
-      AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL);   \
+      AdbcValidateFail(adbc_context, __FILE__, __LINE__, NULL,    \
+                       (STREAM)->get_last_error((STREAM)));       \
       return;                                                     \
     }                                                             \
     AdbcValidatePass(adbc_context);                               \
   } while (0)
 
-#define NA_ASSERT_OK(EXPR) NA_ASSERT_OK_IMPL(ADBCV_NAME(na_status_, __COUNTER__), EXPR)
+#define AAS_ASSERT_OK(STREAM, EXPR) \
+  AAS_ASSERT_OK_IMPL(ADBCV_NAME(na_status_, __COUNTER__), STREAM, EXPR)
 
 void AdbcValidateDatabaseNewRelease(struct AdbcValidateTestContext* adbc_context) {
   struct AdbcError error;
@@ -351,20 +372,31 @@ void AdbcValidateStatementSqlExecute(struct AdbcValidateTestContext* adbc_contex
 
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
-  ADBCV_ASSERT_EQ(0, out.get_schema(&out, &schema));
+  AAS_ASSERT_OK(&out, out.get_schema(&out, &schema));
   ADBCV_ASSERT_EQ(1, schema.n_children);
-  ADBCV_ASSERT_EQ(0, ArrowSchemaViewInit(&schema_view, schema.children[0], NULL));
-  ADBCV_ASSERT_EQ(NANOARROW_TYPE_INT64, schema_view.data_type);
+  NA_ASSERT_OK(ArrowSchemaViewInit(&schema_view, schema.children[0], NULL));
 
   struct ArrowArray array;
-  ADBCV_ASSERT_EQ(0, out.get_next(&out, &array));
+  AAS_ASSERT_OK(&out, out.get_next(&out, &array));
   ADBCV_ASSERT_NE(NULL, array.release);
 
+  ADBCV_ASSERT_EQ(1, array.length);
   ADBCV_ASSERT_TRUE(AdbcValidationIsSet(array.children[0], 0));
-  ADBCV_ASSERT_EQ(42, ((int64_t*)array.children[0]->buffers[1])[0]);
+
+  switch (schema_view.data_type) {
+    case NANOARROW_TYPE_INT32:
+      ADBCV_ASSERT_EQ(42, ((int32_t*)array.children[0]->buffers[1])[0]);
+      break;
+    case NANOARROW_TYPE_INT64:
+      ADBCV_ASSERT_EQ(42, ((int64_t*)array.children[0]->buffers[1])[0]);
+      break;
+    default:
+      printf("FAIL: Unexpected data type: %d\n", schema_view.data_type);
+      ADBCV_FAIL();
+  }
 
   array.release(&array);
-  ADBCV_ASSERT_EQ(0, out.get_next(&out, &array));
+  AAS_ASSERT_OK(&out, out.get_next(&out, &array));
   ADBCV_ASSERT_EQ(NULL, array.release);
 
   schema.release(&schema);
@@ -443,13 +475,13 @@ void AdbcValidateStatementSqlIngest(struct AdbcValidateTestContext* adbc_context
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
 
-  NA_ASSERT_OK(out.get_schema(&out, &schema));
+  AAS_ASSERT_OK(&out, out.get_schema(&out, &schema));
   ADBCV_ASSERT_EQ(1, schema.n_children);
   NA_ASSERT_OK(ArrowSchemaViewInit(&schema_view, schema.children[0], NULL));
   ADBCV_ASSERT_EQ(NANOARROW_TYPE_INT64, schema_view.data_type);
 
   struct ArrowArray array;
-  NA_ASSERT_OK(out.get_next(&out, &array));
+  AAS_ASSERT_OK(&out, out.get_next(&out, &array));
   ADBCV_ASSERT_NE(NULL, array.release);
 
   ADBCV_ASSERT_EQ(5, array.length);
@@ -464,7 +496,7 @@ void AdbcValidateStatementSqlIngest(struct AdbcValidateTestContext* adbc_context
   ADBCV_ASSERT_EQ(42, data[4]);
 
   array.release(&array);
-  NA_ASSERT_OK(out.get_next(&out, &array));
+  AAS_ASSERT_OK(&out, out.get_next(&out, &array));
   ADBCV_ASSERT_EQ(NULL, array.release);
 
   ADBCV_ASSERT_NE(NULL, schema.release);
