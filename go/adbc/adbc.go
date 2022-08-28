@@ -1,0 +1,378 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+// Package adbc defines the interfaces for Arrow Database
+// Connectivity.
+//
+// An Arrow-based interface between applications and database
+// drivers.  ADBC aims to provide a vendor-independent API for SQL
+// and Substrait-based database access that is targeted at
+// analytics/OLAP use cases.
+//
+// This API is intended to be implemented directly by drivers and
+// used directly by client applications.  To assist portability
+// between different vendors, a "driver manager" library is also
+// provided, which implements this same API, but dynamically loads
+// drivers internally and forwards calls appropriately.
+//
+// In general, it's expected for objects to allow serialized access
+// safely from multiple goroutines, but not necessarily concurrent
+// access. Specific implementations may allow concurrent access.
+//
+// EXPERIMENTAL. Interface subject to change.
+package adbc
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/apache/arrow/go/v9/arrow"
+	"github.com/apache/arrow/go/v9/arrow/array"
+)
+
+//go:generate go run golang.org/x/tools/cmd/stringer -type Status -linecomment
+
+// Error is the detailed error for an operation
+type Error struct {
+	// Msg is a string representing a human readable error message
+	Msg string
+	// Code is the ADBC status representing this error
+	Code Status
+	// VendorCode is a vendor-specific error codee, if applicable
+	VendorCode int32
+	// SqlState is a SQLSTATE error code, if provided, as defined
+	// by the SQL:2003 standard. If not set, it will be "\0\0\0\0\0"
+	SqlState [5]byte
+}
+
+func (e Error) Error() string {
+	return fmt.Sprintf("%s: SqlState: %s, msg: %s", e.Code, string(e.SqlState[:]), e.Msg)
+}
+
+// Status represents an error code for operations that may fail
+type Status int8
+
+const (
+	// No Error
+	StatusOK Status = iota // OK
+	// An unknown error occurred.
+	//
+	// May indicate a driver-side or database-side error
+	StatusUnknown // Unknown
+	// The operation is not implemented or supported.
+	//
+	// May indicate a driver-side or database-side error
+	StatusNotImplemented // Not Implemented
+	// A requested resource was not found.
+	//
+	// May indicate a driver-side or database-side error
+	StatusNotFound // Not Found
+	// A requested resource already exists
+	//
+	// May indicate a driver-side or database-side error
+	StatusAlreadyExists // Already Exists
+	// The arguments are invalid, likely a programming error.
+	//
+	// For instance, they may be of the wrong format, or out of range.
+	//
+	// May indicate a driver-side or database-side error.
+	StatusInvalidArgument // Invalid Argument
+	// The preconditions for the operation are not met, likely a
+	// programming error.
+	//
+	// For instance, the object may be uninitialized, or may not
+	// have been fully configured.
+	//
+	// May indicate a driver-side or database-side error
+	StatusInvalidState // Invalid State
+	// Invalid data was processed (not a programming error)
+	//
+	// For instance, a division by zero may have occurred during query
+	// execution.
+	//
+	// May indicate a database-side error only.
+	StatusInvalidData // Invalid Data
+	// The database's integrity was affected.
+	//
+	// For instance, a foreign key check may have failed, or a uniqueness
+	// constraint may have been violated.
+	//
+	// May indicate a database-side error only.
+	StatusIntegrity // Integrity Issue
+	// An error internal to the driver or database occurred.
+	//
+	// May indicate a driver-side or database-side error.
+	StatusInternal // Internal
+	// An I/O error occurred.
+	//
+	// For instance a remote service may be unavailable.
+	//
+	// May indicate a driver-side or database-side error.
+	StatusIO // I/O
+	// The operation was cancelled, not due to a timeout.
+	//
+	// May indicate a driver-side or database-side error.
+	StatusCancelled // Cancelled
+	// The operation was cancelled due to a timeout.
+	//
+	// May indicate a driver-side or database-side error.
+	StatusTimeout // Timeout
+	// Authentication failed.
+	//
+	// May indicate a database-side error only.
+	StatusUnauthenticated // Unauthenticated
+	// The client is not authorized to perform the given operation.
+	//
+	// May indicate a database-side error only.
+	StatusUnauthorized // Unauthorized
+)
+
+// Canonical option values
+const (
+	OptionValueEnabled          = "true"
+	OptionValueDisabled         = "false"
+	OptionKeyAutoCommit         = "adbc.connection.autocommit"
+	OptionKeyIngestTargetTable  = "adbc.ingest.target_table"
+	OptionKeyIngestMode         = "adbc.ingest.mode"
+	OptionValueIngestModeCreate = "adbc.ingest.mode.create"
+	OptionValueIngestModeAppend = "adbc.ingest.mode.append"
+)
+
+// Driver is the entry point for the interface. It is similar to
+// database/sql.Driver taking a map of keys and values as options
+// to initialize a Connection to the database. Any common connection
+// state can live in the Driver itself, for example an in-memory database
+// can place ownership of the actual database in this driver.
+//
+// Any connection specific options should be passed to the Open method.
+type Driver interface {
+	Open(options map[string]string) (Connection, error)
+}
+
+type InfoCode uint32
+
+const (
+	// The database vendor/product name (e.g. the server name)
+	// (type: utf8)
+	InfoVendorName InfoCode = 0
+	// The database vendor/product version (type: utf8)
+	InfoVendorVersion InfoCode = 1
+	// The database vendor/product Arrow library version (type: utf8)
+	InfoVendorArrowVersion InfoCode = 2
+
+	// The driver name (type: utf8)
+	InfoDriverName InfoCode = 100
+	// The driver version (type: utf8)
+	InfoDriverVersion InfoCode = 101
+	// The driver Arrow library version (type: utf8)
+	InfoDriverArrowVersion InfoCode = 102
+)
+
+type ObjectDepth int
+
+const (
+	ObjectDepthAll ObjectDepth = iota
+	ObjectDepthCatalogs
+	ObjectDepthDBSchemas
+	ObjectDepthTables
+	ObjectDepthColumns = ObjectDepthAll
+)
+
+// Connection is an active Database connection.
+//
+// It provides methods for creating statements, using transactions
+// and so on.
+//
+// Connections are not required to be safely accessible by concurrent
+// goroutines.
+type Connection interface {
+	// Metadata methods
+	//
+	// Generally these methods return an array.RecordReader that
+	// can be consumed to retrieve metadata about the database as Arrow
+	// data. The returned metadata has an expected schema given in the
+	// doc strings of the specific methods. Schema fields are nullable
+	// unless otherwise marked. While no Statement is used in these
+	// methods, the result set may count as an active statement to the
+	// driver for the purposes of concurrency management (e.g. if the
+	// driver has a limit on concurrent active statements and it must
+	// execute a SQL query internally in order to implement the metadata
+	// method).
+	//
+	// Some methods accept "search pattern" arguments, which are strings
+	// that can contain the special character "%" to match zero or more
+	// characters, or "_" to match exactly one character. (See the
+	// documentation of DatabaseMetaData in JDBC or "Pattern Value Arguments"
+	// in the ODBC documentation.) Escaping is not currently supported.
+
+	// GetInfo returns metadata about the database/driver.
+	//
+	// The result is an Arrow dataset with the following schema:
+	//
+	//    Field Name									| Field Type
+	//    ----------------------------|-----------------------------
+	//    info_name					   				| uint32 not null
+	//    info_value									| INFO_SCHEMA
+	//
+	// INFO_SCHEMA is a dense union with members:
+	//
+	// 		Field Name (Type Code)			| Field Type
+	//		----------------------------|-----------------------------
+	//		string_value (0)						| utf8
+	//		bool_value (1)							| bool
+	//		int64_value (2)							| int64
+	//		int32_bitmask (3)						| int32
+	//		string_list (4)							| list<utf8>
+	//		int32_to_int32_list_map (5)	| map<int32, list<int32>>
+	//
+	// Each metadatum is identified by an integer code. The recognized
+	// codes are defined as constants. Codes [0, 10_000) are reserved
+	// for ADBC usage. Drivers/vendors will ignore requests for unrecognized
+	// codes (the row will be omitted from the result).
+	GetInfo(ctx context.Context, infoCodes []InfoCode) (array.RecordReader, error)
+
+	// GetObjects gets a hierarchical view of all catalogs, database schemas,
+	// tables, and columns.
+	//
+	// The result is an Arrow Dataset with the following schema:
+	//
+	//		Field Name									| Field Type
+	//		----------------------------|----------------------------
+	//		catalog_name								| utf8
+	//		catalog_db_schemas					| list<DB_SCHEMA_SCHEMA>
+	//
+	// DB_SCHEMA_SCHEMA is a Struct with the fields:
+	//
+	//		Field Name									| Field Type
+	//		----------------------------|----------------------------
+	//		db_schema_name							| utf8
+	//		db_schema_tables						|	list<TABLE_SCHEMA>
+	//
+	// TABLE_SCHEMA is a Struct with the fields:
+	//
+	//		Field Name									| Field Type
+	//		----------------------------|----------------------------
+	//		table_name									| utf8 not null
+	//		table_type									|	utf8 not null
+	//		table_columns								| list<COLUMN_SCHEMA>
+	//		table_constraints						| list<CONSTRAINT_SCHEMA>
+	//
+	// COLUMN_SCHEMA is a Struct with the fields:
+	//
+	//		Field Name 									| Field Type					| Comments
+	//		----------------------------|---------------------|---------
+	//		column_name									| utf8 not null				|
+	//		ordinal_position						| int32								| (1)
+	//		remarks											| utf8								| (2)
+	//		xdbc_data_type							| int16								| (3)
+	//		xdbc_type_name							| utf8								| (3)
+	//		xdbc_column_size						| int32								| (3)
+	//		xdbc_decimal_digits					| int16								| (3)
+	//		xdbc_num_prec_radix					| int16								| (3)
+	//		xdbc_nullable								| int16								| (3)
+	//		xdbc_column_def							| utf8								| (3)
+	//		xdbc_sql_data_type					| int16								| (3)
+	//		xdbc_datetime_sub						| int16								| (3)
+	//		xdbc_char_octet_length			| int32								| (3)
+	//		xdbc_is_nullable						| utf8								| (3)
+	//		xdbc_scope_catalog					| utf8								| (3)
+	//		xdbc_scope_schema						| utf8								| (3)
+	//		xdbc_scope_table						| utf8								| (3)
+	//		xdbc_is_autoincrement				| bool								| (3)
+	//		xdbc_is_generatedcolumn			| bool								| (3)
+	//
+	// 1. The column's ordinal position in the table (starting from 1).
+	// 2. Database-specific description of the column.
+	// 3. Optional Value. Should be null if not supported by the driver.
+	//	  xdbc_values are meant to provide JDBC/ODBC-compatible metadata
+	//		in an agnostic manner.
+	//
+	// CONSTRAINT_SCHEMA is a Struct with the fields:
+	//
+	//		Field Name									| Field Type					| Comments
+	//		----------------------------|---------------------|---------
+	//		constraint_name							| utf8								|
+	//		constraint_type							| utf8 not null				| (1)
+	//		constraint_column_names			| list<utf8> not null | (2)
+	//		constraint_column_usage			| list<USAGE_SCHEMA>	| (3)
+	//
+	// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
+	// 2. The columns on the current table that are constrained, in order.
+	// 3. For FOREIGN KEY only, the referenced table and columns.
+	//
+	// USAGE_SCHEMA is a Struct with fields:
+	//
+	//		Field Name									|	Field Type
+	//		----------------------------|----------------------------
+	//		fk_catalog									| utf8
+	//		fk_db_schema								| utf8
+	//		fk_table										| utf8 not null
+	//		fk_column_name							| utf8 not null
+	//
+	// For the parameters: If nil is passed, then that parameter will not
+	// be filtered by at all. If an empty string, then only objects without
+	// that property (ie: catalog or db schema) will be returned.
+	//
+	// tableName and columnName must be either nil (do not filter by
+	// table name or column name) or non-empty.
+	//
+	// All non-empty, non-nil strings should be a search pattern (as described
+	// earlier).
+	GetObjects(ctx context.Context, depth ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (array.RecordReader, error)
+
+	GetTableSchema(ctx context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error)
+
+	// GetTableTypes returns a list of the table types in the database.
+	//
+	// The result is an arrow dataset with the following schema:
+	//
+	//		Field Name			| Field Type
+	//		----------------|--------------
+	//		table_type			| utf8 not null
+	//
+	GetTableTypes(context.Context) (array.RecordReader, error)
+	Commit(context.Context) error
+	Rollback(context.Context) error
+	NewStatement(options map[string]string) (Statement, error)
+	Close() error
+	ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
+}
+
+// PostInitOptions is an optional interface which can be implemented by
+// drivers which allow modifying and setting options after initializing
+// a connection or statement.
+type PostInitOptions interface {
+	SetOption(key, value string) error
+}
+
+type Partitions struct {
+	NumPartitions uint64
+	PartitionIDs  [][]byte
+}
+
+type Statement interface {
+	Close() error
+	SetSqlQuery(query string) error
+	ExecuteQuery(context.Context) (array.RecordReader, int64, error)
+	ExecuteUpdate(context.Context) (int64, error)
+	Prepare(context.Context) error
+	SetSubstraitPlan(plan []byte) error
+	Bind(ctx context.Context, values arrow.Record) error
+	BindStream(ctx context.Context, stream array.RecordReader) error
+	GetParameterSchema() (*arrow.Schema, error)
+	ExecutePartitions(context.Context) (*arrow.Schema, Partitions, int64, error)
+}
