@@ -124,7 +124,7 @@ ROWID = _TypeSet([pyarrow.int64().id])
 def connect(
     *,
     driver: str,
-    entrypoint: str,
+    entrypoint: str = None,
     db_kwargs: Optional[Dict[str, str]] = None,
     conn_kwargs: Optional[Dict[str, str]] = None
 ) -> "Connection":
@@ -149,13 +149,15 @@ def connect(
     db = None
     conn = None
 
-    if db_kwargs is None:
-        db_kwargs = {}
+    db_kwargs = dict(db_kwargs or {})
+    db_kwargs["driver"] = driver
+    if entrypoint:
+        db_kwargs["entrypoint"] = entrypoint
     if conn_kwargs is None:
         conn_kwargs = {}
 
     try:
-        db = _lib.AdbcDatabase(driver=driver, entrypoint=entrypoint, **db_kwargs)
+        db = _lib.AdbcDatabase(**db_kwargs)
         conn = _lib.AdbcConnection(db, **conn_kwargs)
         return Connection(db, conn)
     except Exception:

@@ -440,8 +440,8 @@ cdef class AdbcDatabase(_AdbcHandle):
     ----------
     kwargs : dict
         String key-value options to pass to the underlying database.
-        Must include at least "driver" and "entrypoint" to identify
-        the underlying database driver to load.
+        Must include at least "driver" to identify the underlying
+        database driver to load.
     """
     cdef:
         CAdbcDatabase database

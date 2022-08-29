@@ -38,6 +38,7 @@ void ReleaseError(struct AdbcError* error) {
   if (error) {
     delete[] error->message;
     error->message = nullptr;
+    error->release = nullptr;
   }
 }
 
@@ -144,7 +145,8 @@ AdbcStatusCode StatementSetSubstraitPlan(struct AdbcStatement*, const uint8_t*, 
 struct TempDatabase {
   std::unordered_map<std::string, std::string> options;
   std::string driver;
-  std::string entrypoint;
+  // Default name (see adbc.h)
+  std::string entrypoint = "AdbcDriverInit";
 };
 
 /// Temporary state while the database is being configured.
@@ -236,35 +238,30 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (args->driver.empty()) {
-    delete args;
+    // Don't delete args here; caller should still call AdbcDatabaseRelease
     SetError(error, "Must provide 'driver' parameter");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  } else if (args->entrypoint.empty()) {
-    delete args;
-    SetError(error, "Must provide 'entrypoint' parameter");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   database->private_driver = new AdbcDriver;
+  std::memset(database->private_driver, 0, sizeof(AdbcDriver));
   size_t initialized = 0;
   AdbcStatusCode status =
       AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(), ADBC_VERSION_0_0_1,
                      database->private_driver, &initialized, error);
   if (status != ADBC_STATUS_OK) {
-    delete args;
-
     if (database->private_driver->release) {
       database->private_driver->release(database->private_driver, error);
     }
     delete database->private_driver;
+    database->private_driver = nullptr;
     return status;
   } else if (initialized < ADBC_VERSION_0_0_1) {
-    delete args;
-
     if (database->private_driver->release) {
       database->private_driver->release(database->private_driver, error);
     }
     delete database->private_driver;
+    database->private_driver = nullptr;
 
     std::string message = "Database version is too old, expected ";
     message += std::to_string(ADBC_VERSION_0_0_1);
@@ -275,24 +272,22 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   }
   status = database->private_driver->DatabaseNew(database, error);
   if (status != ADBC_STATUS_OK) {
-    delete args;
-
     if (database->private_driver->release) {
       database->private_driver->release(database->private_driver, error);
     }
     delete database->private_driver;
+    database->private_driver = nullptr;
     return status;
   }
   for (const auto& option : args->options) {
     status = database->private_driver->DatabaseSetOption(database, option.first.c_str(),
                                                          option.second.c_str(), error);
     if (status != ADBC_STATUS_OK) {
-      delete args;
-
       if (database->private_driver->release) {
         database->private_driver->release(database->private_driver, error);
       }
       delete database->private_driver;
+      database->private_driver = nullptr;
       return status;
     }
   }
@@ -612,6 +607,11 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
   AdbcDriverInitFunc init_func;
   std::string error_message;
+
+  if (!entrypoint) {
+    // Default entrypoint (see adbc.h)
+    entrypoint = "AdbcDriverInit";
+  }
 
 #if defined(_WIN32)
 

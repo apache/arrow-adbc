@@ -24,10 +24,7 @@ import adbc_driver_manager
 @pytest.fixture
 def sqlite():
     """Dynamically load the SQLite driver."""
-    with adbc_driver_manager.AdbcDatabase(
-        driver="adbc_driver_sqlite",
-        entrypoint="AdbcSqliteDriverInit",
-    ) as db:
+    with adbc_driver_manager.AdbcDatabase(driver="adbc_driver_sqlite") as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
             yield (db, conn)
 
