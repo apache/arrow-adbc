@@ -30,6 +30,8 @@ set(ADBC_LIBRARY_PATH_SUFFIXES
     "Library/bin")
 set(ADBC_INCLUDE_PATH_SUFFIXES "include" "Library" "Library/include")
 
+include(CMakePackageConfigHelpers)
+
 function(add_thirdparty_lib LIB_NAME LIB_TYPE LIB)
   set(options)
   set(one_value_args)
@@ -147,6 +149,25 @@ function(create_merged_static_lib output_target)
   add_custom_target(${output_target} ALL DEPENDS ${output_lib_path})
   add_dependencies(${output_target} ${ARG_ROOT} ${ARG_TO_MERGE})
   install(FILES ${output_lib_path} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endfunction()
+
+function(arrow_install_cmake_package PACKAGE_NAME EXPORT_NAME)
+  set(CONFIG_CMAKE "${PACKAGE_NAME}Config.cmake")
+  set(BUILT_CONFIG_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_CMAKE}")
+  configure_package_config_file("${CONFIG_CMAKE}.in" "${BUILT_CONFIG_CMAKE}"
+                                INSTALL_DESTINATION "${ARROW_CMAKE_DIR}/${PACKAGE_NAME}")
+  set(CONFIG_VERSION_CMAKE "${PACKAGE_NAME}ConfigVersion.cmake")
+  set(BUILT_CONFIG_VERSION_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_VERSION_CMAKE}")
+  write_basic_package_version_file("${BUILT_CONFIG_VERSION_CMAKE}"
+                                   COMPATIBILITY SameMajorVersion)
+  set(INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PACKAGE_NAME}")
+  install(FILES "${BUILT_CONFIG_CMAKE}" "${BUILT_CONFIG_VERSION_CMAKE}"
+          DESTINATION "${INSTALL_CMAKEDIR}")
+  set(TARGETS_CMAKE "${PACKAGE_NAME}Targets.cmake")
+  install(EXPORT ${EXPORT_NAME}
+          DESTINATION "${INSTALL_CMAKEDIR}"
+          NAMESPACE "${PACKAGE_NAME}::"
+          FILE "${TARGETS_CMAKE}")
 endfunction()
 
 # \arg OUTPUTS list to append built targets to
@@ -420,26 +441,7 @@ function(ADD_ARROW_LIB LIB_NAME)
   endif()
 
   if(ARG_CMAKE_PACKAGE_NAME)
-    arrow_install_cmake_find_module("${ARG_CMAKE_PACKAGE_NAME}")
-
-    set(TARGETS_CMAKE "${ARG_CMAKE_PACKAGE_NAME}Targets.cmake")
-    install(EXPORT ${LIB_NAME}_targets
-            FILE "${TARGETS_CMAKE}"
-            DESTINATION "${ADBC_CMAKE_INSTALL_DIR}")
-
-    set(CONFIG_CMAKE "${ARG_CMAKE_PACKAGE_NAME}Config.cmake")
-    set(BUILT_CONFIG_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_CMAKE}")
-    configure_package_config_file("${CONFIG_CMAKE}.in" "${BUILT_CONFIG_CMAKE}"
-                                  INSTALL_DESTINATION "${ADBC_CMAKE_INSTALL_DIR}")
-    install(FILES "${BUILT_CONFIG_CMAKE}" DESTINATION "${ADBC_CMAKE_INSTALL_DIR}")
-
-    set(CONFIG_VERSION_CMAKE "${ARG_CMAKE_PACKAGE_NAME}ConfigVersion.cmake")
-    set(BUILT_CONFIG_VERSION_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_VERSION_CMAKE}")
-    write_basic_package_version_file(
-      "${BUILT_CONFIG_VERSION_CMAKE}"
-      VERSION ${${PROJECT_NAME}_VERSION}
-      COMPATIBILITY AnyNewerVersion)
-    install(FILES "${BUILT_CONFIG_VERSION_CMAKE}" DESTINATION "${ADBC_CMAKE_INSTALL_DIR}")
+    arrow_install_cmake_package(${ARG_CMAKE_PACKAGE_NAME} ${LIB_NAME}_targets)
   endif()
 
   if(ARG_PKG_CONFIG_NAME)
