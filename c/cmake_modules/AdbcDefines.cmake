@@ -39,6 +39,18 @@ if(ADBC_DEPENDENCY_SOURCE STREQUAL "CONDA")
   list(APPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
 endif()
 
+# pkg-config (.pc file) support.
+if(IS_ABSOLUTE "${CMAKE_INSTALL_INCLUDEDIR}")
+  set(ADBC_PKG_CONFIG_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+else()
+  set(ADBC_PKG_CONFIG_INCLUDEDIR "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
+endif()
+if(IS_ABSOLUTE "${CMAKE_INSTALL_LIBDIR}")
+  set(ADBC_PKG_CONFIG_LIBDIR "${CMAKE_INSTALL_LIBDIR}")
+else()
+  set(ADBC_PKG_CONFIG_LIBDIR "\${prefix}/${CMAKE_INSTALL_LIBDIR}")
+endif()
+
 add_custom_target(all-tests)
 if(ADBC_BUILD_TESTS)
   find_package(GTest)

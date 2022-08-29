@@ -34,7 +34,9 @@ add_arrow_lib(adbc_driver_manager
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
-              AdbcDriverManager)
+              AdbcDriverManager
+              PKG_CONFIG_NAME
+              adbc-driver-manager)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
