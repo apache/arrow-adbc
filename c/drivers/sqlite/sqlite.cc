@@ -1767,8 +1767,8 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
 
 extern "C" {
 ADBC_EXPORT
-AdbcStatusCode AdbcSqliteDriverInit(size_t count, struct AdbcDriver* driver,
-                                    size_t* initialized, struct AdbcError* error) {
+AdbcStatusCode AdbcDriverInit(size_t count, struct AdbcDriver* driver,
+                              size_t* initialized, struct AdbcError* error) {
   if (count < ADBC_VERSION_0_0_1) return ADBC_STATUS_NOT_IMPLEMENTED;
 
   std::memset(driver, 0, sizeof(*driver));

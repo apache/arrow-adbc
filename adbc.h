@@ -1046,6 +1046,9 @@ struct ADBC_EXPORT AdbcDriver {
 ///   to load a library and call a function of this type to load the
 ///   driver.
 ///
+/// Although drivers may choose any name for this function, the
+/// recommended name is "AdbcDriverInit".
+///
 /// \param[in] count The number of entries to initialize. Provides
 ///   backwards compatibility if the struct definition is changed.
 /// \param[out] driver The table of function pointers to initialize.

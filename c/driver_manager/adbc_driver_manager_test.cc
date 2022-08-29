@@ -45,17 +45,14 @@ class DriverManager : public ::testing::Test {
 
     size_t initialized = 0;
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcLoadDriver("adbc_driver_sqlite", "AdbcSqliteDriverInit",
-                              ADBC_VERSION_0_0_1, &driver, &initialized, &error));
+        error, AdbcLoadDriver("adbc_driver_sqlite", NULL, ADBC_VERSION_0_0_1, &driver,
+                              &initialized, &error));
     ASSERT_EQ(initialized, ADBC_VERSION_0_0_1);
 
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
     ASSERT_NE(database.private_data, nullptr);
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error,
-        AdbcDatabaseSetOption(&database, "entrypoint", "AdbcSqliteDriverInit", &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
     ASSERT_NE(database.private_data, nullptr);
 
@@ -65,7 +62,7 @@ class DriverManager : public ::testing::Test {
   }
 
   void TearDown() override {
-    if (error.message) {
+    if (error.release) {
       error.release(&error);
     }
 
@@ -90,7 +87,6 @@ class DriverManager : public ::testing::Test {
 };
 
 TEST_F(DriverManager, DatabaseInitRelease) {
-  AdbcError error = {};
   AdbcDatabase database;
   std::memset(&database, 0, sizeof(database));
 
@@ -98,8 +94,31 @@ TEST_F(DriverManager, DatabaseInitRelease) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
 }
 
+TEST_F(DriverManager, DatabaseCustomInitFunc) {
+  AdbcDatabase database;
+  std::memset(&database, 0, sizeof(database));
+
+  // Explicitly set entrypoint
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcDatabaseSetOption(&database, "entrypoint", "AdbcDriverInit", &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
+
+  // Set invalid entrypoint
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error, AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error));
+  ADBC_ASSERT_OK_WITH_ERROR(
+      error,
+      AdbcDatabaseSetOption(&database, "entrypoint", "ThisSymbolDoesNotExist", &error));
+  ASSERT_EQ(ADBC_STATUS_INTERNAL, AdbcDatabaseInit(&database, &error));
+  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
+}
+
 TEST_F(DriverManager, ConnectionInitRelease) {
-  AdbcError error = {};
   AdbcConnection connection;
   std::memset(&connection, 0, sizeof(connection));
 
@@ -296,12 +315,7 @@ TEST_F(DriverManager, Transactions) {
 }
 
 AdbcStatusCode SetupDatabase(struct AdbcDatabase* database, struct AdbcError* error) {
-  AdbcStatusCode status;
-  if ((status = AdbcDatabaseSetOption(database, "driver", "adbc_driver_sqlite", error)) !=
-      ADBC_STATUS_OK) {
-    return status;
-  }
-  return AdbcDatabaseSetOption(database, "entrypoint", "AdbcSqliteDriverInit", error);
+  return AdbcDatabaseSetOption(database, "driver", "adbc_driver_sqlite", error);
 }
 
 TEST_F(DriverManager, ValidationSuite) {
