@@ -33,6 +33,7 @@ import org.apache.arrow.util.Preconditions;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -106,13 +107,12 @@ public abstract class AbstractPartitionDescriptorTest {
 
       // The serialized partition descriptor should be executable on a separate connection
       try (final AdbcConnection connection2 = database.connect();
-          final AdbcStatement.QueryResult queryResult =
-              connection2.deserializePartitionDescriptor(
+          final ArrowReader reader =
+              connection2.readPartition(
                   partitionResult.getPartitionDescriptors().get(0).getDescriptor())) {
-        assertThat(queryResult.getReader().loadNextBatch()).isTrue();
-        assertThat(queryResult.getReader().getVectorSchemaRoot().getSchema())
-            .isEqualTo(root.getSchema());
-        assertRoot(queryResult.getReader().getVectorSchemaRoot()).isEqualTo(root);
+        assertThat(reader.loadNextBatch()).isTrue();
+        assertThat(reader.getVectorSchemaRoot().getSchema()).isEqualTo(root.getSchema());
+        assertRoot(reader.getVectorSchemaRoot()).isEqualTo(root);
       }
     }
   }

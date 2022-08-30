@@ -463,7 +463,7 @@ void AdbcValidateStatementSqlIngest(struct AdbcValidateTestContext* adbc_context
                                          "bulk_insert", &error));
   ADBCV_ASSERT_OK(&error,
                   AdbcStatementBind(&statement, &export_array, &export_schema, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementExecuteUpdate(&statement, NULL, &error));
+  ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, NULL, NULL, &error));
   ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
 
   AdbcValidateBeginCase(adbc_context, "StatementSqlIngest", "read back data");

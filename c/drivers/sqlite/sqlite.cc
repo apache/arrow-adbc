@@ -889,7 +889,10 @@ AdbcStatusCode BindParameters(sqlite3_stmt* stmt, const arrow::RecordBatch& data
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
-    if (*rc != SQLITE_OK) return ADBC_STATUS_IO;
+    if (*rc != SQLITE_OK) {
+      SetError(error, "Failed to bind parameters");
+      return ADBC_STATUS_IO;
+    }
     col_index++;
   }
   return ADBC_STATUS_OK;
@@ -1117,47 +1120,23 @@ class SqliteStatementImpl {
   AdbcStatusCode ExecuteQuery(const std::shared_ptr<SqliteStatementImpl>& self,
                               struct ArrowArrayStream* out, int64_t* rows_affected,
                               struct AdbcError* error) {
-    if (!bulk_table_.empty()) {
-      SetError(error, "Bulk ingestion does not return a result set");
-      return ADBC_STATUS_INVALID_STATE;
-    }
-    if (!stmt_) {
+    if (!stmt_ && bulk_table_.empty()) {
       SetError(error, "Cannot execute a statement without a query");
       return ADBC_STATUS_INVALID_STATE;
-    }
-    if (!out) {
-      SetError(error, "Must provide out");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    sqlite3* db = connection_->db();
-    int rc = sqlite3_clear_bindings(stmt_);
-    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_clear_bindings", error));
-
-    rc = sqlite3_reset(stmt_);
-    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_reset", error));
-    auto reader = std::make_shared<SqliteStatementReader>(connection_, stmt_,
-                                                          std::move(bind_parameters_));
-    ADBC_RETURN_NOT_OK(reader->Init(error));
-
-    Status status = arrow::ExportRecordBatchReader(std::move(reader), out);
-    ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
-    if (rows_affected) *rows_affected = -1;
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode ExecuteUpdate(const std::shared_ptr<SqliteStatementImpl>& self,
-                               int64_t* rows_affected, struct AdbcError* error) {
-    if (!bulk_table_.empty()) {
+    } else if (!bulk_table_.empty()) {
+      if (out) {
+        SetError(error, "Bulk ingestion does not generate a result set");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
       return ExecuteBulk(rows_affected, error);
     }
-    if (!stmt_) {
-      SetError(error, "Cannot execute a statement without a query");
-      return ADBC_STATUS_INVALID_STATE;
-    }
+
     sqlite3* db = connection_->db();
-    int rc = sqlite3_clear_bindings(stmt_);
-    ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_clear_bindings", error));
+    int rc = SQLITE_OK;
+    if (stmt_) {
+      sqlite3_clear_bindings(stmt_);
+      ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_clear_bindings", error));
+    }
 
     rc = sqlite3_reset(stmt_);
     ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc, "sqlite3_reset", error));
@@ -1165,17 +1144,22 @@ class SqliteStatementImpl {
                                                           std::move(bind_parameters_));
     ADBC_RETURN_NOT_OK(reader->Init(error));
 
-    // XXX: the logic for the reader is heavily intertwined into everything
-    // For now, just initialize and step it for the side effect
+    if (out) {
+      Status status = arrow::ExportRecordBatchReader(std::move(reader), out);
+      ADBC_RETURN_NOT_OK(FromArrowStatus(status, error));
+    } else {
+      // XXX: the logic for the reader is heavily intertwined into everything
+      // For now, just initialize and step it for the side effect
 
-    while (true) {
-      std::shared_ptr<arrow::RecordBatch> batch;
-      ADBC_RETURN_NOT_OK(FromArrowStatus(reader->ReadNext(&batch), error));
-      if (!batch) break;
+      while (true) {
+        std::shared_ptr<arrow::RecordBatch> batch;
+        ADBC_RETURN_NOT_OK(FromArrowStatus(reader->ReadNext(&batch), error));
+        if (!batch) break;
+      }
+      ADBC_RETURN_NOT_OK(FromArrowStatus(reader->Close(), error));
     }
-    // TODO(lidavidm): we could get this
-    if (rows_affected) *rows_affected = -1;
 
+    if (rows_affected) *rows_affected = -1;
     return ADBC_STATUS_OK;
   }
 
@@ -1537,15 +1521,6 @@ AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
   return (*ptr)->ExecuteQuery(*ptr, out, rows_affected, error);
 }
 
-AdbcStatusCode SqliteStatementExecuteUpdate(struct AdbcStatement* statement,
-                                            int64_t* rows_affected,
-                                            struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
-  return (*ptr)->ExecuteUpdate(*ptr, rows_affected, error);
-}
-
 AdbcStatusCode SqliteStatementGetPartitionDesc(struct AdbcStatement* statement,
                                                size_t index, uint8_t* partition_desc,
                                                struct AdbcError* error) {
@@ -1715,12 +1690,6 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
   return SqliteStatementExecuteQuery(statement, out, rows_affected, error);
 }
 
-AdbcStatusCode AdbcStatementExecuteUpdate(struct AdbcStatement* statement,
-                                          int64_t* rows_affected,
-                                          struct AdbcError* error) {
-  return SqliteStatementExecuteUpdate(statement, rows_affected, error);
-}
-
 AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
                                              size_t index, uint8_t* partition_desc,
                                              struct AdbcError* error) {
@@ -1791,7 +1760,6 @@ AdbcStatusCode AdbcDriverInit(size_t count, struct AdbcDriver* driver,
   driver->StatementBind = SqliteStatementBind;
   driver->StatementBindStream = SqliteStatementBindStream;
   driver->StatementExecuteQuery = SqliteStatementExecuteQuery;
-  driver->StatementExecuteUpdate = SqliteStatementExecuteUpdate;
   driver->StatementGetParameterSchema = SqliteStatementGetParameterSchema;
   driver->StatementNew = SqliteStatementNew;
   driver->StatementPrepare = SqliteStatementPrepare;

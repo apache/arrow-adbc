@@ -487,16 +487,6 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                                           error);
 }
 
-AdbcStatusCode AdbcStatementExecuteUpdate(struct AdbcStatement* statement,
-                                          int64_t* rows_affected,
-                                          struct AdbcError* error) {
-  if (!statement->private_driver) {
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  return statement->private_driver->StatementExecuteUpdate(statement, rows_affected,
-                                                           error);
-}
-
 AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
                                                struct ArrowSchema* schema,
                                                struct AdbcError* error) {
@@ -732,7 +722,6 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
   FILL_DEFAULT(driver, StatementExecutePartitions);
   CHECK_REQUIRED(driver, StatementExecuteQuery);
-  CHECK_REQUIRED(driver, StatementExecuteUpdate);
   CHECK_REQUIRED(driver, StatementNew);
   CHECK_REQUIRED(driver, StatementRelease);
   FILL_DEFAULT(driver, StatementBind);

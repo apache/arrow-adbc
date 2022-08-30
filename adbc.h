@@ -734,7 +734,8 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 /// This invalidates any prior result sets.
 ///
 /// \param[in] statement The statement to execute.
-/// \param[out] out The results.
+/// \param[out] out The results. Pass NULL if the client does not
+///   expect a result set.
 /// \param[out] rows_affected The number of rows affected if known,
 ///   else -1. Pass NULL if the client does not want this information.
 /// \param[out] error An optional location to return an error
@@ -743,18 +744,6 @@ ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                          struct ArrowArrayStream* out,
                                          int64_t* rows_affected, struct AdbcError* error);
-
-/// \brief Execute a statement that does not generate a result set.
-///
-/// \param[in] statement The statement to execute.
-/// \param[out] rows_affected The number of rows affected if known,
-///   else -1. Pass NULL if the client does not want this information.
-/// \param[out] error An optional location to return an error
-///   message if necessary.
-ADBC_EXPORT
-AdbcStatusCode AdbcStatementExecuteUpdate(struct AdbcStatement* statement,
-                                          int64_t* rows_affected,
-                                          struct AdbcError* error);
 
 /// \brief Turn this statement into a prepared statement to be
 ///   executed multiple times.
@@ -1020,8 +1009,6 @@ struct ADBC_EXPORT AdbcDriver {
                                         struct AdbcError*);
   AdbcStatusCode (*StatementExecuteQuery)(struct AdbcStatement*, struct ArrowArrayStream*,
                                           int64_t*, struct AdbcError*);
-  AdbcStatusCode (*StatementExecuteUpdate)(struct AdbcStatement*, int64_t*,
-                                           struct AdbcError*);
   AdbcStatusCode (*StatementExecutePartitions)(struct AdbcStatement*, struct ArrowSchema*,
                                                struct AdbcPartitions*, int64_t*,
                                                struct AdbcError*);
@@ -1061,7 +1048,7 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
                                              struct AdbcError* error);
 
 // For use with count
-#define ADBC_VERSION_0_0_1 27
+#define ADBC_VERSION_0_0_1 26
 
 /// @}
 

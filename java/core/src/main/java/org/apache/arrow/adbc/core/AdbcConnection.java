@@ -49,14 +49,13 @@ public interface AdbcConnection extends AutoCloseable {
   }
 
   /**
-   * Create a statement from a serialized PartitionDescriptor.
+   * Create a result set from a serialized PartitionDescriptor.
    *
    * @param descriptor The descriptor to load ({@link PartitionDescriptor#getDescriptor()}.
    * @return A statement that can be immediately executed.
    * @see AdbcStatement.PartitionResult
    */
-  default AdbcStatement.QueryResult deserializePartitionDescriptor(ByteBuffer descriptor)
-      throws AdbcException {
+  default ArrowReader readPartition(ByteBuffer descriptor) throws AdbcException {
     throw AdbcException.notImplemented(
         "Connection does not support deserializePartitionDescriptor(ByteBuffer)");
   }

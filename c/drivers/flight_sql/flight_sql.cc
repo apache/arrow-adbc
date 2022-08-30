@@ -417,13 +417,6 @@ class FlightSqlStatementImpl {
     return FlightInfoReader::Export(connection_->client(), std::move(info), out, error);
   }
 
-  AdbcStatusCode ExecuteUpdate(const std::shared_ptr<FlightSqlStatementImpl>& self,
-                               int64_t* rows_affected, struct AdbcError* error) {
-    // TODO: update query
-    // TODO: bulk ingest isn't implemented
-    return ADBC_STATUS_NOT_IMPLEMENTED;
-  }
-
   AdbcStatusCode SetSqlQuery(const std::shared_ptr<FlightSqlStatementImpl>&,
                              const char* query, struct AdbcError* error) {
     query_ = query;
@@ -543,15 +536,6 @@ AdbcStatusCode FlightSqlStatementExecuteQuery(struct AdbcStatement* statement,
   return (*ptr)->ExecuteQuery(*ptr, out, rows_affected, error);
 }
 
-AdbcStatusCode FlightSqlStatementExecuteUpdate(struct AdbcStatement* statement,
-                                               int64_t* rows_affected,
-                                               struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<FlightSqlStatementImpl>*>(statement->private_data);
-  return (*ptr)->ExecuteUpdate(*ptr, rows_affected, error);
-}
-
 AdbcStatusCode FlightSqlStatementNew(struct AdbcConnection* connection,
                                      struct AdbcStatement* statement,
                                      struct AdbcError* error) {
@@ -653,12 +637,6 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
   return FlightSqlStatementExecuteQuery(statement, out, rows_affected, error);
 }
 
-AdbcStatusCode AdbcStatementExecuteUpdate(struct AdbcStatement* statement,
-                                          int64_t* rows_affected,
-                                          struct AdbcError* error) {
-  return FlightSqlStatementExecuteUpdate(statement, rows_affected, error);
-}
-
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement,
                                 struct AdbcError* error) {
@@ -696,7 +674,6 @@ AdbcStatusCode AdbcDriverInit(size_t count, struct AdbcDriver* driver,
 
   driver->StatementExecutePartitions = FlightSqlStatementExecutePartitions;
   driver->StatementExecuteQuery = FlightSqlStatementExecuteQuery;
-  driver->StatementExecuteUpdate = FlightSqlStatementExecuteUpdate;
   driver->StatementNew = FlightSqlStatementNew;
   driver->StatementRelease = FlightSqlStatementRelease;
   driver->StatementSetSqlQuery = FlightSqlStatementSetSqlQuery;
