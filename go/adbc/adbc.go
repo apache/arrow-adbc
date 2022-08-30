@@ -40,8 +40,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/apache/arrow/go/v9/arrow"
-	"github.com/apache/arrow/go/v9/arrow/array"
+	"github.com/apache/arrow/go/v10/arrow"
+	"github.com/apache/arrow/go/v10/arrow/array"
 )
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type Status -linecomment
@@ -158,9 +158,19 @@ const (
 // state can live in the Driver itself, for example an in-memory database
 // can place ownership of the actual database in this driver.
 //
-// Any connection specific options should be passed to the Open method.
+// Any connection specific options should be set using SetOptions before
+// calling Open.
+//
+// The provided context.Context is for dialing purposes only
+// (see net.DialContext) and should not be stored or used for other purposes.
+// A default timeout should still be used when dialing as a connection
+// pool may call Connect asynchronously to any query.
+//
+// A driver can also optionally implement io.Closer if there is a need
+// or desire for it.
 type Driver interface {
-	Open(options map[string]string) (Connection, error)
+	SetOptions(map[string]string) error
+	Open(ctx context.Context) (Connection, error)
 }
 
 type InfoCode uint32
