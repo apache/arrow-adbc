@@ -143,13 +143,27 @@ const (
 
 // Canonical option values
 const (
-	OptionValueEnabled          = "true"
-	OptionValueDisabled         = "false"
-	OptionKeyAutoCommit         = "adbc.connection.autocommit"
-	OptionKeyIngestTargetTable  = "adbc.ingest.target_table"
-	OptionKeyIngestMode         = "adbc.ingest.mode"
-	OptionValueIngestModeCreate = "adbc.ingest.mode.create"
-	OptionValueIngestModeAppend = "adbc.ingest.mode.append"
+	OptionValueEnabled           = "true"
+	OptionValueDisabled          = "false"
+	OptionKeyAutoCommit          = "adbc.connection.autocommit"
+	OptionKeyIngestTargetTable   = "adbc.ingest.target_table"
+	OptionKeyIngestMode          = "adbc.ingest.mode"
+	OptionKeyIsolationLevel      = "adbc.connection.transaction.isolation_level"
+	OptionKeyTransactionReadOnly = "adbc.connection.transaction.readonly"
+	OptionValueIngestModeCreate  = "adbc.ingest.mode.create"
+	OptionValueIngestModeAppend  = "adbc.ingest.mode.append"
+)
+
+type OptionIsolationLevel string
+
+const (
+	LevelDefault         OptionIsolationLevel = "adbc.connection.transaction.isolation.default"
+	LevelReadUncommitted OptionIsolationLevel = "adbc.connection.transaction.isolation.read_uncommitted"
+	LevelReadCommitted   OptionIsolationLevel = "adbc.connection.transaction.isolation.read_committed"
+	LevelRepeatableRead  OptionIsolationLevel = "adbc.connection.transaction.isolation.repeatable_read"
+	LevelSnapshot        OptionIsolationLevel = "adbc.connection.transaction.isolation.snapshot"
+	LevelSerializable    OptionIsolationLevel = "adbc.connection.transaction.isolation.serializable"
+	LevelLinearizable    OptionIsolationLevel = "adbc.connection.transaction.isolation.linearizable"
 )
 
 // Driver is the entry point for the interface. It is similar to

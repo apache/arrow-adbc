@@ -33,6 +33,7 @@ package sqldriver
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"io"
@@ -48,6 +49,26 @@ import (
 	"github.com/apache/arrow/go/v10/arrow/decimal256"
 	"github.com/apache/arrow/go/v10/arrow/memory"
 )
+
+func getIsolationlevel(lvl sql.IsolationLevel) adbc.OptionIsolationLevel {
+	switch lvl {
+	case sql.LevelDefault:
+		return adbc.LevelDefault
+	case sql.LevelReadUncommitted:
+		return adbc.LevelReadUncommitted
+	case sql.LevelReadCommitted:
+		return adbc.LevelReadCommitted
+	case sql.LevelRepeatableRead:
+		return adbc.LevelRepeatableRead
+	case sql.LevelSnapshot:
+		return adbc.LevelSnapshot
+	case sql.LevelSerializable:
+		return adbc.LevelSerializable
+	case sql.LevelLinearizable:
+		return adbc.LevelLinearizable
+	}
+	return ""
+}
 
 func parseConnectStr(str string) (ret map[string]string, err error) {
 	ret = make(map[string]string)
@@ -182,7 +203,20 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 		if err := postopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled); err != nil {
 			return nil, err
 		}
-		// set isolation level
+		isolationLevel := getIsolationlevel(sql.IsolationLevel(opts.Isolation))
+		if isolationLevel == "" {
+			return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+		}
+
+		if err := postopt.SetOption(adbc.OptionKeyIsolationLevel, string(isolationLevel)); err != nil {
+			return nil, err
+		}
+
+		if opts.ReadOnly {
+			if err := postopt.SetOption(adbc.OptionKeyTransactionReadOnly, adbc.OptionValueEnabled); err != nil {
+				return nil, err
+			}
+		}
 		return tx{ctx: ctx, conn: c.Conn}, nil
 	}
 
