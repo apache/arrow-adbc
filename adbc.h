@@ -654,62 +654,70 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
 ///   enabled.
 #define ADBC_CONNECTION_OPTION_AUTOCOMMIT "adbc.connection.autocommit"
 
-/// \brief The name of the canonical option for whether the current 
+/// \brief The name of the canonical option for whether the current
 ///   transaction should be restricted to being a read-only transaction.
-#define ADBC_CONNECTION_OPTION_TRANSACTION_READ_ONLY "adbc.connection.transaction.readonly"
+#define ADBC_CONNECTION_OPTION_TRANSACTION_READ_ONLY \
+  "adbc.connection.transaction.readonly"
 
-/// \brief The name of the canonical option for setting the isolation 
+/// \brief The name of the canonical option for setting the isolation
 ///   level of a transaction.
 ///
-/// Should only be used in conjunction with autocommit and 
+/// Should only be used in conjunction with autocommit and
 /// AdbcConnectionCommit / AdbcConnectionRollback. If the desired
 /// isolation level is not supported by a driver, it should return
 /// appropriate error.
-#define ADBC_CONNECTION_OPTION_ISOLATION_LEVEL "adbc.connection.transaction.isolation_level"
+#define ADBC_CONNECTION_OPTION_ISOLATION_LEVEL \
+  "adbc.connection.transaction.isolation_level"
 
 /// \brief Use database or driver default Isolation level
-#define ADBC_OPTION_ISOLATION_LEVEL_DEFAULT "adbc.connection.transaction.isolation.default"
+#define ADBC_OPTION_ISOLATION_LEVEL_DEFAULT \
+  "adbc.connection.transaction.isolation.default"
 /// \brief The lowest isolation level. Dirty reads are allowed, so one
 ///   transaction may see not-yet-committed changes made by others.
-#define ADBC_OPTION_ISOLATION_LEVEL_READ_UNCOMMITTED "adbc.connection.transaction.isolation.read_uncommitted"
-/// \brief Lock-based concurrency control keeps write locks until the 
+#define ADBC_OPTION_ISOLATION_LEVEL_READ_UNCOMMITTED \
+  "adbc.connection.transaction.isolation.read_uncommitted"
+/// \brief Lock-based concurrency control keeps write locks until the
 ///   end of the transaction, but read locks are released as soon as a
-///   SELECT is performed. Non-repeatable reads can occur in this 
+///   SELECT is performed. Non-repeatable reads can occur in this
 ///   isolation level.
 ///
 /// More simply put, Read Committed is an isolation level that guarantees
-/// that any data read is committed at the moment it is read. It simply 
-/// restricts the reader from seeing any intermediate, uncommitted, 
+/// that any data read is committed at the moment it is read. It simply
+/// restricts the reader from seeing any intermediate, uncommitted,
 /// 'dirty' reads. It makes no promise whatsoever that if the transaction
 /// re-issues the read, it will find the same data; data is free to change
 /// after it is read.
-#define ADBC_OPTION_ISOLATION_LEVEL_READ_COMMITTED "adbc.connection.transaction.isolation.read_committed"
+#define ADBC_OPTION_ISOLATION_LEVEL_READ_COMMITTED \
+  "adbc.connection.transaction.isolation.read_committed"
 /// \brief Lock-based concurrency control keeps read AND write locks
 ///   (acquired on selection data) until the end of the transaction.
 ///
 /// However, range-locks are not managed, so phantom reads can occur.
 /// Write skew is possible at this isolation level in some systems.
-#define ADBC_OPTION_ISOLATION_LEVEL_REPEATABLE_READ "adbc.connection.transaction.isolation.repeatable_read"
+#define ADBC_OPTION_ISOLATION_LEVEL_REPEATABLE_READ \
+  "adbc.connection.transaction.isolation.repeatable_read"
 /// \brief This isolation guarantees that all reads in the transaction
 ///   will see a consistent snapshot of the database and the transaction
 ///   should only successfully commit if no updates conflict with any
 ///   concurrent updates made since that snapshot.
-#define ADBC_OPTION_ISOLATION_LEVEL_SNAPSHOT "adbc.connection.transaction.isolation.snapshot"
+#define ADBC_OPTION_ISOLATION_LEVEL_SNAPSHOT \
+  "adbc.connection.transaction.isolation.snapshot"
 /// \brief Serializability requires read and write locks to be released
 ///   only at the end of the transaction. This includes acquiring range-
-///   locks when a select query uses a ranged WHERE clause to avoid 
+///   locks when a select query uses a ranged WHERE clause to avoid
 ///   phantom reads.
-#define ADBC_OPTION_ISOLATION_LEVEL_SERIALIZABLE "adbc.connection.transaction.isolation.serializable"
+#define ADBC_OPTION_ISOLATION_LEVEL_SERIALIZABLE \
+  "adbc.connection.transaction.isolation.serializable"
 /// \brief The central distinction between serializability and linearizability
 ///   is that serializability is a global property; a property of an entire
-///   history of operations and transactions. Linearizability is a local 
+///   history of operations and transactions. Linearizability is a local
 ///   property; a property of a single operation/transaction.
 ///
 /// Linearizability can be viewed as a special case of strict serializability
 /// where transactions are restricted to consist of a single operation applied
 /// to a single object.
-#define ADBC_OPTION_ISOLATION_LEVEL_LINEARIZABLE "adbc.connection.transaction.isolation.linearizable"
-
+#define ADBC_OPTION_ISOLATION_LEVEL_LINEARIZABLE \
+  "adbc.connection.transaction.isolation.linearizable"
 
 /// \brief Commit any pending transactions. Only used if autocommit is
 ///   disabled.
