@@ -345,10 +345,30 @@ type Connection interface {
 	//		table_type			| utf8 not null
 	//
 	GetTableTypes(context.Context) (array.RecordReader, error)
+
+	// Commit commits any pending transactions on this connection, it should
+	// only be used if autocommit is disabled.
+	//
+	// Behavior is undefined if this is mixed with SQL transaction statements.
 	Commit(context.Context) error
+
+	// Rollback rolls back any pending transactions. Only used if autocommit
+	// is disabled.
+	//
+	// Behavior is undefined if this is mixed with SQL transaction statements.
 	Rollback(context.Context) error
+
+	// NewStatement initializes a new statement object tied to this connection
+	// using the passed in options.
 	NewStatement(options map[string]string) (Statement, error)
+
+	// Close closes this connection and releases any associated resources.
 	Close() error
+
+	// ReadPartition constructs a statement for a partition of a query. The
+	// results can then be read independently using the returned RecordReader.
+	//
+	// A partition can be retrieved by using ExecutePartitions on a statement.
 	ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
 }
 
@@ -359,20 +379,126 @@ type PostInitOptions interface {
 	SetOption(key, value string) error
 }
 
+// Partitions represent a partitioned result set.
+//
+// Some backends may internally partition the results. These partitions
+// are exposed to clients who may wish to integrate them with a threaded
+// or distributed execution model, where partitions can be divided among
+// threads or machines and fetched in parallel.
+//
+// To use partitioning, execute the statement with ExecutePartitions to
+// get the partition descriptors. Then call ReadPartition on a connection
+// to turn individual descriptors into RecordReader instances. This may
+// be done on a different connection than the one the partition was
+// created with, or even in a different process on a different machine.
+//
+// Drivers are not required to support partitioning.
 type Partitions struct {
 	NumPartitions uint64
 	PartitionIDs  [][]byte
 }
 
+// Statement is a container for all state needed to execute a database
+// query, such as the query itself, parameters for prepared statements,
+// driver parameters, etc.
+//
+// Statements may represent a single query or a prepared statement.
+//
+// Statements may be used multiple times and can be reconfigured
+// (e.g. they can be reused to execute multiple different queries).
+// However, executing a statement (and changing certain other state)
+// will invalidate result sets obtained prior to that execution.
+//
+// Multiple statements may be created from a single connection.
+// However, the driver may block or error if they are used concurrently
+// (whether from a single goroutine or from multiple simultaneous
+// goroutines).
+//
+// Statements are not required to be goroutine-safe, but they can be
+// used from multiple goroutines as long as clients serialize accesses
+// to a statement.
 type Statement interface {
+	// Close releases any relevant resources associated with this statement
+	// and closes it (particularly if it is a prepared statement).
+	//
+	// A statement instance should not be used after Close is called.
 	Close() error
+
+	// SetSqlQuery sets the query string to be executed.
+	//
+	// The query can then be executed with any of the Execute methods.
+	// For queries expected to be executed repeatedly, Prepare should be
+	// called before execution.
 	SetSqlQuery(query string) error
+
+	// ExecuteQuery executes the current query or prepared statement
+	// and returnes a RecordReader for the results along with the number
+	// of rows affected if known, otherwise it will be -1.
+	//
+	// This invalidates any prior result sets on this statement.
 	ExecuteQuery(context.Context) (array.RecordReader, int64, error)
+
+	// ExecuteUpdate executes a statement that does not generate a result
+	// set. It returns the number of rows affected if known, otherwise -1.
 	ExecuteUpdate(context.Context) (int64, error)
+
+	// Prepare turns this statement into a prepared statement to be executed
+	// multiple times. This invalidates any prior result sets.
 	Prepare(context.Context) error
+
+	// SetSubstraitPlan allows setting a serialized Substrait execution
+	// plan into the query or for querying Substrait-related metadata.
+	//
+	// Drivers are not required to support both SQL and Substrait semantics.
+	// If they do, it may be via converting between representations internally.
+	//
+	// Like SetSqlQuery, after this is called the query can be executed
+	// using any of the Execute methods. If the query is expected to be
+	// executed repeatedly, Prepare should be called first on the statement.
 	SetSubstraitPlan(plan []byte) error
+
+	// Bind uses an arrow record batch to bind parameters to the query.
+	//
+	// This can be used for bulk inserts or for prepared statements.
+	// The driver will call release on the passed in Record when it is done,
+	// but it may not do this until the statement is closed or another
+	// record is bound.
 	Bind(ctx context.Context, values arrow.Record) error
+
+	// BindStream uses a record batch stream to bind parameters for this
+	// query. This can be used for bulk inserts or prepared statements.
+	//
+	// The driver will call Release on the record reader, but may not do this
+	// until Close is called.
 	BindStream(ctx context.Context, stream array.RecordReader) error
+
+	// GetParameterSchema returns an Arrow schema representation of
+	// the expected parameters to be bound.
+	//
+	// This retrieves an Arrow Schema describing the number, names, and
+	// types of the parameters in a parameterized statement. The fields
+	// of the schema should be in order of the ordinal position of the
+	// parameters; named parameters should appear only once.
+	//
+	// If the parameter does not have a name, or a name cannot be determined,
+	// the name of the corresponding field in the schema will be an empty
+	// string. If the type cannot be determined, the type of the corresponding
+	// field will be NA (NullType).
+	//
+	// This should be called only after calling Prepare.
+	//
+	// This should return an error with StatusNotImplemented if the schema
+	// cannot be determined.
 	GetParameterSchema() (*arrow.Schema, error)
+
+	// ExecutePartitions executes the current statement and gets the results
+	// as a partitioned result set.
+	//
+	// It returns the Schema of the result set, the collection of partition
+	// descriptors and the number of rows affected, if known. If unknown,
+	// the number of rows affected will be -1.
+	//
+	// If the driver does not support partitioned results, this will return
+	// an error with a StatusNotImplemented code.
 	ExecutePartitions(context.Context) (*arrow.Schema, Partitions, int64, error)
 }
