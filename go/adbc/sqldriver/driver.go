@@ -177,6 +177,18 @@ func (c *conn) Begin() (driver.Tx, error) {
 	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
+func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+	if postopt, ok := c.Conn.(adbc.PostInitOptions); ok {
+		if err := postopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled); err != nil {
+			return nil, err
+		}
+		// set isolation level
+		return tx{ctx: ctx, conn: c.Conn}, nil
+	}
+
+	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+}
+
 // Prepare returns a prepared statement, bound to this connection.
 func (c *conn) Prepare(query string) (driver.Stmt, error) {
 	return c.PrepareContext(context.Background(), query)
@@ -206,6 +218,26 @@ func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, e
 	}
 
 	return &stmt{stmt: s, paramSchema: paramSchema}, nil
+}
+
+type tx struct {
+	ctx  context.Context
+	conn adbc.Connection
+}
+
+func (t tx) Commit() error {
+	if err := t.conn.Commit(t.ctx); err != nil {
+		return err
+	}
+
+	return t.conn.(adbc.PostInitOptions).SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueEnabled)
+}
+
+func (t tx) Rollback() error {
+	if err := t.conn.Rollback(t.ctx); err != nil {
+		return err
+	}
+	return t.conn.(adbc.PostInitOptions).SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueEnabled)
 }
 
 type stmt struct {
