@@ -18,28 +18,18 @@
 # under the License.
 
 import os
-
-from Cython.Build import cythonize
-from setuptools import Extension
+import shutil
+from pathlib import Path
 
 
 def build(setup_kwargs):
     """Configure build for Poetry."""
-    library_dirs = os.environ.get("ADBC_LIBRARY_DIRS", "")
-    if library_dirs:
-        library_dirs = library_dirs.split(":")
-    else:
-        library_dirs = []
-    setup_kwargs["ext_modules"] = cythonize(
-        Extension(
-            name="adbc_driver_postgres._lib",
-            include_dirs=["../../"],
-            libraries=["adbc_driver_postgres"],
-            library_dirs=library_dirs,
-            language="c",
-            sources=[
-                "adbc_driver_postgres/_lib.pyx",
-            ],
-        ),
+    library = os.environ.get("ADBC_POSTGRES_LIBRARY")
+    if not library:
+        raise ValueError("Must provide ADBC_POSTGRES_LIBRARY")
+
+    shutil.copy(
+        library, Path("./adbc_driver_postgres/libadbc_driver_postgres.so").resolve()
     )
+
     setup_kwargs["zip_safe"] = False

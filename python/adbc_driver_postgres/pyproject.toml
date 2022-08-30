@@ -23,6 +23,9 @@ authors = ["David Li <li.davidm96@gmail.com>"]
 license = "Apache-2.0"
 homepage = "https://arrow.apache.org"
 repository = "https://github.com/apache/arrow-adbc"
+include = [
+    {path = "adbc_driver_postgres/*.so", format = "wheel"},
+]
 
 [tool.poetry.build]
 script = "build.py"
@@ -33,10 +36,8 @@ script = "build.py"
 python = ">=3.8"
 
 [tool.poetry.dev-dependencies]
-Cython = "^0.29.32"
 pytest = "^7.1.2"
-setuptools = "^63.4.0"
 
 [build-system]
-requires = ["Cython", "poetry-core>=1.0.0", "setuptools"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

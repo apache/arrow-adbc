@@ -19,9 +19,10 @@
 DBAPI 2.0-compatible facade for the ADBC libpq driver.
 """
 
+import importlib.resources
+
 import adbc_driver_manager
 import adbc_driver_manager.dbapi
-import adbc_driver_postgres._lib as _lib
 
 __all__ = [
     "BINARY",
@@ -94,20 +95,22 @@ ROWID = adbc_driver_manager.dbapi.ROWID
 
 def connect(uri: str) -> "Connection":
     """Connect to Postgres via ADBC."""
-    entrypoint = _lib.get_entrypoint()
-    db = None
-    conn = None
+    with importlib.resources.path(
+        __package__, "libadbc_driver_postgres.so"
+    ) as entrypoint:
+        db = None
+        conn = None
 
-    try:
-        db = adbc_driver_manager.AdbcDatabase(init_func=entrypoint, uri=uri)
-        conn = adbc_driver_manager.AdbcConnection(db)
-        return adbc_driver_manager.dbapi.Connection(db, conn)
-    except Exception:
-        if conn:
-            conn.close()
-        if db:
-            db.close()
-        raise
+        try:
+            db = adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)
+            conn = adbc_driver_manager.AdbcConnection(db)
+            return adbc_driver_manager.dbapi.Connection(db, conn)
+        except Exception:
+            if conn:
+                conn.close()
+            if db:
+                db.close()
+            raise
 
 
 # ----------------------------------------------------------
