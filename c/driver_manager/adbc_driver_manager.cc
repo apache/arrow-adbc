@@ -269,11 +269,11 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   // So we don't confuse a driver into thinking it's initialized already
   database->private_data = nullptr;
   if (args->init_func) {
-    status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_0_0_1,
+    status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_1_0_0,
                                         database->private_driver, &initialized, error);
   } else {
     status =
-        AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(), ADBC_VERSION_0_0_1,
+        AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(), ADBC_VERSION_1_0_0,
                        database->private_driver, &initialized, error);
   }
   if (status != ADBC_STATUS_OK) {
@@ -285,7 +285,7 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     delete database->private_driver;
     database->private_driver = nullptr;
     return status;
-  } else if (initialized < ADBC_VERSION_0_0_1) {
+  } else if (initialized < ADBC_VERSION_1_0_0) {
     if (database->private_driver->release) {
       database->private_driver->release(database->private_driver, error);
     }
@@ -293,7 +293,7 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     database->private_driver = nullptr;
 
     std::string message = "Database version is too old, expected ";
-    message += std::to_string(ADBC_VERSION_0_0_1);
+    message += std::to_string(ADBC_VERSION_1_0_0);
     message += " but got ";
     message += std::to_string(initialized);
     SetError(error, message);

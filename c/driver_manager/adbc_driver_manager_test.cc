@@ -48,9 +48,9 @@ class DriverManager : public ::testing::Test {
 
     size_t initialized = 0;
     ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcLoadDriver("adbc_driver_sqlite", NULL, ADBC_VERSION_0_0_1, &driver,
+        error, AdbcLoadDriver("adbc_driver_sqlite", NULL, ADBC_VERSION_1_0_0, &driver,
                               &initialized, &error));
-    ASSERT_EQ(initialized, ADBC_VERSION_0_0_1);
+    ASSERT_EQ(initialized, ADBC_VERSION_1_0_0);
 
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
     ASSERT_NE(database.private_data, nullptr);

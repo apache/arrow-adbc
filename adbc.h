@@ -1112,7 +1112,7 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
                                              struct AdbcError* error);
 
 // For use with count
-#define ADBC_VERSION_0_0_1 26
+#define ADBC_VERSION_1_0_0 26
 
 /// @}
 
@@ -1186,6 +1186,38 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
 /// </table>
 
 /// \page compatibility Backwards and Forwards Compatibility
+///
+/// The goal is to be **ABI-compatible** across releases.  Hence, a
+/// few choices were made:
+///
+/// - Most structures do not contain embedded fields or functions, but
+///   instead use free functions, making it easy to add new functions.
+/// - Enumerations are defined via `typedef`/`#define`.
+///
+/// The main point of concern is compatibility of AdbcDriver.  The
+/// current design assumes an approach also taken by UCX and some
+/// other libraries.
+///
+/// The driver entrypoint, AdbcDriverInitFunc, is given a pointer to
+/// AdbcDriver along with the number of entries in the struct.  Based
+/// on that, it knows the size of the struct and how many fields it
+/// can/should try to initialize.  Also, there is an out parameter so
+/// the driver can return how many entries were actually initialized.
+/// If/when we add more functions to the struct, then the following
+/// scenarios are possible:
+///
+/// - An updated client application uses an old driver library.  The
+///   client will pass a `count` field greater than what the driver
+///   recognizes, so the driver will initialize only part of the
+///   struct and the client can decide whether to abort or proceed.
+/// - An old client application uses an updated driver library.  The
+///   client will pass a `count` field less than what the driver
+///   recognizes, so the driver will know how much of the struct it
+///   can initialize (or whether it just errors instead because it can
+///   no longer honor the old API contract).
+///
+/// This approach does not let us change the signatures of existing
+/// functions or remove them—only add new functions.
 
 /// \page concurrency Concurrency and Thread Safety
 ///

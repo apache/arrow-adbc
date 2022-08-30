@@ -438,7 +438,7 @@ extern "C" {
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(size_t count, struct AdbcDriver* driver,
                               size_t* initialized, struct AdbcError* error) {
-  if (count < ADBC_VERSION_0_0_1) return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (count < ADBC_VERSION_1_0_0) return ADBC_STATUS_NOT_IMPLEMENTED;
 
   std::memset(driver, 0, sizeof(*driver));
   driver->DatabaseInit = PostgresDatabaseInit;
@@ -466,7 +466,7 @@ AdbcStatusCode AdbcDriverInit(size_t count, struct AdbcDriver* driver,
   driver->StatementRelease = PostgresStatementRelease;
   driver->StatementSetOption = PostgresStatementSetOption;
   driver->StatementSetSqlQuery = PostgresStatementSetSqlQuery;
-  *initialized = ADBC_VERSION_0_0_1;
+  *initialized = ADBC_VERSION_1_0_0;
   return ADBC_STATUS_OK;
 }
 }
