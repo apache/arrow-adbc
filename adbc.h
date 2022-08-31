@@ -656,8 +656,7 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
 
 /// \brief The name of the canonical option for whether the current
 ///   connection should be restricted to being read-only.
-#define ADBC_CONNECTION_OPTION_READ_ONLY \
-  "adbc.connection.readonly"
+#define ADBC_CONNECTION_OPTION_READ_ONLY "adbc.connection.readonly"
 
 /// \brief The name of the canonical option for setting the isolation
 ///   level of a transaction.
