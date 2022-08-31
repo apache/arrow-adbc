@@ -127,22 +127,13 @@ AdbcStatusCode PostgresConnectionGetInfo(struct AdbcConnection* connection,
                                          struct ArrowArrayStream* stream,
                                          struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
-  // if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  // auto ptr =
-  //     reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
-  // return (*ptr)->GetInfo(*ptr, info_codes, info_codes_length, error);
 }
 
 AdbcStatusCode PostgresConnectionGetObjects(
     struct AdbcConnection* connection, int depth, const char* catalog,
     const char* db_schema, const char* table_name, const char** table_types,
-    const char* column_name, struct AdbcStatement* statement, struct AdbcError* error) {
+    const char* column_name, struct ArrowArrayStream* stream, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
-  // if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  // auto ptr =
-  //     reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
-  // return (*ptr)->GetObjects(*ptr, depth, catalog, db_schema, table_name, table_types,
-  //                           column_name, error);
 }
 
 AdbcStatusCode PostgresConnectionGetTableSchema(
@@ -155,13 +146,9 @@ AdbcStatusCode PostgresConnectionGetTableSchema(
 }
 
 AdbcStatusCode PostgresConnectionGetTableTypes(struct AdbcConnection* connection,
-                                               struct AdbcStatement* statement,
+                                               struct ArrowArrayStream* stream,
                                                struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
-  // if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  // auto ptr =
-  //     reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
-  // return (*ptr)->GetTableTypes(*ptr, error);
 }
 
 AdbcStatusCode PostgresConnectionInit(struct AdbcConnection* connection,
@@ -225,10 +212,10 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         const char* catalog, const char* db_schema,
                                         const char* table_name, const char** table_types,
                                         const char* column_name,
-                                        struct AdbcStatement* statement,
+                                        struct ArrowArrayStream* stream,
                                         struct AdbcError* error) {
   return PostgresConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
-                                      table_types, column_name, statement, error);
+                                      table_types, column_name, stream, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -241,9 +228,9 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
-                                           struct AdbcStatement* statement,
+                                           struct ArrowArrayStream* stream,
                                            struct AdbcError* error) {
-  return PostgresConnectionGetTableTypes(connection, statement, error);
+  return PostgresConnectionGetTableTypes(connection, stream, error);
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
@@ -450,7 +437,7 @@ AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* e
   driver->ConnectionGetInfo = PostgresConnectionGetInfo;
   // driver->ConnectionGetObjects = PostgresConnectionGetObjects;
   driver->ConnectionGetTableSchema = PostgresConnectionGetTableSchema;
-  // driver->ConnectionGetTableTypes = PostgresConnectionGetTableTypes;
+  driver->ConnectionGetTableTypes = PostgresConnectionGetTableTypes;
   driver->ConnectionInit = PostgresConnectionInit;
   driver->ConnectionNew = PostgresConnectionNew;
   driver->ConnectionRelease = PostgresConnectionRelease;

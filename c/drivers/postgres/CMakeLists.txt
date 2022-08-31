@@ -63,10 +63,11 @@ if(ADBC_BUILD_TESTS)
                 adbc
                 SOURCES
                 postgres_test.cc
-                ../../validation/adbc_validation.c
+                ../../validation/adbc_validation.cc
                 ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c
                 EXTRA_LINK_LIBS
                 ${TEST_LINK_LIBS})
+  target_compile_features(adbc-driver-postgres-test PRIVATE cxx_std_17)
 endif()
 
 validate_config()

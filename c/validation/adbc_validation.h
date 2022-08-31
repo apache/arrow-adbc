@@ -18,30 +18,173 @@
 #ifndef ADBC_VALIDATION_H
 #define ADBC_VALIDATION_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <string>
 
 #include <adbc.h>
+#include <gtest/gtest.h>
 
-struct AdbcValidateTestContext {
-  int total;
-  int passed;
-  int failed;
-  AdbcStatusCode (*setup_database)(struct AdbcDatabase* database,
-                                   struct AdbcError* error);
+namespace adbc_validation {
+
+#define ADBCV_STRINGIFY(s) #s
+#define ADBCV_STRINGIFY_VALUE(s) ADBCV_STRINGIFY(s)
+
+/// \brief Configuration for driver-specific behavior.
+class DriverQuirks {
+ public:
+  /// \brief Do any initialization between New and Init.
+  virtual AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
+                                       struct AdbcError* error) const {
+    return ADBC_STATUS_OK;
+  }
+
+  /// \brief Drop the given table. Used by tests to reset state.
+  virtual AdbcStatusCode DropTable(struct AdbcConnection* connection,
+                                   const std::string& name,
+                                   struct AdbcError* error) const {
+    return ADBC_STATUS_OK;
+  }
+
+  /// \brief Return the SQL to reference the bind parameter of the given index
+  virtual std::string BindParameter(int index) const { return "?"; }
 };
 
-void AdbcValidateDatabaseNewRelease(struct AdbcValidateTestContext* adbc_context);
-void AdbcValidateConnectionNewRelease(struct AdbcValidateTestContext* adbc_context);
-void AdbcValidateConnectionAutocommit(struct AdbcValidateTestContext* adbc_context);
-void AdbcValidateStatementNewRelease(struct AdbcValidateTestContext* adbc_context);
-void AdbcValidateStatementSqlExecute(struct AdbcValidateTestContext* adbc_context);
-void AdbcValidateStatementSqlIngest(struct AdbcValidateTestContext* adbc_context);
-void AdbcValidateStatementSqlPrepare(struct AdbcValidateTestContext* adbc_context);
+class DatabaseTest {
+ public:
+  virtual const DriverQuirks* quirks() const = 0;
 
-#ifdef __cplusplus
-}
-#endif
+  void SetUpTest();
+  void TearDownTest();
+
+  // Test methods
+  void TestNewInit();
+  void TestRelease();
+
+ protected:
+  struct AdbcError error;
+  struct AdbcDatabase database;
+};
+
+#define ADBCV_TEST_DATABASE(FIXTURE)                                            \
+  static_assert(std::is_base_of<adbc_validation::DatabaseTest, FIXTURE>::value, \
+                ADBCV_STRINGIFY(FIXTURE) " must inherit from DatabaseTest");    \
+  TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                   \
+  TEST_F(FIXTURE, Release) { TestRelease(); }
+
+class ConnectionTest {
+ public:
+  virtual const DriverQuirks* quirks() const = 0;
+
+  void SetUpTest();
+  void TearDownTest();
+
+  // Test methods
+  void TestNewInit();
+  void TestRelease();
+  void TestConcurrent();
+  void TestAutocommitDefault();
+
+  void TestAutocommitToggle();
+
+  void TestMetadataGetInfo();
+  void TestMetadataGetTableSchema();
+  void TestMetadataGetTableTypes();
+
+  void TestMetadataGetObjectsCatalogs();
+  void TestMetadataGetObjectsDbSchemas();
+  void TestMetadataGetObjectsTables();
+  void TestMetadataGetObjectsTablesTypes();
+  void TestMetadataGetObjectsColumns();
+  void TestMetadataGetObjectsConstraints();
+
+ protected:
+  struct AdbcError error;
+  struct AdbcDatabase database;
+  struct AdbcConnection connection;
+};
+
+#define ADBCV_TEST_CONNECTION(FIXTURE)                                                \
+  static_assert(std::is_base_of<adbc_validation::ConnectionTest, FIXTURE>::value,     \
+                ADBCV_STRINGIFY(FIXTURE) " must inherit from ConnectionTest");        \
+  TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                         \
+  TEST_F(FIXTURE, Release) { TestRelease(); }                                         \
+  TEST_F(FIXTURE, Concurrent) { TestConcurrent(); }                                   \
+  TEST_F(FIXTURE, AutocommitDefault) { TestAutocommitDefault(); }                     \
+  TEST_F(FIXTURE, AutocommitToggle) { TestAutocommitToggle(); }                       \
+  TEST_F(FIXTURE, MetadataGetInfo) { TestMetadataGetInfo(); }                         \
+  TEST_F(FIXTURE, MetadataGetTableSchema) { TestMetadataGetTableSchema(); }           \
+  TEST_F(FIXTURE, MetadataGetTableTypes) { TestMetadataGetTableTypes(); }             \
+  TEST_F(FIXTURE, MetadataGetObjectsCatalogs) { TestMetadataGetObjectsCatalogs(); }   \
+  TEST_F(FIXTURE, MetadataGetObjectsDbSchemas) { TestMetadataGetObjectsDbSchemas(); } \
+  TEST_F(FIXTURE, MetadataGetObjectsTables) { TestMetadataGetObjectsTables(); }       \
+  TEST_F(FIXTURE, MetadataGetObjectsTablesTypes) {                                    \
+    TestMetadataGetObjectsTablesTypes();                                              \
+  }                                                                                   \
+  TEST_F(FIXTURE, MetadataGetObjectsColumns) { TestMetadataGetObjectsColumns(); }     \
+  TEST_F(FIXTURE, MetadataGetObjectsConstraints) { TestMetadataGetObjectsConstraints(); }
+
+class StatementTest {
+ public:
+  virtual const DriverQuirks* quirks() const = 0;
+
+  void SetUpTest();
+  void TearDownTest();
+
+  // Test methods
+  void TestNewInit();
+  void TestRelease();
+
+  // TODO: these should be parameterized tests
+  void TestSqlIngestInts();
+  void TestSqlIngestAppend();
+  void TestSqlIngestErrors();
+  void TestSqlIngestMultipleConnections();
+
+  void TestSqlPrepareSelectNoParams();
+  void TestSqlPrepareSelectParams();
+  void TestSqlPrepareUpdate();
+  void TestSqlPrepareUpdateNoParams();
+  void TestSqlPrepareUpdateStream();
+  void TestSqlPrepareErrorNoQuery();
+  void TestSqlPrepareErrorParamCountMismatch();
+
+  void TestSqlQueryInts();
+  void TestSqlQueryFloats();
+  void TestSqlQueryStrings();
+
+  void TestSqlQueryErrors();
+
+  // TODO: transactions
+
+ protected:
+  struct AdbcError error;
+  struct AdbcDatabase database;
+  struct AdbcConnection connection;
+  struct AdbcStatement statement;
+};
+
+#define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
+  static_assert(std::is_base_of<adbc_validation::StatementTest, FIXTURE>::value,        \
+                ADBCV_STRINGIFY(FIXTURE) " must inherit from StatementTest");           \
+  TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                           \
+  TEST_F(FIXTURE, Release) { TestRelease(); }                                           \
+  TEST_F(FIXTURE, SqlIngestInts) { TestSqlIngestInts(); }                               \
+  TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
+  TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
+  TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
+  TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \
+  TEST_F(FIXTURE, SqlPrepareSelectParams) { TestSqlPrepareSelectParams(); }             \
+  TEST_F(FIXTURE, SqlPrepareUpdate) { TestSqlPrepareUpdate(); }                         \
+  TEST_F(FIXTURE, SqlPrepareUpdateNoParams) { TestSqlPrepareUpdateNoParams(); }         \
+  TEST_F(FIXTURE, SqlPrepareUpdateStream) { TestSqlPrepareUpdateStream(); }             \
+  TEST_F(FIXTURE, SqlPrepareErrorNoQuery) { TestSqlPrepareErrorNoQuery(); }             \
+  TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) {                                  \
+    TestSqlPrepareErrorParamCountMismatch();                                            \
+  }                                                                                     \
+  TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
+  TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
+  TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                           \
+  TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }
+
+}  // namespace adbc_validation
 
 #endif  // ADBC_VALIDATION_H

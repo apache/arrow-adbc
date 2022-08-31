@@ -68,6 +68,7 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
       break;
 
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_MAP:
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_OFFSET;
       layout->element_size_bits[1] = 32;
       break;

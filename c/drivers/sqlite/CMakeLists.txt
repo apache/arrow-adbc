@@ -59,10 +59,11 @@ if(ADBC_BUILD_TESTS)
                 adbc
                 SOURCES
                 sqlite_test.cc
-                ../../validation/adbc_validation.c
+                ../../validation/adbc_validation.cc
                 ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c
                 EXTRA_LINK_LIBS
                 ${TEST_LINK_LIBS})
+  target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-sqlite-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
 endif()

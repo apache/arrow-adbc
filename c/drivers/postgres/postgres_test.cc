@@ -23,22 +23,10 @@
 
 #include "validation/adbc_validation.h"
 
-class Postgres : public ::testing::Test {
- protected:
-  void SetUp() override {
-    std::memset(&ctx, 0, sizeof(ctx));
-    ctx.setup_database = SetupDatabase;
-  }
-
-  void TearDown() override {
-    ASSERT_EQ(ctx.failed, 0);
-    ASSERT_EQ(ctx.total, ctx.passed);
-  }
-
-  struct AdbcValidateTestContext ctx;
-
-  static AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
-                                      struct AdbcError* error) {
+class PostgresQuirks : public adbc_validation::DriverQuirks {
+ public:
+  AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
+                               struct AdbcError* error) const override {
     const char* uri = std::getenv("ADBC_POSTGRES_TEST_URI");
     if (!uri) {
       ADD_FAILURE() << "Must provide env var ADBC_POSTGRES_TEST_URI";
@@ -46,25 +34,76 @@ class Postgres : public ::testing::Test {
     }
     return AdbcDatabaseSetOption(database, "uri", uri, error);
   }
+
+  AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
+                           struct AdbcError* error) const override {
+    struct AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    AdbcStatusCode status = AdbcStatementNew(connection, &statement, error);
+    if (status != ADBC_STATUS_OK) return status;
+
+    std::string query = "DROP TABLE IF EXISTS " + name;
+    status = AdbcStatementSetSqlQuery(&statement, query.c_str(), error);
+    if (status != ADBC_STATUS_OK) {
+      std::ignore = AdbcStatementRelease(&statement, error);
+      return status;
+    }
+    status = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, error);
+    std::ignore = AdbcStatementRelease(&statement, error);
+    return status;
+  }
+
+  std::string BindParameter(int index) const override {
+    return "$" + std::to_string(index + 1);
+  }
 };
 
-TEST_F(Postgres, ValidationDatabase) { AdbcValidateDatabaseNewRelease(&ctx); }
+class PostgresDatabaseTest : public ::testing::Test,
+                             public adbc_validation::DatabaseTest {
+ public:
+  const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
+  void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
+  void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-TEST_F(Postgres, ValidationConnectionNewRelease) {
-  AdbcValidateConnectionNewRelease(&ctx);
-}
+ protected:
+  PostgresQuirks quirks_;
+};
+ADBCV_TEST_DATABASE(PostgresDatabaseTest);
 
-TEST_F(Postgres, ValidationConnectionAutocommit) {
-  AdbcValidateConnectionAutocommit(&ctx);
-}
+class PostgresConnectionTest : public ::testing::Test,
+                               public adbc_validation::ConnectionTest {
+ public:
+  const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
+  void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
+  void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-TEST_F(Postgres, ValidationStatementNewRelease) { AdbcValidateStatementNewRelease(&ctx); }
+  void TestMetadataGetInfo() { GTEST_SKIP() << "Not yet implemented"; }
+  void TestMetadataGetTableSchema() { GTEST_SKIP() << "Not yet implemented"; }
+  void TestMetadataGetTableTypes() { GTEST_SKIP() << "Not yet implemented"; }
 
-TEST_F(Postgres, ValidationStatementSqlExecute) { AdbcValidateStatementSqlExecute(&ctx); }
+  void TestMetadataGetObjectsCatalogs() { GTEST_SKIP() << "Not yet implemented"; }
+  void TestMetadataGetObjectsDbSchemas() { GTEST_SKIP() << "Not yet implemented"; }
+  void TestMetadataGetObjectsTables() { GTEST_SKIP() << "Not yet implemented"; }
+  void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Not yet implemented"; }
+  void TestMetadataGetObjectsColumns() { GTEST_SKIP() << "Not yet implemented"; }
 
-TEST_F(Postgres, ValidationStatementSqlIngest) { AdbcValidateStatementSqlIngest(&ctx); }
+ protected:
+  PostgresQuirks quirks_;
+};
+ADBCV_TEST_CONNECTION(PostgresConnectionTest);
 
-TEST_F(Postgres, ValidationStatementSqlPrepare) {
-  GTEST_SKIP() << "Not yet implemented";
-  AdbcValidateStatementSqlPrepare(&ctx);
-}
+class PostgresStatementTest : public ::testing::Test,
+                              public adbc_validation::StatementTest {
+ public:
+  const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
+  void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
+  void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
+
+  void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
+  void TestSqlPrepareSelectNoParams() { GTEST_SKIP() << "Not yet implemented"; }
+  void TestSqlPrepareSelectParams() { GTEST_SKIP() << "Not yet implemented"; }
+
+ protected:
+  PostgresQuirks quirks_;
+};
+ADBCV_TEST_STATEMENT(PostgresStatementTest);

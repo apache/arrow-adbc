@@ -63,7 +63,8 @@ class TupleReader final {
 
 class PostgresStatement {
  public:
-  PostgresStatement() : connection_(nullptr), query_(), reader_(nullptr) {
+  PostgresStatement()
+      : connection_(nullptr), query_(), prepared_(false), reader_(nullptr) {
     std::memset(&bind_, 0, sizeof(bind_));
   }
 
@@ -92,6 +93,9 @@ class PostgresStatement {
       struct AdbcError* error);
   AdbcStatusCode ExecuteUpdateBulk(int64_t* rows_affected, struct AdbcError* error);
   AdbcStatusCode ExecuteUpdateQuery(int64_t* rows_affected, struct AdbcError* error);
+  AdbcStatusCode ExecutePreparedStatement(struct ArrowArrayStream* stream,
+                                          int64_t* rows_affected,
+                                          struct AdbcError* error);
 
  private:
   std::shared_ptr<TypeMapping> type_mapping_;
@@ -99,6 +103,7 @@ class PostgresStatement {
 
   // Query state
   std::string query_;
+  bool prepared_;
   struct ArrowArrayStream bind_;
 
   // Bulk ingest state

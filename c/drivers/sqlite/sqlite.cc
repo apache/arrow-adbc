@@ -395,8 +395,9 @@ class SqliteConnectionImpl {
     static std::shared_ptr<arrow::DataType> kConstraintSchema = arrow::struct_({
         arrow::field("constraint_name", arrow::utf8()),
         arrow::field("constraint_type", arrow::utf8(), /*nullable=*/false),
-        arrow::field("column_names", arrow::list(arrow::utf8()), /*nullable=*/false),
-        arrow::field("column_names", arrow::list(kUsageSchema)),
+        arrow::field("constraint_column_names", arrow::list(arrow::utf8()),
+                     /*nullable=*/false),
+        arrow::field("constraint_column_usage", arrow::list(kUsageSchema)),
     });
     static std::shared_ptr<arrow::DataType> kTableSchema = arrow::struct_({
         arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
@@ -926,6 +927,22 @@ class SqliteStatementReader : public arrow::RecordBatchReader {
       ADBC_RETURN_NOT_OK(BindNext(&rc_, error));
       ADBC_RETURN_NOT_OK(CheckRc(db, stmt_, rc_, "sqlite3_bind", error));
     }
+    const int num_params = sqlite3_bind_parameter_count(stmt_);
+    if (num_params > 0) {
+      if (!bind_parameters_) {
+        SetError(error, "Statement has parameters, but no parameters given");
+        return ADBC_STATUS_INVALID_STATE;
+      } else if (num_params != bind_parameters_->schema()->num_fields()) {
+        SetError(error, "Statement has ", num_params, " parameters, but ",
+                 bind_parameters_->schema()->num_fields(), " parameters given");
+        return ADBC_STATUS_INVALID_STATE;
+      }
+    } else if (bind_parameters_ && bind_parameters_->schema()->num_fields() > 0) {
+      SetError(error, "Statement has no parameters, but ",
+               bind_parameters_->schema()->num_fields(), " parameters given");
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
     // XXX: with parameters, inferring the schema from the first
     // argument is inaccurate (what if one is null?). Is there a way
     // to hint to SQLite the real type?
@@ -1320,6 +1337,7 @@ class SqliteStatementImpl {
       }));
     }
 
+    bind_parameters_.reset();
     return ADBC_STATUS_OK;
   }
 
