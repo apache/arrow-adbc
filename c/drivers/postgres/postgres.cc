@@ -296,15 +296,6 @@ AdbcStatusCode PostgresStatementExecuteQuery(struct AdbcStatement* statement,
   return (*ptr)->ExecuteQuery(output, rows_affected, error);
 }
 
-AdbcStatusCode PostgresStatementExecuteUpdate(struct AdbcStatement* statement,
-                                              int64_t* rows_affected,
-                                              struct AdbcError* error) {
-  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
-  return (*ptr)->ExecuteUpdate(rows_affected, error);
-}
-
 AdbcStatusCode PostgresStatementGetPartitionDesc(struct AdbcStatement* statement,
                                                  uint8_t* partition_desc,
                                                  struct AdbcError* error) {
@@ -390,12 +381,6 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
   return PostgresStatementExecuteQuery(statement, output, rows_affected, error);
 }
 
-AdbcStatusCode AdbcStatementExecuteUpdate(struct AdbcStatement* statement,
-                                          int64_t* rows_affected,
-                                          struct AdbcError* error) {
-  return PostgresStatementExecuteUpdate(statement, rows_affected, error);
-}
-
 AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
                                              uint8_t* partition_desc,
                                              struct AdbcError* error) {
@@ -466,7 +451,6 @@ AdbcStatusCode AdbcDriverInit(size_t count, struct AdbcDriver* driver,
   driver->StatementBind = PostgresStatementBind;
   driver->StatementBindStream = PostgresStatementBindStream;
   driver->StatementExecuteQuery = PostgresStatementExecuteQuery;
-  driver->StatementExecuteUpdate = PostgresStatementExecuteUpdate;
   driver->StatementGetParameterSchema = PostgresStatementGetParameterSchema;
   driver->StatementNew = PostgresStatementNew;
   driver->StatementPrepare = PostgresStatementPrepare;

@@ -75,7 +75,6 @@ class PostgresStatement {
   AdbcStatusCode Bind(struct ArrowArrayStream* stream, struct AdbcError* error);
   AdbcStatusCode ExecuteQuery(struct ArrowArrayStream* stream, int64_t* rows_affected,
                               struct AdbcError* error);
-  AdbcStatusCode ExecuteUpdate(int64_t* rows_affected, struct AdbcError* error);
   AdbcStatusCode GetParameterSchema(struct ArrowSchema* schema, struct AdbcError* error);
   AdbcStatusCode New(struct AdbcConnection* connection, struct AdbcError* error);
   AdbcStatusCode Prepare(struct AdbcError* error);

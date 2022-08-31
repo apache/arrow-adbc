@@ -497,15 +497,18 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
 AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                                                int64_t* rows_affected,
                                                struct AdbcError* error) {
+  ClearResult();
+  if (!stream) {
+    if (!ingest_.target.empty()) {
+      return ExecuteUpdateBulk(rows_affected, error);
+    }
+    return ExecuteUpdateQuery(rows_affected, error);
+  }
+
   if (query_.empty()) {
     SetError(error, "Must SetSqlQuery before ExecuteQuery");
     return ADBC_STATUS_INVALID_STATE;
   }
-  if (!stream) {
-    SetError(error, "Must provide output for ExecuteQuery");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-  ClearResult();
 
   // 1. Execute the query with LIMIT 0 to get the schema
   {
@@ -515,7 +518,9 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
     if (PQresultStatus(result) != PGRES_TUPLES_OK) {
-      SetError(error, "Failed to execute query: ", PQerrorMessage(connection_->conn()));
+      SetError(error, "Query was: ", schema_query);
+      SetError(error, "Failed to execute query: could not infer schema: ",
+               PQerrorMessage(connection_->conn()));
       PQclear(result);
       return ADBC_STATUS_IO;
     }
@@ -532,7 +537,9 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
     if (PQresultStatus(reader_.result_) != PGRES_COPY_OUT) {
-      SetError(error, "Failed to execute query: ", PQerrorMessage(connection_->conn()));
+      SetError(error, "Query was: ", copy_query);
+      SetError(error, "Failed to execute query: could not begin COPY: ",
+               PQerrorMessage(connection_->conn()));
       ClearResult();
       return ADBC_STATUS_IO;
     }
@@ -542,15 +549,6 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   reader_.ExportTo(stream);
   if (rows_affected) *rows_affected = -1;
   return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode PostgresStatement::ExecuteUpdate(int64_t* rows_affected,
-                                                struct AdbcError* error) {
-  ClearResult();
-  if (!ingest_.target.empty()) {
-    return ExecuteUpdateBulk(rows_affected, error);
-  }
-  return ExecuteUpdateQuery(rows_affected, error);
 }
 
 AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
@@ -722,11 +720,17 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
 
 AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
                                                      struct AdbcError* error) {
+  if (query_.empty()) {
+    SetError(error, "Must SetSqlQuery before ExecuteQuery");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+
   PGresult* result = PQexecParams(connection_->conn(), query_.c_str(), /*nParams=*/0,
                                   /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                                   /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                   /*resultFormat=*/1 /*(binary)*/);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+    SetError(error, "Query was: ", query_);
     SetError(error, "Failed to execute query: ", PQerrorMessage(connection_->conn()));
     PQclear(result);
     return ADBC_STATUS_IO;

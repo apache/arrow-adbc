@@ -42,6 +42,9 @@ class DriverManager : public ::testing::Test {
  public:
   void SetUp() override {
     std::memset(&driver, 0, sizeof(driver));
+    std::memset(&database, 0, sizeof(database));
+    std::memset(&connection, 0, sizeof(connection));
+    std::memset(&error, 0, sizeof(error));
 
     size_t initialized = 0;
     ADBC_ASSERT_OK_WITH_ERROR(
@@ -274,8 +277,8 @@ TEST_F(DriverManager, BulkIngestStream) {
                                       "bulk_insert", &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementBindStream(&statement, &export_stream, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error,
-                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
   }
 
@@ -285,8 +288,8 @@ TEST_F(DriverManager, BulkIngestStream) {
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
     ADBC_ASSERT_OK_WITH_ERROR(
         error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error,
-                              AdbcStatementExecuteUpdate(&statement, nullptr, &error));
+    ADBC_ASSERT_OK_WITH_ERROR(
+        error, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
 
     std::shared_ptr<arrow::Schema> schema;
     arrow::RecordBatchVector batches;

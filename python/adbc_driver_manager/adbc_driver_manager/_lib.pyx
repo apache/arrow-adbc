@@ -189,10 +189,6 @@ cdef extern from "adbc.h" nogil:
         CAdbcStatement* statement,
         CArrowArrayStream* out, int64_t* rows_affected,
         CAdbcError* error)
-    CAdbcStatusCode AdbcStatementExecuteUpdate(
-        CAdbcStatement* statement,
-        int64_t* rows_affected,
-        CAdbcError* error)
     CAdbcStatusCode AdbcStatementNew(
         CAdbcConnection* connection,
         CAdbcStatement* statement,
@@ -886,8 +882,9 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         cdef int64_t rows_affected = 0
         with nogil:
-            status = AdbcStatementExecuteUpdate(
+            status = AdbcStatementExecuteQuery(
                 &self.statement,
+                NULL,
                 &rows_affected,
                 &c_error)
         check_error(status, &c_error)

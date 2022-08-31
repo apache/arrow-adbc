@@ -76,8 +76,7 @@ public class FlightSqlConnection implements AdbcConnection {
   }
 
   @Override
-  public AdbcStatement.QueryResult deserializePartitionDescriptor(ByteBuffer descriptor)
-      throws AdbcException {
+  public ArrowReader readPartition(ByteBuffer descriptor) throws AdbcException {
     final FlightEndpoint endpoint;
     try {
       final Flight.FlightEndpoint protoEndpoint = Flight.FlightEndpoint.parseFrom(descriptor);
@@ -96,9 +95,8 @@ public class FlightSqlConnection implements AdbcConnection {
               "[Flight SQL] Partition descriptor is invalid: " + e.getMessage())
           .withCause(e);
     }
-    return new AdbcStatement.QueryResult(
-        /*affectedRows*/ -1,
-        new FlightInfoReader(allocator, client, clientCache, Collections.singletonList(endpoint)));
+    return new FlightInfoReader(
+        allocator, client, clientCache, Collections.singletonList(endpoint));
   }
 
   @Override
