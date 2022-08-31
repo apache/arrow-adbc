@@ -19,7 +19,7 @@
 name = "adbc_driver_manager"
 version = "0.0.1-alpha.1"
 description = ""
-authors = ["David Li <li.davidm96@gmail.com>"]
+authors = ["Apache Arrow Developers <dev@arrow.apache.org>"]
 license = "Apache-2.0"
 homepage = "https://arrow.apache.org"
 repository = "https://github.com/apache/arrow-adbc"

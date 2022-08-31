@@ -724,13 +724,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
 #endif  // defined(_WIN32)
 
-  auto result = AdbcLoadDriverFromInitFunc(init_func, count, driver, initialized, error);
-  if (result != ADBC_STATUS_OK) {
-#if defined(_WIN32)
-
-#endif  // defined(_WIN32)
-  }
-  return result;
+  return AdbcLoadDriverFromInitFunc(init_func, count, driver, initialized, error);
 }
 
 AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, size_t count,
