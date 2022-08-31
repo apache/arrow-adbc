@@ -171,7 +171,7 @@ uint64_t ToNetworkInt64(int64_t v) { return htobe64(static_cast<uint64_t>(v)); }
 }  // namespace
 
 int TupleReader::GetSchema(struct ArrowSchema* out) {
-  if (!result_) {
+  if (!schema_.release) {
     last_error_ = "[libpq] Result set was already consumed or freed";
     return EINVAL;
   }

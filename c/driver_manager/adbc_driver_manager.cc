@@ -65,6 +65,11 @@ void SetError(struct AdbcError* error, const std::string& message) {
 
 // Default stubs
 
+AdbcStatusCode DatabaseSetOption(struct AdbcDatabase* database, const char* key,
+                                 const char* value, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode ConnectionCommit(struct AdbcConnection*, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
@@ -147,6 +152,7 @@ struct TempDatabase {
   std::string driver;
   // Default name (see adbc.h)
   std::string entrypoint = "AdbcDriverInit";
+  AdbcDriverInitFunc init_func = nullptr;
 };
 
 /// Temporary state while the database is being configured.
@@ -209,7 +215,7 @@ static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError*
 
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
   // Allocate a temporary structure to store options pre-Init
-  database->private_data = new TempDatabase;
+  database->private_data = new TempDatabase();
   database->private_driver = nullptr;
   return ADBC_STATUS_OK;
 }
@@ -231,14 +237,27 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* database,
+                                                    AdbcDriverInitFunc init_func,
+                                                    struct AdbcError* error) {
+  if (database->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+
+  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
+  args->init_func = init_func;
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
   if (!database->private_data) {
     SetError(error, "Must call AdbcDatabaseNew first");
     return ADBC_STATUS_INVALID_STATE;
   }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  if (args->driver.empty()) {
-    // Don't delete args here; caller should still call AdbcDatabaseRelease
+  if (args->init_func) {
+    // Do nothing
+  } else if (args->driver.empty()) {
     SetError(error, "Must provide 'driver' parameter");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
@@ -246,10 +265,20 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   database->private_driver = new AdbcDriver;
   std::memset(database->private_driver, 0, sizeof(AdbcDriver));
   size_t initialized = 0;
-  AdbcStatusCode status =
-      AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(), ADBC_VERSION_0_0_1,
-                     database->private_driver, &initialized, error);
+  AdbcStatusCode status;
+  // So we don't confuse a driver into thinking it's initialized already
+  database->private_data = nullptr;
+  if (args->init_func) {
+    status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_0_0_1,
+                                        database->private_driver, &initialized, error);
+  } else {
+    status =
+        AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(), ADBC_VERSION_0_0_1,
+                       database->private_driver, &initialized, error);
+  }
   if (status != ADBC_STATUS_OK) {
+    // Restore private_data so it will be released by AdbcDatabaseRelease
+    database->private_data = args;
     if (database->private_driver->release) {
       database->private_driver->release(database->private_driver, error);
     }
@@ -585,16 +614,6 @@ const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
 AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
                               size_t count, struct AdbcDriver* driver,
                               size_t* initialized, struct AdbcError* error) {
-#define FILL_DEFAULT(DRIVER, STUB) \
-  if (!DRIVER->STUB) {             \
-    DRIVER->STUB = &STUB;          \
-  }
-#define CHECK_REQUIRED(DRIVER, STUB)                                           \
-  if (!DRIVER->STUB) {                                                         \
-    SetError(error, "Driver does not implement required function Adbc" #STUB); \
-    return ADBC_STATUS_INTERNAL;                                               \
-  }
-
   AdbcDriverInitFunc init_func;
   std::string error_message;
 
@@ -695,11 +714,23 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
 #endif  // defined(_WIN32)
 
+  return AdbcLoadDriverFromInitFunc(init_func, count, driver, initialized, error);
+}
+
+AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, size_t count,
+                                          struct AdbcDriver* driver, size_t* initialized,
+                                          struct AdbcError* error) {
+#define FILL_DEFAULT(DRIVER, STUB) \
+  if (!DRIVER->STUB) {             \
+    DRIVER->STUB = &STUB;          \
+  }
+#define CHECK_REQUIRED(DRIVER, STUB)                                           \
+  if (!DRIVER->STUB) {                                                         \
+    SetError(error, "Driver does not implement required function Adbc" #STUB); \
+    return ADBC_STATUS_INTERNAL;                                               \
+  }
+
   auto result = init_func(count, driver, initialized, error);
-#if defined(_WIN32)
-  driver->private_manager = new ManagerDriverState{handle, driver->release};
-  driver->release = &ReleaseDriver;
-#endif  // defined(_WIN32)
   if (result != ADBC_STATUS_OK) {
     return result;
   }
@@ -707,6 +738,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   CHECK_REQUIRED(driver, DatabaseNew);
   CHECK_REQUIRED(driver, DatabaseInit);
   CHECK_REQUIRED(driver, DatabaseRelease);
+  FILL_DEFAULT(driver, DatabaseSetOption);
 
   CHECK_REQUIRED(driver, ConnectionGetInfo);
   CHECK_REQUIRED(driver, ConnectionNew);

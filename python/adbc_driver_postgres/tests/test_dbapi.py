@@ -15,6 +15,23 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_manager, adbc_driver_postgres
-profile = black
+import os
+
+import pytest
+
+from adbc_driver_postgres import dbapi
+
+
+@pytest.fixture
+def postgres():
+    postgres_uri = os.environ.get("ADBC_POSTGRES_TEST_URI")
+    if not postgres_uri:
+        pytest.skip("Set ADBC_POSTGRES_TEST_URI to run tests")
+    with dbapi.connect(postgres_uri) as conn:
+        yield conn
+
+
+def test_query_trivial(postgres):
+    with postgres.cursor() as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchone() == (1,)

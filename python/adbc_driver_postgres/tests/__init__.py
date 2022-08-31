@@ -14,7 +14,3 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
-[settings]
-known_first_party = adbc_driver_manager, adbc_driver_postgres
-profile = black

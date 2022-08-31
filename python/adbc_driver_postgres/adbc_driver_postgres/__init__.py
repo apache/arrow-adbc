@@ -15,6 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_manager, adbc_driver_postgres
-profile = black
+import importlib.resources
+
+import adbc_driver_manager
+
+
+def connect(uri: str) -> adbc_driver_manager.AdbcDatabase:
+    """Create a low level ADBC connection to Postgres."""
+    with importlib.resources.path(
+        __package__, "libadbc_driver_postgres.so"
+    ) as entrypoint:
+        return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)

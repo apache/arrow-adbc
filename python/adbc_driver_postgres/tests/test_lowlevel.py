@@ -15,6 +15,28 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_manager, adbc_driver_postgres
-profile = black
+import os
+
+import pyarrow
+import pytest
+
+import adbc_driver_manager
+import adbc_driver_postgres
+
+
+@pytest.fixture
+def postgres():
+    postgres_uri = os.environ.get("ADBC_POSTGRES_TEST_URI")
+    if not postgres_uri:
+        pytest.skip("Set ADBC_POSTGRES_TEST_URI to run tests")
+    with adbc_driver_postgres.connect(postgres_uri) as db:
+        with adbc_driver_manager.AdbcConnection(db) as conn:
+            yield conn
+
+
+def test_query_trivial(postgres):
+    with adbc_driver_manager.AdbcStatement(postgres) as stmt:
+        stmt.set_sql_query("SELECT 1")
+        stream, _ = stmt.execute_query()
+        reader = pyarrow.RecordBatchReader._import_from_c(stream.address)
+        assert reader.read_all()

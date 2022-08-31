@@ -301,7 +301,11 @@ class Cursor(_Closeable):
         if operation != self._last_query:
             self._last_query = operation
             self._stmt.set_sql_query(operation)
-            self._stmt.prepare()
+            try:
+                self._stmt.prepare()
+            except NotSupportedError:
+                # Not all drivers support it
+                pass
 
         if parameters:
             rb = pyarrow.record_batch(

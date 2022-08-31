@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,6 +17,19 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_manager, adbc_driver_postgres
-profile = black
+import os
+import shutil
+from pathlib import Path
+
+
+def build(setup_kwargs):
+    """Configure build for Poetry."""
+    library = os.environ.get("ADBC_POSTGRES_LIBRARY")
+    if not library:
+        raise ValueError("Must provide ADBC_POSTGRES_LIBRARY")
+
+    shutil.copy(
+        library, Path("./adbc_driver_postgres/libadbc_driver_postgres.so").resolve()
+    )
+
+    setup_kwargs["zip_safe"] = False
