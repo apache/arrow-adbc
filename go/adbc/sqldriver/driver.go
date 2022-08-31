@@ -213,7 +213,7 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 		}
 
 		if opts.ReadOnly {
-			if err := postopt.SetOption(adbc.OptionKeyTransactionReadOnly, adbc.OptionValueEnabled); err != nil {
+			if err := postopt.SetOption(adbc.OptionKeyReadOnly, adbc.OptionValueEnabled); err != nil {
 				return nil, err
 			}
 		}

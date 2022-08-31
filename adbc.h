@@ -655,9 +655,9 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
 #define ADBC_CONNECTION_OPTION_AUTOCOMMIT "adbc.connection.autocommit"
 
 /// \brief The name of the canonical option for whether the current
-///   transaction should be restricted to being a read-only transaction.
-#define ADBC_CONNECTION_OPTION_TRANSACTION_READ_ONLY \
-  "adbc.connection.transaction.readonly"
+///   connection should be restricted to being read-only.
+#define ADBC_CONNECTION_OPTION_READ_ONLY \
+  "adbc.connection.readonly"
 
 /// \brief The name of the canonical option for setting the isolation
 ///   level of a transaction.

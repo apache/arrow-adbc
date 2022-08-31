@@ -143,15 +143,15 @@ const (
 
 // Canonical option values
 const (
-	OptionValueEnabled           = "true"
-	OptionValueDisabled          = "false"
-	OptionKeyAutoCommit          = "adbc.connection.autocommit"
-	OptionKeyIngestTargetTable   = "adbc.ingest.target_table"
-	OptionKeyIngestMode          = "adbc.ingest.mode"
-	OptionKeyIsolationLevel      = "adbc.connection.transaction.isolation_level"
-	OptionKeyTransactionReadOnly = "adbc.connection.transaction.readonly"
-	OptionValueIngestModeCreate  = "adbc.ingest.mode.create"
-	OptionValueIngestModeAppend  = "adbc.ingest.mode.append"
+	OptionValueEnabled          = "true"
+	OptionValueDisabled         = "false"
+	OptionKeyAutoCommit         = "adbc.connection.autocommit"
+	OptionKeyIngestTargetTable  = "adbc.ingest.target_table"
+	OptionKeyIngestMode         = "adbc.ingest.mode"
+	OptionKeyIsolationLevel     = "adbc.connection.transaction.isolation_level"
+	OptionKeyReadOnly           = "adbc.connection.readonly"
+	OptionValueIngestModeCreate = "adbc.ingest.mode.create"
+	OptionValueIngestModeAppend = "adbc.ingest.mode.append"
 )
 
 type OptionIsolationLevel string
