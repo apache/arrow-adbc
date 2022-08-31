@@ -1088,8 +1088,6 @@ struct ADBC_EXPORT AdbcDriver {
                                          struct AdbcError*);
   AdbcStatusCode (*StatementSetSubstraitPlan)(struct AdbcStatement*, const uint8_t*,
                                               size_t, struct AdbcError*);
-
-  // Do not edit fields. New fields can only be appended to the end.
 };
 
 /// \brief Common entry point for drivers via the driver manager
@@ -1100,19 +1098,24 @@ struct ADBC_EXPORT AdbcDriver {
 /// Although drivers may choose any name for this function, the
 /// recommended name is "AdbcDriverInit".
 ///
-/// \param[in] count The number of entries to initialize. Provides
-///   backwards compatibility if the struct definition is changed.
-/// \param[out] driver The table of function pointers to initialize.
-/// \param[out] initialized How much of the table was actually
-///   initialized (can be less than count).
+/// \param[in] version The ADBC revision to attempt to initialize (see
+///   ADBC_VERSION_1_0_0).
+/// \param[out] driver The table of function pointers to
+///   initialize. Should be a pointer to the appropriate struct for
+///   the given version (see the documentation for the version).
 /// \param[out] error An optional location to return an error message
 ///   if necessary.
-typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* driver,
-                                             size_t* initialized,
+/// \return ADBC_STATUS_OK if the driver was initialized, or
+///   ADBC_STATUS_NOT_IMPLEMENTED if the version is not supported.  In
+///   that case, clients may retry with a different version.
+typedef AdbcStatusCode (*AdbcDriverInitFunc)(int version, void* driver,
                                              struct AdbcError* error);
 
-// For use with count
-#define ADBC_VERSION_1_0_0 26
+/// \brief ADBC revision 1.0.0.
+///
+/// When passed to an AdbcDriverInitFunc(), the driver parameter must
+/// point to an AdbcDriver.
+#define ADBC_VERSION_1_0_0 1000000
 
 /// @}
 
@@ -1194,30 +1197,30 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
 ///   instead use free functions, making it easy to add new functions.
 /// - Enumerations are defined via `typedef`/`#define`.
 ///
-/// The main point of concern is compatibility of AdbcDriver.  The
-/// current design assumes an approach also taken by UCX and some
-/// other libraries.
+/// Of course, we can never add/remove/change struct members, and we
+/// can never change the signatures of existing functions.
 ///
-/// The driver entrypoint, AdbcDriverInitFunc, is given a pointer to
-/// AdbcDriver along with the number of entries in the struct.  Based
-/// on that, it knows the size of the struct and how many fields it
-/// can/should try to initialize.  Also, there is an out parameter so
-/// the driver can return how many entries were actually initialized.
-/// If/when we add more functions to the struct, then the following
-/// scenarios are possible:
+/// The main point of concern is compatibility of AdbcDriver.
+///
+/// The driver entrypoint, AdbcDriverInitFunc(), is given a version
+/// and a pointer to a table of function pointers to initialize.  The
+/// type of the table will depend on the version; when a new version
+/// of ADBC is accepted, then a new table of function pointers will be
+/// added.  That way, the driver knows the type of the table.  If/when
+/// we add a new ADBC version, the following scenarios are possible:
 ///
 /// - An updated client application uses an old driver library.  The
-///   client will pass a `count` field greater than what the driver
-///   recognizes, so the driver will initialize only part of the
-///   struct and the client can decide whether to abort or proceed.
+///   client will pass a `version` field greater than what the driver
+///   recognizes, so the driver will return ADBC_STATUS_NOT_IMPLEMENTED
+///   and the client can decide whether to abort or retry with an older
+///   version.
 /// - An old client application uses an updated driver library.  The
-///   client will pass a `count` field less than what the driver
-///   recognizes, so the driver will know how much of the struct it
-///   can initialize (or whether it just errors instead because it can
-///   no longer honor the old API contract).
+///   client will pass a `version` lower than what the driver
+///   recognizes, so the driver can either error, or if it can still
+///   implement the old API contract, initialize the older table.
 ///
 /// This approach does not let us change the signatures of existing
-/// functions or remove them—only add new functions.
+/// functions, but we can add new functions and remove existing ones.
 
 /// \page concurrency Concurrency and Thread Safety
 ///

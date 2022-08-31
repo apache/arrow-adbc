@@ -119,7 +119,7 @@ cdef extern from "adbc.h" nogil:
     CAdbcStatusCode AdbcDatabaseInit(CAdbcDatabase* database, CAdbcError* error)
     CAdbcStatusCode AdbcDatabaseRelease(CAdbcDatabase* database, CAdbcError* error)
 
-    ctypedef void (*CAdbcDriverInitFunc "AdbcDriverInitFunc")(size_t, CAdbcDriver*, size_t*, CAdbcError*)
+    ctypedef void (*CAdbcDriverInitFunc "AdbcDriverInitFunc")(int, void*, CAdbcError*)
     CAdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(
         CAdbcDatabase* database,
         CAdbcDriverInitFunc init_func,

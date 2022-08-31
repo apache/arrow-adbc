@@ -1736,10 +1736,10 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
 
 extern "C" {
 ADBC_EXPORT
-AdbcStatusCode AdbcDriverInit(size_t count, struct AdbcDriver* driver,
-                              size_t* initialized, struct AdbcError* error) {
-  if (count < ADBC_VERSION_1_0_0) return ADBC_STATUS_NOT_IMPLEMENTED;
+AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* error) {
+  if (version != ADBC_VERSION_1_0_0) return ADBC_STATUS_NOT_IMPLEMENTED;
 
+  auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
   std::memset(driver, 0, sizeof(*driver));
   driver->DatabaseInit = SqliteDatabaseInit;
   driver->DatabaseNew = SqliteDatabaseNew;
@@ -1766,7 +1766,6 @@ AdbcStatusCode AdbcDriverInit(size_t count, struct AdbcDriver* driver,
   driver->StatementRelease = SqliteStatementRelease;
   driver->StatementSetOption = SqliteStatementSetOption;
   driver->StatementSetSqlQuery = SqliteStatementSetSqlQuery;
-  *initialized = ADBC_VERSION_1_0_0;
   return ADBC_STATUS_OK;
 }
 }
