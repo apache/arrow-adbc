@@ -30,7 +30,7 @@ $ meson compile -C glib.build
 $ sudo meson install -C glib.build
 ```
 
-## How test test
+## How to test
 
 ```console
 $ (cd glib && bundle install)
