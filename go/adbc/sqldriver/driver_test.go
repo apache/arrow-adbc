@@ -1,0 +1,55 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+package sqldriver_test
+
+import (
+	"database/sql"
+	"fmt"
+	"testing"
+
+	"github.com/apache/arrow-adbc/go/adbc/cgodriver"
+	"github.com/apache/arrow-adbc/go/adbc/sqldriver"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestSqlDriver(t *testing.T) {
+	sql.Register("adbc", sqldriver.Driver{&cgodriver.Driver{}})
+
+	db, err := sql.Open("adbc", "driver=adbc_driver_sqlite;entrypoint=AdbcDriverInit")
+	require.NoError(t, err)
+	assert.NotNil(t, db)
+
+	rows, err := db.Query("SELECT 1")
+	assert.NoError(t, err)
+	defer rows.Close()
+
+	fmt.Println(rows.Columns())
+	cols, err := rows.ColumnTypes()
+	require.NoError(t, err)
+	fmt.Println(cols[0].Name(), cols[0].DatabaseTypeName())
+	fmt.Println(cols[0].Nullable())
+
+	for rows.Next() {
+		var v int64
+		if err := rows.Scan(&v); err != nil {
+			t.Fatal(err)
+		}
+		fmt.Println(v)
+	}
+}
