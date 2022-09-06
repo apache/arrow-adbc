@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-/// \file ADBC: Arrow Database connectivity
+/// \file adbc.h ADBC: Arrow Database connectivity
 ///
 /// An Arrow-based interface between applications and database
 /// drivers.  ADBC aims to provide a vendor-independent API for SQL
@@ -28,7 +28,7 @@
 /// provided, which implements this same API, but dynamically loads
 /// drivers internally and forwards calls appropriately.
 ///
-/// EXPERIMENTAL. Interface subject to change.
+/// \version 1.0.0
 
 #pragma once
 
@@ -1190,6 +1190,8 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(int version, void* driver,
 
 /// \page compatibility Backwards and Forwards Compatibility
 ///
+/// ## Compatibility
+///
 /// The goal is to be **ABI-compatible** across releases.  Hence, a
 /// few choices were made:
 ///
@@ -1221,6 +1223,23 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(int version, void* driver,
 ///
 /// This approach does not let us change the signatures of existing
 /// functions, but we can add new functions and remove existing ones.
+///
+/// ## Versioning
+///
+/// ADBC is versioned separately from the core Arrow project.  The API
+/// standard and components (driver manager, drivers) are also
+/// versioned separately, but both follow semantic versioning.
+///
+/// For example: components may make backwards-compatible releases as
+/// 1.0.0, 1.0.1, 1.1.0, 1.2.0, etc.  They may release
+/// backwards-incompatible versions such as 2.0.0, but which still
+/// implement the API standard version 1.0.0.
+///
+/// Similarly, this documentation describes the ADBC API standard
+/// version 1.0.0.  If/when a compatible revision is made (e.g. new
+/// standard options are defined), the next version would be 1.1.0.
+/// If incompatible changes are made (e.g. new API functions), the
+/// next version would be 2.0.0.
 
 /// \page concurrency Concurrency and Thread Safety
 ///

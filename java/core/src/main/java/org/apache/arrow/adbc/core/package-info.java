@@ -27,6 +27,6 @@
  * provided, which implements this same API, but dynamically loads drivers internally and forwards
  * calls appropriately.
  *
- * <p>ADBC is currently experimental. Interface is subject to change.
+ * @version 1.0.0
  */
 package org.apache.arrow.adbc.core;
