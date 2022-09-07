@@ -46,11 +46,8 @@ class DriverManager : public ::testing::Test {
     std::memset(&connection, 0, sizeof(connection));
     std::memset(&error, 0, sizeof(error));
 
-    size_t initialized = 0;
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcLoadDriver("adbc_driver_sqlite", NULL, ADBC_VERSION_0_0_1, &driver,
-                              &initialized, &error));
-    ASSERT_EQ(initialized, ADBC_VERSION_0_0_1);
+    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcLoadDriver("adbc_driver_sqlite", NULL,
+                                                    ADBC_VERSION_1_0_0, &driver, &error));
 
     ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
     ASSERT_NE(database.private_data, nullptr);

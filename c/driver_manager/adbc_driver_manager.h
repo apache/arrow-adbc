@@ -37,17 +37,13 @@ extern "C" {
 ///   shared library on Linux).
 /// \param[in] entrypoint An identifier for the entrypoint (e.g. the
 ///   symbol to call for AdbcDriverInitFunc on Linux).
-/// \param[in] count The number of entries to initialize. Provides
-///   backwards compatibility if the struct definition is changed.
+/// \param[in] version The ADBC revision to attempt to initialize.
 /// \param[out] driver The table of function pointers to initialize.
-/// \param[out] initialized How much of the table was actually
-///   initialized (can be less than count).
 /// \param[out] error An optional location to return an error message
 ///   if necessary.
 ADBC_EXPORT
 AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
-                              size_t count, struct AdbcDriver* driver,
-                              size_t* initialized, struct AdbcError* error);
+                              int version, void* driver, struct AdbcError* error);
 
 /// \brief Common entry point for drivers via the driver manager.
 ///
@@ -57,17 +53,13 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 /// functions must be implemented by the driver.
 ///
 /// \param[in] entrypoint The entrypoint to call.
-/// \param[in] count The number of entries to initialize. Provides
-///   backwards compatibility if the struct definition is changed.
+/// \param[in] version The ADBC revision to attempt to initialize.
 /// \param[out] driver The table of function pointers to initialize.
-/// \param[out] initialized How much of the table was actually
-///   initialized (can be less than count).
 /// \param[out] error An optional location to return an error message
 ///   if necessary.
 ADBC_EXPORT
-AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, size_t count,
-                                          struct AdbcDriver* driver, size_t* initialized,
-                                          struct AdbcError* error);
+AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int version,
+                                          void* driver, struct AdbcError* error);
 
 /// \brief Set the AdbcDriverInitFunc to use.
 ///

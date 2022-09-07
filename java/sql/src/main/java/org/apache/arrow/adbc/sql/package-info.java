@@ -15,9 +15,5 @@
  * limitations under the License.
  */
 
-/**
- * This module contains common utilities for drivers working with SQL.
- *
- * <p>ADBC is currently experimental.
- */
+/** This module contains common utilities for drivers working with SQL. */
 package org.apache.arrow.adbc.sql;

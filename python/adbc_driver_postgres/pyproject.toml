@@ -17,7 +17,7 @@
 
 [tool.poetry]
 name = "adbc_driver_postgres"
-version = "0.0.0-alpha0"
+version = "1.0.0-alpha0"
 description = ""
 authors = ["Apache Arrow Developers <dev@arrow.apache.org>"]
 license = "Apache-2.0"

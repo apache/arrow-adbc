@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-/// \file ADBC: Arrow Database connectivity
+/// \file adbc.h ADBC: Arrow Database connectivity
 ///
 /// An Arrow-based interface between applications and database
 /// drivers.  ADBC aims to provide a vendor-independent API for SQL
@@ -28,7 +28,7 @@
 /// provided, which implements this same API, but dynamically loads
 /// drivers internally and forwards calls appropriately.
 ///
-/// EXPERIMENTAL. Interface subject to change.
+/// \version 1.0.0
 
 #pragma once
 
@@ -1088,8 +1088,6 @@ struct ADBC_EXPORT AdbcDriver {
                                          struct AdbcError*);
   AdbcStatusCode (*StatementSetSubstraitPlan)(struct AdbcStatement*, const uint8_t*,
                                               size_t, struct AdbcError*);
-
-  // Do not edit fields. New fields can only be appended to the end.
 };
 
 /// \brief Common entry point for drivers via the driver manager
@@ -1100,19 +1098,24 @@ struct ADBC_EXPORT AdbcDriver {
 /// Although drivers may choose any name for this function, the
 /// recommended name is "AdbcDriverInit".
 ///
-/// \param[in] count The number of entries to initialize. Provides
-///   backwards compatibility if the struct definition is changed.
-/// \param[out] driver The table of function pointers to initialize.
-/// \param[out] initialized How much of the table was actually
-///   initialized (can be less than count).
+/// \param[in] version The ADBC revision to attempt to initialize (see
+///   ADBC_VERSION_1_0_0).
+/// \param[out] driver The table of function pointers to
+///   initialize. Should be a pointer to the appropriate struct for
+///   the given version (see the documentation for the version).
 /// \param[out] error An optional location to return an error message
 ///   if necessary.
-typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* driver,
-                                             size_t* initialized,
+/// \return ADBC_STATUS_OK if the driver was initialized, or
+///   ADBC_STATUS_NOT_IMPLEMENTED if the version is not supported.  In
+///   that case, clients may retry with a different version.
+typedef AdbcStatusCode (*AdbcDriverInitFunc)(int version, void* driver,
                                              struct AdbcError* error);
 
-// For use with count
-#define ADBC_VERSION_0_0_1 26
+/// \brief ADBC revision 1.0.0.
+///
+/// When passed to an AdbcDriverInitFunc(), the driver parameter must
+/// point to an AdbcDriver.
+#define ADBC_VERSION_1_0_0 1000000
 
 /// @}
 
@@ -1186,6 +1189,57 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(size_t count, struct AdbcDriver* dr
 /// </table>
 
 /// \page compatibility Backwards and Forwards Compatibility
+///
+/// ## Compatibility
+///
+/// The goal is to be **ABI-compatible** across releases.  Hence, a
+/// few choices were made:
+///
+/// - Most structures do not contain embedded fields or functions, but
+///   instead use free functions, making it easy to add new functions.
+/// - Enumerations are defined via `typedef`/`#define`.
+///
+/// Of course, we can never add/remove/change struct members, and we
+/// can never change the signatures of existing functions.
+///
+/// The main point of concern is compatibility of AdbcDriver.
+///
+/// The driver entrypoint, AdbcDriverInitFunc(), is given a version
+/// and a pointer to a table of function pointers to initialize.  The
+/// type of the table will depend on the version; when a new version
+/// of ADBC is accepted, then a new table of function pointers will be
+/// added.  That way, the driver knows the type of the table.  If/when
+/// we add a new ADBC version, the following scenarios are possible:
+///
+/// - An updated client application uses an old driver library.  The
+///   client will pass a `version` field greater than what the driver
+///   recognizes, so the driver will return ADBC_STATUS_NOT_IMPLEMENTED
+///   and the client can decide whether to abort or retry with an older
+///   version.
+/// - An old client application uses an updated driver library.  The
+///   client will pass a `version` lower than what the driver
+///   recognizes, so the driver can either error, or if it can still
+///   implement the old API contract, initialize the older table.
+///
+/// This approach does not let us change the signatures of existing
+/// functions, but we can add new functions and remove existing ones.
+///
+/// ## Versioning
+///
+/// ADBC is versioned separately from the core Arrow project.  The API
+/// standard and components (driver manager, drivers) are also
+/// versioned separately, but both follow semantic versioning.
+///
+/// For example: components may make backwards-compatible releases as
+/// 1.0.0, 1.0.1, 1.1.0, 1.2.0, etc.  They may release
+/// backwards-incompatible versions such as 2.0.0, but which still
+/// implement the API standard version 1.0.0.
+///
+/// Similarly, this documentation describes the ADBC API standard
+/// version 1.0.0.  If/when a compatible revision is made (e.g. new
+/// standard options are defined), the next version would be 1.1.0.
+/// If incompatible changes are made (e.g. new API functions), the
+/// next version would be 2.0.0.
 
 /// \page concurrency Concurrency and Thread Safety
 ///

@@ -25,9 +25,9 @@ include(DefineOptions)
 include(GNUInstallDirs) # Populates CMAKE_INSTALL_INCLUDEDIR
 include(san-config)
 
-set(ADBC_VERSION "9.0.0-SNAPSHOT")
-set(ADBC_BASE_VERSION "9.0.0")
-set(ADBC_VERSION_MAJOR "9")
+set(ADBC_VERSION "1.0.0-SNAPSHOT")
+set(ADBC_BASE_VERSION "1.0.0")
+set(ADBC_VERSION_MAJOR "1")
 set(ADBC_VERSION_MINOR "0")
 set(ADBC_VERSION_PATCH "0")
 

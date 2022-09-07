@@ -264,17 +264,15 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
 
   database->private_driver = new AdbcDriver;
   std::memset(database->private_driver, 0, sizeof(AdbcDriver));
-  size_t initialized = 0;
   AdbcStatusCode status;
   // So we don't confuse a driver into thinking it's initialized already
   database->private_data = nullptr;
   if (args->init_func) {
-    status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_0_0_1,
-                                        database->private_driver, &initialized, error);
+    status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_1_0_0,
+                                        database->private_driver, error);
   } else {
-    status =
-        AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(), ADBC_VERSION_0_0_1,
-                       database->private_driver, &initialized, error);
+    status = AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(),
+                            ADBC_VERSION_1_0_0, database->private_driver, error);
   }
   if (status != ADBC_STATUS_OK) {
     // Restore private_data so it will be released by AdbcDatabaseRelease
@@ -284,19 +282,6 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     }
     delete database->private_driver;
     database->private_driver = nullptr;
-    return status;
-  } else if (initialized < ADBC_VERSION_0_0_1) {
-    if (database->private_driver->release) {
-      database->private_driver->release(database->private_driver, error);
-    }
-    delete database->private_driver;
-    database->private_driver = nullptr;
-
-    std::string message = "Database version is too old, expected ";
-    message += std::to_string(ADBC_VERSION_0_0_1);
-    message += " but got ";
-    message += std::to_string(initialized);
-    SetError(error, message);
     return status;
   }
   status = database->private_driver->DatabaseNew(database, error);
@@ -612,10 +597,16 @@ const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
 }
 
 AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
-                              size_t count, struct AdbcDriver* driver,
-                              size_t* initialized, struct AdbcError* error) {
+                              int version, void* raw_driver, struct AdbcError* error) {
   AdbcDriverInitFunc init_func;
   std::string error_message;
+
+  if (version != ADBC_VERSION_1_0_0) {
+    SetError(error, "Only ADBC 1.0.0 is supported");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
 
   if (!entrypoint) {
     // Default entrypoint (see adbc.h)
@@ -714,12 +705,11 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
 #endif  // defined(_WIN32)
 
-  return AdbcLoadDriverFromInitFunc(init_func, count, driver, initialized, error);
+  return AdbcLoadDriverFromInitFunc(init_func, version, driver, error);
 }
 
-AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, size_t count,
-                                          struct AdbcDriver* driver, size_t* initialized,
-                                          struct AdbcError* error) {
+AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int version,
+                                          void* raw_driver, struct AdbcError* error) {
 #define FILL_DEFAULT(DRIVER, STUB) \
   if (!DRIVER->STUB) {             \
     DRIVER->STUB = &STUB;          \
@@ -730,38 +720,41 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, size_t c
     return ADBC_STATUS_INTERNAL;                                               \
   }
 
-  auto result = init_func(count, driver, initialized, error);
+  auto result = init_func(version, raw_driver, error);
   if (result != ADBC_STATUS_OK) {
     return result;
   }
 
-  CHECK_REQUIRED(driver, DatabaseNew);
-  CHECK_REQUIRED(driver, DatabaseInit);
-  CHECK_REQUIRED(driver, DatabaseRelease);
-  FILL_DEFAULT(driver, DatabaseSetOption);
+  if (version == ADBC_VERSION_1_0_0) {
+    auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
+    CHECK_REQUIRED(driver, DatabaseNew);
+    CHECK_REQUIRED(driver, DatabaseInit);
+    CHECK_REQUIRED(driver, DatabaseRelease);
+    FILL_DEFAULT(driver, DatabaseSetOption);
 
-  CHECK_REQUIRED(driver, ConnectionGetInfo);
-  CHECK_REQUIRED(driver, ConnectionNew);
-  CHECK_REQUIRED(driver, ConnectionInit);
-  CHECK_REQUIRED(driver, ConnectionRelease);
-  FILL_DEFAULT(driver, ConnectionCommit);
-  FILL_DEFAULT(driver, ConnectionGetObjects);
-  FILL_DEFAULT(driver, ConnectionGetTableSchema);
-  FILL_DEFAULT(driver, ConnectionGetTableTypes);
-  FILL_DEFAULT(driver, ConnectionReadPartition);
-  FILL_DEFAULT(driver, ConnectionRollback);
-  FILL_DEFAULT(driver, ConnectionSetOption);
+    CHECK_REQUIRED(driver, ConnectionGetInfo);
+    CHECK_REQUIRED(driver, ConnectionNew);
+    CHECK_REQUIRED(driver, ConnectionInit);
+    CHECK_REQUIRED(driver, ConnectionRelease);
+    FILL_DEFAULT(driver, ConnectionCommit);
+    FILL_DEFAULT(driver, ConnectionGetObjects);
+    FILL_DEFAULT(driver, ConnectionGetTableSchema);
+    FILL_DEFAULT(driver, ConnectionGetTableTypes);
+    FILL_DEFAULT(driver, ConnectionReadPartition);
+    FILL_DEFAULT(driver, ConnectionRollback);
+    FILL_DEFAULT(driver, ConnectionSetOption);
 
-  FILL_DEFAULT(driver, StatementExecutePartitions);
-  CHECK_REQUIRED(driver, StatementExecuteQuery);
-  CHECK_REQUIRED(driver, StatementNew);
-  CHECK_REQUIRED(driver, StatementRelease);
-  FILL_DEFAULT(driver, StatementBind);
-  FILL_DEFAULT(driver, StatementGetParameterSchema);
-  FILL_DEFAULT(driver, StatementPrepare);
-  FILL_DEFAULT(driver, StatementSetOption);
-  FILL_DEFAULT(driver, StatementSetSqlQuery);
-  FILL_DEFAULT(driver, StatementSetSubstraitPlan);
+    FILL_DEFAULT(driver, StatementExecutePartitions);
+    CHECK_REQUIRED(driver, StatementExecuteQuery);
+    CHECK_REQUIRED(driver, StatementNew);
+    CHECK_REQUIRED(driver, StatementRelease);
+    FILL_DEFAULT(driver, StatementBind);
+    FILL_DEFAULT(driver, StatementGetParameterSchema);
+    FILL_DEFAULT(driver, StatementPrepare);
+    FILL_DEFAULT(driver, StatementSetOption);
+    FILL_DEFAULT(driver, StatementSetSqlQuery);
+    FILL_DEFAULT(driver, StatementSetSubstraitPlan);
+  }
 
   return ADBC_STATUS_OK;
 
