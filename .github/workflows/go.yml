@@ -131,7 +131,7 @@ jobs:
             -DCMAKE_INSTALL_LIBDIR=lib \
             -DCMAKE_INSTALL_PREFIX=$HOME/local \
             -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
-          cmake --build . --target install
+          cmake --build .
           popd
       - name: Install staticcheck
         if: ${{ !contains('macos-latest', matrix.os) }}
@@ -139,8 +139,8 @@ jobs:
       - name: Go Build
         run: |
           pushd go/adbc
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/local/lib
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/local/lib:$CONDA_PREFIX/lib
+          export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/local/lib:$CONDA_PREFIX/lib
           $RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go build -v ./...
           popd
       - name: Run Staticcheck
@@ -152,7 +152,7 @@ jobs:
       - name: Go Test
         run: |
           pushd go/adbc
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/local/lib
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/local/lib:$CONDA_PREFIX/lib
+          export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/local/lib:$CONDA_PREFIX/lib
           $RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go test -v ./...
           popd
