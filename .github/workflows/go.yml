@@ -39,7 +39,7 @@ concurrency:
 
 jobs:
   go-no-cgo:
-    name: "Go/${{ matrix.os}} - No CGO"
+    name: "${{ matrix.os}} - No CGO"
     env:
       CGO_ENABLED: "0"
     runs-on: ${{ matrix.os }}
@@ -60,14 +60,23 @@ jobs:
       - name: Install staticcheck
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Go Build
-        run: go build -v ./go/adbc/...
+        run: |
+          pushd go/adbc
+          go build -v ./...
+          popd
       - name: Run Staticcheck
-        run: staticcheck -f stylish ./go/adbc/...
+        run: |
+          pushd go/adbc
+          staticcheck -f stylish ./...
+          popd
       - name: Go Test
-        run: go test -v ./go/adbc/...
+        run: |
+          pushd go/adbc
+          go test -v ./...
+          popd
 
   go-driver-mgr-unix:
-    name: "Go/${{ matrix.os }} - CGO driver mgr"
+    name: "${{ matrix.os }} - CGO driver mgr"
     runs-on: ${{ matrix.os }}
     env:
       CGO_ENABLED: "1"
@@ -117,7 +126,7 @@ jobs:
         run: |
           mkdir -p build/driver_sqlite
           pushd build/driver_sqlite
-          cmake ../../c/drivers/sqlite -DADBC_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
+          cmake ../../c/drivers/sqlite -DADBC_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
           cmake --build .
           echo "::set-output name=path::$(pwd)"
           popd
@@ -141,7 +150,7 @@ jobs:
           popd
 
   go-driver-mgr-windows:
-    name: "Go/${{ matrix.os }} - CGO driver mgr"
+    name: "${{ matrix.os }} - CGO driver mgr"
     runs-on: ${{ matrix.os }}
     env:
       CGO_ENABLED: "1"
