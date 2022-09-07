@@ -35,5 +35,5 @@ $ sudo meson install -C glib.build
 ```console
 $ (cd glib && bundle install)
 $ meson setup glib.build glib
-$ BUNDLE_GEMFILE=glib/Gemfile bundle exec meson test -C glib.build --print-errorlogs --verbose
+$ BUNDLE_GEMFILE=glib/Gemfile bundle exec meson devenv -C glib.build meson test --print-errorlogs --verbose
 ```
