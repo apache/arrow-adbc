@@ -67,7 +67,7 @@ jobs:
       - name: Run Staticcheck
         run: |
           pushd go/adbc
-          staticcheck -f stylish ./...
+          staticcheck -f stylish . ./sqldriver
           popd
       - name: Go Test
         run: |
@@ -87,15 +87,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-go@v3
-        with:
-          go-version-file: 'go/adbc/go.mod'
-          check-latest: true
-          cache: true
-          cache-dependency-path: go/adbc/go.sum
-      - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+          persist-credentials: false      
       - name: Get Date
         id: get-date
         shell: bash
@@ -130,6 +122,14 @@ jobs:
           cmake --build .
           echo "::set-output name=path::$(pwd)"
           popd
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go/adbc/go.mod'
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Go Build
         shell: bash -l {0}
         run: |
@@ -149,51 +149,3 @@ jobs:
           LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ steps.sqlite.outputs.path }} go test -v ./...
           popd
 
-  go-driver-mgr-windows:
-    name: "${{ matrix.os }} - CGO driver mgr"
-    runs-on: ${{ matrix.os }}
-    env:
-      CGO_ENABLED: "1"
-    strategy:
-      matrix:
-        os: ["windows-latest"]
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-go@v3
-        with:
-          go-version-file: 'go/adbc/go.mod'
-          check-latest: true
-          cache: true
-          cache-dependency-path: go/adbc/go.sum
-      - uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniforge-variant: Mambaforge
-          miniforge-version: latest
-          use-mamba: true
-          # Required for caching
-          use-only-tar-bz2: true
-      - name: Install Dependencies
-        shell: cmd /C call {0}
-        run: |
-          mamba install --file ci/conda_env_cpp.txt
-      - name: Build SQLite3 Driver
-        shell: cmd /C call {0}
-        run: |
-          mkdir build\driver_sqlite
-          cd build\driver_sqlite
-          cmake -GNinja ..\..\c\drivers\sqlite -DADBC_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          cmake --build .
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          cd ..\..
-      - name: Build/Test Go
-        shell: cmd /C call {0}
-        run: |
-          set "PATH=%cd%\build\driver_sqlite;%PATH%"
-          cd go\adbc
-          go build -v ./...
-          go test -v ./...
-          cd ..\..
