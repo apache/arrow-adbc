@@ -67,7 +67,7 @@ jobs:
       - name: Run Staticcheck
         run: |
           pushd go/adbc
-          staticcheck -f stylish . ./sqldriver
+          staticcheck -f stylish ./...
           popd
       - name: Go Test
         run: |

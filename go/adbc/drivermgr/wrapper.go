@@ -15,10 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// Package drivermgr is a cgo wrapper for the adbc_driver_manager.
-//
-// This provides an implementation of the ADBC interfaces which
-// uses CGO to wrap a shared object implementation of adbc.h
 package drivermgr
 
 // #cgo !windows LDFLAGS: -ldl
