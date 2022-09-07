@@ -1,0 +1,188 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Go
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "adbc.h"
+      - "c/driver_manager/**"
+      - "go/adbc/**"
+      - ".github/workflows/go.yml"
+  push:
+    paths:
+      - "adbc.h"
+      - "c/driver_manager/**"
+      - "go/adbc/**"
+      - ".github/workflows/go.yml"
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  go-no-cgo:
+    name: "Go/${{ matrix.os}} - No CGO"
+    env:
+      - CGO_ENABLED: "0"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go/adbc/go.mod'
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+      - name: Go Build
+        run: go build -v ./go/adbc/...
+      - name: Run Staticcheck
+        run: staticcheck -f stylish ./go/adbc/...
+      - name: Go Test
+        run: go test -v ./go/adbc/...
+
+  go-driver-mgr-unix:
+    name: "Go/${{ matrix.os }} - CGO driver mgr"
+    env:
+      - CGO_ENABLED: "1"
+    strategy:
+      matrix:
+        os: ["macos-latest", "ubuntu-latest"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go/adbc/go.mod'
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+      - name: Get Date
+        id: get-date
+        shell: bash
+        run: |
+          echo "::set-output name=today::$(/bin/date -u '+%Y%m%d')"
+      - name: Cache Conda
+        uses: actions/cache@v2
+        env:
+          # Increment this to reset cache manually
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+          # Required for caching
+          use-only-tar-bz2: true
+      - name: Install Dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install --file ci/conda_env_cpp.txt --file ci/conda_env_python.txt
+      - name: Build SQLite3 Driver
+        shell: bash -l {0}
+        id: sqlite
+        run: |
+          mkdir -p build/driver_sqlite
+          pushd build/driver_sqlite
+          cmake ../../c/drivers/sqlite -DADBC_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
+          cmake --build .
+          echo "::set-output name=path::$(pwd)"
+          popd
+      - name: Go Build
+        shell: bash -l {0}
+        run: |
+          pushd go/adbc
+          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ steps.sqlite.outputs.path }} go build -v ./...
+          popd
+      - name: Run Staticcheck
+        shell: bash -l {0}
+        run: |
+          pushd go/adbc
+          staticcheck -f stylish ./...
+          popd
+      - name: Go Test
+        shell: bash -l {0}
+        run: |
+          pushd go/adbc
+          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ steps.sqlite.outputs.path }} go test -v ./...
+          popd
+
+  go-driver-mgr-windows:
+    name: "Go/${{ matrix.os }} - CGO driver mgr"
+    env:
+      - CGO_ENABLED: "1"
+    strategy:
+      matrix:
+        os: ["windows-latest"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go/adbc/go.mod'
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum      
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+          # Required for caching
+          use-only-tar-bz2: true
+      - name: Install Dependencies
+        shell: cmd /C call {0}
+        run: |
+          mamba install --file ci/conda_env_cpp.txt
+      - name: Build SQLite3 Driver
+        shell: cmd /C call {0}
+        run: |
+          mkdir build\driver_sqlite
+          cd build\driver_sqlite
+          cmake -GNinja ..\..\c\drivers\sqlite -DADBC_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
+          if %errorlevel% neq 0 then exit /b %errorlevel%
+          cmake --build .
+          if %errorlevel% neq 0 then exit /b %errorlevel%
+          cd ..\..
+      - name: Build/Test Go
+        shell: cmd /C call {0}                    
+        run: |
+          set "PATH=%cd%\build\driver_sqlite;%PATH%"
+          cd go\adbc
+          go build -v ./...
+          go test -v ./...
+          cd ..\..
