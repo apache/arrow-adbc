@@ -32,7 +32,9 @@ struct _GADBCDatabaseClass {
 };
 
 GADBC_AVAILABLE_IN_1_0
-GADBCDatabase* gadbc_database_new(void);
+GADBCDatabase* gadbc_database_new(GError** error);
+GADBC_AVAILABLE_IN_1_0
+gboolean gadbc_database_release(GADBCDatabase* database, GError** error);
 GADBC_AVAILABLE_IN_1_0
 gboolean gadbc_database_set_option(GADBCDatabase* database, const gchar* key,
                                    const gchar* value, GError** error);

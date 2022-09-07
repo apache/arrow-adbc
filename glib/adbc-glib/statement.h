@@ -32,6 +32,8 @@ struct _GADBCStatementClass {
 GADBC_AVAILABLE_IN_1_0
 GADBCStatement* gadbc_statement_new(GADBCConnection* connection, GError** error);
 GADBC_AVAILABLE_IN_1_0
+gboolean gadbc_statement_release(GADBCStatement* statement, GError** error);
+GADBC_AVAILABLE_IN_1_0
 gboolean gadbc_statement_set_sql_query(GADBCStatement* statement, const gchar* query,
                                        GError** error);
 GADBC_AVAILABLE_IN_1_0

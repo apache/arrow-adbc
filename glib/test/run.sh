@@ -48,7 +48,7 @@ for module in "${modules[@]}"; do
   fi
 
   if [ -d "${module_typelib_dir}" ]; then
-    GI_TYPELIB_PATH="${module_typelib_dir}:${GI_TYPELIB_PATH}"
+    GI_TYPELIB_PATH="${module_typelib_dir}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
   fi
 done
 export GI_TYPELIB_PATH

@@ -173,7 +173,6 @@ jobs:
           export DYLD_LIBRARY_PATH=$HOME/local/lib
           export GI_TYPELIB_PATH=$(pwd)/build/glib/adbc-glib:$CONDA_PREFIX/lib/girepository-1.0
           export LD_LIBRARY_PATH=$HOME/local/lib
-          find $HOME/local/lib
           bundle install
           pushd build/glib
           bundle exec \

@@ -86,3 +86,13 @@ gboolean gadbc_error_check(GError** error, AdbcStatusCode status_code,
     return FALSE;
   }
 }
+
+void gadbc_error_warn(AdbcStatusCode status_code, struct AdbcError* adbc_error,
+                      const gchar* context) {
+  if (status_code == ADBC_STATUS_OK) {
+    return;
+  }
+  g_warning("%s[%s][%d] %s", context, AdbcStatusCodeMessage(status_code),
+            adbc_error->vendor_code, adbc_error->message);
+  adbc_error->release(adbc_error);
+}

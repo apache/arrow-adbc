@@ -26,6 +26,7 @@
 G_BEGIN_DECLS
 
 GADBC_AVAILABLE_IN_1_0
-struct AdbcConnection* gadbc_connection_get_raw(GADBCConnection* connection);
+struct AdbcConnection* gadbc_connection_get_raw(GADBCConnection* connection,
+                                                const gchar* context, GError** error);
 
 G_END_DECLS

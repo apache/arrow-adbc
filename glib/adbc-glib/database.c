@@ -32,6 +32,7 @@
  */
 
 typedef struct {
+  gboolean initialized;
   struct AdbcDatabase adbc_database;
 } GADBCDatabasePrivate;
 
@@ -40,15 +41,17 @@ G_DEFINE_TYPE_WITH_PRIVATE(GADBCDatabase, gadbc_database, G_TYPE_OBJECT)
 #undef gadbc_database_init
 
 static void gadbc_database_finalize(GObject* object) {
-  struct AdbcDatabase* adbc_database = gadbc_database_get_raw(GADBC_DATABASE(object));
-  AdbcDatabaseRelease(adbc_database, NULL);
+  GADBCDatabasePrivate* priv =
+      gadbc_database_get_instance_private(GADBC_DATABASE(object));
+  if (priv->initialized) {
+    struct AdbcError adbc_error = {};
+    AdbcStatusCode status_code = AdbcDatabaseRelease(&(priv->adbc_database), &adbc_error);
+    gadbc_error_warn(status_code, &adbc_error, "[adbc][database][finalize]");
+  }
   G_OBJECT_CLASS(gadbc_database_parent_class)->finalize(object);
 }
 
-static void gadbc_database_init_(GADBCDatabase* database) {
-  struct AdbcDatabase* adbc_database = gadbc_database_get_raw(database);
-  AdbcDatabaseNew(adbc_database, NULL);
-}
+static void gadbc_database_init_(GADBCDatabase* database) {}
 
 static void gadbc_database_class_init(GADBCDatabaseClass* klass) {
   GObjectClass* gobject_class = G_OBJECT_CLASS(klass);
@@ -57,13 +60,55 @@ static void gadbc_database_class_init(GADBCDatabaseClass* klass) {
 
 /**
  * gadbc_database_new:
+ * @error: (nullable): Return location for a #GError or %NULL.
  *
  * Returns: A newly created #GADBCDatabase.
  *
  * Since: 1.0.0
  */
-GADBCDatabase* gadbc_database_new(void) {
-  return g_object_new(GADBC_TYPE_DATABASE, NULL);
+GADBCDatabase* gadbc_database_new(GError** error) {
+  GADBCDatabase* database = g_object_new(GADBC_TYPE_DATABASE, NULL);
+  GADBCDatabasePrivate* priv = gadbc_database_get_instance_private(database);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcDatabaseNew(&(priv->adbc_database), &adbc_error);
+  priv->initialized =
+      gadbc_error_check(error, status_code, &adbc_error, "[adbc][database][new]");
+  if (!priv->initialized) {
+    g_object_unref(database);
+    return NULL;
+  }
+  return database;
+}
+
+/**
+ * gadbc_database_release:
+ * @database: A #GADBCDatabase.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Release this database explicitly. Normally, you don't need to call
+ * this explicitly. If this database is freed by g_object_unref(),
+ * this database is released automatically.
+ *
+ * You can't use this database anymore after you call this.
+ *
+ * Returns: %TRUE if this database is released successfully, %FALSE otherwise.
+ *
+ * Since: 1.0.0
+ */
+gboolean gadbc_database_release(GADBCDatabase* database, GError** error) {
+  const gchar* context = "[adbc][database][release]";
+  struct AdbcDatabase* adbc_database = gadbc_database_get_raw(database, context, error);
+  if (!adbc_database) {
+    return FALSE;
+  }
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcDatabaseRelease(adbc_database, &adbc_error);
+  gboolean success = gadbc_error_check(error, status_code, &adbc_error, context);
+  if (success) {
+    GADBCDatabasePrivate* priv = gadbc_database_get_instance_private(database);
+    priv->initialized = FALSE;
+  }
+  return success;
 }
 
 /**
@@ -82,12 +127,15 @@ GADBCDatabase* gadbc_database_new(void) {
  */
 gboolean gadbc_database_set_option(GADBCDatabase* database, const gchar* key,
                                    const gchar* value, GError** error) {
-  struct AdbcDatabase* adbc_database = gadbc_database_get_raw(database);
+  const gchar* context = "[adbc][database][set-option]";
+  struct AdbcDatabase* adbc_database = gadbc_database_get_raw(database, context, error);
+  if (!adbc_database) {
+    return FALSE;
+  }
   struct AdbcError adbc_error = {};
   AdbcStatusCode status_code =
       AdbcDatabaseSetOption(adbc_database, key, value, &adbc_error);
-  return gadbc_error_check(error, status_code, &adbc_error,
-                           "[adbc][database][set-option]");
+  return gadbc_error_check(error, status_code, &adbc_error, context);
 }
 
 /**
@@ -105,13 +153,36 @@ gboolean gadbc_database_set_option(GADBCDatabase* database, const gchar* key,
  * Since: 1.0.0
  */
 gboolean gadbc_database_init(GADBCDatabase* database, GError** error) {
-  struct AdbcDatabase* adbc_database = gadbc_database_get_raw(database);
+  const gchar* context = "[adbc][database][init]";
+  struct AdbcDatabase* adbc_database = gadbc_database_get_raw(database, context, error);
+  if (!adbc_database) {
+    return FALSE;
+  }
   struct AdbcError adbc_error = {};
   AdbcStatusCode status_code = AdbcDatabaseInit(adbc_database, &adbc_error);
-  return gadbc_error_check(error, status_code, &adbc_error, "[adbc][database][init]");
+  return gadbc_error_check(error, status_code, &adbc_error, context);
 }
 
-struct AdbcDatabase* gadbc_database_get_raw(GADBCDatabase* database) {
+/**
+ * gadbc_database_get_raw:
+ * @database: A #GADBCDatabase.
+ * @context: (nullable): A context where this is called from. This is used in
+ *   error message.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Returns: (nullable): The underlying `AdbcDatabase` if this database
+ *   isn't released yet, %NULL otherwise.
+ *
+ * Since: 1.0.0
+ */
+struct AdbcDatabase* gadbc_database_get_raw(GADBCDatabase* database, const gchar* context,
+                                            GError** error) {
   GADBCDatabasePrivate* priv = gadbc_database_get_instance_private(database);
-  return &(priv->adbc_database);
+  if (priv->initialized) {
+    return &(priv->adbc_database);
+  } else {
+    g_set_error(error, GADBC_ERROR, GADBC_ERROR_INVALID_ARGUMENT,
+                "%s database is already released", context);
+    return NULL;
+  }
 }

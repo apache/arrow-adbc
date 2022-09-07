@@ -29,4 +29,11 @@ class ConnectionTest < Test::Unit::TestCase
       connection.init(@database)
     end
   end
+
+  def test_release
+    connection = ADBC::Connection.new
+    assert do
+      connection.release
+    end
+  end
 end

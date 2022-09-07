@@ -26,6 +26,7 @@
 G_BEGIN_DECLS
 
 GADBC_AVAILABLE_IN_1_0
-struct AdbcStatement* gadbc_statement_get_raw(GADBCStatement* statement);
+struct AdbcStatement* gadbc_statement_get_raw(GADBCStatement* statement,
+                                              const gchar* context, GError** error);
 
 G_END_DECLS

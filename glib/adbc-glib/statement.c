@@ -33,6 +33,7 @@
  */
 
 typedef struct {
+  gboolean initialized;
   struct AdbcStatement adbc_statement;
   GADBCConnection* connection;
 } GADBCStatementPrivate;
@@ -42,6 +43,13 @@ G_DEFINE_TYPE_WITH_PRIVATE(GADBCStatement, gadbc_statement, G_TYPE_OBJECT)
 static void gadbc_statement_dispose(GObject* object) {
   GADBCStatementPrivate* priv =
       gadbc_statement_get_instance_private(GADBC_STATEMENT(object));
+  if (priv->initialized) {
+    struct AdbcError adbc_error = {};
+    AdbcStatusCode status_code =
+        AdbcStatementRelease(&(priv->adbc_statement), &adbc_error);
+    gadbc_error_warn(status_code, &adbc_error, "[adbc][statement][finalize]");
+    priv->initialized = FALSE;
+  }
   if (priv->connection) {
     g_object_unref(priv->connection);
     priv->connection = NULL;
@@ -49,18 +57,11 @@ static void gadbc_statement_dispose(GObject* object) {
   G_OBJECT_CLASS(gadbc_statement_parent_class)->dispose(object);
 }
 
-static void gadbc_statement_finalize(GObject* object) {
-  struct AdbcStatement* adbc_statement = gadbc_statement_get_raw(GADBC_STATEMENT(object));
-  AdbcStatementRelease(adbc_statement, NULL);
-  G_OBJECT_CLASS(gadbc_statement_parent_class)->finalize(object);
-}
-
 static void gadbc_statement_init(GADBCStatement* statement) {}
 
 static void gadbc_statement_class_init(GADBCStatementClass* klass) {
   GObjectClass* gobject_class = G_OBJECT_CLASS(klass);
   gobject_class->dispose = gadbc_statement_dispose;
-  gobject_class->finalize = gadbc_statement_finalize;
 }
 
 /**
@@ -68,28 +69,63 @@ static void gadbc_statement_class_init(GADBCStatementClass* klass) {
  * @connection: A #GADBCConnection.
  * @error: (nullable): Return location for a #GError or %NULL.
  *
- * Returns: A newly created #GADBCStatement for @connection.
+ * Returns: A newly created #GADBCStatement for @connection on success,
+ *   %NULL otherwise.
  *
  * Since: 1.0.0
  */
 GADBCStatement* gadbc_statement_new(GADBCConnection* connection, GError** error) {
+  const gchar* context = "[adbc][statement][new]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  if (!adbc_connection) {
+    return NULL;
+  }
   GADBCStatement* statement = g_object_new(GADBC_TYPE_STATEMENT, NULL);
-  struct AdbcStatement* adbc_statement = gadbc_statement_get_raw(statement);
-  struct AdbcConnection* adbc_connection = gadbc_connection_get_raw(connection);
+  GADBCStatementPrivate* priv = gadbc_statement_get_instance_private(statement);
   struct AdbcError adbc_error = {};
   AdbcStatusCode status_code =
-      AdbcStatementNew(adbc_connection, adbc_statement, &adbc_error);
-  gboolean success =
-      gadbc_error_check(error, status_code, &adbc_error, "[adbc][statement][new]");
+      AdbcStatementNew(adbc_connection, &(priv->adbc_statement), &adbc_error);
+  priv->initialized = gadbc_error_check(error, status_code, &adbc_error, context);
+  if (!priv->initialized) {
+    g_object_unref(statement);
+    return NULL;
+  }
+  priv->connection = connection;
+  g_object_ref(priv->connection);
+  return statement;
+}
+
+/**
+ * gadbc_statement_release:
+ * @statement: A #GADBCStatement.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Release this statement explicitly. Normally, you don't need to call
+ * this explicitly. If this statement is freed by g_object_unref(),
+ * this statement is released automatically.
+ *
+ * You can't use this statement anymore after you call this.
+ *
+ * Returns: %TRUE if this statement is released successfully, %FALSE otherwise.
+ *
+ * Since: 1.0.0
+ */
+gboolean gadbc_statement_release(GADBCStatement* statement, GError** error) {
+  const gchar* context = "[adbc][statement][release]";
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcStatementRelease(adbc_statement, &adbc_error);
+  gboolean success = gadbc_error_check(error, status_code, &adbc_error, context);
   if (success) {
     GADBCStatementPrivate* priv = gadbc_statement_get_instance_private(statement);
-    priv->connection = connection;
-    g_object_ref(priv->connection);
-  } else {
-    g_object_unref(statement);
-    statement = NULL;
+    priv->initialized = FALSE;
   }
-  return statement;
+  return success;
 }
 
 /**
@@ -110,12 +146,16 @@ GADBCStatement* gadbc_statement_new(GADBCConnection* connection, GError** error)
  */
 gboolean gadbc_statement_set_sql_query(GADBCStatement* statement, const gchar* query,
                                        GError** error) {
-  struct AdbcStatement* adbc_statement = gadbc_statement_get_raw(statement);
+  const gchar* context = "[adbc][statement][set-sql-query]";
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
   struct AdbcError adbc_error = {};
   AdbcStatusCode status_code =
       AdbcStatementSetSqlQuery(adbc_statement, query, &adbc_error);
-  return gadbc_error_check(error, status_code, &adbc_error,
-                           "[adbc][statement][set-sql-query]");
+  return gadbc_error_check(error, status_code, &adbc_error, context);
 }
 
 /**
@@ -138,7 +178,12 @@ gboolean gadbc_statement_set_sql_query(GADBCStatement* statement, const gchar* q
  */
 gboolean gadbc_statement_execute(GADBCStatement* statement, gpointer* c_abi_array_stream,
                                  gint64* n_rows_affected, GError** error) {
-  struct AdbcStatement* adbc_statement = gadbc_statement_get_raw(statement);
+  const gchar* context = "[adbc][statement][execute]";
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
   struct ArrowArrayStream* array_stream = NULL;
   if (c_abi_array_stream) {
     array_stream = g_new0(struct ArrowArrayStream, 1);
@@ -146,8 +191,7 @@ gboolean gadbc_statement_execute(GADBCStatement* statement, gpointer* c_abi_arra
   struct AdbcError adbc_error = {};
   AdbcStatusCode status_code = AdbcStatementExecuteQuery(adbc_statement, array_stream,
                                                          n_rows_affected, &adbc_error);
-  gboolean success =
-      gadbc_error_check(error, status_code, &adbc_error, "[adbc][statement][execute]");
+  gboolean success = gadbc_error_check(error, status_code, &adbc_error, context);
   if (success) {
     *c_abi_array_stream = array_stream;
   } else {
@@ -158,7 +202,26 @@ gboolean gadbc_statement_execute(GADBCStatement* statement, gpointer* c_abi_arra
   return success;
 }
 
-struct AdbcStatement* gadbc_statement_get_raw(GADBCStatement* statement) {
+/**
+ * gadbc_statement_get_raw:
+ * @statement: A #GADBCStatement.
+ * @context: (nullable): A context where this is called from. This is used in
+ *   error message.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Returns: (nullable): The underlying `AdbcStatement` if this statement
+ *   isn't released yet, %NULL otherwise.
+ *
+ * Since: 1.0.0
+ */
+struct AdbcStatement* gadbc_statement_get_raw(GADBCStatement* statement,
+                                              const gchar* context, GError** error) {
   GADBCStatementPrivate* priv = gadbc_statement_get_instance_private(statement);
-  return &(priv->adbc_statement);
+  if (priv->initialized) {
+    return &(priv->adbc_statement);
+  } else {
+    g_set_error(error, GADBC_ERROR, GADBC_ERROR_INVALID_ARGUMENT,
+                "%s statement is already released", context);
+    return NULL;
+  }
 }

@@ -72,11 +72,8 @@ install_data('../LICENSE.txt',
              'README.md',
              install_dir: data_dir / 'doc' / meson.project_name())
 
-run_test = find_program('test/run.sh')
-test_env = environment()
-test_env.set('ADBC_GLIB_TYPELIB_DIR', '@0@/adbc-glib'.format(meson.build_root()))
-test_env.set('BUILD', 'no')
-meson.add_devenv(test_env)
+ruby = find_program('ruby')
+test_run_rb = files('test/run.rb')
 test('unit test',
-     run_test,
-     env: test_env)
+     ruby,
+     args: [test_run_rb])
