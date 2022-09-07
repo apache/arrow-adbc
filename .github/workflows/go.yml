@@ -41,7 +41,7 @@ jobs:
   go-no-cgo:
     name: "Go/${{ matrix.os}} - No CGO"
     env:
-      - CGO_ENABLED: "0"
+      CGO_ENABLED: "0"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -68,8 +68,9 @@ jobs:
 
   go-driver-mgr-unix:
     name: "Go/${{ matrix.os }} - CGO driver mgr"
+    runs-on: ${{ matrix.os }}
     env:
-      - CGO_ENABLED: "1"
+      CGO_ENABLED: "1"
     strategy:
       matrix:
         os: ["macos-latest", "ubuntu-latest"]
@@ -141,8 +142,9 @@ jobs:
 
   go-driver-mgr-windows:
     name: "Go/${{ matrix.os }} - CGO driver mgr"
+    runs-on: ${{ matrix.os }}
     env:
-      - CGO_ENABLED: "1"
+      CGO_ENABLED: "1"
     strategy:
       matrix:
         os: ["windows-latest"]
