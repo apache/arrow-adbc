@@ -131,7 +131,7 @@ jobs:
             -DCMAKE_INSTALL_LIBDIR=lib \
             -DCMAKE_INSTALL_PREFIX=$HOME/local \
             -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
-          cmake --build .
+          cmake --build . --target install
           popd
       - name: Install staticcheck
         if: ${{ !contains('macos-latest', matrix.os) }}
