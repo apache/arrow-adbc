@@ -135,8 +135,9 @@ class Sqlite : public ::testing::Test {
   std::shared_ptr<arrow::DataType> constraint_schema = arrow::struct_({
       arrow::field("constraint_name", arrow::utf8()),
       arrow::field("constraint_type", arrow::utf8(), /*nullable=*/false),
-      arrow::field("column_names", arrow::list(arrow::utf8()), /*nullable=*/false),
-      arrow::field("column_names", arrow::list(usage_schema)),
+      arrow::field("constraint_column_names", arrow::list(arrow::utf8()),
+                   /*nullable=*/false),
+      arrow::field("constraint_column_usage", arrow::list(usage_schema)),
   });
   std::shared_ptr<arrow::DataType> table_schema = arrow::struct_({
       arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
@@ -153,556 +154,6 @@ class Sqlite : public ::testing::Test {
       arrow::field("catalog_db_schemas", arrow::list(db_schema_schema)),
   });
 };
-
-TEST_F(Sqlite, SqlExecute) {
-  std::string query = "SELECT 1";
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error,
-                            AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-
-  std::shared_ptr<arrow::Schema> schema;
-  arrow::RecordBatchVector batches;
-  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
-  ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("1", arrow::int64())}));
-  EXPECT_THAT(batches,
-              ::testing::UnorderedPointwise(
-                  PointeesEqual(), {
-                                       adbc::RecordBatchFromJSON(schema, "[[1]]"),
-                                   }));
-}
-
-TEST_F(Sqlite, SqlExecuteInvalid) {
-  std::string query = "INVALID";
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-  ASSERT_NE(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error), ADBC_STATUS_OK);
-  ADBC_ASSERT_ERROR_THAT(
-      error, ::testing::AllOf(::testing::HasSubstr("[SQLite3] sqlite3_prepare_v2:"),
-                              ::testing::HasSubstr("syntax error")));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-}
-
-TEST_F(Sqlite, SqlPrepare) {
-  std::string query = "SELECT 1";
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error,
-                            AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementPrepare(&statement, &error));
-
-  std::shared_ptr<arrow::Schema> schema;
-  arrow::RecordBatchVector batches;
-  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
-  ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("1", arrow::int64())}));
-  EXPECT_THAT(batches,
-              ::testing::UnorderedPointwise(
-                  PointeesEqual(), {
-                                       adbc::RecordBatchFromJSON(schema, "[[1]]"),
-                                   }));
-}
-
-TEST_F(Sqlite, SqlPrepareMultipleParams) {
-  auto param_schema = arrow::schema(
-      {arrow::field("1", arrow::int64()), arrow::field("2", arrow::utf8())});
-  std::string query = "SELECT ?, ?";
-  AdbcStatement statement;
-  ArrowArray export_params;
-  ArrowSchema export_schema;
-  std::memset(&statement, 0, sizeof(statement));
-
-  ASSERT_OK(ExportRecordBatch(
-      *adbc::RecordBatchFromJSON(param_schema, R"([[1, "foo"], [2, "bar"]])"),
-      &export_params));
-  ASSERT_OK(ExportSchema(*param_schema, &export_schema));
-
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error,
-                            AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementPrepare(&statement, &error));
-
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcStatementBind(&statement, &export_params, &export_schema, &error));
-
-  std::shared_ptr<arrow::Schema> schema;
-  arrow::RecordBatchVector batches;
-  ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
-  ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("?", arrow::int64()),
-                                            arrow::field("?", arrow::utf8())}));
-  EXPECT_THAT(batches,
-              ::testing::UnorderedPointwise(
-                  PointeesEqual(),
-                  {
-                      adbc::RecordBatchFromJSON(schema, R"([[1, "foo"], [2, "bar"]])"),
-                  }));
-}
-
-TEST_F(Sqlite, BulkIngestTable) {
-  ArrowArray export_table;
-  ArrowSchema export_schema;
-  auto bulk_schema = arrow::schema(
-      {arrow::field("ints", arrow::int64()), arrow::field("strs", arrow::utf8())});
-  auto bulk_table = adbc::RecordBatchFromJSON(bulk_schema, R"([[1, "foo"], [2, "bar"]])");
-
-  {
-    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
-    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  {
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
-
-    std::shared_ptr<arrow::Schema> schema;
-    arrow::RecordBatchVector batches;
-    ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
-    ASSERT_SCHEMA_EQ(*schema, *bulk_schema);
-    EXPECT_THAT(batches, ::testing::UnorderedPointwise(PointeesEqual(), {bulk_table}));
-  }
-
-  // Append (already exists)
-  {
-    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
-    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
-
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS,
-              AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  // Append (proper option)
-  {
-    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
-    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
-
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
-                                      ADBC_INGEST_OPTION_MODE_APPEND, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
-
-    std::shared_ptr<arrow::Schema> schema;
-    arrow::RecordBatchVector batches;
-    ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
-    ASSERT_SCHEMA_EQ(*schema, *bulk_schema);
-    EXPECT_THAT(
-        batches,
-        ::testing::UnorderedPointwise(
-            PointeesEqual(),
-            {adbc::RecordBatchFromJSON(
-                bulk_schema, R"([[1, "foo"], [2, "bar"], [1, "foo"], [2, "bar"]])")}));
-  }
-
-  // Conflict (table exists)
-  {
-    auto bulk_schema = arrow::schema({arrow::field("ints", arrow::int64())});
-    auto bulk_table = adbc::RecordBatchFromJSON(bulk_schema, R"([[1], [2]])");
-    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
-    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
-
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS,
-              AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  // Append (table does not exist)
-  {
-    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
-    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
-
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "this_table_does_not_exist", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
-                                      ADBC_INGEST_OPTION_MODE_APPEND, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ASSERT_EQ(ADBC_STATUS_NOT_FOUND,
-              AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  // Append (schema conflict)
-  {
-    auto bulk_schema = arrow::schema({arrow::field("ints", arrow::int64())});
-    auto bulk_table = adbc::RecordBatchFromJSON(bulk_schema, R"([[1], [2]])");
-    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
-    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
-
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
-                                      ADBC_INGEST_OPTION_MODE_APPEND, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    ASSERT_EQ(ADBC_STATUS_ALREADY_EXISTS,
-              AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-}
-
-TEST_F(Sqlite, BulkIngestStream) {
-  ArrowArrayStream export_stream;
-  auto bulk_schema = arrow::schema(
-      {arrow::field("ints", arrow::int64()), arrow::field("strs", arrow::utf8())});
-  std::vector<std::shared_ptr<arrow::RecordBatch>> bulk_batches{
-      adbc::RecordBatchFromJSON(bulk_schema, R"([[1, "foo"], [2, "bar"]])"),
-      adbc::RecordBatchFromJSON(bulk_schema, R"([[3, ""], [4, "baz"]])"),
-  };
-  auto bulk_table = *arrow::Table::FromRecordBatches(bulk_batches);
-  auto reader = std::make_shared<arrow::TableBatchReader>(*bulk_table);
-  ASSERT_OK(arrow::ExportRecordBatchReader(reader, &export_stream));
-
-  {
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBindStream(&statement, &export_stream, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  {
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_insert", &error));
-
-    std::shared_ptr<arrow::Schema> schema;
-    arrow::RecordBatchVector batches;
-    ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
-    ASSERT_SCHEMA_EQ(*schema, *bulk_schema);
-    EXPECT_THAT(
-        batches,
-        ::testing::UnorderedPointwise(
-            PointeesEqual(),
-            {
-                adbc::RecordBatchFromJSON(
-                    bulk_schema, R"([[1, "foo"], [2, "bar"], [3, ""], [4, "baz"]])"),
-            }));
-  }
-}
-
-TEST_F(Sqlite, MultipleConnections) {
-  struct AdbcConnection connection2;
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection2, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &database, &error));
-  ASSERT_NE(connection.private_data, nullptr);
-
-  {
-    std::string query = "CREATE TABLE foo (bar INTEGER)";
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-
-    std::shared_ptr<arrow::Schema> schema;
-    arrow::RecordBatchVector batches;
-    ASSERT_NO_FATAL_FAILURE(ReadStatement(&statement, &schema, &batches));
-    ASSERT_SCHEMA_EQ(*schema, *arrow::schema({}));
-    EXPECT_TRUE(batches.empty());
-  }
-
-  {
-    std::string query = "SELECT * FROM foo";
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-
-    std::shared_ptr<arrow::Schema> schema;
-    arrow::RecordBatchVector batches;
-    ReadStatement(&statement, &schema, &batches);
-    ASSERT_SCHEMA_EQ(*schema, *arrow::schema({arrow::field("bar", arrow::null())}));
-    EXPECT_TRUE(batches.empty());
-  }
-
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection2, &error));
-}
-
-TEST_F(Sqlite, MetadataGetInfo) {
-  static std::shared_ptr<arrow::Schema> kInfoSchema = arrow::schema({
-      arrow::field("info_name", arrow::uint32(), /*nullable=*/false),
-      arrow::field(
-          "info_value",
-          arrow::dense_union({
-              arrow::field("string_value", arrow::utf8()),
-              arrow::field("bool_value", arrow::boolean()),
-              arrow::field("int64_value", arrow::int64()),
-              arrow::field("int32_bitmask", arrow::int32()),
-              arrow::field("string_list", arrow::list(arrow::utf8())),
-              arrow::field("int32_to_int32_list_map",
-                           arrow::map(arrow::int32(), arrow::list(arrow::int32()))),
-          })),
-  });
-
-  struct ArrowArrayStream stream;
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionGetInfo(&connection, nullptr, 0, &stream, &error));
-
-  std::shared_ptr<arrow::Schema> schema;
-  arrow::RecordBatchVector batches;
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  ASSERT_SCHEMA_EQ(*schema, *kInfoSchema);
-  ASSERT_EQ(1, batches.size());
-
-  std::vector<uint32_t> info = {
-      ADBC_INFO_DRIVER_NAME,
-      ADBC_INFO_DRIVER_VERSION,
-      ADBC_INFO_VENDOR_NAME,
-      ADBC_INFO_VENDOR_VERSION,
-  };
-
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionGetInfo(&connection, info.data(),
-                                                         info.size(), &stream, &error));
-  batches.clear();
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  ASSERT_SCHEMA_EQ(*schema, *kInfoSchema);
-  ASSERT_EQ(1, batches.size());
-  ASSERT_EQ(4, batches[0]->num_rows());
-}
-
-TEST_F(Sqlite, MetadataGetTableTypes) {
-  struct ArrowArrayStream stream;
-  ADBC_ASSERT_OK_WITH_ERROR(error,
-                            AdbcConnectionGetTableTypes(&connection, &stream, &error));
-
-  auto expected_schema = arrow::schema({
-      arrow::field("table_type", arrow::utf8(), /*nullable=*/false),
-  });
-  std::shared_ptr<arrow::Schema> schema;
-  arrow::RecordBatchVector batches;
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  ASSERT_SCHEMA_EQ(*schema, *expected_schema);
-  EXPECT_THAT(batches,
-              ::testing::UnorderedPointwise(
-                  PointeesEqual(), {
-                                       adbc::RecordBatchFromJSON(
-                                           expected_schema, R"([["table"], ["view"]])"),
-                                   }));
-}
-
-TEST_F(Sqlite, MetadataGetObjects) {
-  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection));
-
-  // Query for catalogs
-  struct ArrowArrayStream stream;
-  std::shared_ptr<arrow::Schema> schema;
-  arrow::RecordBatchVector batches;
-
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr, nullptr,
-                               nullptr, nullptr, nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([["main", null]])"}));
-  batches.clear();
-
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, "catalog",
-                               nullptr, nullptr, nullptr, nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([])"}));
-  batches.clear();
-
-  // Query for schemas
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
-                               nullptr, nullptr, nullptr, nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(
-      batches,
-      BatchesAre(
-          catalog_schema,
-          {R"([["main", [{"db_schema_name": null, "db_schema_tables": null}]]])"}));
-  batches.clear();
-
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
-                               "schema", nullptr, nullptr, nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(batches, BatchesAre(catalog_schema, {R"([["main", []]])"}));
-  batches.clear();
-
-  // Query for tables
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr, nullptr,
-                               nullptr, nullptr, nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(batches,
-              BatchesAre(catalog_schema,
-                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
-  {"table_name": "bulk_insert", "table_type": "table", "table_columns": null, "table_constraints": null}
-]}]]])"}));
-  batches.clear();
-
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr, nullptr,
-                               "bulk_%", nullptr, nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(batches,
-              BatchesAre(catalog_schema,
-                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
-  {"table_name": "bulk_insert", "table_type": "table", "table_columns": null, "table_constraints": null}
-]}]]])"}));
-  batches.clear();
-
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr, nullptr,
-                               "asdf%", nullptr, nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(
-      batches,
-      BatchesAre(catalog_schema,
-                 {R"([["main", [{"db_schema_name": null, "db_schema_tables": []}]]])"}));
-  batches.clear();
-
-  // Query for table types
-  std::vector<const char*> table_types(2);
-  table_types[0] = "table";
-  table_types[1] = nullptr;
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
-                               nullptr, table_types.data(), nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(batches,
-              BatchesAre(catalog_schema,
-                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
-  {
-    "table_name": "bulk_insert",
-    "table_type": "table",
-    "table_columns": [
-      ["ints", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-      ["strs", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-    ],
-    "table_constraints": []
-  }
-]}]]])"}));
-  batches.clear();
-
-  table_types[0] = "view";
-  table_types[1] = nullptr;
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
-                               nullptr, table_types.data(), nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(
-      batches,
-      BatchesAre(catalog_schema,
-                 {R"([["main", [{"db_schema_name": null, "db_schema_tables": []}]]])"}));
-  batches.clear();
-
-  // Query for columns
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
-                               nullptr, nullptr, nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(batches,
-              BatchesAre(catalog_schema,
-                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
-  {
-    "table_name": "bulk_insert",
-    "table_type": "table",
-    "table_columns": [
-      ["ints", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-      ["strs", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-    ],
-    "table_constraints": []
-  }
-]}]]])"}));
-  batches.clear();
-
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr,
-                                      nullptr, nullptr, nullptr, "in%", &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(batches,
-              BatchesAre(catalog_schema,
-                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
-  {
-    "table_name": "bulk_insert",
-    "table_type": "table",
-    "table_columns": [
-      ["ints", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-    ],
-    "table_constraints": []
-  }
-]}]]])"}));
-  batches.clear();
-}
 
 TEST_F(Sqlite, MetadataGetObjectsColumns) {
   {
@@ -782,19 +233,6 @@ TEST_F(Sqlite, MetadataGetObjectsColumns) {
   }
 ]}]]])"}));
   batches.clear();
-}
-
-TEST_F(Sqlite, MetadataGetTableSchema) {
-  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection));
-
-  ArrowSchema export_schema;
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                          /*db_schema=*/nullptr, "bulk_insert",
-                                          &export_schema, &error));
-
-  ASSERT_OK_AND_ASSIGN(auto schema, arrow::ImportSchema(&export_schema));
-  ASSERT_SCHEMA_EQ(*schema, *bulk_schema);
 }
 
 TEST_F(Sqlite, Transactions) {
@@ -884,18 +322,49 @@ TEST_F(Sqlite, Transactions) {
   ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection2, &error));
 }
 
-TEST_F(Sqlite, ValidationSuite) {
-  struct AdbcValidateTestContext ctx;
-  std::memset(&ctx, 0, sizeof(ctx));
-  AdbcValidateDatabaseNewRelease(&ctx);
-  AdbcValidateConnectionNewRelease(&ctx);
-  AdbcValidateConnectionAutocommit(&ctx);
-  AdbcValidateStatementNewRelease(&ctx);
-  AdbcValidateStatementSqlExecute(&ctx);
-  AdbcValidateStatementSqlIngest(&ctx);
-  AdbcValidateStatementSqlPrepare(&ctx);
-  ASSERT_EQ(ctx.failed, 0);
-  ASSERT_EQ(ctx.total, ctx.passed);
-}
+class SqliteQuirks : public adbc_validation::DriverQuirks {
+ public:
+  AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
+                               struct AdbcError* error) const override {
+    return AdbcDatabaseSetOption(database, "filename", ":memory:", error);
+  }
+
+  std::string BindParameter(int index) const override { return "?"; }
+};
+
+class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::DatabaseTest {
+ public:
+  const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
+  void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
+  void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
+
+ protected:
+  SqliteQuirks quirks_;
+};
+ADBCV_TEST_DATABASE(SqliteDatabaseTest);
+
+class SqliteConnectionTest : public ::testing::Test,
+                             public adbc_validation::ConnectionTest {
+ public:
+  const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
+  void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
+  void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
+
+ protected:
+  SqliteQuirks quirks_;
+};
+ADBCV_TEST_CONNECTION(SqliteConnectionTest);
+
+class SqliteStatementTest : public ::testing::Test,
+                            public adbc_validation::StatementTest {
+ public:
+  const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
+  void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
+  void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
+
+ protected:
+  SqliteQuirks quirks_;
+};
+ADBCV_TEST_STATEMENT(SqliteStatementTest);
 
 }  // namespace adbc

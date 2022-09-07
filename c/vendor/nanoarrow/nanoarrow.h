@@ -15,6 +15,31 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#ifndef NANOARROW_BUILD_ID_H_INCLUDED
+#define NANOARROW_BUILD_ID_H_INCLUDED
+
+// #define NANOARROW_NAMESPACE YourNamespaceHere
+
+#define NANOARROW_BUILD_ID "gha7325d629245c290bd96fb645a5d38e72bba2f8af"
+
+#endif
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 #ifndef NANOARROW_NANOARROW_TYPES_H_INCLUDED
 #define NANOARROW_NANOARROW_TYPES_H_INCLUDED
 
@@ -359,29 +384,6 @@ struct ArrowArrayView {
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef NANOARROW_BUILD_ID_H_INCLUDED
-#define NANOARROW_BUILD_ID_H_INCLUDED
-
-#define NANOARROW_BUILD_ID "gha6953efeb0657c72fd66af8f34be66e0a3ed0e26a"
-
-#endif
-// Licensed to the Apache Software Foundation (ASF) under one
-// or more contributor license agreements.  See the NOTICE file
-// distributed with this work for additional information
-// regarding copyright ownership.  The ASF licenses this file
-// to you under the Apache License, Version 2.0 (the
-// "License"); you may not use this file except in compliance
-// with the License.  You may obtain a copy of the License at
-//
-//   http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing,
-// software distributed under the License is distributed on an
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, either express or implied.  See the License for the
-// specific language governing permissions and limitations
-// under the License.
-
 #ifndef NANOARROW_H_INCLUDED
 #define NANOARROW_H_INCLUDED
 
@@ -390,6 +392,86 @@ struct ArrowArrayView {
 #include <stdlib.h>
 
 
+
+// If using CMake, optionally pass -DNANOARROW_NAMESPACE=MyNamespace which will set this
+// define in build_id.h. If not, you can optionally #define NANOARROW_NAMESPACE
+// MyNamespace here.
+
+// This section remaps the non-prefixed symbols to the prefixed symbols so that
+// code written against this build can be used independent of the value of
+// NANOARROW_NAMESPACE.
+#ifdef NANOARROW_NAMESPACE
+#define NANOARROW_CAT(A, B) A##B
+#define NANOARROW_SYMBOL(A, B) NANOARROW_CAT(A, B)
+
+#define ArrowNanoarrowBuildId NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowBuildId)
+#define ArrowErrorMessage NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorMessage)
+#define ArrowMalloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMalloc)
+#define ArrowRealloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowRealloc)
+#define ArrowFree NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowFree)
+#define ArrowBufferAllocatorDefault \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferAllocatorDefault)
+#define ArrowBufferDeallocator \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferDeallocator)
+#define ArrowErrorSet NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorSet)
+#define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
+#define ArrowSchemaInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInit)
+#define ArrowSchemaInitFixedSize \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFixedSize)
+#define ArrowSchemaInitDecimal \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitDecimal)
+#define ArrowSchemaInitDateTime \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitDateTime)
+#define ArrowSchemaDeepCopy NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaDeepCopy)
+#define ArrowSchemaSetFormat NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetFormat)
+#define ArrowSchemaSetName NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetName)
+#define ArrowSchemaSetMetadata \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetMetadata)
+#define ArrowSchemaAllocateChildren \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaAllocateChildren)
+#define ArrowSchemaAllocateDictionary \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaAllocateDictionary)
+#define ArrowMetadataReaderInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataReaderInit)
+#define ArrowMetadataReaderRead \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataReaderRead)
+#define ArrowMetadataSizeOf NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataSizeOf)
+#define ArrowMetadataHasKey NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataHasKey)
+#define ArrowMetadataGetValue NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataGetValue)
+#define ArrowMetadataBuilderInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderInit)
+#define ArrowMetadataBuilderAppend \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderAppend)
+#define ArrowMetadataBuilderSet \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderSet)
+#define ArrowMetadataBuilderRemove \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderRemove)
+#define ArrowSchemaViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaViewInit)
+#define ArrowArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInit)
+#define ArrowArrayInitFromSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromSchema)
+#define ArrowArrayAllocateChildren \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayAllocateChildren)
+#define ArrowArrayAllocateDictionary \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayAllocateDictionary)
+#define ArrowArraySetValidityBitmap \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArraySetValidityBitmap)
+#define ArrowArraySetBuffer NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArraySetBuffer)
+#define ArrowArrayReserve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayReserve)
+#define ArrowArrayFinishBuilding \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuilding)
+#define ArrowArrayViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInit)
+#define ArrowArrayViewInitFromSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromSchema)
+#define ArrowArrayViewAllocateChildren \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewAllocateChildren)
+#define ArrowArrayViewSetLength \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetLength)
+#define ArrowArrayViewSetArray \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetArray)
+#define ArrowArrayViewReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewReset)
+
+#endif
 
 #ifdef __cplusplus
 extern "C" {

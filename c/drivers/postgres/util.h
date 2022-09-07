@@ -72,6 +72,15 @@ static inline void SetError(struct AdbcError* error, Args&&... args) {
   error->release = ReleaseError;
 }
 
+#define CHECK_IMPL(NAME, EXPR)          \
+  do {                                  \
+    const AdbcStatusCode NAME = (EXPR); \
+    if (NAME != ADBC_STATUS_OK) {       \
+      return NAME;                      \
+    }                                   \
+  } while (false)
+#define CHECK(EXPR) CHECK_IMPL(MAKE_NAME(adbc_status_, __COUNTER__), EXPR)
+
 #define CHECK_NA_ADBC_IMPL(NAME, EXPR, ERROR)                    \
   do {                                                           \
     const int NAME = (EXPR);                                     \

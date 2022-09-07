@@ -68,6 +68,7 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
       break;
 
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_MAP:
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_OFFSET;
       layout->element_size_bits[1] = 32;
       break;
@@ -221,7 +222,7 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
 
 #include "nanoarrow.h"
 
-void ArrowSchemaRelease(struct ArrowSchema* schema) {
+static void ArrowSchemaRelease(struct ArrowSchema* schema) {
   if (schema->format != NULL) ArrowFree((void*)schema->format);
   if (schema->name != NULL) ArrowFree((void*)schema->name);
   if (schema->metadata != NULL) ArrowFree((void*)schema->metadata);
@@ -262,7 +263,7 @@ void ArrowSchemaRelease(struct ArrowSchema* schema) {
   schema->release = NULL;
 }
 
-const char* ArrowSchemaFormatTemplate(enum ArrowType data_type) {
+static const char* ArrowSchemaFormatTemplate(enum ArrowType data_type) {
   switch (data_type) {
     case NANOARROW_TYPE_UNINITIALIZED:
       return NULL;
@@ -1557,8 +1558,8 @@ static void ArrowArrayRelease(struct ArrowArray* array) {
   array->release = NULL;
 }
 
-ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
-                                        enum ArrowType storage_type) {
+static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
+                                               enum ArrowType storage_type) {
   switch (storage_type) {
     case NANOARROW_TYPE_UNINITIALIZED:
     case NANOARROW_TYPE_NA:
@@ -1854,8 +1855,8 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
 }
 
 static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
-    struct ArrowArray* array, struct ArrowArrayView* array_view,
-    char set_length, struct ArrowError* error) {
+    struct ArrowArray* array, struct ArrowArrayView* array_view, char set_length,
+    struct ArrowError* error) {
   if (set_length) {
     ArrowArrayViewSetLength(array_view, array->offset + array->length);
   }
@@ -1917,7 +1918,6 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
   ArrowArrayViewReset(&array_view);
   return result;
 }
-
 
 void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type) {
   memset(array_view, 0, sizeof(struct ArrowArrayView));
@@ -2114,8 +2114,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       break;
     case NANOARROW_TYPE_LIST:
       if (array->n_children != 1) {
-        ArrowErrorSet(error,
-                      "Expected 1 child of list array but found %d child arrays",
+        ArrowErrorSet(error, "Expected 1 child of list array but found %d child arrays",
                       (int)array->n_children);
         return EINVAL;
       }
