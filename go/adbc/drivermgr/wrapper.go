@@ -157,23 +157,23 @@ func (c *cnxn) GetInfo(_ context.Context, infoCodes []adbc.InfoCode) (array.Reco
 }
 
 func (c *cnxn) GetObjects(_ context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (array.RecordReader, error) {
-	return nil, nil
+	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
 func (c *cnxn) GetTableSchema(_ context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error) {
-	return nil, nil
+	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
 func (c *cnxn) GetTableTypes(context.Context) (array.RecordReader, error) {
-	return nil, nil
+	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
 func (c *cnxn) Commit(context.Context) error {
-	return nil
+	return &adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
 func (c *cnxn) Rollback(context.Context) error {
-	return nil
+	return &adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
 func (c *cnxn) NewStatement() (adbc.Statement, error) {
@@ -195,7 +195,7 @@ func (c *cnxn) Close() error {
 }
 
 func (c *cnxn) ReadPartition(_ context.Context, serializedPartition []byte) (array.RecordReader, error) {
-	return nil, nil
+	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
 func (c *cnxn) SetOption(key, value string) error {
@@ -259,18 +259,52 @@ func (s *stmt) ExecuteQuery(context.Context) (array.RecordReader, int64, error) 
 	return getRdr(&out), int64(affected), nil
 }
 
-func (s *stmt) ExecuteUpdate(context.Context) (int64, error) { return 0, nil }
+func (s *stmt) ExecuteUpdate(context.Context) (int64, error) {
+	var (
+		nrows C.int64_t
+		err   C.struct_AdbcError
+	)
+	if code := adbc.Status(C.AdbcStatementExecuteQuery(s.st, nil, &nrows, &err)); code != adbc.StatusOK {
+		return -1, toAdbcError(code, &err)
+	}
+	return int64(nrows), nil
+}
 
-func (s *stmt) Prepare(context.Context) error { return nil }
+func (s *stmt) Prepare(context.Context) error {
+	var err C.struct_AdbcError
+	if code := adbc.Status(C.AdbcStatementPrepare(s.st, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
+}
 
-func (s *stmt) SetSubstraitPlan(plan []byte) error { return nil }
+func (s *stmt) SetSubstraitPlan(plan []byte) error {
+	return &adbc.Error{Code: adbc.StatusNotImplemented}
+}
 
-func (s *stmt) Bind(_ context.Context, values arrow.Record) error { return nil }
+func (s *stmt) Bind(_ context.Context, values arrow.Record) error {
+	var (
+		arr    cdata.CArrowArray
+		schema cdata.CArrowSchema
+		err    C.struct_AdbcError
+	)
+	cdata.ExportArrowRecordBatch(values, &arr, &schema)
 
-func (s *stmt) BindStream(_ context.Context, stream array.RecordReader) error { return nil }
+	code := adbc.Status(C.AdbcStatementBind(s.st, (*C.struct_ArrowArray)(unsafe.Pointer(&arr)), (*C.struct_ArrowSchema)(unsafe.Pointer(&schema)), &err))
+	if code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
+}
 
-func (s *stmt) GetParameterSchema() (*arrow.Schema, error) { return nil, nil }
+func (s *stmt) BindStream(_ context.Context, stream array.RecordReader) error {
+	return &adbc.Error{Code: adbc.StatusNotImplemented}
+}
+
+func (s *stmt) GetParameterSchema() (*arrow.Schema, error) {
+	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+}
 
 func (s *stmt) ExecutePartitions(context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
-	return nil, adbc.Partitions{}, 0, nil
+	return nil, adbc.Partitions{}, 0, &adbc.Error{Code: adbc.StatusNotImplemented}
 }

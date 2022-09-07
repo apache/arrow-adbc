@@ -19,11 +19,14 @@ package drivermgr_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/drivermgr"
 	"github.com/apache/arrow/go/v10/arrow"
+	"github.com/apache/arrow/go/v10/arrow/array"
+	"github.com/apache/arrow/go/v10/arrow/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -91,6 +94,97 @@ func (dm *DriverMgrSuite) TestMetadataGetInfo() {
 	dm.EqualValues(4, rdr.Record().NumRows())
 	dm.False(rdr.Next())
 	rdr.Release()
+}
+
+func (dm *DriverMgrSuite) TestSqlExecute() {
+	query := "SELECT 1"
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	dm.Require().NoError(st.SetSqlQuery(query))
+	defer st.Close()
+
+	rdr, _, err := st.ExecuteQuery(dm.ctx)
+	dm.NoError(err)
+	defer rdr.Release()
+
+	expSchema := arrow.NewSchema([]arrow.Field{{Name: "1", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)
+	dm.True(expSchema.Equal(rdr.Schema()), expSchema.String(), rdr.Schema().String())
+	expRec, _, err := array.RecordFromJSON(memory.DefaultAllocator, expSchema, strings.NewReader(`[{"1": 1}]`))
+	dm.Require().NoError(err)
+	defer expRec.Release()
+
+	dm.True(rdr.Next())
+	dm.Truef(array.RecordEqual(expRec, rdr.Record()), "expected: %s\ngot: %s", expRec, rdr.Record())
+	dm.False(rdr.Next())
+}
+
+func (dm *DriverMgrSuite) TestSqlExecuteInvalid() {
+	query := "INVALID"
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer st.Close()
+
+	err = st.SetSqlQuery(query)
+	var adbcErr *adbc.Error
+	dm.ErrorAs(err, &adbcErr)
+	dm.ErrorContains(adbcErr, "[SQLite3] sqlite3_prepare_v2:")
+	dm.ErrorContains(adbcErr, "syntax error")
+	dm.Equal(adbc.StatusIO, adbcErr.Code)
+}
+
+func (dm *DriverMgrSuite) TestSqlPrepare() {
+	query := "SELECT 1"
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	dm.Require().NoError(st.SetSqlQuery(query))
+	defer st.Close()
+
+	dm.Require().NoError(st.Prepare(dm.ctx))
+	rdr, _, err := st.ExecuteQuery(dm.ctx)
+	dm.NoError(err)
+	defer rdr.Release()
+
+	expSchema := arrow.NewSchema([]arrow.Field{{Name: "1", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)
+	dm.True(expSchema.Equal(rdr.Schema()), expSchema.String(), rdr.Schema().String())
+	expRec, _, err := array.RecordFromJSON(memory.DefaultAllocator, expSchema, strings.NewReader(`[{"1": 1}]`))
+	dm.Require().NoError(err)
+	defer expRec.Release()
+
+	dm.True(rdr.Next())
+	dm.Truef(array.RecordEqual(expRec, rdr.Record()), "expected: %s\ngot: %s", expRec, rdr.Record())
+	dm.False(rdr.Next())
+}
+
+func (dm *DriverMgrSuite) TestSqlPrepareMultipleParams() {
+	paramSchema := arrow.NewSchema([]arrow.Field{
+		{Name: "1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+		{Name: "2", Type: arrow.BinaryTypes.String, Nullable: true},
+	}, nil)
+	// go arrow doesn't yet support duplicately named fields so
+	// let's use sqlite syntax to name the fields
+	query := "SELECT ?1, ?2"
+
+	params, _, err := array.RecordFromJSON(memory.DefaultAllocator, paramSchema,
+		strings.NewReader(`[{"1": 1, "2": "foo"}, {"1": 2, "2": "bar"}]`))
+	dm.Require().NoError(err)
+	defer params.Release()
+
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	dm.Require().NoError(st.SetSqlQuery(query))
+	defer st.Close()
+
+	dm.NoError(st.Prepare(dm.ctx))
+	dm.NoError(st.Bind(dm.ctx, params))
+
+	rdr, _, err := st.ExecuteQuery(dm.ctx)
+	dm.NoError(err)
+	defer rdr.Release()
+
+	dm.True(rdr.Next())
+	rec := rdr.Record()
+	dm.Truef(array.RecordEqual(params, rec), "expected: %s\ngot: %s", params, rec)
+	dm.False(rdr.Next())
 }
 
 func TestDriverMgr(t *testing.T) {
