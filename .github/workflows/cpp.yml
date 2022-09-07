@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: C/C++/GLib/Python
+name: C/C++/GLib/Python/Ruby
 
 on:
   pull_request:
@@ -175,6 +175,18 @@ jobs:
           bundle exec \
             env DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH} \
               ruby ../../glib/test/run.rb
+          popd
+      - name: Test Ruby Driver Manager
+        shell: bash -l {0}
+        run: |
+          export DYLD_LIBRARY_PATH=$HOME/local/lib
+          export GI_TYPELIB_PATH=$HOME/local/lib/girepository-1.0:$CONDA_PREFIX/lib/girepository-1.0
+          export LD_LIBRARY_PATH=$HOME/local/lib
+          pushd ruby
+          bundle install
+          bundle exec \
+            env DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH} \
+              ruby test/run.rb
           popd
 
 
