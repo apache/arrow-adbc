@@ -114,13 +114,20 @@ jobs:
           mamba install --file ci/conda_env_cpp.txt --file ci/conda_env_python.txt
       - name: Build SQLite3 Driver
         shell: bash -l {0}
-        id: sqlite
         run: |
           mkdir -p build/driver_sqlite
           pushd build/driver_sqlite
-          cmake ../../c/drivers/sqlite -DADBC_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
-          cmake --build .
-          echo "::set-output name=path::$(pwd)"
+          cmake ../../c/drivers/sqlite \
+            -DADBC_BUILD_SHARED=ON \
+            -DADBC_BUILD_STATIC=OFF \
+            -DADBC_BUILD_TESTS=OFF \
+            -DADBC_USE_ASAN=OFF \
+            -DADBC_USE_UBSAN=OFF \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_INSTALL_PREFIX=$HOME/local \
+            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
+          cmake --build . --target install
           popd
       - uses: actions/setup-go@v3
         with:
@@ -134,7 +141,11 @@ jobs:
         shell: bash -l {0}
         run: |
           pushd go/adbc
-          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ steps.sqlite.outputs.path }} go build -v ./...
+          export LD_LIBRARY_PATH=$HOME/local/lib
+          export DYLD_LIBRARY_PATH=$HOME/local/lib
+          which go
+          go version
+          go build -v ./...
           popd
       - name: Run Staticcheck
         shell: bash -l {0}
@@ -146,5 +157,7 @@ jobs:
         shell: bash -l {0}
         run: |
           pushd go/adbc
-          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ steps.sqlite.outputs.path }} go test -v ./...
+          export LD_LIBRARY_PATH=$HOME/local/lib
+          export DYLD_LIBRARY_PATH=$HOME/local/lib
+          go test -v ./...
           popd
