@@ -156,7 +156,7 @@ jobs:
           go-version-file: 'go/adbc/go.mod'
           check-latest: true
           cache: true
-          cache-dependency-path: go/adbc/go.sum      
+          cache-dependency-path: go/adbc/go.sum
       - uses: conda-incubator/setup-miniconda@v2
         with:
           miniforge-variant: Mambaforge
@@ -179,7 +179,7 @@ jobs:
           if %errorlevel% neq 0 then exit /b %errorlevel%
           cd ..\..
       - name: Build/Test Go
-        shell: cmd /C call {0}                    
+        shell: cmd /C call {0}
         run: |
           set "PATH=%cd%\build\driver_sqlite;%PATH%"
           cd go\adbc
