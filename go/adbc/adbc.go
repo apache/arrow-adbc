@@ -64,7 +64,7 @@ func (e Error) Error() string {
 }
 
 // Status represents an error code for operations that may fail
-type Status int8
+type Status uint8
 
 const (
 	// No Error
@@ -383,8 +383,7 @@ type Connection interface {
 	Rollback(context.Context) error
 
 	// NewStatement initializes a new statement object tied to this connection
-	// using the passed in options.
-	NewStatement(options map[string]string) (Statement, error)
+	NewStatement() (Statement, error)
 
 	// Close closes this connection and releases any associated resources.
 	Close() error
@@ -447,6 +446,9 @@ type Statement interface {
 	//
 	// A statement instance should not be used after Close is called.
 	Close() error
+
+	// SetOption sets a string option on this statement
+	SetOption(key, val string) error
 
 	// SetSqlQuery sets the query string to be executed.
 	//

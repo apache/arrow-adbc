@@ -128,7 +128,7 @@ type Driver struct {
 // of idle connections for efficient re-use.
 //
 // The returned connection is only used by one goroutine at a time.
-func (d *Driver) Open(name string) (driver.Conn, error) {
+func (d Driver) Open(name string) (driver.Conn, error) {
 	opts, err := parseConnectStr(name)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (d *Driver) Open(name string) (driver.Conn, error) {
 }
 
 // OpenConnector expects the same format as driver.Open
-func (d *Driver) OpenConnector(name string) (driver.Connector, error) {
+func (d Driver) OpenConnector(name string) (driver.Connector, error) {
 	opts, err := parseConnectStr(name)
 	if err != nil {
 		return nil, err
@@ -232,8 +232,7 @@ func (c *conn) Prepare(query string) (driver.Stmt, error) {
 // Context is for the preparation of the statement. The statement must not
 // store the context within the statement itself.
 func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
-	opts := GetOptionsFromCtx(ctx)
-	s, err := c.Conn.NewStatement(opts)
+	s, err := c.Conn.NewStatement()
 	if err != nil {
 		return nil, err
 	}

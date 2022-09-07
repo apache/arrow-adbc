@@ -30,7 +30,7 @@ const _Status_name = "OKUnknownNot ImplementedNot FoundAlready ExistsInvalid Arg
 var _Status_index = [...]uint8{0, 2, 9, 24, 33, 47, 63, 76, 88, 103, 111, 114, 123, 130, 145, 157}
 
 func (i Status) String() string {
-	if i < 0 || i >= Status(len(_Status_index)-1) {
+	if i >= Status(len(_Status_index)-1) {
 		return "Status(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
 	return _Status_name[_Status_index[i]:_Status_index[i+1]]
