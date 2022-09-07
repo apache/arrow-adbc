@@ -66,6 +66,7 @@ dependencies = [
   gobject,
 ]
 libadbc_glib = library('adbc-glib',
+                       c_args: '-DG_LOG_DOMAIN="ADBC"',
                        sources: sources + enums,
                        install: true,
                        dependencies: dependencies,
