@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:build cgo
+
 package sqldriver_test
 
 import (
@@ -22,14 +24,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/apache/arrow-adbc/go/adbc/cgodriver"
+	"github.com/apache/arrow-adbc/go/adbc/drivermgr"
 	"github.com/apache/arrow-adbc/go/adbc/sqldriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSqlDriver(t *testing.T) {
-	sql.Register("adbc", sqldriver.Driver{&cgodriver.Driver{}})
+	sql.Register("adbc", sqldriver.Driver{&drivermgr.Driver{}})
 
 	db, err := sql.Open("adbc", "driver=adbc_driver_sqlite;entrypoint=AdbcDriverInit")
 	require.NoError(t, err)

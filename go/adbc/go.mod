@@ -3,7 +3,7 @@ module github.com/apache/arrow-adbc/go/adbc
 go 1.18
 
 require (
-	github.com/apache/arrow/go/v10 v10.0.0-20220830153009-74dae618ed8d
+	github.com/apache/arrow/go/v10 v10.0.0-20220907151818-ff3aa3b7bb31
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/tools v0.1.12
 )
@@ -28,5 +28,3 @@ require (
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/apache/arrow/go/v10 => /home/zero/arrow/go

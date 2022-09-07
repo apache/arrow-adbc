@@ -15,14 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package cgodriver_test
+package drivermgr_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/cgodriver"
+	"github.com/apache/arrow-adbc/go/adbc/drivermgr"
 	"github.com/apache/arrow/go/v10/arrow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +39,7 @@ type DriverMgrSuite struct {
 
 func (dm *DriverMgrSuite) SetupSuite() {
 	dm.ctx = context.TODO()
-	dm.drv = &cgodriver.Driver{}
+	dm.drv = &drivermgr.Driver{}
 	dm.drv.SetOptions(map[string]string{
 		"driver": "adbc_driver_sqlite",
 	})
@@ -99,7 +99,7 @@ func TestDriverMgr(t *testing.T) {
 
 func TestDriverMgrCustomInitFunc(t *testing.T) {
 	// explicitly set entrypoint
-	drv := &cgodriver.Driver{}
+	var drv drivermgr.Driver
 	drv.SetOptions(map[string]string{
 		"driver":     "adbc_driver_sqlite",
 		"entrypoint": "AdbcDriverInit",
@@ -109,7 +109,7 @@ func TestDriverMgrCustomInitFunc(t *testing.T) {
 	require.NoError(t, cnxn.Close())
 
 	// set invalid entrypoint
-	drv = &cgodriver.Driver{}
+	drv = drivermgr.Driver{}
 	drv.SetOptions(map[string]string{
 		"driver":     "adbc_driver_sqlite",
 		"entrypoint": "ThisSymbolDoesNotExist",
