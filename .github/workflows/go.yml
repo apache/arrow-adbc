@@ -131,7 +131,7 @@ jobs:
           popd
       - uses: actions/setup-go@v3
         with:
-          go-version-file: 'go/adbc/go.mod'
+          go-version-file: 1.18.6
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -142,10 +142,8 @@ jobs:
         run: |
           pushd go/adbc
           export LD_LIBRARY_PATH=$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
-          env
-          go version
-          go build -v ./...
+          export DYLD_LIBRARY_PATH=$HOME/local/lib                    
+          $RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go build -v ./...
           popd
       - name: Run Staticcheck
         shell: bash -l {0}
@@ -159,5 +157,5 @@ jobs:
           pushd go/adbc
           export LD_LIBRARY_PATH=$HOME/local/lib
           export DYLD_LIBRARY_PATH=$HOME/local/lib
-          go test -v ./...
+          $RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go test -v ./...
           popd
