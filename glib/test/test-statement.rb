@@ -25,6 +25,13 @@ class StatementTest < Test::Unit::TestCase
     @connection.init(@database)
   end
 
+  def test_release
+    statement = ADBC::Statement.new(@connection)
+    assert do
+      statement.release
+    end
+  end
+
   def test_execute
     statement = ADBC::Statement.new(@connection)
     statement.set_sql_query("SELECT 1")

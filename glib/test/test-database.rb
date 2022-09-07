@@ -23,4 +23,11 @@ class DatabaseTest < Test::Unit::TestCase
       database.init
     end
   end
+
+  def test_release
+    database = ADBC::Database.new
+    assert do
+      database.release
+    end
+  end
 end
