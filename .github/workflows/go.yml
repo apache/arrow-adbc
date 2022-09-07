@@ -88,6 +88,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.18.6
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
       - name: Get Date
         id: get-date
         shell: bash
@@ -97,7 +103,7 @@ jobs:
         uses: actions/cache@v2
         env:
           # Increment this to reset cache manually
-          CACHE_NUMBER: 0
+          CACHE_NUMBER: 1
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -121,28 +127,20 @@ jobs:
             -DADBC_BUILD_SHARED=ON \
             -DADBC_BUILD_STATIC=OFF \
             -DADBC_BUILD_TESTS=OFF \
-            -DADBC_USE_ASAN=OFF \
-            -DADBC_USE_UBSAN=OFF \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_INSTALL_LIBDIR=lib \
             -DCMAKE_INSTALL_PREFIX=$HOME/local \
             -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
           cmake --build . --target install
           popd
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.18.6
-          check-latest: true
-          cache: true
-          cache-dependency-path: go/adbc/go.sum
       - name: Install staticcheck
         if: ${{ !contains('macos-latest', matrix.os) }}
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Go Build
         run: |
           pushd go/adbc
-          export LD_LIBRARY_PATH=$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/local/lib
+          export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/local/lib
           $RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go build -v ./...
           popd
       - name: Run Staticcheck
@@ -154,7 +152,7 @@ jobs:
       - name: Go Test
         run: |
           pushd go/adbc
-          export LD_LIBRARY_PATH=$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/local/lib
+          export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/local/lib
           $RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go test -v ./...
           popd
