@@ -142,7 +142,7 @@ jobs:
         run: |
           pushd go/adbc
           export LD_LIBRARY_PATH=$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$HOME/local/lib                    
+          export DYLD_LIBRARY_PATH=$HOME/local/lib
           $RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go build -v ./...
           popd
       - name: Run Staticcheck
