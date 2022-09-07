@@ -94,10 +94,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=$HOME/local \
             -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
           cmake --build . --target install
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
-          # MacOS doesn't allow DYLD_LIBRARY_PATH to propagate through
-          # CTest, so call the test directly
-          ./adbc-driver-sqlite-test
+          ctest --output-on-failure --no-tests=error
           popd
       - name: Build/Test Driver Manager
         shell: bash -l {0}
