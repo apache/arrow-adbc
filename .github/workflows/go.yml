@@ -148,8 +148,8 @@ jobs:
       - name: Run Staticcheck
         shell: bash -l {0}
         run: |
-          pushd go/adbc
-          staticcheck -f stylish ./...
+          pushd go/adbc          
+          $($RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go env GOPATH)/bin/staticcheck -f stylish ./...
           popd
       - name: Go Test
         shell: bash -l {0}
