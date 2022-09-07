@@ -143,7 +143,7 @@ jobs:
           pushd go/adbc
           export LD_LIBRARY_PATH=$HOME/local/lib
           export DYLD_LIBRARY_PATH=$HOME/local/lib
-          which go
+          echo $PATH
           go version
           go build -v ./...
           popd
