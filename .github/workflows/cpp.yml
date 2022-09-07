@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: C/C++/Python
+name: C/C++/GLib/Python
 
 on:
   pull_request:
@@ -24,12 +24,14 @@ on:
     paths:
       - "adbc.h"
       - "c/**"
+      - "glib/**"
       - "python/**"
       - ".github/workflows/cpp.yml"
   push:
     paths:
       - "adbc.h"
       - "c/**"
+      - "glib/**"
       - "python/**"
       - ".github/workflows/cpp.yml"
 
@@ -55,7 +57,7 @@ jobs:
         run: |
           echo "::set-output name=today::$(/bin/date -u '+%Y%m%d')"
       - name: Cache Conda
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -72,15 +74,27 @@ jobs:
       - name: Install Dependencies
         shell: bash -l {0}
         run: |
-          mamba install --file ci/conda_env_cpp.txt --file ci/conda_env_python.txt
+          mamba install \
+            --file ci/conda_env_cpp.txt \
+            --file ci/conda_env_glib.txt \
+            --file ci/conda_env_python.txt
       - name: Build/Test SQLite3 Driver
         shell: bash -l {0}
         run: |
           mkdir -p build/driver_sqlite
           pushd build/driver_sqlite
-          cmake ../../c/drivers/sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
-          cmake --build .
-          export DYLD_LIBRARY_PATH=$(pwd)
+          cmake ../../c/drivers/sqlite \
+            -DADBC_BUILD_SHARED=ON \
+            -DADBC_BUILD_STATIC=OFF \
+            -DADBC_BUILD_TESTS=ON \
+            -DADBC_USE_ASAN=ON \
+            -DADBC_USE_UBSAN=ON \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_INSTALL_PREFIX=$HOME/local \
+            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
+          cmake --build . --target install
+          export DYLD_LIBRARY_PATH=$HOME/local/lib
           # MacOS doesn't allow DYLD_LIBRARY_PATH to propagate through
           # CTest, so call the test directly
           ./adbc-driver-sqlite-test
@@ -90,11 +104,34 @@ jobs:
         run: |
           mkdir -p build/driver_manager
           pushd build/driver_manager
-          cmake ../../c/driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF -DADBC_USE_ASAN=ON -DADBC_USE_UBSAN=ON
+          cmake ../../c/driver_manager \
+            -DADBC_BUILD_SHARED=ON \
+            -DADBC_BUILD_STATIC=OFF \
+            -DADBC_BUILD_TESTS=ON \
+            -DADBC_USE_ASAN=ON \
+            -DADBC_USE_UBSAN=ON \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_INSTALL_PREFIX=$HOME/local \
+            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
           cmake --build .
-          export DYLD_LIBRARY_PATH=$(pwd):../driver_sqlite
-          export LD_LIBRARY_PATH=$(pwd):../driver_sqlite
+          export DYLD_LIBRARY_PATH=$(pwd):$HOME/local/lib
+          export LD_LIBRARY_PATH=$(pwd):$HOME/local/lib
           ./adbc-driver-manager-test
+          popd
+      - name: Install Driver Manager (No ASan)
+        shell: bash -l {0}
+        run: |
+          mkdir -p build/driver_manager_no_asan
+          pushd build/driver_manager_no_asan
+          cmake ../../c/driver_manager \
+            -DADBC_BUILD_SHARED=ON \
+            -DADBC_BUILD_STATIC=OFF \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_INSTALL_PREFIX=$HOME/local \
+            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
+          cmake --build . --target install
           popd
       - name: Build/Test SQLite3 Driver (No ASan)
         shell: bash -l {0}
@@ -102,17 +139,45 @@ jobs:
           # Build a no-ASan version that Python can easily load
           mkdir -p build/driver_sqlite_no_asan
           pushd build/driver_sqlite_no_asan
-          cmake ../../c/drivers/sqlite -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
-          cmake --build .
+          cmake ../../c/drivers/sqlite \
+            -DADBC_BUILD_SHARED=ON \
+            -DADBC_BUILD_STATIC=OFF \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_INSTALL_PREFIX=$HOME/local \
+            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
+          cmake --build . --target install
           popd
       - name: Build/Test Python Driver Manager
         shell: bash -l {0}
         run: |
           pushd python
           pip install -e adbc_driver_manager
-          export DYLD_LIBRARY_PATH=$(pwd)/../build/driver_sqlite_no_asan
-          export LD_LIBRARY_PATH=$(pwd)/../build/driver_sqlite_no_asan
+          export DYLD_LIBRARY_PATH=$HOME/local/lib
+          export LD_LIBRARY_PATH=$HOME/local/lib
           python -m pytest -vv adbc_driver_manager
+          popd
+      - name: Build/Test GLib Driver Manager
+        shell: bash -l {0}
+        run: |
+          meson setup \
+            --buildtype=debug \
+            --cmake-prefix-path=$HOME/local:$CONDA_PREFIX \
+            --libdir=lib \
+            --pkg-config-path=$HOME/local/lib/pkgconfig:$CONDA_PREFIX/lib/pkgconfig \
+            --prefix=$HOME/local \
+            build/glib \
+            glib
+          meson install -C build/glib
+          export BUNDLE_GEMFILE=$(pwd)/glib/Gemfile
+          export DYLD_LIBRARY_PATH=$HOME/local/lib
+          export GI_TYPELIB_PATH=$(pwd)/build/glib/adbc-glib:$CONDA_PREFIX/lib/girepository-1.0
+          export LD_LIBRARY_PATH=$HOME/local/lib
+          bundle install
+          pushd build/glib
+          bundle exec \
+            env DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH} \
+              ruby ../../glib/test/run.rb
           popd
 
 
