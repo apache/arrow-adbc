@@ -21,6 +21,9 @@ list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 project(adbc_driver_sqlite
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
