@@ -34,7 +34,6 @@ public class AdbcException extends Exception {
   private final String sqlState;
   private final int vendorCode;
 
-  // TODO: do we also want to support a multi-exception akin to SQLException#setNextException
   public AdbcException(
       String message, Throwable cause, AdbcStatusCode status, String sqlState, int vendorCode) {
     super(message, cause);

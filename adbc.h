@@ -1125,9 +1125,6 @@ typedef AdbcStatusCode (*AdbcDriverInitFunc)(int version, void* driver,
 }
 #endif
 
-/// \page typical-usage Typical Usage Patterns
-/// (TODO: describe request sequences)
-
 /// \page decoder-ring Comparison with Other APIs
 ///
 /// <table>
