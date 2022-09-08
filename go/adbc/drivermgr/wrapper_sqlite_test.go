@@ -15,10 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:build cgo
+
 package drivermgr_test
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -214,5 +217,11 @@ func TestDriverMgrCustomInitFunc(t *testing.T) {
 	assert.ErrorAs(t, err, &exp)
 	assert.Equal(t, adbc.StatusInternal, exp.Code)
 	assert.Contains(t, exp.Msg, "dlsym() failed")
-	assert.Contains(t, exp.Msg, "undefined symbol: ThisSymbolDoesNotExist")
+	switch runtime.GOOS {
+	case "darwin":
+		assert.Contains(t, exp.Msg, "ThisSymbolDoesNotExist): symbol not found")
+	case "windows":
+	default:
+		assert.Contains(t, exp.Msg, "undefined symbol: ThisSymbolDoesNotExist")
+	}
 }
