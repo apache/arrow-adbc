@@ -132,7 +132,12 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=$HOME/local \
             -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
           cmake --build . --target install
-          popd
+          popd      
+      - name: Fix Go path on MacOS
+        shell: bash -l {0}
+        if: ${{ contains('macos-latest', matrix.os) }}
+        run: |
+          echo "$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin" >> $GITHUB_PATH
       - name: Install staticcheck
         shell: bash -l {0}
         if: ${{ !contains('macos-latest', matrix.os) }}
@@ -143,7 +148,7 @@ jobs:
           pushd go/adbc
           export LD_LIBRARY_PATH=$HOME/local/lib
           export DYLD_LIBRARY_PATH=$HOME/local/lib
-          $RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go build -v ./...
+          go build -v ./...
           popd
       - name: Run Staticcheck
         if: ${{ !contains('macos-latest', matrix.os) }}
@@ -152,17 +157,23 @@ jobs:
           pushd go/adbc
           staticcheck -f stylish ./...
           popd
+      - name: Fix rpath for CGO_LDFLAGS on Macos
+        if: ${{ contains('macos-latest', matrix.os) }}
+        shell: bash -l {0}
+        run: |
+          echo "CGO_LDFLAGS='$CGO_LDFLAGS -Wl,-rpath,$HOME/local/lib'" >> $GITHUB_ENV
       - name: Go Test
         shell: bash -l {0}
         run: |
           pushd go/adbc
           export LD_LIBRARY_PATH=$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$HOME/local/lib:$CONDA_PREFIX/lib
-          $RUNNER_TOOL_CACHE/go/1.18.6/x64/bin/go test -v ./...
+          export DYLD_LIBRARY_PATH=$HOME/local/lib
+          go env
+          go test -v ./...
           popd
-      - name: Tmate Session
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+      # - name: Tmate Session
+      #   if: ${{ failure() }}
+      #   uses: mxschmitt/action-tmate@v3
+      #   with:
+      #     limit-access-to-actor: true
 
