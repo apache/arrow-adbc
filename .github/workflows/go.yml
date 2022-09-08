@@ -139,11 +139,9 @@ jobs:
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Go Build
         shell: bash -l {0}
-        env:
-          PATH: '${{ env.RUNNER_TOOL_CACHE }}/go/1.18.6/x64/bin:${{ env.PATH }}'
         run: |
           pushd go/adbc
-          go version
+          export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
           export LD_LIBRARY_PATH=$HOME/local/lib
           export DYLD_LIBRARY_PATH=$HOME/local/lib
           go build -v ./...
@@ -162,11 +160,9 @@ jobs:
           echo "CGO_LDFLAGS='$CGO_LDFLAGS -Wl,-rpath,$HOME/local/lib'" >> $GITHUB_ENV
       - name: Go Test
         shell: bash -l {0}
-        env:
-          PATH: '${{ env.RUNNER_TOOL_CACHE }}/go/1.18.6/x64/bin:${{ env.PATH }}'
         run: |
           pushd go/adbc
-          go env
+          export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
           export LD_LIBRARY_PATH=$HOME/local/lib
           export DYLD_LIBRARY_PATH=$HOME/local/lib
           go env
