@@ -152,21 +152,15 @@ jobs:
         run: |
           pushd go/adbc
           staticcheck -f stylish ./...
-          popd
-      - name: Fix rpath for CGO_LDFLAGS on Macos
-        if: ${{ contains('macos-latest', matrix.os) }}
-        shell: bash -l {0}
-        run: |
-          echo "CGO_LDFLAGS='-g -O2 -Wl,-rpath,$HOME/local/lib/'" >> $GITHUB_ENV
+          popd      
       - name: Go Test
         shell: bash -l {0}
         run: |
           pushd go/adbc
           export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
           export LD_LIBRARY_PATH=$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
-          go env
-          go test -v ./...
+          export DYLD_LIBRARY_PATH=$HOME/local/lib          
+          go test -exec "env DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH" -v ./...
           popd
       # - name: Tmate Session
       #   if: ${{ failure() }}
