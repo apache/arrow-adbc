@@ -661,14 +661,14 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
 /// \brief The name of the canonical option for setting the isolation
 ///   level of a transaction.
 ///
-/// Should only be used in conjunction with autocommit and
+/// Should only be used in conjunction with autocommit disabled and
 /// AdbcConnectionCommit / AdbcConnectionRollback. If the desired
-/// isolation level is not supported by a driver, it should return
+/// isolation level is not supported by a driver, it should return an
 /// appropriate error.
 #define ADBC_CONNECTION_OPTION_ISOLATION_LEVEL \
   "adbc.connection.transaction.isolation_level"
 
-/// \brief Use database or driver default Isolation level
+/// \brief Use database or driver default isolation level
 #define ADBC_OPTION_ISOLATION_LEVEL_DEFAULT \
   "adbc.connection.transaction.isolation.default"
 /// \brief The lowest isolation level. Dirty reads are allowed, so one

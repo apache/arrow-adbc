@@ -17,6 +17,8 @@
 
 package org.apache.arrow.adbc.driver.testsuite;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.util.AutoCloseables;
@@ -45,5 +47,15 @@ public abstract class AbstractConnectionTest {
   @Test
   void multipleConnections() throws Exception {
     try (final AdbcConnection ignored = database.connect()) {}
+  }
+
+  @Test
+  void readOnly() throws Exception {
+    assertThat(connection.getReadOnly()).isFalse();
+  }
+
+  @Test
+  void isolationLevel() throws Exception {
+    connection.getIsolationLevel();
   }
 }

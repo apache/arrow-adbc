@@ -39,7 +39,7 @@ public interface AdbcConnection extends AutoCloseable {
   /**
    * Create a new statement to bulk insert a {@link VectorSchemaRoot} into a table.
    *
-   * <p>Bind data to the statement, then call {@link AdbcStatement#execute()}. See {@link
+   * <p>Bind data to the statement, then call {@link AdbcStatement#executeUpdate()}. See {@link
    * BulkIngestMode} for description of behavior around creating tables.
    */
   default AdbcStatement bulkIngest(String targetTableName, BulkIngestMode mode)
@@ -203,8 +203,7 @@ public interface AdbcConnection extends AutoCloseable {
       String[] tableTypes,
       String columnNamePattern)
       throws AdbcException {
-    throw AdbcException.notImplemented(
-        "Connection does not support getTableSchema(String, String, String)");
+    throw AdbcException.notImplemented("Connection does not support getObjects()");
   }
 
   /**
@@ -277,5 +276,29 @@ public interface AdbcConnection extends AutoCloseable {
   /** Toggle whether autocommit is enabled. */
   default void setAutoCommit(boolean enableAutoCommit) throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support transactions");
+  }
+
+  /**
+   * Get whether the connection is read-only.
+   *
+   * <p>Connections are not read-only by default.
+   */
+  default boolean getReadOnly() throws AdbcException {
+    return false;
+  }
+
+  /** Toggle whether the connection is read-only. */
+  default void setReadOnly(boolean isReadOnly) throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support read-only mode");
+  }
+
+  /** Get the isolation level used by transactions. */
+  default IsolationLevel getIsolationLevel() throws AdbcException {
+    return IsolationLevel.DEFAULT;
+  }
+
+  /** Change the isolation level used by transactions. */
+  default void setIsolationLevel(IsolationLevel level) throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support setting isolation level");
   }
 }
