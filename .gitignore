@@ -69,6 +69,8 @@ docker_cache
 *.orig
 .*.swp
 .*.swo
+CMakeUserPresets.json
+build/
 
 site/
 
