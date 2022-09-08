@@ -28,6 +28,7 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
+import org.apache.arrow.adbc.core.IsolationLevel;
 import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
@@ -175,6 +176,76 @@ public class JdbcConnection implements AdbcConnection {
   public void setAutoCommit(boolean enableAutoCommit) throws AdbcException {
     try {
       connection.setAutoCommit(enableAutoCommit);
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public boolean getReadOnly() throws AdbcException {
+    try {
+      return connection.isReadOnly();
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public void setReadOnly(boolean isReadOnly) throws AdbcException {
+    try {
+      connection.setReadOnly(isReadOnly);
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public IsolationLevel getIsolationLevel() throws AdbcException {
+    try {
+      final int transactionIsolation = connection.getTransactionIsolation();
+      switch (transactionIsolation) {
+        case Connection.TRANSACTION_NONE:
+          return IsolationLevel.DEFAULT;
+        case Connection.TRANSACTION_READ_UNCOMMITTED:
+          return IsolationLevel.READ_UNCOMMITTED;
+        case Connection.TRANSACTION_READ_COMMITTED:
+          return IsolationLevel.READ_COMMITTED;
+        case Connection.TRANSACTION_REPEATABLE_READ:
+          return IsolationLevel.REPEATABLE_READ;
+        case Connection.TRANSACTION_SERIALIZABLE:
+          return IsolationLevel.SERIALIZABLE;
+        default:
+          throw AdbcException.notImplemented(
+              JdbcDriverUtil.prefixExceptionMessage(
+                  "JDBC isolation level not recognized: " + transactionIsolation));
+      }
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public void setIsolationLevel(IsolationLevel level) throws AdbcException {
+    try {
+      switch (level) {
+        case READ_UNCOMMITTED:
+          connection.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+          break;
+        case READ_COMMITTED:
+          connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+          break;
+        case REPEATABLE_READ:
+          connection.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+          break;
+        case SERIALIZABLE:
+          connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+          break;
+        case DEFAULT:
+        case SNAPSHOT:
+        case LINEARIZABLE:
+          throw AdbcException.notImplemented(
+              JdbcDriverUtil.prefixExceptionMessage("Isolation level not supported: " + level));
+      }
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
     }
