@@ -17,6 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+require "fileutils"
+
 require_relative "lib/adbc/version"
 
 Gem::Specification.new do |spec|
@@ -32,8 +34,15 @@ Gem::Specification.new do |spec|
     "ADBC (Apache Arrow Database Connectivity) is an API standard for " +
     "database access libraries that uses Apache Arrow for data."
   spec.license = "Apache-2.0"
-  spec.files = ["../README.md", "Rakefile", "Gemfile", "#{spec.name}.gemspec"]
-  spec.files += ["../LICENSE.txt", "../NOTICE.txt"]
+  spec.files = ["README.md"]
+  shared_files = [
+    "LICENSE.txt",
+    "NOTICE.txt",
+  ]
+  shared_files.each do |file|
+    FileUtils.cp("../#{file}", file)
+    spec.files += [file]
+  end
   spec.files += Dir.glob("lib/**/*.rb")
   spec.extensions = ["dependency-check/Rakefile"]
 
