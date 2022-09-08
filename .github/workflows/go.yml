@@ -157,7 +157,7 @@ jobs:
         if: ${{ contains('macos-latest', matrix.os) }}
         shell: bash -l {0}
         run: |
-          echo "CGO_LDFLAGS='$CGO_LDFLAGS -Wl,-rpath,$HOME/local/lib'" >> $GITHUB_ENV
+          echo "CGO_LDFLAGS='-g -O2 -Wl,-rpath,$HOME/local/lib/'" >> $GITHUB_ENV
       - name: Go Test
         shell: bash -l {0}
         run: |
