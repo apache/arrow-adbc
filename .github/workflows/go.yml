@@ -162,8 +162,3 @@ jobs:
           export DYLD_LIBRARY_PATH=$HOME/local/lib          
           go test -exec "env DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH" -v ./...
           popd
-      # - name: Tmate Session
-      #   if: ${{ failure() }}
-      #   uses: mxschmitt/action-tmate@v3
-      #   with:
-      #     limit-access-to-actor: true
