@@ -40,7 +40,7 @@ add_arrow_lib(adbc_driver_postgres
               OUTPUTS
               ADBC_LIBRARIES
               SHARED_LINK_LIBS
-              ${LIBPQ_LIBRARIES}
+              ${LIBPQ_LINK_LIBRARIES}
               STATIC_LINK_LIBS
               ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
