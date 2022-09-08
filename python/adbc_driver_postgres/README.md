@@ -17,22 +17,25 @@
   under the License.
 -->
 
-# ADBC libpq Driver
+# ADBC libpq Driver for Python
 
-With credit to 0x0L's [pgeon](https://github.com/0x0L/pgeon) for the
-overall approach.
+This package contains bindings for the [libpq
+driver](../../c/drivers/postgres/README.md), using the [driver
+manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
+249-compatible][dbapi] interface on top.
 
-This implements an ADBC driver that wraps [libpq][libpq].  This is
-still a work in progress.
-
-[libpq]: https://www.postgresql.org/docs/14/libpq.html
+[dbapi]: https://peps.python.org/pep-0249/
 
 ## Building
 
-Dependencies: libpq itself.  This can be installed with your favorite
-package manager.
+Dependencies: a build of the libpq driver.
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
+Set the environment variable `ADBC_POSTGRES_LIBRARY` to the directory
+containing `libadbc_driver_postgres.so` (this library does not yet
+support Windows/MacOS) before running `poetry build`.
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
+general build process.
 
 ## Testing
 
@@ -51,5 +54,8 @@ Postgres URI before running tests:
 
 ```shell
 $ export ADBC_POSTGRES_TEST_URI=postgres://localhost:5432/postgres?user=postgres&password=password
-$ ctest
+$ pytest -vvx
 ```
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
+general test process.

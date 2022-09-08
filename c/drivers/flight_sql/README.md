@@ -17,39 +17,39 @@
   under the License.
 -->
 
-# ADBC libpq Driver
+# ADBC Flight SQL Driver
 
-With credit to 0x0L's [pgeon](https://github.com/0x0L/pgeon) for the
-overall approach.
-
-This implements an ADBC driver that wraps [libpq][libpq].  This is
+This implements an ADBC driver that wraps Arrow Flight SQL.  This is
 still a work in progress.
-
-[libpq]: https://www.postgresql.org/docs/14/libpq.html
 
 ## Building
 
-Dependencies: libpq itself.  This can be installed with your favorite
-package manager.
+Dependencies: Flight SQL itself.  This can be installed with your
+favorite package manager, by installing the Arrow C++ libraries.
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
 
 ## Testing
 
-A running instance of Postgres is required.  For example, using Docker:
+A running instance of the Flight SQL test server from the Arrow source
+tree is required.  This means [building Arrow with
+tests](https://arrow.apache.org/docs/developers/cpp/building.html):
 
 ```shell
-$ docker run -it --rm \
-    -e POSTGRES_PASSWORD=password \
-    -e POSTGRES_DB=tempdb \
-    -p 5432:5432 \
-    postgres
+# Using a checkout of Arrow
+$ cd arrow/
+$ mkdir build && cd build
+$ cmake ../cpp -DARROW_FLIGHT=ON -DARROW_FLIGHT_SQL=ON -DARROW_BUILD_TESTS=ON
+$ cmake --build .
+$ ./debug/flight-sql-test-server
+Server listening on localhost:31337
 ```
 
 Then, to run the tests, set the environment variable specifying the
-Postgres URI before running tests:
+Flight location before running tests:
 
 ```shell
-$ export ADBC_POSTGRES_TEST_URI=postgres://localhost:5432/postgres?user=postgres&password=password
+# From a build of the driver
+$ export ADBC_FLIGHT_SQL_LOCATION=grpc://localhost:31337
 $ ctest
 ```

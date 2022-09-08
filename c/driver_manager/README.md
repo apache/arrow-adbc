@@ -17,39 +17,24 @@
   under the License.
 -->
 
-# ADBC libpq Driver
+# ADBC Driver Manager
 
-With credit to 0x0L's [pgeon](https://github.com/0x0L/pgeon) for the
-overall approach.
-
-This implements an ADBC driver that wraps [libpq][libpq].  This is
-still a work in progress.
-
-[libpq]: https://www.postgresql.org/docs/14/libpq.html
+The driver manager provides a library that implements the ADBC API,
+but dynamically loads and manages the actual driver libraries
+underneath.  Applications can use this to work with multiple drivers
+that would otherwise clash.  Language-specific bindings can target
+this library to avoid having to manage individual libraries for every
+driver.
 
 ## Building
 
-Dependencies: libpq itself.  This can be installed with your favorite
-package manager.
+Dependencies: none.
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
 
 ## Testing
 
-A running instance of Postgres is required.  For example, using Docker:
-
-```shell
-$ docker run -it --rm \
-    -e POSTGRES_PASSWORD=password \
-    -e POSTGRES_DB=tempdb \
-    -p 5432:5432 \
-    postgres
-```
-
-Then, to run the tests, set the environment variable specifying the
-Postgres URI before running tests:
-
-```shell
-$ export ADBC_POSTGRES_TEST_URI=postgres://localhost:5432/postgres?user=postgres&password=password
-$ ctest
-```
+The test suite requires the SQLite driver to be available.  On
+Linux/MacOS, you can build the driver, and then install it, or set
+`LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH` before running the test suite.
+Similarly, on Windows, you can set `PATH`.
