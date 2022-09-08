@@ -30,6 +30,8 @@ void TypeMapping::Insert(uint32_t oid, const char* typname, const char* typrecei
   if (std::strcmp(typname, "int8") == 0) {
     // DCHECK_EQ(type, PgType::kInt8);
     canonical_types[PgType::kInt8] = oid;
+  } else if (std::strcmp(typname, "text") == 0) {
+    canonical_types[PgType::kText] = oid;
   }
   // TODO: fill in remainder
 }

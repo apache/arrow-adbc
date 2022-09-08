@@ -96,10 +96,13 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
         res != 0) {
       return res;
     }
-    return AdbcDatabaseSetOption(database, "filename", ":memory:", error);
+    return AdbcDatabaseSetOption(
+        database, "filename", "file:Sqlite_Transactions?mode=memory&cache=shared", error);
   }
 
   std::string BindParameter(int index) const override { return "?"; }
+
+  bool supports_concurrent_statements() const override { return true; }
 };
 
 class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::DatabaseTest {

@@ -235,101 +235,18 @@ TEST_F(Sqlite, MetadataGetObjectsColumns) {
   batches.clear();
 }
 
-TEST_F(Sqlite, Transactions) {
-  // For this test, we explicitly want a shared DB
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcDatabaseSetOption(&database, "filename",
-                            "file:Sqlite_Transactions?mode=memory&cache=shared", &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &database, &error));
-
-  struct AdbcConnection connection2;
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection2, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection2, &database, &error));
-  ASSERT_NE(connection.private_data, nullptr);
-
-  AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-
-  const char* query = "SELECT * FROM bulk_insert";
-
-  // Invalid option value
-  ASSERT_NE(ADBC_STATUS_OK,
-            AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-                                    "invalid", &error));
-
-  // Can't call commit/rollback without disabling autocommit
-  ASSERT_EQ(ADBC_STATUS_INVALID_STATE, AdbcConnectionCommit(&connection, &error));
-  ASSERT_EQ(ADBC_STATUS_INVALID_STATE, AdbcConnectionRollback(&connection, &error));
-  error.release(&error);
-
-  // Ensure it's idempotent
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-                                     ADBC_OPTION_VALUE_ENABLED, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-                                     ADBC_OPTION_VALUE_ENABLED, &error));
-
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-                                     ADBC_OPTION_VALUE_DISABLED, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionCommit(&connection, &error));
-
-  // Uncommitted change
-  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection));
-
-  // SQLite prevents us from executing the query
-  {
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection2, &statement, &error));
-    ASSERT_NE(ADBC_STATUS_OK, AdbcStatementSetSqlQuery(&statement, query, &error));
-    ASSERT_THAT(error.message, ::testing::HasSubstr("database schema is locked"));
-    error.release(&error);
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  // Rollback
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRollback(&connection, &error));
-
-  // Now nothing's visible
-  {
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection2, &statement, &error));
-    ASSERT_NE(ADBC_STATUS_OK, AdbcStatementSetSqlQuery(&statement, query, &error));
-    ASSERT_THAT(error.message, ::testing::HasSubstr("no such table"));
-    error.release(&error);
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  // Commit, should now be visible on other connection
-  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionCommit(&connection, &error));
-
-  {
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection2, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementSetSqlQuery(&statement, query, &error));
-    struct ArrowArrayStream stream;
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecuteQuery(&statement, &stream, nullptr, &error));
-    stream.release(&stream);
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection2, &error));
-}
-
 class SqliteQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
-    return AdbcDatabaseSetOption(database, "filename", ":memory:", error);
+    // Shared DB required for transaction tests
+    return AdbcDatabaseSetOption(
+        database, "filename", "file:Sqlite_Transactions?mode=memory&cache=shared", error);
   }
 
   std::string BindParameter(int index) const override { return "?"; }
+
+  bool supports_concurrent_statements() const override { return true; }
 };
 
 class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::DatabaseTest {

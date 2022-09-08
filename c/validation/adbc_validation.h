@@ -46,6 +46,10 @@ class DriverQuirks {
 
   /// \brief Return the SQL to reference the bind parameter of the given index
   virtual std::string BindParameter(int index) const { return "?"; }
+
+  /// \brief Whether two statements can be used at the same time on a
+  ///   single connection
+  virtual bool supports_concurrent_statements() const { return false; }
 };
 
 class DatabaseTest {
@@ -153,7 +157,10 @@ class StatementTest {
 
   void TestSqlQueryErrors();
 
-  // TODO: transactions
+  void TestTransactions();
+
+  void TestConcurrentStatements();
+  void TestResultInvalidation();
 
  protected:
   struct AdbcError error;
@@ -183,7 +190,10 @@ class StatementTest {
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
   TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                           \
-  TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }
+  TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                             \
+  TEST_F(FIXTURE, Transactions) { TestTransactions(); }                                 \
+  TEST_F(FIXTURE, ConcurrentStatements) { TestConcurrentStatements(); }                 \
+  TEST_F(FIXTURE, ResultInvalidation) { TestResultInvalidation(); }
 
 }  // namespace adbc_validation
 

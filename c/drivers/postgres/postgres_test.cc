@@ -103,6 +103,14 @@ class PostgresStatementTest : public ::testing::Test,
   void TestSqlPrepareSelectNoParams() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareSelectParams() { GTEST_SKIP() << "Not yet implemented"; }
 
+  void TestConcurrentStatements() {
+    // TODO: refactor driver so that we read all the data as soon as
+    // we ExecuteQuery() since that's how libpq already works - then
+    // we can actually support concurrent statements (because there is
+    // no concurrency)
+    GTEST_SKIP() << "Not yet implemented";
+  }
+
  protected:
   PostgresQuirks quirks_;
 };
