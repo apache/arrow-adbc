@@ -248,6 +248,10 @@ struct BindStream {
           pg_type = PgType::kInt8;
           param_lengths[i] = 8;
           break;
+        case ArrowType::NANOARROW_TYPE_STRING:
+          pg_type = PgType::kText;
+          param_lengths[i] = 0;
+          break;
         default:
           // TODO: data type to string
           SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
@@ -324,6 +328,14 @@ struct BindStream {
               const int64_t value = ToNetworkInt64(
                   array_view->children[col]->buffer_views[1].data.as_int64[row]);
               std::memcpy(param_values[col], &value, sizeof(int64_t));
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_STRING: {
+              const ArrowBufferView view =
+                  ArrowArrayViewGetBytesUnsafe(array_view->children[col], row);
+              // TODO: overflow check?
+              param_lengths[col] = static_cast<int>(view.n_bytes);
+              param_values[col] = const_cast<char*>(view.data.as_char);
               break;
             }
             default:
@@ -691,6 +703,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_INT64:
         create += " BIGINT";
+        break;
+      case ArrowType::NANOARROW_TYPE_STRING:
+        create += " TEXT";
         break;
       default:
         // TODO: data type to string

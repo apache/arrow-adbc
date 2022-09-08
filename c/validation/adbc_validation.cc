@@ -19,6 +19,7 @@
 
 #include <cerrno>
 #include <cstring>
+#include <iostream>
 #include <optional>
 #include <string>
 #include <tuple>
@@ -188,6 +189,32 @@ struct Releaser<struct ArrowArrayView> {
   static void Release(struct ArrowArrayView* value) {
     if (value->storage_type != NANOARROW_TYPE_UNINITIALIZED) {
       ArrowArrayViewReset(value);
+    }
+  }
+};
+
+template <>
+struct Releaser<struct AdbcConnection> {
+  static void Release(struct AdbcConnection* value) {
+    if (value->private_data) {
+      struct AdbcError error = {};
+      auto status = AdbcConnectionRelease(value, &error);
+      if (status != ADBC_STATUS_OK) {
+        FAIL() << AdbcvErrorRepr(status) << ": " << AdbcvErrorRepr(&error);
+      }
+    }
+  }
+};
+
+template <>
+struct Releaser<struct AdbcStatement> {
+  static void Release(struct AdbcStatement* value) {
+    if (value->private_data) {
+      struct AdbcError error = {};
+      auto status = AdbcStatementRelease(value, &error);
+      if (status != ADBC_STATUS_OK) {
+        FAIL() << AdbcvErrorRepr(status) << ": " << AdbcvErrorRepr(&error);
+      }
     }
   }
 };
@@ -1773,6 +1800,137 @@ void StatementTest::TestSqlQueryErrors() {
     code = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error);
   }
   ASSERT_NE(ADBC_STATUS_OK, code);
+}
+
+void StatementTest::TestTransactions() {
+  ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+
+  Handle<struct AdbcConnection> connection2;
+  ASSERT_OK(&error, AdbcConnectionNew(&connection2.value, &error));
+  ASSERT_OK(&error, AdbcConnectionInit(&connection2.value, &database, &error));
+
+  ASSERT_OK(&error,
+            AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                    ADBC_OPTION_VALUE_DISABLED, &error));
+
+  // Uncommitted change
+  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
+
+  // Query on first connection should succeed
+  {
+    Handle<struct AdbcStatement> statement;
+    StreamReader reader;
+
+    ASSERT_OK(&error, AdbcStatementNew(&connection, &statement.value, &error));
+    ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement.value,
+                                               "SELECT * FROM bulk_ingest", &error));
+    ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                                &reader.rows_affected, &error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  }
+
+  if (error.release) error.release(&error);
+
+  // Query on second connection should fail
+  ASSERT_FAILS(&error, ([&]() -> AdbcStatusCode {
+    Handle<struct AdbcStatement> statement;
+    StreamReader reader;
+
+    CHECK_OK(AdbcStatementNew(&connection2.value, &statement.value, &error));
+    CHECK_OK(
+        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM bulk_ingest", &error));
+    CHECK_OK(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                       &reader.rows_affected, &error));
+    return ADBC_STATUS_OK;
+  })());
+
+  if (error.release) {
+    std::cerr << "Failure message: " << error.message << std::endl;
+    error.release(&error);
+  }
+
+  // Rollback
+  ASSERT_OK(&error, AdbcConnectionRollback(&connection, &error));
+
+  // Query on first connection should fail
+  ASSERT_FAILS(&error, ([&]() -> AdbcStatusCode {
+    Handle<struct AdbcStatement> statement;
+    StreamReader reader;
+
+    CHECK_OK(AdbcStatementNew(&connection, &statement.value, &error));
+    CHECK_OK(
+        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM bulk_ingest", &error));
+    CHECK_OK(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                       &reader.rows_affected, &error));
+    return ADBC_STATUS_OK;
+  })());
+
+  // Commit
+  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
+  ASSERT_OK(&error, AdbcConnectionCommit(&connection, &error));
+
+  // Query on second connection should succeed
+  {
+    Handle<struct AdbcStatement> statement;
+    StreamReader reader;
+
+    ASSERT_OK(&error, AdbcStatementNew(&connection2.value, &statement.value, &error));
+    ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement.value,
+                                               "SELECT * FROM bulk_ingest", &error));
+    ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                                &reader.rows_affected, &error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  }
+}
+
+void StatementTest::TestConcurrentStatements() {
+  Handle<struct AdbcStatement> statement1;
+  Handle<struct AdbcStatement> statement2;
+
+  ASSERT_OK(&error, AdbcStatementNew(&connection, &statement1.value, &error));
+  ASSERT_OK(&error, AdbcStatementNew(&connection, &statement2.value, &error));
+
+  ASSERT_OK(&error,
+            AdbcStatementSetSqlQuery(&statement1.value, "SELECT 'SaShiSuSeSo'", &error));
+  ASSERT_OK(&error,
+            AdbcStatementSetSqlQuery(&statement2.value, "SELECT 'SaShiSuSeSo'", &error));
+
+  StreamReader reader1;
+  StreamReader reader2;
+  ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement1.value, &reader1.stream.value,
+                                              &reader1.rows_affected, &error));
+
+  if (quirks()->supports_concurrent_statements()) {
+    ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement2.value, &reader2.stream.value,
+                                                &reader2.rows_affected, &error));
+    ASSERT_NO_FATAL_FAILURE(reader2.GetSchema());
+  } else {
+    ASSERT_FAILS(&error,
+                 AdbcStatementExecuteQuery(&statement2.value, &reader2.stream.value,
+                                           &reader2.rows_affected, &error));
+    ASSERT_EQ(nullptr, reader2.stream.value.release);
+  }
+  // Original stream should still be valid
+  ASSERT_NO_FATAL_FAILURE(reader1.GetSchema());
+}
+
+void StatementTest::TestResultInvalidation() {
+  // Start reading from a statement, then overwrite it
+  ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
+  ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error));
+
+  StreamReader reader1;
+  StreamReader reader2;
+  ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader1.stream.value,
+                                              &reader1.rows_affected, &error));
+  ASSERT_NO_FATAL_FAILURE(reader1.GetSchema());
+
+  ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader2.stream.value,
+                                              &reader2.rows_affected, &error));
+  ASSERT_NO_FATAL_FAILURE(reader2.GetSchema());
+
+  // First reader should not fail, but may give no data
+  ASSERT_NO_FATAL_FAILURE(reader1.Next());
 }
 
 #undef ADBCV_CONCAT
