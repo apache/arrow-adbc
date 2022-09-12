@@ -37,8 +37,6 @@ add_arrow_lib(adbc_driver_manager
               AdbcDriverManager
               PKG_CONFIG_NAME
               adbc-driver-manager)
-adbc_configure_target(adbc_driver_manager_shared)
-adbc_configure_target(adbc_driver_manager_static)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
@@ -64,7 +62,6 @@ if(ADBC_BUILD_TESTS)
                 EXTRA_LINK_LIBS
                 nanoarrow
                 ${TEST_LINK_LIBS})
-  adbc_configure_target(adbc-driver-manager-test)
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-manager-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)

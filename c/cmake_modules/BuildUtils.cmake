@@ -285,6 +285,7 @@ function(ADD_ARROW_LIB LIB_NAME)
 
   if(BUILD_SHARED)
     add_library(${LIB_NAME}_shared SHARED ${LIB_DEPS})
+    adbc_configure_target(${LIB_NAME}_shared)
     if(EXTRA_DEPS)
       add_dependencies(${LIB_NAME}_shared ${EXTRA_DEPS})
     endif()
@@ -377,6 +378,7 @@ function(ADD_ARROW_LIB LIB_NAME)
 
   if(BUILD_STATIC)
     add_library(${LIB_NAME}_static STATIC ${LIB_DEPS})
+    adbc_configure_target(${LIB_NAME}_static)
     if(EXTRA_DEPS)
       add_dependencies(${LIB_NAME}_static ${EXTRA_DEPS})
     endif()
@@ -713,6 +715,8 @@ function(ADD_TEST_CASE REL_TEST_NAME)
              ${TEST_PATH}
              ${ARG_TEST_ARGUMENTS})
   endif()
+
+  adbc_configure_target(${TEST_NAME})
 
   # Add test as dependency of relevant targets
   add_dependencies(all-tests ${TEST_NAME})
