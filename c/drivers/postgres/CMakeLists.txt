@@ -36,12 +36,12 @@ add_arrow_lib(adbc_driver_postgres
               postgres.cc
               statement.cc
               type.cc
-              ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c
               OUTPUTS
               ADBC_LIBRARIES
               SHARED_LINK_LIBS
               ${LIBPQ_LINK_LIBRARIES}
               STATIC_LINK_LIBS
+              nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
@@ -64,10 +64,11 @@ if(ADBC_BUILD_TESTS)
                 SOURCES
                 postgres_test.cc
                 ../../validation/adbc_validation.cc
-                ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c
                 EXTRA_LINK_LIBS
+                nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgres-test PRIVATE cxx_std_17)
+  adbc_configure_target(adbc-driver-postgres-test)
 endif()
 
 validate_config()

@@ -327,7 +327,7 @@ int MakeBatch(struct ArrowArray* batch, struct ArrowError* error,
               const std::vector<std::optional<T>>&... columns) {
   CHECK_ERRNO(ArrowArrayStartAppending(batch));
   CHECK_ERRNO(MakeBatchImpl(batch, 0, error, columns...));
-  for (size_t i = 0; i < batch->n_children; i++) {
+  for (size_t i = 0; i < static_cast<size_t>(batch->n_children); i++) {
     if (batch->length > 0 && batch->children[i]->length != batch->length) {
       ADD_FAILURE() << "Column lengths are inconsistent: column " << i << " has length "
                     << batch->children[i]->length;

@@ -258,7 +258,7 @@ class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::Datab
  protected:
   SqliteQuirks quirks_;
 };
-ADBCV_TEST_DATABASE(SqliteDatabaseTest);
+ADBCV_TEST_DATABASE(SqliteDatabaseTest)
 
 class SqliteConnectionTest : public ::testing::Test,
                              public adbc_validation::ConnectionTest {
@@ -270,7 +270,7 @@ class SqliteConnectionTest : public ::testing::Test,
  protected:
   SqliteQuirks quirks_;
 };
-ADBCV_TEST_CONNECTION(SqliteConnectionTest);
+ADBCV_TEST_CONNECTION(SqliteConnectionTest)
 
 class SqliteStatementTest : public ::testing::Test,
                             public adbc_validation::StatementTest {
@@ -282,6 +282,6 @@ class SqliteStatementTest : public ::testing::Test,
  protected:
   SqliteQuirks quirks_;
 };
-ADBCV_TEST_STATEMENT(SqliteStatementTest);
+ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
 }  // namespace adbc
