@@ -68,7 +68,7 @@ class PostgresDatabaseTest : public ::testing::Test,
  protected:
   PostgresQuirks quirks_;
 };
-ADBCV_TEST_DATABASE(PostgresDatabaseTest);
+ADBCV_TEST_DATABASE(PostgresDatabaseTest)
 
 class PostgresConnectionTest : public ::testing::Test,
                                public adbc_validation::ConnectionTest {
@@ -90,7 +90,7 @@ class PostgresConnectionTest : public ::testing::Test,
  protected:
   PostgresQuirks quirks_;
 };
-ADBCV_TEST_CONNECTION(PostgresConnectionTest);
+ADBCV_TEST_CONNECTION(PostgresConnectionTest)
 
 class PostgresStatementTest : public ::testing::Test,
                               public adbc_validation::StatementTest {
@@ -114,4 +114,4 @@ class PostgresStatementTest : public ::testing::Test,
  protected:
   PostgresQuirks quirks_;
 };
-ADBCV_TEST_STATEMENT(PostgresStatementTest);
+ADBCV_TEST_STATEMENT(PostgresStatementTest)

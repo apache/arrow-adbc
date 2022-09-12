@@ -43,6 +43,8 @@ add_arrow_lib(adbc_driver_sqlite
               STATIC_LINK_LIBS
               SQLite::SQLite3
               arrow_static)
+adbc_configure_target(adbc_driver_sqlite_shared)
+adbc_configure_target(adbc_driver_sqlite_static)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
@@ -63,9 +65,10 @@ if(ADBC_BUILD_TESTS)
                 SOURCES
                 sqlite_test.cc
                 ../../validation/adbc_validation.cc
-                ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c
                 EXTRA_LINK_LIBS
+                nanoarrow
                 ${TEST_LINK_LIBS})
+  adbc_configure_target(adbc-driver-sqlite-test)
   target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-sqlite-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)

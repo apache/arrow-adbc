@@ -16,6 +16,7 @@
 # under the License.
 
 # Common definitions for the CMake projects in this repository.
+# Must define REPOSITORY_ROOT before including this.
 
 enable_language(C CXX)
 
@@ -24,6 +25,9 @@ set(BUILD_SUPPORT_DIR "${REPOSITORY_ROOT}/ci/build_support")
 include(DefineOptions)
 include(GNUInstallDirs) # Populates CMAKE_INSTALL_INCLUDEDIR
 include(san-config)
+
+# ------------------------------------------------------------
+# Version definitions
 
 set(ADBC_VERSION "1.0.0-SNAPSHOT")
 set(ADBC_BASE_VERSION "1.0.0")
@@ -34,6 +38,7 @@ set(ADBC_VERSION_PATCH "0")
 math(EXPR ADBC_SO_VERSION "${ADBC_VERSION_MAJOR} * 100 + ${ADBC_VERSION_MINOR}")
 set(ADBC_FULL_SO_VERSION "${ADBC_SO_VERSION}.${ADBC_VERSION_PATCH}.0")
 
+# XXX: remove this, rely on user config
 if(ADBC_DEPENDENCY_SOURCE STREQUAL "CONDA")
   message(STATUS "Adding \$CONDA_PREFIX to CMAKE_PREFIX_PATH")
   list(APPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
@@ -51,6 +56,26 @@ else()
   set(ADBC_PKG_CONFIG_LIBDIR "\${prefix}/${CMAKE_INSTALL_LIBDIR}")
 endif()
 
+# ------------------------------------------------------------
+# Common build utilities
+
+# Nanoarrow definition
+add_library(nanoarrow STATIC ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c)
+
+# Set common build options
+macro(adbc_configure_target TARGET)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(${TARGET}
+                           PRIVATE -Wall
+                                   -Werror
+                                   -Wextra
+                                   -Wpedantic
+                                   -Wno-unused-parameter
+                                   -Wunused-result)
+  endif()
+endmacro()
+
+# Common testing setup
 add_custom_target(all-tests)
 if(ADBC_BUILD_TESTS)
   find_package(GTest)
