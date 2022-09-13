@@ -26,9 +26,6 @@ https://github.com/apache/arrow-adbc/issues
 
 ## Building
 
-In general: static checks, such as linting and formatting, are
-enforced via [pre-commit](https://pre-commit.com/).
-
 ### C/C++
 
 The libraries here are all **individual** CMake projects.
@@ -175,3 +172,54 @@ $ pytest -vvx
 ### Ruby
 
 The Ruby libraries are bindings around the GLib libraries.
+
+## Opening a Pull Request
+
+Before opening a pull request, please run the static checks, which are
+enforced via [`pre-commit`](https://pre-commit.com/).  This will run
+linters, formatters, and other analysis.  For example:
+
+```shell
+$ pip install pre-commit
+# Set up hooks
+$ pre-commit install
+# Run manually
+$ pre-commit run
+Check Xml............................................(no files to check)Skipped
+Check Yaml...........................................(no files to check)Skipped
+Fix End of Files.....................................(no files to check)Skipped
+Trim Trailing Whitespace.............................(no files to check)Skipped
+clang-format.........................................(no files to check)Skipped
+cmake-format.........................................(no files to check)Skipped
+cpplint..............................................(no files to check)Skipped
+Google Java Formatter................................(no files to check)Skipped
+black................................................(no files to check)Skipped
+flake8...............................................(no files to check)Skipped
+isort................................................(no files to check)Skipped
+# Hooks automatically run on commit
+$ git commit
+```
+
+When committing, please follow [Conventional
+Commits][conventional-commits].  This helps maintain semantic
+versioning of components.
+
+Please use the following commit types: `build`, `chore`, `ci`, `docs`,
+`feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`
+
+Please use the following scopes:
+
+- `c`, `glib`, `go`, `java`, `ruby`: for a language-specific implementation
+- `format`: for the core API definitions (adbc.h for C/C++, adbc.go for Go, adbc-core for Java).
+
+For example:
+
+```
+feat(c): implement prepared statements for libpq driver
+
+fix(java): adjust SQL type mapping for JDBC driver
+```
+
+`pre-commit` will enforce this as well.
+
+[conventional-commits]: https://www.conventionalcommits.org/en/v1.0.0/
