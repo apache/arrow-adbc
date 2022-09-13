@@ -50,6 +50,9 @@ class DriverQuirks {
   /// \brief Whether two statements can be used at the same time on a
   ///   single connection
   virtual bool supports_concurrent_statements() const { return false; }
+
+  /// \brief Whether AdbcStatementExecutePartitions should work
+  virtual bool supports_partitioned_data() const { return false; }
 };
 
 class DatabaseTest {
@@ -143,6 +146,8 @@ class StatementTest {
   void TestSqlIngestErrors();
   void TestSqlIngestMultipleConnections();
 
+  void TestSqlPartitionedInts();
+
   void TestSqlPrepareSelectNoParams();
   void TestSqlPrepareSelectParams();
   void TestSqlPrepareUpdate();
@@ -178,6 +183,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
+  TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                     \
   TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \
   TEST_F(FIXTURE, SqlPrepareSelectParams) { TestSqlPrepareSelectParams(); }             \
   TEST_F(FIXTURE, SqlPrepareUpdate) { TestSqlPrepareUpdate(); }                         \

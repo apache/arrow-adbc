@@ -1445,6 +1445,65 @@ void StatementTest::TestSqlIngestMultipleConnections() {
   }
 }
 
+void StatementTest::TestSqlPartitionedInts() {
+  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
+  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error));
+
+  struct ArrowSchema schema;
+  Handle<struct AdbcPartitions> partitions;
+  int64_t rows_affected = 0;
+
+  if (!quirks()->supports_partitioned_data()) {
+    ADBCV_ASSERT_FAILS_WITH(
+        NOT_IMPLEMENTED, &error,
+        AdbcStatementExecutePartitions(&statement, &schema, &partitions.value,
+                                       &rows_affected, &error));
+    return;
+  }
+
+  ADBCV_ASSERT_OK(&error,
+                  AdbcStatementExecutePartitions(&statement, &schema, &partitions.value,
+                                                 &rows_affected, &error));
+  // Assume only 1 partition
+  ASSERT_EQ(1, partitions->num_partitions);
+  ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+  ASSERT_NE(nullptr, schema.release);
+  ASSERT_EQ(1, schema.n_children);
+
+  Handle<struct AdbcConnection> connection2;
+  StreamReader reader;
+  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection2.value, &error));
+  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection2.value, &database, &error));
+  ADBCV_ASSERT_OK(
+      &error, AdbcConnectionReadPartition(&connection2.value, partitions->partitions[0],
+                                          partitions->partition_lengths[0],
+                                          &reader.stream.value, &error));
+
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_EQ(1, reader.schema->n_children);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_EQ(1, reader.array->length);
+  ASSERT_EQ(1, reader.array->n_children);
+
+  switch (reader.fields[0].data_type) {
+    case NANOARROW_TYPE_INT32:
+      ASSERT_NO_FATAL_FAILURE(
+          CompareArray<int32_t>(reader.array_view->children[0], {42}));
+      break;
+    case NANOARROW_TYPE_INT64:
+      ASSERT_NO_FATAL_FAILURE(
+          CompareArray<int64_t>(reader.array_view->children[0], {42}));
+      break;
+    default:
+      FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
+  }
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(nullptr, reader.array->release);
+}
+
 void StatementTest::TestSqlPrepareSelectNoParams() {
   ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
   ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error));

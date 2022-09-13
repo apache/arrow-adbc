@@ -1468,6 +1468,15 @@ AdbcStatusCode SqliteConnectionNew(struct AdbcConnection* connection,
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode SqliteConnectionReadPartition(struct AdbcConnection* connection,
+                                             const uint8_t* serialized_partition,
+                                             size_t serialized_length,
+                                             struct ArrowArrayStream* out,
+                                             struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
                                        struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
@@ -1527,6 +1536,15 @@ AdbcStatusCode SqliteStatementBindStream(struct AdbcStatement* statement,
   auto* ptr =
       reinterpret_cast<std::shared_ptr<SqliteStatementImpl>*>(statement->private_data);
   return (*ptr)->Bind(*ptr, stream, error);
+}
+
+AdbcStatusCode SqliteStatementExecutePartitions(struct AdbcStatement* statement,
+                                                struct ArrowSchema* schema,
+                                                struct AdbcPartitions* partitions,
+                                                int64_t* rows_affected,
+                                                struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
@@ -1674,6 +1692,15 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
   return SqliteConnectionNew(connection, error);
 }
 
+AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
+                                           const uint8_t* serialized_partition,
+                                           size_t serialized_length,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error) {
+  return SqliteConnectionReadPartition(connection, serialized_partition,
+                                       serialized_length, out, error);
+}
+
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   return SqliteConnectionRelease(connection, error);
@@ -1699,6 +1726,15 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
                                        struct ArrowArrayStream* stream,
                                        struct AdbcError* error) {
   return SqliteStatementBindStream(statement, stream, error);
+}
+
+AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
+                                              ArrowSchema* schema,
+                                              struct AdbcPartitions* partitions,
+                                              int64_t* rows_affected,
+                                              struct AdbcError* error) {
+  return SqliteStatementExecutePartitions(statement, schema, partitions, rows_affected,
+                                          error);
 }
 
 AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
@@ -1771,12 +1807,14 @@ AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* e
   driver->ConnectionGetTableTypes = SqliteConnectionGetTableTypes;
   driver->ConnectionInit = SqliteConnectionInit;
   driver->ConnectionNew = SqliteConnectionNew;
+  driver->ConnectionReadPartition = SqliteConnectionReadPartition;
   driver->ConnectionRelease = SqliteConnectionRelease;
   driver->ConnectionRollback = SqliteConnectionRollback;
   driver->ConnectionSetOption = SqliteConnectionSetOption;
 
   driver->StatementBind = SqliteStatementBind;
   driver->StatementBindStream = SqliteStatementBindStream;
+  driver->StatementExecutePartitions = SqliteStatementExecutePartitions;
   driver->StatementExecuteQuery = SqliteStatementExecuteQuery;
   driver->StatementGetParameterSchema = SqliteStatementGetParameterSchema;
   driver->StatementNew = SqliteStatementNew;

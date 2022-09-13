@@ -167,13 +167,13 @@ AdbcStatusCode PostgresConnectionNew(struct AdbcConnection* connection,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PostgresConnectionSetOption(struct AdbcConnection* connection,
-                                           const char* key, const char* value,
-                                           struct AdbcError* error) {
+AdbcStatusCode PostgresConnectionReadPartition(struct AdbcConnection* connection,
+                                               const uint8_t* serialized_partition,
+                                               size_t serialized_length,
+                                               struct ArrowArrayStream* out,
+                                               struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
-  auto ptr =
-      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
-  return (*ptr)->SetOption(key, value, error);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresConnectionRelease(struct AdbcConnection* connection,
@@ -194,6 +194,16 @@ AdbcStatusCode PostgresConnectionRollback(struct AdbcConnection* connection,
       reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
   return (*ptr)->Rollback(error);
 }
+
+AdbcStatusCode PostgresConnectionSetOption(struct AdbcConnection* connection,
+                                           const char* key, const char* value,
+                                           struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->SetOption(key, value, error);
+}
+
 }  // namespace
 AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
                                     struct AdbcError* error) {
@@ -244,6 +254,15 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
   return PostgresConnectionNew(connection, error);
 }
 
+AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
+                                           const uint8_t* serialized_partition,
+                                           size_t serialized_length,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error) {
+  return PostgresConnectionReadPartition(connection, serialized_partition,
+                                         serialized_length, out, error);
+}
+
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   return PostgresConnectionRelease(connection, error);
@@ -280,6 +299,17 @@ AdbcStatusCode PostgresStatementBindStream(struct AdbcStatement* statement,
   auto* ptr =
       reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
   return (*ptr)->Bind(stream, error);
+}
+
+AdbcStatusCode PostgresStatementExecutePartitions(struct AdbcStatement* statement,
+                                                  struct ArrowSchema* schema,
+                                                  struct AdbcPartitions* partitions,
+                                                  int64_t* rows_affected,
+                                                  struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto* ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresStatementExecuteQuery(struct AdbcStatement* statement,
@@ -370,6 +400,15 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
   return PostgresStatementBindStream(statement, stream, error);
 }
 
+AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
+                                              ArrowSchema* schema,
+                                              struct AdbcPartitions* partitions,
+                                              int64_t* rows_affected,
+                                              struct AdbcError* error) {
+  return PostgresStatementExecutePartitions(statement, schema, partitions, rows_affected,
+                                            error);
+}
+
 AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                          struct ArrowArrayStream* output,
                                          int64_t* rows_affected,
@@ -435,17 +474,19 @@ AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* e
 
   driver->ConnectionCommit = PostgresConnectionCommit;
   driver->ConnectionGetInfo = PostgresConnectionGetInfo;
-  // driver->ConnectionGetObjects = PostgresConnectionGetObjects;
+  driver->ConnectionGetObjects = PostgresConnectionGetObjects;
   driver->ConnectionGetTableSchema = PostgresConnectionGetTableSchema;
   driver->ConnectionGetTableTypes = PostgresConnectionGetTableTypes;
   driver->ConnectionInit = PostgresConnectionInit;
   driver->ConnectionNew = PostgresConnectionNew;
+  driver->ConnectionReadPartition = PostgresConnectionReadPartition;
   driver->ConnectionRelease = PostgresConnectionRelease;
   driver->ConnectionRollback = PostgresConnectionRollback;
   driver->ConnectionSetOption = PostgresConnectionSetOption;
 
   driver->StatementBind = PostgresStatementBind;
   driver->StatementBindStream = PostgresStatementBindStream;
+  driver->StatementExecutePartitions = PostgresStatementExecutePartitions;
   driver->StatementExecuteQuery = PostgresStatementExecuteQuery;
   driver->StatementGetParameterSchema = PostgresStatementGetParameterSchema;
   driver->StatementNew = PostgresStatementNew;
