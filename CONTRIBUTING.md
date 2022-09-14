@@ -209,17 +209,20 @@ Please use the following commit types: `build`, `chore`, `ci`, `docs`,
 
 Please use the following scopes:
 
-- `c`, `glib`, `go`, `java`, `ruby`: for a language-specific implementation
-- `format`: for the core API definitions (adbc.h for C/C++, adbc.go for Go, adbc-core for Java).
+- `c/driver/postgres`, `java/driver-manager`, …: for a component and
+  all its bindings.  For example, `c/driver-manager` covers the C/C++
+  driver manager and its GLib and Python bindings, while
+  `java/driver/flight-sql` covers only the Flight SQL driver for Java.
+  (The scope names are derived from the filesystem paths.)
+- `c/format`, `go/format`, `java/format`: for the core API definitions
+  (adbc.h for C/C++, adbc.go for Go, adbc-core for Java).
 
 For example:
 
 ```
-feat(c): implement prepared statements for libpq driver
+feat(c/driver/postgres): implement prepared statements
 
-fix(java): adjust SQL type mapping for JDBC driver
+fix(java/driver/jdbc): adjust SQL type mapping for JDBC driver
 ```
-
-`pre-commit` will enforce this as well.
 
 [conventional-commits]: https://www.conventionalcommits.org/en/v1.0.0/
