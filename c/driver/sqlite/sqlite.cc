@@ -36,7 +36,7 @@
 
 #include "adbc.h"
 #include "arrow/type_fwd.h"
-#include "drivers/util.h"
+#include "driver/util.h"
 
 namespace {
 

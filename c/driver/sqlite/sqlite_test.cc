@@ -27,7 +27,7 @@
 #include <arrow/testing/matchers.h>
 
 #include "adbc.h"
-#include "drivers/test_util.h"
+#include "driver/test_util.h"
 #include "validation/adbc_validation.h"
 
 // Tests of the SQLite example driver

@@ -72,7 +72,7 @@ For example, to build and run tests for the SQLite3 driver:
 $ mkdir -p build/sqlite
 $ cd build/sqlite
 # You may need to set -DCMAKE_PREFIX_PATH such that googletest can be found
-$ cmake ../../c/drivers/sqlite -DADBC_BUILD_TESTS=ON
+$ cmake ../../c/driver/sqlite -DADBC_BUILD_TESTS=ON
 $ make -j
 $ ctest
 ```

@@ -39,7 +39,7 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
 
 ## Testing
 
-The [SQLite driver](../../c/drivers/sqlite/README.md) must be loadable
+The [SQLite driver](../../c/driver/sqlite/README.md) must be loadable
 at runtime (e.g. it must be on `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH`,
 or `PATH`).
 

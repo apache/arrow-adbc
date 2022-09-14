@@ -123,7 +123,7 @@ jobs:
         run: |
           mkdir -p build/driver_sqlite
           pushd build/driver_sqlite
-          cmake ../../c/drivers/sqlite \
+          cmake ../../c/driver/sqlite \
             -DADBC_BUILD_SHARED=ON \
             -DADBC_BUILD_STATIC=OFF \
             -DADBC_BUILD_TESTS=OFF \
