@@ -222,6 +222,8 @@ For example:
 ```
 feat(c/driver/postgres): implement prepared statements
 
+ci(go/adbc/drivermgr): pass through DYLD_LIBRARY_PATH in tests
+
 fix(java/driver/jdbc): adjust SQL type mapping for JDBC driver
 ```
 
