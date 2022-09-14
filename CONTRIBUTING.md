@@ -205,7 +205,7 @@ Commits][conventional-commits].  This helps maintain semantic
 versioning of components.
 
 Please use the following commit types: `build`, `chore`, `ci`, `docs`,
-`feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`
+`feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`.
 
 Please use the following scopes:
 
