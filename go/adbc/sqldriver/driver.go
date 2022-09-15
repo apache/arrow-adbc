@@ -133,7 +133,10 @@ func (d Driver) Open(name string) (driver.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.Driver.SetOptions(opts)
+	err = d.Driver.SetOptions(opts)
+	if err != nil {
+		return nil, err
+	}
 
 	cnxn, err := d.Driver.Open(context.Background())
 	if err != nil {
@@ -149,7 +152,10 @@ func (d Driver) OpenConnector(name string) (driver.Connector, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.Driver.SetOptions(opts)
+	err = d.Driver.SetOptions(opts)
+	if err != nil {
+		return nil, err
+	}
 
 	return &connector{d.Driver}, nil
 }

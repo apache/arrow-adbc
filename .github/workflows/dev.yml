@@ -34,7 +34,14 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go/adbc/go.mod'
+          check-latest: true
       - uses: actions/setup-python@v2
+      - name: install golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.49.0
       - name: pre-commit (cache)
         uses: actions/cache@v3
         with:
