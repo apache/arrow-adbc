@@ -29,7 +29,7 @@
 #include <arrow/util/string_builder.h>
 #include <arrow/util/string_view.h>
 #include "adbc.h"
-#include "drivers/util.h"
+#include "driver/util.h"
 
 namespace flight = arrow::flight;
 namespace flightsql = arrow::flight::sql;

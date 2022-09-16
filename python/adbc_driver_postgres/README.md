@@ -20,7 +20,7 @@
 # ADBC libpq Driver for Python
 
 This package contains bindings for the [libpq
-driver](../../c/drivers/postgres/README.md), using the [driver
+driver](../../c/driver/postgres/README.md), using the [driver
 manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
 249-compatible][dbapi] interface on top.
 

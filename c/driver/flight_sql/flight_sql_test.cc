@@ -25,7 +25,7 @@
 #include <arrow/util/logging.h>
 
 #include "adbc.h"
-#include "drivers/test_util.h"
+#include "driver/test_util.h"
 
 namespace adbc {
 

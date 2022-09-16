@@ -83,7 +83,7 @@ jobs:
         run: |
           mkdir -p build/driver_sqlite
           pushd build/driver_sqlite
-          cmake ../../c/drivers/sqlite \
+          cmake ../../c/driver/sqlite \
             -DADBC_BUILD_SHARED=ON \
             -DADBC_BUILD_STATIC=OFF \
             -DADBC_BUILD_TESTS=ON \
@@ -136,7 +136,7 @@ jobs:
           # Build a no-ASan version that Python can easily load
           mkdir -p build/driver_sqlite_no_asan
           pushd build/driver_sqlite_no_asan
-          cmake ../../c/drivers/sqlite \
+          cmake ../../c/driver/sqlite \
             -DADBC_BUILD_SHARED=ON \
             -DADBC_BUILD_STATIC=OFF \
             -DCMAKE_BUILD_TYPE=Debug \
