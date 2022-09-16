@@ -40,7 +40,7 @@ function matchesCommitFormat(title) {
     return title.match(regexp) != null;
 }
 
-async function commitCommitFormat(github, context, pullRequestNumber) {
+async function commentCommitFormat(github, context, pullRequestNumber) {
     const {data: comments} = await github.issues.listComments({
         owner: context.repo.owner,
         repo: context.repo.repo,

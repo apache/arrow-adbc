@@ -99,6 +99,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
    *   <tr><td>catalog_name</td>            <td>utf8</td>                   </tr>
    *   <tr><td>catalog_db_schemas</td>      <td>list[DB_SCHEMA_SCHEMA]</td> </tr>
+   *   <caption>The definition of the GetObjects result schema.</caption>
    * </table>
    *
    * DB_SCHEMA_SCHEMA is a Struct with fields:
@@ -107,6 +108,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
    *   <tr><td>db_schema_name</td>          <td>utf8</td>                   </tr>
    *   <tr><td>db_schema_tables</td>        <td>list[TABLE_SCHEMA]</td>     </tr>
+   *   <caption>The definition of DB_SCHEMA_SCHEMA.</caption>
    * </table>
    *
    * TABLE_SCHEMA is a Struct with fields:
@@ -117,6 +119,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <tr><td>table_type</td>              <td>utf8 not null</td>          </tr>
    *   <tr><td>table_columns</td>           <td>list[COLUMN_SCHEMA]</td>    </tr>
    *   <tr><td>table_constraints</td>       <td>list[CONSTRAINT_SCHEMA]</td></tr>
+   *   <caption>The definition of TABLE_SCHEMA.</caption>
    * </table>
    *
    * COLUMN_SCHEMA is a Struct with fields:
@@ -142,6 +145,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <tr><td>xdbc_scope_table</td>        <td>utf8</td>                   <td>(3)</td></tr>
    *   <tr><td>xdbc_is_autoincrement</td>   <td>bool</td>                   <td>(3)</td></tr>
    *   <tr><td>xdbc_is_generatedcolumn</td> <td>bool</td>                   <td>(3)</td></tr>
+   *   <caption>The definition of COLUMN_SCHEMA.</caption>
    * </table>
    *
    * Notes:
@@ -161,6 +165,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <tr><td>constraint_type</td>         <td>utf8 not null</td>          <td>(1)</td></tr>
    *   <tr><td>constraint_column_names</td> <td>list[utf8] not null</td>    <td>(2)</td></tr>
    *   <tr><td>constraint_column_usage</td> <td>list[USAGE_SCHEMA]</td>     <td>(3)</td></tr>
+   *   <caption>The definition of CONSTRAINT_SCHEMA.</caption>
    * </table>
    *
    * <ol>
@@ -177,6 +182,7 @@ public interface AdbcConnection extends AutoCloseable {
    *   <tr><td>fk_db_schema</td>            <td>utf8</td>                   </tr>
    *   <tr><td>fk_table</td>                <td>utf8 not null</td>          </tr>
    *   <tr><td>fk_column_name</td>          <td>utf8 not null</td>          </tr>
+   *   <caption>The definition of USAGE_SCHEMA.</caption>
    * </table>
    *
    * @param depth The level of nesting to display. If ALL, display all levels (up through columns).
@@ -249,6 +255,7 @@ public interface AdbcConnection extends AutoCloseable {
    *     <td>table_type</td>
    *     <td>utf8 not null</td>
    *   </tr>
+   *   <caption>The definition of the result schema.</caption>
    * </table>
    */
   default ArrowReader getTableTypes() throws AdbcException {
