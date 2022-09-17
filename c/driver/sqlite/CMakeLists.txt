@@ -37,6 +37,8 @@ add_arrow_lib(adbc_driver_sqlite
               sqlite.cc
               OUTPUTS
               ADBC_LIBRARIES
+              SHARED_LINK_FLAGS
+              ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
               SQLite::SQLite3
               arrow_shared

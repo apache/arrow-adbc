@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.18)
 get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
 list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
@@ -38,6 +38,8 @@ add_arrow_lib(adbc_driver_postgres
               type.cc
               OUTPUTS
               ADBC_LIBRARIES
+              SHARED_LINK_FLAGS
+              ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
               ${LIBPQ_LINK_LIBRARIES}
               STATIC_LINK_LIBS

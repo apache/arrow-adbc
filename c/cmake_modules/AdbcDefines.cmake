@@ -22,6 +22,7 @@ enable_language(C CXX)
 
 set(BUILD_SUPPORT_DIR "${REPOSITORY_ROOT}/ci/build_support")
 
+include(CheckLinkerFlag)
 include(DefineOptions)
 include(GNUInstallDirs) # Populates CMAKE_INSTALL_INCLUDEDIR
 include(san-config)
@@ -58,6 +59,16 @@ endif()
 
 # ------------------------------------------------------------
 # Common build utilities
+
+# Link flags
+set(ADBC_LINK_FLAGS)
+
+set(ADBC_VERSION_SCRIPT_LINK_FLAG "-Wl,--version-script=${REPOSITORY_ROOT}/c/symbols.map")
+
+check_linker_flag(CXX ${ADBC_VERSION_SCRIPT_LINK_FLAG} CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
+if(CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
+  list(APPEND ADBC_LINK_FLAGS ${ADBC_VERSION_SCRIPT_LINK_FLAG})
+endif()
 
 # Nanoarrow definition
 add_library(nanoarrow STATIC ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c)
