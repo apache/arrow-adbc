@@ -33,7 +33,7 @@ const COMMENT_BODY = ":warning: Please follow the [Conventional Commits format i
 
 function matchesCommitFormat(title) {
     const commitType = `(${COMMIT_TYPES.join('|')})`;
-    const scope = "\([a-z/]+\)?";
+    const scope = "\([a-z_/\-]+\)?";
     const delimiter = "!?:";
     const subject = " .+";
     const regexp = new RegExp(`^${commitType}${scope}${delimiter}${subject}$`);
