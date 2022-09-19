@@ -43,8 +43,6 @@ echo "=== (${PYTHON_VERSION}) Building ADBC libpq driver ==="
 : ${CMAKE_UNITY_BUILD:=ON}
 : ${CMAKE_GENERATOR:=Ninja}
 : ${VCPKG_ROOT:=/opt/vcpkg}
-# : ${VCPKG_FEATURE_FLAGS:=-manifests}
-# : ${VCPKG_TARGET_TRIPLET:=${VCPKG_DEFAULT_TRIPLET:-x64-linux-static-${CMAKE_BUILD_TYPE}}}
 
 mkdir /tmp/libpq-build
 pushd /tmp/libpq-build
