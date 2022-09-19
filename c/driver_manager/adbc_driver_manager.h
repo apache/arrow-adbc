@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <adbc.h>
+#include "adbc.h"
 
 #ifdef __cplusplus
 extern "C" {
