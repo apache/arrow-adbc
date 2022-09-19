@@ -15,13 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 get_filename_component(REPOSITORY_ROOT "../.." ABSOLUTE)
 message(STATUS "${REPOSITORY_ROOT}")
 list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
-include(DefineOptions)
 
 project(adbc_driver_manager
         VERSION "${ADBC_BASE_VERSION}"
@@ -36,7 +35,9 @@ add_arrow_lib(adbc_driver_manager
               CMAKE_PACKAGE_NAME
               AdbcDriverManager
               PKG_CONFIG_NAME
-              adbc-driver-manager)
+              adbc-driver-manager
+              SHARED_LINK_FLAGS
+              ${ADBC_LINK_FLAGS})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
