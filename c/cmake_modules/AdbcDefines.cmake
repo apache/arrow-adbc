@@ -71,7 +71,8 @@ if(CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
 endif()
 
 # Nanoarrow definition
-add_library(nanoarrow STATIC ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c)
+add_library(nanoarrow STATIC ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c
+                             EXCLUDE_FROM_ALL)
 
 # Set common build options
 macro(adbc_configure_target TARGET)
