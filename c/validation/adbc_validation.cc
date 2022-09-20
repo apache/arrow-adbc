@@ -1126,8 +1126,9 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
                 ArrowStringView name = ArrowArrayViewGetStringUnsafe(
                     table_columns->children[0], columns_index);
                 column_names.push_back(std::string(name.data, name.n_bytes));
-                ordinal_positions.push_back(ArrowArrayViewGetIntUnsafe(
-                    table_columns->children[1], columns_index));
+                ordinal_positions.push_back(
+                    static_cast<int32_t>(ArrowArrayViewGetIntUnsafe(
+                        table_columns->children[1], columns_index)));
               }
             }
           }
