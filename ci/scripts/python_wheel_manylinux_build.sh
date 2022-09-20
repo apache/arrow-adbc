@@ -64,7 +64,9 @@ export ADBC_POSTGRES_LIBRARY=/tmp/libpq-dist/lib/libadbc_driver_postgres.so
 # Check that we don't expose any unwanted symbols
 check_visibility $ADBC_POSTGRES_LIBRARY
 
-python -m pip install poetry
+# https://github.com/pypa/pip/issues/7555
+# Get the latest pip so we have in-tree-build by default
+pip install --upgrade pip
 
 for component in adbc_driver_manager adbc_driver_postgres; do
     pushd /adbc/python/$component
@@ -73,7 +75,9 @@ for component in adbc_driver_manager adbc_driver_postgres; do
     rm -rf ./build ./dist ./repaired_wheels ./$component/*.so ./$component/*.so.*
 
     echo "=== (${PYTHON_VERSION}) Building $component wheel ==="
-    python -m poetry build
+    # python -m build copies to a tempdir, so we can't reference other files in the repo
+    # https://github.com/pypa/pip/issues/5519
+    python -m pip wheel -w dist -vvv .
 
     echo "=== (${PYTHON_VERSION}) Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
     auditwheel repair dist/$component-*.whl -L . -w repaired_wheels
