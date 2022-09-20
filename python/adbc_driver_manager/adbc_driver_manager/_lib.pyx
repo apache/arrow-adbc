@@ -229,6 +229,10 @@ cdef extern from "adbc_driver_manager.h":
 
 
 class AdbcStatusCode(enum.IntEnum):
+    """
+    A status code indicating the type of error.
+    """
+
     OK = ADBC_STATUS_OK
     UNKNOWN = ADBC_STATUS_UNKNOWN
     NOT_IMPLEMENTED = ADBC_STATUS_NOT_IMPLEMENTED
@@ -267,7 +271,7 @@ class Error(Exception):
 
     Attributes
     ----------
-    status_code : CAdbcStatusCode
+    status_code : AdbcStatusCode
         The original ADBC status code.
     vendor_code : int, optional
         A vendor-specific status code if present.
@@ -283,34 +287,36 @@ class Error(Exception):
 
 
 class InterfaceError(Error):
-    pass
+    """Errors related to the database interface."""
 
 
 class DatabaseError(Error):
-    pass
+    """Errors related to the database."""
 
 
 class DataError(DatabaseError):
-    pass
+    """Errors related to processed data."""
 
 
 class OperationalError(DatabaseError):
-    pass
+    """Errors related to database operation, not under user control."""
 
 
 class IntegrityError(DatabaseError):
-    pass
+    """Errors related to relational integrity."""
 
 
 class InternalError(DatabaseError):
-    pass
+    """Errors related to database-internal errors."""
 
 
 class ProgrammingError(DatabaseError):
-    pass
+    """Errors related to user errors."""
 
 
 class NotSupportedError(DatabaseError):
+    """An operation or some functionality is not supported."""
+
     def __init__(self, message, *, vendor_code=None, sqlstate=None):
         super().__init__(
             message,
@@ -320,10 +326,10 @@ class NotSupportedError(DatabaseError):
         )
 
 
-INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
 INGEST_OPTION_MODE = ADBC_INGEST_OPTION_MODE.decode("utf-8")
 INGEST_OPTION_MODE_APPEND = ADBC_INGEST_OPTION_MODE_APPEND.decode("utf-8")
 INGEST_OPTION_MODE_CREATE = ADBC_INGEST_OPTION_MODE_CREATE.decode("utf-8")
+INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
 
 
 cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:

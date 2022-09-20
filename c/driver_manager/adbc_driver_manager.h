@@ -52,7 +52,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 /// of functionality for this to be possible, however, and some
 /// functions must be implemented by the driver.
 ///
-/// \param[in] entrypoint The entrypoint to call.
+/// \param[in] init_func The entrypoint to call.
 /// \param[in] version The ADBC revision to attempt to initialize.
 /// \param[out] driver The table of function pointers to initialize.
 /// \param[out] error An optional location to return an error message

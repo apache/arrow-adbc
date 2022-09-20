@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,25 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-main() {
-    touch curl_output.txt
-    for wheel in "$@"
-    do
-        echo "==== Uploading $wheel"
-        local response_code=$(curl \
-                                  --silent \
-                                  -o curl_output.txt \
-                                  -w '%{http_code}' \
-                                  -F "package=@${wheel}" \
-                                  https://${GEMFURY_PUSH_TOKEN}@push.fury.io/arrow-adbc-nightlies/)
-        cat curl_output.txt
-        if [[ $response_code -eq 409 ]]; then
-            # Ignore the failure, since we build 'none' wheels, we may have duplicate wheels across pipelines
-            true
-        elif [[ $response_code -ge 300 ]]; then
-            exit 1
-        fi
-    done
-}
-
-main "$@"
+breathe
+doxygen
+make
+numpydoc
+pydata-sphinx-theme>=0.8.0
+sphinx
+sphinx-book-theme>=0.3.0
+sphinx-copybutton
+sphinx-design

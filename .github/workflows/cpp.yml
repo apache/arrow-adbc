@@ -79,6 +79,7 @@ jobs:
         run: |
           mamba install \
             --file ci/conda_env_cpp.txt \
+            --file ci/conda_env_docs.txt \
             --file ci/conda_env_glib.txt \
             --file ci/conda_env_python.txt
       - name: Build/Test SQLite3 Driver
@@ -194,7 +195,10 @@ jobs:
           bundle exec rake build
           gem install pkg/*.gem
           popd
-
+      - name: Build Docs
+        shell: bash -l {0}
+        run: |
+          ./ci/scripts/docs_build.sh "$(pwd)"
 
   cpp-conda-windows:
     name: "Conda/${{ matrix.os }}"

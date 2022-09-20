@@ -17,12 +17,18 @@
 
 version: '3.5'
 
-x-hierarchy:
-  - python-wheel-manylinux-2014
-
 services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
+
+  ############################ Documentation###################################
+
+  docs:
+    image: condaforge/mambaforge:latest
+    volumes:
+      - .:/adbc:delegated
+    command: |
+      /bin/bash -c 'source /opt/conda/etc/profile.d/conda.sh && mamba create -y -n adbc -c conda-forge --file /adbc/ci/conda_env_cpp.txt --file /adbc/ci/conda_env_docs.txt --file /adbc/ci/conda_env_python.txt && conda activate adbc && /adbc/ci/scripts/docs_build.sh /adbc'
 
   ############################ Java JARs ######################################
 

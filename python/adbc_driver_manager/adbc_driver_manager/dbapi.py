@@ -72,21 +72,27 @@ _KNOWN_INFO_VALUES = {
 # ----------------------------------------------------------
 # Types
 
+#: The type for date values.
 Date = datetime.date
+#: The type for time values.
 Time = datetime.time
+#: The type for timestamp values.
 Timestamp = datetime.datetime
 
 
-def DateFromTicks(ticks):
+def DateFromTicks(ticks: int) -> Date:
+    """Construct a date value from a count of seconds."""
     # Standard implementations from PEP 249 itself
     return Date(*time.localtime(ticks)[:3])
 
 
-def TimeFromTicks(ticks):
+def TimeFromTicks(ticks: int) -> Date:
+    """Construct a time value from a count of seconds."""
     return Time(*time.localtime(ticks)[3:6])
 
 
-def TimestampFromTicks(ticks):
+def TimestampFromTicks(ticks: int) -> Date:
+    """Construct a timestamp value from a count of seconds."""
     return Timestamp(*time.localtime(ticks)[:6])
 
 
@@ -101,8 +107,19 @@ class _TypeSet(frozenset):
         return False
 
 
-STRING = _TypeSet([pyarrow.string().id, pyarrow.large_string().id])
+#: The type of binary columns.
 BINARY = _TypeSet({pyarrow.binary().id, pyarrow.large_binary().id})
+#: The type of datetime columns.
+DATETIME = _TypeSet(
+    [
+        pyarrow.date32().id,
+        pyarrow.date64().id,
+        pyarrow.time32("s").id,
+        pyarrow.time64("ns").id,
+        pyarrow.timestamp("s").id,
+    ]
+)
+#: The type of numeric columns.
 NUMBER = _TypeSet(
     [
         pyarrow.int8().id,
@@ -117,16 +134,10 @@ NUMBER = _TypeSet(
         pyarrow.float64().id,
     ]
 )
-DATETIME = _TypeSet(
-    [
-        pyarrow.date32().id,
-        pyarrow.date64().id,
-        pyarrow.time32("s").id,
-        pyarrow.time64("ns").id,
-        pyarrow.timestamp("s").id,
-    ]
-)
+#: The type of "row ID" columns.
 ROWID = _TypeSet([pyarrow.int64().id])
+#: The type of string columns.
+STRING = _TypeSet([pyarrow.string().id, pyarrow.large_string().id])
 
 # ----------------------------------------------------------
 # Functions
@@ -146,10 +157,12 @@ def connect(
     ----------
     driver
         The driver name. For example, "adbc_driver_sqlite" will
-        attempt to load libadbc_driver_sqlite.so on Unix-like systems,
-        and adbc_driver_sqlite.dll on Windows.
+        attempt to load libadbc_driver_sqlite.so on Linux systems,
+        libadbc_driver_sqlite.dylib on MacOS, and
+        adbc_driver_sqlite.dll on Windows. This may also be a path to
+        the library to load.
     entrypoint
-        The driver-specific entrypoint.
+        The driver-specific entrypoint, if different than the default.
     db_kwargs
         Key-value parameters to pass to the driver to initialize the
         database.
@@ -480,19 +493,21 @@ class Cursor(_Closeable):
         return self._results.description
 
     @property
-    def rowcount(self):
+    def rowcount(self) -> int:
         """
         Get the row count of the result set, or -1 if not known.
         """
         return self._rowcount
 
     @property
-    def rownumber(self):
+    def rownumber(self) -> Optional[int]:
+        """Get the current row number, or None if not applicable."""
         if self._results is not None:
             return self._results.rownumber
         return None
 
     def callproc(self, procname, parameters):
+        """Call a stored procedure (not supported)."""
         raise NotSupportedError("Cursor.callproc")
 
     def close(self):
@@ -540,6 +555,7 @@ class Cursor(_Closeable):
         )
 
     def executemany(self, operation, seq_of_parameters):
+        """Execute a query with multiple parameter sets."""
         self._results = None
         if operation != self._last_query:
             self._last_query = operation
@@ -600,14 +616,15 @@ class Cursor(_Closeable):
         return row
 
     def nextset(self):
+        """Move to the next available result set (not supported)."""
         raise NotSupportedError("Cursor.nextset")
 
     def setinputsizes(self, sizes):
-        # Not used
+        """Preallocate memory for the parameters (no-op)."""
         pass
 
     def setoutputsize(self, size, column=None):
-        # Not used
+        """Preallocate memory for the result set (no-op)."""
         pass
 
     def __iter__(self):
