@@ -465,50 +465,50 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 ///
 /// The result is an Arrow dataset with the following schema:
 ///
-/// Field Name               | Field Type
-/// -------------------------|-----------------------
-/// catalog_name             | utf8
-/// catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | catalog_name             | utf8                    |
+/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
 ///
 /// DB_SCHEMA_SCHEMA is a Struct with fields:
 ///
-/// Field Name               | Field Type
-/// -------------------------|-----------------------
-/// db_schema_name           | utf8
-/// db_schema_tables         | list<TABLE_SCHEMA>
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | db_schema_name           | utf8                    |
+/// | db_schema_tables         | list<TABLE_SCHEMA>      |
 ///
 /// TABLE_SCHEMA is a Struct with fields:
 ///
-/// Field Name               | Field Type
-/// -------------------------|-----------------------
-/// table_name               | utf8 not null
-/// table_type               | utf8 not null
-/// table_columns            | list<COLUMN_SCHEMA>
-/// table_constraints        | list<CONSTRAINT_SCHEMA>
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | table_name               | utf8 not null           |
+/// | table_type               | utf8 not null           |
+/// | table_columns            | list<COLUMN_SCHEMA>     |
+/// | table_constraints        | list<CONSTRAINT_SCHEMA> |
 ///
 /// COLUMN_SCHEMA is a Struct with fields:
 ///
-/// Field Name               | Field Type            | Comments
-/// -------------------------|-----------------------|---------
-/// column_name              | utf8 not null         |
-/// ordinal_position         | int32                 | (1)
-/// remarks                  | utf8                  | (2)
-/// xdbc_data_type           | int16                 | (3)
-/// xdbc_type_name           | utf8                  | (3)
-/// xdbc_column_size         | int32                 | (3)
-/// xdbc_decimal_digits      | int16                 | (3)
-/// xdbc_num_prec_radix      | int16                 | (3)
-/// xdbc_nullable            | int16                 | (3)
-/// xdbc_column_def          | utf8                  | (3)
-/// xdbc_sql_data_type       | int16                 | (3)
-/// xdbc_datetime_sub        | int16                 | (3)
-/// xdbc_char_octet_length   | int32                 | (3)
-/// xdbc_is_nullable         | utf8                  | (3)
-/// xdbc_scope_catalog       | utf8                  | (3)
-/// xdbc_scope_schema        | utf8                  | (3)
-/// xdbc_scope_table         | utf8                  | (3)
-/// xdbc_is_autoincrement    | bool                  | (3)
-/// xdbc_is_generatedcolumn  | bool                  | (3)
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | column_name              | utf8 not null           |          |
+/// | ordinal_position         | int32                   | (1)      |
+/// | remarks                  | utf8                    | (2)      |
+/// | xdbc_data_type           | int16                   | (3)      |
+/// | xdbc_type_name           | utf8                    | (3)      |
+/// | xdbc_column_size         | int32                   | (3)      |
+/// | xdbc_decimal_digits      | int16                   | (3)      |
+/// | xdbc_num_prec_radix      | int16                   | (3)      |
+/// | xdbc_nullable            | int16                   | (3)      |
+/// | xdbc_column_def          | utf8                    | (3)      |
+/// | xdbc_sql_data_type       | int16                   | (3)      |
+/// | xdbc_datetime_sub        | int16                   | (3)      |
+/// | xdbc_char_octet_length   | int32                   | (3)      |
+/// | xdbc_is_nullable         | utf8                    | (3)      |
+/// | xdbc_scope_catalog       | utf8                    | (3)      |
+/// | xdbc_scope_schema        | utf8                    | (3)      |
+/// | xdbc_scope_table         | utf8                    | (3)      |
+/// | xdbc_is_autoincrement    | bool                    | (3)      |
+/// | xdbc_is_generatedcolumn  | bool                    | (3)      |
 ///
 /// 1. The column's ordinal position in the table (starting from 1).
 /// 2. Database-specific description of the column.
@@ -518,12 +518,12 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 ///
 /// CONSTRAINT_SCHEMA is a Struct with fields:
 ///
-/// Field Name               | Field Type            | Comments
-/// -------------------------|-----------------------|---------
-/// constraint_name          | utf8                  |
-/// constraint_type          | utf8 not null         | (1)
-/// constraint_column_names  | list<utf8> not null   | (2)
-/// constraint_column_usage  | list<USAGE_SCHEMA>    | (3)
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | constraint_name          | utf8                    |          |
+/// | constraint_type          | utf8 not null           | (1)      |
+/// | constraint_column_names  | list<utf8> not null     | (2)      |
+/// | constraint_column_usage  | list<USAGE_SCHEMA>      | (3)      |
 ///
 /// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
 /// 2. The columns on the current table that are constrained, in
@@ -532,12 +532,12 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 ///
 /// USAGE_SCHEMA is a Struct with fields:
 ///
-/// Field Name               | Field Type            | Comments
-/// -------------------------|-----------------------|---------
-/// fk_catalog               | utf8                  |
-/// fk_db_schema             | utf8                  |
-/// fk_table                 | utf8 not null         |
-/// fk_column_name           | utf8 not null         |
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | fk_catalog               | utf8                    |
+/// | fk_db_schema             | utf8                    |
+/// | fk_table                 | utf8 not null           |
+/// | fk_column_name           | utf8 not null           |
 ///
 /// \param[in] connection The database connection.
 /// \param[in] depth The level of nesting to display. If 0, display
@@ -570,10 +570,15 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         struct ArrowArrayStream* out,
                                         struct AdbcError* error);
 
+/// \brief Return metadata on catalogs, schemas, tables, and columns.
 #define ADBC_OBJECT_DEPTH_ALL 0
+/// \brief Return metadata on catalogs only.
 #define ADBC_OBJECT_DEPTH_CATALOGS 1
+/// \brief Return metadata on catalogs and schemas.
 #define ADBC_OBJECT_DEPTH_DB_SCHEMAS 2
+/// \brief Return metadata on catalogs, schemas, and tables.
 #define ADBC_OBJECT_DEPTH_TABLES 3
+/// \brief Return metadata on catalogs, schemas, tables, and columns.
 #define ADBC_OBJECT_DEPTH_COLUMNS ADBC_OBJECT_DEPTH_ALL
 
 /// \brief Get the Arrow schema of a table.
