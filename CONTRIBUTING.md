@@ -85,6 +85,38 @@ for details.
 [cmake-prefix-path]: https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
 [gtest]: https://github.com/google/googletest/
 
+### Documentation
+
+The documentation uses the [Sphinx][sphinx] documentation generator.
+
+A list of dependencies for Conda (conda-forge) is included, and can be
+used as follows:
+
+```shell
+$ conda create -n adbc -c conda-forge --file ci/conda_env_docs.txt
+$ conda activate adbc
+```
+
+To build the HTML documentation:
+
+```shell
+$ pushd c/apidoc
+$ doxygen
+$ popd
+
+# Optionally: to also build the Python documentation
+$ pushd python/adbc_driver_manager
+$ pip install -e .[test]
+$ popd
+
+$ cd docs
+$ make html
+```
+
+The output can be found in `build/`.
+
+[sphinx]: https://www.sphinx-doc.org/en/master/
+
 ### GLib
 
 The GLib bindings use the [Meson][meson] build system.
