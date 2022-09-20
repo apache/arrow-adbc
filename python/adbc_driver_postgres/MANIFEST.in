@@ -1,0 +1,1 @@
+include adbc_driver_postgres/libadbc_driver_postgres.so

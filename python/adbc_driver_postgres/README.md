@@ -31,8 +31,9 @@ manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
 Dependencies: a build of the libpq driver.
 
 Set the environment variable `ADBC_POSTGRES_LIBRARY` to the directory
-containing `libadbc_driver_postgres.so` (this library does not yet
-support Windows/MacOS) before running `poetry build`.
+containing `libadbc_driver_postgres.so` before running `pip install`.
+
+(This library does not yet support Windows/MacOS.)
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
 general build process.

@@ -15,29 +15,25 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[tool.poetry]
+[project]
 name = "adbc_driver_postgres"
 version = "1.0.0-alpha0"
-description = ""
-authors = ["Apache Arrow Developers <dev@arrow.apache.org>"]
-license = "Apache-2.0"
+description = "A libpq-based ADBC driver for working with Postgres."
+authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
+license = {text = "Apache-2.0"}
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dbapi = ["pandas", "pyarrow>=8.0.0"]
+test = ["pandas", "pyarrow>=8.0.0", "pytest"]
+
+[project.urls]
 homepage = "https://arrow.apache.org"
 repository = "https://github.com/apache/arrow-adbc"
-include = [
-    {path = "adbc_driver_postgres/*.so"},
-]
-
-[tool.poetry.build]
-script = "build.py"
-
-[tool.poetry.dependencies]
-# XXX: setuptools/build.py don't like path dependencies
-# adbc_driver_manager = { path = "../adbc_driver_manager/", develop = false }
-python = ">=3.8"
-
-[tool.poetry.dev-dependencies]
-pytest = "^7.1.2"
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "setuptools"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools >= 61.0.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true

@@ -17,22 +17,27 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from Cython.Build import cythonize
-from setuptools import Extension
+import shutil
+from pathlib import Path
 
+from setuptools import Extension, setup
 
-def build(setup_kwargs):
-    """Configure build for Poetry."""
-    setup_kwargs["ext_modules"] = cythonize(
+# setuptools gets confused by relative paths that extend above the project root
+target = Path(__file__).parent / "adbc_driver_manager/adbc_driver_manager.cc"
+shutil.copy(
+    Path(__file__).parent / "../../c/driver_manager/adbc_driver_manager.cc", target
+)
+
+setup(
+    ext_modules=[
         Extension(
             name="adbc_driver_manager._lib",
-            extra_compile_args=["-ggdb", "-Og"],
             include_dirs=["../../", "../../c/driver_manager"],
             language="c++",
             sources=[
                 "adbc_driver_manager/_lib.pyx",
-                "../../c/driver_manager/adbc_driver_manager.cc",
+                "adbc_driver_manager/adbc_driver_manager.cc",
             ],
-        ),
-    )
-    setup_kwargs["zip_safe"] = False
+        )
+    ]
+)

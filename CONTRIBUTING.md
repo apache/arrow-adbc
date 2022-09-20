@@ -135,39 +135,28 @@ $ mvn clean install
 
 ### Python
 
-Python libraries are managed with [Poetry][poetry].  See individual
-READMEs for additional dependencies.  In general, that means all
-projects can be built as follows:
-
-```shell
-$ cd python
-$ pip install -e adbc_driver_manager
-```
-
-Or directly via poetry:
+Python libraries are managed with [setuptools][setuptools].  See
+individual READMEs for additional dependencies.  In general, that
+means all projects can be built as follows:
 
 ```shell
 $ cd python/adbc_driver_manager
-$ poetry install
-```
-
-When adding/updating dependencies, please regenerate the lockfile:
-
-```shell
-$ cd python/adbc_driver_manager
-$ poetry update
-$ poetry export --dev -o requirements-dev.txt
+$ pip install -e .
 ```
 
 Tests use [pytest][pytest].  Some libraries may have additional
 test-time dependencies.  See their individual READMEs for details.
 
 ```shell
+# Install dependencies
+$ pip install -e .[test]
+
+# Run tests
 $ pytest -vvx
 ```
 
-[poetry]: https://python-poetry.org
 [pytest]: https://docs.pytest.org/
+[setuptools]: https://setuptools.pypa.io/en/latest/index.html
 
 ### Ruby
 

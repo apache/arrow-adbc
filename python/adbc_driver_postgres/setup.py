@@ -21,15 +21,13 @@ import os
 import shutil
 from pathlib import Path
 
+from setuptools import setup
 
-def build(setup_kwargs):
-    """Configure build for Poetry."""
-    library = os.environ.get("ADBC_POSTGRES_LIBRARY")
-    if not library:
-        raise ValueError("Must provide ADBC_POSTGRES_LIBRARY")
+library = os.environ.get("ADBC_POSTGRES_LIBRARY")
+if not library:
+    raise ValueError("Must provide ADBC_POSTGRES_LIBRARY")
 
-    shutil.copy(
-        library, Path("./adbc_driver_postgres/libadbc_driver_postgres.so").resolve()
-    )
+target = Path("./adbc_driver_postgres/libadbc_driver_postgres.so").resolve()
+shutil.copy(library, target)
 
-    setup_kwargs["zip_safe"] = False
+setup()

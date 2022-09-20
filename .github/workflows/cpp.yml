@@ -148,11 +148,11 @@ jobs:
       - name: Build/Test Python Driver Manager
         shell: bash -l {0}
         run: |
-          pushd python
-          pip install -e adbc_driver_manager
+          pushd python/adbc_driver_manager
+          pip install -e .[test]
           export DYLD_LIBRARY_PATH=$HOME/local/lib
           export LD_LIBRARY_PATH=$HOME/local/lib
-          python -m pytest -vv adbc_driver_manager
+          python -m pytest -vv
           popd
       - name: Build/Test GLib Driver Manager
         shell: bash -l {0}
