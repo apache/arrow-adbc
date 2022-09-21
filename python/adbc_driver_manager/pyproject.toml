@@ -17,11 +17,11 @@
 
 [project]
 name = "adbc_driver_manager"
-version = "1.0.0-alpha0"
 description = ""
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 requires-python = ">=3.8"
+dynamic = ["version"]
 
 [project.optional-dependencies]
 dbapi = ["pandas", "pyarrow>=8.0.0"]
@@ -34,3 +34,7 @@ repository = "https://github.com/apache/arrow-adbc"
 [build-system]
 requires = ["Cython", "setuptools >= 61.0.0", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+root = "../.."
+write_to = "python/adbc_driver_manager/adbc_driver_manager/_version.py"

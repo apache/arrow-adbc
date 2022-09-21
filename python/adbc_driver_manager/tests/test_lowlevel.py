@@ -45,6 +45,10 @@ def _bind(stmt, batch):
     stmt.bind(array, schema)
 
 
+def test_version():
+    assert adbc_driver_manager.__version__
+
+
 def test_database_init():
     with pytest.raises(
         adbc_driver_manager.ProgrammingError,

@@ -15,9 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import importlib.resources
+import importlib.metadata
 
 import adbc_driver_manager
+
+from ._version import version as __version__
+
+__all__ = ["connect", "__version__"]
 
 
 def connect(uri: str) -> adbc_driver_manager.AdbcDatabase:

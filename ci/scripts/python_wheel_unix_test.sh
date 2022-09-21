@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,29 +17,31 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[project]
-name = "adbc_driver_postgres"
-description = "A libpq-based ADBC driver for working with Postgres."
-authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
-license = {text = "Apache-2.0"}
-requires-python = ">=3.8"
-dynamic = ["version"]
+set -e
+set -x
+set -o pipefail
 
-[project.optional-dependencies]
-dbapi = ["pandas", "pyarrow>=8.0.0"]
-test = ["pandas", "pyarrow>=8.0.0", "pytest"]
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 <arrow-src-dir>"
+  exit 1
+fi
 
-[project.urls]
-homepage = "https://arrow.apache.org"
-repository = "https://github.com/apache/arrow-adbc"
+source_dir=${1}
 
-[build-system]
-requires = ["setuptools >= 61.0.0", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+# Install the built wheels
+pip install --force-reinstall ${source_dir}/python/adbc_driver_manager/repaired_wheels/*.whl
+pip install --force-reinstall ${source_dir}/python/adbc_driver_postgres/repaired_wheels/*.whl
+pip install pytest pyarrow pandas
 
-[tool.setuptools]
-include-package-data = true
+# Test that the modules are importable
+python -c "
+import adbc_driver_manager
+import adbc_driver_manager.dbapi
+import adbc_driver_postgres
+import adbc_driver_postgres.dbapi
+"
 
-[tool.setuptools_scm]
-root = "../.."
-write_to = "python/adbc_driver_postgres/adbc_driver_postgres/_version.py"
+# Can't yet run tests (need Postgres database, SQLite driver)
+# for component in adbc_driver_manager adbc_driver_postgres; do
+#     python -m pytest -vvx ${source_dir}/python/$component/tests
+# done

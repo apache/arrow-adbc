@@ -26,11 +26,14 @@ services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
 
-  python-wheel-manylinux-2014:
-    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-2014-vcpkg-${VCPKG}
-    # environment:
-    #   <<: *ccache
+  python-wheel-manylinux:
+    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
     volumes:
       - .:/adbc:delegated
-      # - ${DOCKER_VOLUME_PREFIX}python-wheel-manylinux2014-ccache:/ccache:delegated
     command: /adbc/ci/scripts/python_wheel_manylinux_build.sh
+
+  python-wheel-manylinux-test:
+    image: ${ARCH}/python:${PYTHON}
+    volumes:
+      - .:/adbc:delegated
+    command: /adbc/ci/scripts/python_wheel_unix_test.sh /adbc
