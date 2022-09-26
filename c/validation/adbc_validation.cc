@@ -1450,26 +1450,26 @@ void StatementTest::TestSqlPartitionedInts() {
   ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
   ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error));
 
-  struct ArrowSchema schema;
+  Handle<struct ArrowSchema> schema;
   Handle<struct AdbcPartitions> partitions;
   int64_t rows_affected = 0;
 
   if (!quirks()->supports_partitioned_data()) {
     ADBCV_ASSERT_FAILS_WITH(
         NOT_IMPLEMENTED, &error,
-        AdbcStatementExecutePartitions(&statement, &schema, &partitions.value,
+        AdbcStatementExecutePartitions(&statement, &schema.value, &partitions.value,
                                        &rows_affected, &error));
     return;
   }
 
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecutePartitions(&statement, &schema, &partitions.value,
-                                                 &rows_affected, &error));
+  ADBCV_ASSERT_OK(
+      &error, AdbcStatementExecutePartitions(&statement, &schema.value, &partitions.value,
+                                             &rows_affected, &error));
   // Assume only 1 partition
   ASSERT_EQ(1, partitions->num_partitions);
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
-  ASSERT_NE(nullptr, schema.release);
-  ASSERT_EQ(1, schema.n_children);
+  ASSERT_NE(nullptr, schema->release);
+  ASSERT_EQ(1, schema->n_children);
 
   Handle<struct AdbcConnection> connection2;
   StreamReader reader;
