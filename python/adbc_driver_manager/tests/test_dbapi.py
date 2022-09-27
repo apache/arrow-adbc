@@ -61,6 +61,106 @@ def test_attrs(sqlite):
         assert cur.rowcount == -1
 
 
+def test_info(sqlite):
+    assert sqlite.adbc_get_info() == {
+        "vendor_arrow_version": "Arrow/C++ 9.0.0",
+        "vendor_name": "ADBC C SQLite3",
+        "vendor_version": "0.0.1",
+    }
+
+
+def test_get_underlying(sqlite):
+    assert sqlite.adbc_database
+    assert sqlite.adbc_connection
+    with sqlite.cursor() as cur:
+        assert cur.adbc_statement
+
+
+def test_clone(sqlite):
+    with sqlite.adbc_clone() as sqlite2:
+        with sqlite2.cursor() as cur:
+            cur.execute("CREATE TABLE temporary (ints)")
+            cur.execute("INSERT INTO temporary VALUES (1)")
+        sqlite2.commit()
+
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT * FROM temporary")
+        assert cur.fetchone() == (1,)
+
+
+def test_get_objects(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("CREATE TABLE temporary (ints)")
+        cur.execute("INSERT INTO temporary VALUES (1)")
+    metadata = (
+        sqlite.adbc_get_objects(table_name_filter="temporary").read_all().to_pylist()
+    )
+    assert len(metadata) == 1
+    assert metadata[0]["catalog_name"] == "main"
+    schemas = metadata[0]["catalog_db_schemas"]
+    assert len(schemas) == 1
+    assert schemas[0]["db_schema_name"] is None
+    tables = schemas[0]["db_schema_tables"]
+    assert len(tables) == 1
+    assert tables[0]["table_name"] == "temporary"
+    assert tables[0]["table_type"] == "table"
+    assert tables[0]["table_columns"][0]["column_name"] == "ints"
+    assert tables[0]["table_columns"][0]["ordinal_position"] == 1
+    assert tables[0]["table_constraints"] == []
+
+
+def test_get_table_schema(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("CREATE TABLE temporary (ints)")
+        cur.execute("INSERT INTO temporary VALUES (1)")
+    assert sqlite.adbc_get_table_schema("temporary") == pyarrow.schema(
+        [("ints", pyarrow.int64())]
+    )
+
+
+def test_get_table_types(sqlite):
+    assert sqlite.adbc_get_table_types() == ["table", "view"]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        lambda: pyarrow.record_batch([[1, 2], ["foo", ""]], names=["ints", "strs"]),
+        lambda: pyarrow.table([[1, 2], ["foo", ""]], names=["ints", "strs"]),
+        lambda: pyarrow.table(
+            [[1, 2], ["foo", ""]], names=["ints", "strs"]
+        ).to_reader(),
+    ],
+)
+def test_ingest(data, sqlite):
+    with sqlite.cursor() as cur:
+        cur.adbc_ingest("bulk_ingest", data())
+
+        with pytest.raises(dbapi.ProgrammingError):
+            cur.adbc_ingest("bulk_ingest", data())
+
+        cur.adbc_ingest("bulk_ingest", data(), mode="append")
+
+        with pytest.raises(dbapi.Error):
+            cur.adbc_ingest("nonexistent", data(), mode="append")
+
+        with pytest.raises(ValueError):
+            cur.adbc_ingest("bulk_ingest", data(), mode="invalid")
+
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT * FROM bulk_ingest")
+        assert cur.fetchone() == (1, "foo")
+        assert cur.fetchone() == (2, "")
+        assert cur.fetchone() == (1, "foo")
+        assert cur.fetchone() == (2, "")
+
+
+def test_partitions(sqlite):
+    with pytest.raises(dbapi.NotSupportedError):
+        with sqlite.cursor() as cur:
+            cur.adbc_execute_partitions("SELECT 1")
+
+
 def test_query_fetch_py(sqlite):
     with sqlite.cursor() as cur:
         cur.execute('SELECT 1, "foo", 2.0')
