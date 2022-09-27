@@ -22,6 +22,7 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -853,10 +854,13 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
         ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, row))
             << "Row " << row << " should have non-null catalog_db_schemas";
 
-        for (int64_t list_index =
-                 ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row);
-             list_index < ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row + 1);
-             list_index++) {
+        const int64_t start_offset =
+            ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row);
+        const int64_t end_offset =
+            ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row + 1);
+        ASSERT_GT(end_offset, start_offset)
+            << "Row " << row << " should have nonempty catalog_db_schemas";
+        for (int64_t list_index = start_offset; list_index < end_offset; list_index++) {
           ASSERT_TRUE(ArrowArrayViewIsNull(db_schema_tables_list, row + list_index))
               << "Row " << row << " should have null db_schema_tables";
         }
@@ -950,7 +954,7 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
-            if (std::strcmp(table_name.data, "bulk_ingest") == 0) {
+            if (std::string_view(table_name.data, table_name.n_bytes) == "bulk_ingest") {
               found_expected_table = true;
             }
 
@@ -1019,7 +1023,7 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
-            if (std::strcmp(table_name.data, "bulk_ingest") == 0) {
+            if (std::string_view(table_name.data, table_name.n_bytes) == "bulk_ingest") {
               found_expected_table = true;
             }
 
@@ -1057,6 +1061,10 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
   test_cases.push_back({"in%", {"int64s"}, {1}});
 
   for (const auto& test_case : test_cases) {
+    std::string scope = "Filter: ";
+    scope += test_case.filter ? *test_case.filter : "(no filter)";
+    SCOPED_TRACE(scope);
+
     StreamReader reader;
     std::vector<std::string> column_names;
     std::vector<int32_t> ordinal_positions;
@@ -1115,7 +1123,7 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
             ASSERT_FALSE(ArrowArrayViewIsNull(table_constraints_list, tables_index))
                 << "Row " << row << " should have non-null table_constraints";
 
-            if (std::strcmp(table_name.data, "bulk_ingest") == 0) {
+            if (std::string_view(table_name.data, table_name.n_bytes) == "bulk_ingest") {
               found_expected_table = true;
 
               for (int64_t columns_index =
