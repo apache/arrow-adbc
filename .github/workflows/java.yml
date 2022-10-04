@@ -33,6 +33,9 @@ concurrency:
   group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   java:
     name: "Java ${{ matrix.java }}/Linux"

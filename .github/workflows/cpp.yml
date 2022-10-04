@@ -39,6 +39,9 @@ concurrency:
   group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   cpp-conda-unix:
     name: "Conda/${{ matrix.os }}"
