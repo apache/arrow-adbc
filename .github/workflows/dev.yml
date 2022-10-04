@@ -25,6 +25,9 @@ concurrency:
   group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   pre-commit:
     name: "pre-commit"
@@ -38,7 +41,7 @@ jobs:
         with:
           go-version-file: 'go/adbc/go.mod'
           check-latest: true
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
       - name: install golangci-lint
         run: |
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.49.0
