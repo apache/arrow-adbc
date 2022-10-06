@@ -34,9 +34,34 @@
 #endif  // defined(_WIN32)
 
 namespace {
+
+// Platform-specific helpers
+
+#if defined(_WIN32)
+/// Append a description of the Windows error to the buffer.
+void GetWinError(std::string* buffer) {
+  DWORD rc = GetLastError();
+  LPVOID message;
+
+  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                    FORMAT_MESSAGE_IGNORE_INSERTS,
+                /*lpSource=*/nullptr, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                reinterpret_cast<LPSTR>(&message), /*nSize=*/0, /*Arguments=*/nullptr);
+
+  (*buffer) += '(';
+  (*buffer) += std::to_string(rc);
+  (*buffer) += ") ";
+  (*buffer) += reinterpret_cast<char*>(message);
+  LocalFree(message);
+}
+
+#endif  // defined(_WIN32)
+
+// Error handling
+
 void ReleaseError(struct AdbcError* error) {
   if (error) {
-    delete[] error->message;
+    if (error->message) delete[] error->message;
     error->message = nullptr;
     error->release = nullptr;
   }
@@ -63,6 +88,44 @@ void SetError(struct AdbcError* error, const std::string& message) {
   error->release = ReleaseError;
 }
 
+// Driver state
+
+/// Hold the driver DLL and the driver release callback in the driver struct.
+struct ManagerDriverState {
+  // The original release callback
+  AdbcStatusCode (*driver_release)(struct AdbcDriver* driver, struct AdbcError* error);
+
+#if defined(_WIN32)
+  // The loaded DLL
+  HMODULE handle;
+#endif  // defined(_WIN32)
+};
+
+/// Unload the driver DLL.
+static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError* error) {
+  AdbcStatusCode status = ADBC_STATUS_OK;
+
+  if (!driver->private_manager) return status;
+  ManagerDriverState* state =
+      reinterpret_cast<ManagerDriverState*>(driver->private_manager);
+
+  if (state->driver_release) {
+    status = state->driver_release(driver, error);
+  }
+
+#if defined(_WIN32)
+  if (!FreeLibrary(state->handle)) {
+    std::string message = "FreeLibrary() failed: ";
+    GetWinError(&message);
+    SetError(error, message);
+  }
+#endif  // defined(_WIN32)
+
+  driver->private_manager = nullptr;
+  delete state;
+  return status;
+}
+
 // Default stubs
 
 AdbcStatusCode DatabaseSetOption(struct AdbcDatabase* database, const char* key,
@@ -71,6 +134,12 @@ AdbcStatusCode DatabaseSetOption(struct AdbcDatabase* database, const char* key,
 }
 
 AdbcStatusCode ConnectionCommit(struct AdbcConnection*, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionGetInfo(struct AdbcConnection* connection, uint32_t* info_codes,
+                                 size_t info_codes_length, struct ArrowArrayStream* out,
+                                 struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -159,56 +228,6 @@ struct TempDatabase {
 struct TempConnection {
   std::unordered_map<std::string, std::string> options;
 };
-
-#if defined(_WIN32)
-/// Append a description of the Windows error to the buffer.
-void GetWinError(std::string* buffer) {
-  DWORD rc = GetLastError();
-  LPVOID message;
-
-  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                    FORMAT_MESSAGE_IGNORE_INSERTS,
-                /*lpSource=*/nullptr, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                reinterpret_cast<LPSTR>(&message), /*nSize=*/0, /*Arguments=*/nullptr);
-
-  (*buffer) += '(';
-  (*buffer) += std::to_string(rc);
-  (*buffer) += ") ";
-  (*buffer) += reinterpret_cast<char*>(message);
-  LocalFree(message);
-}
-
-/// Hold the driver DLL and the driver release callback in the driver struct.
-struct ManagerDriverState {
-  // The loaded DLL
-  HMODULE handle;
-  // The original release callback
-  AdbcStatusCode (*driver_release)(struct AdbcDriver* driver, struct AdbcError* error);
-};
-
-/// Unload the driver DLL.
-static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError* error) {
-  AdbcStatusCode status = ADBC_STATUS_OK;
-
-  if (!driver->private_manager) return status;
-  ManagerDriverState* state =
-      reinterpret_cast<ManagerDriverState*>(driver->private_manager);
-
-  if (state->driver_release) {
-    status = state->driver_release(driver, error);
-  }
-
-  if (!FreeLibrary(state->handle)) {
-    std::string message = "FreeLibrary() failed: ";
-    GetWinError(&message);
-    SetError(error, message);
-  }
-
-  driver->private_manager = nullptr;
-  delete state;
-  return status;
-}
-#endif
 }  // namespace
 
 // Direct implementations of API methods
@@ -705,7 +724,25 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
 #endif  // defined(_WIN32)
 
-  return AdbcLoadDriverFromInitFunc(init_func, version, driver, error);
+  AdbcStatusCode status = AdbcLoadDriverFromInitFunc(init_func, version, driver, error);
+  if (status == ADBC_STATUS_OK) {
+    ManagerDriverState* state = new ManagerDriverState;
+    state->driver_release = driver->release;
+#if defined(_WIN32)
+    state->handle = handle;
+#endif  // defined(_WIN32)
+    driver->release = &ReleaseDriver;
+    driver->private_manager = state;
+  } else {
+#if defined(_WIN32)
+    if (!FreeLibrary(handle)) {
+      std::string message = "FreeLibrary() failed: ";
+      GetWinError(&message);
+      SetError(error, message);
+    }
+#endif  // defined(_WIN32)
+  }
+  return status;
 }
 
 AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int version,
@@ -732,11 +769,11 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     CHECK_REQUIRED(driver, DatabaseRelease);
     FILL_DEFAULT(driver, DatabaseSetOption);
 
-    CHECK_REQUIRED(driver, ConnectionGetInfo);
     CHECK_REQUIRED(driver, ConnectionNew);
     CHECK_REQUIRED(driver, ConnectionInit);
     CHECK_REQUIRED(driver, ConnectionRelease);
     FILL_DEFAULT(driver, ConnectionCommit);
+    FILL_DEFAULT(driver, ConnectionGetInfo);
     FILL_DEFAULT(driver, ConnectionGetObjects);
     FILL_DEFAULT(driver, ConnectionGetTableSchema);
     FILL_DEFAULT(driver, ConnectionGetTableTypes);
