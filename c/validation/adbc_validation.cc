@@ -45,160 +45,12 @@ namespace {
 
 /// Assertion helpers
 
-#define ADBCV_CONCAT(a, b) a##b
-#define ADBCV_NAME(a, b) ADBCV_CONCAT(a, b)
-
 #define CHECK_OK(EXPR)                                              \
   do {                                                              \
     if (auto adbc_status = (EXPR); adbc_status != ADBC_STATUS_OK) { \
       return adbc_status;                                           \
     }                                                               \
   } while (false)
-
-#define CHECK_ERRNO_IMPL(ERRNO, EXPR)   \
-  if (int ERRNO = (EXPR); ERRNO != 0) { \
-    return ERRNO;                       \
-  }
-#define CHECK_ERRNO(EXPR) CHECK_ERRNO_IMPL(ADBCV_NAME(errno_, __COUNTER__), EXPR)
-
-int MakeSchema(struct ArrowSchema* schema,
-               const std::vector<std::pair<std::string, ArrowType>>& fields) {
-  CHECK_ERRNO(ArrowSchemaInit(schema, NANOARROW_TYPE_STRUCT));
-  CHECK_ERRNO(ArrowSchemaAllocateChildren(schema, fields.size()));
-  size_t i = 0;
-  for (const std::pair<std::string, ArrowType>& field : fields) {
-    CHECK_ERRNO(ArrowSchemaInit(schema->children[i], field.second));
-    CHECK_ERRNO(ArrowSchemaSetName(schema->children[i], field.first.c_str()));
-    i++;
-  }
-  return 0;
-}
-
-template <typename T>
-int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
-              const std::vector<std::optional<T>>& values) {
-  for (const auto& v : values) {
-    if (v.has_value()) {
-      if constexpr (std::is_same<T, int64_t>::value) {
-        CHECK_ERRNO(ArrowArrayAppendInt(array, *v));
-      } else if constexpr (std::is_same<T, std::string>::value) {
-        struct ArrowStringView view;
-        view.data = v->c_str();
-        view.n_bytes = v->size();
-        CHECK_ERRNO(ArrowArrayAppendString(array, view));
-      } else {
-        static_assert(!sizeof(T), "Not yet implemented");
-        return ENOTSUP;
-      }
-    } else {
-      CHECK_ERRNO(ArrowArrayAppendNull(array, 1));
-    }
-  }
-  return 0;
-}
-
-template <typename First>
-int MakeBatchImpl(struct ArrowArray* batch, size_t i, struct ArrowError* error,
-                  const std::vector<std::optional<First>>& first) {
-  return MakeArray<First>(batch, batch->children[i], first);
-}
-
-template <typename First, typename... Rest>
-int MakeBatchImpl(struct ArrowArray* batch, size_t i, struct ArrowError* error,
-                  const std::vector<std::optional<First>>& first,
-                  const std::vector<std::optional<Rest>>&... rest) {
-  CHECK_ERRNO(MakeArray<First>(batch, batch->children[i], first));
-  return MakeBatchImpl(batch, i + 1, error, rest...);
-}
-
-template <typename... T>
-int MakeBatch(struct ArrowArray* batch, struct ArrowError* error,
-              const std::vector<std::optional<T>>&... columns) {
-  CHECK_ERRNO(ArrowArrayStartAppending(batch));
-  CHECK_ERRNO(MakeBatchImpl(batch, 0, error, columns...));
-  for (size_t i = 0; i < static_cast<size_t>(batch->n_children); i++) {
-    if (batch->length > 0 && batch->children[i]->length != batch->length) {
-      ADD_FAILURE() << "Column lengths are inconsistent: column " << i << " has length "
-                    << batch->children[i]->length;
-      return EINVAL;
-    }
-    batch->length = batch->children[i]->length;
-  }
-  return ArrowArrayFinishBuilding(batch, error);
-}
-
-template <typename... T>
-int MakeBatch(struct ArrowSchema* schema, struct ArrowArray* batch,
-              struct ArrowError* error,
-              const std::vector<std::pair<std::string, ArrowType>>& fields,
-              const std::vector<std::optional<T>>&... columns) {
-  CHECK_ERRNO(MakeSchema(schema, fields));
-  CHECK_ERRNO(ArrowArrayInitFromSchema(batch, schema, error));
-  return MakeBatch(batch, error, columns...);
-}
-
-class ConstantArrayStream {
- public:
-  explicit ConstantArrayStream(struct ArrowSchema* schema,
-                               std::vector<struct ArrowArray> batches)
-      : batches_(std::move(batches)), next_index_(0) {
-    schema_ = *schema;
-    std::memset(schema, 0, sizeof(*schema));
-  }
-
-  static const char* GetLastError(struct ArrowArrayStream* stream) { return nullptr; }
-
-  static int GetNext(struct ArrowArrayStream* stream, struct ArrowArray* out) {
-    if (!stream || !stream->private_data || !out) return EINVAL;
-    auto* self = reinterpret_cast<ConstantArrayStream*>(stream->private_data);
-    if (self->next_index_ >= self->batches_.size()) {
-      out->release = nullptr;
-      return 0;
-    }
-
-    *out = self->batches_[self->next_index_];
-    std::memset(&self->batches_[self->next_index_], 0, sizeof(struct ArrowArray));
-
-    self->next_index_++;
-    return 0;
-  }
-
-  static int GetSchema(struct ArrowArrayStream* stream, struct ArrowSchema* out) {
-    if (!stream || !stream->private_data || !out) return EINVAL;
-    auto* self = reinterpret_cast<ConstantArrayStream*>(stream->private_data);
-    return ArrowSchemaDeepCopy(&self->schema_, out);
-  }
-
-  static void Release(struct ArrowArrayStream* stream) {
-    if (!stream->private_data) return;
-    auto* self = reinterpret_cast<ConstantArrayStream*>(stream->private_data);
-
-    self->schema_.release(&self->schema_);
-    for (size_t i = 0; i < self->batches_.size(); i++) {
-      if (self->batches_[i].release) {
-        self->batches_[i].release(&self->batches_[i]);
-      }
-    }
-
-    delete self;
-    std::memset(stream, 0, sizeof(*stream));
-  }
-
- private:
-  struct ArrowSchema schema_;
-  std::vector<struct ArrowArray> batches_;
-  size_t next_index_;
-};
-
-void MakeStream(struct ArrowArrayStream* stream, struct ArrowSchema* schema,
-                std::vector<struct ArrowArray> batches) {
-  stream->get_last_error = &ConstantArrayStream::GetLastError;
-  stream->get_next = &ConstantArrayStream::GetNext;
-  stream->get_schema = &ConstantArrayStream::GetSchema;
-  stream->release = &ConstantArrayStream::Release;
-  stream->private_data = new ConstantArrayStream(schema, std::move(batches));
-}
-
 }  // namespace
 
 //------------------------------------------------------------
@@ -342,10 +194,12 @@ void IngestSampleTable(struct AdbcConnection* connection, struct AdbcError* erro
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  ASSERT_THAT((MakeBatch<int64_t, std::string>(
-                  &schema.value, &array.value, &na_error,
-                  {{"int64s", NANOARROW_TYPE_INT64}, {"strings", NANOARROW_TYPE_STRING}},
-                  {42, -42, std::nullopt}, {"foo", std::nullopt, ""})),
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64},
+                                         {"strings", NANOARROW_TYPE_STRING}}),
+              IsOkErrno());
+  ASSERT_THAT((MakeBatch<int64_t, std::string>(&schema.value, &array.value, &na_error,
+                                               {42, -42, std::nullopt},
+                                               {"foo", std::nullopt, ""})),
               IsOkErrno());
 
   Handle<struct AdbcStatement> statement;
@@ -912,14 +766,14 @@ void StatementTest::SetUpTest() {
 }
 
 void StatementTest::TearDownTest() {
+  if (statement.private_data) {
+    EXPECT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+  }
+  EXPECT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+  EXPECT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
   if (error.release) {
     error.release(&error);
   }
-  if (statement.private_data) {
-    ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
-  }
-  ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
 }
 
 void StatementTest::TestNewInit() {
@@ -952,9 +806,9 @@ void StatementTest::TestSqlIngestInts() {
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
   ASSERT_THAT(
-      MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                         {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt}),
+      MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {42, -42, std::nullopt}),
       IsOkErrno());
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
@@ -1004,8 +858,8 @@ void StatementTest::TestSqlIngestAppend() {
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                 {{"int64s", NANOARROW_TYPE_INT64}}, {42}),
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {42}),
               IsOkErrno());
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
@@ -1023,9 +877,10 @@ void StatementTest::TestSqlIngestAppend() {
   // Now append
 
   // Re-initialize since Bind() should take ownership of data
-  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                 {{"int64s", NANOARROW_TYPE_INT64}}, {-42, std::nullopt}),
-              IsOkErrno());
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT(
+      MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {-42, std::nullopt}),
+      IsOkErrno());
 
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
                                      "bulk_ingest", &error),
@@ -1094,9 +949,10 @@ void StatementTest::TestSqlIngestErrors() {
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
                                      ADBC_INGEST_OPTION_MODE_APPEND, &error),
               IsOkStatus(&error));
-  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                 {{"int64s", NANOARROW_TYPE_INT64}}, {-42, std::nullopt}),
-              IsOkErrno(&na_error));
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT(
+      MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {-42, std::nullopt}),
+      IsOkErrno(&na_error));
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
 
@@ -1108,18 +964,20 @@ void StatementTest::TestSqlIngestErrors() {
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
                                      ADBC_INGEST_OPTION_MODE_CREATE, &error),
               IsOkStatus(&error));
-  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                 {{"int64s", NANOARROW_TYPE_INT64}}, {-42, std::nullopt}),
-              IsOkErrno(&na_error));
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT(
+      MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {-42, std::nullopt}),
+      IsOkErrno(&na_error));
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
   // ...then try to overwrite it
-  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                 {{"int64s", NANOARROW_TYPE_INT64}}, {-42, std::nullopt}),
-              IsOkErrno(&na_error));
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT(
+      MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {-42, std::nullopt}),
+      IsOkErrno(&na_error));
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
@@ -1127,10 +985,11 @@ void StatementTest::TestSqlIngestErrors() {
   if (error.release) error.release(&error);
 
   // ...then try to append an incompatible schema
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64},
+                                         {"coltwo", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
   ASSERT_THAT(
-      (MakeBatch<int64_t, int64_t>(
-          &schema.value, &array.value, &na_error,
-          {{"int64s", NANOARROW_TYPE_INT64}, {"coltwo", NANOARROW_TYPE_INT64}}, {}, {})),
+      (MakeBatch<int64_t, int64_t>(&schema.value, &array.value, &na_error, {}, {})),
       IsOkErrno(&na_error));
 
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
@@ -1149,10 +1008,10 @@ void StatementTest::TestSqlIngestMultipleConnections() {
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  ASSERT_THAT(
-      (MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                          {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt})),
-      IsOkErrno());
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                  {42, -42, std::nullopt})),
+              IsOkErrno());
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
@@ -1168,7 +1027,7 @@ void StatementTest::TestSqlIngestMultipleConnections() {
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
   {
-    struct AdbcConnection connection2;
+    struct AdbcConnection connection2 = {};
     ASSERT_THAT(AdbcConnectionNew(&connection2, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcConnectionInit(&connection2, &database, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementNew(&connection2, &statement, &error), IsOkStatus(&error));
@@ -1331,10 +1190,12 @@ void StatementTest::TestSqlPrepareSelectParams() {
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  ASSERT_THAT((MakeBatch<int64_t, std::string>(
-                  &schema.value, &array.value, &na_error,
-                  {{"int64s", NANOARROW_TYPE_INT64}, {"strings", NANOARROW_TYPE_STRING}},
-                  {42, -42, std::nullopt}, {"", std::nullopt, "bar"})),
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64},
+                                         {"strings", NANOARROW_TYPE_STRING}}),
+              IsOkErrno());
+  ASSERT_THAT((MakeBatch<int64_t, std::string>(&schema.value, &array.value, &na_error,
+                                               {42, -42, std::nullopt},
+                                               {"", std::nullopt, "bar"})),
               IsOkErrno());
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
@@ -1386,10 +1247,10 @@ void StatementTest::TestSqlPrepareUpdate() {
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
                                      "bulk_ingest", &error),
               IsOkStatus(&error));
-  ASSERT_THAT(
-      (MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                          {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt})),
-      IsOkErrno());
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                  {42, -42, std::nullopt})),
+              IsOkErrno());
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
 
@@ -1404,10 +1265,10 @@ void StatementTest::TestSqlPrepareUpdate() {
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
 
   // Bind and execute
-  ASSERT_THAT(
-      (MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                          {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt})),
-      IsOkErrno());
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                  {42, -42, std::nullopt})),
+              IsOkErrno());
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
@@ -1453,8 +1314,7 @@ void StatementTest::TestSqlPrepareUpdateStream() {
               IsOkStatus(&error));
   struct ArrowError na_error;
 
-  const std::vector<std::pair<std::string, ArrowType>> fields = {
-      {"ints", NANOARROW_TYPE_INT64}};
+  const std::vector<SchemaField> fields = {{"ints", NANOARROW_TYPE_INT64}};
 
   // Create table
   {
@@ -1464,7 +1324,8 @@ void StatementTest::TestSqlPrepareUpdateStream() {
     ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
                                        "bulk_ingest", &error),
                 IsOkStatus(&error));
-    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error, fields, {})),
+    ASSERT_THAT(MakeSchema(&schema.value, fields), IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {})),
                 IsOkErrno());
     ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
                 IsOkStatus(&error));
@@ -1473,21 +1334,18 @@ void StatementTest::TestSqlPrepareUpdateStream() {
   }
 
   // Generate stream
-  struct ArrowArrayStream stream;
-  struct ArrowSchema schema;
+  Handle<struct ArrowArrayStream> stream;
+  Handle<struct ArrowSchema> schema;
   std::vector<struct ArrowArray> batches(2);
 
-  ASSERT_NO_FATAL_FAILURE(MakeSchema(&schema, fields));
-  ASSERT_THAT(ArrowArrayInitFromSchema(&batches[0], &schema, &na_error),
+  ASSERT_THAT(MakeSchema(&schema.value, fields), IsOkErrno());
+  ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &batches[0], &na_error,
+                                  {1, 2, std::nullopt, 3})),
               IsOkErrno(&na_error));
-  ASSERT_THAT((MakeBatch<int64_t>(&batches[0], &na_error, {1, 2, std::nullopt, 3})),
-              IsOkErrno(&na_error));
-  ASSERT_THAT(ArrowArrayInitFromSchema(&batches[1], &schema, &na_error),
-              IsOkErrno(&na_error));
-  ASSERT_THAT(MakeBatch<int64_t>(&batches[1], &na_error, {std::nullopt, 3}),
-              IsOkErrno(&na_error));
-
-  ASSERT_NO_FATAL_FAILURE(MakeStream(&stream, &schema, std::move(batches)));
+  ASSERT_THAT(
+      MakeBatch<int64_t>(&schema.value, &batches[1], &na_error, {std::nullopt, 3}),
+      IsOkErrno(&na_error));
+  MakeStream(&stream.value, &schema.value, std::move(batches));
 
   // Prepare
   std::string query =
@@ -1497,7 +1355,8 @@ void StatementTest::TestSqlPrepareUpdateStream() {
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
 
   // Bind and execute
-  ASSERT_THAT(AdbcStatementBindStream(&statement, &stream, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBindStream(&statement, &stream.value, &error),
+              IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
@@ -1561,10 +1420,10 @@ void StatementTest::TestSqlPrepareErrorParamCountMismatch() {
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
-  ASSERT_THAT(
-      (MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                          {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt})),
-      IsOkErrno());
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                  {42, -42, std::nullopt})),
+              IsOkErrno());
 
   ASSERT_THAT(
       ([&]() -> AdbcStatusCode {
@@ -1859,10 +1718,6 @@ void StatementTest::TestResultInvalidation() {
   ASSERT_NO_FATAL_FAILURE(reader1.Next());
 }
 
-#undef ADBCV_CONCAT
-#undef ADBCV_NAME
-#undef CHECK_ERRNO_IMPL
-#undef CHECK_ERRNO
 #undef NOT_NULL
 #undef NULLABLE
 }  // namespace adbc_validation

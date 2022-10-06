@@ -24,6 +24,7 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <adbc.h>
@@ -188,6 +189,102 @@ struct StreamReader {
     return 0;
   }
 };
+
+struct SchemaField {
+  std::string name;
+  ArrowType type = NANOARROW_TYPE_UNINITIALIZED;
+  bool nullable = true;
+
+  SchemaField(std::string name, ArrowType type, bool nullable)
+      : name(std::move(name)), type(type), nullable(nullable) {}
+
+  SchemaField(std::string name, ArrowType type)
+      : SchemaField(std::move(name), type, /*nullable=*/true) {}
+};
+
+/// \brief Make a schema from a vector of (name, type, nullable) tuples.
+int MakeSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& fields);
+
+/// \brief Make an array from a column of C types.
+template <typename T>
+int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
+              const std::vector<std::optional<T>>& values) {
+  for (const auto& v : values) {
+    if (v.has_value()) {
+      if constexpr (std::is_same<T, int64_t>::value) {
+        if (int errno_res = ArrowArrayAppendInt(array, *v); errno_res != 0) {
+          return errno_res;
+        }
+      } else if constexpr (std::is_same<T, std::string>::value) {
+        struct ArrowStringView view;
+        view.data = v->c_str();
+        view.n_bytes = v->size();
+        if (int errno_res = ArrowArrayAppendString(array, view); errno_res != 0) {
+          return errno_res;
+        }
+      } else {
+        static_assert(!sizeof(T), "Not yet implemented");
+        return ENOTSUP;
+      }
+    } else {
+      if (int errno_res = ArrowArrayAppendNull(array, 1); errno_res != 0) {
+        return errno_res;
+      }
+    }
+  }
+  return 0;
+}
+
+template <typename First>
+int MakeBatchImpl(struct ArrowArray* batch, size_t i, struct ArrowError* error,
+                  const std::vector<std::optional<First>>& first) {
+  return MakeArray<First>(batch, batch->children[i], first);
+}
+
+template <typename First, typename... Rest>
+int MakeBatchImpl(struct ArrowArray* batch, size_t i, struct ArrowError* error,
+                  const std::vector<std::optional<First>>& first,
+                  const std::vector<std::optional<Rest>>&... rest) {
+  if (int errno_res = MakeArray<First>(batch, batch->children[i], first);
+      errno_res != 0) {
+    return errno_res;
+  }
+  return MakeBatchImpl(batch, i + 1, error, rest...);
+}
+
+/// \brief Make a batch from columns of C types.
+template <typename... T>
+int MakeBatch(struct ArrowArray* batch, struct ArrowError* error,
+              const std::vector<std::optional<T>>&... columns) {
+  if (int errno_res = ArrowArrayStartAppending(batch); errno_res != 0) {
+    return errno_res;
+  }
+  if (int errno_res = MakeBatchImpl(batch, 0, error, columns...); errno_res != 0) {
+    return errno_res;
+  }
+  for (size_t i = 0; i < static_cast<size_t>(batch->n_children); i++) {
+    if (batch->length > 0 && batch->children[i]->length != batch->length) {
+      ADD_FAILURE() << "Column lengths are inconsistent: column " << i << " has length "
+                    << batch->children[i]->length;
+      return EINVAL;
+    }
+    batch->length = batch->children[i]->length;
+  }
+  return ArrowArrayFinishBuilding(batch, error);
+}
+
+template <typename... T>
+int MakeBatch(struct ArrowSchema* schema, struct ArrowArray* batch,
+              struct ArrowError* error, const std::vector<std::optional<T>>&... columns) {
+  if (int errno_res = ArrowArrayInitFromSchema(batch, schema, error); errno_res != 0) {
+    return errno_res;
+  }
+  return MakeBatch(batch, error, columns...);
+}
+
+/// \brief Make a stream from a list of batches.
+void MakeStream(struct ArrowArrayStream* stream, struct ArrowSchema* schema,
+                std::vector<struct ArrowArray> batches);
 
 /// \brief Compare an array for equality against a vector of values.
 template <typename T>
