@@ -148,6 +148,7 @@ class StatementTest {
 
   void TestSqlPartitionedInts();
 
+  void TestSqlPrepareGetParameterSchema();
   void TestSqlPrepareSelectNoParams();
   void TestSqlPrepareSelectParams();
   void TestSqlPrepareUpdate();
@@ -184,6 +185,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
   TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                     \
+  TEST_F(FIXTURE, SqlPrepareGetParameterSchema) { TestSqlPrepareGetParameterSchema(); } \
   TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \
   TEST_F(FIXTURE, SqlPrepareSelectParams) { TestSqlPrepareSelectParams(); }             \
   TEST_F(FIXTURE, SqlPrepareUpdate) { TestSqlPrepareUpdate(); }                         \

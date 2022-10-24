@@ -60,6 +60,7 @@ if(ADBC_BUILD_TESTS)
                 SOURCES
                 adbc_driver_manager_test.cc
                 ../validation/adbc_validation.cc
+                ../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
                 nanoarrow
                 ${TEST_LINK_LIBS})

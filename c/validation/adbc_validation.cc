@@ -33,105 +33,20 @@
 #include <gtest/gtest.h>
 #include <nanoarrow.h>
 
+#include "adbc_validation_util.h"
+
 namespace adbc_validation {
 
 namespace {
-const char* AdbcvStatusCodeMessage(AdbcStatusCode code) {
-#define CASE(CONSTANT)         \
-  case ADBC_STATUS_##CONSTANT: \
-    return ADBCV_STRINGIFY_VALUE(ADBC_STATUS_##CONSTANT) " (" #CONSTANT ")";
-
-  switch (code) {
-    CASE(OK);
-    CASE(UNKNOWN);
-    CASE(NOT_IMPLEMENTED);
-    CASE(NOT_FOUND);
-    CASE(ALREADY_EXISTS);
-    CASE(INVALID_ARGUMENT);
-    CASE(INVALID_STATE);
-    CASE(INVALID_DATA);
-    CASE(INTEGRITY);
-    CASE(INTERNAL);
-    CASE(IO);
-    CASE(CANCELLED);
-    CASE(TIMEOUT);
-    CASE(UNAUTHENTICATED);
-    CASE(UNAUTHORIZED);
-    default:
-      return "(unknown code)";
-  }
-#undef CASE
-}
-
 /// Nanoarrow helpers
 
 #define NULLABLE true
 #define NOT_NULL false
 
-static inline int64_t ArrowArrayViewGetOffsetUnsafe(struct ArrowArrayView* array_view,
-                                                    int64_t i) {
-  struct ArrowBufferView* data_view = &array_view->buffer_views[1];
-  i += array_view->array->offset;
-  switch (array_view->storage_type) {
-    case NANOARROW_TYPE_LIST:
-    case NANOARROW_TYPE_MAP:
-      return data_view->data.as_int32[i];
-    case NANOARROW_TYPE_LARGE_LIST:
-      return data_view->data.as_int64[i];
-    default:
-      return INT64_MAX;
-  }
-}
-
 /// Assertion helpers
-
-std::string AdbcvErrorRepr(AdbcStatusCode v) { return AdbcvStatusCodeMessage(v); }
-std::string AdbcvErrorRepr(int v) {
-  if (v == 0) {
-    return "0 (OK)";
-  }
-  return std::to_string(v) + " (" + std::strerror(v) + ")";
-}
-std::string AdbcvErrorRepr(struct AdbcError* error) {
-  if (error && error->message) {
-    std::string result = "\nError message: ";
-    result += error->message;
-    error->release(error);
-    return result;
-  }
-  return "";
-}
-std::string AdbcvErrorRepr(struct ArrowArrayStream* stream) {
-  if (stream && stream->release) {
-    std::string result = "\nError message: ";
-    result += stream->get_last_error(stream);
-    return result;
-  }
-  return "";
-}
-std::string AdbcvErrorRepr(struct ArrowError* error) {
-  if (error) {
-    std::string result = "\nError message: ";
-    result += error->message;
-    return result;
-  }
-  return "";
-}
-
-template <typename T, typename U>
-std::string AdbcvErrorRepr(T expected, T actual, U* error) {
-  std::string message = "Expected: ";
-  message += AdbcvErrorRepr(expected);
-  message += "\nActual:   ";
-  message += AdbcvErrorRepr(actual);
-  message += AdbcvErrorRepr(error);
-  return message;
-}
 
 #define ADBCV_CONCAT(a, b) a##b
 #define ADBCV_NAME(a, b) ADBCV_CONCAT(a, b)
-
-/// Assertion helpers
 
 #define CHECK_OK(EXPR)                                              \
   do {                                                              \
@@ -139,133 +54,6 @@ std::string AdbcvErrorRepr(T expected, T actual, U* error) {
       return adbc_status;                                           \
     }                                                               \
   } while (false)
-
-#define ADBCV_ASSERT_FAILS_WITH_IMPL(ERROR, STATUS, EXPECTED, EXPR)                \
-  AdbcStatusCode STATUS = (EXPR);                                                  \
-  ASSERT_EQ(EXPECTED, STATUS) << AdbcvErrorRepr<AdbcStatusCode, struct AdbcError>( \
-      EXPECTED, STATUS, ERROR);
-#define ADBCV_ASSERT_FAILS_IMPL(ERROR, STATUS, EXPR) \
-  AdbcStatusCode STATUS = (EXPR);                    \
-  ASSERT_NE(ADBC_STATUS_OK, STATUS) << "Expected failure, but was actually OK";
-#define ADBCV_ASSERT_OK(ERROR, EXPR)                                         \
-  ADBCV_ASSERT_FAILS_WITH_IMPL(ERROR, ADBCV_NAME(adbc_status_, __COUNTER__), \
-                               ADBC_STATUS_OK, EXPR)
-#define ADBCV_ASSERT_FAILS_WITH(STATUS, ERROR, EXPR)                         \
-  ADBCV_ASSERT_FAILS_WITH_IMPL(ERROR, ADBCV_NAME(adbc_status_, __COUNTER__), \
-                               ADBCV_CONCAT(ADBC_STATUS_, STATUS), EXPR)
-#define ADBCV_ASSERT_FAILS(ERROR, EXPR) \
-  ADBCV_ASSERT_FAILS_IMPL(ERROR, ADBCV_NAME(adbc_status_, __COUNTER__), EXPR)
-
-#define ABI_ASSERT_FAILS_WITH_IMPL(STREAM, ERRNO, EXPECTED, EXPR)             \
-  const int ERRNO = (EXPR);                                                   \
-  ASSERT_EQ(EXPECTED, ERRNO) << AdbcvErrorRepr<int, struct ArrowArrayStream>( \
-      EXPECTED, ERRNO, STREAM);
-#define ABI_ASSERT_OK(STREAM, EXPR) \
-  ABI_ASSERT_FAILS_WITH_IMPL(STREAM, ADBCV_NAME(adbc_errno_, __COUNTER__), 0, EXPR)
-#define ABI_ASSERT_FAILS_WITH(ERRNO, STREAM, EXPR) \
-  ABI_ASSERT_FAILS_WITH_IMPL(STREAM, ADBCV_NAME(adbc_errno_, __COUNTER__), ERRNO, EXPR)
-
-#define NA_ASSERT_FAILS_WITH_IMPL(STREAM, ERRNO, EXPECTED, EXPR)                        \
-  const int ERRNO = (EXPR);                                                             \
-  ASSERT_EQ(EXPECTED, ERRNO) << AdbcvErrorRepr<int, struct ArrowError>(EXPECTED, ERRNO, \
-                                                                       STREAM);
-#define NA_ASSERT_OK(STREAM, EXPR) \
-  NA_ASSERT_FAILS_WITH_IMPL(STREAM, ADBCV_NAME(adbc_errno_, __COUNTER__), 0, EXPR)
-#define NA_ASSERT_FAILS_WITH(ERRNO, STREAM, EXPR) \
-  NA_ASSERT_FAILS_WITH_IMPL(STREAM, ADBCV_NAME(adbc_errno_, __COUNTER__), ERRNO, EXPR)
-
-/// Helper to manage C Data Interface/Nanoarrow resources with RAII
-
-template <typename T>
-struct Releaser {
-  static void Release(T* value) {
-    if (value->release) {
-      value->release(value);
-    }
-  }
-};
-
-template <>
-struct Releaser<struct ArrowArrayView> {
-  static void Release(struct ArrowArrayView* value) {
-    if (value->storage_type != NANOARROW_TYPE_UNINITIALIZED) {
-      ArrowArrayViewReset(value);
-    }
-  }
-};
-
-template <>
-struct Releaser<struct AdbcConnection> {
-  static void Release(struct AdbcConnection* value) {
-    if (value->private_data) {
-      struct AdbcError error = {};
-      auto status = AdbcConnectionRelease(value, &error);
-      if (status != ADBC_STATUS_OK) {
-        FAIL() << AdbcvErrorRepr(status) << ": " << AdbcvErrorRepr(&error);
-      }
-    }
-  }
-};
-
-template <>
-struct Releaser<struct AdbcStatement> {
-  static void Release(struct AdbcStatement* value) {
-    if (value->private_data) {
-      struct AdbcError error = {};
-      auto status = AdbcStatementRelease(value, &error);
-      if (status != ADBC_STATUS_OK) {
-        FAIL() << AdbcvErrorRepr(status) << ": " << AdbcvErrorRepr(&error);
-      }
-    }
-  }
-};
-
-template <typename Resource>
-struct Handle {
-  Resource value;
-
-  Handle() { std::memset(&value, 0, sizeof(value)); }
-
-  ~Handle() { Releaser<Resource>::Release(&value); }
-
-  Resource* operator->() { return &value; }
-};
-
-struct StreamReader {
-  Handle<struct ArrowArrayStream> stream;
-  Handle<struct ArrowSchema> schema;
-  Handle<struct ArrowArray> array;
-  Handle<struct ArrowArrayView> array_view;
-  std::vector<struct ArrowSchemaView> fields;
-  struct ArrowError na_error;
-  int64_t rows_affected = 0;
-
-  StreamReader() { std::memset(&na_error, 0, sizeof(na_error)); }
-
-  void GetSchema() {
-    ASSERT_NE(nullptr, stream->release);
-    ABI_ASSERT_OK(&stream.value, stream->get_schema(&stream.value, &schema.value));
-    fields.resize(schema->n_children);
-    for (int64_t i = 0; i < schema->n_children; i++) {
-      NA_ASSERT_OK(&na_error,
-                   ArrowSchemaViewInit(&fields[i], schema->children[i], &na_error));
-    }
-  }
-
-  void Next() {
-    if (array->release) {
-      ArrowArrayViewReset(&array_view.value);
-      array->release(&array.value);
-    }
-    ABI_ASSERT_OK(&stream.value, stream->get_next(&stream.value, &array.value));
-    if (array->release) {
-      NA_ASSERT_OK(&na_error, ArrowArrayViewInitFromSchema(&array_view.value,
-                                                           &schema.value, &na_error));
-      NA_ASSERT_OK(&na_error,
-                   ArrowArrayViewSetArray(&array_view.value, &array.value, &na_error));
-    }
-  }
-};
 
 #define CHECK_ERRNO_IMPL(ERRNO, EXPR)   \
   if (int ERRNO = (EXPR); ERRNO != 0) { \
@@ -411,63 +199,6 @@ void MakeStream(struct ArrowArrayStream* stream, struct ArrowSchema* schema,
   stream->private_data = new ConstantArrayStream(schema, std::move(batches));
 }
 
-void CompareSchema(
-    struct ArrowSchema* schema,
-    const std::vector<std::tuple<std::optional<std::string>, ArrowType, bool>>& fields) {
-  struct ArrowError na_error;
-  struct ArrowSchemaView view;
-
-  NA_ASSERT_OK(&na_error, ArrowSchemaViewInit(&view, schema, &na_error));
-  ASSERT_THAT(view.data_type, ::testing::AnyOf(NANOARROW_TYPE_LIST, NANOARROW_TYPE_STRUCT,
-                                               NANOARROW_TYPE_DENSE_UNION));
-  ASSERT_EQ(fields.size(), schema->n_children);
-
-  for (int64_t i = 0; i < schema->n_children; i++) {
-    SCOPED_TRACE("Field " + std::to_string(i));
-    struct ArrowSchemaView field_view;
-    NA_ASSERT_OK(&na_error,
-                 ArrowSchemaViewInit(&field_view, schema->children[i], &na_error));
-    ASSERT_EQ(std::get<1>(fields[i]), field_view.data_type);
-    ASSERT_EQ(std::get<2>(fields[i]),
-              (schema->children[i]->flags & ARROW_FLAG_NULLABLE) != 0)
-        << "Nullability mismatch";
-    if (std::get<0>(fields[i]).has_value()) {
-      ASSERT_EQ(*std::get<0>(fields[i]), schema->children[i]->name);
-    }
-  }
-}
-
-template <typename T>
-void CompareArray(struct ArrowArrayView* array,
-                  const std::vector<std::optional<T>>& values) {
-  ASSERT_EQ(static_cast<int64_t>(values.size()), array->array->length);
-  int64_t i = 0;
-  for (const auto& v : values) {
-    SCOPED_TRACE("Array index " + std::to_string(i));
-    if (v.has_value()) {
-      ASSERT_FALSE(ArrowArrayViewIsNull(array, i));
-      if constexpr (std::is_same<T, double>::value) {
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_double[i]);
-      } else if constexpr (std::is_same<T, float>::value) {
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
-      } else if constexpr (std::is_same<T, int32_t>::value) {
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int32[i]);
-      } else if constexpr (std::is_same<T, int64_t>::value) {
-        ASSERT_EQ(*v, array->buffer_views[1].data.as_int64[i]);
-      } else if constexpr (std::is_same<T, std::string>::value) {
-        struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
-        std::string str(view.data, view.n_bytes);
-        ASSERT_EQ(*v, str);
-      } else {
-        static_assert(!sizeof(T), "Not yet implemented");
-      }
-    } else {
-      ASSERT_TRUE(ArrowArrayViewIsNull(array, i));
-    }
-    i++;
-  }
-}
-
 }  // namespace
 
 //------------------------------------------------------------
@@ -480,7 +211,7 @@ void DatabaseTest::SetUpTest() {
 
 void DatabaseTest::TearDownTest() {
   if (database.private_data) {
-    ADBCV_ASSERT_OK(&error, AdbcDatabaseRelease(&database, &error));
+    ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
   }
   if (error.release) {
     error.release(&error);
@@ -488,21 +219,23 @@ void DatabaseTest::TearDownTest() {
 }
 
 void DatabaseTest::TestNewInit() {
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseNew(&database, &error));
-  ADBCV_ASSERT_OK(&error, quirks()->SetupDatabase(&database, &error));
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseInit(&database, &error));
+  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->SetupDatabase(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database, &error), IsOkStatus(&error));
   ASSERT_NE(nullptr, database.private_data);
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseRelease(&database, &error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
   ASSERT_EQ(nullptr, database.private_data);
 
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error, AdbcDatabaseRelease(&database, &error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
 }
 
 void DatabaseTest::TestRelease() {
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error, AdbcDatabaseRelease(&database, &error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
 
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseNew(&database, &error));
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseRelease(&database, &error));
+  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
   ASSERT_EQ(nullptr, database.private_data);
 }
 
@@ -514,37 +247,37 @@ void ConnectionTest::SetUpTest() {
   std::memset(&database, 0, sizeof(database));
   std::memset(&connection, 0, sizeof(connection));
 
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseNew(&database, &error));
-  ADBCV_ASSERT_OK(&error, quirks()->SetupDatabase(&database, &error));
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseInit(&database, &error));
+  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->SetupDatabase(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database, &error), IsOkStatus(&error));
 }
 
 void ConnectionTest::TearDownTest() {
   if (connection.private_data) {
-    ADBCV_ASSERT_OK(&error, AdbcConnectionRelease(&connection, &error));
+    ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
   }
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseRelease(&database, &error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
   if (error.release) {
     error.release(&error);
   }
 }
 
 void ConnectionTest::TestNewInit() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionRelease(&connection, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
   ASSERT_EQ(NULL, connection.private_data);
 
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcConnectionRelease(&connection, &error));
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
 }
 
 void ConnectionTest::TestRelease() {
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcConnectionRelease(&connection, &error));
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
 
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionRelease(&connection, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
   ASSERT_EQ(NULL, connection.private_data);
 
   // TODO: what should happen if we Release() with open connections?
@@ -554,52 +287,52 @@ void ConnectionTest::TestConcurrent() {
   struct AdbcConnection connection2;
   memset(&connection2, 0, sizeof(connection2));
 
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection2, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection2, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection2, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection2, &database, &error), IsOkStatus(&error));
 
-  ADBCV_ASSERT_OK(&error, AdbcConnectionRelease(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionRelease(&connection2, &error));
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionRelease(&connection2, &error), IsOkStatus(&error));
 }
 
 //------------------------------------------------------------
 // Tests of autocommit (without data)
 
 void ConnectionTest::TestAutocommitDefault() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
   // Even if not supported, the driver should act as if autocommit is
   // enabled, and return INVALID_STATE if the client tries to commit
   // or rollback
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcConnectionCommit(&connection, &error));
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcConnectionRollback(&connection, &error));
+  ASSERT_THAT(AdbcConnectionCommit(&connection, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  ASSERT_THAT(AdbcConnectionRollback(&connection, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
 
   // Invalid option value
-  ADBCV_ASSERT_FAILS(
-      &error, AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-                                      "invalid", &error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      "invalid", &error),
+              ::testing::Not(IsOkStatus(&error)));
 }
 
 void ConnectionTest::TestAutocommitToggle() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
   // It is OK to enable autocommit when it is already enabled
-  ADBCV_ASSERT_OK(&error,
-                  AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-                                          ADBC_OPTION_VALUE_ENABLED, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-                                          ADBC_OPTION_VALUE_DISABLED, &error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      ADBC_OPTION_VALUE_ENABLED, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
   // It is OK to disable autocommit when it is already enabled
-  ADBCV_ASSERT_OK(&error,
-                  AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-                                          ADBC_OPTION_VALUE_DISABLED, &error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
 }
 
 //------------------------------------------------------------
@@ -609,27 +342,27 @@ void IngestSampleTable(struct AdbcConnection* connection, struct AdbcError* erro
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  NA_ASSERT_OK(nullptr,
-               (MakeBatch<int64_t, std::string>(
-                   &schema.value, &array.value, &na_error,
-                   {{"int64s", NANOARROW_TYPE_INT64}, {"strings", NANOARROW_TYPE_STRING}},
-                   {42, -42, std::nullopt}, {"foo", std::nullopt, ""})));
+  ASSERT_THAT((MakeBatch<int64_t, std::string>(
+                  &schema.value, &array.value, &na_error,
+                  {{"int64s", NANOARROW_TYPE_INT64}, {"strings", NANOARROW_TYPE_STRING}},
+                  {42, -42, std::nullopt}, {"foo", std::nullopt, ""})),
+              IsOkErrno());
 
-  struct AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-  ADBCV_ASSERT_OK(error, AdbcStatementNew(connection, &statement, error));
-  ADBCV_ASSERT_OK(error,
-                  AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                         "bulk_ingest", error));
-  ADBCV_ASSERT_OK(error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, error));
-  ADBCV_ASSERT_OK(error, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, error));
-  ADBCV_ASSERT_OK(error, AdbcStatementRelease(&statement, error));
+  Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(connection, &statement.value, error), IsOkStatus(error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", error),
+              IsOkStatus(error));
+  ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, error),
+              IsOkStatus(error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error),
+              IsOkStatus(error));
+  ASSERT_THAT(AdbcStatementRelease(&statement.value, error), IsOkStatus(error));
 }
 
 void ConnectionTest::TestMetadataGetInfo() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
   StreamReader reader;
   std::vector<uint32_t> info = {
@@ -639,8 +372,9 @@ void ConnectionTest::TestMetadataGetInfo() {
       ADBC_INFO_VENDOR_VERSION,
   };
 
-  ADBCV_ASSERT_OK(&error, AdbcConnectionGetInfo(&connection, info.data(), info.size(),
-                                                &reader.stream.value, &error));
+  ASSERT_THAT(AdbcConnectionGetInfo(&connection, info.data(), info.size(),
+                                    &reader.stream.value, &error),
+              IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_NO_FATAL_FAILURE(CompareSchema(
       &reader.schema.value, {
@@ -687,16 +421,17 @@ void ConnectionTest::TestMetadataGetInfo() {
 }
 
 void ConnectionTest::TestMetadataGetTableSchema() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
 
   Handle<ArrowSchema> schema;
-  ADBCV_ASSERT_OK(&error,
-                  AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                               /*db_schema=*/nullptr, "bulk_ingest",
-                                               &schema.value, &error));
+  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                           /*db_schema=*/nullptr, "bulk_ingest",
+                                           &schema.value, &error),
+              IsOkStatus(&error));
 
   ASSERT_NO_FATAL_FAILURE(
       CompareSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64, NULLABLE},
@@ -704,12 +439,12 @@ void ConnectionTest::TestMetadataGetTableSchema() {
 }
 
 void ConnectionTest::TestMetadataGetTableTypes() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
   StreamReader reader;
-  ADBCV_ASSERT_OK(&error,
-                  AdbcConnectionGetTableTypes(&connection, &reader.stream.value, &error));
+  ASSERT_THAT(AdbcConnectionGetTableTypes(&connection, &reader.stream.value, &error),
+              IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_NO_FATAL_FAILURE(CompareSchema(
       &reader.schema.value, {{"table_type", NANOARROW_TYPE_STRING, NOT_NULL}}));
@@ -784,14 +519,15 @@ void CheckGetObjectsSchema(struct ArrowSchema* schema) {
 }
 
 void ConnectionTest::TestMetadataGetObjectsCatalogs() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
   {
     StreamReader reader;
-    ADBCV_ASSERT_OK(&error, AdbcConnectionGetObjects(
-                                &connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr, nullptr,
-                                nullptr, nullptr, nullptr, &reader.stream.value, &error));
+    ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr,
+                                         nullptr, nullptr, nullptr, nullptr,
+                                         &reader.stream.value, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     // We requested catalogs, so expect at least one catalog, and
@@ -811,10 +547,10 @@ void ConnectionTest::TestMetadataGetObjectsCatalogs() {
   {
     // Filter with a nonexistent catalog - we should get nothing
     StreamReader reader;
-    ADBCV_ASSERT_OK(
-        &error, AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS,
+    ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS,
                                          "this catalog does not exist", nullptr, nullptr,
-                                         nullptr, nullptr, &reader.stream.value, &error));
+                                         nullptr, nullptr, &reader.stream.value, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -827,16 +563,16 @@ void ConnectionTest::TestMetadataGetObjectsCatalogs() {
 }
 
 void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
   {
     // Expect at least one catalog, at least one schema, and tables should be null
     StreamReader reader;
-    ADBCV_ASSERT_OK(&error,
-                    AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS,
-                                             nullptr, nullptr, nullptr, nullptr, nullptr,
-                                             &reader.stream.value, &error));
+    ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS,
+                                         nullptr, nullptr, nullptr, nullptr, nullptr,
+                                         &reader.stream.value, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -872,10 +608,10 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
   {
     // Filter with a nonexistent DB schema - we should get nothing
     StreamReader reader;
-    ADBCV_ASSERT_OK(
-        &error, AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS,
+    ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS,
                                          nullptr, "this schema does not exist", nullptr,
-                                         nullptr, nullptr, &reader.stream.value, &error));
+                                         nullptr, nullptr, &reader.stream.value, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -899,9 +635,10 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
 }
 
 void ConnectionTest::TestMetadataGetObjectsTables() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
 
   std::vector<std::pair<const char*, bool>> test_cases = {
@@ -914,10 +651,10 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
     SCOPED_TRACE(scope);
 
     StreamReader reader;
-    ADBCV_ASSERT_OK(
-        &error, AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr,
+    ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr,
                                          nullptr, expected.first, nullptr, nullptr,
-                                         &reader.stream.value, &error));
+                                         &reader.stream.value, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -974,9 +711,10 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
 }
 
 void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
 
   std::vector<const char*> table_types(2);
@@ -984,10 +722,10 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
   table_types[1] = nullptr;
   {
     StreamReader reader;
-    ADBCV_ASSERT_OK(
-        &error, AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr,
+    ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr,
                                          nullptr, nullptr, table_types.data(), nullptr,
-                                         &reader.stream.value, &error));
+                                         &reader.stream.value, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -1045,9 +783,10 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
   // TODO: test could be more robust if we ingested a few tables
   ASSERT_EQ(ADBC_OBJECT_DEPTH_COLUMNS, ADBC_OBJECT_DEPTH_ALL);
 
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
 
   struct TestCase {
@@ -1069,12 +808,12 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
     std::vector<std::string> column_names;
     std::vector<int32_t> ordinal_positions;
 
-    ADBCV_ASSERT_OK(
-        &error,
+    ASSERT_THAT(
         AdbcConnectionGetObjects(
             &connection, ADBC_OBJECT_DEPTH_COLUMNS, nullptr, nullptr, nullptr, nullptr,
             test_case.filter.has_value() ? test_case.filter->c_str() : nullptr,
-            &reader.stream.value, &error));
+            &reader.stream.value, &error),
+        IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_NO_FATAL_FAILURE(CheckGetObjectsSchema(&reader.schema.value));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -1164,77 +903,79 @@ void StatementTest::SetUpTest() {
   std::memset(&connection, 0, sizeof(connection));
   std::memset(&statement, 0, sizeof(statement));
 
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseNew(&database, &error));
-  ADBCV_ASSERT_OK(&error, quirks()->SetupDatabase(&database, &error));
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseInit(&database, &error));
+  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->SetupDatabase(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database, &error), IsOkStatus(&error));
 
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 }
 
 void StatementTest::TearDownTest() {
-  if (statement.private_data) {
-    ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
-  }
-  ADBCV_ASSERT_OK(&error, AdbcConnectionRelease(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcDatabaseRelease(&database, &error));
   if (error.release) {
     error.release(&error);
   }
+  if (statement.private_data) {
+    ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+  }
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
 }
 
 void StatementTest::TestNewInit() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
   ASSERT_EQ(NULL, statement.private_data);
 
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcStatementRelease(&statement, &error));
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   // Cannot execute
-  ADBCV_ASSERT_FAILS_WITH(
-      INVALID_STATE, &error,
-      AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
 }
 
 void StatementTest::TestRelease() {
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcStatementRelease(&statement, &error));
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
   ASSERT_EQ(NULL, statement.private_data);
 }
 
 void StatementTest::TestSqlIngestInts() {
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  NA_ASSERT_OK(nullptr, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                           {{"int64s", NANOARROW_TYPE_INT64}},
-                                           {42, -42, std::nullopt}));
+  ASSERT_THAT(
+      MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                         {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt}),
+      IsOkErrno());
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                         "bulk_ingest", &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
 
   int64_t rows_affected = 0;
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
 
-  ADBCV_ASSERT_OK(
-      &error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+              IsOkStatus(&error));
   {
     StreamReader reader;
-    ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                      &reader.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
                 ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
 
@@ -1257,52 +998,56 @@ void StatementTest::TestSqlIngestInts() {
 
 void StatementTest::TestSqlIngestAppend() {
   // Ingest
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  NA_ASSERT_OK(nullptr, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                           {{"int64s", NANOARROW_TYPE_INT64}}, {42}));
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                 {{"int64s", NANOARROW_TYPE_INT64}}, {42}),
+              IsOkErrno());
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                         "bulk_ingest", &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
 
   int64_t rows_affected = 0;
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
 
   // Now append
 
   // Re-initialize since Bind() should take ownership of data
-  NA_ASSERT_OK(nullptr, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                           {{"int64s", NANOARROW_TYPE_INT64}},
-                                           {-42, std::nullopt}));
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                 {{"int64s", NANOARROW_TYPE_INT64}}, {-42, std::nullopt}),
+              IsOkErrno());
 
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                         "bulk_ingest", &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
-                                                 ADBC_INGEST_OPTION_MODE_APPEND, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
 
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
 
   // Read data back
-  ADBCV_ASSERT_OK(
-      &error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+              IsOkStatus(&error));
   {
     StreamReader reader;
-    ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                      &reader.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
                 ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
 
@@ -1322,114 +1067,120 @@ void StatementTest::TestSqlIngestAppend() {
     ASSERT_EQ(nullptr, reader.array->release);
   }
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
 void StatementTest::TestSqlIngestErrors() {
   // Ingest without bind
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                         "bulk_ingest", &error));
-  ADBCV_ASSERT_FAILS_WITH(
-      INVALID_STATE, &error,
-      AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
   if (error.release) error.release(&error);
 
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
 
   // Append to nonexistent table
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
 
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                         "bulk_ingest", &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
-                                                 ADBC_INGEST_OPTION_MODE_APPEND, &error));
-  NA_ASSERT_OK(&na_error, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                             {{"int64s", NANOARROW_TYPE_INT64}},
-                                             {-42, std::nullopt}));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                 {{"int64s", NANOARROW_TYPE_INT64}}, {-42, std::nullopt}),
+              IsOkErrno(&na_error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
 
-  ADBCV_ASSERT_FAILS(&error,
-                     AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              ::testing::Not(IsOkStatus(&error)));
   if (error.release) error.release(&error);
 
   // Ingest...
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
-                                                 ADBC_INGEST_OPTION_MODE_CREATE, &error));
-  NA_ASSERT_OK(&na_error, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                             {{"int64s", NANOARROW_TYPE_INT64}},
-                                             {-42, std::nullopt}));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_CREATE, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                 {{"int64s", NANOARROW_TYPE_INT64}}, {-42, std::nullopt}),
+              IsOkErrno(&na_error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
 
   // ...then try to overwrite it
-  NA_ASSERT_OK(&na_error, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                             {{"int64s", NANOARROW_TYPE_INT64}},
-                                             {-42, std::nullopt}));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
-  ADBCV_ASSERT_FAILS(&error,
-                     AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                 {{"int64s", NANOARROW_TYPE_INT64}}, {-42, std::nullopt}),
+              IsOkErrno(&na_error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              ::testing::Not(IsOkStatus(&error)));
   if (error.release) error.release(&error);
 
   // ...then try to append an incompatible schema
-  NA_ASSERT_OK(
-      &na_error,
+  ASSERT_THAT(
       (MakeBatch<int64_t, int64_t>(
           &schema.value, &array.value, &na_error,
-          {{"int64s", NANOARROW_TYPE_INT64}, {"coltwo", NANOARROW_TYPE_INT64}}, {}, {})));
+          {{"int64s", NANOARROW_TYPE_INT64}, {"coltwo", NANOARROW_TYPE_INT64}}, {}, {})),
+      IsOkErrno(&na_error));
 
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
-                                                 ADBC_INGEST_OPTION_MODE_APPEND, &error));
-  ADBCV_ASSERT_FAILS(&error,
-                     AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              ::testing::Not(IsOkStatus(&error)));
 }
 
 void StatementTest::TestSqlIngestMultipleConnections() {
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  NA_ASSERT_OK(nullptr, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                           {{"int64s", NANOARROW_TYPE_INT64}},
-                                           {42, -42, std::nullopt}));
+  ASSERT_THAT(
+      (MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                          {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt})),
+      IsOkErrno());
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                         "bulk_ingest", &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
 
   int64_t rows_affected = 0;
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
-  ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
   {
     struct AdbcConnection connection2;
-    ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection2, &error));
-    ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection2, &database, &error));
-    ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection2, &statement, &error));
+    ASSERT_THAT(AdbcConnectionNew(&connection2, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionInit(&connection2, &database, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementNew(&connection2, &statement, &error), IsOkStatus(&error));
 
-    ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(
-                                &statement, "SELECT * FROM bulk_ingest", &error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+                IsOkStatus(&error));
 
     {
       StreamReader reader;
-      ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                        &reader.rows_affected, &error));
+      ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                            &reader.rows_affected, &error),
+                  IsOkStatus(&error));
       ASSERT_THAT(reader.rows_affected,
                   ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
 
@@ -1449,30 +1200,30 @@ void StatementTest::TestSqlIngestMultipleConnections() {
       ASSERT_EQ(nullptr, reader.array->release);
     }
 
-    ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
-    ADBCV_ASSERT_OK(&error, AdbcConnectionRelease(&connection2, &error));
+    ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionRelease(&connection2, &error), IsOkStatus(&error));
   }
 }
 
 void StatementTest::TestSqlPartitionedInts() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error),
+              IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
   Handle<struct AdbcPartitions> partitions;
   int64_t rows_affected = 0;
 
   if (!quirks()->supports_partitioned_data()) {
-    ADBCV_ASSERT_FAILS_WITH(
-        NOT_IMPLEMENTED, &error,
-        AdbcStatementExecutePartitions(&statement, &schema.value, &partitions.value,
-                                       &rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecutePartitions(&statement, &schema.value,
+                                               &partitions.value, &rows_affected, &error),
+                IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
     return;
   }
 
-  ADBCV_ASSERT_OK(
-      &error, AdbcStatementExecutePartitions(&statement, &schema.value, &partitions.value,
-                                             &rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecutePartitions(&statement, &schema.value, &partitions.value,
+                                             &rows_affected, &error),
+              IsOkStatus(&error));
   // Assume only 1 partition
   ASSERT_EQ(1, partitions->num_partitions);
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
@@ -1481,12 +1232,13 @@ void StatementTest::TestSqlPartitionedInts() {
 
   Handle<struct AdbcConnection> connection2;
   StreamReader reader;
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection2.value, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection2.value, &database, &error));
-  ADBCV_ASSERT_OK(
-      &error, AdbcConnectionReadPartition(&connection2.value, partitions->partitions[0],
+  ASSERT_THAT(AdbcConnectionNew(&connection2.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection2.value, &database, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionReadPartition(&connection2.value, partitions->partitions[0],
                                           partitions->partition_lengths[0],
-                                          &reader.stream.value, &error));
+                                          &reader.stream.value, &error),
+              IsOkStatus(&error));
 
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_EQ(1, reader.schema->n_children);
@@ -1513,14 +1265,33 @@ void StatementTest::TestSqlPartitionedInts() {
   ASSERT_EQ(nullptr, reader.array->release);
 }
 
+void StatementTest::TestSqlPrepareGetParameterSchema() {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  std::string query = "SELECT ";
+  query += quirks()->BindParameter(0);
+  query += ", ";
+  query += quirks()->BindParameter(1);
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
+
+  Handle<struct ArrowSchema> schema;
+  ASSERT_THAT(AdbcStatementGetParameterSchema(&statement, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_EQ(2, schema->n_children);
+  // Can't assume anything about names or types here
+}
+
 void StatementTest::TestSqlPrepareSelectNoParams() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementPrepare(&statement, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
 
   StreamReader reader;
-  ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                    &reader.rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
   ASSERT_THAT(reader.rows_affected,
               ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
 
@@ -1548,24 +1319,30 @@ void StatementTest::TestSqlPrepareSelectNoParams() {
 }
 
 void StatementTest::TestSqlPrepareSelectParams() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT ?, ?", &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementPrepare(&statement, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  std::string query = "SELECT ";
+  query += quirks()->BindParameter(0);
+  query += ", ";
+  query += quirks()->BindParameter(1);
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  NA_ASSERT_OK(nullptr,
-               (MakeBatch<int64_t, std::string>(
-                   &schema.value, &array.value, &na_error,
-                   {{"int64s", NANOARROW_TYPE_INT64}, {"strings", NANOARROW_TYPE_STRING}},
-                   {42, -42, std::nullopt}, {"", std::nullopt, "bar"})));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
+  ASSERT_THAT((MakeBatch<int64_t, std::string>(
+                  &schema.value, &array.value, &na_error,
+                  {{"int64s", NANOARROW_TYPE_INT64}, {"strings", NANOARROW_TYPE_STRING}},
+                  {42, -42, std::nullopt}, {"", std::nullopt, "bar"})),
+              IsOkErrno());
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
 
   StreamReader reader;
-  ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                    &reader.rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
   ASSERT_THAT(reader.rows_affected,
               ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
 
@@ -1597,48 +1374,53 @@ void StatementTest::TestSqlPrepareSelectParams() {
 }
 
 void StatementTest::TestSqlPrepareUpdate() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
 
   // Create table
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                         "bulk_ingest", &error));
-  NA_ASSERT_OK(nullptr, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                           {{"int64s", NANOARROW_TYPE_INT64}},
-                                           {42, -42, std::nullopt}));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(
+      (MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                          {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt})),
+      IsOkErrno());
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
 
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
 
   // Prepare
   std::string query =
       "INSERT INTO bulk_ingest VALUES (" + quirks()->BindParameter(0) + ")";
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementPrepare(&statement, &error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
 
   // Bind and execute
-  NA_ASSERT_OK(nullptr, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                           {{"int64s", NANOARROW_TYPE_INT64}},
-                                           {42, -42, std::nullopt}));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementBind(&statement, &array.value, &schema.value, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+  ASSERT_THAT(
+      (MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                          {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt})),
+      IsOkErrno());
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
 
   // Read data back
-  ADBCV_ASSERT_OK(
-      &error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+              IsOkStatus(&error));
   {
     StreamReader reader;
-    ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                      &reader.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
                 ::testing::AnyOf(::testing::Eq(6), ::testing::Eq(-1)));
 
@@ -1666,8 +1448,9 @@ void StatementTest::TestSqlPrepareUpdateNoParams() {
 }
 
 void StatementTest::TestSqlPrepareUpdateStream() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
   struct ArrowError na_error;
 
   const std::vector<std::pair<std::string, ArrowType>> fields = {
@@ -1678,15 +1461,15 @@ void StatementTest::TestSqlPrepareUpdateStream() {
     Handle<struct ArrowSchema> schema;
     Handle<struct ArrowArray> array;
 
-    ADBCV_ASSERT_OK(&error,
-                    AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                           "bulk_ingest", &error));
-    NA_ASSERT_OK(nullptr,
-                 MakeBatch<int64_t>(&schema.value, &array.value, &na_error, fields, {}));
-    ADBCV_ASSERT_OK(&error,
-                    AdbcStatementBind(&statement, &array.value, &schema.value, &error));
-    ADBCV_ASSERT_OK(&error,
-                    AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       "bulk_ingest", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error, fields, {})),
+                IsOkErrno());
+    ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsOkStatus(&error));
   }
 
   // Generate stream
@@ -1695,32 +1478,37 @@ void StatementTest::TestSqlPrepareUpdateStream() {
   std::vector<struct ArrowArray> batches(2);
 
   ASSERT_NO_FATAL_FAILURE(MakeSchema(&schema, fields));
-  NA_ASSERT_OK(&na_error, ArrowArrayInitFromSchema(&batches[0], &schema, &na_error));
-  NA_ASSERT_OK(&na_error,
-               MakeBatch<int64_t>(&batches[0], &na_error, {1, 2, std::nullopt, 3}));
-  NA_ASSERT_OK(&na_error, ArrowArrayInitFromSchema(&batches[1], &schema, &na_error));
-  NA_ASSERT_OK(&na_error, MakeBatch<int64_t>(&batches[1], &na_error, {std::nullopt, 3}));
+  ASSERT_THAT(ArrowArrayInitFromSchema(&batches[0], &schema, &na_error),
+              IsOkErrno(&na_error));
+  ASSERT_THAT((MakeBatch<int64_t>(&batches[0], &na_error, {1, 2, std::nullopt, 3})),
+              IsOkErrno(&na_error));
+  ASSERT_THAT(ArrowArrayInitFromSchema(&batches[1], &schema, &na_error),
+              IsOkErrno(&na_error));
+  ASSERT_THAT(MakeBatch<int64_t>(&batches[1], &na_error, {std::nullopt, 3}),
+              IsOkErrno(&na_error));
 
   ASSERT_NO_FATAL_FAILURE(MakeStream(&stream, &schema, std::move(batches)));
 
   // Prepare
   std::string query =
       "INSERT INTO bulk_ingest VALUES (" + quirks()->BindParameter(0) + ")";
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementPrepare(&statement, &error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
 
   // Bind and execute
-  ADBCV_ASSERT_OK(&error, AdbcStatementBindStream(&statement, &stream, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
+  ASSERT_THAT(AdbcStatementBindStream(&statement, &stream, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
 
   // Read data back
-  ADBCV_ASSERT_OK(
-      &error, AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+              IsOkStatus(&error));
   {
     StreamReader reader;
-    ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                      &reader.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
                 ::testing::AnyOf(::testing::Eq(6), ::testing::Eq(-1)));
 
@@ -1750,11 +1538,13 @@ void StatementTest::TestSqlPrepareUpdateStream() {
 }
 
 void StatementTest::TestSqlPrepareErrorNoQuery() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_FAILS_WITH(INVALID_STATE, &error,
-                          AdbcStatementPrepare(&statement, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
   if (error.release) error.release(&error);
 }
+
+// TODO: need test of overlapping reads - make sure behavior is as described
 
 void StatementTest::TestSqlPrepareErrorParamCountMismatch() {
   Handle<struct ArrowSchema> schema;
@@ -1767,29 +1557,35 @@ void StatementTest::TestSqlPrepareErrorParamCountMismatch() {
   query += ", ";
   query += quirks()->BindParameter(1);
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, query.c_str(), &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementPrepare(&statement, &error));
-  NA_ASSERT_OK(nullptr, MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
-                                           {{"int64s", NANOARROW_TYPE_INT64}},
-                                           {42, -42, std::nullopt}));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(
+      (MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                          {{"int64s", NANOARROW_TYPE_INT64}}, {42, -42, std::nullopt})),
+      IsOkErrno());
 
-  ADBCV_ASSERT_FAILS(&error, ([&]() -> AdbcStatusCode {
-    CHECK_OK(AdbcStatementBind(&statement, &array.value, &schema.value, &error));
-    CHECK_OK(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                       &reader.rows_affected, &error));
-    return ADBC_STATUS_OK;
-  })());
+  ASSERT_THAT(
+      ([&]() -> AdbcStatusCode {
+        CHECK_OK(AdbcStatementBind(&statement, &array.value, &schema.value, &error));
+        CHECK_OK(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                           &reader.rows_affected, &error));
+        return ADBC_STATUS_OK;
+      })(),
+      ::testing::Not(IsOkStatus(&error)));
 }
 
 void StatementTest::TestSqlQueryInts() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error),
+              IsOkStatus(&error));
 
   {
     StreamReader reader;
-    ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                      &reader.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
                 ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
 
@@ -1818,18 +1614,19 @@ void StatementTest::TestSqlQueryInts() {
     ASSERT_EQ(nullptr, reader.array->release);
   }
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
 void StatementTest::TestSqlQueryFloats() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(
-      &error, AdbcStatementSetSqlQuery(&statement, "SELECT CAST(1.0 AS REAL)", &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT CAST(1.0 AS REAL)", &error),
+              IsOkStatus(&error));
 
   {
     StreamReader reader;
-    ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                      &reader.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
                 ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
 
@@ -1860,18 +1657,19 @@ void StatementTest::TestSqlQueryFloats() {
     ASSERT_EQ(nullptr, reader.array->release);
   }
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
 void StatementTest::TestSqlQueryStrings() {
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementSetSqlQuery(&statement, "SELECT 'SaShiSuSeSo'", &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 'SaShiSuSeSo'", &error),
+              IsOkStatus(&error));
 
   {
     StreamReader reader;
-    ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                                      &reader.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
                 ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
 
@@ -1899,12 +1697,12 @@ void StatementTest::TestSqlQueryStrings() {
     ASSERT_EQ(nullptr, reader.array->release);
   }
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementRelease(&statement, &error));
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
 void StatementTest::TestSqlQueryErrors() {
   // Invalid query
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   AdbcStatusCode code =
       AdbcStatementSetSqlQuery(&statement, "this is not a query", &error);
   if (code == ADBC_STATUS_OK) {
@@ -1914,15 +1712,17 @@ void StatementTest::TestSqlQueryErrors() {
 }
 
 void StatementTest::TestTransactions() {
-  ADBCV_ASSERT_OK(&error, quirks()->DropTable(&connection, "bulk_ingest", &error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
 
   Handle<struct AdbcConnection> connection2;
-  ADBCV_ASSERT_OK(&error, AdbcConnectionNew(&connection2.value, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionInit(&connection2.value, &database, &error));
+  ASSERT_THAT(AdbcConnectionNew(&connection2.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection2.value, &database, &error),
+              IsOkStatus(&error));
 
-  ADBCV_ASSERT_OK(&error,
-                  AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
-                                          ADBC_OPTION_VALUE_DISABLED, &error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
 
   // Uncommitted change
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
@@ -1932,29 +1732,32 @@ void StatementTest::TestTransactions() {
     Handle<struct AdbcStatement> statement;
     StreamReader reader;
 
-    ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement.value, &error));
-    ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(
-                                &statement.value, "SELECT * FROM bulk_ingest", &error));
-    ADBCV_ASSERT_OK(&error,
-                    AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
-                                              &reader.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM bulk_ingest", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   }
 
   if (error.release) error.release(&error);
 
   // Query on second connection should fail
-  ADBCV_ASSERT_FAILS(&error, ([&]() -> AdbcStatusCode {
-    Handle<struct AdbcStatement> statement;
-    StreamReader reader;
+  ASSERT_THAT(([&]() -> AdbcStatusCode {
+                Handle<struct AdbcStatement> statement;
+                StreamReader reader;
 
-    CHECK_OK(AdbcStatementNew(&connection2.value, &statement.value, &error));
-    CHECK_OK(
-        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM bulk_ingest", &error));
-    CHECK_OK(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
-                                       &reader.rows_affected, &error));
-    return ADBC_STATUS_OK;
-  })());
+                CHECK_OK(AdbcStatementNew(&connection2.value, &statement.value, &error));
+                CHECK_OK(AdbcStatementSetSqlQuery(&statement.value,
+                                                  "SELECT * FROM bulk_ingest", &error));
+                CHECK_OK(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                                   &reader.rows_affected, &error));
+                return ADBC_STATUS_OK;
+              })(),
+              ::testing::Not(IsOkStatus(&error)));
 
   if (error.release) {
     std::cerr << "Failure message: " << error.message << std::endl;
@@ -1962,37 +1765,39 @@ void StatementTest::TestTransactions() {
   }
 
   // Rollback
-  ADBCV_ASSERT_OK(&error, AdbcConnectionRollback(&connection, &error));
+  ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
 
   // Query on first connection should fail
-  ADBCV_ASSERT_FAILS(&error, ([&]() -> AdbcStatusCode {
-    Handle<struct AdbcStatement> statement;
-    StreamReader reader;
+  ASSERT_THAT(([&]() -> AdbcStatusCode {
+                Handle<struct AdbcStatement> statement;
+                StreamReader reader;
 
-    CHECK_OK(AdbcStatementNew(&connection, &statement.value, &error));
-    CHECK_OK(
-        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM bulk_ingest", &error));
-    CHECK_OK(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
-                                       &reader.rows_affected, &error));
-    return ADBC_STATUS_OK;
-  })());
+                CHECK_OK(AdbcStatementNew(&connection, &statement.value, &error));
+                CHECK_OK(AdbcStatementSetSqlQuery(&statement.value,
+                                                  "SELECT * FROM bulk_ingest", &error));
+                CHECK_OK(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                                   &reader.rows_affected, &error));
+                return ADBC_STATUS_OK;
+              })(),
+              ::testing::Not(IsOkStatus(&error)));
 
   // Commit
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
-  ADBCV_ASSERT_OK(&error, AdbcConnectionCommit(&connection, &error));
+  ASSERT_THAT(AdbcConnectionCommit(&connection, &error), IsOkStatus(&error));
 
   // Query on second connection should succeed
   {
     Handle<struct AdbcStatement> statement;
     StreamReader reader;
 
-    ADBCV_ASSERT_OK(&error,
-                    AdbcStatementNew(&connection2.value, &statement.value, &error));
-    ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(
-                                &statement.value, "SELECT * FROM bulk_ingest", &error));
-    ADBCV_ASSERT_OK(&error,
-                    AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
-                                              &reader.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementNew(&connection2.value, &statement.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM bulk_ingest", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   }
 }
@@ -2001,29 +1806,31 @@ void StatementTest::TestConcurrentStatements() {
   Handle<struct AdbcStatement> statement1;
   Handle<struct AdbcStatement> statement2;
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement1.value, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement2.value, &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement1.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement2.value, &error),
+              IsOkStatus(&error));
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement1.value,
-                                                   "SELECT 'SaShiSuSeSo'", &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement2.value,
-                                                   "SELECT 'SaShiSuSeSo'", &error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement1.value, "SELECT 'SaShiSuSeSo'", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement2.value, "SELECT 'SaShiSuSeSo'", &error),
+              IsOkStatus(&error));
 
   StreamReader reader1;
   StreamReader reader2;
-  ADBCV_ASSERT_OK(&error,
-                  AdbcStatementExecuteQuery(&statement1.value, &reader1.stream.value,
-                                            &reader1.rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement1.value, &reader1.stream.value,
+                                        &reader1.rows_affected, &error),
+              IsOkStatus(&error));
 
   if (quirks()->supports_concurrent_statements()) {
-    ADBCV_ASSERT_OK(&error,
-                    AdbcStatementExecuteQuery(&statement2.value, &reader2.stream.value,
-                                              &reader2.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement2.value, &reader2.stream.value,
+                                          &reader2.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader2.GetSchema());
   } else {
-    ADBCV_ASSERT_FAILS(&error,
-                       AdbcStatementExecuteQuery(&statement2.value, &reader2.stream.value,
-                                                 &reader2.rows_affected, &error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement2.value, &reader2.stream.value,
+                                          &reader2.rows_affected, &error),
+                ::testing::Not(IsOkStatus(&error)));
     ASSERT_EQ(nullptr, reader2.stream.value.release);
   }
   // Original stream should still be valid
@@ -2032,38 +1839,30 @@ void StatementTest::TestConcurrentStatements() {
 
 void StatementTest::TestResultInvalidation() {
   // Start reading from a statement, then overwrite it
-  ADBCV_ASSERT_OK(&error, AdbcStatementNew(&connection, &statement, &error));
-  ADBCV_ASSERT_OK(&error, AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error),
+              IsOkStatus(&error));
 
   StreamReader reader1;
   StreamReader reader2;
-  ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader1.stream.value,
-                                                    &reader1.rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader1.stream.value,
+                                        &reader1.rows_affected, &error),
+              IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(reader1.GetSchema());
 
-  ADBCV_ASSERT_OK(&error, AdbcStatementExecuteQuery(&statement, &reader2.stream.value,
-                                                    &reader2.rows_affected, &error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader2.stream.value,
+                                        &reader2.rows_affected, &error),
+              IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(reader2.GetSchema());
 
   // First reader should not fail, but may give no data
   ASSERT_NO_FATAL_FAILURE(reader1.Next());
 }
 
-#undef ABI_ASSERT_FAILS_WITH
-#undef ABI_ASSERT_FAILS_WITH_IMPL
-#undef ABI_ASSERT_OK
-#undef ADBCV_ASSERT_FAILS
-#undef ADBCV_ASSERT_FAILS_IMPL
-#undef ADBCV_ASSERT_FAILS_WITH
-#undef ADBCV_ASSERT_FAILS_WITH_IMPL
-#undef ADBCV_ASSERT_OK
 #undef ADBCV_CONCAT
 #undef ADBCV_NAME
 #undef CHECK_ERRNO_IMPL
 #undef CHECK_ERRNO
-#undef NA_ASSERT_FAILS_WITH
-#undef NA_ASSERT_FAILS_WITH_IMPL
-#undef NA_ASSERT_OK
 #undef NOT_NULL
 #undef NULLABLE
 }  // namespace adbc_validation
