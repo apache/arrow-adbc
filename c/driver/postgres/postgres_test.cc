@@ -100,6 +100,7 @@ class PostgresStatementTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
+  void TestSqlPrepareGetParameterSchema() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareSelectNoParams() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareSelectParams() { GTEST_SKIP() << "Not yet implemented"; }
 
