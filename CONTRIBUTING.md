@@ -169,7 +169,10 @@ enforced via [`pre-commit`](https://pre-commit.com/).  This will run
 linters, formatters, and other analysis.  For example:
 
 ```shell
+# Install pre-commit
 $ pip install pre-commit
+# or alternatively
+$ conda install -c conda-forge --file ci/conda_env_dev.txt
 # Set up hooks
 $ pre-commit install
 # Run manually

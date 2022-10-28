@@ -77,6 +77,7 @@ site/
 # Python
 dist/
 .hypothesis/
+repaired_wheels/
 
 # R files
 **/.Rproj.user

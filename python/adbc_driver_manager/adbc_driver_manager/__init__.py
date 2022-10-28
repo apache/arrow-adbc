@@ -36,3 +36,4 @@ from ._lib import (  # noqa: F401
     OperationalError,
     ProgrammingError,
 )
+from ._version import version as __version__  # noqa: F401

@@ -15,29 +15,4 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[project]
-name = "adbc_driver_postgres"
-description = "A libpq-based ADBC driver for working with Postgres."
-authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
-license = {text = "Apache-2.0"}
-requires-python = ">=3.8"
-dynamic = ["version"]
-
-[project.optional-dependencies]
-dbapi = ["pandas", "pyarrow>=8.0.0"]
-test = ["pandas", "pyarrow>=8.0.0", "pytest"]
-
-[project.urls]
-homepage = "https://arrow.apache.org"
-repository = "https://github.com/apache/arrow-adbc"
-
-[build-system]
-requires = ["setuptools >= 61.0.0", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-include-package-data = true
-
-[tool.setuptools_scm]
-root = "../.."
-write_to = "python/adbc_driver_postgres/adbc_driver_postgres/_version.py"
+pre-commit

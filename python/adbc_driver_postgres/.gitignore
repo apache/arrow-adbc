@@ -17,4 +17,5 @@
 
 adbc_driver_postgres/*.c
 adbc_driver_postgres/*.cpp
+adbc_driver_postgres/_version.py
 build/

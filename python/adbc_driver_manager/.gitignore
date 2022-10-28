@@ -18,4 +18,5 @@
 adbc_driver_manager/*.c
 adbc_driver_manager/*.cc
 adbc_driver_manager/*.cpp
+adbc_driver_manager/_version.py
 build/

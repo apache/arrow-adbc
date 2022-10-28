@@ -40,3 +40,7 @@ def test_query_trivial(postgres):
         stream, _ = stmt.execute_query()
         reader = pyarrow.RecordBatchReader._import_from_c(stream.address)
         assert reader.read_all()
+
+
+def test_version():
+    assert adbc_driver_postgres.__version__
