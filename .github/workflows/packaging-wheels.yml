@@ -79,8 +79,8 @@ jobs:
         if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_wheels)
         run: |
           path=$(ls python/adbc_driver_manager/repaired_wheels/*.whl)
-          curl --fail-with-body -F "package=@${path}" https://${GEMFURY_PUSH_TOKEN}@push.fury.io/arrow-adbc-nightlies/
+          curl --show-error --fail -F "package=@${path}" https://${GEMFURY_PUSH_TOKEN}@push.fury.io/arrow-adbc-nightlies/
           path=$(ls python/adbc_driver_postgres/repaired_wheels/*.whl)
-          curl --fail-with-body -F "package=@${path}" https://${GEMFURY_PUSH_TOKEN}@push.fury.io/arrow-adbc-nightlies/
+          curl --show-error --fail -F "package=@${path}" https://${GEMFURY_PUSH_TOKEN}@push.fury.io/arrow-adbc-nightlies/
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
