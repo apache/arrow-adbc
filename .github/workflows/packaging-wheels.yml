@@ -78,20 +78,6 @@ jobs:
         shell: bash
         if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_wheels)
         run: |
-          path=$(ls python/adbc_driver_manager/repaired_wheels/*.whl)
-          response_code=$(curl --silent -o output.txt -w '%{http_code}' -F "package=@${path}" https://${GEMFURY_PUSH_TOKEN}@push.fury.io/arrow-adbc-nightlies/)
-          if [[ $response_code -ge 300 ]]; then
-            cat output.txt
-            exit 1
-          fi
-
-          sleep 1
-
-          path=$(ls python/adbc_driver_postgres/repaired_wheels/*.whl)
-          response_code=$(curl --silent -o output.txt -w '%{http_code}' -F "package=@${path}" https://${GEMFURY_PUSH_TOKEN}@push.fury.io/arrow-adbc-nightlies/)
-          if [[ $response_code -ge 300 ]]; then
-            cat output.txt
-            exit 1
-          fi
+          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/repaired_wheels/*.whl
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
