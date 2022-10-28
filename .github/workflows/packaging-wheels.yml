@@ -42,6 +42,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Show inputs
+        shell: bash
+        run: |
+          echo "upload_wheels: ${{ github.event.inputs.upload_wheels }}"
+          echo "schedule: ${{ github.event.schedule }}"
+          echo "ref: ${{ github.ref }}"
+
       - name: Build wheel
         shell: bash
         run: |
@@ -67,7 +74,7 @@ jobs:
 
       - name: Upload wheels to Gemfury
         shell: bash
-        if: github.ref == 'main' && (github.event.schedule || inputs.upload_wheels)
+        if: github.ref == 'main' && (github.event.schedule || github.event.inputs.upload_wheels)
         run: |
           path=$(ls python/adbc_driver_manager/repaired_wheels/*.whl)
           echo curl -F "package=@${path}" https://${GEMFURY_PUSH_TOKEN}@push.fury.io/arrow-adbc-nightlies/
