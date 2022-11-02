@@ -430,7 +430,7 @@ class Cursor(_Closeable):
         """
         if self._results is None:
             raise ProgrammingError(
-                "Cannot fetch_df() before execute()",
+                "Cannot fetch_arrow_table() before execute()",
                 status_code=_lib.AdbcStatusCode.INVALID_STATE,
             )
         return self._results.fetch_arrow_table()
