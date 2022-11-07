@@ -42,6 +42,7 @@ def test_type_objects():
     assert dbapi.NUMBER == dbapi.ROWID
 
 
+@pytest.mark.sqlite
 def test_attrs(sqlite):
     assert sqlite.Warning == dbapi.Warning
     assert sqlite.Error == dbapi.Error
@@ -61,6 +62,7 @@ def test_attrs(sqlite):
         assert cur.rowcount == -1
 
 
+@pytest.mark.sqlite
 def test_query_fetch_py(sqlite):
     with sqlite.cursor() as cur:
         cur.execute('SELECT 1, "foo", 2.0')
@@ -86,6 +88,7 @@ def test_query_fetch_py(sqlite):
         assert list(cur) == [(1, "foo", 2.0)]
 
 
+@pytest.mark.sqlite
 def test_query_fetch_arrow(sqlite):
     with sqlite.cursor() as cur:
         cur.execute('SELECT 1, "foo", 2.0')
@@ -98,6 +101,7 @@ def test_query_fetch_arrow(sqlite):
         )
 
 
+@pytest.mark.sqlite
 def test_query_fetch_df(sqlite):
     with sqlite.cursor() as cur:
         cur.execute('SELECT 1, "foo", 2.0')
@@ -113,12 +117,14 @@ def test_query_fetch_df(sqlite):
         )
 
 
+@pytest.mark.sqlite
 def test_query_parameters(sqlite):
     with sqlite.cursor() as cur:
         cur.execute("SELECT ? + 1, ?", (1.0, 2))
         assert cur.fetchall() == [(2.0, 2)]
 
 
+@pytest.mark.sqlite
 def test_executemany(sqlite):
     with sqlite.cursor() as cur:
         cur.execute("CREATE TABLE foo (a, b)")

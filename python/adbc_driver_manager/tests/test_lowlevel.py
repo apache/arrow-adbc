@@ -58,6 +58,7 @@ def test_database_init():
             pass
 
 
+@pytest.mark.sqlite
 def test_connection_get_info(sqlite):
     _, conn = sqlite
     codes = [
@@ -81,6 +82,7 @@ def test_connection_get_info(sqlite):
     assert set(codes) == set(table[0].to_pylist())
 
 
+@pytest.mark.sqlite
 def test_connection_get_objects(sqlite):
     _, conn = sqlite
     data = pyarrow.record_batch(
@@ -109,6 +111,7 @@ def test_connection_get_objects(sqlite):
     assert "strs" in column_names.to_pylist()
 
 
+@pytest.mark.sqlite
 def test_connection_get_table_schema(sqlite):
     _, conn = sqlite
     data = pyarrow.record_batch(
@@ -127,6 +130,7 @@ def test_connection_get_table_schema(sqlite):
     assert data.schema == _import(handle)
 
 
+@pytest.mark.sqlite
 def test_connection_get_table_types(sqlite):
     _, conn = sqlite
     handle = conn.get_table_types()
@@ -134,6 +138,7 @@ def test_connection_get_table_types(sqlite):
     assert "table" in table[0].to_pylist()
 
 
+@pytest.mark.sqlite
 def test_query(sqlite):
     _, conn = sqlite
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
@@ -143,6 +148,7 @@ def test_query(sqlite):
         assert table == pyarrow.table([[1]], names=["1"])
 
 
+@pytest.mark.sqlite
 def test_prepared(sqlite):
     _, conn = sqlite
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
@@ -155,6 +161,7 @@ def test_prepared(sqlite):
         assert table == pyarrow.table([[1, 2, 3, 4]], names=["?"])
 
 
+@pytest.mark.sqlite
 def test_ingest(sqlite):
     _, conn = sqlite
     data = pyarrow.record_batch(
@@ -175,6 +182,7 @@ def test_ingest(sqlite):
         assert table == pyarrow.Table.from_batches([data])
 
 
+@pytest.mark.sqlite
 def test_autocommit(sqlite):
     _, conn = sqlite
 

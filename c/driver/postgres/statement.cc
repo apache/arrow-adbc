@@ -736,10 +736,12 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
     struct ArrowArrayStream* stream, int64_t* rows_affected, struct AdbcError* error) {
   if (!bind_.release) {
     // TODO: set an empty stream just to unify the code paths
+    SetError(error, "Prepared statements without parameters are not implemented");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   if (stream) {
     // TODO:
+    SetError(error, "Prepared statements returning result sets are not implemented");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
@@ -758,7 +760,18 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                                                struct AdbcError* error) {
   ClearResult();
   if (prepared_) {
-    return ExecutePreparedStatement(stream, rows_affected, error);
+    if (bind_.release || !stream) {
+      return ExecutePreparedStatement(stream, rows_affected, error);
+    }
+    // XXX: don't use a prepared statement to execute a no-parameter
+    // result-set-returning query for now, since we can't easily get
+    // access to COPY there. (This might have to become sequential
+    // executions of COPY (EXECUTE ($n, ...)) TO STDOUT which won't
+    // get all the benefits of a prepared statement.) At preparation
+    // time we don't know whether the query will be used with a result
+    // set or not without analyzing the query (we could prepare both?)
+    // and https://stackoverflow.com/questions/69233792 suggests that
+    // you can't PREPARE a query containing COPY.
   }
   if (!stream) {
     if (!ingest_.target.empty()) {
