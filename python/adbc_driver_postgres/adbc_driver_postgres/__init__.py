@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import importlib.metadata
+import importlib.resources
 
 import adbc_driver_manager
 

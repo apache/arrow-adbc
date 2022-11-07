@@ -41,7 +41,8 @@ import adbc_driver_postgres
 import adbc_driver_postgres.dbapi
 "
 
-# Can't yet run tests (need Postgres database, SQLite driver)
-# for component in adbc_driver_manager adbc_driver_postgres; do
-#     python -m pytest -vvx ${source_dir}/python/$component/tests
-# done
+# Will only run some smoke tests
+echo "=== Testing adbc_driver_manager ==="
+python -m pytest -vvx -k "not sqlite" ${source_dir}/python/adbc_driver_manager/tests
+echo "=== Testing adbc_driver_postgres ==="
+python -m pytest -vvx ${source_dir}/python/adbc_driver_postgres/tests

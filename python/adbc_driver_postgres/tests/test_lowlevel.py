@@ -44,3 +44,10 @@ def test_query_trivial(postgres):
 
 def test_version():
     assert adbc_driver_postgres.__version__
+
+
+def test_failed_connection():
+    with pytest.raises(
+        adbc_driver_manager.OperationalError, match=".*libpq.*Failed to connect.*"
+    ):
+        adbc_driver_postgres.connect("invalid")

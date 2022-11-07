@@ -73,6 +73,7 @@ endif()
 # Nanoarrow definition
 add_library(nanoarrow STATIC EXCLUDE_FROM_ALL
             ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c)
+set_property(TARGET nanoarrow PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # Set common build options
 macro(adbc_configure_target TARGET)
