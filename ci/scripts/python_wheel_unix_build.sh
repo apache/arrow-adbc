@@ -71,11 +71,13 @@ echo "=== (${PYTHON_VERSION}) Building ADBC libpq driver ==="
 
 if [[ $(uname) == "Linux" ]]; then
     export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
-    : ${VCPKG_DEFAULT_TRIPLET:="x64-linux-static-release"}
+    export VCPKG_DEFAULT_TRIPLET="x64-linux-static-release"
 else # macOS
     export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.dylib
-    : ${VCPKG_DEFAULT_TRIPLET:="x64-osx-static-release"}
+    export VCPKG_DEFAULT_TRIPLET="x64-osx-static-release"
 fi
+
+echo ${VCPKG_DEFAULT_TRIPLET}
 
 mkdir -p ${build_dir}
 pushd ${build_dir}
