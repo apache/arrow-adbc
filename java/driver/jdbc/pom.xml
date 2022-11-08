@@ -44,10 +44,6 @@
     </dependency>
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-jdbc-util</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
       <artifactId>adbc-driver-manager</artifactId>
     </dependency>
     <dependency>
