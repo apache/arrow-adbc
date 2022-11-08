@@ -32,6 +32,7 @@ setup(
     ext_modules=[
         Extension(
             name="adbc_driver_manager._lib",
+            extra_compile_args=["-std=c++17"],
             include_dirs=["../../", "../../c/driver_manager"],
             language="c++",
             sources=[

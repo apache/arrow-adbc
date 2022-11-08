@@ -58,13 +58,6 @@ jobs:
           export PYTHON=${{ matrix.python_version }}
           docker-compose run python-wheel-manylinux
 
-      - name: Test wheel
-        shell: bash
-        run: |
-          export MANYLINUX=${{ matrix.manylinux_version }}
-          export PYTHON=${{ matrix.python_version }}
-          docker-compose run python-wheel-manylinux-test
-
       - name: Archive wheels
         uses: actions/upload-artifact@v3
         with:
@@ -74,10 +67,95 @@ jobs:
             python/adbc_driver_manager/repaired_wheels/*.whl
             python/adbc_driver_postgres/repaired_wheels/*.whl
 
+      - name: Test wheel
+        shell: bash
+        run: |
+          export MANYLINUX=${{ matrix.manylinux_version }}
+          export PYTHON=${{ matrix.python_version }}
+          docker-compose run python-wheel-manylinux-test
+
       - name: Upload wheels to Gemfury
         shell: bash
-        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_wheels)
+        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_wheels == 'true')
         run: |
           ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/repaired_wheels/*.whl
+        env:
+          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+
+  macos:
+    name: "Python ${{ matrix.python_version }} macOS"
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python_version: ["3.9", "3.10"]
+      # Limit parallelism; gemfury appears to return 409 CONFLICT on concurrent uploads
+      max-parallel: 1
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "10.15"
+      PYTHON: "/Library/Frameworks/Python.framework/Versions/${{ matrix.python_version }}/bin/python${{ matrix.python_version }}"
+      PYTHON_VERSION: "${{ matrix.python_version }}"
+      # Use a custom triplet to only build release packages
+      VCPKG_DEFAULT_TRIPLET: "x64-osx-static-release"
+      # Where to install vcpkg
+      VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Show inputs
+        shell: bash
+        run: |
+          echo "upload_wheels: ${{ github.event.inputs.upload_wheels }}"
+          echo "schedule: ${{ github.event.schedule }}"
+          echo "ref: ${{ github.ref }}"
+
+      - name: Install Homebrew dependencies
+        shell: bash
+        run: brew install autoconf bash pkg-config ninja
+
+      - name: Retrieve VCPKG version from .env
+        shell: bash
+        run: |
+          vcpkg_version=$(cat ".env" | grep "VCPKG" | cut -d "=" -f2 | tr -d '"')
+          echo "VCPKG_VERSION=$vcpkg_version" | tee -a $GITHUB_ENV
+
+      - name: Install vcpkg
+        shell: bash
+        run: ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
+
+      - name: Install Python ${{ matrix.python_version }}
+        shell: bash
+        run: sudo ci/scripts/install_python.sh macos ${{ matrix.python_version }}
+
+      - name: Build wheel
+        shell: bash
+        run: |
+          $PYTHON -m venv build-env
+          source build-env/bin/activate
+          ./ci/scripts/python_wheel_unix_build.sh x86_64 $(pwd) $(pwd)/build
+
+      - name: Archive wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: python${{ matrix.python_version }}-macOS
+          retention-days: 7
+          path: |
+            python/adbc_driver_manager/repaired_wheels/*.whl
+            python/adbc_driver_postgres/repaired_wheels/*.whl
+
+      - name: Test wheel
+        shell: bash
+        run: |
+          $PYTHON -m venv test-env
+          source test-env/bin/activate
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+
+      - name: Upload wheels to Gemfury
+        shell: bash
+        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_wheels == 'true')
+        run: |
+          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/dist/*.whl
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}

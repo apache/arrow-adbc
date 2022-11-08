@@ -19,7 +19,14 @@
 
 set -ex
 
+arch=${1}
+source_dir=${2}
+build_dir=${3}
+
 function check_visibility {
+    if [[ $(uname) != "Linux" ]]; then
+       return 0
+    fi
     nm --demangle --dynamic $1 > nm_arrow.log
 
     # Filter out Arrow symbols and see if anything remains.
@@ -38,28 +45,52 @@ function check_visibility {
     fi
 }
 
+function check_wheels {
+    if [[ $(uname) == "Linux" ]]; then
+        echo "=== (${PYTHON_VERSION}) Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
+        auditwheel repair "$@" -L . -w repaired_wheels
+    else # macOS
+        echo "=== (${PYTHON_VERSION}) Check $component wheel for unbundled dependencies ==="
+        local -r deps=$(delocate-listdeps dist/$component-*.whl)
+        if ! echo $deps | grep -v "python/"; then
+            echo "There are unbundled dependencies."
+            exit 1
+        fi
+    fi
+}
+
 echo "=== (${PYTHON_VERSION}) Building ADBC libpq driver ==="
 : ${CMAKE_BUILD_TYPE:=release}
 : ${CMAKE_UNITY_BUILD:=ON}
 : ${CMAKE_GENERATOR:=Ninja}
 : ${VCPKG_ROOT:=/opt/vcpkg}
+# Enable manifest mode
+: ${VCPKG_FEATURE_FLAGS:=manifests}
+# Add our custom triplets
+: ${VCPKG_OVERLAY_TRIPLETS:="${source_dir}/ci/vcpkg/triplets/"}
 
-mkdir /tmp/libpq-build
-pushd /tmp/libpq-build
+if [[ $(uname) == "Linux" ]]; then
+    export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
+    : ${VCPKG_DEFAULT_TRIPLET:="x64-linux-static-release"}
+else # macOS
+    export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.dylib
+    : ${VCPKG_DEFAULT_TRIPLET:="x64-osx-static-release"}
+fi
+
+mkdir -p ${build_dir}
+pushd ${build_dir}
 
 cmake \
     -G ${CMAKE_GENERATOR} \
     -DADBC_BUILD_SHARED=ON \
     -DADBC_BUILD_STATIC=OFF \
     -DCMAKE_INSTALL_LIBDIR=lib \
-    -DCMAKE_INSTALL_PREFIX=/tmp/libpq-dist \
+    -DCMAKE_INSTALL_PREFIX=${build_dir} \
     -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
     -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
-    /adbc/c/driver/postgres
+    ${source_dir}/c/driver/postgres
 cmake --build . --target install -j
 popd
-
-export ADBC_POSTGRES_LIBRARY=/tmp/libpq-dist/lib/libadbc_driver_postgres.so
 
 # Check that we don't expose any unwanted symbols
 check_visibility $ADBC_POSTGRES_LIBRARY
@@ -69,7 +100,7 @@ check_visibility $ADBC_POSTGRES_LIBRARY
 pip install --upgrade pip
 
 for component in adbc_driver_manager adbc_driver_postgres; do
-    pushd /adbc/python/$component
+    pushd ${source_dir}/python/$component
 
     echo "=== (${PYTHON_VERSION}) Clean build artifacts==="
     rm -rf ./build ./dist ./repaired_wheels ./$component/*.so ./$component/*.so.*
@@ -79,8 +110,7 @@ for component in adbc_driver_manager adbc_driver_postgres; do
     # https://github.com/pypa/pip/issues/5519
     python -m pip wheel -w dist -vvv .
 
-    echo "=== (${PYTHON_VERSION}) Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
-    auditwheel repair dist/$component-*.whl -L . -w repaired_wheels
+    check_wheels dist/$component-*.whl
 
     popd
 done

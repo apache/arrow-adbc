@@ -17,10 +17,19 @@
 
 #pragma once
 
+#include <netinet/in.h>
 #include <cstring>
 #include <sstream>
 #include <string>
 #include <utility>
+
+#if defined(__linux__)
+#include <endian.h>
+#elif defined(__APPLE__)
+#include <machine/endian.h>
+#else
+static_assert(false, "Not supported on this platform");
+#endif
 
 #include "adbc.h"
 
@@ -101,5 +110,43 @@ static inline void SetError(struct AdbcError* error, Args&&... args) {
 
 /// Check an errno-style code and return it if necessary.
 #define CHECK_NA(EXPR) CHECK_NA_IMPL(MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+
+/// Endianness helpers
+
+uint32_t LoadNetworkUInt32(const char* buf) {
+  uint32_t v = 0;
+  std::memcpy(&v, buf, sizeof(uint32_t));
+  return ntohl(v);
+}
+
+int64_t LoadNetworkUInt64(const char* buf) {
+  uint64_t v = 0;
+  std::memcpy(&v, buf, sizeof(uint64_t));
+#if defined(__linux__)
+  return be64toh(v);
+#elif defined(__APPLE__)
+  return ntohll(v);
+#else
+  static_assert(false, "Not supported on this platform");
+#endif
+}
+
+int32_t LoadNetworkInt32(const char* buf) {
+  return static_cast<int32_t>(LoadNetworkUInt32(buf));
+}
+
+int64_t LoadNetworkInt64(const char* buf) {
+  return static_cast<int64_t>(LoadNetworkUInt64(buf));
+}
+
+uint64_t ToNetworkInt64(int64_t v) {
+#if defined(__linux__)
+  return htobe64(static_cast<uint64_t>(v));
+#elif defined(__APPLE__)
+  return htonll(static_cast<uint64_t>(v));
+#else
+  static_assert(false, "Not supported on this platform");
+#endif
+}
 
 }  // namespace adbcpq

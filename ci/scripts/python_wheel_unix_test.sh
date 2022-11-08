@@ -22,15 +22,24 @@ set -x
 set -o pipefail
 
 if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 <arrow-src-dir>"
+  echo "Usage: $0 <adbc-src-dir>"
   exit 1
 fi
+
+COMPONENTS="adbc_driver_manager adbc_driver_postgres"
 
 source_dir=${1}
 
 # Install the built wheels
-pip install --force-reinstall ${source_dir}/python/adbc_driver_manager/repaired_wheels/*.whl
-pip install --force-reinstall ${source_dir}/python/adbc_driver_postgres/repaired_wheels/*.whl
+for component in ${COMPONENTS}; do
+    if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then
+        pip install --force-reinstall \
+            ${source_dir}/python/${component}/repaired_wheels/*.whl
+    else
+        pip install --force-reinstall \
+            ${source_dir}/python/${component}/dist/*.whl
+    fi
+done
 pip install pytest pyarrow pandas
 
 # Test that the modules are importable

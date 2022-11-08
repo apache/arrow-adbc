@@ -17,7 +17,6 @@
 
 #include "statement.h"
 
-#include <endian.h>
 #include <netinet/in.h>
 #include <array>
 #include <cerrno>
@@ -157,28 +156,6 @@ AdbcStatusCode InferSchema(const TypeMapping& type_mapping, PGresult* result,
   }
   return ADBC_STATUS_OK;
 }
-
-uint32_t LoadNetworkUInt32(const char* buf) {
-  uint32_t v = 0;
-  std::memcpy(&v, buf, sizeof(uint32_t));
-  return ntohl(v);
-}
-
-int64_t LoadNetworkUInt64(const char* buf) {
-  uint64_t v = 0;
-  std::memcpy(&v, buf, sizeof(uint64_t));
-  return be64toh(v);
-}
-
-int32_t LoadNetworkInt32(const char* buf) {
-  return static_cast<int32_t>(LoadNetworkUInt32(buf));
-}
-
-int64_t LoadNetworkInt64(const char* buf) {
-  return static_cast<int64_t>(LoadNetworkUInt64(buf));
-}
-
-uint64_t ToNetworkInt64(int64_t v) { return htobe64(static_cast<uint64_t>(v)); }
 
 /// Helper to manage bind parameters with a prepared statement
 struct BindStream {
