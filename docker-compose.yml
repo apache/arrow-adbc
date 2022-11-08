@@ -30,7 +30,7 @@ services:
     image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
     volumes:
       - .:/adbc:delegated
-    command: /adbc/ci/scripts/python_wheel_manylinux_build.sh
+    command: "'/adbc/ci/scripts/python_wheel_unix_build.sh x86_64 /adbc /adbc/build'"
 
   python-wheel-manylinux-test:
     image: ${ARCH}/python:${PYTHON}
