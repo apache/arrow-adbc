@@ -113,13 +113,13 @@ static inline void SetError(struct AdbcError* error, Args&&... args) {
 
 /// Endianness helpers
 
-uint32_t LoadNetworkUInt32(const char* buf) {
+static inline uint32_t LoadNetworkUInt32(const char* buf) {
   uint32_t v = 0;
   std::memcpy(&v, buf, sizeof(uint32_t));
   return ntohl(v);
 }
 
-int64_t LoadNetworkUInt64(const char* buf) {
+static inline int64_t LoadNetworkUInt64(const char* buf) {
   uint64_t v = 0;
   std::memcpy(&v, buf, sizeof(uint64_t));
 #if defined(__linux__)
@@ -131,15 +131,15 @@ int64_t LoadNetworkUInt64(const char* buf) {
 #endif
 }
 
-int32_t LoadNetworkInt32(const char* buf) {
+static inline int32_t LoadNetworkInt32(const char* buf) {
   return static_cast<int32_t>(LoadNetworkUInt32(buf));
 }
 
-int64_t LoadNetworkInt64(const char* buf) {
+static inline int64_t LoadNetworkInt64(const char* buf) {
   return static_cast<int64_t>(LoadNetworkUInt64(buf));
 }
 
-uint64_t ToNetworkInt64(int64_t v) {
+static inline uint64_t ToNetworkInt64(int64_t v) {
 #if defined(__linux__)
   return htobe64(static_cast<uint64_t>(v));
 #elif defined(__APPLE__)
