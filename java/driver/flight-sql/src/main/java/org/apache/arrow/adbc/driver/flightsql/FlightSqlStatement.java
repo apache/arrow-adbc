@@ -19,7 +19,6 @@ package org.apache.arrow.adbc.driver.flightsql;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.protobuf.ByteString;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -208,15 +207,7 @@ public class FlightSqlStatement implements AdbcStatement {
       throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() before execute");
     }
     return execute(
-        (preparedStatement) -> {
-          // XXX(ARROW-17199): why does this throw SQLException?
-          try {
-            return preparedStatement.execute();
-          } catch (SQLException e) {
-            throw FlightSqlDriverUtil.fromSqlException(e);
-          }
-        },
-        (client) -> client.execute(sqlQuery));
+        FlightSqlClient.PreparedStatement::execute, (client) -> client.execute(sqlQuery));
   }
 
   @Override

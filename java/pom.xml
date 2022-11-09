@@ -28,7 +28,7 @@
   <url>https://arrow.apache.org/</url>
 
   <properties>
-    <dep.arrow.version>9.0.0</dep.arrow.version>
+    <dep.arrow.version>10.0.0</dep.arrow.version>
     <adbc.version>1.0.0-SNAPSHOT</adbc.version>
   </properties>
 
@@ -71,7 +71,6 @@
     <module>driver/flight-sql</module>
     <module>driver/flight-sql-validation</module>
     <module>driver/jdbc</module>
-    <module>driver/jdbc-util</module>
     <module>driver/jdbc-validation-derby</module>
     <module>driver/jdbc-validation-postgresql</module>
     <module>driver/validation</module>
@@ -122,11 +121,6 @@
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-driver-jdbc</artifactId>
-        <version>${adbc.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.arrow.adbc</groupId>
-        <artifactId>adbc-driver-jdbc-util</artifactId>
         <version>${adbc.version}</version>
       </dependency>
       <dependency>
