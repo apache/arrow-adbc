@@ -61,6 +61,19 @@
     </mailingList>
   </mailingLists>
 
+  <distributionManagement>
+    <repository>
+      <id>fury</id>
+      <name>Fury</name>
+      <url>https://maven.fury.io/arrow-adbc-nightlies/</url>
+    </repository>
+    <snapshotRepository>
+      <id>fury</id>
+      <name>Fury</name>
+      <url>https://maven.fury.io/arrow-adbc-nightlies/</url>
+    </snapshotRepository>
+  </distributionManagement>
+
   <issueManagement>
     <system>Jira</system>
     <url>https://issues.apache.org/jira/browse/arrow</url>

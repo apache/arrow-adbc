@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,28 +16,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# All of the following environment variables are required to set default values
-# for the parameters in docker-compose.yml.
+set -ex
 
-# Default repository to pull and push images from
-REPO=apache/arrow-dev
+source_dir=${1}
 
-# different architecture notations
-ARCH=amd64
-ARCH_ALIAS=x86_64
-ARCH_SHORT=amd64
+pushd ${source_dir}/java
 
-# Default versions for various dependencies
-JDK=8
-MANYLINUX=2014
-MAVEN=3.5.4
-PYTHON=3.8
+mvn -B -DskipTests -T 2C install
 
-# Used through docker-compose.yml and serves as the default version for the
-# ci/scripts/install_vcpkg.sh script. Prefer to use short SHAs to keep the
-# docker tags more readable.
-#
-# Please also update the crossbow configuration in order to keep the github
-# actions cache up to date for the macOS wheels:
-#   https://github.com/ursacomputing/crossbow/blob/master/.github/workflows/cache_vcpkg.yml
-VCPKG="38bb87c"
+popd

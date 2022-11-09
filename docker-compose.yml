@@ -21,10 +21,18 @@ x-hierarchy:
   - python-wheel-manylinux-2014
 
 services:
-  ############################ Python wheels ##################################
-
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
+
+  ############################ Java JARs ######################################
+
+  java-jars:
+    image: ${ARCH}/maven:${MAVEN}-jdk-${JDK}
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc && /adbc/ci/scripts/java_test.sh /adbc'"
+
+  ############################ Python wheels ##################################
 
   python-wheel-manylinux:
     image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
