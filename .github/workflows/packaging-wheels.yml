@@ -142,8 +142,8 @@ jobs:
           name: python${{ matrix.python_version }}-macOS
           retention-days: 7
           path: |
-            python/adbc_driver_manager/repaired_wheels/*.whl
-            python/adbc_driver_postgres/repaired_wheels/*.whl
+            python/adbc_driver_manager/dist/*.whl
+            python/adbc_driver_postgres/dist/*.whl
 
       - name: Test wheel
         shell: bash
