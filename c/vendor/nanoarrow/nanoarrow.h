@@ -20,7 +20,7 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "gha7325d629245c290bd96fb645a5d38e72bba2f8af"
+#define NANOARROW_BUILD_ID "ghaa66afcc5a9faf48fe7062eb2a025d808ccfac5dd"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -52,10 +52,19 @@
 extern "C" {
 #endif
 
-/// \defgroup nanoarrow-inline-typedef Type definitions used in inlined implementations
-
 // Extra guard for versions of Arrow without the canonical guard
 #ifndef ARROW_FLAG_DICTIONARY_ORDERED
+
+/// \defgroup nanoarrow-arrow-cdata Arrow C Data interface
+///
+/// The Arrow C Data (https://arrow.apache.org/docs/format/CDataInterface.html)
+/// and Arrow C Stream (https://arrow.apache.org/docs/format/CStreamInterface.html)
+/// interfaces are part of the
+/// Arrow Columnar Format specification
+/// (https://arrow.apache.org/docs/format/Columnar.html). See the Arrow documentation for
+/// documentation of these structures.
+///
+/// @{
 
 #ifndef ARROW_C_DATA_INTERFACE
 #define ARROW_C_DATA_INTERFACE
@@ -141,13 +150,36 @@ struct ArrowArrayStream {
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
+/// @}
+
+// Utility macros
+#define _NANOARROW_CONCAT(x, y) x##y
+#define _NANOARROW_MAKE_NAME(x, y) _NANOARROW_CONCAT(x, y)
+
+#define _NANOARROW_RETURN_NOT_OK_IMPL(NAME, EXPR) \
+  do {                                            \
+    const int NAME = (EXPR);                      \
+    if (NAME) return NAME;                        \
+  } while (0)
+
+#define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
+  NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
+
 /// \brief Return code for success.
+/// \ingroup nanoarrow-errors
 #define NANOARROW_OK 0
 
 /// \brief Represents an errno-compatible error code
+/// \ingroup nanoarrow-errors
 typedef int ArrowErrorCode;
 
+/// \brief Check the result of an expression and return it if not NANOARROW_OK
+/// \ingroup nanoarrow-errors
+#define NANOARROW_RETURN_NOT_OK(EXPR) \
+  _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+
 /// \brief Arrow type enumerator
+/// \ingroup nanoarrow-utils
 ///
 /// These names are intended to map to the corresponding arrow::Type::type
 /// enumerator; however, the numeric values are specifically not equal
@@ -194,7 +226,126 @@ enum ArrowType {
   NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 };
 
+/// \brief Get a string value of an enum ArrowType value
+/// \ingroup nanoarrow-utils
+///
+/// Returns NULL for invalid values for type
+static inline const char* ArrowTypeString(enum ArrowType type) {
+  switch (type) {
+    case NANOARROW_TYPE_NA:
+      return "na";
+    case NANOARROW_TYPE_BOOL:
+      return "bool";
+    case NANOARROW_TYPE_UINT8:
+      return "uint8";
+    case NANOARROW_TYPE_INT8:
+      return "int8";
+    case NANOARROW_TYPE_UINT16:
+      return "uint16";
+    case NANOARROW_TYPE_INT16:
+      return "int16";
+    case NANOARROW_TYPE_UINT32:
+      return "uint32";
+    case NANOARROW_TYPE_INT32:
+      return "int32";
+    case NANOARROW_TYPE_UINT64:
+      return "uint64";
+    case NANOARROW_TYPE_INT64:
+      return "int64";
+    case NANOARROW_TYPE_HALF_FLOAT:
+      return "half_float";
+    case NANOARROW_TYPE_FLOAT:
+      return "float";
+    case NANOARROW_TYPE_DOUBLE:
+      return "double";
+    case NANOARROW_TYPE_STRING:
+      return "string";
+    case NANOARROW_TYPE_BINARY:
+      return "binary";
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+      return "fixed_size_binary";
+    case NANOARROW_TYPE_DATE32:
+      return "date32";
+    case NANOARROW_TYPE_DATE64:
+      return "date64";
+    case NANOARROW_TYPE_TIMESTAMP:
+      return "timestamp";
+    case NANOARROW_TYPE_TIME32:
+      return "time32";
+    case NANOARROW_TYPE_TIME64:
+      return "time64";
+    case NANOARROW_TYPE_INTERVAL_MONTHS:
+      return "interval_months";
+    case NANOARROW_TYPE_INTERVAL_DAY_TIME:
+      return "interval_day_time";
+    case NANOARROW_TYPE_DECIMAL128:
+      return "decimal128";
+    case NANOARROW_TYPE_DECIMAL256:
+      return "decimal256";
+    case NANOARROW_TYPE_LIST:
+      return "list";
+    case NANOARROW_TYPE_STRUCT:
+      return "struct";
+    case NANOARROW_TYPE_SPARSE_UNION:
+      return "sparse_union";
+    case NANOARROW_TYPE_DENSE_UNION:
+      return "dense_union";
+    case NANOARROW_TYPE_DICTIONARY:
+      return "dictionary";
+    case NANOARROW_TYPE_MAP:
+      return "map";
+    case NANOARROW_TYPE_EXTENSION:
+      return "extension";
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      return "fixed_size_list";
+    case NANOARROW_TYPE_DURATION:
+      return "duration";
+    case NANOARROW_TYPE_LARGE_STRING:
+      return "large_string";
+    case NANOARROW_TYPE_LARGE_BINARY:
+      return "large_binary";
+    case NANOARROW_TYPE_LARGE_LIST:
+      return "large_list";
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+      return "interval_month_day_nano";
+    default:
+      return NULL;
+  }
+}
+
+/// \brief Arrow time unit enumerator
+/// \ingroup nanoarrow-utils
+///
+/// These names and values map to the corresponding arrow::TimeUnit::type
+/// enumerator.
+enum ArrowTimeUnit {
+  NANOARROW_TIME_UNIT_SECOND = 0,
+  NANOARROW_TIME_UNIT_MILLI = 1,
+  NANOARROW_TIME_UNIT_MICRO = 2,
+  NANOARROW_TIME_UNIT_NANO = 3
+};
+
+/// \brief Get a string value of an enum ArrowTimeUnit value
+/// \ingroup nanoarrow-utils
+///
+/// Returns NULL for invalid values for time_unit
+static inline const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit) {
+  switch (time_unit) {
+    case NANOARROW_TIME_UNIT_SECOND:
+      return "s";
+    case NANOARROW_TIME_UNIT_MILLI:
+      return "ms";
+    case NANOARROW_TIME_UNIT_MICRO:
+      return "us";
+    case NANOARROW_TIME_UNIT_NANO:
+      return "ns";
+    default:
+      return NULL;
+  }
+}
+
 /// \brief Functional types of buffers as described in the Arrow Columnar Specification
+/// \ingroup nanoarrow-array-view
 enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_NONE,
   NANOARROW_BUFFER_TYPE_VALIDITY,
@@ -204,39 +355,8 @@ enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_DATA
 };
 
-#define _NANOARROW_CONCAT(x, y) x##y
-#define _NANOARROW_MAKE_NAME(x, y) _NANOARROW_CONCAT(x, y)
-
-#define _NANOARROW_RETURN_NOT_OK_IMPL(NAME, EXPR) \
-  do {                                            \
-    const int NAME = (EXPR);                      \
-    if (NAME) return NAME;                        \
-  } while (0)
-
-#define NANOARROW_RETURN_NOT_OK(EXPR) \
-  _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
-
-#define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
-  NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
-
-/// \brief A description of an arrangement of buffers
-///
-/// Contains the minimum amount of information required to
-/// calculate the size of each buffer in an ArrowArray knowing only
-/// the length and offset of the array.
-struct ArrowLayout {
-  /// \brief The function of each buffer
-  enum ArrowBufferType buffer_type[3];
-
-  /// \brief The size of an element each buffer or 0 if this size is variable or unknown
-  int64_t element_size_bits[3];
-
-  /// \brief The number of elements in the child array per element in this array for a
-  /// fixed-size list
-  int64_t child_size_elements;
-};
-
 /// \brief An non-owning view of a string
+/// \ingroup nanoarrow-utils
 struct ArrowStringView {
   /// \brief A pointer to the start of the string
   ///
@@ -249,6 +369,8 @@ struct ArrowStringView {
   int64_t n_bytes;
 };
 
+/// \brief Return a view of a const C string
+/// \ingroup nanoarrow-utils
 static inline struct ArrowStringView ArrowCharView(const char* value) {
   struct ArrowStringView out;
 
@@ -263,6 +385,7 @@ static inline struct ArrowStringView ArrowCharView(const char* value) {
 }
 
 /// \brief An non-owning view of a buffer
+/// \ingroup nanoarrow-utils
 struct ArrowBufferView {
   /// \brief A pointer to the start of the buffer
   ///
@@ -287,6 +410,7 @@ struct ArrowBufferView {
 };
 
 /// \brief Array buffer allocation and deallocation
+/// \ingroup nanoarrow-buffer
 ///
 /// Container for allocate, reallocate, and free methods that can be used
 /// to customize allocation and deallocation of buffers when constructing
@@ -304,6 +428,7 @@ struct ArrowBufferAllocator {
 };
 
 /// \brief An owning mutable view of a buffer
+/// \ingroup nanoarrow-buffer
 struct ArrowBuffer {
   /// \brief A pointer to the start of the buffer
   ///
@@ -321,12 +446,64 @@ struct ArrowBuffer {
 };
 
 /// \brief An owning mutable view of a bitmap
+/// \ingroup nanoarrow-bitmap
 struct ArrowBitmap {
   /// \brief An ArrowBuffer to hold the allocated memory
   struct ArrowBuffer buffer;
 
   /// \brief The number of bits that have been appended to the bitmap
   int64_t size_bits;
+};
+
+/// \brief A description of an arrangement of buffers
+/// \ingroup nanoarrow-utils
+///
+/// Contains the minimum amount of information required to
+/// calculate the size of each buffer in an ArrowArray knowing only
+/// the length and offset of the array.
+struct ArrowLayout {
+  /// \brief The function of each buffer
+  enum ArrowBufferType buffer_type[3];
+
+  /// \brief The size of an element each buffer or 0 if this size is variable or unknown
+  int64_t element_size_bits[3];
+
+  /// \brief The number of elements in the child array per element in this array for a
+  /// fixed-size list
+  int64_t child_size_elements;
+};
+
+/// \brief A non-owning view of an ArrowArray
+/// \ingroup nanoarrow-array-view
+///
+/// This data structure provides access to the values contained within
+/// an ArrowArray with fields provided in a more readily-extractible
+/// form. You can re-use an ArrowArrayView for multiple ArrowArrays
+/// with the same storage type, or use it to represent a hypothetical
+/// ArrowArray that does not exist yet.
+struct ArrowArrayView {
+  /// \brief The underlying ArrowArray or NULL if it has not been set
+  struct ArrowArray* array;
+
+  /// \brief The type used to store values in this array
+  ///
+  /// This type represents only the minimum required information to
+  /// extract values from the array buffers (e.g., for a Date32 array,
+  /// this value will be NANOARROW_TYPE_INT32). For dictionary-encoded
+  /// arrays, this will be the index type.
+  enum ArrowType storage_type;
+
+  /// \brief The buffer types, strides, and sizes of this Array's buffers
+  struct ArrowLayout layout;
+
+  /// \brief This Array's buffers as ArrowBufferView objects
+  struct ArrowBufferView buffer_views[3];
+
+  /// \brief The number of children of this view
+  int64_t n_children;
+
+  /// \brief Pointers to views of this array's children
+  struct ArrowArrayView** children;
 };
 
 // Used as the private data member for ArrowArrays allocated here and accessed
@@ -350,17 +527,6 @@ struct ArrowArrayPrivateData {
   // The buffer arrangement for the storage type
   struct ArrowLayout layout;
 };
-
-struct ArrowArrayView {
-  struct ArrowArray* array;
-  enum ArrowType storage_type;
-  struct ArrowLayout layout;
-  struct ArrowBufferView buffer_views[3];
-  int64_t n_children;
-  struct ArrowArrayView** children;
-};
-
-/// }@
 
 #ifdef __cplusplus
 }
@@ -447,6 +613,7 @@ struct ArrowArrayView {
 #define ArrowMetadataBuilderRemove \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderRemove)
 #define ArrowSchemaViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaViewInit)
+#define ArrowSchemaToString NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaToString)
 #define ArrowArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInit)
 #define ArrowArrayInitFromSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromSchema)
@@ -477,11 +644,7 @@ struct ArrowArrayView {
 extern "C" {
 #endif
 
-/// \file Arrow C Implementation
-///
-/// EXPERIMENTAL. Interface subject to change.
-
-/// \page object-model Object Model
+/// \defgroup nanoarrow Nanoarrow C library
 ///
 /// Except where noted, objects are not thread-safe and clients should
 /// take care to serialize accesses to methods.
@@ -494,8 +657,10 @@ extern "C" {
 ///
 /// Non-buffer members of a struct ArrowSchema and struct ArrowArray
 /// must be allocated using ArrowMalloc() or ArrowRealloc() and freed
-/// using ArrowFree for schemas and arrays allocated here. Buffer members
+/// using ArrowFree() for schemas and arrays allocated here. Buffer members
 /// are allocated using an ArrowBufferAllocator.
+///
+/// @{
 
 /// \brief Allocate like malloc()
 void* ArrowMalloc(int64_t size);
@@ -523,17 +688,21 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
                         int64_t size),
     void* private_data);
 
-/// }@
+/// @}
 
-/// \defgroup nanoarrow-errors Error handling primitives
+/// \defgroup nanoarrow-errors Error handling
+///
 /// Functions generally return an errno-compatible error code; functions that
 /// need to communicate more verbose error information accept a pointer
 /// to an ArrowError. This can be stack or statically allocated. The
 /// content of the message is undefined unless an error code has been
 /// returned.
+///
+/// @{
 
 /// \brief Error type containing a UTF-8 encoded message.
 struct ArrowError {
+  /// \brief A character buffer with space for an error message.
   char message[1024];
 };
 
@@ -543,9 +712,11 @@ ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
 /// \brief Get the contents of an error
 const char* ArrowErrorMessage(struct ArrowError* error);
 
-/// }@
+/// @}
 
 /// \defgroup nanoarrow-utils Utility data structures
+///
+/// @{
 
 /// \brief Return the build id against which the library was compiled
 const char* ArrowNanoarrowBuildId();
@@ -556,21 +727,13 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
 /// \brief Create a string view from a null-terminated string
 static inline struct ArrowStringView ArrowCharView(const char* value);
 
-/// \brief Arrow time unit enumerator
+/// @}
+
+/// \defgroup nanoarrow-schema Creating schemas
 ///
-/// These names and values map to the corresponding arrow::TimeUnit::type
-/// enumerator.
-enum ArrowTimeUnit {
-  NANOARROW_TIME_UNIT_SECOND = 0,
-  NANOARROW_TIME_UNIT_MILLI = 1,
-  NANOARROW_TIME_UNIT_MICRO = 2,
-  NANOARROW_TIME_UNIT_NANO = 3
-};
-
-/// }@
-
-/// \defgroup nanoarrow-schema Schema producer helpers
 /// These functions allocate, copy, and destroy ArrowSchema structures
+///
+/// @{
 
 /// \brief Initialize the fields of a schema
 ///
@@ -578,6 +741,15 @@ enum ArrowTimeUnit {
 /// is responsible for calling the schema->release callback if
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType type);
+
+/// \brief Get a human-readable summary of a Schema
+///
+/// Writes a summary of an ArrowSchema to out (up to n - 1 characters)
+/// and returns the number of characters required for the output if
+/// n were sufficiently large. If recursive is non-zero, the result will
+/// also include children.
+int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
+                            char recursive);
 
 /// \brief Initialize the fields of a fixed-size schema
 ///
@@ -613,40 +785,54 @@ ArrowErrorCode ArrowSchemaDeepCopy(struct ArrowSchema* schema,
 
 /// \brief Copy format into schema->format
 ///
-/// schema must have been allocated using ArrowSchemaInit or
-/// ArrowSchemaDeepCopy.
+/// schema must have been allocated using ArrowSchemaInit() or
+/// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema, const char* format);
 
 /// \brief Copy name into schema->name
 ///
-/// schema must have been allocated using ArrowSchemaInit or
-/// ArrowSchemaDeepCopy.
+/// schema must have been allocated using ArrowSchemaInit() or
+/// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema, const char* name);
 
 /// \brief Copy metadata into schema->metadata
 ///
-/// schema must have been allocated using ArrowSchemaInit or
+/// schema must have been allocated using ArrowSchemaInit() or
 /// ArrowSchemaDeepCopy.
 ArrowErrorCode ArrowSchemaSetMetadata(struct ArrowSchema* schema, const char* metadata);
 
 /// \brief Allocate the schema->children array
 ///
 /// Includes the memory for each child struct ArrowSchema.
-/// schema must have been allocated using ArrowSchemaInit or
-/// ArrowSchemaDeepCopy.
+/// schema must have been allocated using ArrowSchemaInit() or
+/// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaAllocateChildren(struct ArrowSchema* schema,
                                            int64_t n_children);
 
 /// \brief Allocate the schema->dictionary member
 ///
-/// schema must have been allocated using ArrowSchemaInit or
-/// ArrowSchemaDeepCopy.
+/// schema must have been allocated using ArrowSchemaInit() or
+/// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
 
+/// @}
+
+/// \defgroup nanoarrow-metadata Create, read, and modify schema metadata
+///
+/// @{
+
 /// \brief Reader for key/value pairs in schema metadata
+///
+/// The ArrowMetadataReader does not own any data and is only valid
+/// for the lifetime of the underlying metadata pointer.
 struct ArrowMetadataReader {
+  /// \brief A metadata string from a schema->metadata field.
   const char* metadata;
+
+  /// \brief The current offset into the metadata string
   int64_t offset;
+
+  /// \brief The number of remaining keys
   int32_t remaining_keys;
 };
 
@@ -695,9 +881,11 @@ ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer,
 ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
                                           struct ArrowStringView key);
 
-/// }@
+/// @}
 
-/// \defgroup nanoarrow-schema-view Schema consumer helpers
+/// \defgroup nanoarrow-schema-view Reading schemas
+///
+/// @{
 
 /// \brief A non-owning view of a parsed ArrowSchema
 ///
@@ -792,9 +980,11 @@ struct ArrowSchemaView {
 ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
                                    struct ArrowSchema* schema, struct ArrowError* error);
 
-/// }@
+/// @}
 
 /// \defgroup nanoarrow-buffer Owning, growable buffers
+///
+/// @{
 
 /// \brief Initialize an ArrowBuffer
 ///
@@ -900,9 +1090,11 @@ static inline ArrowErrorCode ArrowBufferAppendDouble(struct ArrowBuffer* buffer,
 static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
                                                     float value);
 
-/// }@
+/// @}
 
 /// \defgroup nanoarrow-bitmap Bitmap utilities
+///
+/// @{
 
 /// \brief Extract a boolean value from a bitmap
 static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i);
@@ -970,10 +1162,13 @@ static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
 /// Releases any memory held by buffer, empties the cache, and resets the size to zero
 static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 
-/// }@
+/// @}
 
-/// \defgroup nanoarrow-array Array producer helpers
+/// \defgroup nanoarrow-array Creating arrays
+///
 /// These functions allocate, copy, and destroy ArrowArray structures
+///
+/// @{
 
 /// \brief Initialize the fields of an array
 ///
@@ -994,37 +1189,37 @@ ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
 ///
 /// Includes the memory for each child struct ArrowArray,
 /// whose members are marked as released and may be subsequently initialized
-/// with ArrowArrayInit or moved from an existing ArrowArray.
-/// schema must have been allocated using ArrowArrayInit.
+/// with ArrowArrayInit() or moved from an existing ArrowArray.
+/// schema must have been allocated using ArrowArrayInit().
 ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_children);
 
 /// \brief Allocate the array->dictionary member
 ///
 /// Includes the memory for the struct ArrowArray, whose contents
 /// is marked as released and may be subsequently initialized
-/// with ArrowArrayInit or moved from an existing ArrowArray.
-/// array must have been allocated using ArrowArrayInit
+/// with ArrowArrayInit() or moved from an existing ArrowArray.
+/// array must have been allocated using ArrowArrayInit()
 ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array);
 
 /// \brief Set the validity bitmap of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* bitmap);
 
 /// \brief Set a buffer of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                    struct ArrowBuffer* buffer);
 
 /// \brief Get the validity bitmap of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* array);
 
 /// \brief Get a buffer of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
 
 /// \brief Start element-wise appending to an ArrowArray
@@ -1032,7 +1227,7 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
 /// Initializes any values needed to use ArrowArrayAppend*() functions.
 /// All element-wise appenders append by value and return EINVAL if the exact value
 /// cannot be represented by the underlying storage type.
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array);
 
 /// \brief Reserve space for future appends
@@ -1108,14 +1303,17 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 /// Flushes any pointers from internal buffers that may have been reallocated
 /// into the array->buffers array and checks the actual size of the buffers
 /// against the expected size based on the final length.
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error);
 
-/// }@
+/// @}
 
-/// \defgroup nanoarrow-array Array consumer helpers
+/// \defgroup nanoarrow-array-view Reading arrays
+///
 /// These functions read and validate the contents ArrowArray structures
+///
+/// @{
 
 /// \brief Initialize the contents of an ArrowArrayView
 void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type);
@@ -1177,7 +1375,7 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
 static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
     struct ArrowArrayView* array_view, int64_t i);
 
-/// }@
+/// @}
 
 // Inline function definitions
 
@@ -1481,17 +1679,20 @@ static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t start_offset
   const int64_t bytes_begin = i_begin / 8;
   const int64_t bytes_end = i_end / 8 + 1;
 
-  const uint8_t first_byte_mask = _ArrowkPrecedingBitmask[i_begin % 8];
-  const uint8_t last_byte_mask = _ArrowkTrailingBitmask[i_end % 8];
-
   if (bytes_end == bytes_begin + 1) {
     // count bits within a single byte
+    const uint8_t first_byte_mask = _ArrowkPrecedingBitmask[i_end % 8];
+    const uint8_t last_byte_mask = _ArrowkTrailingBitmask[i_begin % 8];
+
     const uint8_t only_byte_mask =
-        i_end % 8 == 0 ? first_byte_mask : (uint8_t)(first_byte_mask | last_byte_mask);
+        i_end % 8 == 0 ? first_byte_mask : (uint8_t)(first_byte_mask & last_byte_mask);
+
     const uint8_t byte_masked = bits[bytes_begin] & only_byte_mask;
     return _ArrowkBytePopcount[byte_masked];
   }
 
+  const uint8_t first_byte_mask = _ArrowkPrecedingBitmask[i_begin % 8];
+  const uint8_t last_byte_mask = _ArrowkTrailingBitmask[i_end % 8];
   int64_t count = 0;
 
   // first byte
@@ -1871,15 +2072,15 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
       break;
     case NANOARROW_TYPE_INT32:
       _NANOARROW_CHECK_RANGE(value, INT32_MIN, INT32_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, (int32_t)value));
       break;
     case NANOARROW_TYPE_INT16:
       _NANOARROW_CHECK_RANGE(value, INT16_MIN, INT16_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt16(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt16(data_buffer, (int16_t)value));
       break;
     case NANOARROW_TYPE_INT8:
       _NANOARROW_CHECK_RANGE(value, INT8_MIN, INT8_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt8(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt8(data_buffer, (int8_t)value));
       break;
     case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_UINT32:
@@ -1921,15 +2122,15 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
       break;
     case NANOARROW_TYPE_UINT32:
       _NANOARROW_CHECK_RANGE(value, 0, UINT32_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt32(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt32(data_buffer, (uint32_t)value));
       break;
     case NANOARROW_TYPE_UINT16:
       _NANOARROW_CHECK_RANGE(value, 0, UINT16_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt16(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt16(data_buffer, (uint16_t)value));
       break;
     case NANOARROW_TYPE_UINT8:
       _NANOARROW_CHECK_RANGE(value, 0, UINT8_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(data_buffer, (uint8_t)value));
       break;
     case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_INT32:
@@ -2072,7 +2273,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
         return EINVAL;
       }
       NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), child_length));
+          ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), (int32_t)child_length));
       break;
     case NANOARROW_TYPE_LARGE_LIST:
       child_length = array->children[0]->length;
@@ -2115,7 +2316,7 @@ static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int
     case NANOARROW_TYPE_DENSE_UNION:
     case NANOARROW_TYPE_SPARSE_UNION:
       // Not supported yet
-      return 0xff;
+      return -1;
     default:
       return validity_buffer != NULL && !ArrowBitGet(validity_buffer, i);
   }
