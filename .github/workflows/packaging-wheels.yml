@@ -15,21 +15,50 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Packaging - Python Wheels
+name: Packaging - Nightly Artifacts
 
 on:
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
     inputs:
-      upload_wheels:
-        description: "Upload wheels to Gemfury"
+      upload_artifacts:
+        description: "Upload artifacts to Gemfury"
         required: true
         type: boolean
         default: false
 
 jobs:
-  manylinux:
+  java:
+    name: "Java 1.8"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Show inputs
+        shell: bash
+        run: |
+          echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}"
+          echo "schedule: ${{ github.event.schedule }}"
+          echo "ref: ${{ github.ref }}"
+
+      - name: Build and test
+        shell: bash
+        run: |
+          docker-compose run java-jars
+
+      - name: Upload JARs to Gemfury
+        shell: bash
+        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true)
+        run: |
+          ./ci/scripts/java_jar_upload.sh java/
+        env:
+          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+
+  python-manylinux:
     name: "Python ${{ matrix.python_version }} manylinux${{ matrix.manylinux_version }}"
     runs-on: ubuntu-latest
     strategy:
@@ -47,7 +76,7 @@ jobs:
       - name: Show inputs
         shell: bash
         run: |
-          echo "upload_wheels: ${{ github.event.inputs.upload_wheels }}"
+          echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}"
           echo "schedule: ${{ github.event.schedule }}"
           echo "ref: ${{ github.ref }}"
 
@@ -76,13 +105,13 @@ jobs:
 
       - name: Upload wheels to Gemfury
         shell: bash
-        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_wheels == 'true')
+        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true)
         run: |
           ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/repaired_wheels/*.whl
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
-  macos:
+  python-macos:
     name: "Python ${{ matrix.python_version }} macOS"
     runs-on: macos-latest
     strategy:
@@ -107,7 +136,7 @@ jobs:
       - name: Show inputs
         shell: bash
         run: |
-          echo "upload_wheels: ${{ github.event.inputs.upload_wheels }}"
+          echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}"
           echo "schedule: ${{ github.event.schedule }}"
           echo "ref: ${{ github.ref }}"
 
@@ -154,7 +183,7 @@ jobs:
 
       - name: Upload wheels to Gemfury
         shell: bash
-        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_wheels == 'true')
+        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true)
         run: |
           ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/dist/*.whl
         env:
