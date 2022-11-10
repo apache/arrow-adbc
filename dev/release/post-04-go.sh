@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -14,8 +16,19 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+#
+set -ue
 
-commitizen
-gh
-pre-commit
-twine
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <version>"
+    exit
+fi
+
+version=$1
+version_tag="apache-arrow-adbc-${version}"
+go_arrow_tag="go/v${version}"
+
+git tag "${go_arrow_tag}" "${version_tag}"
+git push apache "${go_arrow_tag}"

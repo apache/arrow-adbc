@@ -31,12 +31,8 @@ test_subproject() {
 
     pushd "${build_dir}/${subproject}"
 
-    if [[ "${subproject}" = "driver_manager" ]]; then
-        # macOS will not propagate DYLD_LIBRARY_PATH through a subprocess
-        ./adbc-driver-manager-test
-    else
-        ctest --output-on-failure --no-tests=error
-    fi
+    # macOS will not propagate DYLD_LIBRARY_PATH through a subprocess
+    "./adbc-$(echo ${subproject} | sed "s|[/_]|-|g")-test"
 
     popd
 }
