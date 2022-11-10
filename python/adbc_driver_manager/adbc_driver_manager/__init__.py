@@ -15,7 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import (  # noqa: F401
+"""Low-level ADBC bindings for Python.
+
+The root module provides a fairly direct, 1:1 mapping to the C API
+definitions in Python.  For a higher-level interface, use
+:mod:`adbc_driver_manager.dbapi`.  (This requires PyArrow.)
+"""
+
+from ._lib import (
+    INGEST_OPTION_MODE,
+    INGEST_OPTION_MODE_APPEND,
+    INGEST_OPTION_MODE_CREATE,
     INGEST_OPTION_TARGET_TABLE,
     AdbcConnection,
     AdbcDatabase,
@@ -37,3 +47,29 @@ from ._lib import (  # noqa: F401
     ProgrammingError,
 )
 from ._version import version as __version__  # noqa: F401
+
+__all__ = [
+    "__version__",
+    "INGEST_OPTION_MODE",
+    "INGEST_OPTION_MODE_APPEND",
+    "INGEST_OPTION_MODE_CREATE",
+    "INGEST_OPTION_TARGET_TABLE",
+    "AdbcConnection",
+    "AdbcDatabase",
+    "AdbcInfoCode",
+    "AdbcStatement",
+    "AdbcStatusCode",
+    "ArrowArrayHandle",
+    "ArrowArrayStreamHandle",
+    "ArrowSchemaHandle",
+    "DatabaseError",
+    "DataError",
+    "Error",
+    "GetObjectsDepth",
+    "IntegrityError",
+    "InterfaceError",
+    "InternalError",
+    "NotSupportedError",
+    "OperationalError",
+    "ProgrammingError",
+]
