@@ -50,6 +50,14 @@ jobs:
         run: |
           docker-compose run java-jars
 
+      - name: Archive JARs
+        uses: actions/upload-artifact@v3
+        with:
+          name: java
+          retention-days: 7
+          path: |
+            java/**/target/*.jar
+
       - name: Upload JARs to Gemfury
         shell: bash
         if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true)
