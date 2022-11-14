@@ -18,3 +18,5 @@
 Cython
 pyarrow>=8.0.0
 pytest
+setuptools
+setuptools_scm

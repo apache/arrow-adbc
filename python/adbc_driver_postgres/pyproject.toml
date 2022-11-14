@@ -37,7 +37,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-
-[tool.setuptools_scm]
-root = "../.."
-write_to = "python/adbc_driver_postgres/adbc_driver_postgres/_version.py"

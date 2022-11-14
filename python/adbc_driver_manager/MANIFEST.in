@@ -15,11 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-adbc_driver_manager/*.c
-adbc_driver_manager/*.cc
-adbc_driver_manager/*.cpp
-adbc_driver_manager/*.h
-adbc_driver_manager/_version.py
-build/
-dist/
-repaired_wheels/
+# setuptools manifest
+
+include adbc_driver_manager/adbc.h
+include adbc_driver_manager/adbc_driver_manager.cc
+include adbc_driver_manager/adbc_driver_manager.h

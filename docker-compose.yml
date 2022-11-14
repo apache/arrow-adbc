@@ -38,6 +38,20 @@ services:
       - .:/adbc:delegated
     command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc && /adbc/ci/scripts/java_test.sh /adbc'"
 
+  ############################ Python sdist ##################################
+
+  python-sdist:
+    image: ${ARCH}/python:${PYTHON}
+    volumes:
+      - .:/adbc:delegated
+    command: /adbc/ci/scripts/python_sdist_build.sh /adbc
+
+  python-sdist-test:
+    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
+    volumes:
+      - .:/adbc:delegated
+    command: "'/adbc/ci/scripts/python_sdist_test.sh /adbc'"
+
   ############################ Python wheels ##################################
 
   python-wheel-manylinux:

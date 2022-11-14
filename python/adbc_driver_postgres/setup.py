@@ -23,11 +23,51 @@ from pathlib import Path
 
 from setuptools import setup
 
+source_root = Path(__file__).parent
+repo_root = source_root.joinpath("../../")
+
+# ------------------------------------------------------------
+# Resolve Shared Library
+
 library = os.environ.get("ADBC_POSTGRES_LIBRARY")
 if not library:
-    raise ValueError("Must provide ADBC_POSTGRES_LIBRARY")
+    if os.environ.get("_ADBC_IS_SDIST", "").strip().lower() in ("1", "true"):
+        print("Building sdist, not requiring ADBC_POSTGRES_LIBRARY")
+    else:
+        raise ValueError("Must provide ADBC_POSTGRES_LIBRARY")
+else:
+    target = source_root.joinpath(
+        "./adbc_driver_postgres/libadbc_driver_postgres.so"
+    ).resolve()
+    shutil.copy(library, target)
 
-target = Path("./adbc_driver_postgres/libadbc_driver_postgres.so").resolve()
-shutil.copy(library, target)
+# ------------------------------------------------------------
+# Resolve Version
 
-setup()
+use_scm_version = False
+
+git_dir = source_root.joinpath("../../.git").resolve()
+target = source_root.joinpath("adbc_driver_postgres/_version.py").resolve()
+if git_dir.is_dir():
+    use_scm_version = {
+        "root": git_dir.parent,
+        "write_to": target,
+    }
+elif not target.is_file():
+    # Out-of-tree build missing the generated version
+    raise FileNotFoundError(str(target))
+else:
+    # Else, when building from sdist, _version.py will already exist
+    # XXX: this is awful
+    with target.open() as f:
+        scope = {}
+        exec(f.read(), scope)
+        os.environ["SETUPTOOLS_SCM_PRETEND_VERSION"] = scope["__version__"]
+    use_scm_version = True
+
+# ------------------------------------------------------------
+# Setup
+
+setup(
+    use_scm_version=use_scm_version,
+)

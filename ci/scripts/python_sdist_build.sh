@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,11 +17,26 @@
 # specific language governing permissions and limitations
 # under the License.
 
-adbc_driver_manager/*.c
-adbc_driver_manager/*.cc
-adbc_driver_manager/*.cpp
-adbc_driver_manager/*.h
-adbc_driver_manager/_version.py
-build/
-dist/
-repaired_wheels/
+set -ex
+
+source_dir=${1}
+
+echo "=== (${PYTHON_VERSION}) Building ADBC sdists ==="
+
+# https://github.com/pypa/pip/issues/7555
+# Get the latest pip so we have in-tree-build by default
+pip install --upgrade pip setuptools setuptools_scm
+
+# For drivers, which bundle shared libraries, defer that to install time
+export _ADBC_IS_SDIST=1
+
+for component in adbc_driver_manager adbc_driver_postgres; do
+    pushd ${source_dir}/python/$component
+
+    echo "=== (${PYTHON_VERSION}) Building $component sdist ==="
+    # python -m build copies to a tempdir, so we can't reference other files in the repo
+    # https://github.com/pypa/pip/issues/5519
+    python setup.py sdist
+
+    popd
+done

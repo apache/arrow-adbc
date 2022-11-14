@@ -17,28 +17,76 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
 import shutil
 from pathlib import Path
 
 from setuptools import Extension, setup
 
-# setuptools gets confused by relative paths that extend above the project root
-target = Path(__file__).parent / "adbc_driver_manager/adbc_driver_manager.cc"
-shutil.copy(
-    Path(__file__).parent / "../../c/driver_manager/adbc_driver_manager.cc", target
-)
+source_root = Path(__file__).parent
+repo_root = source_root.joinpath("../../")
+
+# ------------------------------------------------------------
+# Resolve C++ Sources
+
+sources = [
+    "adbc.h",
+    "c/driver_manager/adbc_driver_manager.cc",
+    "c/driver_manager/adbc_driver_manager.h",
+]
+
+for source in sources:
+    target_filename = source.split("/")[-1]
+    source = repo_root.joinpath(source).resolve()
+    target = source_root.joinpath("adbc_driver_manager", target_filename).resolve()
+    if source.is_file():
+        # In-tree build/creating an sdist: copy from project root to local file
+        # so that setuptools isn't confused
+        shutil.copy(source, target)
+    elif not target.is_file():
+        # Out-of-tree build missing the C++ source files
+        raise FileNotFoundError(str(target))
+    # Else, when building from sdist, the target will exist but not the source
+
+# ------------------------------------------------------------
+# Resolve Version
+
+use_scm_version = False
+
+git_dir = source_root.joinpath("../../.git").resolve()
+target = source_root.joinpath("adbc_driver_manager/_version.py").resolve()
+if git_dir.is_dir():
+    use_scm_version = {
+        "root": git_dir.parent,
+        "write_to": target,
+    }
+elif not target.is_file():
+    # Out-of-tree build missing the generated version
+    raise FileNotFoundError(str(target))
+else:
+    # Else, when building from sdist, _version.py will already exist
+    # XXX: this is awful
+    with target.open() as f:
+        scope = {}
+        exec(f.read(), scope)
+        os.environ["SETUPTOOLS_SCM_PRETEND_VERSION"] = scope["__version__"]
+    use_scm_version = True
+
+# ------------------------------------------------------------
+# Setup
 
 setup(
     ext_modules=[
         Extension(
             name="adbc_driver_manager._lib",
             extra_compile_args=["-std=c++17"],
-            include_dirs=["../../", "../../c/driver_manager"],
+            include_dirs=[str(source_root.joinpath("adbc_driver_manager").resolve())],
             language="c++",
             sources=[
                 "adbc_driver_manager/_lib.pyx",
                 "adbc_driver_manager/adbc_driver_manager.cc",
             ],
         )
-    ]
+    ],
+    use_scm_version=use_scm_version,
 )
