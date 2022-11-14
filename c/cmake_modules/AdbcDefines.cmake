@@ -31,10 +31,11 @@ include(san-config)
 # Version definitions
 
 set(ADBC_VERSION "1.0.0-SNAPSHOT")
-set(ADBC_BASE_VERSION "1.0.0")
-set(ADBC_VERSION_MAJOR "1")
-set(ADBC_VERSION_MINOR "0")
-set(ADBC_VERSION_PATCH "0")
+string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" ADBC_BASE_VERSION "${ADBC_VERSION}")
+string(REPLACE "." ";" _adbc_version_list "${ADBC_BASE_VERSION}")
+list(GET _adbc_version_list 0 ADBC_VERSION_MAJOR)
+list(GET _adbc_version_list 1 ADBC_VERSION_MINOR)
+list(GET _adbc_version_list 2 ADBC_VERSION_PATCH)
 
 math(EXPR ADBC_SO_VERSION "${ADBC_VERSION_MAJOR} * 100 + ${ADBC_VERSION_MINOR}")
 set(ADBC_FULL_SO_VERSION "${ADBC_SO_VERSION}.${ADBC_VERSION_PATCH}.0")
