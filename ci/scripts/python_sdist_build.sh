@@ -25,7 +25,7 @@ echo "=== (${PYTHON_VERSION}) Building ADBC sdists ==="
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
-pip install --upgrade pip setuptools setuptools_scm
+pip install --upgrade pip setuptools
 
 # For drivers, which bundle shared libraries, defer that to install time
 export _ADBC_IS_SDIST=1

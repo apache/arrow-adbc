@@ -42,32 +42,29 @@ else:
     shutil.copy(library, target)
 
 # ------------------------------------------------------------
-# Resolve Version
+# Resolve Version (miniver)
 
-use_scm_version = False
 
-git_dir = source_root.joinpath("../../.git").resolve()
-target = source_root.joinpath("adbc_driver_postgres/_version.py").resolve()
-if git_dir.is_dir():
-    use_scm_version = {
-        "root": git_dir.parent,
-        "write_to": target,
-    }
-elif not target.is_file():
-    # Out-of-tree build missing the generated version
-    raise FileNotFoundError(str(target))
-else:
-    # Else, when building from sdist, _version.py will already exist
-    # XXX: this is awful
-    with target.open() as f:
-        scope = {}
-        exec(f.read(), scope)
-        os.environ["SETUPTOOLS_SCM_PRETEND_VERSION"] = scope["__version__"]
-    use_scm_version = True
+def get_version_and_cmdclass(pkg_path):
+    """
+    Load version.py module without importing the whole package.
+
+    Template code from miniver.
+    """
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    spec = spec_from_file_location("version", os.path.join(pkg_path, "_version.py"))
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.__version__, module.get_cmdclass(pkg_path)
+
+
+version, cmdclass = get_version_and_cmdclass("adbc_driver_postgres")
 
 # ------------------------------------------------------------
 # Setup
 
 setup(
-    use_scm_version=use_scm_version,
+    cmdclass=cmdclass,
+    version=version,
 )

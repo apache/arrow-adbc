@@ -19,7 +19,7 @@ import importlib.resources
 
 import adbc_driver_manager
 
-from ._version import version as __version__
+from ._version import __version__
 
 __all__ = ["connect", "__version__"]
 
