@@ -49,6 +49,7 @@ SETTINGS
     mvn \
         -Dmaven.install.skip=true \
         -Drat.skip=true \
+        -DskipTests \
         --settings "${settings_file}" \
         deploy
 
