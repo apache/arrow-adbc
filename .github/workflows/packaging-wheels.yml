@@ -225,7 +225,7 @@ jobs:
           retention-days: 7
           path: |
             python/adbc_driver_manager/dist/*.tar.gz
-            python/adbc_driver_postgres/dist/*.whl
+            python/adbc_driver_postgres/dist/*.tar.gz
 
       - name: Test sdist
         shell: bash
