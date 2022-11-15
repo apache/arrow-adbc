@@ -17,7 +17,6 @@
 
 #include "statement.h"
 
-#include <netinet/in.h>
 #include <array>
 #include <cerrno>
 #include <cstring>

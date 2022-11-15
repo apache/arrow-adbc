@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,32 +15,22 @@
 # specific language governing permissions and limitations
 # under the License.
 
-set -e
-set -x
-set -o pipefail
+$Uri = "https://$($env:GEMFURY_PUSH_TOKEN)@push.fury.io/arrow-adbc-nightlies/"
 
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 <adbc-src-dir>"
-  exit 1
-fi
-
-source_dir=${1}
-script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-source "${script_dir}/python_util.sh"
-
-echo "=== (${PYTHON_VERSION}) Installing wheels ==="
-for component in ${COMPONENTS}; do
-    if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then
-        pip install --force-reinstall \
-            ${source_dir}/python/${component}/repaired_wheels/*.whl
-    else
-        pip install --force-reinstall \
-            ${source_dir}/python/${component}/dist/*.whl
-    fi
-done
-pip install pytest pyarrow pandas
-
-
-echo "=== (${PYTHON_VERSION}) Testing wheels ==="
-test_packages
+for ($i = 0; $i -lt $args.count; $i++) {
+    echo "Uploading $($args[$i])"
+    $Form = @{
+        package = Get-Item -Path $args[$i]
+    }
+    try {
+        Invoke-WebRequest -uri $Uri -Method Post -Form $Form
+    } catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+        if ($StatusCode -eq 409) {
+            continue
+        } else {
+            echo "Failed to upload: $($StatusCode) $($_.Exception)"
+            exit 1
+        }
+    }
+}

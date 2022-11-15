@@ -25,9 +25,17 @@ project(adbc_driver_postgres
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
 include(CTest)
-find_package(PkgConfig)
 
-pkg_check_modules(LIBPQ REQUIRED libpq)
+if(WIN32)
+  # XXX: for now, assume vcpkg
+  find_package(PostgreSQL REQUIRED)
+  set(LIBPQ_LINK_LIBRARIES PostgreSQL::PostgreSQL)
+  set(LIBPQ_STATIC_LIBRARIES PostgreSQL::PostgreSQL)
+  set(LIBPQ_INCLUDE_DIRS)
+else()
+  find_package(PkgConfig)
+  pkg_check_modules(LIBPQ REQUIRED libpq)
+endif()
 
 add_arrow_lib(adbc_driver_postgres
               SOURCES
