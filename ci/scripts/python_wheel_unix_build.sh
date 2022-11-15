@@ -22,6 +22,9 @@ set -ex
 arch=${1}
 source_dir=${2}
 build_dir=${3}
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+source "${script_dir}/python_util.sh"
 
 function check_visibility {
     if [[ $(uname) != "Linux" ]]; then
@@ -60,39 +63,8 @@ function check_wheels {
 }
 
 echo "=== (${PYTHON_VERSION}) Building ADBC libpq driver ==="
-: ${CMAKE_BUILD_TYPE:=release}
-: ${CMAKE_UNITY_BUILD:=ON}
-: ${CMAKE_GENERATOR:=Ninja}
-: ${VCPKG_ROOT:=/opt/vcpkg}
-# Enable manifest mode
-: ${VCPKG_FEATURE_FLAGS:=manifests}
-# Add our custom triplets
-: ${VCPKG_OVERLAY_TRIPLETS:="${source_dir}/ci/vcpkg/triplets/"}
-
-if [[ $(uname) == "Linux" ]]; then
-    export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
-    export VCPKG_DEFAULT_TRIPLET="x64-linux-static-release"
-else # macOS
-    export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.dylib
-    export VCPKG_DEFAULT_TRIPLET="x64-osx-static-release"
-fi
-
-echo ${VCPKG_DEFAULT_TRIPLET}
-
-mkdir -p ${build_dir}
-pushd ${build_dir}
-
-cmake \
-    -G ${CMAKE_GENERATOR} \
-    -DADBC_BUILD_SHARED=ON \
-    -DADBC_BUILD_STATIC=OFF \
-    -DCMAKE_INSTALL_LIBDIR=lib \
-    -DCMAKE_INSTALL_PREFIX=${build_dir} \
-    -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
-    -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
-    ${source_dir}/c/driver/postgres
-cmake --build . --target install -j
-popd
+# Sets ADBC_POSTGRES_LIBRARY
+build_drivers "${source_dir}" "${build_dir}"
 
 # Check that we don't expose any unwanted symbols
 check_visibility $ADBC_POSTGRES_LIBRARY

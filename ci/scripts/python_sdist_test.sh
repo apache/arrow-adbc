@@ -26,47 +26,15 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-COMPONENTS="adbc_driver_manager adbc_driver_postgres"
-
 source_dir=${1}
 build_dir="${source_dir}/build"
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# TODO(lidavidm): reduce duplication between wheel build/sdist test
+source "${script_dir}/python_util.sh"
 
 echo "=== (${PYTHON_VERSION}) Building ADBC libpq driver ==="
-: ${CMAKE_BUILD_TYPE:=release}
-: ${CMAKE_UNITY_BUILD:=ON}
-: ${CMAKE_GENERATOR:=Ninja}
-: ${VCPKG_ROOT:=/opt/vcpkg}
-# Enable manifest mode
-: ${VCPKG_FEATURE_FLAGS:=manifests}
-# Add our custom triplets
-: ${VCPKG_OVERLAY_TRIPLETS:="${source_dir}/ci/vcpkg/triplets/"}
-
-if [[ $(uname) == "Linux" ]]; then
-    export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
-    export VCPKG_DEFAULT_TRIPLET="x64-linux-static-release"
-else # macOS
-    export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.dylib
-    export VCPKG_DEFAULT_TRIPLET="x64-osx-static-release"
-fi
-
-echo ${VCPKG_DEFAULT_TRIPLET}
-
-mkdir -p ${build_dir}
-pushd ${build_dir}
-
-cmake \
-    -G ${CMAKE_GENERATOR} \
-    -DADBC_BUILD_SHARED=ON \
-    -DADBC_BUILD_STATIC=OFF \
-    -DCMAKE_INSTALL_LIBDIR=lib \
-    -DCMAKE_INSTALL_PREFIX=${build_dir} \
-    -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
-    -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
-    ${source_dir}/c/driver/postgres
-cmake --build . --target install -j
-popd
+# Sets ADBC_POSTGRES_LIBRARY
+build_drivers "${source_dir}" "${build_dir}"
 
 echo "=== (${PYTHON_VERSION}) Installing sdists ==="
 for component in ${COMPONENTS}; do
@@ -75,16 +43,4 @@ done
 pip install pytest pyarrow pandas
 
 echo "=== (${PYTHON_VERSION}) Testing sdists ==="
-python -c "
-import adbc_driver_manager
-import adbc_driver_manager.dbapi
-import adbc_driver_postgres
-import adbc_driver_postgres.dbapi
-"
-
-# Will only run some smoke tests
-# --import-mode required, else tries to import from the source dir instead of installed package
-echo "=== Testing adbc_driver_manager ==="
-python -m pytest -vvx --import-mode append -k "not sqlite" ${source_dir}/python/adbc_driver_manager/tests
-echo "=== Testing adbc_driver_postgres ==="
-python -m pytest -vvx --import-mode append ${source_dir}/python/adbc_driver_postgres/tests
+test_packages

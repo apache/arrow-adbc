@@ -26,11 +26,12 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-COMPONENTS="adbc_driver_manager adbc_driver_postgres"
-
 source_dir=${1}
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Install the built wheels
+source "${script_dir}/python_util.sh"
+
+echo "=== (${PYTHON_VERSION}) Installing sdists ==="
 for component in ${COMPONENTS}; do
     if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then
         pip install --force-reinstall \
@@ -42,16 +43,6 @@ for component in ${COMPONENTS}; do
 done
 pip install pytest pyarrow pandas
 
-# Test that the modules are importable
-python -c "
-import adbc_driver_manager
-import adbc_driver_manager.dbapi
-import adbc_driver_postgres
-import adbc_driver_postgres.dbapi
-"
 
-# Will only run some smoke tests
-echo "=== Testing adbc_driver_manager ==="
-python -m pytest -vvx -k "not sqlite" ${source_dir}/python/adbc_driver_manager/tests
-echo "=== Testing adbc_driver_postgres ==="
-python -m pytest -vvx ${source_dir}/python/adbc_driver_postgres/tests
+echo "=== (${PYTHON_VERSION}) Testing sdists ==="
+test_packages
