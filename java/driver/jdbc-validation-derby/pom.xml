@@ -23,6 +23,10 @@
   <name>Arrow ADBC Driver JDBC Validation with Derby</name>
   <description>Tests validating the JDBC driver against Apache Derby.</description>
 
+  <properties>
+    <maven.deploy.skip>true</maven.deploy.skip>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
