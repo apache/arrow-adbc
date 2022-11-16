@@ -103,11 +103,11 @@ def get_version_from_git():
         .decode()
         .strip("v")  # Tags can have a leading 'v', but the version should not
         .rstrip("\n")
-        .rsplit("-", 2)  # Split the latest tag, commits since tag, and hash
+        .rsplit("-", 3)  # Split the latest tag, commits since tag, and hash
     )
 
     try:
-        release, dev, git = description
+        _, release, dev, git = description
     except ValueError:  # No tags, only the git hash
         # prepend 'g' to match with format returned by 'git describe'
         git = "g{}".format(*description)
@@ -204,3 +204,7 @@ def get_cmdclass(pkg_source_path):
             _write_version(os.path.join(base_dir, pkg_source_path, STATIC_VERSION_FILE))
 
     return dict(sdist=_sdist, build_py=_build_py)
+
+
+if __name__ == "__main__":
+    print("Version: ", get_version())
