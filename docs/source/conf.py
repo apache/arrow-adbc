@@ -18,10 +18,10 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "Apache Arrow ADBC"
+project = "ADBC"
 copyright = "2022, Apache Arrow Developers"
 author = "the Apache Arrow Developers"
-release = "1.0.0a0"
+release = "0.1.0 (dev)"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -59,15 +59,13 @@ breathe_projects = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_logo = "_static/logo.png"
-html_theme = "sphinx_book_theme"
+html_theme = "furo"
 html_theme_options = {
-    "path_to_docs": "docs",
-    "repository_branch": "main",
-    "repository_url": "https://github.com/apache/arrow-adbc",
-    "use_edit_page_button": True,
-    "use_issues_button": True,
-    "use_repository_button": True,
+    "dark_logo": "logo-dark.png",
+    "light_logo": "logo-light.png",
+    "source_repository": "https://github.com/apache/arrow-adbc/",
+    "source_branch": "main",
+    "source_directory": "docs/source/",
 }
 html_static_path = ["_static"]
 

@@ -123,13 +123,13 @@ Classes
 Exceptions
 ==========
 
-.. autoexception:: DatabaseError
-.. autoexception:: DataError
-.. autoexception:: Error
-.. autoexception:: IntegrityError
-.. autoexception:: InterfaceError
-.. autoexception:: InternalError
-.. autoexception:: NotSupportedError
-.. autoexception:: OperationalError
-.. autoexception:: ProgrammingError
-.. autoexception:: Warning
+.. autoexception:: adbc_driver_manager.DatabaseError
+.. autoexception:: adbc_driver_manager.DataError
+.. autoexception:: adbc_driver_manager.Error
+.. autoexception:: adbc_driver_manager.IntegrityError
+.. autoexception:: adbc_driver_manager.InterfaceError
+.. autoexception:: adbc_driver_manager.InternalError
+.. autoexception:: adbc_driver_manager.NotSupportedError
+.. autoexception:: adbc_driver_manager.OperationalError
+.. autoexception:: adbc_driver_manager.ProgrammingError
+.. autoexception:: adbc_driver_manager.Warning
