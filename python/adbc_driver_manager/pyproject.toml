@@ -32,14 +32,10 @@ homepage = "https://arrow.apache.org"
 repository = "https://github.com/apache/arrow-adbc"
 
 [build-system]
-requires = ["Cython", "setuptools >= 61.0.0", "setuptools-scm"]
+requires = ["Cython", "setuptools >= 61.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 markers = [
     "sqlite: tests that require the SQLite driver",
 ]
-
-[tool.setuptools_scm]
-root = "../.."
-write_to = "python/adbc_driver_manager/adbc_driver_manager/_version.py"

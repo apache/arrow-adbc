@@ -27,22 +27,20 @@ if [ "$#" -ne 1 ]; then
 fi
 
 source_dir=${1}
+build_dir="${source_dir}/build"
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 source "${script_dir}/python_util.sh"
 
+echo "=== (${PYTHON_VERSION}) Building ADBC libpq driver ==="
+# Sets ADBC_POSTGRES_LIBRARY
+build_drivers "${source_dir}" "${build_dir}"
+
 echo "=== (${PYTHON_VERSION}) Installing sdists ==="
 for component in ${COMPONENTS}; do
-    if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then
-        pip install --force-reinstall \
-            ${source_dir}/python/${component}/repaired_wheels/*.whl
-    else
-        pip install --force-reinstall \
-            ${source_dir}/python/${component}/dist/*.whl
-    fi
+    pip install --force-reinstall ${source_dir}/python/${component}/dist/*.tar.gz
 done
 pip install pytest pyarrow pandas
-
 
 echo "=== (${PYTHON_VERSION}) Testing sdists ==="
 test_packages

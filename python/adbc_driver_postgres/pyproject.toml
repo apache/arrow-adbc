@@ -32,12 +32,8 @@ homepage = "https://arrow.apache.org"
 repository = "https://github.com/apache/arrow-adbc"
 
 [build-system]
-requires = ["setuptools >= 61.0.0", "setuptools-scm"]
+requires = ["setuptools >= 61.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-
-[tool.setuptools_scm]
-root = "../.."
-write_to = "python/adbc_driver_postgres/adbc_driver_postgres/_version.py"

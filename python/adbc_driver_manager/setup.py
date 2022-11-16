@@ -17,28 +17,73 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
 import shutil
 from pathlib import Path
 
 from setuptools import Extension, setup
 
-# setuptools gets confused by relative paths that extend above the project root
-target = Path(__file__).parent / "adbc_driver_manager/adbc_driver_manager.cc"
-shutil.copy(
-    Path(__file__).parent / "../../c/driver_manager/adbc_driver_manager.cc", target
-)
+source_root = Path(__file__).parent
+repo_root = source_root.joinpath("../../")
+
+# ------------------------------------------------------------
+# Resolve C++ Sources
+
+sources = [
+    "adbc.h",
+    "c/driver_manager/adbc_driver_manager.cc",
+    "c/driver_manager/adbc_driver_manager.h",
+]
+
+for source in sources:
+    target_filename = source.split("/")[-1]
+    source = repo_root.joinpath(source).resolve()
+    target = source_root.joinpath("adbc_driver_manager", target_filename).resolve()
+    if source.is_file():
+        # In-tree build/creating an sdist: copy from project root to local file
+        # so that setuptools isn't confused
+        shutil.copy(source, target)
+    elif not target.is_file():
+        # Out-of-tree build missing the C++ source files
+        raise FileNotFoundError(str(target))
+    # Else, when building from sdist, the target will exist but not the source
+
+# ------------------------------------------------------------
+# Resolve Version (miniver)
+
+
+def get_version_and_cmdclass(pkg_path):
+    """
+    Load version.py module without importing the whole package.
+
+    Template code from miniver.
+    """
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    spec = spec_from_file_location("version", os.path.join(pkg_path, "_version.py"))
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.__version__, module.get_cmdclass(pkg_path)
+
+
+version, cmdclass = get_version_and_cmdclass("adbc_driver_manager")
+
+# ------------------------------------------------------------
+# Setup
 
 setup(
+    cmdclass=cmdclass,
     ext_modules=[
         Extension(
             name="adbc_driver_manager._lib",
             extra_compile_args=["-std=c++17"],
-            include_dirs=["../../", "../../c/driver_manager"],
+            include_dirs=[str(source_root.joinpath("adbc_driver_manager").resolve())],
             language="c++",
             sources=[
                 "adbc_driver_manager/_lib.pyx",
                 "adbc_driver_manager/adbc_driver_manager.cc",
             ],
         )
-    ]
+    ],
+    version=version,
 )

@@ -17,32 +17,26 @@
 # specific language governing permissions and limitations
 # under the License.
 
-set -e
-set -x
-set -o pipefail
-
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 <adbc-src-dir>"
-  exit 1
-fi
+set -ex
 
 source_dir=${1}
-script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-source "${script_dir}/python_util.sh"
+echo "=== (${PYTHON_VERSION}) Building ADBC sdists ==="
 
-echo "=== (${PYTHON_VERSION}) Installing sdists ==="
-for component in ${COMPONENTS}; do
-    if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then
-        pip install --force-reinstall \
-            ${source_dir}/python/${component}/repaired_wheels/*.whl
-    else
-        pip install --force-reinstall \
-            ${source_dir}/python/${component}/dist/*.whl
-    fi
+# https://github.com/pypa/pip/issues/7555
+# Get the latest pip so we have in-tree-build by default
+pip install --upgrade pip setuptools
+
+# For drivers, which bundle shared libraries, defer that to install time
+export _ADBC_IS_SDIST=1
+
+for component in adbc_driver_manager adbc_driver_postgres; do
+    pushd ${source_dir}/python/$component
+
+    echo "=== (${PYTHON_VERSION}) Building $component sdist ==="
+    # python -m build copies to a tempdir, so we can't reference other files in the repo
+    # https://github.com/pypa/pip/issues/5519
+    python setup.py sdist
+
+    popd
 done
-pip install pytest pyarrow pandas
-
-
-echo "=== (${PYTHON_VERSION}) Testing sdists ==="
-test_packages

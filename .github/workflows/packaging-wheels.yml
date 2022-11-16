@@ -197,3 +197,46 @@ jobs:
           ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/dist/*.whl
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+
+  python-sdist:
+    name: "Python sdist"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Show inputs
+        shell: bash
+        run: |
+          echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}"
+          echo "schedule: ${{ github.event.schedule }}"
+          echo "ref: ${{ github.ref }}"
+
+      - name: Build sdist
+        shell: bash
+        run: |
+          docker-compose run python-sdist
+
+      - name: Archive sdist
+        uses: actions/upload-artifact@v3
+        with:
+          name: python${{ matrix.python_version }}-manylinux${{ matrix.manylinux_version }}
+          retention-days: 7
+          path: |
+            python/adbc_driver_manager/dist/*.tar.gz
+            python/adbc_driver_postgres/dist/*.tar.gz
+
+      - name: Test sdist
+        shell: bash
+        run: |
+          docker-compose run python-sdist-test
+
+      - name: Upload sdist to Gemfury
+        shell: bash
+        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true || github.event.inputs.upload_artifacts == 'true')
+        run: |
+          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/dist/*.tar.gz
+        env:
+          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
