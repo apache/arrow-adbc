@@ -23,6 +23,11 @@ main() {
     local settings_file=$(mktemp adbc.settingsXXXXXXXX.xml --tmpdir)
     trap 'rm -f "$settings_file"' ERR EXIT INT TERM
 
+    if [[ -z "${GEMFURY_PUSH_TOKEN}" ]]; then
+        echo "GEMFURY_PUSH_TOKEN must be set"
+        exit 1
+    fi
+
     pushd "${source_dir}/java"
 
     cat <<SETTINGS > "${settings_file}"
