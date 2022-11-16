@@ -198,6 +198,96 @@ jobs:
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
+  python-windows:
+    name: "Python ${{ matrix.python_version }} Windows"
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python_version: ["3.9.13", "3.10.8"]
+        include:
+          - python_version: "3.9.13"
+            PYTHON_HOME: "C:\\Python39"
+          - python_version: "3.10.8"
+            PYTHON_HOME: "C:\\Python310"
+
+      # Limit parallelism; gemfury appears to return 409 CONFLICT on concurrent uploads
+      max-parallel: 1
+    env:
+      PYTHON_VERSION: "${{ matrix.python_version }}"
+      # Where to install vcpkg
+      VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Show inputs
+        shell: pwsh
+        run: |
+          echo "upload_artifacts: ${{ inputs.upload_artifacts }}"
+          echo "schedule: ${{ github.event.schedule }}"
+          echo "ref: ${{ github.ref }}"
+
+      - name: Install Chocolatey Dependencies
+        shell: pwsh
+        run: |
+          choco install --no-progress -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+          choco install --no-progress -y visualcpp-build-tools
+
+      - name: Retrieve VCPKG version from .env
+        shell: pwsh
+        run: |
+          Select-String -Path .env -Pattern 'VCPKG="(.+)"' | % {"VCPKG_VERSION=$($_.matches.groups[1])"} >> $env:GITHUB_ENV
+
+      - name: Install vcpkg
+        shell: pwsh
+        run: |
+          echo $env:VCPKG_VERSION
+          git clone --shallow-since=2021-04-01 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
+          pushd $env:VCPKG_ROOT
+          .\bootstrap-vcpkg.bat -disableMetrics
+          popd
+
+      - name: Install Python ${{ matrix.python_version }}
+        shell: pwsh
+        run: |
+          choco install --no-progress -y python --version=${{ matrix.python_version }}
+          echo ("PATH=${{ matrix.PYTHON_HOME }};" + $env:PATH) >> $env:GITHUB_ENV
+
+      - name: Build wheel
+        shell: cmd
+        run: |
+          where python.exe
+          .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build
+
+      - name: Archive wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: python${{ matrix.python_version }}-windows
+          retention-days: 7
+          path: |
+            python/adbc_driver_manager/dist/*.whl
+            python/adbc_driver_postgres/dist/*.whl
+
+      - name: Test wheel
+        shell: cmd
+        run: |
+          where python.exe
+          python -m venv venv
+          CALL venv\Scripts\activate.bat
+          .\ci\scripts\python_wheel_windows_test.bat %cd%
+
+      - name: Upload wheels to Gemfury
+        shell: pwsh
+        if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
+        run: |
+          foreach ($wheel in Get-ChildItem python\adbc_driver_*\dist\*.whl) {
+              .\ci\scripts\python_wheel_upload.ps1 $wheel.FullName
+          }
+        env:
+          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+
   python-sdist:
     name: "Python sdist"
     runs-on: ubuntu-latest
