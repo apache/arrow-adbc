@@ -62,7 +62,8 @@ jobs:
         shell: bash
         if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
         run: |
-          sudo ./ci/scripts/java_jar_upload.sh "$(pwd)"
+          # Preserve env vars so GEMFURY_PUSH_TOKEN gets preserved
+          sudo -E ./ci/scripts/java_jar_upload.sh "$(pwd)"
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
