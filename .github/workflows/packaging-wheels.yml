@@ -48,7 +48,7 @@ jobs:
       - name: Build and test
         shell: bash
         run: |
-          docker-compose run java-jars
+          docker-compose run java-dist
 
       - name: Archive JARs
         uses: actions/upload-artifact@v3
@@ -56,7 +56,8 @@ jobs:
           name: java
           retention-days: 7
           path: |
-            java/**/target/*.jar
+            dist/*.jar
+            dist/*.pom
 
       - name: Upload JARs to Gemfury
         shell: bash

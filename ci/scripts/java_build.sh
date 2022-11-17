@@ -18,10 +18,44 @@
 
 set -ex
 
-source_dir=${1}
+main() {
+    local -r source_dir=${1}
+    local -r dist_dir=${2}
 
-pushd ${source_dir}/java
+    echo "=== Clean artifacts from local Maven repository ==="
+    local -r maven_repo=$(mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout)/org/apache/arrow/adbc
+    if [[ -d "${maven_repo}" ]]; then
+        find "${maven_repo}" \
+             "(" -name "*.jar" -o -name "*.zip" -o -name "*.pom" ")" \
+             -exec echo {} ";" \
+             -delete
+    fi
 
-mvn -B -DskipTests -T 2C install
+    echo "=== Build ==="
+    pushd ${source_dir}/java
+    mvn clean \
+        install \
+        assembly:single \
+        source:jar \
+        javadoc:jar \
+        -Papache-release \
+        -DdescriptorId=source-release \
+        -T 2C \
+        -DskipTests \
+        -Dgpg.skip
+    popd
 
-popd
+    if [[ -z "${dist_dir}" ]]; then
+        echo "=== No dist_dir provided, skipping artifact copy ==="
+    else
+        echo "=== Copying artifacts to dist dir ==="
+        mkdir -p "${dist_dir}"
+
+        find "${maven_repo}" \
+             "(" -name "*.jar" -o -name "*.pom" ")" \
+             -exec echo {} ";" \
+             -exec cp {} "${dist_dir}" ";"
+    fi
+}
+
+main "$@"
