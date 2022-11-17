@@ -215,7 +215,7 @@ jobs:
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg
-      VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
+      VCPKG_ROOT: "${{ github.workspace }}\vcpkg"
     steps:
       - uses: actions/checkout@v3
         with:
@@ -259,6 +259,7 @@ jobs:
         shell: cmd
         run: |
           where python.exe
+          CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
           .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build
 
       - name: Archive wheels
