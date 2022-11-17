@@ -32,11 +32,11 @@ services:
 
   ############################ Java JARs ######################################
 
-  java-jars:
+  java-dist:
     image: ${ARCH}/maven:${MAVEN}-jdk-${JDK}
     volumes:
       - .:/adbc:delegated
-    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc && /adbc/ci/scripts/java_test.sh /adbc'"
+    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
 
   ############################ Python sdist ##################################
 
