@@ -17,10 +17,9 @@
 
 breathe
 doxygen
+furo
 make
 numpydoc
-pydata-sphinx-theme>=0.8.0
-sphinx
-sphinx-book-theme>=0.3.0
+sphinx>=5.0
 sphinx-copybutton
 sphinx-design
