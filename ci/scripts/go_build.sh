@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,8 +16,27 @@
 # specific language governing permissions and limitations
 # under the License.
 
-Cython
-pandas
-pyarrow>=8.0.0
-pytest
-setuptools
+set -e
+
+main() {
+    local -r source_dir="${1}"
+    local -r build_dir="${2}"
+    local install_dir="${3}"
+
+    if [[ -z "${install_dir}" ]]; then
+        install_dir="${build_dir}/local"
+    fi
+
+    if [[ "${CGO_ENABLED}" = 1 ]]; then
+        export LD_LIBRARY_PATH="${install_dir}/lib"
+        export DYLD_LIBRARY_PATH="${install_dir}/lib"
+    fi
+
+    pushd "${source_dir}/go/adbc"
+
+    go build -v ./...
+
+    popd
+}
+
+main "$@"

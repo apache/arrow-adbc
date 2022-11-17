@@ -82,119 +82,67 @@ jobs:
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_glib.txt \
             --file ci/conda_env_python.txt
-      - name: Build/Test SQLite3 Driver
+
+      - name: Build SQLite3 Driver
         shell: bash -l {0}
         run: |
-          mkdir -p build/driver_sqlite
-          pushd build/driver_sqlite
-          cmake ../../c/driver/sqlite \
-            -DADBC_BUILD_SHARED=ON \
-            -DADBC_BUILD_STATIC=OFF \
-            -DADBC_BUILD_TESTS=ON \
-            -DADBC_USE_ASAN=ON \
-            -DADBC_USE_UBSAN=ON \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_INSTALL_LIBDIR=lib \
-            -DCMAKE_INSTALL_PREFIX=$HOME/local \
-            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
-          cmake --build . --target install
-          ctest --output-on-failure --no-tests=error
-          popd
-      - name: Build/Test Driver Manager
+          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test SQLite3 Driver
         shell: bash -l {0}
         run: |
-          mkdir -p build/driver_manager
-          pushd build/driver_manager
-          cmake ../../c/driver_manager \
-            -DADBC_BUILD_SHARED=ON \
-            -DADBC_BUILD_STATIC=OFF \
-            -DADBC_BUILD_TESTS=ON \
-            -DADBC_USE_ASAN=ON \
-            -DADBC_USE_UBSAN=ON \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_INSTALL_LIBDIR=lib \
-            -DCMAKE_INSTALL_PREFIX=$HOME/local \
-            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
-          cmake --build .
-          export DYLD_LIBRARY_PATH=$(pwd):$HOME/local/lib
-          export LD_LIBRARY_PATH=$(pwd):$HOME/local/lib
-          ./adbc-driver-manager-test
-          popd
-      - name: Install Driver Manager (No ASan)
+          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+      - name: Build Postgres Driver
+        shell: bash -l {0}
+        # No test for now, since we need to spin up Postgres itself
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRES=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Build Driver Manager
         shell: bash -l {0}
         run: |
-          mkdir -p build/driver_manager_no_asan
-          pushd build/driver_manager_no_asan
-          cmake ../../c/driver_manager \
-            -DADBC_BUILD_SHARED=ON \
-            -DADBC_BUILD_STATIC=OFF \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_INSTALL_LIBDIR=lib \
-            -DCMAKE_INSTALL_PREFIX=$HOME/local \
-            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
-          cmake --build . --target install
-          popd
-      - name: Build/Test SQLite3 Driver (No ASan)
+          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test Driver Manager
         shell: bash -l {0}
         run: |
-          # Build a no-ASan version that Python can easily load
-          mkdir -p build/driver_sqlite_no_asan
-          pushd build/driver_sqlite_no_asan
-          cmake ../../c/driver/sqlite \
-            -DADBC_BUILD_SHARED=ON \
-            -DADBC_BUILD_STATIC=OFF \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_INSTALL_LIBDIR=lib \
-            -DCMAKE_INSTALL_PREFIX=$HOME/local \
-            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
-          cmake --build . --target install
-          popd
-      - name: Build/Test Python Driver Manager
+          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+
+      - name: Build and Install (No ASan)
         shell: bash -l {0}
         run: |
-          pushd python/adbc_driver_manager
-          pip install -e .[test]
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
-          export LD_LIBRARY_PATH=$HOME/local/lib
-          python -m pytest -vv
-          popd
-      - name: Build/Test GLib Driver Manager
+          # Python and others need something that don't use the ASAN runtime
+          rm -rf "$(pwd)/build"
+          export BUILD_ALL=1
+          export ADBC_BUILD_TESTS=OFF
+          export ADBC_USE_ASAN=OFF
+          export ADBC_USE_UBSAN=OFF
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+
+      - name: Build Python Driver Manager
         shell: bash -l {0}
         run: |
-          meson setup \
-            --buildtype=debug \
-            --cmake-prefix-path=$HOME/local:$CONDA_PREFIX \
-            --libdir=lib \
-            --pkg-config-path=$HOME/local/lib/pkgconfig:$CONDA_PREFIX/lib/pkgconfig \
-            --prefix=$HOME/local \
-            build/glib \
-            glib
-          meson install -C build/glib
-          export BUNDLE_GEMFILE=$(pwd)/glib/Gemfile
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
-          export GI_TYPELIB_PATH=$(pwd)/build/glib/adbc-glib:$CONDA_PREFIX/lib/girepository-1.0
-          export LD_LIBRARY_PATH=$HOME/local/lib
-          bundle install
-          pushd build/glib
-          bundle exec \
-            env DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH} \
-              ruby ../../glib/test/run.rb
-          popd
-      - name: Test Ruby Driver Manager
+          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Test Python Driver Manager
         shell: bash -l {0}
         run: |
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
-          export GI_TYPELIB_PATH=$HOME/local/lib/girepository-1.0:$CONDA_PREFIX/lib/girepository-1.0
-          export LD_LIBRARY_PATH=$HOME/local/lib
-          export PKG_CONFIG_PATH=$HOME/local/lib/pkgconfig:$CONDA_PREFIX/lib/pkgconfig
-          pushd ruby
-          bundle install
-          bundle exec \
-            env DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH} \
-              ruby test/run.rb
-          bundle exec rake build
-          gem install pkg/*.gem
-          popd
+          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Build Python Driver Postgres
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRES=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Test Python Driver Postgres
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRES=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+
+      - name: Build GLib Driver Manager
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/glib_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Test GLib/Ruby Driver Manager
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/glib_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+
       - name: Build Docs
         shell: bash -l {0}
         run: |
