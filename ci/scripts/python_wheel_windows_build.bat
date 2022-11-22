@@ -50,15 +50,17 @@ set ADBC_POSTGRES_LIBRARY=%build_dir%\bin\adbc_driver_postgres.dll
 
 popd
 
-python -m pip install --upgrade pip
+python -m pip install --upgrade pip delvewheel
 
 FOR %%c IN (adbc_driver_manager adbc_driver_postgres) DO (
     pushd %source_dir%\python\%%c
 
     echo "=== (%PYTHON_VERSION%) Building %%c wheel ==="
-    @REM bundle the MSVC runtime
-    cp "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Redist\MSVC\14.16.27012\x64\Microsoft.VC141.CRT\msvcp140.dll" %%c\msvcp140.dll
     python -m pip wheel -w dist -vvv . || exit /B 1
+
+    FOR %%w IN (dist\*.whl) DO (
+        delvewheel repair -w dist\ %%w
+    )
 
     popd
 )
