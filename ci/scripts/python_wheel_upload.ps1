@@ -15,18 +15,24 @@
 # specific language governing permissions and limitations
 # under the License.
 
-$Uri = "https://$($env:GEMFURY_PUSH_TOKEN)@push.fury.io/arrow-adbc-nightlies/"
+$Uri = "https://push.fury.io/arrow-adbc-nightlies/"
 
 for ($i = 0; $i -lt $args.count; $i++) {
     echo "Uploading $($args[$i])"
+    $Token = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$($env:GEMFURY_PUSH_TOKEN):"))
     $Form = @{
         package = Get-Item -Path $args[$i]
     }
+    $Headers = @{
+        Authorization = "Basic $($Token)"
+    }
     try {
-        Invoke-WebRequest -uri $Uri -Method Post -Form $Form
+        $Response = Invoke-WebRequest -uri $Uri -Method Post -Form $Form -Headers $Headers
+        echo "Uploaded $($args[$i])"
     } catch {
         $StatusCode = $_.Exception.Response.StatusCode.value__
         if ($StatusCode -eq 409) {
+            echo "Already uploaded $($args[$i])"
             continue
         } else {
             echo "Failed to upload: $($StatusCode) $($_.Exception)"
