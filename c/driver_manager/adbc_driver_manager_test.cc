@@ -18,11 +18,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <arrow/c/bridge.h>
-#include <arrow/record_batch.h>
-#include <arrow/table.h>
-#include <arrow/testing/matchers.h>
-
 #include <memory>
 #include <string>
 #include <vector>

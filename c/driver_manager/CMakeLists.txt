@@ -47,11 +47,10 @@ endforeach()
 install(FILES "${REPOSITORY_ROOT}/adbc.h" adbc_driver_manager.h DESTINATION include)
 
 if(ADBC_BUILD_TESTS)
-  find_package(Arrow REQUIRED)
   if(ADBC_TEST_LINKAGE STREQUAL "shared")
-    set(TEST_LINK_LIBS adbc_driver_manager_shared arrow_shared)
+    set(TEST_LINK_LIBS adbc_driver_manager_shared)
   else()
-    set(TEST_LINK_LIBS adbc_driver_manager_static arrow_static)
+    set(TEST_LINK_LIBS adbc_driver_manager_static)
   endif()
 
   add_test_case(driver_manager_test
