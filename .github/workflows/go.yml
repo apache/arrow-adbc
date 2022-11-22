@@ -64,9 +64,7 @@ jobs:
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Go Build
         run: |
-          pushd go/adbc
-          go build -v ./...
-          popd
+          ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Run Staticcheck
         run: |
           pushd go/adbc
@@ -74,9 +72,7 @@ jobs:
           popd
       - name: Go Test
         run: |
-          pushd go/adbc
-          go test -v ./...
-          popd
+          ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
   go-driver-mgr-unix:
     name: "${{ matrix.os }} - CGO driver mgr"
@@ -124,18 +120,11 @@ jobs:
       - name: Build SQLite3 Driver
         shell: bash -l {0}
         run: |
-          mkdir -p build/driver_sqlite
-          pushd build/driver_sqlite
-          cmake ../../c/driver/sqlite \
-            -DADBC_BUILD_SHARED=ON \
-            -DADBC_BUILD_STATIC=OFF \
-            -DADBC_BUILD_TESTS=OFF \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_INSTALL_LIBDIR=lib \
-            -DCMAKE_INSTALL_PREFIX=$HOME/local \
-            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX
-          cmake --build . --target install
-          popd
+          export BUILD_ALL=0
+          export BUILD_DRIVER_SQLITE=1
+          export ADBC_USE_ASAN=OFF
+          export ADBC_USE_UBSAN=OFF
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Install staticcheck
         shell: bash -l {0}
         if: ${{ !contains('macos-latest', matrix.os) }}
@@ -143,12 +132,8 @@ jobs:
       - name: Go Build
         shell: bash -l {0}
         run: |
-          pushd go/adbc
           export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
-          export LD_LIBRARY_PATH=$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
-          go build -v ./...
-          popd
+          ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Run Staticcheck
         if: ${{ !contains('macos-latest', matrix.os) }}
         shell: bash -l {0}
@@ -159,9 +144,5 @@ jobs:
       - name: Go Test
         shell: bash -l {0}
         run: |
-          pushd go/adbc
           export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
-          export LD_LIBRARY_PATH=$HOME/local/lib
-          export DYLD_LIBRARY_PATH=$HOME/local/lib
-          go test -exec "env DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH" -v ./...
-          popd
+          ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
