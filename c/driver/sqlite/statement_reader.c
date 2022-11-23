@@ -549,7 +549,7 @@ AdbcStatusCode StatementReaderAppendInt64ToBinary(struct ArrowBuffer* offsets,
   static size_t kReserve = 21;
   CHECK_NA(INTERNAL, ArrowBufferReserve(binary, kReserve), error);
   char* output = (char*)(binary->data + binary->size_bytes);
-  int written = snprintf(output, kReserve, "%ld", value);
+  int written = snprintf(output, kReserve, "%lld", value);
   *offset += written;
   binary->size_bytes += written;
   ArrowBufferAppendUnsafe(offsets, offset, sizeof(int32_t));

@@ -275,6 +275,33 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode SqliteConnectionGetTableTypesImpl(
+                                                 struct ArrowSchema* schema,
+                                                 struct ArrowArray* array,
+                                                 struct AdbcError* error) {
+  CHECK_NA(INTERNAL, ArrowSchemaInit(schema, NANOARROW_TYPE_STRUCT), error);
+  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema, /*num_columns=*/1), error);
+  CHECK_NA(INTERNAL, ArrowSchemaInit(schema->children[0], NANOARROW_TYPE_STRING), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(schema->children[0], "table_type"), error);
+  schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array, schema, NULL), error);
+  CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
+
+  struct ArrowStringView value = {0};
+  value.data = "table";
+  value.n_bytes = strlen(value.data);
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], value), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  value.data = "view";
+  value.n_bytes = strlen(value.data);
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], value), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+
+  CHECK_NA(INTERNAL, ArrowArrayFinishBuilding(array, NULL), error);
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode SqliteConnectionGetTableTypes(struct AdbcConnection* connection,
                                              struct ArrowArrayStream* out,
                                              struct AdbcError* error) {
@@ -284,7 +311,13 @@ AdbcStatusCode SqliteConnectionGetTableTypes(struct AdbcConnection* connection,
   struct ArrowSchema schema = {0};
   struct ArrowArray array = {0};
 
-  return BatchToArrayStream(&values, &schema, out, error);
+  AdbcStatusCode status = SqliteConnectionGetTableTypesImpl(&schema, &array, error);
+  if (status != ADBC_STATUS_OK) {
+    if (schema.release) schema.release(&schema);
+    if (array.release) array.release(&array);
+    return status;
+  }
+  return BatchToArrayStream(&array, &schema, out, error);
 }
 
 AdbcStatusCode SqliteConnectionReadPartition(struct AdbcConnection* connection,
@@ -524,7 +557,7 @@ AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
     int64_t expected = sqlite3_bind_parameter_count(stmt->stmt);
     int64_t actual = stmt->binder.schema.n_children;
     if (actual != expected) {
-      SetError(error, "Parameter count mismatch: expected %ld but found %ld", expected,
+      SetError(error, "Parameter count mismatch: expected %lld but found %lld", expected,
                actual);
       return ADBC_STATUS_INVALID_STATE;
     }
@@ -692,7 +725,9 @@ AdbcStatusCode SqliteStatementExecutePartitions(struct AdbcStatement* statement,
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }  // NOLINT(whitespace/indent)
 
-AdbcStatusCode SqliteInitFunc(int version, void* driver, struct AdbcError* error);
+AdbcStatusCode SqliteInitFunc(int version, void* driver, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
 
 // Public names
 
