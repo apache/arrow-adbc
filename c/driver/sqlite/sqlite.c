@@ -269,10 +269,47 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
                                               struct AdbcError* error) {
   CHECK_CONN_INIT(connection, error);
   struct SqliteConnection* conn = (struct SqliteConnection*)connection->private_data;
-  // TODO: map 'catalog' to SQLite attached database
-  // TODO: this should query the table and try to infer the types off
-  // of the first few rows
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (catalog != NULL && strlen(catalog) > 0) {
+    // TODO: map 'catalog' to SQLite attached database
+    memset(schema, 0, sizeof(*schema));
+    return ADBC_STATUS_OK;
+  } else if (db_schema != NULL && strlen(db_schema) > 0) {
+    // SQLite does not support schemas
+    memset(schema, 0, sizeof(*schema));
+    return ADBC_STATUS_OK;
+  } else if (table_name == NULL) {
+    SetError(error, "AdbcConnectionGetTableSchema: must provide table_name");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  struct StringBuilder query = {0};
+  StringBuilderInit(&query, /*initial_size=*/64);
+  StringBuilderAppend(&query, "SELECT * FROM ");
+  StringBuilderAppend(&query, table_name);
+
+  sqlite3_stmt* stmt = NULL;
+  int rc = sqlite3_prepare_v2(conn->conn, query.buffer, query.size, &stmt, /*pzTail=*/NULL);
+  StringBuilderReset(&query);
+  if (rc != SQLITE_OK) {
+    SetError(error, "Failed to prepare query: %s", sqlite3_errmsg(conn->conn));
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  struct ArrowArrayStream stream = {0};
+  AdbcStatusCode status = SqliteExportReader(conn->conn, stmt, /*binder=*/NULL,
+                                             /*batch_size=*/64, &stream, error);
+  if (status == ADBC_STATUS_OK) {
+    int code = stream.get_schema(&stream, schema);
+    if (code != 0) {
+      SetError(error, "Failed to get schema: (%d) %s", code, strerror(code));
+      status = ADBC_STATUS_IO;
+    }
+  }
+  if (stream.release) {
+    stream.release(&stream);
+  }
+  (void)sqlite3_finalize(stmt);
+  return status;
 }
 
 AdbcStatusCode SqliteConnectionGetTableTypesImpl(
