@@ -230,25 +230,139 @@ AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode SqliteConnectionGetInfoImpl(uint32_t* info_codes, size_t info_codes_length,
+                                           struct ArrowSchema* schema,
+                                           struct ArrowArray* array,
+                                           struct AdbcError* error) {
+  CHECK_NA(INTERNAL, ArrowSchemaInit(schema, NANOARROW_TYPE_STRUCT), error);
+  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema, /*num_columns=*/2), error);
+
+  CHECK_NA(INTERNAL, ArrowSchemaInit(schema->children[0], NANOARROW_TYPE_UINT32), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(schema->children[0], "info_name"), error);
+  schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  struct ArrowSchema* info_value = schema->children[1];
+  // TODO(apache/arrow-nanoarrow#73): formal union support
+  // initialize with dummy then override
+  CHECK_NA(INTERNAL, ArrowSchemaInit(info_value, NANOARROW_TYPE_UINT32), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetFormat(info_value, "+ud:0,1,2,3,4,5"), error);
+
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value, "info_value"), error);
+  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(info_value, /*num_columns=*/6), error);
+  CHECK_NA(INTERNAL, ArrowSchemaInit(info_value->children[0], NANOARROW_TYPE_STRING),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[0], "string_value"), error);
+  CHECK_NA(INTERNAL, ArrowSchemaInit(info_value->children[1], NANOARROW_TYPE_BOOL),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[1], "bool_value"), error);
+  CHECK_NA(INTERNAL, ArrowSchemaInit(info_value->children[2], NANOARROW_TYPE_INT64),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[2], "int64_value"), error);
+  CHECK_NA(INTERNAL, ArrowSchemaInit(info_value->children[3], NANOARROW_TYPE_INT32),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[3], "int32_bitmask"), error);
+  CHECK_NA(INTERNAL, ArrowSchemaInit(info_value->children[4], NANOARROW_TYPE_LIST),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[4], "string_list"), error);
+  CHECK_NA(INTERNAL, ArrowSchemaInit(info_value->children[5], NANOARROW_TYPE_MAP), error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetName(info_value->children[5], "int32_to_int32_list_map"), error);
+
+  CHECK_NA(INTERNAL,
+           ArrowSchemaAllocateChildren(info_value->children[4], /*num_columns=*/1),
+           error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaInit(info_value->children[4]->children[0], NANOARROW_TYPE_STRING),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[4]->children[0], "item"),
+           error);
+
+  // XXX: nanoarrow could possibly use helpers for nested types like this
+  CHECK_NA(INTERNAL,
+           ArrowSchemaAllocateChildren(info_value->children[5], /*num_columns=*/1),
+           error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaInit(info_value->children[5]->children[0], NANOARROW_TYPE_STRUCT),
+           error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaAllocateChildren(info_value->children[5]->children[0],
+                                       /*num_columns=*/2),
+           error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaInit(info_value->children[5]->children[0]->children[0],
+                           NANOARROW_TYPE_INT32),
+           error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetName(info_value->children[5]->children[0]->children[0], "key"),
+           error);
+  info_value->children[5]->children[0]->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+  CHECK_NA(INTERNAL,
+           ArrowSchemaInit(info_value->children[5]->children[0]->children[1],
+                           NANOARROW_TYPE_LIST),
+           error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetName(info_value->children[5]->children[0]->children[1], "item"),
+           error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaAllocateChildren(info_value->children[5]->children[0]->children[1],
+                                       /*num_columns=*/1),
+           error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaInit(info_value->children[5]->children[0]->children[1]->children[0],
+                           NANOARROW_TYPE_INT32),
+           error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetName(
+               info_value->children[5]->children[0]->children[1]->children[0], "item"),
+           error);
+
+  struct ArrowError na_error = {0};
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array, schema, &na_error), &na_error,
+                  error);
+  CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
+
+  for (size_t i = 0; i < info_codes_length; i++) {
+    switch (info_codes[i]) {
+      case ADBC_INFO_VENDOR_NAME:
+      case ADBC_INFO_VENDOR_VERSION:
+      case ADBC_INFO_DRIVER_NAME:
+      case ADBC_INFO_DRIVER_VERSION:
+      case ADBC_INFO_DRIVER_ARROW_VERSION:
+      default:
+        // Ignore
+        continue;
+    }
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  }
+
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuilding(array, &na_error), &na_error, error);
+
+  return ADBC_STATUS_OK;
+}  // NOLINT(whitespace/indent)
+
 AdbcStatusCode SqliteConnectionGetInfo(struct AdbcConnection* connection,
                                        uint32_t* info_codes, size_t info_codes_length,
                                        struct ArrowArrayStream* out,
                                        struct AdbcError* error) {
   CHECK_CONN_INIT(connection, error);
-  struct SqliteConnection* conn = (struct SqliteConnection*)connection->private_data;
 
   if (!info_codes) {
     info_codes = kSupportedInfoCodes;
     info_codes_length = sizeof(kSupportedInfoCodes);
   }
 
-  for (size_t i = 0; i < info_codes_length; i++) {
-    switch (info_codes[i]) {}
+  struct ArrowSchema schema = {0};
+  struct ArrowArray array = {0};
+
+  AdbcStatusCode status =
+      SqliteConnectionGetInfoImpl(info_codes, info_codes_length, &schema, &array, error);
+  if (status != ADBC_STATUS_OK) {
+    if (schema.release) schema.release(&schema);
+    if (array.release) array.release(&array);
+    return status;
   }
 
-  // TODO: export
-
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return BatchToArrayStream(&array, &schema, out, error);
 }
 
 AdbcStatusCode SqliteConnectionGetObjects(struct AdbcConnection* connection, int depth,
@@ -288,7 +402,8 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
   StringBuilderAppend(&query, table_name);
 
   sqlite3_stmt* stmt = NULL;
-  int rc = sqlite3_prepare_v2(conn->conn, query.buffer, query.size, &stmt, /*pzTail=*/NULL);
+  int rc =
+      sqlite3_prepare_v2(conn->conn, query.buffer, query.size, &stmt, /*pzTail=*/NULL);
   StringBuilderReset(&query);
   if (rc != SQLITE_OK) {
     SetError(error, "Failed to prepare query: %s", sqlite3_errmsg(conn->conn));
@@ -312,8 +427,7 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
   return status;
 }
 
-AdbcStatusCode SqliteConnectionGetTableTypesImpl(
-                                                 struct ArrowSchema* schema,
+AdbcStatusCode SqliteConnectionGetTableTypesImpl(struct ArrowSchema* schema,
                                                  struct ArrowArray* array,
                                                  struct AdbcError* error) {
   CHECK_NA(INTERNAL, ArrowSchemaInit(schema, NANOARROW_TYPE_STRUCT), error);

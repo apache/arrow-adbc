@@ -41,14 +41,26 @@ void StringBuilderAppend(struct StringBuilder* builder, const char* value);
 void StringBuilderReset(struct StringBuilder* builder);
 
 /// Check an NanoArrow status code.
-#define CHECK_NA(CODE, EXPR, ERROR)                                  \
-  do {                                                               \
-    ArrowErrorCode arrow_error_code = (EXPR);                        \
-    if (arrow_error_code != 0) {                                     \
-      SetError(ERROR, "%s failed: (%d) %s", #CODE, arrow_error_code, \
-               strerror(arrow_error_code));                          \
-      return ADBC_STATUS_##CODE;                                     \
-    }                                                                \
+#define CHECK_NA(CODE, EXPR, ERROR)                                                    \
+  do {                                                                                 \
+    ArrowErrorCode arrow_error_code = (EXPR);                                          \
+    if (arrow_error_code != 0) {                                                       \
+      SetError(ERROR, "%s failed: (%d) %s\nDetail: %s:%d %s", #EXPR, arrow_error_code, \
+               strerror(arrow_error_code), __FILE__, __LINE__, __FUNCTION__);          \
+      return ADBC_STATUS_##CODE;                                                       \
+    }                                                                                  \
+  } while (0)
+
+/// Check an NanoArrow status code.
+#define CHECK_NA_DETAIL(CODE, EXPR, NA_ERROR, ERROR)                              \
+  do {                                                                            \
+    ArrowErrorCode arrow_error_code = (EXPR);                                     \
+    if (arrow_error_code != 0) {                                                  \
+      SetError(ERROR, "%s failed: (%d) %s: %s\nDetail: %s:%d %s", #EXPR,          \
+               arrow_error_code, strerror(arrow_error_code), (NA_ERROR)->message, \
+               __FILE__, __LINE__, __FUNCTION__);                                 \
+      return ADBC_STATUS_##CODE;                                                  \
+    }                                                                             \
   } while (0)
 
 /// Check an NanoArrow status code.
