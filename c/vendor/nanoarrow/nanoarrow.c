@@ -2295,6 +2295,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       }
       break;
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_MAP:
       if (array->n_children != 1) {
         ArrowErrorSet(error, "Expected 1 child of list array but found %d child arrays",
                       (int)array->n_children);
