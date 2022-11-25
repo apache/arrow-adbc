@@ -69,3 +69,10 @@ void StringBuilderReset(struct StringBuilder* builder);
     ArrowErrorCode arrow_error_code = (EXPR);           \
     if (arrow_error_code != 0) return arrow_error_code; \
   } while (0)
+
+/// Check an ADBC status code.
+#define RAISE(EXPR)                                                  \
+  do {                                                               \
+    AdbcStatusCode adbc_status_code = (EXPR);                        \
+    if (adbc_status_code != ADBC_STATUS_OK) return adbc_status_code; \
+  } while (0)

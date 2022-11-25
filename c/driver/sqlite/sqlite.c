@@ -230,6 +230,29 @@ AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode SqliteConnectionGetInfoAppendStringImpl(struct ArrowArray* array,
+                                                       uint32_t info_code,
+                                                       const char* info_value,
+                                                       struct AdbcError* error) {
+  CHECK_NA(INTERNAL, ArrowArrayAppendUInt(array->children[0], info_code), error);
+  // Append to type variant
+  struct ArrowStringView value;
+  value.data = info_value;
+  value.n_bytes = strlen(info_value);
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[1]->children[0], value),
+           error);
+  // Append type code (by hand)
+  struct ArrowBuffer* codes = ArrowArrayBuffer(array->children[1], 0);
+  CHECK_NA(INTERNAL, ArrowBufferAppendInt8(codes, 0), error);
+  // Append type offset (by hand)
+  struct ArrowBuffer* offsets = ArrowArrayBuffer(array->children[1], 1);
+  CHECK_NA(INTERNAL,
+           ArrowBufferAppendInt32(offsets, array->children[1]->children[0]->length - 1),
+           error);
+  array->children[1]->length++;
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode SqliteConnectionGetInfoImpl(uint32_t* info_codes, size_t info_codes_length,
                                            struct ArrowSchema* schema,
                                            struct ArrowArray* array,
@@ -324,10 +347,26 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(uint32_t* info_codes, size_t info_cod
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
+        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i], "SQLite",
+                                                      error));
+        break;
       case ADBC_INFO_VENDOR_VERSION:
+        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
+                                                      sqlite3_libversion(), error));
+        break;
       case ADBC_INFO_DRIVER_NAME:
+        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
+                                                      "ADBC SQLite Driver", error));
+        break;
       case ADBC_INFO_DRIVER_VERSION:
+        // TODO(lidavidm): fill in driver version
+        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i], "(unknown)",
+                                                      error));
+        break;
       case ADBC_INFO_DRIVER_ARROW_VERSION:
+        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
+                                                      NANOARROW_BUILD_ID, error));
+        break;
       default:
         // Ignore
         continue;
