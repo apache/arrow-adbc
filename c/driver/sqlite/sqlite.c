@@ -620,6 +620,33 @@ AdbcStatusCode SqliteConnectionGetObjectsImpl(
                   error);
   CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
 
+  struct ArrowArray* catalog_name_col = array->children[0];
+  struct ArrowArray* catalog_db_schemas_col = array->children[1];
+
+  struct ArrowStringView str = {0};
+
+  // TODO: support proper filters
+  if (!catalog || strlen(catalog) == 0 || strcmp(catalog, "main") == 0) {
+    // Default the primary catalog to "main"
+    // https://www.sqlite.org/cli.html
+    // > The ".databases" command shows a list of all databases open
+    // > in the current connection. There will always be at least
+    // > 2. The first one is "main", the original database opened.
+
+    str.data = "main";
+    str.n_bytes = strlen(str.data);
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, str), error);
+
+    if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
+    } else {
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+
+    // TODO: implement "temp", other attached databases as catalogs
+  }
+
   CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuilding(array, &na_error), &na_error, error);
   return ADBC_STATUS_OK;
 }
