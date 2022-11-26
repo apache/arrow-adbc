@@ -623,10 +623,14 @@ AdbcStatusCode SqliteConnectionGetObjectsImpl(
   struct ArrowArray* catalog_name_col = array->children[0];
   struct ArrowArray* catalog_db_schemas_col = array->children[1];
 
+  struct ArrowArray* catalog_db_schemas_items = catalog_db_schemas_col->children[0];
+  struct ArrowArray* db_schema_name_col = catalog_db_schemas_items->children[0];
+  struct ArrowArray* db_schema_tables_col = catalog_db_schemas_items->children[1];
+
   struct ArrowStringView str = {0};
 
   // TODO: support proper filters
-  if (!catalog || strlen(catalog) == 0 || strcmp(catalog, "main") == 0) {
+  if (!catalog || strcmp(catalog, "main") == 0) {
     // Default the primary catalog to "main"
     // https://www.sqlite.org/cli.html
     // > The ".databases" command shows a list of all databases open
@@ -639,8 +643,19 @@ AdbcStatusCode SqliteConnectionGetObjectsImpl(
 
     if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
+    } else if (!db_schema || db_schema == NULL) {
+      // For our purposes, we'll consider SQLite to always have a
+      // single, unnamed schema within each catalog.
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_name_col, 1), error);
+      if (depth == ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_col, 1), error);
+      } else {
+        return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_items), error);
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_col), error);
     } else {
-      return ADBC_STATUS_NOT_IMPLEMENTED;
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_col), error);
     }
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
 
