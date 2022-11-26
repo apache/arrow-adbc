@@ -95,13 +95,13 @@ AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema*
                                   struct AdbcError* error) {
   if (!values->release) {
     SetError(error, "ArrowArray is not initialized");
-    return ADBC_STATUS_INVALID_ARGUMENT;
+    return ADBC_STATUS_INTERNAL;
   } else if (!schema->release) {
     SetError(error, "ArrowSchema is not initialized");
-    return ADBC_STATUS_INVALID_ARGUMENT;
+    return ADBC_STATUS_INTERNAL;
   } else if (stream->release) {
     SetError(error, "ArrowArrayStream is already initialized");
-    return ADBC_STATUS_INVALID_ARGUMENT;
+    return ADBC_STATUS_INTERNAL;
   }
 
   struct SingleBatchArrayStream* impl =

@@ -367,8 +367,8 @@ void CheckGetObjectsSchema(struct ArrowSchema* schema) {
       CompareSchema(usage_schema, {
                                       {"fk_catalog", NANOARROW_TYPE_STRING, NULLABLE},
                                       {"fk_db_schema", NANOARROW_TYPE_STRING, NULLABLE},
-                                      {"fk_table", NANOARROW_TYPE_STRING, NULLABLE},
-                                      {"fk_column_name", NANOARROW_TYPE_STRING, NULLABLE},
+                                      {"fk_table", NANOARROW_TYPE_STRING, NOT_NULL},
+                                      {"fk_column_name", NANOARROW_TYPE_STRING, NOT_NULL},
                                   }));
 }
 
