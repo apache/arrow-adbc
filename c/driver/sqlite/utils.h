@@ -63,6 +63,16 @@ void StringBuilderReset(struct StringBuilder* builder);
     }                                                                             \
   } while (0)
 
+/// Check a generic status.
+#define RAISE(CODE, EXPR, ERRMSG, ERROR)                                          \
+  do {                                                                            \
+    if (!(EXPR)) {                                                                \
+      SetError(ERROR, "%s failed: %s\nDetail: %s:%d %s", #EXPR, ERRMSG, __FILE__, \
+               __LINE__, __FUNCTION__);                                           \
+      return ADBC_STATUS_##CODE;                                                  \
+    }                                                                             \
+  } while (0)
+
 /// Check an NanoArrow status code.
 #define RAISE_NA(EXPR)                                  \
   do {                                                  \
@@ -71,7 +81,7 @@ void StringBuilderReset(struct StringBuilder* builder);
   } while (0)
 
 /// Check an ADBC status code.
-#define RAISE(EXPR)                                                  \
+#define RAISE_ADBC(EXPR)                                             \
   do {                                                               \
     AdbcStatusCode adbc_status_code = (EXPR);                        \
     if (adbc_status_code != ADBC_STATUS_OK) return adbc_status_code; \

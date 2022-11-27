@@ -347,25 +347,25 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(uint32_t* info_codes, size_t info_cod
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
-        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i], "SQLite",
-                                                      error));
+        RAISE_ADBC(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i], "SQLite",
+                                                           error));
         break;
       case ADBC_INFO_VENDOR_VERSION:
-        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
-                                                      sqlite3_libversion(), error));
+        RAISE_ADBC(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
+                                                           sqlite3_libversion(), error));
         break;
       case ADBC_INFO_DRIVER_NAME:
-        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
-                                                      "ADBC SQLite Driver", error));
+        RAISE_ADBC(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
+                                                           "ADBC SQLite Driver", error));
         break;
       case ADBC_INFO_DRIVER_VERSION:
         // TODO(lidavidm): fill in driver version
-        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i], "(unknown)",
-                                                      error));
+        RAISE_ADBC(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
+                                                           "(unknown)", error));
         break;
       case ADBC_INFO_DRIVER_ARROW_VERSION:
-        RAISE(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
-                                                      NANOARROW_BUILD_ID, error));
+        RAISE_ADBC(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
+                                                           NANOARROW_BUILD_ID, error));
         break;
       default:
         // Ignore
@@ -609,11 +609,251 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
   return ADBC_STATUS_OK;
 }
 
+static const char kTableQuery[] =
+    "SELECT name, type "
+    "FROM sqlite_master "
+    "WHERE name LIKE ? AND type <> 'index'"
+    "ORDER BY name ASC";
+static const char kColumnQuery[] =
+    "SELECT cid, name, type, \"notnull\", dflt_value "
+    "FROM pragma_table_info(?) "
+    "WHERE name LIKE ? "
+    "ORDER BY cid ASC";
+static const char kPrimaryKeyQuery[] =
+    "SELECT name "
+    "FROM pragma_table_info(?) "
+    "WHERE pk > 0 "
+    "ORDER BY pk ASC";
+static const char kForeignKeyQuery[] =
+    "SELECT id, seq, \"table\", \"from\", \"to\" "
+    "FROM pragma_foreign_key_list(?) "
+    "ORDER BY id, seq ASC";
+
+AdbcStatusCode SqliteConnectionGetColumnsImpl(
+    struct SqliteConnection* conn, const char* table_name, const char* column_name,
+    struct ArrowArray* table_columns_col, sqlite3_stmt* stmt, struct AdbcError* error) {
+  struct ArrowArray* table_columns_items = table_columns_col->children[0];
+  struct ArrowArray* column_name_col = table_columns_items->children[0];
+  struct ArrowArray* ordinal_position_col = table_columns_items->children[1];
+  struct ArrowArray* remarks_col = table_columns_items->children[2];
+  struct ArrowArray* xdbc_data_type_col = table_columns_items->children[3];
+  struct ArrowArray* xdbc_type_name_col = table_columns_items->children[4];
+  struct ArrowArray* xdbc_column_size_col = table_columns_items->children[5];
+  struct ArrowArray* xdbc_decimal_digits_col = table_columns_items->children[6];
+  struct ArrowArray* xdbc_num_prec_radix_col = table_columns_items->children[7];
+  struct ArrowArray* xdbc_nullable_col = table_columns_items->children[8];
+  struct ArrowArray* xdbc_column_def_col = table_columns_items->children[9];
+  struct ArrowArray* xdbc_sql_data_type_col = table_columns_items->children[10];
+  struct ArrowArray* xdbc_datetime_sub_col = table_columns_items->children[11];
+  struct ArrowArray* xdbc_char_octet_length_col = table_columns_items->children[12];
+  struct ArrowArray* xdbc_is_nullable_col = table_columns_items->children[13];
+  struct ArrowArray* xdbc_scope_catalog_col = table_columns_items->children[14];
+  struct ArrowArray* xdbc_scope_schema_col = table_columns_items->children[15];
+  struct ArrowArray* xdbc_scope_table_col = table_columns_items->children[16];
+  struct ArrowArray* xdbc_is_autoincrement_col = table_columns_items->children[17];
+  struct ArrowArray* xdbc_is_generatedcolumn_col = table_columns_items->children[18];
+
+  int rc = sqlite3_reset(stmt);
+  RAISE(INTERNAL, rc == SQLITE_OK, sqlite3_errmsg(conn->conn), error);
+
+  rc = sqlite3_bind_text64(stmt, 1, table_name, strlen(table_name), SQLITE_STATIC,
+                           SQLITE_UTF8);
+  RAISE(INTERNAL, rc == SQLITE_OK, sqlite3_errmsg(conn->conn), error);
+
+  if (column_name) {
+    rc = sqlite3_bind_text64(stmt, 2, column_name, strlen(column_name), SQLITE_STATIC,
+                             SQLITE_UTF8);
+  } else {
+    rc = sqlite3_bind_text64(stmt, 2, "%", 1, SQLITE_STATIC, SQLITE_UTF8);
+  }
+  RAISE(INTERNAL, rc == SQLITE_OK, sqlite3_errmsg(conn->conn), error);
+
+  while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+    const char* col_name = (const char*)sqlite3_column_text(stmt, 1);
+    struct ArrowStringView str = {.data = col_name,
+                                  .n_bytes = sqlite3_column_bytes(stmt, 1)};
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(column_name_col, str), error);
+
+    const int32_t col_cid = sqlite3_column_int(stmt, 0);
+    CHECK_NA(INTERNAL, ArrowArrayAppendInt(ordinal_position_col, col_cid + 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(remarks_col, 1), error);
+
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_data_type_col, 1), error);
+
+    const char* col_type = (const char*)sqlite3_column_text(stmt, 2);
+    if (col_type) {
+      str.data = col_type;
+      str.n_bytes = sqlite3_column_bytes(stmt, 2);
+      CHECK_NA(INTERNAL, ArrowArrayAppendString(xdbc_type_name_col, str), error);
+    } else {
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_type_name_col, 1), error);
+    }
+
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_column_size_col, 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_decimal_digits_col, 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_num_prec_radix_col, 1), error);
+
+    const int32_t col_notnull = sqlite3_column_int(stmt, 3);
+    if (col_notnull == 0) {
+      // JDBC columnNullable == 1
+      CHECK_NA(INTERNAL, ArrowArrayAppendInt(xdbc_nullable_col, 1), error);
+    } else {
+      // JDBC columnNoNulls == 0
+      CHECK_NA(INTERNAL, ArrowArrayAppendInt(xdbc_nullable_col, 0), error);
+    }
+
+    const char* col_def = (const char*)sqlite3_column_text(stmt, 4);
+    if (col_def) {
+      str.data = col_def;
+      str.n_bytes = sqlite3_column_bytes(stmt, 4);
+      CHECK_NA(INTERNAL, ArrowArrayAppendString(xdbc_column_def_col, str), error);
+    } else {
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_column_def_col, 1), error);
+    }
+
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_sql_data_type_col, 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_datetime_sub_col, 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_char_octet_length_col, 1), error);
+
+    if (col_notnull == 0) {
+      str.data = "YES";
+      str.n_bytes = 3;
+    } else {
+      str.data = "NO";
+      str.n_bytes = 2;
+    }
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(xdbc_is_nullable_col, str), error);
+
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_scope_catalog_col, 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_scope_schema_col, 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_scope_table_col, 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_is_autoincrement_col, 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_is_generatedcolumn_col, 1), error);
+
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_columns_items), error);
+  }
+
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode SqliteConnectionGetTablesInner(
+    struct SqliteConnection* conn, sqlite3_stmt* tables_stmt, sqlite3_stmt* columns_stmt,
+    sqlite3_stmt* pk_stmt, sqlite3_stmt* fk_stmt, const char** table_type,
+    const char* column_name, struct ArrowArray* db_schema_tables_col,
+    struct AdbcError* error) {
+  struct ArrowArray* db_schema_tables_items = db_schema_tables_col->children[0];
+  struct ArrowArray* table_name_col = db_schema_tables_items->children[0];
+  struct ArrowArray* table_type_col = db_schema_tables_items->children[1];
+  struct ArrowArray* table_columns_col = db_schema_tables_items->children[2];
+  struct ArrowArray* table_constraints_col = db_schema_tables_items->children[3];
+
+  int rc = SQLITE_OK;
+  while ((rc = sqlite3_step(tables_stmt)) == SQLITE_ROW) {
+    const char* cur_table = (const char*)sqlite3_column_text(tables_stmt, 0);
+    const char* cur_table_type = (const char*)sqlite3_column_text(tables_stmt, 1);
+
+    if (table_type) {
+      const char** current = table_type;
+      char found = 0;
+      while (*current) {
+        if (strcmp(*current, cur_table_type) == 0) {
+          found = 1;
+          break;
+        }
+        current++;
+      }
+      if (!found) continue;
+    }
+
+    struct ArrowStringView str = {.data = cur_table, .n_bytes = strlen(cur_table)};
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(table_name_col, str), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(table_type_col, str), error);
+    if (columns_stmt == NULL) {
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col, 1), error);
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col, 1), error);
+    } else {
+      // XXX: n + 1 query pattern. You can join on a pragma so we
+      // could avoid this in principle but it complicates the
+      // unpacking code here quite a bit, so ignore for now.
+      RAISE_ADBC(SqliteConnectionGetColumnsImpl(conn, cur_table, column_name,
+                                                table_columns_col, columns_stmt, error));
+      // Not strictly necessary, but we passed SQLITE_STATIC when
+      // binding so don't let the reference leak
+      (void)sqlite3_clear_bindings(columns_stmt);
+
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_columns_col), error);
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_col), error);
+    }
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_tables_items), error);
+  }
+
+  if (rc != SQLITE_DONE) {
+    SetError(error, "Failed to query for tables: %s", sqlite3_errmsg(conn->conn));
+    return ADBC_STATUS_INTERNAL;
+  }
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_tables_col), error);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode SqliteConnectionGetTablesImpl(struct SqliteConnection* conn, int depth,
+                                             const char* table_name,
+                                             const char** table_type,
+                                             const char* column_name,
+                                             struct ArrowArray* db_schema_tables_col,
+                                             struct AdbcError* error) {
+  sqlite3_stmt* tables_stmt = NULL;
+  sqlite3_stmt* columns_stmt = NULL;
+  sqlite3_stmt* pk_stmt = NULL;
+  sqlite3_stmt* fk_stmt = NULL;
+  int rc = SQLITE_OK;
+
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_prepare_v2(conn->conn, kTableQuery, sizeof(kTableQuery), &tables_stmt,
+                            /*pzTail=*/NULL);
+  }
+  if (rc == SQLITE_OK && depth == ADBC_OBJECT_DEPTH_COLUMNS) {
+    rc = sqlite3_prepare_v2(conn->conn, kColumnQuery, sizeof(kColumnQuery), &columns_stmt,
+                            /*pzTail=*/NULL);
+  }
+  if (rc == SQLITE_OK && depth == ADBC_OBJECT_DEPTH_COLUMNS) {
+    rc = sqlite3_prepare_v2(conn->conn, kPrimaryKeyQuery, sizeof(kPrimaryKeyQuery),
+                            &pk_stmt, /*pzTail=*/NULL);
+  }
+  if (rc == SQLITE_OK && depth == ADBC_OBJECT_DEPTH_COLUMNS) {
+    rc = sqlite3_prepare_v2(conn->conn, kForeignKeyQuery, sizeof(kForeignKeyQuery),
+                            &fk_stmt, /*pzTail=*/NULL);
+  }
+  if (rc == SQLITE_OK) {
+    if (table_name) {
+      rc = sqlite3_bind_text64(tables_stmt, 1, table_name, strlen(table_name),
+                               SQLITE_STATIC, SQLITE_UTF8);
+    } else {
+      rc = sqlite3_bind_text64(tables_stmt, 1, "%", 1, SQLITE_STATIC, SQLITE_UTF8);
+    }
+  }
+
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  if (rc == SQLITE_OK) {
+    status = SqliteConnectionGetTablesInner(conn, tables_stmt, columns_stmt, pk_stmt,
+                                            fk_stmt, table_type, column_name,
+                                            db_schema_tables_col, error);
+  } else {
+    SetError(error, "Failed to query for tables: %s", sqlite3_errmsg(conn->conn));
+    status = ADBC_STATUS_INTERNAL;
+  }
+
+  sqlite3_finalize(tables_stmt);
+  sqlite3_finalize(columns_stmt);
+  sqlite3_finalize(pk_stmt);
+  sqlite3_finalize(fk_stmt);
+  return status;
+}
+
 AdbcStatusCode SqliteConnectionGetObjectsImpl(
     struct SqliteConnection* conn, int depth, const char* catalog, const char* db_schema,
     const char* table_name, const char** table_type, const char* column_name,
     struct ArrowSchema* schema, struct ArrowArray* array, struct AdbcError* error) {
-  RAISE(SqliteConnectionGetObjectsSchema(schema, error));
+  RAISE_ADBC(SqliteConnectionGetObjectsSchema(schema, error));
 
   struct ArrowError na_error = {0};
   CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array, schema, &na_error), &na_error,
@@ -650,7 +890,9 @@ AdbcStatusCode SqliteConnectionGetObjectsImpl(
       if (depth == ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
         CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_col, 1), error);
       } else {
-        return ADBC_STATUS_NOT_IMPLEMENTED;
+        RAISE_ADBC(SqliteConnectionGetTablesImpl(conn, depth, table_name, table_type,
+                                                 column_name, db_schema_tables_col,
+                                                 error));
       }
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_items), error);
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_col), error);
