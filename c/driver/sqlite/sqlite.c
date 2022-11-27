@@ -736,6 +736,124 @@ AdbcStatusCode SqliteConnectionGetColumnsImpl(
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode SqliteConnectionGetConstraintsImpl(
+    struct SqliteConnection* conn, const char* table_name, const char* column_name,
+    struct ArrowArray* table_constraints_col, sqlite3_stmt* pk_stmt,
+    sqlite3_stmt* fk_stmt, struct AdbcError* error) {
+  struct ArrowArray* table_constraints_items = table_constraints_col->children[0];
+  struct ArrowArray* constraint_name_col = table_constraints_items->children[0];
+  struct ArrowArray* constraint_type_col = table_constraints_items->children[1];
+  struct ArrowArray* constraint_column_names_col = table_constraints_items->children[2];
+  struct ArrowArray* constraint_column_names_items =
+      constraint_column_names_col->children[0];
+  struct ArrowArray* constraint_column_usage_col = table_constraints_items->children[3];
+  struct ArrowArray* constraint_column_usage_items =
+      constraint_column_usage_col->children[0];
+  struct ArrowArray* fk_catalog_col = constraint_column_usage_items->children[0];
+  struct ArrowArray* fk_db_schema_col = constraint_column_usage_items->children[1];
+  struct ArrowArray* fk_table_col = constraint_column_usage_items->children[2];
+  struct ArrowArray* fk_column_name_col = constraint_column_usage_items->children[3];
+
+  // We can get primary keys and foreign keys, but not unique
+  // constraints (unless we parse the SQL table definition)
+
+  int rc = sqlite3_reset(pk_stmt);
+  RAISE(INTERNAL, rc == SQLITE_OK, sqlite3_errmsg(conn->conn), error);
+
+  rc = sqlite3_bind_text64(pk_stmt, 1, table_name, strlen(table_name), SQLITE_STATIC,
+                           SQLITE_UTF8);
+  RAISE(INTERNAL, rc == SQLITE_OK, sqlite3_errmsg(conn->conn), error);
+
+  char has_primary_key = 0;
+  while ((rc = sqlite3_step(pk_stmt)) == SQLITE_ROW) {
+    if (!has_primary_key) {
+      has_primary_key = 1;
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(
+                   constraint_name_col,
+                   (struct ArrowStringView){.data = "PRIMARY KEY", .n_bytes = 11}),
+               error);
+    }
+    CHECK_NA(
+        INTERNAL,
+        ArrowArrayAppendString(
+            constraint_column_names_items,
+            (struct ArrowStringView){.data = (const char*)sqlite3_column_text(pk_stmt, 0),
+                                     .n_bytes = sqlite3_column_bytes(pk_stmt, 0)}),
+        error);
+  }
+  if (has_primary_key) {
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_column_usage_col, 1), error);
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_items), error);
+  }
+
+  rc = sqlite3_reset(fk_stmt);
+  RAISE(INTERNAL, rc == SQLITE_OK, sqlite3_errmsg(conn->conn), error);
+
+  rc = sqlite3_bind_text64(fk_stmt, 1, table_name, strlen(table_name), SQLITE_STATIC,
+                           SQLITE_UTF8);
+  RAISE(INTERNAL, rc == SQLITE_OK, sqlite3_errmsg(conn->conn), error);
+
+  int prev_fk_id = -1;
+  while ((rc = sqlite3_step(fk_stmt)) == SQLITE_ROW) {
+    const int fk_id = sqlite3_column_int(fk_stmt, 0);
+    const int fk_seq = sqlite3_column_int(fk_stmt, 1);
+    const char* to_table = (const char*)sqlite3_column_text(fk_stmt, 2);
+    const char* from_col = (const char*)sqlite3_column_text(fk_stmt, 3);
+    const char* to_col = (const char*)sqlite3_column_text(fk_stmt, 4);
+
+    if (fk_id != prev_fk_id) {
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(
+                   constraint_name_col,
+                   (struct ArrowStringView){.data = "FOREIGN KEY", .n_bytes = 11}),
+               error);
+
+      if (prev_fk_id != -1) {
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col), error);
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_col), error);
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_items), error);
+      }
+      prev_fk_id = fk_id;
+
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(
+                   constraint_column_names_items,
+                   (struct ArrowStringView){.data = from_col,
+                                            .n_bytes = sqlite3_column_bytes(pk_stmt, 3)}),
+               error);
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayAppendString(fk_catalog_col,
+                                 (struct ArrowStringView){.data = "main", .n_bytes = 4}),
+          error);
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(fk_db_schema_col, 1), error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(
+                   fk_table_col,
+                   (struct ArrowStringView){.data = to_table,
+                                            .n_bytes = sqlite3_column_bytes(pk_stmt, 2)}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(
+                   fk_column_name_col,
+                   (struct ArrowStringView){.data = to_col,
+                                            .n_bytes = sqlite3_column_bytes(pk_stmt, 4)}),
+               error);
+    }
+  }
+  if (prev_fk_id != -1) {
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col), error);
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_col), error);
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_items), error);
+  }
+
+  return ADBC_STATUS_OK;
+}  // NOLINT(whitespace/indent)
+
 AdbcStatusCode SqliteConnectionGetTablesInner(
     struct SqliteConnection* conn, sqlite3_stmt* tables_stmt, sqlite3_stmt* columns_stmt,
     sqlite3_stmt* pk_stmt, sqlite3_stmt* fk_stmt, const char** table_type,
@@ -780,8 +898,12 @@ AdbcStatusCode SqliteConnectionGetTablesInner(
       // Not strictly necessary, but we passed SQLITE_STATIC when
       // binding so don't let the reference leak
       (void)sqlite3_clear_bindings(columns_stmt);
-
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_columns_col), error);
+
+      RAISE_ADBC(SqliteConnectionGetConstraintsImpl(
+          conn, cur_table, column_name, table_constraints_col, pk_stmt, fk_stmt, error));
+      (void)sqlite3_clear_bindings(pk_stmt);
+      (void)sqlite3_clear_bindings(fk_stmt);
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_col), error);
     }
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_tables_items), error);
