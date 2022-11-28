@@ -225,9 +225,9 @@ def test_autocommit(sqlite):
 
     # Data should not be readable
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
-        with pytest.raises(adbc_driver_manager.OperationalError):
+        with pytest.raises(adbc_driver_manager.Error):
             stmt.set_sql_query("SELECT * FROM foo")
-            stmt.execute()
+            stmt.execute_query()
 
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_options(**{adbc_driver_manager.INGEST_OPTION_TARGET_TABLE: "foo"})

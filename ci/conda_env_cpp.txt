@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-arrow-cpp>=8.0.0
 cmake
 compilers
 gmock>=1.10.0

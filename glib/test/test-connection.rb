@@ -19,7 +19,7 @@ class ConnectionTest < Test::Unit::TestCase
   def setup
     @database = ADBC::Database.new
     @database.set_option("driver", "adbc_driver_sqlite")
-    @database.set_option("filename", ":memory:")
+    @database.set_option("uri", ":memory:")
     @database.init
   end
 

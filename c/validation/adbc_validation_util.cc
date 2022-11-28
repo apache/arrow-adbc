@@ -16,6 +16,7 @@
 // under the License.
 
 #include "adbc_validation_util.h"
+#include <adbc.h>
 
 #include "adbc_validation.h"
 
@@ -117,6 +118,8 @@ bool IsAdbcStatusCode::MatchAndExplain(AdbcStatusCode actual, std::ostream* os) 
         if (error_->message) *os << "\nError message: " << error_->message;
         if (error_->sqlstate[0]) *os << "\nSQLSTATE: " << error_->sqlstate;
         if (error_->vendor_code) *os << "\nVendor code: " << error_->vendor_code;
+
+        if (error_->release) error_->release(error_);
       }
     }
     return false;
@@ -138,6 +141,92 @@ void IsAdbcStatusCode::DescribeNegationTo(std::ostream* os) const {
 ::testing::Matcher<AdbcStatusCode> IsStatus(AdbcStatusCode code,
                                             struct AdbcError* error) {
   return IsAdbcStatusCode(code, error);
+}
+
+#define CHECK_ERRNO(EXPR)                             \
+  do {                                                \
+    if (int adbcv_errno = (EXPR); adbcv_errno != 0) { \
+      return adbcv_errno;                             \
+    }                                                 \
+  } while (false);
+
+int MakeSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& fields) {
+  CHECK_ERRNO(ArrowSchemaInit(schema, NANOARROW_TYPE_STRUCT));
+  CHECK_ERRNO(ArrowSchemaAllocateChildren(schema, fields.size()));
+  size_t i = 0;
+  for (const SchemaField& field : fields) {
+    CHECK_ERRNO(ArrowSchemaInit(schema->children[i], field.type));
+    CHECK_ERRNO(ArrowSchemaSetName(schema->children[i], field.name.c_str()));
+    if (!field.nullable) {
+      schema->children[i]->flags &= ~ARROW_FLAG_NULLABLE;
+    }
+    i++;
+  }
+  return 0;
+}
+
+#undef CHECK_ERRNO
+
+class ConstantArrayStream {
+ public:
+  explicit ConstantArrayStream(struct ArrowSchema* schema,
+                               std::vector<struct ArrowArray> batches)
+      : batches_(std::move(batches)), next_index_(0) {
+    schema_ = *schema;
+    std::memset(schema, 0, sizeof(*schema));
+  }
+
+  static const char* GetLastError(struct ArrowArrayStream* stream) { return nullptr; }
+
+  static int GetNext(struct ArrowArrayStream* stream, struct ArrowArray* out) {
+    if (!stream || !stream->private_data || !out) return EINVAL;
+    auto* self = reinterpret_cast<ConstantArrayStream*>(stream->private_data);
+    if (self->next_index_ >= self->batches_.size()) {
+      out->release = nullptr;
+      return 0;
+    }
+
+    *out = self->batches_[self->next_index_];
+    std::memset(&self->batches_[self->next_index_], 0, sizeof(struct ArrowArray));
+
+    self->next_index_++;
+    return 0;
+  }
+
+  static int GetSchema(struct ArrowArrayStream* stream, struct ArrowSchema* out) {
+    if (!stream || !stream->private_data || !out) return EINVAL;
+    auto* self = reinterpret_cast<ConstantArrayStream*>(stream->private_data);
+    return ArrowSchemaDeepCopy(&self->schema_, out);
+  }
+
+  static void Release(struct ArrowArrayStream* stream) {
+    if (!stream->private_data) return;
+    auto* self = reinterpret_cast<ConstantArrayStream*>(stream->private_data);
+
+    self->schema_.release(&self->schema_);
+    for (size_t i = 0; i < self->batches_.size(); i++) {
+      if (self->batches_[i].release) {
+        self->batches_[i].release(&self->batches_[i]);
+      }
+    }
+
+    delete self;
+    std::memset(stream, 0, sizeof(*stream));
+  }
+
+ private:
+  struct ArrowSchema schema_;
+  std::vector<struct ArrowArray> batches_;
+  size_t next_index_;
+};
+
+void MakeStream(struct ArrowArrayStream* stream, struct ArrowSchema* schema,
+                std::vector<struct ArrowArray> batches) {
+  stream->get_last_error = &ConstantArrayStream::GetLastError;
+  stream->get_next = &ConstantArrayStream::GetNext;
+  stream->get_schema = &ConstantArrayStream::GetSchema;
+  stream->release = &ConstantArrayStream::Release;
+  stream->private_data = new ConstantArrayStream(schema, std::move(batches));
 }
 
 void CompareSchema(

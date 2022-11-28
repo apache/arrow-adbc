@@ -15,39 +15,39 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.18)
 get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
 list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
 
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 project(adbc_driver_sqlite
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
 include(CTest)
+find_package(PkgConfig)
 
-find_package(Arrow REQUIRED)
 find_package(SQLite3 REQUIRED)
 
 add_arrow_lib(adbc_driver_sqlite
               SOURCES
-              sqlite.cc
+              sqlite.c
+              statement_reader.c
+              utils.c
               OUTPUTS
               ADBC_LIBRARIES
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
               SQLite::SQLite3
-              arrow_shared
+              nanoarrow
               STATIC_LINK_LIBS
               SQLite::SQLite3
-              arrow_static)
+              nanoarrow
+              ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
-include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
@@ -70,8 +70,7 @@ if(ADBC_BUILD_TESTS)
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)
-  target_include_directories(adbc-driver-sqlite-test SYSTEM
-                             PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
+  adbc_configure_target(adbc-driver-sqlite-test)
 endif()
 
 validate_config()

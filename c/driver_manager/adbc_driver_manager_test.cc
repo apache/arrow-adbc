@@ -26,10 +26,13 @@
 #include "adbc_driver_manager.h"
 #include "driver/test_util.h"
 #include "validation/adbc_validation.h"
+#include "validation/adbc_validation_util.h"
 
 // Tests of the SQLite example driver, except using the driver manager
 
 namespace adbc {
+
+using adbc_validation::IsOkStatus;
 
 class DriverManager : public ::testing::Test {
  public:
@@ -37,8 +40,9 @@ class DriverManager : public ::testing::Test {
     std::memset(&driver, 0, sizeof(driver));
     std::memset(&error, 0, sizeof(error));
 
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcLoadDriver("adbc_driver_sqlite", NULL,
-                                                    ADBC_VERSION_1_0_0, &driver, &error));
+    ASSERT_THAT(AdbcLoadDriver("adbc_driver_sqlite", nullptr, ADBC_VERSION_1_0_0, &driver,
+                               &error),
+                IsOkStatus(&error));
   }
 
   void TearDown() override {
@@ -92,7 +96,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       return res;
     }
     return AdbcDatabaseSetOption(
-        database, "filename", "file:Sqlite_Transactions?mode=memory&cache=shared", error);
+        database, "uri", "file:Sqlite_Transactions?mode=memory&cache=shared", error);
   }
 
   std::string BindParameter(int index) const override { return "?"; }

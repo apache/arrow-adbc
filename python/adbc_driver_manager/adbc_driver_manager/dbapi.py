@@ -64,9 +64,9 @@ _KNOWN_INFO_VALUES = {
     0: "vendor_name",
     1: "vendor_version",
     2: "vendor_arrow_version",
-    100: "vendor_name",
-    101: "vendor_version",
-    102: "vendor_arrow_version",
+    100: "driver_name",
+    101: "driver_version",
+    102: "driver_arrow_version",
 }
 
 # ----------------------------------------------------------

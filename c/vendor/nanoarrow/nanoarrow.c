@@ -622,6 +622,8 @@ int ArrowSchemaDeepCopy(struct ArrowSchema* schema, struct ArrowSchema* schema_o
     return result;
   }
 
+  schema_out->flags = schema->flags;
+
   result = ArrowSchemaSetName(schema_out, schema->name);
   if (result != NANOARROW_OK) {
     schema_out->release(schema_out);
@@ -1719,13 +1721,13 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
 
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
     case NANOARROW_TYPE_STRUCT:
-    case NANOARROW_TYPE_MAP:
     case NANOARROW_TYPE_SPARSE_UNION:
       array->n_buffers = 1;
       break;
 
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_LARGE_LIST:
+    case NANOARROW_TYPE_MAP:
     case NANOARROW_TYPE_BOOL:
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT8:
@@ -2293,9 +2295,12 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       }
       break;
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_MAP: {
+      const char* type_name =
+          array_view->storage_type == NANOARROW_TYPE_LIST ? "list" : "map";
       if (array->n_children != 1) {
-        ArrowErrorSet(error, "Expected 1 child of list array but found %d child arrays",
-                      (int)array->n_children);
+        ArrowErrorSet(error, "Expected 1 child of %s array but found %d child arrays",
+                      type_name, (int)array->n_children);
         return EINVAL;
       }
 
@@ -2305,13 +2310,14 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         if (array->children[0]->length < last_offset) {
           ArrowErrorSet(
               error,
-              "Expected child of list array with length >= %ld but found array with "
+              "Expected child of %s array with length >= %ld but found array with "
               "length %ld",
-              (long)last_offset, (long)array->children[0]->length);
+              type_name, (long)last_offset, (long)array->children[0]->length);
           return EINVAL;
         }
       }
       break;
+    }
     case NANOARROW_TYPE_LARGE_LIST:
       if (array->n_children != 1) {
         ArrowErrorSet(error,

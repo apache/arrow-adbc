@@ -15,225 +15,24 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cstring>
+#include <limits>
+#include <optional>
 #include <string>
-#include <vector>
+#include <string_view>
 
-#include <gmock/gmock.h>
+#include <adbc.h>
+#include <gmock/gmock-matchers.h>
+#include <gtest/gtest-matchers.h>
+#include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
+#include <nanoarrow.h>
 
-#include <arrow/c/bridge.h>
-#include <arrow/record_batch.h>
-#include <arrow/table.h>
-#include <arrow/testing/matchers.h>
-
-#include "adbc.h"
-#include "driver/test_util.h"
+#include "statement_reader.h"
 #include "validation/adbc_validation.h"
+#include "validation/adbc_validation_util.h"
 
-// Tests of the SQLite example driver
-
-namespace adbc {
-
-using arrow::PointeesEqual;
-
-using RecordBatchMatcher =
-    decltype(::testing::UnorderedPointwise(PointeesEqual(), arrow::RecordBatchVector{}));
-
-RecordBatchMatcher BatchesAre(const std::shared_ptr<arrow::Schema>& schema,
-                              const std::vector<std::string>& batch_json) {
-  arrow::RecordBatchVector batches;
-  for (const std::string& json : batch_json) {
-    batches.push_back(adbc::RecordBatchFromJSON(schema, json));
-  }
-  return ::testing::UnorderedPointwise(PointeesEqual(), std::move(batches));
-}
-
-class Sqlite : public ::testing::Test {
- public:
-  void SetUp() override {
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcDatabaseSetOption(&database, "filename", ":memory:", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
-    ASSERT_NE(database.private_data, nullptr);
-
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionNew(&connection, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionInit(&connection, &database, &error));
-    ASSERT_NE(connection.private_data, nullptr);
-  }
-
-  void TearDown() override {
-    if (error.message) {
-      error.release(&error);
-    }
-
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcConnectionRelease(&connection, &error));
-    ASSERT_EQ(connection.private_data, nullptr);
-
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
-    ASSERT_EQ(database.private_data, nullptr);
-  }
-
- protected:
-  void IngestSampleTable(struct AdbcConnection* connection) {
-    ArrowArray export_table;
-    ArrowSchema export_schema;
-    auto bulk_table =
-        adbc::RecordBatchFromJSON(bulk_schema, R"([[1, "foo"], [2, "bar"]])");
-    ASSERT_OK(ExportRecordBatch(*bulk_table, &export_table));
-    ASSERT_OK(ExportSchema(*bulk_schema, &export_schema));
-
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(connection, &statement, &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                      "bulk_insert", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementBind(&statement, &export_table, &export_schema, &error));
-    int64_t rows_affected = 0;
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error));
-    ASSERT_EQ(bulk_table->num_rows(), rows_affected);
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  AdbcDatabase database;
-  AdbcConnection connection;
-  AdbcError error = {};
-
-  std::shared_ptr<arrow::Schema> bulk_schema = arrow::schema(
-      {arrow::field("ints", arrow::int64()), arrow::field("strs", arrow::utf8())});
-
-  std::shared_ptr<arrow::DataType> column_schema = arrow::struct_({
-      arrow::field("column_name", arrow::utf8(), /*nullable=*/false),
-      arrow::field("ordinal_position", arrow::int32()),
-      arrow::field("remarks", arrow::utf8()),
-      arrow::field("xdbc_data_type", arrow::int16()),
-      arrow::field("xdbc_type_name", arrow::utf8()),
-      arrow::field("xdbc_column_size", arrow::int32()),
-      arrow::field("xdbc_decimal_digits", arrow::int16()),
-      arrow::field("xdbc_num_prec_radix", arrow::int16()),
-      arrow::field("xdbc_nullable", arrow::int16()),
-      arrow::field("xdbc_column_def", arrow::utf8()),
-      arrow::field("xdbc_sql_data_type", arrow::int16()),
-      arrow::field("xdbc_datetime_sub", arrow::int16()),
-      arrow::field("xdbc_char_octet_length", arrow::int32()),
-      arrow::field("xdbc_is_nullable", arrow::utf8()),
-      arrow::field("xdbc_scope_catalog", arrow::utf8()),
-      arrow::field("xdbc_scope_schema", arrow::utf8()),
-      arrow::field("xdbc_scope_table", arrow::utf8()),
-      arrow::field("xdbc_is_autoincrement", arrow::boolean()),
-      arrow::field("xdbc_is_generatedcolumn", arrow::boolean()),
-  });
-  std::shared_ptr<arrow::DataType> usage_schema = arrow::struct_({
-      arrow::field("fk_catalog", arrow::utf8()),
-      arrow::field("fk_db_schema", arrow::utf8()),
-      arrow::field("fk_table", arrow::utf8()),
-      arrow::field("fk_column_name", arrow::utf8()),
-  });
-  std::shared_ptr<arrow::DataType> constraint_schema = arrow::struct_({
-      arrow::field("constraint_name", arrow::utf8()),
-      arrow::field("constraint_type", arrow::utf8(), /*nullable=*/false),
-      arrow::field("constraint_column_names", arrow::list(arrow::utf8()),
-                   /*nullable=*/false),
-      arrow::field("constraint_column_usage", arrow::list(usage_schema)),
-  });
-  std::shared_ptr<arrow::DataType> table_schema = arrow::struct_({
-      arrow::field("table_name", arrow::utf8(), /*nullable=*/false),
-      arrow::field("table_type", arrow::utf8(), /*nullable=*/false),
-      arrow::field("table_columns", arrow::list(column_schema)),
-      arrow::field("table_constraints", arrow::list(constraint_schema)),
-  });
-  std::shared_ptr<arrow::DataType> db_schema_schema = arrow::struct_({
-      arrow::field("db_schema_name", arrow::utf8()),
-      arrow::field("db_schema_tables", arrow::list(table_schema)),
-  });
-  std::shared_ptr<arrow::Schema> catalog_schema = arrow::schema({
-      arrow::field("catalog_name", arrow::utf8()),
-      arrow::field("catalog_db_schemas", arrow::list(db_schema_schema)),
-  });
-};
-
-TEST_F(Sqlite, MetadataGetObjectsColumns) {
-  {
-    AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementNew(&connection, &statement, &error));
-
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error,
-        AdbcStatementSetSqlQuery(
-            &statement, "CREATE TABLE parent (a, b, c, PRIMARY KEY(c, b))", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetSqlQuery(&statement, "CREATE TABLE other (a)", &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementSetSqlQuery(
-                   &statement,
-                   "CREATE TABLE child (a, b, c, PRIMARY KEY(a), FOREIGN KEY (c, b) "
-                   "REFERENCES parent (c, b), FOREIGN KEY (a) REFERENCES other(a))",
-                   &error));
-    ADBC_ASSERT_OK_WITH_ERROR(
-        error, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-
-    ADBC_ASSERT_OK_WITH_ERROR(error, AdbcStatementRelease(&statement, &error));
-  }
-
-  struct ArrowArrayStream stream;
-  std::shared_ptr<arrow::Schema> schema;
-  arrow::RecordBatchVector batches;
-
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
-                               nullptr, nullptr, nullptr, &stream, &error));
-  ASSERT_NO_FATAL_FAILURE(ReadStream(&stream, &schema, &batches));
-  EXPECT_THAT(batches,
-              BatchesAre(catalog_schema,
-                         {R"([["main", [{"db_schema_name": null, "db_schema_tables": [
-  {
-    "table_name": "child",
-    "table_type": "table",
-    "table_columns": [
-      ["a", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-      ["b", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-      ["c", 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-    ],
-    "table_constraints": [
-      [null, "PRIMARY KEY", ["a"], []],
-      [null, "FOREIGN KEY", ["a"], [[null, null, "other", "a"]]],
-      [null, "FOREIGN KEY", ["c", "b"], [[null, null, "parent", "c"], [null, null, "parent", "b"]]]
-    ]
-  },
-  {
-    "table_name": "other",
-    "table_type": "table",
-    "table_columns": [
-      ["a", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-    ],
-    "table_constraints": []
-  },
-  {
-    "table_name": "parent",
-    "table_type": "table",
-    "table_columns": [
-      ["a", 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-      ["b", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-      ["c", 3, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-    ],
-    "table_constraints": [
-      [null, "PRIMARY KEY", ["c", "b"], []]
-    ]
-  }
-]}]]])"}));
-  batches.clear();
-}
+// -- ADBC Test Suite ------------------------------------------------
 
 class SqliteQuirks : public adbc_validation::DriverQuirks {
  public:
@@ -241,7 +40,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
                                struct AdbcError* error) const override {
     // Shared DB required for transaction tests
     return AdbcDatabaseSetOption(
-        database, "filename", "file:Sqlite_Transactions?mode=memory&cache=shared", error);
+        database, "uri", "file:Sqlite_Transactions?mode=memory&cache=shared", error);
   }
 
   std::string BindParameter(int index) const override { return "?"; }
@@ -284,4 +83,430 @@ class SqliteStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
-}  // namespace adbc
+// -- SQLite Specific Tests ------------------------------------------
+
+constexpr size_t kInferRows = 16;
+
+using adbc_validation::CompareArray;
+using adbc_validation::Handle;
+using adbc_validation::IsOkErrno;
+using adbc_validation::IsOkStatus;
+
+/// Specific tests of the type-inferring reader
+class SqliteReaderTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    std::memset(&error, 0, sizeof(error));
+    std::memset(&binder, 0, sizeof(binder));
+    ASSERT_EQ(SQLITE_OK, sqlite3_open_v2(
+                             ":memory:", &db,
+                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI,
+                             /*zVfs=*/nullptr));
+  }
+  void TearDown() override {
+    if (error.release) error.release(&error);
+    AdbcSqliteBinderRelease(&binder);
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+  }
+
+  void Exec(const std::string& query) {
+    ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, query.c_str(), query.size(), &stmt,
+                                            /*pzTail=*/nullptr));
+    ASSERT_EQ(SQLITE_DONE, sqlite3_step(stmt));
+    sqlite3_finalize(stmt);
+    stmt = nullptr;
+  }
+
+  void Bind(struct ArrowArray* batch, struct ArrowSchema* schema) {
+    ASSERT_THAT(AdbcSqliteBinderSetArray(&binder, batch, schema, &error),
+                IsOkStatus(&error));
+  }
+
+  void Bind(struct ArrowArrayStream* stream) {
+    ASSERT_THAT(AdbcSqliteBinderSetArrayStream(&binder, stream, &error),
+                IsOkStatus(&error));
+  }
+
+  void ExecSelect(const std::string& values, size_t infer_rows,
+                  adbc_validation::StreamReader* reader) {
+    ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (col)"));
+    ASSERT_NO_FATAL_FAILURE(Exec("INSERT INTO foo VALUES " + values));
+    const std::string query = "SELECT * FROM foo";
+    ASSERT_NO_FATAL_FAILURE(Exec(query, infer_rows, reader));
+    ASSERT_EQ(1, reader->schema->n_children);
+  }
+
+  void Exec(const std::string& query, size_t infer_rows,
+            adbc_validation::StreamReader* reader) {
+    ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, query.c_str(), query.size(), &stmt,
+                                            /*pzTail=*/nullptr));
+    struct AdbcSqliteBinder* binder =
+        this->binder.schema.release ? &this->binder : nullptr;
+    ASSERT_THAT(AdbcSqliteExportReader(db, stmt, binder, infer_rows,
+                                       &reader->stream.value, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader->GetSchema());
+  }
+
+ protected:
+  sqlite3* db = nullptr;
+  sqlite3_stmt* stmt = nullptr;
+  struct AdbcError error;
+  struct AdbcSqliteBinder binder;
+};
+
+TEST_F(SqliteReaderTest, IntsNulls) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(ExecSelect("(NULL), (1), (NULL), (-1)", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[0],
+                                                {std::nullopt, 1, std::nullopt, -1}));
+}
+
+TEST_F(SqliteReaderTest, FloatsNulls) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect("(NULL), (1.0), (NULL), (-1.0), (0.0)", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<double>(
+      reader.array_view->children[0], {std::nullopt, 1.0, std::nullopt, -1.0, 0.0}));
+}
+
+TEST_F(SqliteReaderTest, IntsFloatsNulls) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect("(NULL), (1), (NULL), (-1.0), (0)", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<double>(
+      reader.array_view->children[0], {std::nullopt, 1.0, std::nullopt, -1.0, 0.0}));
+}
+
+TEST_F(SqliteReaderTest, IntsNullsStrsNullsInts) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(ExecSelect(
+      R"((NULL), (1), (NULL), (-1), ("foo"), (NULL), (""), (24))", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].data_type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(
+      reader.array_view->children[0],
+      {std::nullopt, "1", std::nullopt, "-1", "foo", std::nullopt, "", "24"}));
+}
+
+TEST_F(SqliteReaderTest, IntExtremes) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((NULL), (9223372036854775807), (NULL), (-9223372036854775808))",
+                 kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0],
+                            {std::nullopt, std::numeric_limits<int64_t>::max(),
+                             std::nullopt, std::numeric_limits<int64_t>::min()}));
+}
+
+TEST_F(SqliteReaderTest, IntExtremesStrs) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(ExecSelect(
+      R"((NULL), (9223372036854775807), (-9223372036854775808), (""), (9223372036854775807), (-9223372036854775808))",
+      kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].data_type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[0],
+                                                    {
+                                                        std::nullopt,
+                                                        "9223372036854775807",
+                                                        "-9223372036854775808",
+                                                        "",
+                                                        "9223372036854775807",
+                                                        "-9223372036854775808",
+                                                    }));
+}
+
+TEST_F(SqliteReaderTest, FloatExtremes) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((NULL), (9e999), (NULL), (-9e999))", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<double>(
+      reader.array_view->children[0], {
+                                          std::nullopt,
+                                          std::numeric_limits<double>::infinity(),
+                                          std::nullopt,
+                                          -std::numeric_limits<double>::infinity(),
+                                      }));
+}
+
+TEST_F(SqliteReaderTest, IntsFloatsStrs) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((1), (1.0), (""), (9e999), (-9e999))", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].data_type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<std::string>(reader.array_view->children[0],
+                                {"1.000000e+00", "1.000000e+00", "", "inf", "-inf"}));
+}
+
+TEST_F(SqliteReaderTest, InferIntReadInt) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((1), (NULL), (2), (NULL))", /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {1, std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {2, std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(nullptr, reader.array->release);
+}
+
+TEST_F(SqliteReaderTest, InferIntRejectFloat) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((1), (NULL), (2E0), (NULL))", /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {1, std::nullopt}));
+
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(reader.stream->get_last_error(&reader.stream.value),
+              ::testing::HasSubstr(
+                  "[SQLite] Type mismatch in column 0: expected INT64 but got DOUBLE"));
+}
+
+TEST_F(SqliteReaderTest, InferIntRejectStr) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((1), (NULL), (""), (NULL))", /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {1, std::nullopt}));
+
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(
+      reader.stream->get_last_error(&reader.stream.value),
+      ::testing::HasSubstr(
+          "[SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY"));
+}
+
+TEST_F(SqliteReaderTest, InferFloatReadIntFloat) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((1E0), (NULL), (2E0), (3), (NULL))", /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {1.0, std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {2.0, 3.0}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(nullptr, reader.array->release);
+}
+
+TEST_F(SqliteReaderTest, InferFloatRejectStr) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((1E0), (NULL), (2E0), (3), (""), (NULL))",
+                                     /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {1.0, std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {2.0, 3.0}));
+
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(
+      reader.stream->get_last_error(&reader.stream.value),
+      ::testing::HasSubstr(
+          "[SQLite] Type mismatch in column 0: expected DOUBLE but got STRING/BINARY"));
+}
+
+TEST_F(SqliteReaderTest, InferStrReadAll) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((""), (NULL), (2), (3E0), ("foo"), (NULL))",
+                                     /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].data_type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<std::string>(reader.array_view->children[0], {"", std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<std::string>(reader.array_view->children[0], {"2", "3.0"}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<std::string>(reader.array_view->children[0], {"foo", std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(nullptr, reader.array->release);
+}
+
+TEST_F(SqliteReaderTest, InferOneParam) {
+  adbc_validation::StreamReader reader;
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT(
+      adbc_validation::MakeBatch<int64_t>(&schema.value, &batch.value, /*error=*/nullptr,
+                                          {std::nullopt, 2, 4, -1}),
+      IsOkErrno());
+
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value));
+  ASSERT_NO_FATAL_FAILURE(Exec("SELECT ?", /*infer_rows=*/2, &reader));
+
+  ASSERT_EQ(1, reader.schema->n_children);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {std::nullopt, 2}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[0], {4, -1}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(nullptr, reader.array->release);
+}
+
+TEST_F(SqliteReaderTest, InferOneParamStream) {
+  adbc_validation::StreamReader reader;
+  Handle<struct ArrowArrayStream> stream;
+  Handle<struct ArrowSchema> schema;
+  std::vector<struct ArrowArray> batches(3);
+
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT(adbc_validation::MakeBatch<int64_t>(&schema.value, &batches[0],
+                                                  /*error=*/nullptr, {std::nullopt, 1}),
+              IsOkErrno());
+  ASSERT_THAT(adbc_validation::MakeBatch<int64_t>(&schema.value, &batches[1],
+                                                  /*error=*/nullptr, {2, 3}),
+              IsOkErrno());
+  ASSERT_THAT(adbc_validation::MakeBatch<int64_t>(&schema.value, &batches[2],
+                                                  /*error=*/nullptr, {4, std::nullopt}),
+              IsOkErrno());
+  adbc_validation::MakeStream(&stream.value, &schema.value, std::move(batches));
+
+  ASSERT_NO_FATAL_FAILURE(Bind(&stream.value));
+  ASSERT_NO_FATAL_FAILURE(Exec("SELECT ?", /*infer_rows=*/3, &reader));
+
+  ASSERT_EQ(1, reader.schema->n_children);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {std::nullopt, 1, 2}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {3, 4, std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(nullptr, reader.array->release);
+}
+
+TEST_F(SqliteReaderTest, InferTypedParams) {
+  adbc_validation::StreamReader reader;
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+
+  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (idx, value)"));
+  ASSERT_NO_FATAL_FAILURE(
+      Exec(R"(INSERT INTO foo VALUES (0, "foo"), (1, NULL), (2, 4), (3, 1E2))"));
+
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT(adbc_validation::MakeBatch<int64_t>(&schema.value, &batch.value,
+                                                  /*error=*/nullptr, {1, 2, 3, 0}),
+              IsOkErrno());
+
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value));
+  ASSERT_NO_FATAL_FAILURE(
+      Exec("SELECT value FROM foo WHERE idx = ?", /*infer_rows=*/2, &reader));
+  ASSERT_EQ(1, reader.schema->n_children);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {std::nullopt, 4}));
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(reader.stream->get_last_error(&reader.stream.value),
+              ::testing::HasSubstr(
+                  "[SQLite] Type mismatch in column 0: expected INT64 but got DOUBLE"));
+}
+
+template <typename CType>
+class SqliteNumericParamTest : public SqliteReaderTest,
+                               public ::testing::WithParamInterface<ArrowType> {
+ public:
+  void Test(ArrowType expected_type) {
+    adbc_validation::StreamReader reader;
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> batch;
+
+    ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"", GetParam()}}),
+                IsOkErrno());
+    ASSERT_THAT(adbc_validation::MakeBatch<CType>(&schema.value, &batch.value,
+                                                  /*error=*/nullptr,
+                                                  {std::nullopt, 0, 1, 2, 4, 8}),
+                IsOkErrno());
+
+    ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value));
+    ASSERT_NO_FATAL_FAILURE(Exec("SELECT ?", /*infer_rows=*/2, &reader));
+
+    ASSERT_EQ(1, reader.schema->n_children);
+    ASSERT_EQ(expected_type, reader.fields[0].data_type);
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NO_FATAL_FAILURE(
+        CompareArray<CType>(reader.array_view->children[0], {std::nullopt, 0}));
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NO_FATAL_FAILURE(CompareArray<CType>(reader.array_view->children[0], {1, 2}));
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NO_FATAL_FAILURE(CompareArray<CType>(reader.array_view->children[0], {4, 8}));
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
+};
+
+class SqliteIntParamTest : public SqliteNumericParamTest<int64_t> {};
+
+TEST_P(SqliteIntParamTest, BindInt) {
+  ASSERT_NO_FATAL_FAILURE(Test(NANOARROW_TYPE_INT64));
+}
+
+INSTANTIATE_TEST_SUITE_P(IntTypes, SqliteIntParamTest,
+                         ::testing::Values(NANOARROW_TYPE_UINT8, NANOARROW_TYPE_UINT16,
+                                           NANOARROW_TYPE_UINT32, NANOARROW_TYPE_UINT64,
+                                           NANOARROW_TYPE_INT8, NANOARROW_TYPE_INT16,
+                                           NANOARROW_TYPE_INT32, NANOARROW_TYPE_INT64));
+
+class SqliteFloatParamTest : public SqliteNumericParamTest<double> {};
+
+TEST_P(SqliteFloatParamTest, BindFloat) {
+  ASSERT_NO_FATAL_FAILURE(Test(NANOARROW_TYPE_DOUBLE));
+}
+
+INSTANTIATE_TEST_SUITE_P(FloatTypes, SqliteFloatParamTest,
+                         ::testing::Values(
+                             // XXX: AppendDouble currently doesn't really work with
+                             // floats (FLT_MIN/FLT_MAX isn't the right thing)
+
+                             // NANOARROW_TYPE_FLOAT,
+                             NANOARROW_TYPE_DOUBLE));
