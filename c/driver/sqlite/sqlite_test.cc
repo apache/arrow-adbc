@@ -317,7 +317,10 @@ TEST_F(SqliteReaderTest, InferFloatReadIntFloat) {
       CompareArray<double>(reader.array_view->children[0], {1.0, std::nullopt}));
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
-      CompareArray<double>(reader.array_view->children[0], {2.0, 3.0, std::nullopt}));
+      CompareArray<double>(reader.array_view->children[0], {2.0, 3.0}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {std::nullopt}));
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_EQ(nullptr, reader.array->release);
 }
@@ -330,6 +333,9 @@ TEST_F(SqliteReaderTest, InferFloatRejectStr) {
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<double>(reader.array_view->children[0], {1.0, std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {2.0, 3.0}));
 
   ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
   ASSERT_THAT(
@@ -347,8 +353,11 @@ TEST_F(SqliteReaderTest, InferStrReadAll) {
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<std::string>(reader.array_view->children[0], {"", std::nullopt}));
   ASSERT_NO_FATAL_FAILURE(reader.Next());
-  ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[0],
-                                                    {"2", "3.0", "foo", std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<std::string>(reader.array_view->children[0], {"2", "3.0"}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<std::string>(reader.array_view->children[0], {"foo", std::nullopt}));
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_EQ(nullptr, reader.array->release);
 }
@@ -468,8 +477,9 @@ class SqliteNumericParamTest : public SqliteReaderTest,
     ASSERT_NO_FATAL_FAILURE(
         CompareArray<CType>(reader.array_view->children[0], {std::nullopt, 0}));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
-    ASSERT_NO_FATAL_FAILURE(
-        CompareArray<CType>(reader.array_view->children[0], {1, 2, 4, 8}));
+    ASSERT_NO_FATAL_FAILURE(CompareArray<CType>(reader.array_view->children[0], {1, 2}));
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NO_FATAL_FAILURE(CompareArray<CType>(reader.array_view->children[0], {4, 8}));
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
   }

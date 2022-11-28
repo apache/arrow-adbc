@@ -32,8 +32,10 @@
 #include "types.h"
 #include "utils.h"
 
-static char kDefaultUri[] = "file:adbc_driver_sqlite?mode=memory&cache=shared";
-static uint32_t kSupportedInfoCodes[] = {
+static const char kDefaultUri[] = "file:adbc_driver_sqlite?mode=memory&cache=shared";
+// The batch size for query results (and for initial type inference)
+static const char kStatementOptionBatchRows[] = "adbc.sqlite.query.batch_rows";
+static const uint32_t kSupportedInfoCodes[] = {
     ADBC_INFO_VENDOR_NAME,    ADBC_INFO_VENDOR_VERSION,       ADBC_INFO_DRIVER_NAME,
     ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ARROW_VERSION,
 };
@@ -253,7 +255,8 @@ AdbcStatusCode SqliteConnectionGetInfoAppendStringImpl(struct ArrowArray* array,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode SqliteConnectionGetInfoImpl(uint32_t* info_codes, size_t info_codes_length,
+AdbcStatusCode SqliteConnectionGetInfoImpl(const uint32_t* info_codes,
+                                           size_t info_codes_length,
                                            struct ArrowSchema* schema,
                                            struct ArrowArray* array,
                                            struct AdbcError* error) {
@@ -387,8 +390,10 @@ AdbcStatusCode SqliteConnectionGetInfo(struct AdbcConnection* connection,
                                        struct AdbcError* error) {
   CHECK_CONN_INIT(connection, error);
 
+  // XXX: mistake in adbc.h (should have been const pointer)
+  const uint32_t* codes = info_codes;
   if (!info_codes) {
-    info_codes = kSupportedInfoCodes;
+    codes = kSupportedInfoCodes;
     info_codes_length = sizeof(kSupportedInfoCodes) / sizeof(kSupportedInfoCodes[0]);
   }
 
@@ -396,7 +401,7 @@ AdbcStatusCode SqliteConnectionGetInfo(struct AdbcConnection* connection,
   struct ArrowArray array = {0};
 
   AdbcStatusCode status =
-      SqliteConnectionGetInfoImpl(info_codes, info_codes_length, &schema, &array, error);
+      SqliteConnectionGetInfoImpl(codes, info_codes_length, &schema, &array, error);
   if (status != ADBC_STATUS_OK) {
     if (schema.release) schema.release(&schema);
     if (array.release) array.release(&array);
@@ -1547,6 +1552,25 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
       SetError(error, "Invalid statement option value %s=%s", key, value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
+    return ADBC_STATUS_OK;
+  } else if (strcmp(key, kStatementOptionBatchRows) == 0) {
+    char* end = NULL;
+    long batch_size = strtol(value, &end, /*base=*/10);  // NOLINT(runtime/int)
+    if (errno != 0) {
+      SetError(error, "Invalid statement option value %s=%s (out of range)", key, value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    } else if (batch_size <= 0) {
+      SetError(error,
+               "Invalid statement option value %s=%s (value is non-positive or invalid)",
+               key, value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    } else if (batch_size > (long)INT_MAX) {  // NOLINT(runtime/int)
+      SetError(error,
+               "Invalid statement option value %s=%s (value is out of range of int)", key,
+               value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    stmt->batch_size = (int)batch_size;
     return ADBC_STATUS_OK;
   }
   SetError(error, "Unknown statement option %s=%s", key, value);

@@ -54,6 +54,5 @@ struct SqliteStatement {
   char append;
 
   // -- Query options ---------------------------------------
-
   int batch_size;
 };

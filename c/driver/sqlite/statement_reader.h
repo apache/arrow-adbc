@@ -60,7 +60,7 @@ void AdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder);
 /// \param[out] stream The stream to export to.
 /// \param[out] error Error details, if needed.
 AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
-                                      struct AdbcSqliteBinder* binder, size_t infer_rows,
+                                      struct AdbcSqliteBinder* binder, size_t batch_size,
                                       struct ArrowArrayStream* stream,
                                       struct AdbcError* error);
 

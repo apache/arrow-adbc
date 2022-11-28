@@ -239,6 +239,7 @@ struct StatementReader {
   struct AdbcSqliteBinder* binder;
   struct ArrowError error;
   char done;
+  int batch_size;
 };
 
 const char* StatementReaderGetLastError(struct ArrowArrayStream* self) {
@@ -249,8 +250,6 @@ const char* StatementReaderGetLastError(struct ArrowArrayStream* self) {
   struct StatementReader* reader = (struct StatementReader*)self->private_data;
   return reader->error.message;
 }
-
-static int kBatchSize = 1024;
 
 void StatementReaderSetError(struct StatementReader* reader) {
   const char* msg = sqlite3_errmsg(reader->db);
@@ -382,7 +381,7 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
   int status = 0;
 
   sqlite3_mutex_enter(sqlite3_db_mutex(reader->db));
-  while (batch_size < kBatchSize) {
+  while (batch_size < reader->batch_size) {
     if (reader->binder) {
       char finished = 0;
       struct AdbcError error = {0};
@@ -427,6 +426,10 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
     for (int i = 0; i < reader->schema.n_children; i++) {
       RAISE_NA(ArrowArrayFinishBuilding(out->children[i], &reader->error));
     }
+
+    // If we didn't read any rows, the reader is exhausted - don't generate a spurious
+    // batch
+    if (batch_size == 0) out->release(out);
   }
 
   sqlite3_mutex_leave(sqlite3_db_mutex(reader->db));
@@ -775,13 +778,14 @@ AdbcStatusCode StatementReaderInferOneValue(
 }  // NOLINT(whitespace/indent)
 
 AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
-                                      struct AdbcSqliteBinder* binder, size_t infer_rows,
+                                      struct AdbcSqliteBinder* binder, size_t batch_size,
                                       struct ArrowArrayStream* stream,
                                       struct AdbcError* error) {
   struct StatementReader* reader = malloc(sizeof(struct StatementReader));
   memset(reader, 0, sizeof(struct StatementReader));
   reader->db = db;
   reader->stmt = stmt;
+  reader->batch_size = batch_size;
 
   stream->private_data = reader;
   stream->release = StatementReaderRelease;
@@ -798,10 +802,10 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
   enum ArrowType* current_type = malloc(num_columns * sizeof(enum ArrowType));
 
   AdbcStatusCode status = StatementReaderInitializeInfer(
-      num_columns, infer_rows, validity, data, binary, current_type, error);
+      num_columns, batch_size, validity, data, binary, current_type, error);
   if (status == ADBC_STATUS_OK) {
     int64_t num_rows = 0;
-    while (num_rows < infer_rows) {
+    while (num_rows < batch_size) {
       if (binder) {
         char finished = 0;
         status = AdbcSqliteBinderBindNext(binder, db, stmt, &finished, error);
