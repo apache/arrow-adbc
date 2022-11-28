@@ -79,6 +79,7 @@ AdbcStatusCode SqliteDatabaseSetOption(struct AdbcDatabase* database, const char
     strncpy(db->uri, value, len);
     return ADBC_STATUS_OK;
   }
+  SetError(error, "Unknown database option %s=%s", key, value);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -1557,8 +1558,41 @@ AdbcStatusCode SqliteStatementExecutePartitions(struct AdbcStatement* statement,
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }  // NOLINT(whitespace/indent)
 
-AdbcStatusCode SqliteInitFunc(int version, void* driver, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError* error) {
+  if (version != ADBC_VERSION_1_0_0) {
+    SetError(error, "Only version %d supported, got %d", ADBC_VERSION_1_0_0, version);
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  struct AdbcDriver* driver = (struct AdbcDriver*)raw_driver;
+  memset(driver, 0, sizeof(*driver));
+  driver->DatabaseInit = SqliteDatabaseInit;
+  driver->DatabaseNew = SqliteDatabaseNew;
+  driver->DatabaseRelease = SqliteDatabaseRelease;
+  driver->DatabaseSetOption = SqliteDatabaseSetOption;
+
+  driver->ConnectionCommit = SqliteConnectionCommit;
+  driver->ConnectionGetInfo = SqliteConnectionGetInfo;
+  driver->ConnectionGetObjects = SqliteConnectionGetObjects;
+  driver->ConnectionGetTableSchema = SqliteConnectionGetTableSchema;
+  driver->ConnectionGetTableTypes = SqliteConnectionGetTableTypes;
+  driver->ConnectionInit = SqliteConnectionInit;
+  driver->ConnectionNew = SqliteConnectionNew;
+  driver->ConnectionReadPartition = SqliteConnectionReadPartition;
+  driver->ConnectionRelease = SqliteConnectionRelease;
+  driver->ConnectionRollback = SqliteConnectionRollback;
+  driver->ConnectionSetOption = SqliteConnectionSetOption;
+
+  driver->StatementBind = SqliteStatementBind;
+  driver->StatementBindStream = SqliteStatementBindStream;
+  driver->StatementExecuteQuery = SqliteStatementExecuteQuery;
+  driver->StatementGetParameterSchema = SqliteStatementGetParameterSchema;
+  driver->StatementNew = SqliteStatementNew;
+  driver->StatementPrepare = SqliteStatementPrepare;
+  driver->StatementRelease = SqliteStatementRelease;
+  driver->StatementSetOption = SqliteStatementSetOption;
+  driver->StatementSetSqlQuery = SqliteStatementSetSqlQuery;
+  return ADBC_STATUS_OK;
 }
 
 // Public names
@@ -1720,6 +1754,6 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
 }  // NOLINT(whitespace/indent)
 // due to https://github.com/cpplint/cpplint/pull/189
 
-AdbcStatusCode AdbcInitFunc(int version, void* driver, struct AdbcError* error) {
-  return SqliteInitFunc(version, driver, error);
+AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
+  return SqliteDriverInit(version, driver, error);
 }

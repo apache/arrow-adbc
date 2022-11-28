@@ -316,11 +316,17 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     status = database->private_driver->DatabaseSetOption(database, option.first.c_str(),
                                                          option.second.c_str(), error);
     if (status != ADBC_STATUS_OK) {
+      delete args;
+      // Release the database
+      std::ignore = database->private_driver->DatabaseRelease(database, error);
       if (database->private_driver->release) {
         database->private_driver->release(database->private_driver, error);
       }
       delete database->private_driver;
       database->private_driver = nullptr;
+      // Should be redundant, but ensure that AdbcDatabaseRelease
+      // below doesn't think that it contains a TempDatabase
+      database->private_data = nullptr;
       return status;
     }
   }
@@ -411,6 +417,7 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
     return ADBC_STATUS_INVALID_STATE;
   }
   TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
+  connection->private_data = nullptr;
   std::unordered_map<std::string, std::string> options = std::move(args->options);
   delete args;
 
@@ -714,13 +721,13 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   }
 
   void* load_handle = dlsym(handle, entrypoint);
-  init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
-  if (!init_func) {
+  if (!load_handle) {
     std::string message = "dlsym() failed: ";
     message += dlerror();
     SetError(error, message);
     return ADBC_STATUS_INTERNAL;
   }
+  init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
 
 #endif  // defined(_WIN32)
 

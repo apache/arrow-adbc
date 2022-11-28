@@ -40,6 +40,7 @@ add_arrow_lib(adbc_driver_sqlite
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
               SQLite::SQLite3
+              nanoarrow
               STATIC_LINK_LIBS
               SQLite::SQLite3
               nanoarrow
