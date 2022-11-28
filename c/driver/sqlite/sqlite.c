@@ -421,6 +421,7 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
   CHECK_NA(INTERNAL,
            ArrowSchemaInit(schema->children[1]->children[0], NANOARROW_TYPE_STRUCT),
            error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(schema->children[1]->children[0], "item"), error);
   CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema->children[1]->children[0], 2),
            error);
 
@@ -439,6 +440,8 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
       INTERNAL,
       ArrowSchemaInit(db_schema_schema->children[1]->children[0], NANOARROW_TYPE_STRUCT),
       error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetName(db_schema_schema->children[1]->children[0], "item"), error);
   CHECK_NA(INTERNAL,
            ArrowSchemaAllocateChildren(db_schema_schema->children[1]->children[0], 4),
            error);
@@ -460,6 +463,8 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
   CHECK_NA(INTERNAL,
            ArrowSchemaInit(table_schema->children[2]->children[0], NANOARROW_TYPE_STRUCT),
            error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(table_schema->children[2]->children[0], "item"),
+           error);
   CHECK_NA(INTERNAL,
            ArrowSchemaAllocateChildren(table_schema->children[2]->children[0], 19),
            error);
@@ -470,6 +475,8 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
   CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(table_schema->children[3], 1), error);
   CHECK_NA(INTERNAL,
            ArrowSchemaInit(table_schema->children[3]->children[0], NANOARROW_TYPE_STRUCT),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(table_schema->children[3]->children[0], "item"),
            error);
   CHECK_NA(INTERNAL,
            ArrowSchemaAllocateChildren(table_schema->children[3]->children[0], 4), error);
@@ -576,6 +583,9 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
       INTERNAL,
       ArrowSchemaInit(constraint_schema->children[2]->children[0], NANOARROW_TYPE_STRING),
       error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetName(constraint_schema->children[2]->children[0], "item"),
+           error);
   constraint_schema->children[2]->flags &= ~ARROW_FLAG_NULLABLE;
   CHECK_NA(INTERNAL, ArrowSchemaInit(constraint_schema->children[3], NANOARROW_TYPE_LIST),
            error);
@@ -588,6 +598,9 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
       INTERNAL,
       ArrowSchemaInit(constraint_schema->children[3]->children[0], NANOARROW_TYPE_STRUCT),
       error);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetName(constraint_schema->children[3]->children[0], "item"),
+           error);
   CHECK_NA(INTERNAL,
            ArrowSchemaAllocateChildren(constraint_schema->children[3]->children[0], 4),
            error);
@@ -871,7 +884,6 @@ AdbcStatusCode SqliteConnectionGetTablesInner(
 
   int rc = SQLITE_OK;
   while ((rc = sqlite3_step(tables_stmt)) == SQLITE_ROW) {
-    const char* cur_table = (const char*)sqlite3_column_text(tables_stmt, 0);
     const char* cur_table_type = (const char*)sqlite3_column_text(tables_stmt, 1);
 
     if (table_type) {
@@ -887,9 +899,15 @@ AdbcStatusCode SqliteConnectionGetTablesInner(
       if (!found) continue;
     }
 
-    struct ArrowStringView str = {.data = cur_table, .n_bytes = strlen(cur_table)};
-    CHECK_NA(INTERNAL, ArrowArrayAppendString(table_name_col, str), error);
+    struct ArrowStringView str = {.data = cur_table_type,
+                                  .n_bytes = sqlite3_column_bytes(tables_stmt, 1)};
     CHECK_NA(INTERNAL, ArrowArrayAppendString(table_type_col, str), error);
+
+    const char* cur_table = (const char*)sqlite3_column_text(tables_stmt, 0);
+    str.data = cur_table;
+    str.n_bytes = sqlite3_column_bytes(tables_stmt, 0);
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(table_name_col, str), error);
+
     if (columns_stmt == NULL) {
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col, 1), error);
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col, 1), error);

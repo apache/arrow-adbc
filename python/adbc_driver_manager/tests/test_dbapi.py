@@ -149,7 +149,7 @@ def test_ingest(data, sqlite):
     with sqlite.cursor() as cur:
         cur.adbc_ingest("bulk_ingest", data())
 
-        with pytest.raises(dbapi.ProgrammingError):
+        with pytest.raises(dbapi.Error):
             cur.adbc_ingest("bulk_ingest", data())
 
         cur.adbc_ingest("bulk_ingest", data(), mode="append")
