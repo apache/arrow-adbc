@@ -271,9 +271,9 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(uint32_t* info_codes, size_t info_cod
   // initialize with dummy then override
   CHECK_NA(INTERNAL, ArrowSchemaInit(info_value, NANOARROW_TYPE_UINT32), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetFormat(info_value, "+ud:0,1,2,3,4,5"), error);
-
   CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value, "info_value"), error);
   CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(info_value, /*num_columns=*/6), error);
+
   CHECK_NA(INTERNAL, ArrowSchemaInit(info_value->children[0], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[0], "string_value"), error);
@@ -308,6 +308,8 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(uint32_t* info_codes, size_t info_cod
            error);
   CHECK_NA(INTERNAL,
            ArrowSchemaInit(info_value->children[5]->children[0], NANOARROW_TYPE_STRUCT),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[5]->children[0], "entries"),
            error);
   CHECK_NA(INTERNAL,
            ArrowSchemaAllocateChildren(info_value->children[5]->children[0],
@@ -389,7 +391,7 @@ AdbcStatusCode SqliteConnectionGetInfo(struct AdbcConnection* connection,
 
   if (!info_codes) {
     info_codes = kSupportedInfoCodes;
-    info_codes_length = sizeof(kSupportedInfoCodes);
+    info_codes_length = sizeof(kSupportedInfoCodes) / sizeof(kSupportedInfoCodes[0]);
   }
 
   struct ArrowSchema schema = {0};

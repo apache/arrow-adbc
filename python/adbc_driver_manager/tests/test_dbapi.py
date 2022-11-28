@@ -64,11 +64,17 @@ def test_attrs(sqlite):
 
 @pytest.mark.sqlite
 def test_info(sqlite):
-    assert sqlite.adbc_get_info() == {
-        "vendor_arrow_version": "Arrow/C++ 9.0.0",
-        "vendor_name": "ADBC C SQLite3",
-        "vendor_version": "0.0.1",
+    info = sqlite.adbc_get_info()
+    assert set(info.keys()) == {
+        "driver_arrow_version",
+        "driver_name",
+        "driver_version",
+        "vendor_arrow_version",
+        "vendor_name",
+        "vendor_version",
     }
+    assert info["driver_name"] == "ADBC SQLite Driver"
+    assert info["vendor_name"] == "SQLite"
 
 
 @pytest.mark.sqlite
