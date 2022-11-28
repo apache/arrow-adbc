@@ -19,7 +19,7 @@ class ConnectionTest < Test::Unit::TestCase
   def setup
     options = {
       driver: "adbc_driver_sqlite",
-      filename: ":memory:",
+      uri: ":memory:",
     }
     ADBC::Database.open(**options) do |database|
       connect_options = {}
