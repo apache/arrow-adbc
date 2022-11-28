@@ -2295,10 +2295,12 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       }
       break;
     case NANOARROW_TYPE_LIST:
-    case NANOARROW_TYPE_MAP:
+    case NANOARROW_TYPE_MAP: {
+      const char* type_name =
+          array_view->storage_type == NANOARROW_TYPE_LIST ? "list" : "map";
       if (array->n_children != 1) {
-        ArrowErrorSet(error, "Expected 1 child of list array but found %d child arrays",
-                      (int)array->n_children);
+        ArrowErrorSet(error, "Expected 1 child of %s array but found %d child arrays",
+                      type_name, (int)array->n_children);
         return EINVAL;
       }
 
@@ -2308,13 +2310,14 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         if (array->children[0]->length < last_offset) {
           ArrowErrorSet(
               error,
-              "Expected child of list array with length >= %ld but found array with "
+              "Expected child of %s array with length >= %ld but found array with "
               "length %ld",
-              (long)last_offset, (long)array->children[0]->length);
+              type_name, (long)last_offset, (long)array->children[0]->length);
           return EINVAL;
         }
       }
       break;
+    }
     case NANOARROW_TYPE_LARGE_LIST:
       if (array->n_children != 1) {
         ArrowErrorSet(error,

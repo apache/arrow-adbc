@@ -34,6 +34,7 @@ main() {
 
     cp "$SCRATCH/dist/nanoarrow.c" nanoarrow/
     cp "$SCRATCH/dist/nanoarrow.h" nanoarrow/
+    cp "$SCRATCH/src/nanoarrow/nanoarrow.hpp" nanoarrow/
 }
 
 main "$@"

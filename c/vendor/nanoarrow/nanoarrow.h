@@ -20,7 +20,7 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "992acf6b8dc3b00c189276fefc1dac92fe78ec1d"
+#define NANOARROW_BUILD_ID "gha3d9bcca1e1effe1590437e8f8d9a77fef2ac4d59"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -2171,8 +2171,7 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &value, sizeof(double)));
       break;
     case NANOARROW_TYPE_FLOAT:
-      _NANOARROW_CHECK_RANGE(value, FLT_MIN, FLT_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
       break;
     default:
       return EINVAL;
