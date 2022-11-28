@@ -69,7 +69,6 @@ def test_info(sqlite):
         "driver_arrow_version",
         "driver_name",
         "driver_version",
-        "vendor_arrow_version",
         "vendor_name",
         "vendor_version",
     }
