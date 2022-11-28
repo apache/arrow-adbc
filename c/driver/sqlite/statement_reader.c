@@ -169,7 +169,7 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
           break;
         }
         default:
-          SetError(error, "Column %d has unsupported type %d", col, binder->types[col]);
+          SetError(error, "Column %d has unsupported type %s", col, ArrowTypeString(binder->types[col]));
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
