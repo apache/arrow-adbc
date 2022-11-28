@@ -18,6 +18,7 @@
 #include "adbc.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -1386,8 +1387,8 @@ AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
     int64_t expected = sqlite3_bind_parameter_count(stmt->stmt);
     int64_t actual = stmt->binder.schema.n_children;
     if (actual != expected) {
-      SetError(error, "Parameter count mismatch: expected %lld but found %lld", expected,
-               actual);
+      SetError(error, "Parameter count mismatch: expected %" PRId64 " but found %" PRId64,
+               expected, actual);
       return ADBC_STATUS_INVALID_STATE;
     }
   }
