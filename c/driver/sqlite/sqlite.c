@@ -1090,8 +1090,8 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
   }
 
   struct ArrowArrayStream stream = {0};
-  AdbcStatusCode status = SqliteExportReader(conn->conn, stmt, /*binder=*/NULL,
-                                             /*batch_size=*/64, &stream, error);
+  AdbcStatusCode status = AdbcSqliteExportReader(conn->conn, stmt, /*binder=*/NULL,
+                                                 /*batch_size=*/64, &stream, error);
   if (status == ADBC_STATUS_OK) {
     int code = stream.get_schema(&stream, schema);
     if (code != 0) {
@@ -1222,7 +1222,7 @@ AdbcStatusCode SqliteStatementRelease(struct AdbcStatement* statement,
     rc = sqlite3_finalize(stmt->stmt);
   }
   if (stmt->query) free(stmt->query);
-  SqliteBinderRelease(&stmt->binder);
+  AdbcSqliteBinderRelease(&stmt->binder);
   if (stmt->target_table) free(stmt->target_table);
   if (rc != SQLITE_OK) {
     SetError(error, "AdbcStatementRelease: statement failed to finalize: (%d) %s", rc,
@@ -1347,7 +1347,8 @@ AdbcStatusCode SqliteStatementExecuteIngest(struct SqliteStatement* stmt,
   if (status == ADBC_STATUS_OK) {
     while (1) {
       char finished = 0;
-      status = SqliteBinderBindNext(&stmt->binder, stmt->conn, insert, &finished, error);
+      status =
+          AdbcSqliteBinderBindNext(&stmt->binder, stmt->conn, insert, &finished, error);
       if (status != ADBC_STATUS_OK || finished) break;
 
       int rc = 0;
@@ -1365,7 +1366,7 @@ AdbcStatusCode SqliteStatementExecuteIngest(struct SqliteStatement* stmt,
 
   if (rows_affected) *rows_affected = row_count;
   if (insert) sqlite3_finalize(insert);
-  SqliteBinderRelease(&stmt->binder);
+  AdbcSqliteBinderRelease(&stmt->binder);
   return status;
 }
 
@@ -1403,8 +1404,8 @@ AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
     while (1) {
       if (stmt->binder.schema.release) {
         char finished = 0;
-        status =
-            SqliteBinderBindNext(&stmt->binder, stmt->conn, stmt->stmt, &finished, error);
+        status = AdbcSqliteBinderBindNext(&stmt->binder, stmt->conn, stmt->stmt,
+                                          &finished, error);
         if (status != ADBC_STATUS_OK || finished) {
           break;
         }
@@ -1425,15 +1426,16 @@ AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
 
     sqlite3_mutex_leave(sqlite3_db_mutex(stmt->conn));
 
-    SqliteBinderRelease(&stmt->binder);
+    AdbcSqliteBinderRelease(&stmt->binder);
     if (rows_affected) *rows_affected = rows;
     return status;
   }
 
   // Query
   if (rows_affected) *rows_affected = -1;
-  struct SqliteBinder* binder = stmt->binder.schema.release ? &stmt->binder : NULL;
-  return SqliteExportReader(stmt->conn, stmt->stmt, binder, stmt->batch_size, out, error);
+  struct AdbcSqliteBinder* binder = stmt->binder.schema.release ? &stmt->binder : NULL;
+  return AdbcSqliteExportReader(stmt->conn, stmt->stmt, binder, stmt->batch_size, out,
+                                error);
 }
 
 AdbcStatusCode SqliteStatementSetSqlQuery(struct AdbcStatement* statement,
@@ -1470,7 +1472,7 @@ AdbcStatusCode SqliteStatementBind(struct AdbcStatement* statement,
                                    struct AdbcError* error) {
   CHECK_STMT_INIT(statement, error);
   struct SqliteStatement* stmt = (struct SqliteStatement*)statement->private_data;
-  return SqliteBinderSetArray(&stmt->binder, values, schema, error);
+  return AdbcSqliteBinderSetArray(&stmt->binder, values, schema, error);
 }
 
 AdbcStatusCode SqliteStatementBindStream(struct AdbcStatement* statement,
@@ -1478,7 +1480,7 @@ AdbcStatusCode SqliteStatementBindStream(struct AdbcStatement* statement,
                                          struct AdbcError* error) {
   CHECK_STMT_INIT(statement, error);
   struct SqliteStatement* stmt = (struct SqliteStatement*)statement->private_data;
-  return SqliteBinderSetArrayStream(&stmt->binder, stream, error);
+  return AdbcSqliteBinderSetArrayStream(&stmt->binder, stream, error);
 }
 
 AdbcStatusCode SqliteStatementGetParameterSchema(struct AdbcStatement* statement,

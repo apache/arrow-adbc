@@ -47,7 +47,7 @@ struct SqliteStatement {
   size_t query_len;
 
   // -- Bind state ------------------------------------------
-  struct SqliteBinder binder;
+  struct AdbcSqliteBinder binder;
 
   // -- Ingest state ----------------------------------------
   char* target_table;

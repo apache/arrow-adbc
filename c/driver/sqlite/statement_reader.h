@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 /// \brief Helper to manage binding data to a SQLite statement.
-struct SqliteBinder {
+struct AdbcSqliteBinder {
   // State
   struct ArrowSchema schema;
   struct ArrowArrayStream params;
@@ -40,16 +40,17 @@ struct SqliteBinder {
   int64_t next_row;
 };
 
-AdbcStatusCode SqliteBinderSetArray(struct SqliteBinder* binder,
-                                    struct ArrowArray* values, struct ArrowSchema* schema,
-                                    struct AdbcError* error);
-AdbcStatusCode SqliteBinderSetArrayStream(struct SqliteBinder* binder,
-                                          struct ArrowArrayStream* values,
-                                          struct AdbcError* error);
-AdbcStatusCode SqliteBinderBindNext(struct SqliteBinder* binder, sqlite3* conn,
-                                    sqlite3_stmt* stmt, char* finished,
-                                    struct AdbcError* error);
-void SqliteBinderRelease(struct SqliteBinder* binder);
+AdbcStatusCode AdbcSqliteBinderSetArray(struct AdbcSqliteBinder* binder,
+                                        struct ArrowArray* values,
+                                        struct ArrowSchema* schema,
+                                        struct AdbcError* error);
+AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
+                                              struct ArrowArrayStream* values,
+                                              struct AdbcError* error);
+AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3* conn,
+                                        sqlite3_stmt* stmt, char* finished,
+                                        struct AdbcError* error);
+void AdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder);
 
 /// \brief Initialize an ArrowArrayStream from a sqlite3_stmt.
 /// \param[in] db The SQLite connection.
@@ -58,10 +59,10 @@ void SqliteBinderRelease(struct SqliteBinder* binder);
 /// \param[in] infer_rows How many rows to read to infer the Arrow schema.
 /// \param[out] stream The stream to export to.
 /// \param[out] error Error details, if needed.
-AdbcStatusCode SqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
-                                  struct SqliteBinder* binder, size_t infer_rows,
-                                  struct ArrowArrayStream* stream,
-                                  struct AdbcError* error);
+AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
+                                      struct AdbcSqliteBinder* binder, size_t infer_rows,
+                                      struct ArrowArrayStream* stream,
+                                      struct AdbcError* error);
 
 #ifdef __cplusplus
 }

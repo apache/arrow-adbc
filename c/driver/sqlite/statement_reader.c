@@ -26,7 +26,8 @@
 
 #include "utils.h"
 
-AdbcStatusCode SqliteBinderSet(struct SqliteBinder* binder, struct AdbcError* error) {
+AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
+                                   struct AdbcError* error) {
   int rc = binder->params.get_schema(&binder->params, &binder->schema);
   if (rc != 0) {
     const char* message = binder->params.get_last_error(&binder->params);
@@ -71,25 +72,26 @@ AdbcStatusCode SqliteBinderSet(struct SqliteBinder* binder, struct AdbcError* er
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode SqliteBinderSetArray(struct SqliteBinder* binder,
-                                    struct ArrowArray* values, struct ArrowSchema* schema,
-                                    struct AdbcError* error) {
-  SqliteBinderRelease(binder);
+AdbcStatusCode AdbcSqliteBinderSetArray(struct AdbcSqliteBinder* binder,
+                                        struct ArrowArray* values,
+                                        struct ArrowSchema* schema,
+                                        struct AdbcError* error) {
+  AdbcSqliteBinderRelease(binder);
   AdbcStatusCode status = BatchToArrayStream(values, schema, &binder->params, error);
   if (status != ADBC_STATUS_OK) return status;
-  return SqliteBinderSet(binder, error);
-}
-AdbcStatusCode SqliteBinderSetArrayStream(struct SqliteBinder* binder,
-                                          struct ArrowArrayStream* values,
-                                          struct AdbcError* error) {
-  SqliteBinderRelease(binder);
+  return AdbcSqliteBinderSet(binder, error);
+}  // NOLINT(whitespace/indent)
+AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
+                                              struct ArrowArrayStream* values,
+                                              struct AdbcError* error) {
+  AdbcSqliteBinderRelease(binder);
   binder->params = *values;
   memset(values, 0, sizeof(*values));
-  return SqliteBinderSet(binder, error);
+  return AdbcSqliteBinderSet(binder, error);
 }
-AdbcStatusCode SqliteBinderBindNext(struct SqliteBinder* binder, sqlite3* conn,
-                                    sqlite3_stmt* stmt, char* finished,
-                                    struct AdbcError* error) {
+AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3* conn,
+                                        sqlite3_stmt* stmt, char* finished,
+                                        struct AdbcError* error) {
   struct ArrowError arrow_error = {0};
   int rc = 0;
   while (!binder->array.release || binder->next_row >= binder->array.length) {
@@ -116,7 +118,7 @@ AdbcStatusCode SqliteBinderBindNext(struct SqliteBinder* binder, sqlite3* conn,
 
     if (!binder->array.release) {
       *finished = 1;
-      SqliteBinderRelease(binder);
+      AdbcSqliteBinderRelease(binder);
       return ADBC_STATUS_OK;
     }
 
@@ -183,7 +185,7 @@ AdbcStatusCode SqliteBinderBindNext(struct SqliteBinder* binder, sqlite3* conn,
   return ADBC_STATUS_OK;
 }
 
-void SqliteBinderRelease(struct SqliteBinder* binder) {
+void AdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder) {
   if (binder->schema.release) {
     binder->schema.release(&binder->schema);
   }
@@ -206,7 +208,7 @@ struct StatementReader {
   enum ArrowType* types;
   struct ArrowSchema schema;
   struct ArrowArray initial_batch;
-  struct SqliteBinder* binder;
+  struct AdbcSqliteBinder* binder;
   struct ArrowError error;
   char done;
 };
@@ -357,8 +359,8 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
     if (reader->binder) {
       char finished = 0;
       struct AdbcError error = {0};
-      AdbcStatusCode status = SqliteBinderBindNext(reader->binder, reader->db,
-                                                   reader->stmt, &finished, &error);
+      AdbcStatusCode status = AdbcSqliteBinderBindNext(reader->binder, reader->db,
+                                                       reader->stmt, &finished, &error);
       if (status != ADBC_STATUS_OK) {
         reader->done = 1;
         result = EIO;
@@ -426,7 +428,7 @@ void StatementReaderRelease(struct ArrowArrayStream* self) {
       free(reader->types);
     }
     if (reader->binder) {
-      SqliteBinderRelease(reader->binder);
+      AdbcSqliteBinderRelease(reader->binder);
     }
 
     free(self->private_data);
@@ -745,10 +747,10 @@ AdbcStatusCode StatementReaderInferOneValue(
   return ADBC_STATUS_OK;
 }  // NOLINT(whitespace/indent)
 
-AdbcStatusCode SqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
-                                  struct SqliteBinder* binder, size_t infer_rows,
-                                  struct ArrowArrayStream* stream,
-                                  struct AdbcError* error) {
+AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
+                                      struct AdbcSqliteBinder* binder, size_t infer_rows,
+                                      struct ArrowArrayStream* stream,
+                                      struct AdbcError* error) {
   struct StatementReader* reader = malloc(sizeof(struct StatementReader));
   memset(reader, 0, sizeof(struct StatementReader));
   reader->db = db;
@@ -775,7 +777,7 @@ AdbcStatusCode SqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
     while (num_rows < infer_rows) {
       if (binder) {
         char finished = 0;
-        status = SqliteBinderBindNext(binder, db, stmt, &finished, error);
+        status = AdbcSqliteBinderBindNext(binder, db, stmt, &finished, error);
         if (status != ADBC_STATUS_OK) break;
         if (finished) {
           reader->done = 1;

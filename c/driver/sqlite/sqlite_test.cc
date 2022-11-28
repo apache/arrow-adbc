@@ -104,7 +104,7 @@ class SqliteReaderTest : public ::testing::Test {
   }
   void TearDown() override {
     if (error.release) error.release(&error);
-    SqliteBinderRelease(&binder);
+    AdbcSqliteBinderRelease(&binder);
     sqlite3_finalize(stmt);
     sqlite3_close(db);
   }
@@ -118,11 +118,13 @@ class SqliteReaderTest : public ::testing::Test {
   }
 
   void Bind(struct ArrowArray* batch, struct ArrowSchema* schema) {
-    ASSERT_THAT(SqliteBinderSetArray(&binder, batch, schema, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcSqliteBinderSetArray(&binder, batch, schema, &error),
+                IsOkStatus(&error));
   }
 
   void Bind(struct ArrowArrayStream* stream) {
-    ASSERT_THAT(SqliteBinderSetArrayStream(&binder, stream, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcSqliteBinderSetArrayStream(&binder, stream, &error),
+                IsOkStatus(&error));
   }
 
   void ExecSelect(const std::string& values, size_t infer_rows,
@@ -138,10 +140,11 @@ class SqliteReaderTest : public ::testing::Test {
             adbc_validation::StreamReader* reader) {
     ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, query.c_str(), query.size(), &stmt,
                                             /*pzTail=*/nullptr));
-    struct SqliteBinder* binder = this->binder.schema.release ? &this->binder : nullptr;
-    ASSERT_THAT(
-        SqliteExportReader(db, stmt, binder, infer_rows, &reader->stream.value, &error),
-        IsOkStatus(&error));
+    struct AdbcSqliteBinder* binder =
+        this->binder.schema.release ? &this->binder : nullptr;
+    ASSERT_THAT(AdbcSqliteExportReader(db, stmt, binder, infer_rows,
+                                       &reader->stream.value, &error),
+                IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader->GetSchema());
   }
 
@@ -149,7 +152,7 @@ class SqliteReaderTest : public ::testing::Test {
   sqlite3* db = nullptr;
   sqlite3_stmt* stmt = nullptr;
   struct AdbcError error;
-  struct SqliteBinder binder;
+  struct AdbcSqliteBinder binder;
 };
 
 TEST_F(SqliteReaderTest, IntsNulls) {
