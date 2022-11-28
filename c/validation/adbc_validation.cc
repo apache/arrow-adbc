@@ -1326,7 +1326,7 @@ void StatementTest::TestSqlPrepareUpdateStream() {
                 IsOkStatus(&error));
     ASSERT_THAT(MakeSchema(&schema.value, fields), IsOkErrno());
     ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {})),
-                IsOkErrno());
+                IsOkErrno(&na_error));
     ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
                 IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),

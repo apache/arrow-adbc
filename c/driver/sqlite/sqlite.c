@@ -1273,7 +1273,7 @@ AdbcStatusCode SqliteStatementPrepare(struct AdbcStatement* statement,
                stmt->query);
       (void)sqlite3_finalize(stmt->stmt);
       stmt->stmt = NULL;
-      return ADBC_STATUS_IO;
+      return ADBC_STATUS_INVALID_ARGUMENT;
     }
     stmt->prepared = 1;
   }

@@ -249,7 +249,7 @@ func (s *stmt) ExecuteQuery(context.Context) (array.RecordReader, int64, error) 
 	)
 	code := adbc.Status(C.AdbcStatementExecuteQuery(s.st, &out, &affected, &err))
 	if code != adbc.StatusOK {
-		return nil, 0, nil
+		return nil, 0, toAdbcError(code, &err)
 	}
 
 	return getRdr(&out), int64(affected), nil
