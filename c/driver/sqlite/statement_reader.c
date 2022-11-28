@@ -424,7 +424,8 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
   if (status == 0) {
     out->length = batch_size;
     for (int i = 0; i < reader->schema.n_children; i++) {
-      RAISE_NA(ArrowArrayFinishBuilding(out->children[i], &reader->error));
+      status = ArrowArrayFinishBuilding(out->children[i], &reader->error);
+      if (status != 0) break;
     }
 
     // If we didn't read any rows, the reader is exhausted - don't generate a spurious
@@ -579,10 +580,28 @@ AdbcStatusCode StatementReaderAppendInt64ToBinary(struct ArrowBuffer* offsets,
                                                   int64_t value, int32_t* offset,
                                                   struct AdbcError* error) {
   // Make sure we have at least 21 bytes available (19 digits + sign + null)
-  static size_t kReserve = 21;
-  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, kReserve), error);
+  // Presumably this is enough, but manpage for snprintf makes no guarantees
+  // about whether locale may affect this, so check for truncation regardless
+  static const size_t kReserve = 21;
+  size_t buffer_size = kReserve;
+  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
   char* output = (char*)(binary->data + binary->size_bytes);
-  int written = snprintf(output, kReserve, "%" PRId64, value);
+  int written = 0;
+  while (1) {
+    written = snprintf(output, buffer_size, "%" PRId64, value);
+    if (written >= buffer_size) {
+      // Truncated, resize and try again
+      // Check for overflow - presumably this can never happen...?
+      if (UINT_MAX - buffer_size < buffer_size) {
+        SetError(error, "Overflow when upcasting double to string");
+        return ADBC_STATUS_INTERNAL;
+      }
+      CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
+      buffer_size += buffer_size;
+      continue;
+    }
+    break;
+  }
   *offset += written;
   binary->size_bytes += written;
   ArrowBufferAppendUnsafe(offsets, offset, sizeof(int32_t));
@@ -593,12 +612,26 @@ AdbcStatusCode StatementReaderAppendDoubleToBinary(struct ArrowBuffer* offsets,
                                                    struct ArrowBuffer* binary,
                                                    double value, int32_t* offset,
                                                    struct AdbcError* error) {
-  // Make sure we have at least 24 bytes available (17 digits + sign + decimal + 5
-  // exponent) https://stackoverflow.com/questions/1701055
-  static size_t kReserve = 24;
-  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, kReserve), error);
+  static const size_t kReserve = 64;
+  size_t buffer_size = kReserve;
+  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
   char* output = (char*)(binary->data + binary->size_bytes);
-  int written = snprintf(output, kReserve, "%e", value);
+  int written = 0;
+  while (1) {
+    written = snprintf(output, buffer_size, "%e", value);
+    if (written >= buffer_size) {
+      // Truncated, resize and try again
+      // Check for overflow - presumably this can never happen...?
+      if (UINT_MAX - buffer_size < buffer_size) {
+        SetError(error, "Overflow when upcasting double to string");
+        return ADBC_STATUS_INTERNAL;
+      }
+      CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
+      buffer_size += buffer_size;
+      continue;
+    }
+    break;
+  }
   *offset += written;
   binary->size_bytes += written;
   ArrowBufferAppendUnsafe(offsets, offset, sizeof(int32_t));
