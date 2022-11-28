@@ -17,10 +17,10 @@
   under the License.
 -->
 
-# ADBC libpq Driver for Python
+# ADBC SQLite Driver for Python
 
-This package contains bindings for the [libpq
-driver](../../c/driver/postgres/README.md), using the [driver
+This package contains bindings for the [SQLite
+driver](../../c/driver/sqlite/README.md), using the [driver
 manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
 249-compatible][dbapi] interface on top.
 
@@ -28,31 +28,19 @@ manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
 
 ## Building
 
-Dependencies: a build of the libpq driver.
+Dependencies: a build of the SQLite driver.
 
-Set the environment variable `ADBC_POSTGRES_LIBRARY` to the path to
-`libadbc_driver_postgres.{dll,dylib,so}` before running `pip install`.
+Set the environment variable `ADBC_SQLITE_LIBRARY` to the path to
+`libadbc_driver_sqlite.{dll,dylib,so}` before running `pip install`.
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
 general build process.
 
 ## Testing
 
-A running instance of Postgres is required.  For example, using Docker:
+To run the tests, use pytest:
 
 ```shell
-$ docker run -it --rm \
-    -e POSTGRES_PASSWORD=password \
-    -e POSTGRES_DB=tempdb \
-    -p 5432:5432 \
-    postgres
-```
-
-Then, to run the tests, set the environment variable specifying the
-Postgres URI before running tests:
-
-```shell
-$ export ADBC_POSTGRES_TEST_URI=postgres://localhost:5432/postgres?user=postgres&password=password
 $ pytest -vvx
 ```
 

@@ -98,4 +98,26 @@ libpq-based Driver
 
       .. note:: Under construction
 
+.. _cpp-install-sqlite:
+
+SQLite Driver
+=============
+
+.. tab-set::
+
+   .. tab-item:: C++
+      :sync: cpp
+
+      .. note:: Under construction
+
+   .. tab-item:: Python (pip)
+      :sync: python
+
+      .. note:: Under construction
+
+   .. tab-item:: Python (conda-forge)
+      :sync: python-conda-forge
+
+      .. note:: Under construction
+
 .. _DBAPI 2.0: https://peps.python.org/pep-0249/

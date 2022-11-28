@@ -27,3 +27,4 @@ protocols/databases.  More may be available from third parties.
 
    flight_sql
    postgres
+   sqlite

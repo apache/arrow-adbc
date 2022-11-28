@@ -21,7 +21,7 @@ set source_dir=%1
 
 echo "=== (%PYTHON_VERSION%) Installing wheels ==="
 
-FOR %%c IN (adbc_driver_manager adbc_driver_postgres) DO (
+FOR %%c IN (adbc_driver_manager adbc_driver_postgres adbc_driver_sqlite) DO (
     FOR %%w IN (%source_dir%\python\%%c\dist\*.whl) DO (
         pip install --force-reinstall %%w || exit /B 1
     )
@@ -31,7 +31,7 @@ pip install pytest pyarrow pandas
 
 echo "=== (%PYTHON_VERSION%) Testing wheels ==="
 
-FOR %%c IN (adbc_driver_manager adbc_driver_postgres) DO (
+FOR %%c IN (adbc_driver_manager adbc_driver_postgres adbc_driver_sqlite) DO (
     echo "=== Testing %%c ==="
     python -c "import %%c" || exit /B 1
     python -c "import %%c.dbapi" || exit /B 1
