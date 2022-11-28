@@ -29,20 +29,20 @@
 
 AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
                                    struct AdbcError* error) {
-  int rc = binder->params.get_schema(&binder->params, &binder->schema);
-  if (rc != 0) {
+  int status = binder->params.get_schema(&binder->params, &binder->schema);
+  if (status != 0) {
     const char* message = binder->params.get_last_error(&binder->params);
     if (!message) message = "(unknown error)";
-    SetError(error, "Failed to get parameter schema: (%d) %s: %s", rc, strerror(rc),
-             message);
+    SetError(error, "Failed to get parameter schema: (%d) %s: %s", status,
+             strerror(status), message);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   struct ArrowError arrow_error = {0};
-  rc = ArrowArrayViewInitFromSchema(&binder->batch, &binder->schema, &arrow_error);
-  if (rc != 0) {
-    SetError(error, "Failed to initialize array view: (%d) %s: %s", rc, strerror(rc),
-             arrow_error.message);
+  status = ArrowArrayViewInitFromSchema(&binder->batch, &binder->schema, &arrow_error);
+  if (status != 0) {
+    SetError(error, "Failed to initialize array view: (%d) %s: %s", status,
+             strerror(status), arrow_error.message);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
@@ -56,10 +56,10 @@ AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
 
   struct ArrowSchemaView view = {0};
   for (int i = 0; i < binder->schema.n_children; i++) {
-    rc = ArrowSchemaViewInit(&view, binder->schema.children[i], &arrow_error);
-    if (rc != 0) {
+    status = ArrowSchemaViewInit(&view, binder->schema.children[i], &arrow_error);
+    if (status != 0) {
       SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
-               strerror(rc), rc, arrow_error.message);
+               strerror(status), status, arrow_error.message);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
@@ -93,26 +93,27 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
                                         sqlite3_stmt* stmt, char* finished,
                                         struct AdbcError* error) {
   struct ArrowError arrow_error = {0};
-  int rc = 0;
+  int status = 0;
   while (!binder->array.release || binder->next_row >= binder->array.length) {
     if (binder->array.release) {
       ArrowArrayViewReset(&binder->batch);
       binder->array.release(&binder->array);
 
-      rc = ArrowArrayViewInitFromSchema(&binder->batch, &binder->schema, &arrow_error);
-      if (rc != 0) {
-        SetError(error, "Failed to initialize array view: (%d) %s: %s", rc, strerror(rc),
-                 arrow_error.message);
+      status =
+          ArrowArrayViewInitFromSchema(&binder->batch, &binder->schema, &arrow_error);
+      if (status != 0) {
+        SetError(error, "Failed to initialize array view: (%d) %s: %s", status,
+                 strerror(status), arrow_error.message);
         return ADBC_STATUS_INTERNAL;
       }
     }
 
-    rc = binder->params.get_next(&binder->params, &binder->array);
-    if (rc != 0) {
+    status = binder->params.get_next(&binder->params, &binder->array);
+    if (status != 0) {
       const char* message = binder->params.get_last_error(&binder->params);
       if (!message) message = "(unknown error)";
-      SetError(error, "Failed to get next parameter batch: (%d) %s: %s", rc, strerror(rc),
-               message);
+      SetError(error, "Failed to get next parameter batch: (%d) %s: %s", status,
+               strerror(status), message);
       return ADBC_STATUS_IO;
     }
 
@@ -122,10 +123,10 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
       return ADBC_STATUS_OK;
     }
 
-    rc = ArrowArrayViewSetArray(&binder->batch, &binder->array, &arrow_error);
-    if (rc != 0) {
-      SetError(error, "Failed to initialize array view: (%d) %s: %s", rc, strerror(rc),
-               arrow_error.message);
+    status = ArrowArrayViewSetArray(&binder->batch, &binder->array, &arrow_error);
+    if (status != 0) {
+      SetError(error, "Failed to initialize array view: (%d) %s: %s", status,
+               strerror(status), arrow_error.message);
       return ADBC_STATUS_INTERNAL;
     }
 
@@ -143,15 +144,15 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
 
   for (int col = 0; col < binder->schema.n_children; col++) {
     if (ArrowArrayViewIsNull(binder->batch.children[col], binder->next_row)) {
-      rc = sqlite3_bind_null(stmt, col + 1);
+      status = sqlite3_bind_null(stmt, col + 1);
     } else {
       switch (binder->types[col]) {
         case NANOARROW_TYPE_BINARY:
         case NANOARROW_TYPE_LARGE_BINARY: {
           struct ArrowBufferView value =
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
-          rc = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.n_bytes,
-                                 SQLITE_STATIC);
+          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.n_bytes,
+                                     SQLITE_STATIC);
           break;
         }
         case NANOARROW_TYPE_UINT8:
@@ -167,7 +168,7 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
                      col, value);
             return ADBC_STATUS_INVALID_ARGUMENT;
           }
-          rc = sqlite3_bind_int64(stmt, col + 1, (int64_t)value);
+          status = sqlite3_bind_int64(stmt, col + 1, (int64_t)value);
           break;
         }
         case NANOARROW_TYPE_INT8:
@@ -176,22 +177,22 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
         case NANOARROW_TYPE_INT64: {
           int64_t value =
               ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
-          rc = sqlite3_bind_int64(stmt, col + 1, value);
+          status = sqlite3_bind_int64(stmt, col + 1, value);
           break;
         }
         case NANOARROW_TYPE_FLOAT:
         case NANOARROW_TYPE_DOUBLE: {
           int64_t value = ArrowArrayViewGetDoubleUnsafe(binder->batch.children[col],
                                                         binder->next_row);
-          rc = sqlite3_bind_double(stmt, col + 1, value);
+          status = sqlite3_bind_double(stmt, col + 1, value);
           break;
         }
         case NANOARROW_TYPE_STRING:
         case NANOARROW_TYPE_LARGE_STRING: {
           struct ArrowBufferView value =
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
-          rc = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.n_bytes,
-                                 SQLITE_STATIC);
+          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.n_bytes,
+                                     SQLITE_STATIC);
           break;
         }
         default:
@@ -201,7 +202,7 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
       }
     }
 
-    if (rc != SQLITE_OK) {
+    if (status != SQLITE_OK) {
       SetError(error, "Failed to clear statement bindings: %s", sqlite3_errmsg(conn));
       return ADBC_STATUS_INTERNAL;
     }
@@ -378,7 +379,7 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
   RAISE_NA(ArrowArrayInitFromSchema(out, &reader->schema, &reader->error));
   RAISE_NA(ArrowArrayStartAppending(out));
   int64_t batch_size = 0;
-  int result = 0;
+  int status = 0;
 
   sqlite3_mutex_enter(sqlite3_db_mutex(reader->db));
   while (batch_size < kBatchSize) {
@@ -389,7 +390,7 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
                                                        reader->stmt, &finished, &error);
       if (status != ADBC_STATUS_OK) {
         reader->done = 1;
-        result = EIO;
+        status = EIO;
         if (error.release) {
           strncpy(reader->error.message, error.message, sizeof(reader->error.message));
           reader->error.message[sizeof(reader->error.message) - 1] = '\0';
@@ -408,20 +409,20 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
       break;
     } else if (rc == SQLITE_ERROR) {
       reader->done = 1;
-      result = EIO;
+      status = EIO;
       StatementReaderSetError(reader);
       break;
     }
 
     for (int col = 0; col < reader->schema.n_children; col++) {
-      result = StatementReaderGetOneValue(reader, col, out->children[col]);
-      if (result != 0) break;
+      status = StatementReaderGetOneValue(reader, col, out->children[col]);
+      if (status != 0) break;
     }
 
-    if (result != 0) break;
+    if (status != 0) break;
     batch_size++;
   }
-  if (result == 0) {
+  if (status == 0) {
     out->length = batch_size;
     for (int i = 0; i < reader->schema.n_children; i++) {
       RAISE_NA(ArrowArrayFinishBuilding(out->children[i], &reader->error));
@@ -429,7 +430,7 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
   }
 
   sqlite3_mutex_leave(sqlite3_db_mutex(reader->db));
-  return result;
+  return status;
 }
 
 int StatementReaderGetSchema(struct ArrowArrayStream* self, struct ArrowSchema* out) {
