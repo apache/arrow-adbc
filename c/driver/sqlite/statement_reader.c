@@ -332,9 +332,10 @@ int StatementReaderGetOneValue(struct StatementReader* reader, int col,
         case SQLITE_TEXT:
         case SQLITE_BLOB: {
           // Let SQLite convert
-          struct ArrowStringView value;
-          value.data = (const char*)sqlite3_column_text(reader->stmt, col);
-          value.n_bytes = sqlite3_column_bytes(reader->stmt, col);
+          struct ArrowStringView value = {
+              .data = (const char*)sqlite3_column_text(reader->stmt, col),
+              .n_bytes = sqlite3_column_bytes(reader->stmt, col),
+          };
           return ArrowArrayAppendString(out, value);
         }
         default: {

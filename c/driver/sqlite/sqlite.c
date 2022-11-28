@@ -238,9 +238,7 @@ AdbcStatusCode SqliteConnectionGetInfoAppendStringImpl(struct ArrowArray* array,
                                                        struct AdbcError* error) {
   CHECK_NA(INTERNAL, ArrowArrayAppendUInt(array->children[0], info_code), error);
   // Append to type variant
-  struct ArrowStringView value;
-  value.data = info_value;
-  value.n_bytes = strlen(info_value);
+  struct ArrowStringView value = ArrowCharView(info_value);
   CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[1]->children[0], value),
            error);
   // Append type code (by hand)
@@ -787,9 +785,7 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
       has_primary_key = 1;
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
       CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   constraint_name_col,
-                   (struct ArrowStringView){.data = "PRIMARY KEY", .n_bytes = 11}),
+               ArrowArrayAppendString(constraint_name_col, ArrowCharView("PRIMARY KEY")),
                error);
     }
     CHECK_NA(
@@ -824,9 +820,7 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
     if (fk_id != prev_fk_id) {
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
       CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   constraint_name_col,
-                   (struct ArrowStringView){.data = "FOREIGN KEY", .n_bytes = 11}),
+               ArrowArrayAppendString(constraint_name_col, ArrowCharView("FOREIGN KEY")),
                error);
 
       if (prev_fk_id != -1) {
@@ -842,11 +836,8 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
                    (struct ArrowStringView){.data = from_col,
                                             .n_bytes = sqlite3_column_bytes(pk_stmt, 3)}),
                error);
-      CHECK_NA(
-          INTERNAL,
-          ArrowArrayAppendString(fk_catalog_col,
-                                 (struct ArrowStringView){.data = "main", .n_bytes = 4}),
-          error);
+      CHECK_NA(INTERNAL, ArrowArrayAppendString(fk_catalog_col, ArrowCharView("main")),
+               error);
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(fk_db_schema_col, 1), error);
       CHECK_NA(INTERNAL,
                ArrowArrayAppendString(
@@ -1011,8 +1002,6 @@ AdbcStatusCode SqliteConnectionGetObjectsImpl(
   struct ArrowArray* db_schema_name_col = catalog_db_schemas_items->children[0];
   struct ArrowArray* db_schema_tables_col = catalog_db_schemas_items->children[1];
 
-  struct ArrowStringView str = {0};
-
   // TODO: support proper filters
   if (!catalog || strcmp(catalog, "main") == 0) {
     // Default the primary catalog to "main"
@@ -1021,9 +1010,8 @@ AdbcStatusCode SqliteConnectionGetObjectsImpl(
     // > in the current connection. There will always be at least
     // > 2. The first one is "main", the original database opened.
 
-    str.data = "main";
-    str.n_bytes = strlen(str.data);
-    CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, str), error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, ArrowCharView("main")),
+             error);
 
     if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
@@ -1139,14 +1127,11 @@ AdbcStatusCode SqliteConnectionGetTableTypesImpl(struct ArrowSchema* schema,
   CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array, schema, NULL), error);
   CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
 
-  struct ArrowStringView value = {0};
-  value.data = "table";
-  value.n_bytes = strlen(value.data);
-  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], value), error);
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], ArrowCharView("table")),
+           error);
   CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  value.data = "view";
-  value.n_bytes = strlen(value.data);
-  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], value), error);
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], ArrowCharView("view")),
+           error);
   CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
 
   CHECK_NA(INTERNAL, ArrowArrayFinishBuilding(array, NULL), error);
