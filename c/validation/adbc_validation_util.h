@@ -215,6 +215,10 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         if (int errno_res = ArrowArrayAppendInt(array, *v); errno_res != 0) {
           return errno_res;
         }
+      } else if constexpr (std::is_same<T, double>::value) {
+        if (int errno_res = ArrowArrayAppendDouble(array, *v); errno_res != 0) {
+          return errno_res;
+        }
       } else if constexpr (std::is_same<T, std::string>::value) {
         struct ArrowStringView view;
         view.data = v->c_str();

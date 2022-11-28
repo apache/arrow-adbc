@@ -24,6 +24,7 @@
 #include <adbc.h>
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest-matchers.h>
+#include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow.h>
 
@@ -441,3 +442,61 @@ TEST_F(SqliteReaderTest, InferTypedParams) {
               ::testing::HasSubstr(
                   "[SQLite] Type mismatch in column 0: expected INT64 but got DOUBLE"));
 }
+
+template <typename CType>
+class SqliteNumericParamTest : public SqliteReaderTest,
+                               public ::testing::WithParamInterface<ArrowType> {
+ public:
+  void Test(ArrowType expected_type) {
+    adbc_validation::StreamReader reader;
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> batch;
+
+    ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"", GetParam()}}),
+                IsOkErrno());
+    ASSERT_THAT(adbc_validation::MakeBatch<CType>(&schema.value, &batch.value,
+                                                  /*error=*/nullptr,
+                                                  {std::nullopt, 0, 1, 2, 4, 8}),
+                IsOkErrno());
+
+    ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value));
+    ASSERT_NO_FATAL_FAILURE(Exec("SELECT ?", /*infer_rows=*/2, &reader));
+
+    ASSERT_EQ(1, reader.schema->n_children);
+    ASSERT_EQ(expected_type, reader.fields[0].data_type);
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NO_FATAL_FAILURE(
+        CompareArray<CType>(reader.array_view->children[0], {std::nullopt, 0}));
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NO_FATAL_FAILURE(
+        CompareArray<CType>(reader.array_view->children[0], {1, 2, 4, 8}));
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
+};
+
+class SqliteIntParamTest : public SqliteNumericParamTest<int64_t> {};
+
+TEST_P(SqliteIntParamTest, BindInt) {
+  ASSERT_NO_FATAL_FAILURE(Test(NANOARROW_TYPE_INT64));
+}
+
+INSTANTIATE_TEST_SUITE_P(IntTypes, SqliteIntParamTest,
+                         ::testing::Values(NANOARROW_TYPE_UINT8, NANOARROW_TYPE_UINT16,
+                                           NANOARROW_TYPE_UINT32, NANOARROW_TYPE_UINT64,
+                                           NANOARROW_TYPE_INT8, NANOARROW_TYPE_INT16,
+                                           NANOARROW_TYPE_INT32, NANOARROW_TYPE_INT64));
+
+class SqliteFloatParamTest : public SqliteNumericParamTest<double> {};
+
+TEST_P(SqliteFloatParamTest, BindFloat) {
+  ASSERT_NO_FATAL_FAILURE(Test(NANOARROW_TYPE_DOUBLE));
+}
+
+INSTANTIATE_TEST_SUITE_P(FloatTypes, SqliteFloatParamTest,
+                         ::testing::Values(
+                             // XXX: AppendDouble currently doesn't really work with
+                             // floats (FLT_MIN/FLT_MAX isn't the right thing)
+
+                             // NANOARROW_TYPE_FLOAT,
+                             NANOARROW_TYPE_DOUBLE));

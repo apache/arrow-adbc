@@ -21,6 +21,7 @@
 #include <math.h>
 #include <stdio.h>
 
+#include <adbc.h>
 #include <nanoarrow.h>
 #include <sqlite3.h>
 
@@ -77,8 +78,7 @@ AdbcStatusCode AdbcSqliteBinderSetArray(struct AdbcSqliteBinder* binder,
                                         struct ArrowSchema* schema,
                                         struct AdbcError* error) {
   AdbcSqliteBinderRelease(binder);
-  AdbcStatusCode status = BatchToArrayStream(values, schema, &binder->params, error);
-  if (status != ADBC_STATUS_OK) return status;
+  RAISE_ADBC(BatchToArrayStream(values, schema, &binder->params, error));
   return AdbcSqliteBinderSet(binder, error);
 }  // NOLINT(whitespace/indent)
 AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
@@ -154,10 +154,36 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
                                  SQLITE_STATIC);
           break;
         }
+        case NANOARROW_TYPE_UINT8:
+        case NANOARROW_TYPE_UINT16:
+        case NANOARROW_TYPE_UINT32:
+        case NANOARROW_TYPE_UINT64: {
+          uint64_t value =
+              ArrowArrayViewGetUIntUnsafe(binder->batch.children[col], binder->next_row);
+          if (value > INT64_MAX) {
+            SetError(error,
+                     "Column %d has unsigned integer value %" PRIu64
+                     "out of range of int64_t",
+                     col, value);
+            return ADBC_STATUS_INVALID_ARGUMENT;
+          }
+          rc = sqlite3_bind_int64(stmt, col + 1, (int64_t)value);
+          break;
+        }
+        case NANOARROW_TYPE_INT8:
+        case NANOARROW_TYPE_INT16:
+        case NANOARROW_TYPE_INT32:
         case NANOARROW_TYPE_INT64: {
           int64_t value =
               ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
           rc = sqlite3_bind_int64(stmt, col + 1, value);
+          break;
+        }
+        case NANOARROW_TYPE_FLOAT:
+        case NANOARROW_TYPE_DOUBLE: {
+          int64_t value = ArrowArrayViewGetDoubleUnsafe(binder->batch.children[col],
+                                                        binder->next_row);
+          rc = sqlite3_bind_double(stmt, col + 1, value);
           break;
         }
         case NANOARROW_TYPE_STRING:
@@ -169,7 +195,8 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
           break;
         }
         default:
-          SetError(error, "Column %d has unsupported type %s", col, ArrowTypeString(binder->types[col]));
+          SetError(error, "Column %d has unsupported type %s", col,
+                   ArrowTypeString(binder->types[col]));
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
@@ -348,9 +375,7 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
   }
 
   RAISE_NA(ArrowArrayInitFromSchema(out, &reader->schema, &reader->error));
-  for (int i = 0; i < reader->schema.n_children; i++) {
-    RAISE_NA(ArrowArrayStartAppending(out->children[i]));
-  }
+  RAISE_NA(ArrowArrayStartAppending(out));
   int64_t batch_size = 0;
   int result = 0;
 
