@@ -30,8 +30,8 @@ set VCPKG_TARGET_TRIPLET=x64-windows-static
 
 IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
-mkdir %build_dir%/postgres
-pushd %build_dir%/postgres
+mkdir %build_dir%\postgres
+pushd %build_dir%\postgres
 
 cmake ^
       -G "%CMAKE_GENERATOR%" ^
@@ -50,8 +50,8 @@ set ADBC_POSTGRES_LIBRARY=%build_dir%\postgres\bin\adbc_driver_postgres.dll
 
 popd
 
-mkdir %build_dir%/sqlite
-pushd %build_dir%/sqlite
+mkdir %build_dir%\sqlite
+pushd %build_dir%\sqlite
 
 cmake ^
       -G "%CMAKE_GENERATOR%" ^
