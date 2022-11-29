@@ -36,6 +36,10 @@ add_arrow_lib(adbc_driver_manager
               AdbcDriverManager
               PKG_CONFIG_NAME
               adbc-driver-manager
+              SHARED_LINK_LIBS
+              ${CMAKE_DL_LIBS}
+              STATIC_LINK_LIBS
+              ${CMAKE_DL_LIBS}
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS})
 include_directories(SYSTEM ${REPOSITORY_ROOT})

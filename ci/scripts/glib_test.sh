@@ -27,7 +27,7 @@ test_subproject() {
     local -r install_dir="${3}"
 
     export DYLD_LIBRARY_PATH="${install_dir}/lib"
-    export GI_TYPELIB_PATH="${source_dir}/build/glib/adbc-glib"
+    export GI_TYPELIB_PATH="${build_dir}/glib/adbc-glib"
     export LD_LIBRARY_PATH="${install_dir}/lib"
     export PKG_CONFIG_PATH="${install_dir}/lib/pkgconfig"
     if [[ -n "${CONDA_PREFIX}" ]]; then
@@ -49,7 +49,7 @@ test_subproject() {
            env DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" \
            ruby test/run.rb
     bundle exec rake build
-    gem install pkg/*.gem
+    gem install --user-install pkg/*.gem
     popd
 }
 
