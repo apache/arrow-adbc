@@ -25,9 +25,16 @@ project(adbc_driver_sqlite
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
 include(CTest)
-find_package(PkgConfig)
 
-find_package(SQLite3 REQUIRED)
+if(WIN32)
+  # XXX: for now, assume vcpkg
+  find_package(unofficial-sqlite3 CONFIG REQUIRED)
+  set(SQLite3_LINK_LIBRARIES unofficial::sqlite3::sqlite3)
+  set(SQLite3_INCLUDE_DIRS)
+else()
+  find_package(SQLite3 REQUIRED)
+  set(SQLite3_LINK_LIBRARIES SQLite::SQLite3)
+endif()
 
 add_arrow_lib(adbc_driver_sqlite
               SOURCES
@@ -39,10 +46,10 @@ add_arrow_lib(adbc_driver_sqlite
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
-              SQLite::SQLite3
+              ${SQLite3_LINK_LIBRARIES}
               nanoarrow
               STATIC_LINK_LIBS
-              SQLite::SQLite3
+              ${SQLite3_LINK_LIBRARIES}
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
