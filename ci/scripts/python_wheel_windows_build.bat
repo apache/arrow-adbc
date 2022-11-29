@@ -30,6 +30,8 @@ set VCPKG_TARGET_TRIPLET=x64-windows-static
 
 IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
+%VCPKG_ROOT%\vcpkg install --triplet=%VCPKG_TARGET_TRIPLET% libpq sqlite3
+
 mkdir %build_dir%\postgres
 pushd %build_dir%\postgres
 
