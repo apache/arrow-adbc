@@ -42,6 +42,9 @@ function build_drivers {
         export VCPKG_DEFAULT_TRIPLET="x64-osx-static-release"
     fi
 
+    # XXX: Patch the portfile
+    sed -i "s|include/postgresql/server/pg_config.h|include/server/pg_config.h|" "${VCPKG_ROOT}/ports/libpq/portfile.cmake"
+
     echo "=== Building driver/postgres ==="
     mkdir -p ${build_dir}/driver/postgres
     pushd ${build_dir}/driver/postgres
