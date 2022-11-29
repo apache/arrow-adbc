@@ -47,7 +47,7 @@ build_subproject() {
           --prefix="${install_dir}" \
           "${build_dir}/glib" \
           "${source_dir}/glib"
-    meson install -C build/glib
+    meson install -C "${build_dir}/glib"
 }
 
 main() {
