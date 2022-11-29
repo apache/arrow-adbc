@@ -21,9 +21,16 @@
 
 #include <adbc.h>
 
+#if defined(__GNUC__)
+#define SET_ERROR_ATTRIBUTE __attribute__((format(printf, 2, 3)))
+#else
+#define SET_ERROR_ATTRIBUTE
+#endif
+
 /// Set error details using a format string.
-void SetError(struct AdbcError* error, const char* format, ...)
-    __attribute__((format(printf, 2, 3)));
+void SetError(struct AdbcError* error, const char* format, ...) SET_ERROR_ATTRIBUTE;
+
+#undef SET_ERROR_ATTRIBUTE
 
 /// Wrap a single batch as a stream.
 AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema* schema,
