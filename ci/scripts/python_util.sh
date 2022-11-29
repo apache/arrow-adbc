@@ -30,7 +30,7 @@ function build_drivers {
     # Enable manifest mode
     : ${VCPKG_FEATURE_FLAGS:=manifests}
     # Add our custom triplets
-    : ${VCPKG_OVERLAY_TRIPLETS:="${source_dir}/ci/vcpkg/triplets/"}
+    export VCPKG_OVERLAY_TRIPLETS="${source_dir}/ci/vcpkg/triplets/"
 
     if [[ $(uname) == "Linux" ]]; then
         export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
