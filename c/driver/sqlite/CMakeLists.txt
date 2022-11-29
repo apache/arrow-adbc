@@ -48,6 +48,7 @@ add_arrow_lib(adbc_driver_sqlite
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
+include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()

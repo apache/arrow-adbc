@@ -24,7 +24,6 @@
 
 #include "adbc.h"
 #include "adbc_driver_manager.h"
-#include "driver/test_util.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
@@ -51,7 +50,7 @@ class DriverManager : public ::testing::Test {
     }
 
     if (driver.release) {
-      ADBC_ASSERT_OK_WITH_ERROR(error, driver.release(&driver, &error));
+      ASSERT_THAT(driver.release(&driver, &error), IsOkStatus(&error));
       ASSERT_EQ(driver.private_data, nullptr);
       ASSERT_EQ(driver.private_manager, nullptr);
     }
@@ -67,23 +66,23 @@ TEST_F(DriverManager, DatabaseCustomInitFunc) {
   std::memset(&database, 0, sizeof(database));
 
   // Explicitly set entrypoint
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcDatabaseSetOption(&database, "entrypoint", "AdbcDriverInit", &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseInit(&database, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
+  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database, "entrypoint", "AdbcDriverInit", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
 
   // Set invalid entrypoint
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseNew(&database, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error, AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error));
-  ADBC_ASSERT_OK_WITH_ERROR(
-      error,
-      AdbcDatabaseSetOption(&database, "entrypoint", "ThisSymbolDoesNotExist", &error));
+  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database, "entrypoint", "ThisSymbolDoesNotExist", &error),
+      IsOkStatus(&error));
   ASSERT_EQ(ADBC_STATUS_INTERNAL, AdbcDatabaseInit(&database, &error));
-  ADBC_ASSERT_OK_WITH_ERROR(error, AdbcDatabaseRelease(&database, &error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
 }
 
 class SqliteQuirks : public adbc_validation::DriverQuirks {

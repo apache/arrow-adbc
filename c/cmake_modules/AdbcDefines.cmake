@@ -93,5 +93,17 @@ endmacro()
 add_custom_target(all-tests)
 if(ADBC_BUILD_TESTS)
   find_package(GTest)
+  if(NOT GTest_FOUND)
+    message(STATUS "Building googletest from source")
+    include(FetchContent)
+    fetchcontent_declare(googletest
+                         URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+    )
+    # Windows: https://stackoverflow.com/questions/12540970/
+    set(gtest_force_shared_crt
+        ON
+        CACHE BOOL "" FORCE)
+    fetchcontent_makeavailable(googletest)
+  endif()
   set(ADBC_TEST_LINK_LIBS GTest::gtest_main GTest::gtest GTest::gmock)
 endif()
