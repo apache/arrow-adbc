@@ -20,6 +20,9 @@
 set -ex
 
 source_dir=${1}
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+source "${script_dir}/python_util.sh"
 
 echo "=== (${PYTHON_VERSION}) Building ADBC sdists ==="
 
@@ -30,7 +33,7 @@ pip install --upgrade pip setuptools
 # For drivers, which bundle shared libraries, defer that to install time
 export _ADBC_IS_SDIST=1
 
-for component in adbc_driver_manager adbc_driver_postgres; do
+for component in ${COMPONENTS}; do
     pushd ${source_dir}/python/$component
 
     echo "=== (${PYTHON_VERSION}) Building $component sdist ==="
