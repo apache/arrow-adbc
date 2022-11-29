@@ -83,16 +83,19 @@ show_info() {
   echo "└ ${1}"
 }
 
-# TODO:
 ARROW_DIST_URL='https://dist.apache.org/repos/dist/dev/arrow'
 
 download_dist_file() {
-  curl \
-    --silent \
-    --show-error \
-    --fail \
-    --location \
-    --remote-name $ARROW_DIST_URL/$1
+  if [[ -n "${VERIFICATION_MOCK_DIST_DIR}" && "$1" != "KEYS" ]]; then
+    cp "${VERIFICATION_MOCK_DIST_DIR}/$1" .
+  else
+    curl \
+      --silent \
+      --show-error \
+      --fail \
+      --location \
+      --remote-name $ARROW_DIST_URL/$1
+  fi
 }
 
 download_rc_file() {
@@ -471,7 +474,7 @@ test_integration() {
 ensure_source_directory() {
   show_header "Ensuring source directory"
 
-  dist_name="apache-arrow-${VERSION}"
+  dist_name="adbc-${VERSION}"
 
   if [ "${SOURCE_KIND}" = "local" ]; then
     # Local arrow repository, testing repositories should be already present
