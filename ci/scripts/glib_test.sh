@@ -49,6 +49,7 @@ test_subproject() {
            env DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" \
            ruby test/run.rb
     bundle exec rake build
+    gem install --user-install pkg/*.gem
     popd
 }
 
