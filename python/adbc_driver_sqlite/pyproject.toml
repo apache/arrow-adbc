@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,29 +15,25 @@
 # specific language governing permissions and limitations
 # under the License.
 
-set -ex
+[project]
+name = "adbc_driver_sqlite"
+description = "An ADBC driver for working with SQLite."
+authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
+license = {text = "Apache-2.0"}
+requires-python = ">=3.8"
+dynamic = ["version"]
 
-source_dir=${1}
-script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+[project.optional-dependencies]
+dbapi = ["pandas", "pyarrow>=8.0.0"]
+test = ["pandas", "pyarrow>=8.0.0", "pytest"]
 
-source "${script_dir}/python_util.sh"
+[project.urls]
+homepage = "https://arrow.apache.org"
+repository = "https://github.com/apache/arrow-adbc"
 
-echo "=== (${PYTHON_VERSION}) Building ADBC sdists ==="
+[build-system]
+requires = ["setuptools >= 61.0.0"]
+build-backend = "setuptools.build_meta"
 
-# https://github.com/pypa/pip/issues/7555
-# Get the latest pip so we have in-tree-build by default
-pip install --upgrade pip setuptools
-
-# For drivers, which bundle shared libraries, defer that to install time
-export _ADBC_IS_SDIST=1
-
-for component in ${COMPONENTS}; do
-    pushd ${source_dir}/python/$component
-
-    echo "=== (${PYTHON_VERSION}) Building $component sdist ==="
-    # python -m build copies to a tempdir, so we can't reference other files in the repo
-    # https://github.com/pypa/pip/issues/5519
-    python setup.py sdist
-
-    popd
-done
+[tool.setuptools]
+include-package-data = true

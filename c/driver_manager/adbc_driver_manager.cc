@@ -665,7 +665,9 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   void* load_handle = GetProcAddress(handle, entrypoint);
   init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
   if (!init_func) {
-    std::string message = "GetProcAddress() failed: ";
+    std::string message = "GetProcAddress(";
+    message += entrypoint;
+    message += ") failed: ";
     GetWinError(&message);
     if (!FreeLibrary(handle)) {
       message += "\nFreeLibrary() failed: ";
@@ -722,7 +724,9 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
   void* load_handle = dlsym(handle, entrypoint);
   if (!load_handle) {
-    std::string message = "dlsym() failed: ";
+    std::string message = "dlsym(";
+    message += entrypoint;
+    message += ") failed: ";
     message += dlerror();
     SetError(error, message);
     return ADBC_STATUS_INTERNAL;

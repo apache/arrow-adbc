@@ -62,18 +62,19 @@ function check_wheels {
     fi
 }
 
-echo "=== (${PYTHON_VERSION}) Building ADBC libpq driver ==="
-# Sets ADBC_POSTGRES_LIBRARY
+echo "=== (${PYTHON_VERSION}) Building C/C++ driver components ==="
+# Sets ADBC_POSTGRES_LIBRARY, ADBC_SQLITE_LIBRARY
 build_drivers "${source_dir}" "${build_dir}"
 
 # Check that we don't expose any unwanted symbols
 check_visibility $ADBC_POSTGRES_LIBRARY
+check_visibility $ADBC_SQLITE_LIBRARY
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
-pip install --upgrade pip
+pip install --upgrade pip auditwheel
 
-for component in adbc_driver_manager adbc_driver_postgres; do
+for component in $COMPONENTS; do
     pushd ${source_dir}/python/$component
 
     echo "=== (${PYTHON_VERSION}) Clean build artifacts==="

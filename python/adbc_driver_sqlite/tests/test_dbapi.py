@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,29 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 
-set -ex
+import pytest
+from adbc_driver_sqlite import dbapi
 
-source_dir=${1}
-script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-source "${script_dir}/python_util.sh"
+@pytest.fixture
+def sqlite():
+    with dbapi.connect() as conn:
+        yield conn
 
-echo "=== (${PYTHON_VERSION}) Building ADBC sdists ==="
 
-# https://github.com/pypa/pip/issues/7555
-# Get the latest pip so we have in-tree-build by default
-pip install --upgrade pip setuptools
-
-# For drivers, which bundle shared libraries, defer that to install time
-export _ADBC_IS_SDIST=1
-
-for component in ${COMPONENTS}; do
-    pushd ${source_dir}/python/$component
-
-    echo "=== (${PYTHON_VERSION}) Building $component sdist ==="
-    # python -m build copies to a tempdir, so we can't reference other files in the repo
-    # https://github.com/pypa/pip/issues/5519
-    python setup.py sdist
-
-    popd
-done
+def test_query_trivial(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchone() == (1,)

@@ -21,6 +21,7 @@ set -e
 : ${BUILD_ALL:=1}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRES:=${BUILD_ALL}}
+: ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 
 test_subproject() {
     local -r source_dir=${1}
@@ -52,6 +53,10 @@ main() {
 
     if [[ "${BUILD_DRIVER_POSTGRES}" -gt 0 ]]; then
         test_subproject "${source_dir}" "${install_dir}" adbc_driver_postgres
+    fi
+
+    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
+        test_subproject "${source_dir}" "${install_dir}" adbc_driver_sqlite
     fi
 }
 

@@ -15,25 +15,27 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-==================
-libpq-based Driver
-==================
+=============
+SQLite Driver
+=============
 
-The Postgres driver provides access to any database that supports the
+The SQLite driver provides access to any database that supports the
 Postgres wire format.
 
 Installation
 ============
 
-The libpq-based driver is shipped as a standalone library.  See
-:ref:`Installation <cpp-install-libpq>`.
+The SQLite driver is shipped as a standalone library.  See
+:ref:`Installation <cpp-install-sqlite>`.
 
 Usage
 =====
 
 To connect to a database, supply the "uri" parameter when constructing
-the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
-<https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_.
+the :cpp:class:`AdbcDatabase`.  This should be a filename or `URI
+filename <https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open>`_.
+If omitted, it will default to an in-memory database, but one that is
+shared across all connections.
 
 .. tab-set::
 
@@ -47,7 +49,7 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
          // Ignoring error handling
          struct AdbcDatabase database;
          AdbcDatabaseNew(&database, nullptr);
-         AdbcDatabaseSetOption(&database, "uri", "postgresql://localhost:5433", nullptr);
+         AdbcDatabaseSetOption(&database, "uri", "file:mydb.db", nullptr);
          AdbcDatabaseInit(&database, nullptr);
 
    .. tab-item:: Python
@@ -55,9 +57,7 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
 
       .. code-block:: python
 
-         import adbc_driver_postgres.dbapi
+         import adbc_driver_sqlite.dbapi
 
-
-         uri = "postgresql://localhost:5433"
-         with adbc_driver_postgres.dbapi.connect(uri) as conn:
+         with adbc_driver_sqlite.dbapi.connect() as conn:
              pass

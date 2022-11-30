@@ -30,8 +30,10 @@ set VCPKG_TARGET_TRIPLET=x64-windows-static
 
 IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
-mkdir %build_dir%
-pushd %build_dir%
+%VCPKG_ROOT%\vcpkg install --triplet=%VCPKG_TARGET_TRIPLET% libpq sqlite3
+
+mkdir %build_dir%\postgres
+pushd %build_dir%\postgres
 
 cmake ^
       -G "%CMAKE_GENERATOR%" ^
@@ -50,9 +52,29 @@ set ADBC_POSTGRES_LIBRARY=%build_dir%\bin\adbc_driver_postgres.dll
 
 popd
 
+mkdir %build_dir%\sqlite
+pushd %build_dir%\sqlite
+
+cmake ^
+      -G "%CMAKE_GENERATOR%" ^
+      -DADBC_BUILD_SHARED=ON ^
+      -DADBC_BUILD_STATIC=OFF ^
+      -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE% ^
+      -DCMAKE_INSTALL_PREFIX=%build_dir% ^
+      -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake ^
+      -DCMAKE_UNITY_BUILD=%CMAKE_UNITY_BUILD% ^
+      -DVCPKG_TARGET_TRIPLET=%VCPKG_TARGET_TRIPLET% ^
+      %source_dir%\c\driver\sqlite || exit /B 1
+cmake --build . --config %CMAKE_BUILD_TYPE% --target install -j || exit /B 1
+
+@REM XXX: CMake installs it to bin instead of lib for some reason
+set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
+
+popd
+
 python -m pip install --upgrade pip delvewheel
 
-FOR %%c IN (adbc_driver_manager adbc_driver_postgres) DO (
+FOR %%c IN (adbc_driver_manager adbc_driver_postgres adbc_driver_sqlite) DO (
     pushd %source_dir%\python\%%c
 
     echo "=== (%PYTHON_VERSION%) Building %%c wheel ==="

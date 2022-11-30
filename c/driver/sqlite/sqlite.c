@@ -1783,6 +1783,7 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
 }  // NOLINT(whitespace/indent)
 // due to https://github.com/cpplint/cpplint/pull/189
 
+ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
   return SqliteDriverInit(version, driver, error);
 }

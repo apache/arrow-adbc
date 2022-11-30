@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,29 +15,27 @@
 # specific language governing permissions and limitations
 # under the License.
 
-set -ex
+import adbc_driver_sqlite
+import pyarrow
+import pytest
 
-source_dir=${1}
-script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+import adbc_driver_manager
 
-source "${script_dir}/python_util.sh"
 
-echo "=== (${PYTHON_VERSION}) Building ADBC sdists ==="
+@pytest.fixture
+def sqlite():
+    with adbc_driver_sqlite.connect() as db:
+        with adbc_driver_manager.AdbcConnection(db) as conn:
+            yield conn
 
-# https://github.com/pypa/pip/issues/7555
-# Get the latest pip so we have in-tree-build by default
-pip install --upgrade pip setuptools
 
-# For drivers, which bundle shared libraries, defer that to install time
-export _ADBC_IS_SDIST=1
+def test_query_trivial(sqlite):
+    with adbc_driver_manager.AdbcStatement(sqlite) as stmt:
+        stmt.set_sql_query("SELECT 1")
+        stream, _ = stmt.execute_query()
+        reader = pyarrow.RecordBatchReader._import_from_c(stream.address)
+        assert reader.read_all()
 
-for component in ${COMPONENTS}; do
-    pushd ${source_dir}/python/$component
 
-    echo "=== (${PYTHON_VERSION}) Building $component sdist ==="
-    # python -m build copies to a tempdir, so we can't reference other files in the repo
-    # https://github.com/pypa/pip/issues/5519
-    python setup.py sdist
-
-    popd
-done
+def test_version():
+    assert adbc_driver_sqlite.__version__
