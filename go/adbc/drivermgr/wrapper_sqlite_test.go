@@ -216,7 +216,7 @@ func TestDriverMgrCustomInitFunc(t *testing.T) {
 	var exp *adbc.Error
 	assert.ErrorAs(t, err, &exp)
 	assert.Equal(t, adbc.StatusInternal, exp.Code)
-	assert.Contains(t, exp.Msg, "dlsym() failed")
+	assert.Contains(t, exp.Msg, "dlsym(ThisSymbolDoesNotExist) failed")
 	switch runtime.GOOS {
 	case "darwin":
 		assert.Contains(t, exp.Msg, "ThisSymbolDoesNotExist): symbol not found")
