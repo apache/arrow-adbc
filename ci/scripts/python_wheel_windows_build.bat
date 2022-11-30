@@ -48,7 +48,7 @@ cmake ^
 cmake --build . --config %CMAKE_BUILD_TYPE% --target install -j || exit /B 1
 
 @REM XXX: CMake installs it to bin instead of lib for some reason
-set ADBC_POSTGRES_LIBRARY=%build_dir%\postgres\bin\adbc_driver_postgres.dll
+set ADBC_POSTGRES_LIBRARY=%build_dir%\bin\adbc_driver_postgres.dll
 
 popd
 
@@ -68,7 +68,7 @@ cmake ^
 cmake --build . --config %CMAKE_BUILD_TYPE% --target install -j || exit /B 1
 
 @REM XXX: CMake installs it to bin instead of lib for some reason
-set ADBC_SQLITE_LIBRARY=%build_dir%\sqlite\bin\adbc_driver_sqlite.dll
+set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
 
 popd
 
