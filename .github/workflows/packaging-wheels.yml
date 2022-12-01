@@ -134,6 +134,7 @@ jobs:
           path: |
             python/adbc_driver_manager/repaired_wheels/*.whl
             python/adbc_driver_postgres/repaired_wheels/*.whl
+            python/adbc_driver_sqlite/repaired_wheels/*.whl
 
       - name: Test wheel
         shell: bash
@@ -146,7 +147,7 @@ jobs:
         shell: bash
         if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true)
         run: |
-          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/repaired_wheels/*.whl
+          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres,sqlite}/repaired_wheels/*.whl
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
@@ -210,8 +211,9 @@ jobs:
           name: python${{ matrix.python_version }}-macOS
           retention-days: 7
           path: |
-            python/adbc_driver_manager/dist/*.whl
-            python/adbc_driver_postgres/dist/*.whl
+            python/adbc_driver_manager/repaired_wheels/*.whl
+            python/adbc_driver_postgres/repaired_wheels/*.whl
+            python/adbc_driver_sqlite/repaired_wheels/*.whl
 
       - name: Test wheel
         shell: bash
@@ -224,7 +226,7 @@ jobs:
         shell: bash
         if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true)
         run: |
-          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/dist/*.whl
+          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres,sqlite}/dist/*.whl
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
@@ -300,6 +302,7 @@ jobs:
           path: |
             python/adbc_driver_manager/dist/*.whl
             python/adbc_driver_postgres/dist/*.whl
+            python/adbc_driver_sqlite/dist/*.whl
 
       - name: Test wheel
         shell: cmd
@@ -348,6 +351,7 @@ jobs:
           path: |
             python/adbc_driver_manager/dist/*.tar.gz
             python/adbc_driver_postgres/dist/*.tar.gz
+            python/adbc_driver_sqlite/dist/*.tar.gz
 
       - name: Test sdist
         shell: bash
@@ -358,6 +362,6 @@ jobs:
         shell: bash
         if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true || github.event.inputs.upload_artifacts == 'true')
         run: |
-          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres}/dist/*.tar.gz
+          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres,sqlite}/dist/*.tar.gz
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}

@@ -36,19 +36,15 @@ function build_drivers {
         export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
         export VCPKG_DEFAULT_TRIPLET="x64-linux-static-release"
-
-        # XXX: Patch the portfile
-        sed -i "s|include/postgresql/server/pg_config.h|include/server/pg_config.h|" \
-            "${VCPKG_ROOT}/ports/libpq/portfile.cmake"
     else # macOS
         export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
         export VCPKG_DEFAULT_TRIPLET="x64-osx-static-release"
-
-        # XXX: Patch the portfile
-        sed -i '.bak' "s|include/postgresql/server/pg_config.h|include/server/pg_config.h|" \
-            "${VCPKG_ROOT}/ports/libpq/portfile.cmake"
     fi
+
+    "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \
+          --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
+          --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
     echo "=== Building driver/postgres ==="
     mkdir -p ${build_dir}/driver/postgres

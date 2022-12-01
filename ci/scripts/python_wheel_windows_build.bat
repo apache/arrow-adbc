@@ -72,12 +72,22 @@ set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
 
 popd
 
-python -m pip install --upgrade pip delvewheel
+python -m pip install --upgrade pip delvewheel wheel
+
+FOR /F %%i IN ('python -c "import sysconfig; print(sysconfig.get_platform())"') DO set PLAT_NAME=%%i
 
 FOR %%c IN (adbc_driver_manager adbc_driver_postgres adbc_driver_sqlite) DO (
     pushd %source_dir%\python\%%c
 
     echo "=== (%PYTHON_VERSION%) Building %%c wheel ==="
+    python -m pip wheel -w dist -vvv . || exit /B 1
+
+    echo "=== (%PYTHON_VERSION%) Re-tag %%c wheel ==="
+    FOR %%w IN (dist\*.whl) DO (
+        python %source_dir%\ci\scripts\python_wheel_fix_tag.py %%w || exit /B 1
+    )
+
+    echo "=== (%PYTHON_VERSION%) Repair %%c wheel ==="
     python -m pip wheel -w dist -vvv . || exit /B 1
 
     FOR %%w IN (dist\*.whl) DO (

@@ -26,14 +26,14 @@ project(adbc_driver_sqlite
         LANGUAGES CXX)
 include(CTest)
 
-if(WIN32)
-  # XXX: for now, assume vcpkg
+find_package(SQLite3)
+if(SQLite3_FOUND)
+  set(SQLite3_LINK_LIBRARIES SQLite::SQLite3)
+else()
+  # vcpkg
   find_package(unofficial-sqlite3 CONFIG REQUIRED)
   set(SQLite3_LINK_LIBRARIES unofficial::sqlite3::sqlite3)
   set(SQLite3_INCLUDE_DIRS)
-else()
-  find_package(SQLite3 REQUIRED)
-  set(SQLite3_LINK_LIBRARIES SQLite::SQLite3)
 endif()
 
 add_arrow_lib(adbc_driver_sqlite
