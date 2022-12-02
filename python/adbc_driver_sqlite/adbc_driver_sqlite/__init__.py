@@ -27,9 +27,8 @@ __all__ = ["connect", "__version__"]
 
 def connect(uri: typing.Optional[str] = None) -> adbc_driver_manager.AdbcDatabase:
     """Create a low level ADBC connection to SQLite."""
-    with importlib.resources.path(
-        __package__, "libadbc_driver_sqlite.so"
-    ) as entrypoint:
-        if uri is None:
-            return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint))
-        return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)
+    root = importlib.resources.files(__package__)
+    entrypoint = root.joinpath("libadbc_driver_sqlite.so")
+    if uri is None:
+        return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint))
+    return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)
