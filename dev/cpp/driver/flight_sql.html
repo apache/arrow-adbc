@@ -1,0 +1,516 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="libpq-based Driver" href="postgres.html" /><link rel="prev" title="Drivers" href="index.html" />
+
+    <meta name="generator" content="sphinx-5.3.0, furo 2022.09.29"/>
+        <title>Flight SQL Driver - ADBC 0.1.0 (dev) documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">ADBC 0.1.0 (dev) documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../../_static/logo-light.png" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../../_static/logo-dark.png" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">ADBC 0.1.0 (dev) documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Specifications:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../format/specification.html">ADBC API Standard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../format/versioning.html">Versioning and Compatibility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../format/comparison.html">Comparison with Other APIs</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Supported Environments:</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">C/C++</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Drivers</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Flight SQL Driver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="postgres.html">libpq-based Driver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concurrency.html">Concurrency and Thread Safety</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../../python/index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Drivers</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Flight SQL Driver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="postgres.html">libpq-based Driver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_manager.html">adbc_driver_manager</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contributing:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../nightly.html">Nightly Packages</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/cpp/driver/flight_sql.rst" title="Edit this page">
+    <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
+      <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
+    </svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="flight-sql-driver">
+<h1>Flight SQL Driver<a class="headerlink" href="#flight-sql-driver" title="Permalink to this heading">#</a></h1>
+<p>The Flight SQL Driver provides access to any database implementing a
+<a class="reference external" href="https://arrow.apache.org/docs/format/FlightSql.html" title="(in Apache Arrow v10.0.1)"><span>Arrow Flight SQL</span></a> compatible endpoint.</p>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<p>The Flight SQL driver is shipped as part of the Arrow C++ libraries
+and PyArrow.  See <a class="reference internal" href="../install.html#cpp-install-flight-sql"><span class="std std-ref">Installation</span></a>.</p>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
+<p>To connect to a database, supply the “uri” parameter when constructing
+the <a class="reference internal" href="../api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
+C++</label><div class="sd-tab-content docutils">
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;adbc.h&quot;</span><span class="cp"></span>
+
+<span class="c1">// Ignoring error handling</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span><span class="w"></span>
+<span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;grpc://localhost:8080&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
+<span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-1">
+Python</label><div class="sd-tab-content docutils">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pyarrow.flight_sql</span>
+
+
+<span class="k">with</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">flight_sql</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;grpc://localhost:8080&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+</div>
+</div>
+<section id="additional-configuration-options">
+<h3>Additional Configuration Options<a class="headerlink" href="#additional-configuration-options" title="Permalink to this heading">#</a></h3>
+<p>The Flight SQL driver supports some additional configuration options
+in addition to the “standard” ADBC options.</p>
+<section id="custom-call-headers">
+<h4>Custom Call Headers<a class="headerlink" href="#custom-call-headers" title="Permalink to this heading">#</a></h4>
+<p>Custom HTTP headers can be attached to requests via options that apply
+to both <a class="reference internal" href="../api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a> and <a class="reference internal" href="../api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>.</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.call_header.&lt;HEADER</span> <span class="pre">NAME&gt;</span></code></dt><dd><p>Add the header <code class="docutils literal notranslate"><span class="pre">&lt;HEADER</span> <span class="pre">NAME&gt;</span></code> to outgoing requests with the given
+value.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Header names must be in all lowercase.</p>
+</div>
+</dd>
+</dl>
+</section>
+<section id="timeouts">
+<h4>Timeouts<a class="headerlink" href="#timeouts" title="Permalink to this heading">#</a></h4>
+<p>By default, timeouts are not used for RPC calls.  They can be set via
+special options on <a class="reference internal" href="../api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>.  In general, it is
+best practice to set timeouts to avoid unexpectedly getting stuck.
+The options are as follows:</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.timeout_seconds.fetch</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that fetch
+data.  This corresponds to Flight <code class="docutils literal notranslate"><span class="pre">DoGet</span></code> calls.</p>
+<p>For example, this controls the timeout of the underlying Flight
+calls that fetch more data as a result set is consumed.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.timeout_seconds.query</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that
+execute a query.  This corresponds to Flight <code class="docutils literal notranslate"><span class="pre">GetFlightInfo</span></code>
+calls.</p>
+<p>For example, this controls the timeout of the underlying Flight
+calls that implement <code class="xref py py-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.timeout_seconds.update</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that
+upload data or perform other updates.</p>
+<p>For example, this controls the timeout of the underlying Flight
+calls that implement bulk ingestion, or transaction support.</p>
+</dd>
+</dl>
+</section>
+<section id="type-mapping">
+<h4>Type Mapping<a class="headerlink" href="#type-mapping" title="Permalink to this heading">#</a></h4>
+<p>When executing a bulk ingestion operation, the driver needs to be able
+to construct appropriate SQL queries for the database.  (The driver
+does not currently support using Substrait plans instead.)  In
+particular, a mapping from Arrow types to SQL type names is required.
+While a default mapping is provided, the client may wish to override
+this mapping, which can be done by setting special options on
+<a class="reference internal" href="../api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  (The driver does not currently inspect
+Flight SQL metadata to construct this mapping.)</p>
+<p>All such options begin with <code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.quirks.ingest_type.</span></code>
+and are followed by a type name below.</p>
+<div class="table-wrapper docutils container" id="id1">
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">Type Names</span><a class="headerlink" href="#id1" title="Permalink to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Arrow Type Name</p></th>
+<th class="head"><p>Default SQL Type Name</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>binary</p></td>
+<td><p>BLOB</p></td>
+</tr>
+<tr class="row-odd"><td><p>bool</p></td>
+<td><p>BOOLEAN</p></td>
+</tr>
+<tr class="row-even"><td><p>date32</p></td>
+<td><p>DATE</p></td>
+</tr>
+<tr class="row-odd"><td><p>date64</p></td>
+<td><p>DATE</p></td>
+</tr>
+<tr class="row-even"><td><p>decimal128</p></td>
+<td><p>NUMERIC</p></td>
+</tr>
+<tr class="row-odd"><td><p>decimal256</p></td>
+<td><p>NUMERIC</p></td>
+</tr>
+<tr class="row-even"><td><p>double</p></td>
+<td><p>DOUBLE PRECISION</p></td>
+</tr>
+<tr class="row-odd"><td><p>float</p></td>
+<td><p>REAL</p></td>
+</tr>
+<tr class="row-even"><td><p>int16</p></td>
+<td><p>SMALLINT</p></td>
+</tr>
+<tr class="row-odd"><td><p>int32</p></td>
+<td><p>INT</p></td>
+</tr>
+<tr class="row-even"><td><p>int64</p></td>
+<td><p>BIGINT</p></td>
+</tr>
+<tr class="row-odd"><td><p>large_binary</p></td>
+<td><p>BLOB</p></td>
+</tr>
+<tr class="row-even"><td><p>large_string</p></td>
+<td><p>TEXT</p></td>
+</tr>
+<tr class="row-odd"><td><p>string</p></td>
+<td><p>TEXT</p></td>
+</tr>
+<tr class="row-even"><td><p>time32</p></td>
+<td><p>TIME</p></td>
+</tr>
+<tr class="row-odd"><td><p>time64</p></td>
+<td><p>TIME</p></td>
+</tr>
+<tr class="row-even"><td><p>timestamp</p></td>
+<td><p>TIMESTAMP</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="partitioned-result-set-support">
+<h3>Partitioned Result Set Support<a class="headerlink" href="#partitioned-result-set-support" title="Permalink to this heading">#</a></h3>
+<p>The Flight SQL driver supports ADBC’s partitioned result sets, mapping
+them onto FlightEndpoints.  Each partition of a result set contains a
+serialized FlightInfo, containing one of the FlightEndpoints of the
+original response.  Clients who may wish to introspect the partition
+can do so by deserializing the contained FlightInfo from the ADBC
+partitions.  (For example, a client that wishes to distribute work
+across multiple workers or machines may want to try to take advantage
+of locality information that ADBC does not have.)</p>
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="postgres.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">libpq-based Driver</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Drivers</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022, Apache Arrow Developers
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Flight SQL Driver</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#usage">Usage</a><ul>
+<li><a class="reference internal" href="#additional-configuration-options">Additional Configuration Options</a><ul>
+<li><a class="reference internal" href="#custom-call-headers">Custom Call Headers</a></li>
+<li><a class="reference internal" href="#timeouts">Timeouts</a></li>
+<li><a class="reference internal" href="#type-mapping">Type Mapping</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#partitioned-result-set-support">Partitioned Result Set Support</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/scripts/furo.js"></script>
+    <script src="../../_static/clipboard.min.js"></script>
+    <script src="../../_static/copybutton.js"></script>
+    <script src="../../_static/design-tabs.js"></script>
+    </body>
+</html>
