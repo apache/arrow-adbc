@@ -20,7 +20,7 @@ name = "adbc_driver_postgres"
 description = "A libpq-based ADBC driver for working with Postgres."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dynamic = ["version"]
 
 [project.optional-dependencies]

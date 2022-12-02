@@ -26,7 +26,6 @@ __all__ = ["connect", "__version__"]
 
 def connect(uri: str) -> adbc_driver_manager.AdbcDatabase:
     """Create a low level ADBC connection to Postgres."""
-    with importlib.resources.path(
-        __package__, "libadbc_driver_postgres.so"
-    ) as entrypoint:
-        return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)
+    root = importlib.resources.files(__package__)
+    entrypoint = root.joinpath("libadbc_driver_postgres.so")
+    return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)
