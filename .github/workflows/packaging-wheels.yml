@@ -18,6 +18,12 @@
 name: Packaging - Nightly Artifacts
 
 on:
+  push:
+    # Automatically build on RC tags
+    branches-ignore:
+      - '**'
+    tags:
+      - 'adbc-*-rc*'
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
@@ -50,13 +56,18 @@ jobs:
         run: |
           docker-compose run docs
 
+      - name: Compress docs
+        shell: bash
+        run: |
+          tar --transform "s|docs/build/html|adbc-docs|" -czf docs.tgz docs/build/html
+
       - name: Archive docs
         uses: actions/upload-artifact@v3
         with:
           name: docs
           retention-days: 2
           path: |
-            docs/build/html
+            docs.tgz
 
   java:
     name: "Java 1.8"
@@ -365,3 +376,35 @@ jobs:
           ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres,sqlite}/dist/*.tar.gz
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+
+  release:
+    name: "Create release"
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - docs
+      - java
+      - python-manylinux
+      - python-macos
+      - python-windows
+      - python-sdist
+    steps:
+      - name: Get All Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: release-artifacts
+      - name: Release
+        shell: bash
+        run: |
+          RELEASE_TAG=${GITHUB_REF#refs/*/}
+          gh release create "${RELEASE_TAG}" \
+            --repo ${{ github.repository }} \
+            --prerelease \
+            --title "ADBC Libraries ${RELEASE_TAG}" \
+            release-artifacts/docs/docs.tgz \
+            release-artifacts/java/*.jar \
+            release-artifacts/java/*.pom \
+            release-artifacts/python*/adbc_*/*/*.whl \
+            release-artifacts/python-manylinux/adbc_*/dist/adbc_*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
