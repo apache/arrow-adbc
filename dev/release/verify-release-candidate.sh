@@ -72,6 +72,8 @@ esac
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ARROW_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
 
+: ${SOURCE_REPOSITORY:="apache/arrow-adbc"}
+
 show_header() {
   echo ""
   printf '=%.0s' $(seq ${#1}); printf '\n'
@@ -162,8 +164,10 @@ test_binary() {
   local download_dir=binaries
   mkdir -p ${download_dir}
 
-  ${PYTHON:-python3} $SOURCE_DIR/download_rc_binaries.py $VERSION $RC_NUMBER \
-         --dest=${download_dir}
+  ${PYTHON:-python3} $SOURCE_DIR/download_rc_binaries.py \
+                     $VERSION $RC_NUMBER \
+                     --dest=${download_dir} \
+                     --repository=${REPOSITORY:=apache/arrow-adbc}
 
   verify_dir_artifact_signatures ${download_dir}
 }
@@ -461,16 +465,6 @@ test_go() {
   "${ARROW_SOURCE_DIR}/ci/scripts/go_test.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
 }
 
-# Run integration tests
-test_integration() {
-  show_header "Build and execute integration tests"
-
-  maybe_setup_conda || exit 1
-  maybe_setup_virtualenv || exit 1
-
-  echo "Integration tests are not implemented"
-}
-
 ensure_source_directory() {
   show_header "Ensuring source directory"
 
@@ -484,11 +478,10 @@ ensure_source_directory() {
     echo "Verifying local Arrow checkout at ${ARROW_SOURCE_DIR}"
   elif [ "${SOURCE_KIND}" = "git" ]; then
     # Remote arrow repository, testing repositories must be cloned
-    : ${SOURCE_REPOSITORY:="https://github.com/apache/arrow-adbc"}
     echo "Verifying Arrow repository ${SOURCE_REPOSITORY} with revision checkout ${VERSION}"
     export ARROW_SOURCE_DIR="${ARROW_TMPDIR}/arrow-adbc"
     if [ ! -d "${ARROW_SOURCE_DIR}" ]; then
-      git clone --recurse-submodules $SOURCE_REPOSITORY $ARROW_SOURCE_DIR
+      git clone --recurse-submodules https://github.com/$SOURCE_REPOSITORY $ARROW_SOURCE_DIR
       git -C $ARROW_SOURCE_DIR checkout $VERSION
     fi
   else
@@ -699,13 +692,11 @@ test_jars() {
 : ${TEST_CPP:=${TEST_SOURCE}}
 : ${TEST_CSHARP:=${TEST_SOURCE}}
 : ${TEST_GLIB:=${TEST_SOURCE}}
-: ${TEST_RUBY:=${TEST_SOURCE}}
 : ${TEST_PYTHON:=${TEST_SOURCE}}
 : ${TEST_JS:=${TEST_SOURCE}}
 : ${TEST_GO:=${TEST_SOURCE}}
 
 # Automatically test if its activated by a dependent
-TEST_GLIB=$((${TEST_GLIB} + ${TEST_RUBY}))
 TEST_CPP=$((${TEST_CPP} + ${TEST_GO} + ${TEST_GLIB} + ${TEST_PYTHON}))
 
 # Execute tests in a conda enviroment
