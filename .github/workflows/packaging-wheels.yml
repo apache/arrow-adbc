@@ -397,14 +397,28 @@ jobs:
         shell: bash
         run: |
           RELEASE_TAG=${GITHUB_REF#refs/*/}
+
+          # Deduplicate wheels built in different jobs with same tag
+          mkdir -p upload-staging
+          find ./release-artifacts/ \
+            '(' \
+              -name docs.tgz -or \
+              -name '*.jar' -or \
+              -name '*.pom' -or \
+              -name '*.whl' -or \
+              -name 'adbc_*.tar.gz' \
+            ')' \
+            -exec mv '{}' upload-staging \;
+
+          UPLOAD=$(find upload-staging -type f | sort | uniq)
+
+          echo "Uploading files:"
+          echo ${UPLOAD}
+
           gh release create "${RELEASE_TAG}" \
             --repo ${{ github.repository }} \
             --prerelease \
             --title "ADBC Libraries ${RELEASE_TAG}" \
-            release-artifacts/docs/docs.tgz \
-            release-artifacts/java/*.jar \
-            release-artifacts/java/*.pom \
-            release-artifacts/python*/adbc_*/*/*.whl \
-            release-artifacts/python-manylinux/adbc_*/dist/adbc_*.tar.gz
+            ${UPLOAD}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
