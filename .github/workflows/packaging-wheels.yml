@@ -114,7 +114,7 @@ jobs:
     strategy:
       matrix:
         manylinux_version: ["2014"]
-        python_version: ["3.9", "3.10"]
+        python_version: ["3.9", "3.10", "3.11"]
       # Limit parallelism; gemfury appears to return 409 CONFLICT on concurrent uploads
       max-parallel: 1
     steps:
@@ -167,7 +167,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python_version: ["3.9", "3.10"]
+        python_version: ["3.9", "3.10", "3.11"]
       # Limit parallelism; gemfury appears to return 409 CONFLICT on concurrent uploads
       max-parallel: 1
     env:
@@ -246,7 +246,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python_version: ["3.9.13", "3.10.8"]
+        python_version: ["3.9.13", "3.10.8", "3.11.0"]
         include:
           - python_version: "3.9.13"
             PYTHON_HOME: "C:\\Python39"
@@ -287,7 +287,7 @@ jobs:
         shell: pwsh
         run: |
           echo $env:VCPKG_VERSION
-          git clone --shallow-since=2021-04-01 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
+          git clone --shallow-since=2022-06-01 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
           pushd $env:VCPKG_ROOT
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
