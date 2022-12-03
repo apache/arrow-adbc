@@ -145,7 +145,7 @@ verify_dir_artifact_signatures() {
 
     # go into the directory because the checksum files contain only the
     # basename of the artifact
-    pushd $(dirname $artifact)
+    pushd $(dirname $artifact) >/dev/null
     base_artifact=$(basename $artifact)
     if [ -f $base_artifact.sha256 ]; then
       ${sha256_verify} $base_artifact.sha256 || exit 1
@@ -153,7 +153,7 @@ verify_dir_artifact_signatures() {
     if [ -f $base_artifact.sha512 ]; then
       ${sha512_verify} $base_artifact.sha512 || exit 1
     fi
-    popd
+    popd >/dev/null
   done
 }
 
@@ -161,13 +161,14 @@ test_binary() {
   show_header "Testing binary artifacts"
   maybe_setup_conda || exit 1
 
-  local download_dir=binaries
+  local download_dir="${ARROW_TMPDIR}/binaries"
   mkdir -p ${download_dir}
 
-  ${PYTHON:-python3} $SOURCE_DIR/download_rc_binaries.py \
+  ${PYTHON:-python3} $SOURCE_DIR/download_release.py \
                      $VERSION $RC_NUMBER \
                      --dest=${download_dir} \
-                     --repository=${REPOSITORY:=apache/arrow-adbc}
+                     --package_type=github \
+                     --repository=${SOURCE_REPOSITORY}
 
   verify_dir_artifact_signatures ${download_dir}
 }
@@ -491,7 +492,7 @@ ensure_source_directory() {
     if [ ! -d "${ARROW_SOURCE_DIR}" ]; then
       pushd $ARROW_TMPDIR
       fetch_archive ${dist_name}
-      tar xf ${dist_name}.tar.gz
+      wget -O ${dist_name}.tar.gz https://github.com/lidavidm/arrow-adbc/archive/refs/tags/adbc-0.1.0-rc1.tar.gz
       popd
     fi
   fi
@@ -551,15 +552,13 @@ test_binary_distribution() {
 }
 
 test_linux_wheels() {
-  local check_gcs=OFF
-
   if [ "$(uname -m)" = "aarch64" ]; then
     local arch="aarch64"
   else
     local arch="x86_64"
   fi
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.7m 3.8 3.9 3.10 3.11}"
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.9 3.10 3.11}"
   local platform_tags="manylinux_2_17_${arch}.manylinux2014_${arch}"
 
   for python in ${python_versions}; do
@@ -568,25 +567,20 @@ test_linux_wheels() {
       show_header "Testing Python ${pyver} wheel for platform ${platform}"
       CONDA_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
       VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
-      pip install pyarrow-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-${platform}.whl
-      INSTALL_PYARROW=OFF ARROW_GCS=${check_gcs} ${ARROW_DIR}/ci/scripts/python_wheel_unix_test.sh ${ARROW_SOURCE_DIR}
+      pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-${platform}.whl
+      pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-${platform}.whl
+      INSTALL_PYARROW=OFF ${ARROW_DIR}/ci/scripts/python_wheel_unix_test.sh ${ARROW_SOURCE_DIR}
     done
   done
 }
 
 test_macos_wheels() {
-  local check_gcs=OFF
-  local check_s3=ON
-  local check_flight=ON
-
+  local python_versions="3.9 3.10 3.11"
   # apple silicon processor
   if [ "$(uname -m)" = "arm64" ]; then
-    local python_versions="3.8 3.9 3.10 3.11"
     local platform_tags="macosx_11_0_arm64"
-    local check_flight=OFF
   else
-    local python_versions="3.7m 3.8 3.9 3.10 3.11"
-    local platform_tags="macosx_10_14_x86_64"
+    local platform_tags="macosx_10_15_x86_64"
   fi
 
   # verify arch-native wheels inside an arch-native conda environment
@@ -594,30 +588,27 @@ test_macos_wheels() {
     local pyver=${python/m}
     for platform in ${platform_tags}; do
       show_header "Testing Python ${pyver} wheel for platform ${platform}"
-      if [[ "$platform" == *"10_9"* ]]; then
-        check_gcs=OFF
-        check_s3=OFF
-      fi
 
       CONDA_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
       VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
 
-      pip install pyarrow-${VERSION}-cp${pyver/.}-cp${python/.}-${platform}.whl
-      INSTALL_PYARROW=OFF ARROW_FLIGHT=${check_flight} ARROW_GCS=${check_gcs} ARROW_S3=${check_s3} \
-        ${ARROW_DIR}/ci/scripts/python_wheel_unix_test.sh ${ARROW_SOURCE_DIR}
+      pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-${platform}.whl
+      pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-${platform}.whl
+      INSTALL_PYARROW=OFF ${ARROW_DIR}/ci/scripts/python_wheel_unix_test.sh ${ARROW_SOURCE_DIR}
     done
   done
 }
 
 test_wheels() {
-  show_header "Downloading Python wheels"
+  show_header "Test Python wheels"
   maybe_setup_conda python || exit 1
 
   local wheels_dir=
   if [ "${SOURCE_KIND}" = "local" ]; then
-    wheels_dir="${ARROW_SOURCE_DIR}/python/repaired_wheels"
+    echo "Binary verification of local wheels is not currently implemented"
+    exit 1
   else
-    local download_dir=${ARROW_TMPDIR}/binaries
+    local download_dir="${ARROW_TMPDIR}/binaries"
     mkdir -p ${download_dir}
 
     if [ "$(uname)" == "Darwin" ]; then
@@ -626,16 +617,7 @@ test_wheels() {
       local filter_regex=.*manylinux.*
     fi
 
-
-   ${PYTHON:-python3} \
-      $SOURCE_DIR/download_rc_binaries.py $VERSION $RC_NUMBER \
-      --package_type python \
-      --regex=${filter_regex} \
-      --dest=${download_dir}
-
-    verify_dir_artifact_signatures ${download_dir}
-
-    wheels_dir=${download_dir}/python-rc/${VERSION}-rc${RC_NUMBER}
+    wheels_dir=${download_dir}
   fi
 
   pushd ${wheels_dir}
@@ -650,25 +632,26 @@ test_wheels() {
 }
 
 test_jars() {
-  show_header "Testing Java JNI jars"
+  show_header "Testing Java jars"
   maybe_setup_conda maven python || exit 1
 
-  local download_dir=${ARROW_TMPDIR}/jars
+  local download_dir=${ARROW_TMPDIR}/binaries
   mkdir -p ${download_dir}
 
-  ${PYTHON:-python3} $SOURCE_DIR/download_rc_binaries.py $VERSION $RC_NUMBER \
-         --dest=${download_dir} \
-         --package_type=jars
-
-  verify_dir_artifact_signatures ${download_dir}
-
-  # TODO: This should be replaced with real verification by ARROW-15486.
-  # https://issues.apache.org/jira/browse/ARROW-15486
-  # [Release][Java] Verify staged maven artifacts
-  if [ ! -d "${download_dir}/arrow-memory/${VERSION}" ]; then
-    echo "Artifacts for ${VERSION} isn't uploaded yet."
-    return 1
-  fi
+  # TODO: actually verify the JARs
+  local -r packages=(adbc-core adbc-driver-flight-sql adbc-driver-jdbc adbc-driver-manager)
+  local -r components=(".jar" "-javadoc.jar" "-sources.jar")
+  for package in "${packages[@]}"; do
+      for component in "${components[@]}"; do
+          local filename="${download_dir}/${package}-${VERSION}${component}"
+          if [[ ! -f "${filename}" ]];  then
+             echo "ERROR: missing artifact ${filename}"
+             return 1
+          else
+             echo "Found artifact ${filename}"
+          fi
+      done
+  done
 }
 
 # By default test all functionalities.

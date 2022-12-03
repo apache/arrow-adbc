@@ -166,7 +166,14 @@ class GitHub(Downloader):
 
         files = []
         for asset in response["assets"]:
-            files.append((asset["name"], asset["url"]))
+            # Don't use the API URL since it has a fairly strict rate
+            # limit unless logged in, and we have a lot of tiny
+            # artifacts
+            url = (
+                f"https://github.com/{self.repository}/"
+                f"releases/download/{self.tag}/{asset['name']}"
+            )
+            files.append((asset["name"], url))
         return files
 
     def _download_file(self, dest, asset):
