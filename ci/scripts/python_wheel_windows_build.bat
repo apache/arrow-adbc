@@ -79,6 +79,9 @@ FOR /F %%i IN ('python -c "import sysconfig; print(sysconfig.get_platform())"') 
 FOR %%c IN (adbc_driver_manager adbc_driver_postgres adbc_driver_sqlite) DO (
     pushd %source_dir%\python\%%c
 
+    echo "=== (%PYTHON_VERSION%) Checking %%c version ==="
+    python %%c\_version.py
+
     echo "=== (%PYTHON_VERSION%) Building %%c wheel ==="
     python -m pip wheel -w dist -vvv . || exit /B 1
 

@@ -76,8 +76,13 @@ PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform())")
 for component in $COMPONENTS; do
     pushd ${source_dir}/python/$component
 
-    echo "=== (${PYTHON_VERSION}) Clean build artifacts==="
+    echo "=== (${PYTHON_VERSION}) Clean build artifacts ==="
     rm -rf ./build ./dist ./repaired_wheels ./$component/*.so ./$component/*.so.*
+
+    echo "=== (${PYTHON_VERSION}) Check $component version ==="
+    python $component/_version.py
+    git describe --long --always --first-parent
+    git describe --long --always
 
     echo "=== (${PYTHON_VERSION}) Building $component wheel ==="
     # python -m build copies to a tempdir, so we can't reference other files in the repo
