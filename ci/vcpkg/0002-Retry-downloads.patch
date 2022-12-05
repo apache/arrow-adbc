@@ -1,0 +1,24 @@
+From 6bac044938a6c9fd4832ec636a98cb684ea6f609 Mon Sep 17 00:00:00 2001
+From: David Li <li.davidm96@gmail.com>
+Date: Mon, 5 Dec 2022 14:26:42 -0500
+Subject: [PATCH] Retry downloads
+
+---
+ scripts/cmake/vcpkg_download_distfile.cmake | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/scripts/cmake/vcpkg_download_distfile.cmake b/scripts/cmake/vcpkg_download_distfile.cmake
+index 08ca55deb..a1ba00347 100644
+--- a/scripts/cmake/vcpkg_download_distfile.cmake
++++ b/scripts/cmake/vcpkg_download_distfile.cmake
+@@ -73,6 +73,8 @@ function(z_vcpkg_download_distfile_via_aria)
+         debug_message("Download Command: ${ARIA2} ${URL} -o temp/${filename} -l download-${filename}-detailed.log ${headers_param}")
+         vcpkg_execute_in_download_mode(
+             COMMAND ${ARIA2} ${URL}
++	    --max-tries=5
++	    --retry-wait=20
+             -o temp/${arg_FILENAME}
+             -l download-${arg_FILENAME}-detailed.log
+             ${headers_param}
+--
+2.17.1

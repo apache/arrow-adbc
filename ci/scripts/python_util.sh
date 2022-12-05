@@ -42,9 +42,12 @@ function build_drivers {
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
     fi
 
-    # XXX: patch an odd issue where the path of some file is inconsistent between builds
     pushd "${VCPKG_ROOT}"
+    # XXX: patch an odd issue where the path of some file is inconsistent between builds
     patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-inconsistent-path.patch" || true
+
+    # XXX: make vcpkg retry downloads https://github.com/microsoft/vcpkg/discussions/20583
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0002-Retry-downloads.patch" || true
     popd
 
     "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \
