@@ -87,7 +87,7 @@ else
     export CIBW_BUILD='*-manylinux_*'
     export CIBW_PLATFORM="linux"
 fi
-export CIBW_SKIP='pp*'
+export CIBW_SKIP="pp* ${CIBW_SKIP}"
 
 echo "=== Building C/C++ driver components ==="
 # Sets ADBC_POSTGRES_LIBRARY, ADBC_SQLITE_LIBRARY

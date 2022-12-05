@@ -39,3 +39,7 @@ build-backend = "setuptools.build_meta"
 markers = [
     "sqlite: tests that require the SQLite driver",
 ]
+
+[tool.setuptools]
+packages = ["adbc_driver_manager"]
+py-modules = ["adbc_driver_manager"]
