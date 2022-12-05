@@ -38,7 +38,7 @@ index 378d41109..19ce64dee 100644
 +      vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/postgresql/server/pg_config.h" "#define CONFIGURE_ARGS" "// #define CONFIGURE_ARGS")
 +    endif()
 +    if (EXISTS "${CURRENT_PACKAGES_DIR}/include/server/pg_config.h")
-+      vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/postgresql/server/pg_config.h" "#define CONFIGURE_ARGS" "// #define CONFIGURE_ARGS")
++      vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/server/pg_config.h" "#define CONFIGURE_ARGS" "// #define CONFIGURE_ARGS")
 +    endif()
 +    if (EXISTS "${CURRENT_PACKAGES_DIR}/include/pg_config.h")
 +      vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/pg_config.h" "#define CONFIGURE_ARGS" "// #define CONFIGURE_ARGS")
