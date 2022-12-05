@@ -50,10 +50,10 @@ function check_visibility {
 
 function check_wheels {
     if [[ $(uname) == "Linux" ]]; then
-        echo "=== (${PYTHON_VERSION}) Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
+        echo "=== Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
         auditwheel repair "$@" -L . -w repaired_wheels
     else # macOS
-        echo "=== (${PYTHON_VERSION}) Tag $component wheel with macOS ==="
+        echo "=== Tag $component wheel with macOS ==="
         delocate-wheel -v -k -w repaired_wheels "$@"
     fi
 }
@@ -63,9 +63,11 @@ echo "=== Set up platform variables ==="
 if [[ "$(uname)" = "Darwin" ]]; then
     if [[ "${arch}" = "amd64" ]]; then
         export CIBW_ARCHS="x86_64"
+        export PYTHON_ARCH="x86_64"
         export VCPKG_ARCH="x64"
     elif [[ "${arch}" = "arm64v8" ]]; then
         export CIBW_ARCHS="arm64"
+        export PYTHON_ARCH="arm64"
         export VCPKG_ARCH="arm64"
     else
         echo "Unknown architecture: ${arch}"
@@ -76,9 +78,11 @@ if [[ "$(uname)" = "Darwin" ]]; then
 else
     if [[ "${arch}" = "amd64" ]]; then
         export CIBW_ARCHS="x86_64"
+        export PYTHON_ARCH="x86_64"
         export VCPKG_ARCH="x64"
     elif [[ "${arch}" = "arm64v8" ]]; then
         export CIBW_ARCHS="aarch64"
+        export PYTHON_ARCH="arm64"
         export VCPKG_ARCH="arm64"
     else
         echo "Unknown architecture: ${arch}"
@@ -101,7 +105,9 @@ check_visibility $ADBC_SQLITE_LIBRARY
 # Get the latest pip so we have in-tree-build by default
 python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools wheel
 
-PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform())")
+# XXX: when we manually retag the wheel, we have to use the right arch
+# tag, hence the replacements
+PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform().replace('-x86_64', '${PYTHON_ARCH}').replace('-arm64', '${PYTHON_ARCH}'))")
 
 for component in $COMPONENTS; do
     pushd ${source_dir}/python/$component
