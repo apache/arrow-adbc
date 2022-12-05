@@ -42,6 +42,9 @@ function build_drivers {
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
     fi
 
+    # XXX: patch an odd issue where the path of some file is inconsistent between builds
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-inconsistent-path.patch" || true
+
     "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"

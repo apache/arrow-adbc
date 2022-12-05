@@ -129,8 +129,7 @@ jobs:
       matrix:
         arch: ["amd64", "arm64v8"]
         manylinux_version: ["2014"]
-      # Limit parallelism; gemfury appears to return 409 CONFLICT on concurrent uploads
-      max-parallel: 1
+      # Let this one run in parallel because the arm64 build is so much slower
     steps:
       - uses: actions/checkout@v3
         with:
