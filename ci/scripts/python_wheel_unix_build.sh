@@ -48,6 +48,16 @@ function check_visibility {
     fi
 }
 
+function check_wheels {
+    if [[ $(uname) == "Linux" ]]; then
+        echo "=== (${PYTHON_VERSION}) Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
+        auditwheel repair "$@" -L . -w repaired_wheels
+    else # macOS
+        echo "=== (${PYTHON_VERSION}) Tag $component wheel with macOS ==="
+        delocate-wheel -v -k -w repaired_wheels "$@"
+    fi
+}
+
 echo "=== Set up platform variables ==="
 
 if [[ "$(uname)" = "Darwin" ]]; then
@@ -77,6 +87,7 @@ else
     export CIBW_BUILD='*-manylinux_*'
     export CIBW_PLATFORM="linux"
 fi
+export CIBW_SKIP='pp*'
 
 echo "=== Building C/C++ driver components ==="
 # Sets ADBC_POSTGRES_LIBRARY, ADBC_SQLITE_LIBRARY
@@ -88,7 +99,7 @@ check_visibility $ADBC_SQLITE_LIBRARY
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
-python -m pip install --upgrade pip cibuildwheel setuptools
+python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools wheel
 
 PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform())")
 
@@ -108,10 +119,16 @@ for component in $COMPONENTS; do
     # directory, which omits the C++ sources and .git directory,
     # causing the build to fail.
     python setup.py sdist
-    python -m cibuildwheel --output-dir repaired_wheels/ dist/$component-*.tar.gz
+    if [[ "$component" = "adbc_driver_manager" ]]; then
+        python -m cibuildwheel --output-dir repaired_wheels/ dist/$component-*.tar.gz
+    else
+        python -m pip wheel -w dist -vvv .
 
-    # Retag the wheel
-    python "${script_dir}/python_wheel_fix_tag.py" repaired_wheels/$component-*.whl
+        # Retag the wheel
+        python "${script_dir}/python_wheel_fix_tag.py" dist/$component-*.whl
+
+        check_wheels dist/$component-*.whl
+    fi
 
     popd
 done

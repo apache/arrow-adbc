@@ -176,7 +176,9 @@ jobs:
           ARCH: ${{ matrix.arch }}
           MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
-          docker-compose run python-wheel-manylinux-test
+          env PYTHON=3.9 docker-compose run python-wheel-manylinux-test
+          env PYTHON=3.10 docker-compose run python-wheel-manylinux-test
+          env PYTHON=3.11 docker-compose run python-wheel-manylinux-test
 
       - name: Upload wheels to Gemfury
         shell: bash
@@ -197,7 +199,6 @@ jobs:
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
       PYTHON: "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10"
-      PYTHON_VERSION: "3.10"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
@@ -232,9 +233,12 @@ jobs:
         shell: bash
         run: ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
 
-      - name: Install Python ${{ matrix.python_version }}
+      - name: Install Python
         shell: bash
-        run: sudo ci/scripts/install_python.sh macos ${{ matrix.python_version }}
+        run: |
+          sudo ci/scripts/install_python.sh macos 3.9
+          sudo ci/scripts/install_python.sh macos 3.10
+          sudo ci/scripts/install_python.sh macos 3.11
 
       - name: Build wheel
         shell: bash
@@ -258,9 +262,20 @@ jobs:
       - name: Test wheel
         shell: bash
         run: |
-          $PYTHON -m venv test-env
+          /Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9 -m venv test-env
           source test-env/bin/activate
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+          /Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv test-env
+          source test-env/bin/activate
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+          /Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11 -m venv test-env
+          source test-env/bin/activate
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
 
       - name: Upload wheels to Gemfury
         shell: bash

@@ -33,12 +33,18 @@ source "${script_dir}/python_util.sh"
 
 echo "=== (${PYTHON_VERSION}) Installing wheels ==="
 for component in ${COMPONENTS}; do
+    if [[ "${component}" = "adbc_driver_manager" ]]; then
+        PYTHON_TAG=cp$(python -c "import sysconfig; print(sysconfig.get_python_version().replace('.', ''))")
+    else
+        PYTHON_TAG=py3
+    fi
+
     if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then
         pip install --force-reinstall \
-            ${source_dir}/python/${component}/repaired_wheels/*.whl
+            ${source_dir}/python/${component}/repaired_wheels/*-${PYTHON_TAG}-*.whl
     else
         pip install --force-reinstall \
-            ${source_dir}/python/${component}/dist/*.whl
+            ${source_dir}/python/${component}/dist/*-${PYTHON_TAG}-*.whl
     fi
 done
 pip install pytest pyarrow pandas
