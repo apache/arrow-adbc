@@ -50,7 +50,7 @@ services:
     image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
     volumes:
       - .:/adbc:delegated
-    command: "'/adbc/ci/scripts/python_sdist_test.sh /adbc'"
+    command: "'/adbc/ci/scripts/python_sdist_test.sh ${ARCH} /adbc'"
 
   ############################ Python wheels ##################################
 

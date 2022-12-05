@@ -260,20 +260,24 @@ jobs:
             python/adbc_driver_sqlite/repaired_wheels/*.whl
 
       - name: Test wheel
+        if: matrix.arch == 'amd64'
         shell: bash
         run: |
-          /Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9 -m venv test-env
-          source test-env/bin/activate
+          /Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9 -m venv test-env-39
+          source test-env-39/bin/activate
+          export PYTHON_VERSION=3.9
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
-          /Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv test-env
-          source test-env/bin/activate
+          /Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv test-env-310
+          source test-env-310/bin/activate
+          export PYTHON_VERSION=3.10
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
-          /Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11 -m venv test-env
-          source test-env/bin/activate
+          /Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11 -m venv test-env-311
+          source test-env-311/bin/activate
+          export PYTHON_VERSION=3.11
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 

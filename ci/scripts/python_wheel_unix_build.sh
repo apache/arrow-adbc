@@ -59,39 +59,7 @@ function check_wheels {
 }
 
 echo "=== Set up platform variables ==="
-
-if [[ "$(uname)" = "Darwin" ]]; then
-    if [[ "${arch}" = "amd64" ]]; then
-        export CIBW_ARCHS="x86_64"
-        export PYTHON_ARCH="x86_64"
-        export VCPKG_ARCH="x64"
-    elif [[ "${arch}" = "arm64v8" ]]; then
-        export CIBW_ARCHS="arm64"
-        export PYTHON_ARCH="arm64"
-        export VCPKG_ARCH="arm64"
-    else
-        echo "Unknown architecture: ${arch}"
-        exit 1
-    fi
-    export CIBW_BUILD='*-macosx_*'
-    export CIBW_PLATFORM="macos"
-else
-    if [[ "${arch}" = "amd64" ]]; then
-        export CIBW_ARCHS="x86_64"
-        export PYTHON_ARCH="x86_64"
-        export VCPKG_ARCH="x64"
-    elif [[ "${arch}" = "arm64v8" ]]; then
-        export CIBW_ARCHS="aarch64"
-        export PYTHON_ARCH="arm64"
-        export VCPKG_ARCH="arm64"
-    else
-        echo "Unknown architecture: ${arch}"
-        exit 1
-    fi
-    export CIBW_BUILD='*-manylinux_*'
-    export CIBW_PLATFORM="linux"
-fi
-export CIBW_SKIP="pp* ${CIBW_SKIP}"
+setup_build_vars "${arch}"
 
 echo "=== Building C/C++ driver components ==="
 # Sets ADBC_POSTGRES_LIBRARY, ADBC_SQLITE_LIBRARY
