@@ -35,11 +35,11 @@ function build_drivers {
     if [[ $(uname) == "Linux" ]]; then
         export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
-        export VCPKG_DEFAULT_TRIPLET="x64-linux-static-release"
+        export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
     else # macOS
         export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
-        export VCPKG_DEFAULT_TRIPLET="x64-osx-static-release"
+        export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
     fi
 
     "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \

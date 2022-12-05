@@ -48,17 +48,37 @@ function check_visibility {
     fi
 }
 
-function check_wheels {
-    if [[ $(uname) == "Linux" ]]; then
-        echo "=== (${PYTHON_VERSION}) Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
-        auditwheel repair "$@" -L . -w repaired_wheels
-    else # macOS
-        echo "=== (${PYTHON_VERSION}) Tag $component wheel with macOS ==="
-        delocate-wheel -v -k -w repaired_wheels "$@"
-    fi
-}
+echo "=== Set up platform variables ==="
 
-echo "=== (${PYTHON_VERSION}) Building C/C++ driver components ==="
+if [[ "$(uname)" = "Darwin" ]]; then
+    if [[ "${arch}" = "amd64" ]]; then
+        export CIBW_ARCHS="x86_64"
+        export VCPKG_ARCH="x64"
+    elif [[ "${arch}" = "arm64v8" ]]; then
+        export CIBW_ARCHS="arm64"
+        export VCPKG_ARCH="arm64"
+    else
+        echo "Unknown architecture: ${arch}"
+        exit 1
+    fi
+    export CIBW_BUILD='*-macosx_*'
+    export CIBW_PLATFORM="macos"
+else
+    if [[ "${arch}" = "amd64" ]]; then
+        export CIBW_ARCHS="x86_64"
+        export VCPKG_ARCH="x64"
+    elif [[ "${arch}" = "arm64v8" ]]; then
+        export CIBW_ARCHS="aarch64"
+        export VCPKG_ARCH="arm64"
+    else
+        echo "Unknown architecture: ${arch}"
+        exit 1
+    fi
+    export CIBW_BUILD='*-manylinux_*'
+    export CIBW_PLATFORM="linux"
+fi
+
+echo "=== Building C/C++ driver components ==="
 # Sets ADBC_POSTGRES_LIBRARY, ADBC_SQLITE_LIBRARY
 build_drivers "${source_dir}" "${build_dir}"
 
@@ -68,30 +88,30 @@ check_visibility $ADBC_SQLITE_LIBRARY
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
-# Get wheel so we can manually invoke bdist_wheel
-python -m pip install --upgrade pip auditwheel delocate setuptools wheel
+python -m pip install --upgrade pip cibuildwheel setuptools
 
 PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform())")
 
 for component in $COMPONENTS; do
     pushd ${source_dir}/python/$component
 
-    echo "=== (${PYTHON_VERSION}) Clean build artifacts ==="
+    echo "=== Clean build artifacts ==="
     rm -rf ./build ./dist ./repaired_wheels ./$component/*.so ./$component/*.so.*
 
-    echo "=== (${PYTHON_VERSION}) Check $component version ==="
+    echo "=== Check $component version ==="
     python $component/_version.py
-    git describe --long --always --first-parent
-    git describe --long --always
 
-    echo "=== (${PYTHON_VERSION}) Building $component wheel ==="
-    # python -m build copies to a tempdir, so we can't reference other files in the repo
-    python -m pip wheel -w dist -vvv .
+    echo "=== Building $component wheel ==="
+    # First, create an sdist, which 1) bundles the C++ sources and 2)
+    # embeds the git tag.  cibuildwheel may copy into a Docker
+    # container during build, but it only copies the package
+    # directory, which omits the C++ sources and .git directory,
+    # causing the build to fail.
+    python setup.py sdist
+    python -m cibuildwheel --output-dir repaired_wheels/ dist/$component-*.tar.gz
 
     # Retag the wheel
-    python "${script_dir}/python_wheel_fix_tag.py" dist/$component-*.whl
-
-    check_wheels dist/$component-*.whl
+    python "${script_dir}/python_wheel_fix_tag.py" repaired_wheels/$component-*.whl
 
     popd
 done
