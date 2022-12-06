@@ -363,9 +363,9 @@ jobs:
           name: python${{ matrix.python_version }}-windows
           retention-days: 7
           path: |
-            python/adbc_driver_manager/dist/*.whl
-            python/adbc_driver_postgres/dist/*.whl
-            python/adbc_driver_sqlite/dist/*.whl
+            python/adbc_driver_manager/repaired_wheels/*.whl
+            python/adbc_driver_postgres/repaired_wheels/*.whl
+            python/adbc_driver_sqlite/repaired_wheels/*.whl
 
       - name: Test wheel
         shell: cmd
@@ -379,7 +379,7 @@ jobs:
         shell: pwsh
         if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
         run: |
-          foreach ($wheel in Get-ChildItem python\adbc_driver_*\dist\*.whl) {
+          foreach ($wheel in Get-ChildItem python\adbc_driver_*\repaired_wheels\*.whl) {
               .\ci\scripts\python_wheel_upload.ps1 $wheel.FullName
           }
         env:

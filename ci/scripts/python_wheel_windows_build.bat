@@ -91,10 +91,8 @@ FOR %%c IN (adbc_driver_manager adbc_driver_postgres adbc_driver_sqlite) DO (
     )
 
     echo "=== (%PYTHON_VERSION%) Repair %%c wheel ==="
-    python -m pip wheel -w dist -vvv . || exit /B 1
-
     FOR %%w IN (dist\*.whl) DO (
-        delvewheel repair -w dist\ %%w
+        delvewheel repair -w repaired_wheels\ %%w
     )
 
     popd
