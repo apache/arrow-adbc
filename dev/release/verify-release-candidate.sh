@@ -68,10 +68,11 @@ case $# in
 esac
 
 # Note that these point to the current verify-release-candidate.sh directories
-# which is different from the ARROW_SOURCE_DIR set in ensure_source_directory()
+# which is different from the ADBC_SOURCE_DIR set in ensure_source_directory()
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-ARROW_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
+ADBC_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
 
+: ${ARROW_REPOSITORY:="apache/arrow"}
 : ${SOURCE_REPOSITORY:="apache/arrow-adbc"}
 
 show_header() {
@@ -161,16 +162,7 @@ test_binary() {
   show_header "Testing binary artifacts"
   maybe_setup_conda || exit 1
 
-  local download_dir="${ARROW_TMPDIR}/binaries"
-  mkdir -p ${download_dir}
-
-  ${PYTHON:-python3} $SOURCE_DIR/download_release.py \
-                     $VERSION $RC_NUMBER \
-                     --dest=${download_dir} \
-                     --package_type=github \
-                     --repository=${SOURCE_REPOSITORY}
-
-  verify_dir_artifact_signatures ${download_dir}
+  verify_dir_artifact_signatures ${BINARY_DIR}
 }
 
 test_apt() {
@@ -387,10 +379,10 @@ test_cpp() {
   export ADBC_BUILD_TESTS=ON
   export ADBC_USE_ASAN=OFF
   export ADBC_USE_UBSAN=OFF
-  "${ARROW_SOURCE_DIR}/ci/scripts/cpp_build.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/cpp_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${ARROW_TMPDIR}/local"
   # Postgres requires running database for testing
   export BUILD_DRIVER_POSTGRES=0
-  "${ARROW_SOURCE_DIR}/ci/scripts/cpp_test.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/cpp_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${ARROW_TMPDIR}/local"
 }
 
 test_java() {
@@ -399,8 +391,8 @@ test_java() {
   # Build and test Java (Requires newer Maven -- I used 3.3.9)
   maybe_setup_conda maven || exit 1
 
-  "${ARROW_SOURCE_DIR}/ci/scripts/java_build.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/java"
-  "${ARROW_SOURCE_DIR}/ci/scripts/java_test.sh" "${ARROW_SOURCE_DIR}"
+  "${ADBC_SOURCE_DIR}/ci/scripts/java_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/java"
+  "${ADBC_SOURCE_DIR}/ci/scripts/java_test.sh" "${ADBC_SOURCE_DIR}"
 }
 
 test_python() {
@@ -408,21 +400,21 @@ test_python() {
 
   # Build and test Python
   maybe_setup_virtualenv cython pandas pyarrow pytest setuptools_scm setuptools || exit 1
-  maybe_setup_conda --file "${ARROW_SOURCE_DIR}/ci/conda_env_python.txt" || exit 1
+  maybe_setup_conda --file "${ADBC_SOURCE_DIR}/ci/conda_env_python.txt" || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
   fi
 
-  "${ARROW_SOURCE_DIR}/ci/scripts/python_build.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${ARROW_TMPDIR}/local"
-  "${ARROW_SOURCE_DIR}/ci/scripts/python_test.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/python_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/python_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${ARROW_TMPDIR}/local"
 }
 
 test_glib() {
   show_header "Build and test C GLib libraries"
 
   # Build and test C GLib
-  maybe_setup_conda --file "${ARROW_SOURCE_DIR}/ci/conda_env_glib.txt" || exit 1
+  maybe_setup_conda --file "${ADBC_SOURCE_DIR}/ci/conda_env_glib.txt" || exit 1
   maybe_setup_virtualenv meson || exit 1
 
   # Install bundler if doesn't exist
@@ -430,8 +422,8 @@ test_glib() {
     gem install --no-document bundler
   fi
 
-  "${ARROW_SOURCE_DIR}/ci/scripts/glib_build.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
-  "${ARROW_SOURCE_DIR}/ci/scripts/glib_test.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/glib_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/glib_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
 }
 
 test_csharp() {
@@ -462,8 +454,8 @@ test_go() {
   maybe_setup_conda compilers go=1.18 || exit 1
 
   export CGO_ENABLED=1
-  "${ARROW_SOURCE_DIR}/ci/scripts/go_build.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
-  "${ARROW_SOURCE_DIR}/ci/scripts/go_test.sh" "${ARROW_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
 }
 
 ensure_source_directory() {
@@ -473,28 +465,34 @@ ensure_source_directory() {
 
   if [ "${SOURCE_KIND}" = "local" ]; then
     # Local arrow repository, testing repositories should be already present
-    if [ -z "$ARROW_SOURCE_DIR" ]; then
-      export ARROW_SOURCE_DIR="${ARROW_DIR}"
+    if [ -z "$ADBC_SOURCE_DIR" ]; then
+      export ADBC_SOURCE_DIR="${ADBC_DIR}"
     fi
-    echo "Verifying local Arrow checkout at ${ARROW_SOURCE_DIR}"
+    echo "Verifying local Arrow checkout at ${ADBC_SOURCE_DIR}"
   elif [ "${SOURCE_KIND}" = "git" ]; then
     # Remote arrow repository, testing repositories must be cloned
     echo "Verifying Arrow repository ${SOURCE_REPOSITORY} with revision checkout ${VERSION}"
-    export ARROW_SOURCE_DIR="${ARROW_TMPDIR}/arrow-adbc"
-    if [ ! -d "${ARROW_SOURCE_DIR}" ]; then
-      git clone --recurse-submodules https://github.com/$SOURCE_REPOSITORY $ARROW_SOURCE_DIR
-      git -C $ARROW_SOURCE_DIR checkout $VERSION
+    export ADBC_SOURCE_DIR="${ARROW_TMPDIR}/arrow-adbc"
+    if [ ! -d "${ADBC_SOURCE_DIR}" ]; then
+      git clone --recurse-submodules https://github.com/$SOURCE_REPOSITORY $ADBC_SOURCE_DIR
+      git -C $ADBC_SOURCE_DIR checkout $VERSION
     fi
   else
     # Release tarball, testing repositories must be cloned separately
     echo "Verifying official Arrow release candidate ${VERSION}-rc${RC_NUMBER}"
-    export ARROW_SOURCE_DIR="${ARROW_TMPDIR}/${dist_name}"
-    if [ ! -d "${ARROW_SOURCE_DIR}" ]; then
+    export ADBC_SOURCE_DIR="${ARROW_TMPDIR}/${dist_name}"
+    if [ ! -d "${ADBC_SOURCE_DIR}" ]; then
       pushd $ARROW_TMPDIR
       fetch_archive ${dist_name}
       wget -O ${dist_name}.tar.gz https://github.com/lidavidm/arrow-adbc/archive/refs/tags/adbc-0.1.0-rc1.tar.gz
       popd
     fi
+  fi
+
+  echo "Fetching Arrow repository ${ARROW_REPOSITORY}"
+  export ARROW_SOURCE_DIR="${ARROW_TMPDIR}/arrow"
+  if [ ! -d "${ARROW_SOURCE_DIR}" ]; then
+    git clone --depth=1 https://github.com/$ARROW_REPOSITORY $ARROW_SOURCE_DIR
   fi
 }
 
@@ -512,7 +510,7 @@ test_source_distribution() {
     export LD_LIBRARY_PATH=$ARROW_HOME/lib:${LD_LIBRARY_PATH:-}
   fi
 
-  pushd $ARROW_SOURCE_DIR
+  pushd $ADBC_SOURCE_DIR
 
   if [ ${TEST_CPP} -gt 0 ]; then
     test_cpp
@@ -534,6 +532,17 @@ test_source_distribution() {
 }
 
 test_binary_distribution() {
+  show_header "Downloading binary artifacts"
+  export BINARY_DIR="${ARROW_TMPDIR}/binaries"
+  mkdir -p "${BINARY_DIR}"
+
+  ${PYTHON:-python3} "$ARROW_SOURCE_DIR/dev/release/download_rc_binaries.py" \
+                     $VERSION $RC_NUMBER \
+                     --dest="${BINARY_DIR}" \
+                     --package_type=github \
+                     --repository="${SOURCE_REPOSITORY}" \
+                     --tag="adbc-${VERSION}-rc${RC_NUMBER}"
+
   if [ ${TEST_BINARY} -gt 0 ]; then
     test_binary
   fi
@@ -569,7 +578,7 @@ test_linux_wheels() {
       VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
       pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-${platform}.whl
       pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-${platform}.whl
-      INSTALL_PYARROW=OFF ${ARROW_DIR}/ci/scripts/python_wheel_unix_test.sh ${ARROW_SOURCE_DIR}
+      INSTALL_PYARROW=OFF ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
     done
   done
 }
@@ -594,7 +603,7 @@ test_macos_wheels() {
 
       pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-${platform}.whl
       pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-${platform}.whl
-      INSTALL_PYARROW=OFF ${ARROW_DIR}/ci/scripts/python_wheel_unix_test.sh ${ARROW_SOURCE_DIR}
+      INSTALL_PYARROW=OFF ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
     done
   done
 }
@@ -608,16 +617,13 @@ test_wheels() {
     echo "Binary verification of local wheels is not currently implemented"
     exit 1
   else
-    local download_dir="${ARROW_TMPDIR}/binaries"
-    mkdir -p ${download_dir}
-
     if [ "$(uname)" == "Darwin" ]; then
       local filter_regex=.*macosx.*
     else
       local filter_regex=.*manylinux.*
     fi
 
-    wheels_dir=${download_dir}
+    wheels_dir=${BINARY_DIR}
   fi
 
   pushd ${wheels_dir}
@@ -635,15 +641,12 @@ test_jars() {
   show_header "Testing Java jars"
   maybe_setup_conda maven python || exit 1
 
-  local download_dir=${ARROW_TMPDIR}/binaries
-  mkdir -p ${download_dir}
-
   # TODO: actually verify the JARs
   local -r packages=(adbc-core adbc-driver-flight-sql adbc-driver-jdbc adbc-driver-manager)
   local -r components=(".jar" "-javadoc.jar" "-sources.jar")
   for package in "${packages[@]}"; do
       for component in "${components[@]}"; do
-          local filename="${download_dir}/${package}-${VERSION}${component}"
+          local filename="${BINARY_DIR}/${package}-${VERSION}${component}"
           if [[ ! -f "${filename}" ]];  then
              echo "ERROR: missing artifact ${filename}"
              return 1
