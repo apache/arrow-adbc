@@ -104,7 +104,7 @@ for component in $COMPONENTS; do
         python -m pip wheel -w dist -vvv .
 
         # Retag the wheel
-        python "${script_dir}/python_wheel_fix_tag.py" dist/$component-*.whl
+        python "${script_dir}/python_wheel_fix_tag.py" --plat-name="${PLAT_NAME}" dist/$component-*.whl
 
         check_wheels dist/$component-*.whl
     fi

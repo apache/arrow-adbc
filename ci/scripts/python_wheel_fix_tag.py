@@ -30,10 +30,15 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("wheel", nargs="+")
+    parser.add_argument(
+        "--plat-name",
+        default=None,
+        help=f"Tag to use (defaults to {sysconfig.get_platform()})",
+    )
+    parser.add_argument("wheel", nargs="+", help="Wheels to retag")
     args = parser.parse_args()
 
-    plat_tag = sysconfig.get_platform()
+    plat_tag = args.plat_name or sysconfig.get_platform()
     plat_tag = plat_tag.replace("-", "_")
     plat_tag = plat_tag.replace(".", "_")
     print("Using platform tag: ", plat_tag)
