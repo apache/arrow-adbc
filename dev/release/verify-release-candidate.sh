@@ -577,8 +577,8 @@ test_linux_wheels() {
       show_header "Testing Python ${pyver} wheel for platform ${platform}"
       CONDA_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
       VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
-      pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-${platform}.whl
-      pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-${platform}.whl
+      pip install --force-reinstall adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-${platform}.whl
+      pip install --force-reinstall adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-${platform}.whl
       INSTALL_PYARROW=OFF ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
     done
   done
@@ -588,9 +588,9 @@ test_macos_wheels() {
   local python_versions="3.9 3.10 3.11"
   # apple silicon processor
   if [ "$(uname -m)" = "arm64" ]; then
-    local platform_tags="macosx_11_0_arm64"
+    local platform_tags="arm64"
   else
-    local platform_tags="macosx_10_15_x86_64"
+    local platform_tags="x86_64"
   fi
 
   # verify arch-native wheels inside an arch-native conda environment
@@ -602,8 +602,8 @@ test_macos_wheels() {
       CONDA_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
       VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
 
-      pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-${platform}.whl
-      pip install adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-${platform}.whl
+      pip install --force-reinstall adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl
+      pip install --force-reinstall adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-macosx_*_${platform}.whl
       INSTALL_PYARROW=OFF ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
     done
   done
