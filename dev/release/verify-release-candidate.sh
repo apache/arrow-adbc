@@ -483,8 +483,9 @@ ensure_source_directory() {
     export ADBC_SOURCE_DIR="${ARROW_TMPDIR}/${dist_name}"
     if [ ! -d "${ADBC_SOURCE_DIR}" ]; then
       pushd $ARROW_TMPDIR
+      mkdir -p "${ADBC_SOURCE_DIR}"
       fetch_archive ${dist_name}
-      wget -O ${dist_name}.tar.gz https://github.com/lidavidm/arrow-adbc/archive/refs/tags/adbc-0.1.0-rc1.tar.gz
+      tar -C "${ADBC_SOURCE_DIR}" --strip-components 1 -xf "${dist_name}.tar.gz"
       popd
     fi
   fi
