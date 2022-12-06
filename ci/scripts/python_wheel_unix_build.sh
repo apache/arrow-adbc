@@ -61,14 +61,18 @@ function check_wheels {
 echo "=== Set up platform variables ==="
 setup_build_vars "${arch}"
 
-echo "${PYTHON_ARCH}"
-
 # XXX: when we manually retag the wheel, we have to use the right arch
 # tag accounting for cross-compiling, hence the replacements
 PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform()\
     .replace('-x86_64', '-${PYTHON_ARCH}')\
     .replace('-arm64', '-${PYTHON_ARCH}')\
     .replace('-universal2', '-${PYTHON_ARCH}'))")
+if [[ "${arch}" = "arm64v8" && "$(uname)" = "Darwin" ]]; then
+   # Manually override the tag in this case - CI will naively generate
+   # "macos_10_9_arm64" but this isn't a 'real' tag because the first
+   # version of macOS supporting AArch64 was macOS 11 Big Sur
+   PLAT_NAME="macos_11_0_arm64"
+fi
 
 echo "=== Building C/C++ driver components ==="
 # Sets ADBC_POSTGRES_LIBRARY, ADBC_SQLITE_LIBRARY
