@@ -23,5 +23,5 @@ gemspec
 
 gem "bundler"
 gem "rake"
-gem "red-arrow", "< 10.0.0"
+gem "red-arrow"
 gem "test-unit"
