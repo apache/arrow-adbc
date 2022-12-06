@@ -50,19 +50,31 @@ services:
     image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
     volumes:
       - .:/adbc:delegated
-    command: "'/adbc/ci/scripts/python_sdist_test.sh /adbc'"
+    command: "'/adbc/ci/scripts/python_sdist_test.sh ${ARCH} /adbc'"
 
   ############################ Python wheels ##################################
 
   python-wheel-manylinux:
-    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
+    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
+      dockerfile: ci/docker/python-wheel-manylinux.dockerfile
+      args:
+        ARCH: ${ARCH}
+        MANYLINUX: ${MANYLINUX}
+        PYTHON: ${PYTHON}
+        REPO: ${REPO}
+        VCPKG: ${VCPKG}
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - .:/adbc:delegated
     # Must set safe.directory so miniver won't error when calling git
-    command: "'git config --global --add safe.directory /adbc && git config --global --get safe.directory && /adbc/ci/scripts/python_wheel_unix_build.sh x86_64 /adbc /adbc/build'"
+    command: "'git config --global --add safe.directory /adbc && git config --global --get safe.directory && /adbc/ci/scripts/python_wheel_unix_build.sh ${ARCH} /adbc /adbc/build'"
 
   python-wheel-manylinux-test:
-    image: ${ARCH}/python:${PYTHON}
+    image: ${ARCH}/python:${PYTHON}-slim
     volumes:
       - .:/adbc:delegated
     command: /adbc/ci/scripts/python_wheel_unix_test.sh /adbc

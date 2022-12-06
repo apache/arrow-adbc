@@ -30,15 +30,18 @@ repo_root = source_root.joinpath("../../")
 # Resolve Shared Library
 
 library = os.environ.get("ADBC_POSTGRES_LIBRARY")
+target = source_root.joinpath(
+    "./adbc_driver_postgres/libadbc_driver_postgres.so"
+).resolve()
+
 if not library:
     if os.environ.get("_ADBC_IS_SDIST", "").strip().lower() in ("1", "true"):
         print("Building sdist, not requiring ADBC_POSTGRES_LIBRARY")
+    elif target.is_file():
+        print("Driver already exists (but may be stale?), continuing")
     else:
         raise ValueError("Must provide ADBC_POSTGRES_LIBRARY")
 else:
-    target = source_root.joinpath(
-        "./adbc_driver_postgres/libadbc_driver_postgres.so"
-    ).resolve()
     shutil.copy(library, target)
 
 # ------------------------------------------------------------

@@ -21,7 +21,7 @@ COMPONENTS="adbc_driver_manager adbc_driver_postgres adbc_driver_sqlite"
 
 function build_drivers {
     local -r source_dir="$1"
-    local -r build_dir="$2"
+    local -r build_dir="$2/${VCPKG_ARCH}"
 
     : ${CMAKE_BUILD_TYPE:=release}
     : ${CMAKE_UNITY_BUILD:=ON}
@@ -35,12 +35,20 @@ function build_drivers {
     if [[ $(uname) == "Linux" ]]; then
         export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
-        export VCPKG_DEFAULT_TRIPLET="x64-linux-static-release"
+        export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
     else # macOS
         export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
-        export VCPKG_DEFAULT_TRIPLET="x64-osx-static-release"
+        export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
     fi
+
+    pushd "${VCPKG_ROOT}"
+    # XXX: patch an odd issue where the path of some file is inconsistent between builds
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-inconsistent-path.patch" || true
+
+    # XXX: make vcpkg retry downloads https://github.com/microsoft/vcpkg/discussions/20583
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0002-Retry-downloads.patch" || true
+    popd
 
     "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
@@ -79,6 +87,42 @@ function build_drivers {
         ${source_dir}/c/driver/sqlite
     cmake --build . --target install -j
     popd
+}
+
+function setup_build_vars {
+    local -r arch="${1}"
+    if [[ "$(uname)" = "Darwin" ]]; then
+        if [[ "${arch}" = "amd64" ]]; then
+            export CIBW_ARCHS="x86_64"
+            export PYTHON_ARCH="x86_64"
+            export VCPKG_ARCH="x64"
+        elif [[ "${arch}" = "arm64v8" ]]; then
+            export CIBW_ARCHS="arm64"
+            export PYTHON_ARCH="arm64"
+            export VCPKG_ARCH="arm64"
+        else
+            echo "Unknown architecture: ${arch}"
+            exit 1
+        fi
+        export CIBW_BUILD='*-macosx_*'
+        export CIBW_PLATFORM="macos"
+    else
+        if [[ "${arch}" = "amd64" ]]; then
+            export CIBW_ARCHS="x86_64"
+            export PYTHON_ARCH="x86_64"
+            export VCPKG_ARCH="x64"
+        elif [[ "${arch}" = "arm64v8" ]]; then
+            export CIBW_ARCHS="aarch64"
+            export PYTHON_ARCH="arm64"
+            export VCPKG_ARCH="arm64"
+        else
+            echo "Unknown architecture: ${arch}"
+            exit 1
+        fi
+        export CIBW_BUILD='*-manylinux_*'
+        export CIBW_PLATFORM="linux"
+    fi
+    export CIBW_SKIP="pp* ${CIBW_SKIP}"
 }
 
 function test_packages {

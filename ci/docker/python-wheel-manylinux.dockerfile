@@ -15,31 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[project]
-name = "adbc_driver_manager"
-description = "A generic entrypoint for ADBC drivers."
-authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
-license = {text = "Apache-2.0"}
-requires-python = ">=3.9"
-dynamic = ["version"]
+ARG ARCH
+ARG MANYLINUX
+ARG PYTHON
+ARG REPO
+ARG VCPKG
 
-[project.optional-dependencies]
-dbapi = ["pandas", "pyarrow>=8.0.0"]
-test = ["pandas", "pyarrow>=8.0.0", "pytest"]
+FROM ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
 
-[project.urls]
-homepage = "https://arrow.apache.org"
-repository = "https://github.com/apache/arrow-adbc"
-
-[build-system]
-requires = ["Cython", "setuptools >= 61.0.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.pytest.ini_options]
-markers = [
-    "sqlite: tests that require the SQLite driver",
-]
-
-[tool.setuptools]
-packages = ["adbc_driver_manager"]
-py-modules = ["adbc_driver_manager"]
+RUN yum install -y docker

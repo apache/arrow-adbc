@@ -123,14 +123,13 @@ jobs:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
   python-manylinux:
-    name: "Python ${{ matrix.python_version }} manylinux${{ matrix.manylinux_version }}"
+    name: "Python ${{ matrix.arch }} manylinux${{ matrix.manylinux_version }}"
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        arch: ["amd64", "arm64v8"]
         manylinux_version: ["2014"]
-        python_version: ["3.9", "3.10", "3.11"]
-      # Limit parallelism; gemfury appears to return 409 CONFLICT on concurrent uploads
-      max-parallel: 1
+      # Let this one run in parallel because the arm64 build is so much slower
     steps:
       - uses: actions/checkout@v3
         with:
@@ -149,17 +148,21 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}"
           echo "ref: ${{ github.ref }}"
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
       - name: Build wheel
         shell: bash
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
-          export MANYLINUX=${{ matrix.manylinux_version }}
-          export PYTHON=${{ matrix.python_version }}
           docker-compose run python-wheel-manylinux
 
       - name: Archive wheels
         uses: actions/upload-artifact@v3
         with:
-          name: python${{ matrix.python_version }}-manylinux${{ matrix.manylinux_version }}
+          name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
           path: |
             python/adbc_driver_manager/repaired_wheels/*.whl
@@ -168,10 +171,13 @@ jobs:
 
       - name: Test wheel
         shell: bash
+        env:
+          ARCH: ${{ matrix.arch }}
+          MANYLINUX: ${{ matrix.manylinux_version }}
         run: |
-          export MANYLINUX=${{ matrix.manylinux_version }}
-          export PYTHON=${{ matrix.python_version }}
-          docker-compose run python-wheel-manylinux-test
+          env PYTHON=3.9 docker-compose run python-wheel-manylinux-test
+          env PYTHON=3.10 docker-compose run python-wheel-manylinux-test
+          env PYTHON=3.11 docker-compose run python-wheel-manylinux-test
 
       - name: Upload wheels to Gemfury
         shell: bash
@@ -182,19 +188,16 @@ jobs:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
   python-macos:
-    name: "Python ${{ matrix.python_version }} macOS"
+    name: "Python ${{ matrix.arch }} macOS"
     runs-on: macos-latest
     strategy:
       matrix:
-        python_version: ["3.9", "3.10", "3.11"]
+        arch: ["amd64", "arm64v8"]
       # Limit parallelism; gemfury appears to return 409 CONFLICT on concurrent uploads
       max-parallel: 1
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
-      PYTHON: "/Library/Frameworks/Python.framework/Versions/${{ matrix.python_version }}/bin/python${{ matrix.python_version }}"
-      PYTHON_VERSION: "${{ matrix.python_version }}"
-      # Use a custom triplet to only build release packages
-      VCPKG_DEFAULT_TRIPLET: "x64-osx-static-release"
+      PYTHON: "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
@@ -229,21 +232,26 @@ jobs:
         shell: bash
         run: ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
 
-      - name: Install Python ${{ matrix.python_version }}
+      - name: Install Python
         shell: bash
-        run: sudo ci/scripts/install_python.sh macos ${{ matrix.python_version }}
+        run: |
+          sudo ci/scripts/install_python.sh macos 3.9
+          sudo ci/scripts/install_python.sh macos 3.10
+          sudo ci/scripts/install_python.sh macos 3.11
 
       - name: Build wheel
         shell: bash
+        env:
+          ARCH: ${{ matrix.arch }}
         run: |
           $PYTHON -m venv build-env
           source build-env/bin/activate
-          ./ci/scripts/python_wheel_unix_build.sh x86_64 $(pwd) $(pwd)/build
+          ./ci/scripts/python_wheel_unix_build.sh $ARCH $(pwd) $(pwd)/build
 
       - name: Archive wheels
         uses: actions/upload-artifact@v3
         with:
-          name: python${{ matrix.python_version }}-macOS
+          name: python-${{ matrix.arch }}-macos
           retention-days: 7
           path: |
             python/adbc_driver_manager/repaired_wheels/*.whl
@@ -251,17 +259,32 @@ jobs:
             python/adbc_driver_sqlite/repaired_wheels/*.whl
 
       - name: Test wheel
+        if: matrix.arch == 'amd64'
         shell: bash
         run: |
-          $PYTHON -m venv test-env
-          source test-env/bin/activate
+          /Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9 -m venv test-env-39
+          source test-env-39/bin/activate
+          export PYTHON_VERSION=3.9
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+          /Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv test-env-310
+          source test-env-310/bin/activate
+          export PYTHON_VERSION=3.10
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+          /Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11 -m venv test-env-311
+          source test-env-311/bin/activate
+          export PYTHON_VERSION=3.11
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
 
       - name: Upload wheels to Gemfury
         shell: bash
         if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true)
         run: |
-          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres,sqlite}/dist/*.whl
+          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgres,sqlite}/repaired_wheels/*.whl
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 

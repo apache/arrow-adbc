@@ -15,31 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[project]
-name = "adbc_driver_manager"
-description = "A generic entrypoint for ADBC drivers."
-authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
-license = {text = "Apache-2.0"}
-requires-python = ">=3.9"
-dynamic = ["version"]
+set(VCPKG_TARGET_ARCHITECTURE arm64)
+set(VCPKG_CRT_LINKAGE dynamic)
+set(VCPKG_LIBRARY_LINKAGE static)
+set(VCPKG_BUILD_TYPE release)
 
-[project.optional-dependencies]
-dbapi = ["pandas", "pyarrow>=8.0.0"]
-test = ["pandas", "pyarrow>=8.0.0", "pytest"]
-
-[project.urls]
-homepage = "https://arrow.apache.org"
-repository = "https://github.com/apache/arrow-adbc"
-
-[build-system]
-requires = ["Cython", "setuptools >= 61.0.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.pytest.ini_options]
-markers = [
-    "sqlite: tests that require the SQLite driver",
-]
-
-[tool.setuptools]
-packages = ["adbc_driver_manager"]
-py-modules = ["adbc_driver_manager"]
+set(VCPKG_CMAKE_SYSTEM_NAME Linux)

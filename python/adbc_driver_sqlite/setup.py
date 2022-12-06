@@ -30,15 +30,15 @@ repo_root = source_root.joinpath("../../")
 # Resolve Shared Library
 
 library = os.environ.get("ADBC_SQLITE_LIBRARY")
+target = source_root.joinpath("./adbc_driver_sqlite/libadbc_driver_sqlite.so").resolve()
 if not library:
     if os.environ.get("_ADBC_IS_SDIST", "").strip().lower() in ("1", "true"):
         print("Building sdist, not requiring ADBC_SQLITE_LIBRARY")
+    elif target.is_file():
+        print("Driver already exists (but may be stale?), continuing")
     else:
         raise ValueError("Must provide ADBC_SQLITE_LIBRARY")
 else:
-    target = source_root.joinpath(
-        "./adbc_driver_sqlite/libadbc_driver_sqlite.so"
-    ).resolve()
     shutil.copy(library, target)
 
 # ------------------------------------------------------------

@@ -36,7 +36,7 @@ export _ADBC_IS_SDIST=1
 for component in ${COMPONENTS}; do
     pushd ${source_dir}/python/$component
 
-    echo "=== (${PYTHON_VERSION}) Building $component sdist ==="
+    echo "=== Building $component sdist ==="
     # python -m build copies to a tempdir, so we can't reference other files in the repo
     # https://github.com/pypa/pip/issues/5519
     python setup.py sdist

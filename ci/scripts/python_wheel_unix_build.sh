@@ -50,15 +50,18 @@ function check_visibility {
 
 function check_wheels {
     if [[ $(uname) == "Linux" ]]; then
-        echo "=== (${PYTHON_VERSION}) Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
+        echo "=== Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
         auditwheel repair "$@" -L . -w repaired_wheels
     else # macOS
-        echo "=== (${PYTHON_VERSION}) Tag $component wheel with macOS ==="
+        echo "=== Tag $component wheel with macOS ==="
         delocate-wheel -v -k -w repaired_wheels "$@"
     fi
 }
 
-echo "=== (${PYTHON_VERSION}) Building C/C++ driver components ==="
+echo "=== Set up platform variables ==="
+setup_build_vars "${arch}"
+
+echo "=== Building C/C++ driver components ==="
 # Sets ADBC_POSTGRES_LIBRARY, ADBC_SQLITE_LIBRARY
 build_drivers "${source_dir}" "${build_dir}"
 
@@ -68,30 +71,38 @@ check_visibility $ADBC_SQLITE_LIBRARY
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
-# Get wheel so we can manually invoke bdist_wheel
-python -m pip install --upgrade pip auditwheel delocate setuptools wheel
+python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools wheel
 
-PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform())")
+# XXX: when we manually retag the wheel, we have to use the right arch
+# tag, hence the replacements
+PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform().replace('-x86_64', '${PYTHON_ARCH}').replace('-arm64', '${PYTHON_ARCH}'))")
 
 for component in $COMPONENTS; do
     pushd ${source_dir}/python/$component
 
-    echo "=== (${PYTHON_VERSION}) Clean build artifacts ==="
+    echo "=== Clean build artifacts ==="
     rm -rf ./build ./dist ./repaired_wheels ./$component/*.so ./$component/*.so.*
 
-    echo "=== (${PYTHON_VERSION}) Check $component version ==="
+    echo "=== Check $component version ==="
     python $component/_version.py
-    git describe --long --always --first-parent
-    git describe --long --always
 
-    echo "=== (${PYTHON_VERSION}) Building $component wheel ==="
-    # python -m build copies to a tempdir, so we can't reference other files in the repo
-    python -m pip wheel -w dist -vvv .
+    echo "=== Building $component wheel ==="
+    # First, create an sdist, which 1) bundles the C++ sources and 2)
+    # embeds the git tag.  cibuildwheel may copy into a Docker
+    # container during build, but it only copies the package
+    # directory, which omits the C++ sources and .git directory,
+    # causing the build to fail.
+    python setup.py sdist
+    if [[ "$component" = "adbc_driver_manager" ]]; then
+        python -m cibuildwheel --output-dir repaired_wheels/ dist/$component-*.tar.gz
+    else
+        python -m pip wheel -w dist -vvv .
 
-    # Retag the wheel
-    python "${script_dir}/python_wheel_fix_tag.py" dist/$component-*.whl
+        # Retag the wheel
+        python "${script_dir}/python_wheel_fix_tag.py" dist/$component-*.whl
 
-    check_wheels dist/$component-*.whl
+        check_wheels dist/$component-*.whl
+    fi
 
     popd
 done

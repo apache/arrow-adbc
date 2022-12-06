@@ -21,22 +21,25 @@ set -e
 set -x
 set -o pipefail
 
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 <adbc-src-dir>"
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 <arch> <adbc-src-dir>"
   exit 1
 fi
 
-source_dir=${1}
+arch=${1}
+source_dir=${2}
 build_dir="${source_dir}/build"
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 source "${script_dir}/python_util.sh"
 
-echo "=== (${PYTHON_VERSION}) Building ADBC libpq driver ==="
-# Sets ADBC_POSTGRES_LIBRARY
+echo "=== Set up platform variables ==="
+setup_build_vars "${arch}"
+
+echo "=== Building C/C++ driver components ==="
 build_drivers "${source_dir}" "${build_dir}"
 
-echo "=== (${PYTHON_VERSION}) Installing sdists ==="
+echo "=== Installing sdists ==="
 for component in ${COMPONENTS}; do
     pip install --force-reinstall ${source_dir}/python/${component}/dist/*.tar.gz
 done
