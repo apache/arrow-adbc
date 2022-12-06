@@ -38,10 +38,19 @@ function build_drivers {
         export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
+        export CMAKE_ARGUMENTS=""
     else # macOS
         export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
+        if [[ "${VCPKG_ARCH}" = "x64" ]]; then
+            export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=x86_64"
+        elif [[ "${VCPKG_ARCH}" = "arm64" ]]; then
+            export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=arm64"
+        else
+            echo "Unknown architecture: ${VCPKG_ARCH}"
+            exit 1
+        fi
     fi
 
     pushd "${VCPKG_ROOT}"
@@ -52,7 +61,8 @@ function build_drivers {
     patch -N -p1 < "${source_dir}/ci/vcpkg/0002-Retry-downloads.patch" || true
     popd
 
-    "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \
+    # Need to install sqlite3 to make CMake be able to find it below
+    "${VCPKG_ROOT}/vcpkg" install sqlite3 \
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
@@ -67,6 +77,7 @@ function build_drivers {
         -DCMAKE_INSTALL_PREFIX=${build_dir} \
         -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
         -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
+        ${CMAKE_ARGUMENTS} \
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
         ${source_dir}/c/driver/postgres
@@ -84,6 +95,7 @@ function build_drivers {
         -DCMAKE_INSTALL_PREFIX=${build_dir} \
         -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
         -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
+        ${CMAKE_ARGUMENTS} \
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
         ${source_dir}/c/driver/sqlite
