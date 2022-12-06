@@ -69,9 +69,9 @@ PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform()\
     .replace('-universal2', '-${PYTHON_ARCH}'))")
 if [[ "${arch}" = "arm64v8" && "$(uname)" = "Darwin" ]]; then
    # Manually override the tag in this case - CI will naively generate
-   # "macos_10_9_arm64" but this isn't a 'real' tag because the first
+   # "macosx_10_9_arm64" but this isn't a 'real' tag because the first
    # version of macOS supporting AArch64 was macOS 11 Big Sur
-   PLAT_NAME="macos_11_0_arm64"
+   PLAT_NAME="macosx_11_0_arm64"
 fi
 
 echo "=== Building C/C++ driver components ==="
