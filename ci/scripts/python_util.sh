@@ -17,6 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+set -ex
+
 COMPONENTS="adbc_driver_manager adbc_driver_postgres adbc_driver_sqlite"
 
 function build_drivers {

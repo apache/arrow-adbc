@@ -61,6 +61,15 @@ function check_wheels {
 echo "=== Set up platform variables ==="
 setup_build_vars "${arch}"
 
+echo "${PYTHON_ARCH}"
+
+# XXX: when we manually retag the wheel, we have to use the right arch
+# tag accounting for cross-compiling, hence the replacements
+PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform()\
+    .replace('-x86_64', '-${PYTHON_ARCH}')\
+    .replace('-arm64', '-${PYTHON_ARCH}')\
+    .replace('-universal2', '-${PYTHON_ARCH}'))")
+
 echo "=== Building C/C++ driver components ==="
 # Sets ADBC_POSTGRES_LIBRARY, ADBC_SQLITE_LIBRARY
 build_drivers "${source_dir}" "${build_dir}"
@@ -72,10 +81,6 @@ check_visibility $ADBC_SQLITE_LIBRARY
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
 python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools wheel
-
-# XXX: when we manually retag the wheel, we have to use the right arch
-# tag, hence the replacements
-PLAT_NAME=$(python -c "import sysconfig; print(sysconfig.get_platform().replace('-x86_64', '${PYTHON_ARCH}').replace('-arm64', '${PYTHON_ARCH}'))")
 
 for component in $COMPONENTS; do
     pushd ${source_dir}/python/$component
@@ -99,7 +104,7 @@ for component in $COMPONENTS; do
         python -m pip wheel -w dist -vvv .
 
         # Retag the wheel
-        python "${script_dir}/python_wheel_fix_tag.py" dist/$component-*.whl
+        python "${script_dir}/python_wheel_fix_tag.py" --plat-name="${PLAT_NAME}" dist/$component-*.whl
 
         check_wheels dist/$component-*.whl
     fi
