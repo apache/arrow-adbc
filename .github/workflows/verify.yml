@@ -39,7 +39,7 @@ permissions:
 jobs:
   binary-unix:
     name: "Verify Binaries/${{ matrix.os }}"
-    if: inputs.version != "" && inputs.rc != ""
+    if: inputs.version != '' && inputs.rc != ''
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -78,7 +78,7 @@ jobs:
           # Required for caching
           use-only-tar-bz2: true
       - name: Verify
-        if: matrix.os != "windows-latest"
+        if: matrix.os != 'windows-latest'
         shell: bash -l {0}
         env:
           REPOSITORY: ${{ github.repository }}
@@ -88,7 +88,7 @@ jobs:
         run: |
           sudo -E ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
       - name: Verify
-        if: matrix.os == "windows-latest"
+        if: matrix.os == 'windows-latest'
         shell: pwsh
         env:
           REPOSITORY: ${{ github.repository }}
