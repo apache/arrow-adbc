@@ -369,20 +369,23 @@ test_cpp() {
     compilers || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
-      export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
+    export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
+    # The CMake setup forces RPATH to be the Conda prefix
+    local -r install_prefix="${CONDA_PREFIX}"
   else
-      true
+    local -r install_prefix="${ARROW_TMPDIR}/local"
   fi
 
   export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-${NPROC}}
   export BUILD_ALL=1
   export ADBC_BUILD_TESTS=ON
+  export ADBC_CMAKE_ARGS="-DADBC_INSTALL_NAME_RPATH=OFF"
   export ADBC_USE_ASAN=OFF
   export ADBC_USE_UBSAN=OFF
-  "${ADBC_SOURCE_DIR}/ci/scripts/cpp_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/cpp_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
   # Postgres requires running database for testing
   export BUILD_DRIVER_POSTGRES=0
-  "${ADBC_SOURCE_DIR}/ci/scripts/cpp_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/cpp_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
 }
 
 test_java() {
@@ -404,14 +407,23 @@ test_python() {
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
+    # The CMake setup forces RPATH to be the Conda prefix
+    local -r install_prefix="${CONDA_PREFIX}"
+  else
+    local -r install_prefix="${ARROW_TMPDIR}/local"
   fi
 
-  "${ADBC_SOURCE_DIR}/ci/scripts/python_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${ARROW_TMPDIR}/local"
-  "${ADBC_SOURCE_DIR}/ci/scripts/python_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/python_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${install_prefix}"
+  "${ADBC_SOURCE_DIR}/ci/scripts/python_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${install_prefix}"
 }
 
 test_glib() {
   show_header "Build and test C GLib libraries"
+
+  if [[ "${USE_CONDA}" -gt 0 && "$(uname -p)" = "arm" ]]; then
+    echo "conda-forge does not have arm builds of arrow-c-glib"
+    return
+  fi
 
   # Build and test C GLib
   maybe_setup_conda --file "${ADBC_SOURCE_DIR}/ci/conda_env_glib.txt" || exit 1
@@ -422,8 +434,15 @@ test_glib() {
     gem install --no-document bundler
   fi
 
-  "${ADBC_SOURCE_DIR}/ci/scripts/glib_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
-  "${ADBC_SOURCE_DIR}/ci/scripts/glib_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
+  if [ "${USE_CONDA}" -gt 0 ]; then
+    # The CMake setup forces RPATH to be the Conda prefix
+    local -r install_prefix="${CONDA_PREFIX}"
+  else
+    local -r install_prefix="${ARROW_TMPDIR}/local"
+  fi
+
+  "${ADBC_SOURCE_DIR}/ci/scripts/glib_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
+  "${ADBC_SOURCE_DIR}/ci/scripts/glib_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
 }
 
 test_csharp() {
@@ -453,9 +472,17 @@ test_go() {
   maybe_setup_go || exit 1
   maybe_setup_conda compilers go=1.18 || exit 1
 
+  if [ "${USE_CONDA}" -gt 0 ]; then
+    # The CMake setup forces RPATH to be the Conda prefix
+    local -r install_prefix="${CONDA_PREFIX}"
+  else
+    local -r install_prefix="${ARROW_TMPDIR}/local"
+  fi
+
+
   export CGO_ENABLED=1
-  "${ADBC_SOURCE_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
-  "${ADBC_SOURCE_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${ARROW_TMPDIR}/local"
+  "${ADBC_SOURCE_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
+  "${ADBC_SOURCE_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
 }
 
 ensure_source_directory() {
