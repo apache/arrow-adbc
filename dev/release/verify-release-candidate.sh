@@ -533,16 +533,18 @@ test_source_distribution() {
 }
 
 test_binary_distribution() {
-  show_header "Downloading binary artifacts"
-  export BINARY_DIR="${ARROW_TMPDIR}/binaries"
-  mkdir -p "${BINARY_DIR}"
+  if [ ${TEST_BINARIES} -gt 0 ]; then
+    show_header "Downloading binary artifacts"
+    export BINARY_DIR="${ARROW_TMPDIR}/binaries"
+    mkdir -p "${BINARY_DIR}"
 
-  ${PYTHON:-python3} "$ARROW_SOURCE_DIR/dev/release/download_rc_binaries.py" \
-                     $VERSION $RC_NUMBER \
-                     --dest="${BINARY_DIR}" \
-                     --package_type=github \
-                     --repository="${SOURCE_REPOSITORY}" \
-                     --tag="adbc-${VERSION}-rc${RC_NUMBER}"
+    ${PYTHON:-python3} "$ARROW_SOURCE_DIR/dev/release/download_rc_binaries.py" \
+                       $VERSION $RC_NUMBER \
+                       --dest="${BINARY_DIR}" \
+                       --package_type=github \
+                       --repository="${SOURCE_REPOSITORY}" \
+                       --tag="adbc-${VERSION}-rc${RC_NUMBER}"
+  fi
 
   if [ ${TEST_BINARY} -gt 0 ]; then
     test_binary
