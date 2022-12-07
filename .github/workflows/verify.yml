@@ -86,7 +86,7 @@ jobs:
           TEST_SOURCE: "1"
           USE_CONDA: "1"
         run: |
-          sudo -E ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+          ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
       - name: Verify
         if: matrix.os == 'windows-latest'
         shell: pwsh
