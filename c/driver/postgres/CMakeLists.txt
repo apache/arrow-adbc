@@ -29,7 +29,7 @@ include(CTest)
 if(WIN32)
   # XXX: for now, assume vcpkg
   find_package(PostgreSQL REQUIRED)
-  set(LIBPQ_LINK_LIBRARIES PostgreSQL::PostgreSQL)
+  set(LIBPQ_LINK_LIBRARIES PostgreSQL::PostgreSQL wsock32 ws2_32)
   set(LIBPQ_STATIC_LIBRARIES PostgreSQL::PostgreSQL)
   set(LIBPQ_INCLUDE_DIRS)
 else()

@@ -114,11 +114,12 @@ static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError*
   }
 
 #if defined(_WIN32)
-  if (!FreeLibrary(state->handle)) {
-    std::string message = "FreeLibrary() failed: ";
-    GetWinError(&message);
-    SetError(error, message);
-  }
+  // TODO(apache/arrow-adbc#204): causes tests to segfault
+  // if (!FreeLibrary(state->handle)) {
+  //   std::string message = "FreeLibrary() failed: ";
+  //   GetWinError(&message);
+  //   SetError(error, message);
+  // }
 #endif  // defined(_WIN32)
 
   driver->private_manager = nullptr;

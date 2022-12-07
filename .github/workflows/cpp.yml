@@ -169,59 +169,61 @@ jobs:
       - name: Install Dependencies
         shell: cmd /C call {0}
         run: |
-          mamba install --file ci/conda_env_cpp.txt
-      - name: Build/Test SQLite3 Driver
-        shell: cmd /C call {0}
-        run: |
-          mkdir build\driver_sqlite
-          cd build\driver_sqlite
-          cmake -GNinja ..\..\c\drivers\sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          cmake --build .
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          ctest --output-on-failure --no-tests=error
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          cd ..\..
-      - name: Build/Test Driver Manager
-        shell: cmd /C call {0}
-        run: |
-          mkdir build\driver_manager
-          cd build\driver_manager
-          cmake -GNinja ..\..\c\driver_manager -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          cmake --build .
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          set PATH=%PATH%;${{ github.workspace }}\build\driver_sqlite
-          ctest --output-on-failure --no-tests=error
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          cd ..\..
-      - name: Build/Test SQLite Driver
-        shell: cmd /C call {0}
-        run: |
-          mkdir build\driver_sqlite
-          cd build\driver_sqlite
-          cmake -GNinja ..\..\c\driver\sqlite -DADBC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=%CONDA_PREFIX% -DADBC_BUILD_SHARED=ON -DADBC_BUILD_STATIC=OFF
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          cmake --build .
-          dir
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          set PATH=%PATH%;${{ github.workspace }}\build\driver_sqlite
-          ctest --output-on-failure --no-tests=error
-          if %errorlevel% neq 0 then exit /b %errorlevel%
-          cd ..\..
-      - name: Build/Test Python Driver Manager
-        shell: cmd /C call {0}
-        run: |
-          cd python\adbc_driver_manager
-          pip install -e .
-          set PATH=%PATH%;${{ github.workspace }}\build\driver_sqlite
-          python -m pytest -vv
-          cd ..\..
-      - name: Build/Test Python Driver SQLite
-        shell: cmd /C call {0}
-        run: |
-          cd python\adbc_driver_sqlite
-          set ADBC_SQLITE_LIBRARY=${{ github.workspace }}\build\driver_sqlite\adbc_driver_sqlite.dll
-          pip install -e .
-          python -m pytest -vv
-          cd ..\..
+          mamba install --file ci/conda_env_cpp.txt --file ci/conda_env_python.txt
+      - name: Build Driver Manager
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+        run:
+          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+      - name: Build Driver SQLite
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+        run:
+          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+      - name: Test Driver Manager
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+        run:
+          .\ci\scripts\cpp_test.ps1 $pwd $pwd\build
+      - name: Test Driver SQLite
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+        run:
+          .\ci\scripts\cpp_test.ps1 $pwd $pwd\build
+
+      - name: Build Python Driver Manager
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+        run:
+          .\ci\scripts\python_build.ps1 $pwd $pwd\build
+      - name: Build Python Driver SQLite
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+        run:
+          .\ci\scripts\python_build.ps1 $pwd $pwd\build
+      - name: Test Python Driver Manager
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+        run:
+          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+      - name: Test Python Driver SQLite
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+        run:
+          .\ci\scripts\python_test.ps1 $pwd $pwd\build
