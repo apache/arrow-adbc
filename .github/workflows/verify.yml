@@ -79,14 +79,14 @@ jobs:
           use-only-tar-bz2: true
       - name: Verify
         if: matrix.os != 'windows-latest'
-        shell: bash -l {0}
+        shell: bash -el {0}
         env:
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"
           USE_CONDA: "1"
         run: |
-          ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+          bash -el ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
       - name: Verify
         if: matrix.os == 'windows-latest'
         shell: pwsh
