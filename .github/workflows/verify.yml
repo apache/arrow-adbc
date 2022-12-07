@@ -58,18 +58,26 @@ jobs:
         run: |
           sudo -E ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
 
-  source-unix:
-    name: "Verify Source/${{ matrix.os }}"
+  source-conda:
+    name: "Verify Source (Conda)/${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+          # Required for caching
+          use-only-tar-bz2: true
       - name: Verify
+        if: ${{ matrix.os }} != "windows-latest"
         shell: bash
         env:
           REPOSITORY: ${{ github.repository }}
@@ -78,3 +86,13 @@ jobs:
           USE_CONDA: "1"
         run: |
           sudo -E ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+      - name: Verify
+        if: ${{ matrix.os }} == "windows-latest"
+        shell: pwsh
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TEST_DEFAULT: "0"
+          TEST_SOURCE: "1"
+          USE_CONDA: "1"
+        run: |
+          .\dev\release\verify-release-candidate.ps1 ${{ inputs.version }} ${{ inputs.rc }}
