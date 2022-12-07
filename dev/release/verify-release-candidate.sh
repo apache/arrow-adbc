@@ -647,12 +647,6 @@ test_wheels() {
     echo "Binary verification of local wheels is not currently implemented"
     exit 1
   else
-    if [ "$(uname)" == "Darwin" ]; then
-      local filter_regex=.*macosx.*
-    else
-      local filter_regex=.*manylinux.*
-    fi
-
     wheels_dir=${BINARY_DIR}
   fi
 

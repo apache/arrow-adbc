@@ -57,7 +57,7 @@ jobs:
           TEST_BINARIES: "1"
           USE_CONDA: "1"
         run: |
-          sudo -E ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+          ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
 
   source-conda:
     name: "Verify Source (Conda)/${{ matrix.os }}"
@@ -81,14 +81,13 @@ jobs:
           use-only-tar-bz2: true
       - name: Verify
         if: matrix.os != 'windows-latest'
-        shell: bash -el {0}
         env:
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"
           USE_CONDA: "1"
         run: |
-          bash -el ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+          ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
       - name: Verify
         if: matrix.os == 'windows-latest'
         shell: pwsh
