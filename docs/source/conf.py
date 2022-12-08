@@ -71,6 +71,8 @@ breathe_projects = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+html_css_files = ["css/custom.css"]
+html_static_path = ["_static"]
 html_theme = "furo"
 html_theme_options = {
     "dark_logo": "logo-dark.png",
@@ -79,7 +81,6 @@ html_theme_options = {
     "source_branch": "main",
     "source_directory": "docs/source/",
 }
-html_static_path = ["_static"]
 
 # -- Options for Intersphinx -------------------------------------------------
 
