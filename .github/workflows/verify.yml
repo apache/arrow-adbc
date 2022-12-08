@@ -1,0 +1,100 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Verification
+
+on:
+  # schedule:
+  #   - cron: "1 0 * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to verify"
+        required: false
+        type: string
+        default: ""
+      rc:
+        description: "RC to verify"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  binary-unix:
+    name: "Verify Binaries/${{ matrix.os }}"
+    if: inputs.version != '' && inputs.rc != ''
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["macos-latest", "ubuntu-latest"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify
+        shell: bash
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TEST_DEFAULT: "0"
+          TEST_BINARIES: "1"
+          USE_CONDA: "1"
+        run: |
+          ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+
+  source-conda:
+    name: "Verify Source (Conda)/${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: conda-incubator/setup-miniconda@v2
+        # The Unix script will set up conda itself
+        if: matrix.os == 'windows-latest'
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+          # Required for caching
+          use-only-tar-bz2: true
+      - name: Verify
+        if: matrix.os != 'windows-latest'
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TEST_DEFAULT: "0"
+          TEST_SOURCE: "1"
+          USE_CONDA: "1"
+        run: |
+          ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+      - name: Verify
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TEST_DEFAULT: "0"
+          TEST_SOURCE: "1"
+          USE_CONDA: "1"
+        run: |
+          .\dev\release\verify-release-candidate.ps1 ${{ inputs.version }} ${{ inputs.rc }}

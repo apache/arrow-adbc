@@ -22,3 +22,4 @@ gtest>=1.10.0
 libpq
 ninja
 libsqlite
+pkg-config

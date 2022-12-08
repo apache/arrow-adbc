@@ -42,9 +42,11 @@ for component in ${COMPONENTS}; do
     if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then
         pip install --force-reinstall \
             ${source_dir}/python/${component}/repaired_wheels/*-${PYTHON_TAG}-*.whl
-    else
+    elif [[ -d ${source_dir}/python/${component}/dist/ ]]; then
         pip install --force-reinstall \
             ${source_dir}/python/${component}/dist/*-${PYTHON_TAG}-*.whl
+    else
+        echo "NOTE: assuming wheels are already installed"
     fi
 done
 pip install pytest pyarrow pandas

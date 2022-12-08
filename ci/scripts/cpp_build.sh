@@ -29,6 +29,7 @@ set -e
 : ${ADBC_USE_ASAN:=ON}
 : ${ADBC_USE_UBSAN:=ON}
 
+: ${ADBC_CMAKE_ARGS:=""}
 : ${CMAKE_BUILD_TYPE:=Debug}
 
 build_subproject() {
@@ -47,6 +48,7 @@ build_subproject() {
 
     set -x
     cmake "${source_dir}/c/${subproject}" \
+          "${ADBC_CMAKE_ARGS}" \
           -DADBC_BUILD_SHARED="${ADBC_BUILD_SHARED}" \
           -DADBC_BUILD_STATIC="${ADBC_BUILD_STATIC}" \
           -DADBC_BUILD_TESTS="${ADBC_BUILD_TESTS}" \
