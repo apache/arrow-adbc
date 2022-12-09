@@ -83,6 +83,19 @@ struct Releaser<struct AdbcConnection> {
 };
 
 template <>
+struct Releaser<struct AdbcDatabase> {
+  static void Release(struct AdbcDatabase* value) {
+    if (value->private_data) {
+      struct AdbcError error = {};
+      auto status = AdbcDatabaseRelease(value, &error);
+      if (status != ADBC_STATUS_OK) {
+        FAIL() << StatusCodeToString(status) << ": " << ToString(&error);
+      }
+    }
+  }
+};
+
+template <>
 struct Releaser<struct AdbcStatement> {
   static void Release(struct AdbcStatement* value) {
     if (value->private_data) {
