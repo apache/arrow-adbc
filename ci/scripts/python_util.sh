@@ -81,7 +81,7 @@ function build_drivers {
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
         ${source_dir}/c/driver/postgres
-    cmake --build . --target install -j
+    cmake --build . --target install --verbose -j
     popd
 
     echo "=== Building driver/sqlite ==="
@@ -99,7 +99,7 @@ function build_drivers {
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
         ${source_dir}/c/driver/sqlite
-    cmake --build . --target install -j
+    cmake --build . --target install --verbose -j
     popd
 }
 
