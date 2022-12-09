@@ -436,7 +436,9 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
 
 AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
                                  struct AdbcError* error) {
-  // Allocate a temporary structure to store options pre-Init
+  // Allocate a temporary structure to store options pre-Init, because
+  // we don't get access to the database (and hence the driver
+  // function table) until then
   connection->private_data = new TempConnection;
   connection->private_driver = nullptr;
   return ADBC_STATUS_OK;
@@ -480,8 +482,15 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
 
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
                                        const char* value, struct AdbcError* error) {
-  if (!connection->private_driver) {
+  if (!connection->private_data) {
+    SetError(error, "AdbcConnectionSetOption: must AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
+  }
+  if (!connection->private_driver) {
+    // Init not yet called, save the option
+    TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
+    args->options[key] = value;
+    return ADBC_STATUS_OK;
   }
   return connection->private_driver->ConnectionSetOption(connection, key, value, error);
 }
