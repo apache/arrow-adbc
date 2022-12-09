@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache@v3
         env:
           # Increment this to reset cache manually
-          CACHE_NUMBER: 1
+          CACHE_NUMBER: 0
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -78,6 +78,7 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install \
+            'arrow-c-glib>=10.0.0' \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_glib.txt \
