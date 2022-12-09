@@ -32,6 +32,7 @@
 namespace adbc {
 
 using adbc_validation::IsOkStatus;
+using adbc_validation::IsStatus;
 
 class DriverManager : public ::testing::Test {
  public:
@@ -105,6 +106,55 @@ TEST_F(DriverManager, ConnectionOptions) {
 
   ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+}
+
+TEST_F(DriverManager, MultiDriverTest) {
+  // Make sure two distinct drivers work in the same process (basic smoke test)
+  adbc_validation::Handle<struct AdbcError> error;
+  adbc_validation::Handle<struct AdbcDatabase> sqlite_db;
+  adbc_validation::Handle<struct AdbcDatabase> postgres_db;
+  adbc_validation::Handle<struct AdbcConnection> sqlite_conn;
+  adbc_validation::Handle<struct AdbcConnection> postgres_conn;
+
+  ASSERT_THAT(AdbcDatabaseNew(&sqlite_db.value, &error.value), IsOkStatus(&error.value));
+  ASSERT_THAT(AdbcDatabaseNew(&postgres_db.value, &error.value),
+              IsOkStatus(&error.value));
+
+  ASSERT_THAT(AdbcDatabaseSetOption(&sqlite_db.value, "driver", "adbc_driver_sqlite",
+                                    &error.value),
+              IsOkStatus(&error.value));
+  ASSERT_THAT(AdbcDatabaseSetOption(&postgres_db.value, "driver", "adbc_driver_postgres",
+                                    &error.value),
+              IsOkStatus(&error.value));
+
+  ASSERT_THAT(AdbcDatabaseInit(&sqlite_db.value, &error.value), IsOkStatus(&error.value));
+  ASSERT_THAT(AdbcDatabaseInit(&postgres_db.value, &error.value),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error.value));
+  ASSERT_THAT(error->message,
+              ::testing::HasSubstr(
+                  "[libpq] Must set database option 'uri' before creating a connection"));
+  error->release(&error.value);
+
+  ASSERT_THAT(AdbcDatabaseSetOption(&postgres_db.value, "uri",
+                                    "postgres://localhost:5432", &error.value),
+              IsOkStatus(&error.value));
+  ASSERT_THAT(AdbcDatabaseSetOption(&sqlite_db.value, "unknown", "foo", &error.value),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error.value));
+  ASSERT_THAT(error->message,
+              ::testing::HasSubstr("[SQLite] Unknown database option unknown=foo"));
+  error->release(&error.value);
+
+  ASSERT_THAT(AdbcConnectionNew(&sqlite_conn.value, &error.value),
+              IsOkStatus(&error.value));
+  ASSERT_THAT(AdbcConnectionNew(&postgres_conn.value, &error.value),
+              IsOkStatus(&error.value));
+
+  ASSERT_THAT(AdbcConnectionInit(&sqlite_conn.value, &sqlite_db.value, &error.value),
+              IsOkStatus(&error.value));
+  ASSERT_THAT(AdbcConnectionInit(&postgres_conn.value, &postgres_db.value, &error.value),
+              IsStatus(ADBC_STATUS_IO, &error.value));
+  ASSERT_THAT(error->message, ::testing::HasSubstr("[libpq] Failed to connect"));
+  error->release(&error.value);
 }
 
 class SqliteQuirks : public adbc_validation::DriverQuirks {

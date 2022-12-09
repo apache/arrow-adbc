@@ -416,6 +416,9 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
   if (!connection->private_data) {
     SetError(error, "Must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
+  } else if (!database->private_driver) {
+    SetError(error, "Database is not initialized");
+    return ADBC_STATUS_INVALID_ARGUMENT;
   }
   TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
   connection->private_data = nullptr;
