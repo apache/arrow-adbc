@@ -46,6 +46,10 @@ add_arrow_lib(adbc_driver_postgres
               type.cc
               OUTPUTS
               ADBC_LIBRARIES
+              CMAKE_PACKAGE_NAME
+              AdbcDriverPostgres
+              PKG_CONFIG_NAME
+              adbc-driver-postgres
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
