@@ -336,7 +336,7 @@ which is made available under the Creative Commons CC0 license.
 --------------------------------------------------------------------------------
 
 3rdparty dependency libpq is statically linked in certain binary
-distributions, like the python wheels. libpq has the following license:
+distributions, like the Python wheels. libpq has the following license:
 
 Portions Copyright © 1996-2022, The PostgreSQL Global Development Group
 
@@ -393,8 +393,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 
-3rdparty dependency openssl is statically linked in certain binary
-distributions, like the Python wheels. openssl version 3 has the
+3rdparty dependency OpenSSL is statically linked in certain binary
+distributions, like the Python wheels. OpenSSL version 3 has the
 following license:
 
 Copyright 1995-2021 The OpenSSL Project Authors. All Rights Reserved.
@@ -406,8 +406,8 @@ https://www.openssl.org/source/license.html
 
 --------------------------------------------------------------------------------
 
-3rdparty dependency sqlite is statically linked in certain binary
-distributions, like the Python wheels. sqlite has the following
+3rdparty dependency SQLite is statically linked in certain binary
+distributions, like the Python wheels. SQLite has the following
 license:
 
 The author disclaims copyright to this source code.  In place of
