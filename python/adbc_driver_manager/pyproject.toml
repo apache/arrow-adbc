@@ -41,5 +41,6 @@ markers = [
 ]
 
 [tool.setuptools]
+license-files = ["LICENSE.txt", "NOTICE.txt"]
 packages = ["adbc_driver_manager"]
 py-modules = ["adbc_driver_manager"]

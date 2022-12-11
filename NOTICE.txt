@@ -3,9 +3,3 @@ Copyright 2022 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
-
-This product includes software from the miniver project (CC0).
-https://github.com/jbweston/miniver
-
-This product includes software from the vcpkg project (MIT).
-Copyright (c) Microsoft Corporation

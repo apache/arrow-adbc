@@ -45,7 +45,7 @@ cmake ^
       -DCMAKE_UNITY_BUILD=%CMAKE_UNITY_BUILD% ^
       -DVCPKG_TARGET_TRIPLET=%VCPKG_TARGET_TRIPLET% ^
       %source_dir%\c\driver\postgres || exit /B 1
-cmake --build . --config %CMAKE_BUILD_TYPE% --target install -j || exit /B 1
+cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
 
 @REM XXX: CMake installs it to bin instead of lib for some reason
 set ADBC_POSTGRES_LIBRARY=%build_dir%\bin\adbc_driver_postgres.dll
@@ -65,7 +65,7 @@ cmake ^
       -DCMAKE_UNITY_BUILD=%CMAKE_UNITY_BUILD% ^
       -DVCPKG_TARGET_TRIPLET=%VCPKG_TARGET_TRIPLET% ^
       %source_dir%\c\driver\sqlite || exit /B 1
-cmake --build . --config %CMAKE_BUILD_TYPE% --target install -j || exit /B 1
+cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
 
 @REM XXX: CMake installs it to bin instead of lib for some reason
 set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
