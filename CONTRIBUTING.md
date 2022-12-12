@@ -78,7 +78,7 @@ $ ctest
 ```
 
 Tests use [Googletest][gtest].  Some libraries may have additional
-test-time dependencies.  For instance, the Postgres and Flight SQL
+test-time dependencies.  For instance, the PostgreSQL and Flight SQL
 drivers require servers to test against.  See their individual READMEs
 for details.
 
@@ -233,7 +233,7 @@ Please use the following commit types: `build`, `chore`, `ci`, `docs`,
 
 Please use the following scopes:
 
-- `c/driver/postgres`, `java/driver-manager`, …: for a component and
+- `c/driver/postgresql`, `java/driver-manager`, …: for a component and
   all its bindings.  For example, `c/driver-manager` covers the C/C++
   driver manager and its GLib and Python bindings, while
   `java/driver/flight-sql` covers only the Flight SQL driver for Java.
@@ -244,7 +244,7 @@ Please use the following scopes:
 For example:
 
 ```
-feat(c/driver/postgres): implement prepared statements
+feat(c/driver/postgresql): implement prepared statements
 
 ci(go/adbc/drivermgr): pass through DYLD_LIBRARY_PATH in tests
 

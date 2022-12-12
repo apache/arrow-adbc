@@ -15,17 +15,24 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-==================
-libpq-based Driver
-==================
+=================
+PostgreSQL Driver
+=================
 
-The Postgres driver provides access to any database that supports the
-Postgres wire format.
+The PostgreSQL driver provides access to any database that supports
+the PostgreSQL wire format.  It wraps `libpq`_, the client library for
+PostgreSQL.  The project owes credit to 0x0L's `pgeon`_ for the
+overall approach.
+
+.. note:: This project is not affiliated with PostgreSQL in any way.
+
+.. _libpq: https://www.postgresql.org/docs/current/libpq.html
+.. _pgeon: https://github.com/0x0L/pgeon
 
 Installation
 ============
 
-The libpq-based driver is shipped as a standalone library.  See
+The PostgreSQL driver is shipped as a standalone library.  See
 :ref:`Installation <cpp-install-libpq>`.
 
 Usage
@@ -47,7 +54,7 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
          // Ignoring error handling
          struct AdbcDatabase database;
          AdbcDatabaseNew(&database, nullptr);
-         AdbcDatabaseSetOption(&database, "uri", "postgresql://localhost:5433", nullptr);
+         AdbcDatabaseSetOption(&database, "uri", "postgres://localhost:5433", nullptr);
          AdbcDatabaseInit(&database, nullptr);
 
    .. tab-item:: Python
@@ -55,9 +62,9 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
 
       .. code-block:: python
 
-         import adbc_driver_postgres.dbapi
+         import adbc_driver_postgresql.dbapi
 
 
-         uri = "postgresql://localhost:5433"
-         with adbc_driver_postgres.dbapi.connect(uri) as conn:
+         uri = "postgres://localhost:5433"
+         with adbc_driver_postgresql.dbapi.connect(uri) as conn:
              pass

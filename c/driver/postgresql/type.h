@@ -43,10 +43,10 @@ enum class PgType : uint8_t {
 };
 
 struct TypeMapping {
-  // Maps Postgres type OIDs to a standardized type name
+  // Maps PostgreSQL type OIDs to a standardized type name
   // Example: int8 == 20
   std::unordered_map<uint32_t, PgType> type_mapping;
-  // Maps standardized type names to the Postgres type OID to use
+  // Maps standardized type names to the PostgreSQL type OID to use
   // Example: kInt8 == 20
   std::unordered_map<PgType, uint32_t> canonical_types;
 
@@ -56,8 +56,5 @@ struct TypeMapping {
 };
 
 bool FromPgTypreceive(const char* typreceive, PgType* out);
-
-// TODO: this should be upstream
-// const char* ArrowTypeToString(ArrowType type);
 
 }  // namespace adbcpq

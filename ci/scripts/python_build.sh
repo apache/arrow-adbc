@@ -20,7 +20,7 @@ set -e
 
 : ${BUILD_ALL:=1}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
-: ${BUILD_DRIVER_POSTGRES:=${BUILD_ALL}}
+: ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 
 if [[ $(uname) = "Darwin" ]]; then
@@ -34,13 +34,12 @@ build_subproject() {
     local -r install_dir="${2}"
     local -r subproject="${3}"
 
-    if [[ "${subproject}" = "adbc_driver_postgres" ]]; then
-        export ADBC_POSTGRES_LIBRARY="${install_dir}/lib/libadbc_driver_postgres.${ADBC_LIBRARY_SUFFIX}"
+    if [[ "${subproject}" = "adbc_driver_postgresql" ]]; then
+        export ADBC_POSTGRESQL_LIBRARY="${install_dir}/lib/libadbc_driver_postgresql.${ADBC_LIBRARY_SUFFIX}"
     elif [[ "${subproject}" = "adbc_driver_sqlite" ]]; then
         export ADBC_SQLITE_LIBRARY="${install_dir}/lib/libadbc_driver_sqlite.${ADBC_LIBRARY_SUFFIX}"
     fi
 
-    echo foo $subproject $ADBC_SQLITE_LIBRARY
     python -m pip install -e "${source_dir}/python/${subproject}"
 }
 
@@ -57,8 +56,8 @@ main() {
         build_subproject "${source_dir}" "${install_dir}" adbc_driver_manager
     fi
 
-    if [[ "${BUILD_DRIVER_POSTGRES}" -gt 0 ]]; then
-        build_subproject "${source_dir}" "${install_dir}" adbc_driver_postgres
+    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
+        build_subproject "${source_dir}" "${install_dir}" adbc_driver_postgresql
     fi
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then

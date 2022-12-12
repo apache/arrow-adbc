@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// A libpq-based Postgres driver for ADBC.
+// A libpq-based PostgreSQL driver for ADBC.
 
 #include <cstring>
 #include <memory>

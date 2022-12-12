@@ -19,8 +19,7 @@
 SQLite Driver
 =============
 
-The SQLite driver provides access to any database that supports the
-Postgres wire format.
+The SQLite driver provides access to SQLite databases.
 
 Installation
 ============

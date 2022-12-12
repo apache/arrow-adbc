@@ -33,7 +33,7 @@ final class JdbcDriverUtil {
               // MySQL
               // https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-error-sqlstates.html
               "42S02",
-              // Postgres https://www.postgresql.org/docs/current/errcodes-appendix.html
+              // PostgreSQL https://www.postgresql.org/docs/current/errcodes-appendix.html
               "42P01"));
 
   private JdbcDriverUtil() {

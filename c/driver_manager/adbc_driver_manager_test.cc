@@ -123,8 +123,8 @@ TEST_F(DriverManager, MultiDriverTest) {
   ASSERT_THAT(AdbcDatabaseSetOption(&sqlite_db.value, "driver", "adbc_driver_sqlite",
                                     &error.value),
               IsOkStatus(&error.value));
-  ASSERT_THAT(AdbcDatabaseSetOption(&postgres_db.value, "driver", "adbc_driver_postgres",
-                                    &error.value),
+  ASSERT_THAT(AdbcDatabaseSetOption(&postgres_db.value, "driver",
+                                    "adbc_driver_postgresql", &error.value),
               IsOkStatus(&error.value));
 
   ASSERT_THAT(AdbcDatabaseInit(&sqlite_db.value, &error.value), IsOkStatus(&error.value));

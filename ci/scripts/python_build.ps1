@@ -24,7 +24,7 @@ $InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "l
 
 $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
-$BuildDriverPostgres = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRES -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRES -eq "1")
+$BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 
 function Build-Subproject {
@@ -42,18 +42,18 @@ function Build-Subproject {
 if ($BuildDriverManager) {
     Build-Subproject adbc_driver_manager
 }
-if ($BuildDriverPostgres) {
-    $env:ADBC_POSTGRES_LIBRARY = Get-Childitem `
+if ($BuildDriverPostgreSQL) {
+    $env:ADBC_POSTGRESQL_LIBRARY = Get-Childitem `
       -ErrorAction SilentlyContinue `
       -Path $InstallDir `
       -Recurse `
-      -Include "adbc_driver_postgres.dll","libadbc_driver_postgres.so" | % {$_.FullName}
-    echo $env:ADBC_POSTGRES_LIBRARY
-    if ($env:ADBC_POSTGRES_LIBRARY -eq $null) {
+      -Include "adbc_driver_postgresql.dll","libadbc_driver_postgresql.so" | % {$_.FullName}
+    echo $env:ADBC_POSTGRESQL_LIBRARY
+    if ($env:ADBC_POSTGRESQL_LIBRARY -eq $null) {
         echo "Could not find libpq driver in $($InstallDir)"
         exit 1
     }
-    Build-Subproject adbc_driver_postgres
+    Build-Subproject adbc_driver_postgresql
 }
 if ($BuildDriverSqlite) {
     $env:ADBC_SQLITE_LIBRARY = Get-Childitem `

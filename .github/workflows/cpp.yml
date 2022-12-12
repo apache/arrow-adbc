@@ -94,11 +94,11 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
-      - name: Build Postgres Driver
+      - name: Build PostgreSQL Driver
         shell: bash -l {0}
-        # No test for now, since we need to spin up Postgres itself
+        # No test for now, since we need to spin up PostgreSQL itself
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRES=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Build Driver Manager
         shell: bash -l {0}
         run: |
@@ -128,14 +128,14 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Build Python Driver Postgres
+      - name: Build Python Driver PostgreSQL
         shell: bash -l {0}
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRES=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Test Python Driver Postgres
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Test Python Driver PostgreSQL
         shell: bash -l {0}
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRES=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
       - name: Build GLib Driver Manager
         shell: bash -l {0}
@@ -184,7 +184,7 @@ jobs:
         shell: pwsh
         env:
           BUILD_ALL: "0"
-          BUILD_DRIVER_POSTGRES: "1"
+          BUILD_DRIVER_POSTGRESQL: "1"
         run:
           .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver SQLite
@@ -220,7 +220,7 @@ jobs:
         shell: pwsh
         env:
           BUILD_ALL: "0"
-          BUILD_DRIVER_POSTGRES: "1"
+          BUILD_DRIVER_POSTGRESQL: "1"
         run:
           .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Build Python Driver SQLite

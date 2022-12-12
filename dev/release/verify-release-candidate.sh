@@ -186,7 +186,7 @@ setup_tempdir() {
 
   if [ -z "${ARROW_TMPDIR}" ]; then
     # clean up automatically if ARROW_TMPDIR is not defined
-    ARROW_TMPDIR=$(mktemp -d -t "arrow-${VERSION}.XXXXX")
+    ARROW_TMPDIR=$(mktemp -d -t "arrow-adbc-${VERSION}.XXXXX")
     trap cleanup EXIT
   else
     # don't clean up automatically
@@ -363,7 +363,6 @@ test_cpp() {
   show_header "Build, install and test C++ libraries"
 
   # Build and test C++
-  maybe_setup_virtualenv || exit 1
   maybe_setup_conda \
     --file ci/conda_env_cpp.txt \
     compilers || exit 1
@@ -383,9 +382,10 @@ test_cpp() {
   export ADBC_USE_ASAN=OFF
   export ADBC_USE_UBSAN=OFF
   "${ADBC_SOURCE_DIR}/ci/scripts/cpp_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
-  # Postgres requires running database for testing
-  export BUILD_DRIVER_POSTGRES=0
+  # PostgreSQL driver requires running database for testing
+  export BUILD_DRIVER_POSTGRESQL=0
   "${ADBC_SOURCE_DIR}/ci/scripts/cpp_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
+  export BUILD_DRIVER_POSTGRESQL=1
 }
 
 test_java() {

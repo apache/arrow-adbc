@@ -27,9 +27,9 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
-    const char* uri = std::getenv("ADBC_POSTGRES_TEST_URI");
+    const char* uri = std::getenv("ADBC_POSTGRESQL_TEST_URI");
     if (!uri) {
-      ADD_FAILURE() << "Must provide env var ADBC_POSTGRES_TEST_URI";
+      ADD_FAILURE() << "Must provide env var ADBC_POSTGRESQL_TEST_URI";
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     return AdbcDatabaseSetOption(database, "uri", uri, error);

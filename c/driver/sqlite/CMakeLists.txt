@@ -44,7 +44,7 @@ add_arrow_lib(adbc_driver_sqlite
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
-              AdbcDriverSqlite
+              AdbcDriverSQLite
               PKG_CONFIG_NAME
               adbc-driver-sqlite
               SHARED_LINK_FLAGS

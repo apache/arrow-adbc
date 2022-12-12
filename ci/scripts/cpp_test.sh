@@ -20,7 +20,7 @@ set -e
 
 : ${BUILD_ALL:=1}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
-: ${BUILD_DRIVER_POSTGRES:=${BUILD_ALL}}
+: ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 
 test_subproject() {
@@ -57,8 +57,8 @@ main() {
         test_subproject "${build_dir}" driver_manager
     fi
 
-    if [[ "${BUILD_DRIVER_POSTGRES}" -gt 0 ]]; then
-        test_subproject "${build_dir}" driver/postgres
+    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
+        test_subproject "${build_dir}" driver/postgresql
     fi
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then

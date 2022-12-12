@@ -17,15 +17,18 @@
   under the License.
 -->
 
-# ADBC libpq Driver
+# ADBC PostgreSQL Driver
 
-With credit to 0x0L's [pgeon](https://github.com/0x0L/pgeon) for the
-overall approach.
+This implements an ADBC driver that wraps [libpq][libpq], the client
+library for PostgreSQL.  This is still a work in progress.
 
-This implements an ADBC driver that wraps [libpq][libpq].  This is
-still a work in progress.
+This project owes credit to 0x0L's [pgeon][pgeon] for the overall
+approach.
 
-[libpq]: https://www.postgresql.org/docs/14/libpq.html
+**NOTE:** this project is not affiliated with PostgreSQL in any way.
+
+[libpq]: https://www.postgresql.org/docs/current/libpq.html
+[pgeon]: https://github.com/0x0L/pgeon
 
 ## Building
 
@@ -37,7 +40,7 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
 
 ## Testing
 
-A running instance of Postgres is required.  For example, using Docker:
+A running instance of PostgreSQL is required.  For example, using Docker:
 
 ```shell
 $ docker run -it --rm \
@@ -48,9 +51,9 @@ $ docker run -it --rm \
 ```
 
 Then, to run the tests, set the environment variable specifying the
-Postgres URI before running tests:
+PostgreSQL URI before running tests:
 
 ```shell
-$ export ADBC_POSTGRES_TEST_URI=postgres://localhost:5432/postgres?user=postgres&password=password
+$ export ADBC_POSTGRESQL_TEST_URI=postgres://localhost:5432/postgres?user=postgres&password=password
 $ ctest
 ```

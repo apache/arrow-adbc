@@ -15,17 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import importlib.resources
+# setuptools manifest
 
-import adbc_driver_manager
-
-from ._version import __version__
-
-__all__ = ["connect", "__version__"]
-
-
-def connect(uri: str) -> adbc_driver_manager.AdbcDatabase:
-    """Create a low level ADBC connection to Postgres."""
-    root = importlib.resources.files(__package__)
-    entrypoint = root.joinpath("libadbc_driver_postgres.so")
-    return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)
+include adbc_driver_postgresql/libadbc_driver_postgresql.so

@@ -21,15 +21,15 @@ import pyarrow
 import pytest
 
 import adbc_driver_manager
-import adbc_driver_postgres
+import adbc_driver_postgresql
 
 
 @pytest.fixture
 def postgres():
-    postgres_uri = os.environ.get("ADBC_POSTGRES_TEST_URI")
+    postgres_uri = os.environ.get("ADBC_POSTGRESQL_TEST_URI")
     if not postgres_uri:
-        pytest.skip("Set ADBC_POSTGRES_TEST_URI to run tests")
-    with adbc_driver_postgres.connect(postgres_uri) as db:
+        pytest.skip("Set ADBC_POSTGRESQL_TEST_URI to run tests")
+    with adbc_driver_postgresql.connect(postgres_uri) as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
             yield conn
 
@@ -43,11 +43,11 @@ def test_query_trivial(postgres):
 
 
 def test_version():
-    assert adbc_driver_postgres.__version__
+    assert adbc_driver_postgresql.__version__
 
 
 def test_failed_connection():
     with pytest.raises(
         adbc_driver_manager.OperationalError, match=".*libpq.*Failed to connect.*"
     ):
-        adbc_driver_postgres.connect("invalid")
+        adbc_driver_postgresql.connect("invalid")

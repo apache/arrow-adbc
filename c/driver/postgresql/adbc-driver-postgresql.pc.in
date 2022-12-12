@@ -15,10 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-@PACKAGE_INIT@
+prefix=@CMAKE_INSTALL_PREFIX@
+includedir=@ADBC_PKG_CONFIG_INCLUDEDIR@
+libdir=@ADBC_PKG_CONFIG_LIBDIR@
 
-set(ADBC_VERSION "@ADBC_VERSION@")
-
-include("${CMAKE_CURRENT_LIST_DIR}/AdbcDriverPostgresTargets.cmake")
-
-check_required_components(AdbcDriverPostgres)
+Name: Apache Arrow Database Connectivity (ADBC) PostgreSQL driver
+Description: The ADBC PostgreSQL driver provides an ADBC driver for PostgreSQL.
+Version: @ADBC_VERSION@
+Libs: -L${libdir} -ladbc_driver_postgresql
+Cflags: -I${includedir}

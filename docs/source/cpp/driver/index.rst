@@ -26,5 +26,5 @@ protocols/databases.  More may be available from third parties.
    :maxdepth: 1
 
    flight_sql
-   postgres
+   postgresql
    sqlite
