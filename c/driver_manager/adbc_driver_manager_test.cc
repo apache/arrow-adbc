@@ -136,7 +136,7 @@ TEST_F(DriverManager, MultiDriverTest) {
   error->release(&error.value);
 
   ASSERT_THAT(AdbcDatabaseSetOption(&postgres_db.value, "uri",
-                                    "postgres://localhost:5432", &error.value),
+                                    "postgresql://localhost:5432", &error.value),
               IsOkStatus(&error.value));
   ASSERT_THAT(AdbcDatabaseSetOption(&sqlite_db.value, "unknown", "foo", &error.value),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error.value));

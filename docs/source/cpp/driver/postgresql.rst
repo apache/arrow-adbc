@@ -54,7 +54,7 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
          // Ignoring error handling
          struct AdbcDatabase database;
          AdbcDatabaseNew(&database, nullptr);
-         AdbcDatabaseSetOption(&database, "uri", "postgres://localhost:5433", nullptr);
+         AdbcDatabaseSetOption(&database, "uri", "postgresql://localhost:5433", nullptr);
          AdbcDatabaseInit(&database, nullptr);
 
    .. tab-item:: Python
@@ -65,6 +65,6 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
          import adbc_driver_postgresql.dbapi
 
 
-         uri = "postgres://localhost:5433"
+         uri = "postgresql://localhost:5433"
          with adbc_driver_postgresql.dbapi.connect(uri) as conn:
              pass
