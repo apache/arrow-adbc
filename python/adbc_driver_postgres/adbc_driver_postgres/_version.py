@@ -38,6 +38,9 @@ TAG_RELEASE_FORMAT = re.compile(r"^adbc-([0-9]+\.[0-9]+\.[0-9]+)(?:-rc[0-9]+)?$"
 
 
 def get_version(version_file=STATIC_VERSION_FILE):
+    override = os.environ.get("SETUPTOOLS_SCM_PRETEND_VERSION")
+    if override is not None and override != "":
+        return override
     version_info = get_static_version_info(version_file)
     version = version_info["version"]
     if version == "__use_git__":
