@@ -36,6 +36,13 @@ test_subproject() {
     fi
 
     pushd "${source_dir}/glib"
+
+    if [[ "$(uname)" = "Darwin" ]]; then
+        bundle config build.red-arrow -- \
+               --with-cflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\" \
+               --with-cppflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\"
+    fi
+
     bundle install
     bundle exec \
            env DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" \
@@ -44,6 +51,13 @@ test_subproject() {
 
     export GI_TYPELIB_PATH="${install_dir}/lib/girepository-1.0:${GI_TYPELIB_PATH}"
     pushd "${source_dir}/ruby"
+
+    if [[ "$(uname)" = "Darwin" ]]; then
+        bundle config build.red-arrow -- \
+               --with-cflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\" \
+               --with-cppflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\"
+    fi
+
     bundle install
     bundle exec \
            env DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" \
