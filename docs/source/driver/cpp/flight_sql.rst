@@ -60,17 +60,76 @@ the :cpp:class:`AdbcDatabase`.
          with pyarrow.flight_sql.connect("grpc://localhost:8080") as conn:
              pass
 
-Additional Configuration Options
---------------------------------
+Supported Features
+==================
 
-The Flight SQL driver supports some additional configuration options
-in addition to the "standard" ADBC options.
+The Flight SQL driver generally supports features defined in the ADBC
+API specification 1.0.0, as well as some additional, custom options.
+
+Authentication
+--------------
+
+The driver does no authentication by default.
+
+The driver implements one optional authentication scheme that mimics
+the Arrow Flight SQL JDBC driver.  This can be enabled by setting the
+option ``arrow.flight.sql.authorization_header`` on the
+:cpp:class:`AdbcDatabase`.  The client provides credentials by setting
+the option value to the value of the ``authorization`` header sent
+from client to server.  The server then responds with an
+``authorization`` header on the first request.  The value of this
+header will then be sent back as the ``authorization`` header on all
+future requests.
+
+Bulk Ingestion
+--------------
+
+Flight SQL does not have a dedicated API for bulk ingestion of Arrow
+data into a given table.  The driver instead constructs SQL statements
+to create and insert into the table.
+
+.. warning:: The driver does not escape or validate the names of
+             tables or columns.  As a precaution, it instead limits
+             identifier names to letters, numbers, and underscores.
+             Bulk ingestion should not be used with untrusted user
+             input.
+
+The driver binds a batch of data at a time for efficiency.  Also, the
+generated SQL statements hardcode ``?`` as the parameter identifier.
+
+Client Options
+--------------
+
+The options used for creating the Flight RPC client can be customized.
+These options map 1:1 with the options in FlightClientOptions:
+
+``arrow.flight.sql.client_option.tls_root_certs``
+    Override the root certificates used to validate the server's TLS
+    certificate.
+
+``arrow.flight.sql.client_option.override_hostname``
+    Override the hostname used to verify the server's TLS certificate.
+
+``arrow.flight.sql.client_option.cert_chain``
+    The certificate chain to use for mTLS.
+
+``arrow.flight.sql.client_option.private_key``
+    The private key to use for mTLS.
+
+``arrow.flight.sql.client_option.generic_int_option.``
+``arrow.flight.sql.client_option.generic_string_option.``
+    Option prefixes used to specify generic transport-layer options.
+
+``arrow.flight.sql.client_option.disable_server_verification``
+    Disable verification of the server's TLS certificate.  Value
+    should be ``true`` or ``false``.
 
 Custom Call Headers
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
 Custom HTTP headers can be attached to requests via options that apply
-to both :cpp:class:`AdbcConnection` and :cpp:class:`AdbcStatement`.
+to :cpp:class:`AdbcDatabase`, :cpp:class:`AdbcConnection`, and
+:cpp:class:`AdbcStatement`.
 
 ``arrow.flight.sql.rpc.call_header.<HEADER NAME>``
   Add the header ``<HEADER NAME>`` to outgoing requests with the given
@@ -78,8 +137,46 @@ to both :cpp:class:`AdbcConnection` and :cpp:class:`AdbcStatement`.
 
   .. warning:: Header names must be in all lowercase.
 
+Distributed Result Sets
+-----------------------
+
+The driver will fetch all partitions (FlightEndpoints) returned by the
+server, in an unspecified order (note that Flight SQL itself does not
+define an ordering on these partitions).  If an endpoint has no
+locations, the data will be fetched using the original server
+connection.  Else, the driver will try each location given, in order,
+until a request succeeds.  If the connection or request fails, it will
+try the next location.
+
+The driver does not currently cache or pool these secondary
+connections.  It also does not retry connections or requests.
+Requests are made sequentially, one at a time—the driver does not
+parallelize requests or perform readahead.
+
+Metadata
+--------
+
+The driver currently will not populate column constraint info (foreign
+keys, primary keys, etc.) in :cpp:func:`AdbcConnectionGetObjects`.
+Also, catalog filters are evaluated as simple string matches, not
+``LIKE``-style patterns.
+
+Partitioned Result Sets
+-----------------------
+
+The Flight SQL driver supports ADBC's partitioned result sets.  When
+requested, each partition of a result set contains a serialized
+FlightInfo, containing one of the FlightEndpoints of the original
+response.  Clients who may wish to introspect the partition can do so
+by deserializing the contained FlightInfo from the ADBC partitions.
+(For example, a client that wishes to distribute work across multiple
+workers or machines may want to try to take advantage of locality
+information that ADBC does not have.)
+
+.. TODO: code samples
+
 Timeouts
-~~~~~~~~
+--------
 
 By default, timeouts are not used for RPC calls.  They can be set via
 special options on :cpp:class:`AdbcConnection`.  In general, it is
@@ -108,10 +205,14 @@ The options are as follows:
     For example, this controls the timeout of the underlying Flight
     calls that implement bulk ingestion, or transaction support.
 
-.. TODO: code samples
+Transactions
+------------
+
+The driver will issue transaction RPCs, but the driver will not check
+the server's SqlInfo to determine whether this is supported first.
 
 Type Mapping
-~~~~~~~~~~~~
+------------
 
 When executing a bulk ingestion operation, the driver needs to be able
 to construct appropriate SQL queries for the database.  (The driver
@@ -124,6 +225,10 @@ Flight SQL metadata to construct this mapping.)
 
 All such options begin with ``arrow.flight.sql.quirks.ingest_type.``
 and are followed by a type name below.
+
+.. warning:: The driver does **not** escape or validate the values
+             here.  They should not come from untrusted user input, or
+             a SQL injection vulnerability may result.
 
 .. csv-table:: Type Names
    :header: "Arrow Type Name", "Default SQL Type Name"
@@ -145,21 +250,5 @@ and are followed by a type name below.
    time32,TIME
    time64,TIME
    timestamp,TIMESTAMP
-
-.. TODO: code samples
-
-Partitioned Result Set Support
-------------------------------
-
-The Flight SQL driver supports ADBC's partitioned result sets, mapping
-them onto FlightEndpoints.  Each partition of a result set contains a
-serialized FlightInfo, containing one of the FlightEndpoints of the
-original response.  Clients who may wish to introspect the partition
-can do so by deserializing the contained FlightInfo from the ADBC
-partitions.  (For example, a client that wishes to distribute work
-across multiple workers or machines may want to try to take advantage
-of locality information that ADBC does not have.)
-
-.. TODO: code samples
 
 .. _DBAPI 2.0: https://peps.python.org/pep-0249/
