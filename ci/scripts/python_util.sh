@@ -19,7 +19,7 @@
 
 set -ex
 
-COMPONENTS="adbc_driver_manager adbc_driver_postgres adbc_driver_sqlite"
+COMPONENTS="adbc_driver_manager adbc_driver_postgresql adbc_driver_sqlite"
 
 function build_drivers {
     local -r source_dir="$1"
@@ -35,12 +35,12 @@ function build_drivers {
     export VCPKG_OVERLAY_TRIPLETS="${source_dir}/ci/vcpkg/triplets/"
 
     if [[ $(uname) == "Linux" ]]; then
-        export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.so
+        export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
         export CMAKE_ARGUMENTS=""
     else # macOS
-        export ADBC_POSTGRES_LIBRARY=${build_dir}/lib/libadbc_driver_postgres.dylib
+        export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
         if [[ "${VCPKG_ARCH}" = "x64" ]]; then
@@ -66,9 +66,9 @@ function build_drivers {
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
-    echo "=== Building driver/postgres ==="
-    mkdir -p ${build_dir}/driver/postgres
-    pushd ${build_dir}/driver/postgres
+    echo "=== Building driver/postgresql ==="
+    mkdir -p ${build_dir}/driver/postgresql
+    pushd ${build_dir}/driver/postgresql
     cmake \
         -G ${CMAKE_GENERATOR} \
         -DADBC_BUILD_SHARED=ON \
@@ -80,7 +80,7 @@ function build_drivers {
         ${CMAKE_ARGUMENTS} \
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
-        ${source_dir}/c/driver/postgres
+        ${source_dir}/c/driver/postgresql
     cmake --build . --target install --verbose -j
     popd
 

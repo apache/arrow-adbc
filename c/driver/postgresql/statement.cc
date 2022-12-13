@@ -39,7 +39,7 @@ namespace {
 /// The header that comes at the start of a binary COPY stream
 constexpr std::array<char, 11> kPgCopyBinarySignature = {
     'P', 'G', 'C', 'O', 'P', 'Y', '\n', '\377', '\r', '\n', '\0'};
-/// The flag indicating to Postgres that we want binary-format values.
+/// The flag indicating to PostgreSQL that we want binary-format values.
 constexpr int kPgBinaryFormat = 1;
 
 /// One-value ArrowArrayStream used to unify the implementations of Bind
@@ -104,7 +104,7 @@ struct Handle {
   Resource* operator->() { return &value; }
 };
 
-/// Build an Arrow schema from a Postgres result set
+/// Build an Arrow schema from a PostgreSQL result set
 AdbcStatusCode InferSchema(const TypeMapping& type_mapping, PGresult* result,
                            struct ArrowSchema* out, struct AdbcError* error) {
   const int num_fields = PQnfields(result);
@@ -239,7 +239,7 @@ struct BindStream {
       if (param_types[i] == 0) {
         // TODO: data type to string
         SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
-                 "') has type with no corresponding Postgres type ",
+                 "') has type with no corresponding PostgreSQL type ",
                  bind_schema_fields[i].data_type);
         return ADBC_STATUS_NOT_IMPLEMENTED;
       }

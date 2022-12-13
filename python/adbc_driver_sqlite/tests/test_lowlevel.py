@@ -15,11 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import adbc_driver_sqlite
 import pyarrow
 import pytest
 
 import adbc_driver_manager
+import adbc_driver_sqlite
 
 
 @pytest.fixture

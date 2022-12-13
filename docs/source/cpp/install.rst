@@ -78,8 +78,8 @@ Flight SQL Driver
 
 .. _cpp-install-libpq:
 
-libpq-based Driver
-==================
+PostgreSQL Driver
+=================
 
 .. tab-set::
 

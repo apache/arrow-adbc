@@ -20,7 +20,7 @@ set -e
 
 : ${BUILD_ALL:=1}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
-: ${BUILD_DRIVER_POSTGRES:=${BUILD_ALL}}
+: ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 
 : ${ADBC_BUILD_SHARED:=ON}
@@ -76,8 +76,8 @@ main() {
         build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver_manager
     fi
 
-    if [[ "${BUILD_DRIVER_POSTGRES}" -gt 0 ]]; then
-        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver/postgres
+    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
+        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver/postgresql
     fi
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then

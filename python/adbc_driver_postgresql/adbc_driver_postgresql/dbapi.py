@@ -21,7 +21,7 @@ DBAPI 2.0-compatible facade for the ADBC libpq driver.
 
 import adbc_driver_manager
 import adbc_driver_manager.dbapi
-import adbc_driver_postgres
+import adbc_driver_postgresql
 
 __all__ = [
     "BINARY",
@@ -58,7 +58,7 @@ __all__ = [
 
 apilevel = adbc_driver_manager.dbapi.apilevel
 threadsafety = adbc_driver_manager.dbapi.threadsafety
-# XXX: Postgres doesn't fit any of the param styles
+# XXX: PostgreSQL doesn't fit any of the param styles
 # We'll need some Python-side wrangling specific to this driver
 paramstyle = "pyformat"
 
@@ -93,12 +93,12 @@ ROWID = adbc_driver_manager.dbapi.ROWID
 
 
 def connect(uri: str) -> "Connection":
-    """Connect to Postgres via ADBC."""
+    """Connect to PostgreSQL via ADBC."""
     db = None
     conn = None
 
     try:
-        db = adbc_driver_postgres.connect(uri)
+        db = adbc_driver_postgresql.connect(uri)
         conn = adbc_driver_manager.AdbcConnection(db)
         return adbc_driver_manager.dbapi.Connection(db, conn)
     except Exception:

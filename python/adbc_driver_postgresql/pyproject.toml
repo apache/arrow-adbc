@@ -16,8 +16,8 @@
 # under the License.
 
 [project]
-name = "adbc_driver_postgres"
-description = "A libpq-based ADBC driver for working with Postgres."
+name = "adbc_driver_postgresql"
+description = "A libpq-based ADBC driver for working with PostgreSQL."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 requires-python = ">=3.9"
@@ -38,5 +38,5 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 include-package-data = true
 license-files = ["LICENSE.txt", "NOTICE.txt"]
-packages = ["adbc_driver_postgres"]
-py-modules = ["adbc_driver_postgres"]
+packages = ["adbc_driver_postgresql"]
+py-modules = ["adbc_driver_postgresql"]

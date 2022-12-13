@@ -16,6 +16,7 @@
 # under the License.
 
 import pytest
+
 from adbc_driver_sqlite import dbapi
 
 

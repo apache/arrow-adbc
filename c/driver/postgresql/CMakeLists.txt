@@ -21,7 +21,7 @@ list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
 
-project(adbc_driver_postgres
+project(adbc_driver_postgresql
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES CXX)
 include(CTest)
@@ -37,19 +37,19 @@ else()
   pkg_check_modules(LIBPQ REQUIRED libpq)
 endif()
 
-add_arrow_lib(adbc_driver_postgres
+add_arrow_lib(adbc_driver_postgresql
               SOURCES
               connection.cc
               database.cc
-              postgres.cc
+              postgresql.cc
               statement.cc
               type.cc
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
-              AdbcDriverPostgres
+              AdbcDriverPostgreSQL
               PKG_CONFIG_NAME
-              adbc-driver-postgres
+              adbc-driver-postgresql
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
@@ -68,24 +68,24 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
 endforeach()
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
-  set(TEST_LINK_LIBS adbc_driver_postgres_shared)
+  set(TEST_LINK_LIBS adbc_driver_postgresql_shared)
 else()
-  set(TEST_LINK_LIBS adbc_driver_postgres_static)
+  set(TEST_LINK_LIBS adbc_driver_postgresql_static)
 endif()
 
 if(ADBC_BUILD_TESTS)
-  add_test_case(driver_postgres_test
+  add_test_case(driver_postgresql_test
                 PREFIX
                 adbc
                 SOURCES
-                postgres_test.cc
+                postgresql_test.cc
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
                 nanoarrow
                 ${TEST_LINK_LIBS})
-  target_compile_features(adbc-driver-postgres-test PRIVATE cxx_std_17)
-  adbc_configure_target(adbc-driver-postgres-test)
+  target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
+  adbc_configure_target(adbc-driver-postgresql-test)
 endif()
 
 validate_config()

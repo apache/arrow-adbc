@@ -69,7 +69,7 @@ FROM
   }
   PQclear(result);
 
-  // Disconnect since Postgres connections can be heavy.
+  // Disconnect since PostgreSQL connections can be heavy.
   {
     AdbcStatusCode status = Disconnect(&conn, error);
     if (status != ADBC_STATUS_OK) final_status = status;

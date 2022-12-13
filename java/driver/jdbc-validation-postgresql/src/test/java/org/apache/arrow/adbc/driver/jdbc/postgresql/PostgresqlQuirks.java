@@ -42,9 +42,9 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
     final String user = System.getenv(POSTGRESQL_USER_ENV_VAR);
     final String password = System.getenv(POSTGRESQL_PASSWORD_ENV_VAR);
     Assumptions.assumeFalse(
-        postgresUrl == null, "Postgres not found, set " + POSTGRESQL_URL_ENV_VAR);
+        postgresUrl == null, "PostgreSQL not found, set " + POSTGRESQL_URL_ENV_VAR);
     Assumptions.assumeFalse(
-        postgresUrl.isEmpty(), "Postgres not found, set " + POSTGRESQL_URL_ENV_VAR);
+        postgresUrl.isEmpty(), "PostgreSQL not found, set " + POSTGRESQL_URL_ENV_VAR);
     return String.format("jdbc:postgresql://%s?user=%s&password=%s", postgresUrl, user, password);
   }
 

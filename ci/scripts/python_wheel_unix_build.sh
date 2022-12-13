@@ -75,11 +75,11 @@ if [[ "${arch}" = "arm64v8" && "$(uname)" = "Darwin" ]]; then
 fi
 
 echo "=== Building C/C++ driver components ==="
-# Sets ADBC_POSTGRES_LIBRARY, ADBC_SQLITE_LIBRARY
+# Sets ADBC_POSTGRESQL_LIBRARY, ADBC_SQLITE_LIBRARY
 build_drivers "${source_dir}" "${build_dir}"
 
 # Check that we don't expose any unwanted symbols
-check_visibility $ADBC_POSTGRES_LIBRARY
+check_visibility $ADBC_POSTGRESQL_LIBRARY
 check_visibility $ADBC_SQLITE_LIBRARY
 
 # https://github.com/pypa/pip/issues/7555

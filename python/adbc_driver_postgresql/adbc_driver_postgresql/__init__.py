@@ -15,12 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 
-prefix=@CMAKE_INSTALL_PREFIX@
-includedir=@ADBC_PKG_CONFIG_INCLUDEDIR@
-libdir=@ADBC_PKG_CONFIG_LIBDIR@
+import importlib.resources
 
-Name: Apache Arrow Database Connectivity (ADBC) Postgres driver
-Description: The ADBC Postgres driver provides an ADBC driver for Postgres.
-Version: @ADBC_VERSION@
-Libs: -L${libdir} -ladbc_driver_postgres
-Cflags: -I${includedir}
+import adbc_driver_manager
+
+from ._version import __version__
+
+__all__ = ["connect", "__version__"]
+
+
+def connect(uri: str) -> adbc_driver_manager.AdbcDatabase:
+    """Create a low level ADBC connection to PostgreSQL."""
+    root = importlib.resources.files(__package__)
+    entrypoint = root.joinpath("libadbc_driver_postgresql.so")
+    return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)

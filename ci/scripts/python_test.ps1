@@ -24,7 +24,7 @@ $InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "l
 
 $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
-$BuildDriverPostgres = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRES -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRES -eq "1")
+$BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 
 function Build-Subproject {
@@ -53,8 +53,8 @@ if ($BuildDriverManager) {
     $env:PATH += ";$($SqliteDir)"
     Build-Subproject adbc_driver_manager
 }
-if ($BuildDriverPostgres) {
-    Build-Subproject adbc_driver_postgres
+if ($BuildDriverPostgreSQL) {
+    Build-Subproject adbc_driver_postgresql
 }
 if ($BuildDriverSqlite) {
     Build-Subproject adbc_driver_sqlite

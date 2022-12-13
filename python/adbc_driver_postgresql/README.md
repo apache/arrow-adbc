@@ -17,27 +17,28 @@
   under the License.
 -->
 
-# ADBC libpq Driver
+# ADBC PostgreSQL Driver for Python
 
-With credit to 0x0L's [pgeon](https://github.com/0x0L/pgeon) for the
-overall approach.
+This package contains bindings for the [PostgreSQL
+driver](../../c/driver/postgresql/README.md), using the [driver
+manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
+249-compatible][dbapi] interface on top.
 
-This implements an ADBC driver that wraps [libpq][libpq].  This is
-still a work in progress.
-
-[libpq]: https://www.postgresql.org/docs/14/libpq.html
+[dbapi]: https://peps.python.org/pep-0249/
 
 ## Building
 
-Dependencies: libpq itself. This can be installed with your favorite
-package manager; however, you may need to set the `PKG_CONFIG_PATH`
-environment variable such that `pkg-config` can find libpq.
+Dependencies: a build of the PostgreSQL driver.
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
+Set the environment variable `ADBC_POSTGRESQL_LIBRARY` to the path to
+`libadbc_driver_postgresql.{dll,dylib,so}` before running `pip install`.
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
+general build process.
 
 ## Testing
 
-A running instance of Postgres is required.  For example, using Docker:
+A running instance of PostgreSQL is required.  For example, using Docker:
 
 ```shell
 $ docker run -it --rm \
@@ -48,9 +49,12 @@ $ docker run -it --rm \
 ```
 
 Then, to run the tests, set the environment variable specifying the
-Postgres URI before running tests:
+PostgreSQL URI before running tests:
 
 ```shell
-$ export ADBC_POSTGRES_TEST_URI=postgres://localhost:5432/postgres?user=postgres&password=password
-$ ctest
+$ export ADBC_POSTGRESQL_TEST_URI=postgresql://localhost:5432/postgres?user=postgres&password=password
+$ pytest -vvx
 ```
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
+general test process.

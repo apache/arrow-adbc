@@ -123,8 +123,8 @@ TEST_F(DriverManager, MultiDriverTest) {
   ASSERT_THAT(AdbcDatabaseSetOption(&sqlite_db.value, "driver", "adbc_driver_sqlite",
                                     &error.value),
               IsOkStatus(&error.value));
-  ASSERT_THAT(AdbcDatabaseSetOption(&postgres_db.value, "driver", "adbc_driver_postgres",
-                                    &error.value),
+  ASSERT_THAT(AdbcDatabaseSetOption(&postgres_db.value, "driver",
+                                    "adbc_driver_postgresql", &error.value),
               IsOkStatus(&error.value));
 
   ASSERT_THAT(AdbcDatabaseInit(&sqlite_db.value, &error.value), IsOkStatus(&error.value));
@@ -136,7 +136,7 @@ TEST_F(DriverManager, MultiDriverTest) {
   error->release(&error.value);
 
   ASSERT_THAT(AdbcDatabaseSetOption(&postgres_db.value, "uri",
-                                    "postgres://localhost:5432", &error.value),
+                                    "postgresql://localhost:5432", &error.value),
               IsOkStatus(&error.value));
   ASSERT_THAT(AdbcDatabaseSetOption(&sqlite_db.value, "unknown", "foo", &error.value),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error.value));
