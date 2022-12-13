@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Driver Manager" href="../driver_manager.html" /><link rel="prev" title="PostgreSQL Driver" href="postgresql.html" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="SQLite Driver" href="sqlite.html" /><link rel="prev" title="Flight SQL Driver" href="flight_sql.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>SQLite Driver - ADBC 0.1.0 (dev) documentation</title>
+        <title>PostgreSQL Driver - ADBC 0.1.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
@@ -172,8 +172,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../install.html">Installation</a></li>
 <li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Drivers</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l3"><a class="reference internal" href="postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">SQLite Driver</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">PostgreSQL Driver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../driver_manager.html">Driver Manager</a></li>
@@ -192,8 +192,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../install.html">Installation</a></li>
 <li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Drivers</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l3"><a class="reference internal" href="postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">SQLite Driver</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">PostgreSQL Driver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
 </ul>
 </li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -227,7 +227,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/cpp/driver/sqlite.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/cpp/driver/postgresql.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -249,21 +249,25 @@
           </label>
         </div>
         <article role="main">
-          <section id="sqlite-driver">
-<h1>SQLite Driver<a class="headerlink" href="#sqlite-driver" title="Permalink to this heading">#</a></h1>
-<p>The SQLite driver provides access to SQLite databases.</p>
+          <section id="postgresql-driver">
+<h1>PostgreSQL Driver<a class="headerlink" href="#postgresql-driver" title="Permalink to this heading">#</a></h1>
+<p>The PostgreSQL driver provides access to any database that supports
+the PostgreSQL wire format.  It wraps <a class="reference external" href="https://www.postgresql.org/docs/current/libpq.html">libpq</a>, the client library for
+PostgreSQL.  The project owes credit to 0x0L’s <a class="reference external" href="https://github.com/0x0L/pgeon">pgeon</a> for the
+overall approach.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This project is not affiliated with PostgreSQL in any way.</p>
+</div>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
-<p>The SQLite driver is shipped as a standalone library.  See
-<a class="reference internal" href="../install.html#cpp-install-sqlite"><span class="std std-ref">Installation</span></a>.</p>
+<p>The PostgreSQL driver is shipped as a standalone library.  See
+<a class="reference internal" href="../install.html#cpp-install-libpq"><span class="std std-ref">Installation</span></a>.</p>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
 <p>To connect to a database, supply the “uri” parameter when constructing
-the <a class="reference internal" href="../api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  This should be a filename or <a class="reference external" href="https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open">URI
-filename</a>.
-If omitted, it will default to an in-memory database, but one that is
-shared across all connections.</p>
+the <a class="reference internal" href="../api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  This should be a <a class="reference external" href="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">connection URI</a>.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 </input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
@@ -273,7 +277,7 @@ C++</label><div class="sd-tab-content docutils">
 <span class="c1">// Ignoring error handling</span>
 <span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span><span class="w"></span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;file:mydb.db&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;postgresql://localhost:5433&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
@@ -281,9 +285,11 @@ C++</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
 </input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-1">
 Python</label><div class="sd-tab-content docutils">
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_sqlite.dbapi</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
 
-<span class="k">with</span> <span class="n">adbc_driver_sqlite</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+
+<span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;postgresql://localhost:5433&quot;</span>
+<span class="k">with</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
     <span class="k">pass</span>
 </pre></div>
 </div>
@@ -297,23 +303,23 @@ Python</label><div class="sd-tab-content docutils">
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../driver_manager.html">
+          <a class="next-page" href="sqlite.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Driver Manager</div>
+                <div class="title">SQLite Driver</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="postgresql.html">
+          <a class="prev-page" href="flight_sql.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">PostgreSQL Driver</div>
+                <div class="title">Flight SQL Driver</div>
                 
               </div>
             </a>
@@ -347,7 +353,7 @@ Python</label><div class="sd-tab-content docutils">
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">SQLite Driver</a><ul>
+<li><a class="reference internal" href="#">PostgreSQL Driver</a><ul>
 <li><a class="reference internal" href="#installation">Installation</a></li>
 <li><a class="reference internal" href="#usage">Usage</a></li>
 </ul>

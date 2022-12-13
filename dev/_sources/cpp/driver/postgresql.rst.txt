@@ -15,26 +15,32 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=============
-SQLite Driver
-=============
+=================
+PostgreSQL Driver
+=================
 
-The SQLite driver provides access to SQLite databases.
+The PostgreSQL driver provides access to any database that supports
+the PostgreSQL wire format.  It wraps `libpq`_, the client library for
+PostgreSQL.  The project owes credit to 0x0L's `pgeon`_ for the
+overall approach.
+
+.. note:: This project is not affiliated with PostgreSQL in any way.
+
+.. _libpq: https://www.postgresql.org/docs/current/libpq.html
+.. _pgeon: https://github.com/0x0L/pgeon
 
 Installation
 ============
 
-The SQLite driver is shipped as a standalone library.  See
-:ref:`Installation <cpp-install-sqlite>`.
+The PostgreSQL driver is shipped as a standalone library.  See
+:ref:`Installation <cpp-install-libpq>`.
 
 Usage
 =====
 
 To connect to a database, supply the "uri" parameter when constructing
-the :cpp:class:`AdbcDatabase`.  This should be a filename or `URI
-filename <https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open>`_.
-If omitted, it will default to an in-memory database, but one that is
-shared across all connections.
+the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
+<https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_.
 
 .. tab-set::
 
@@ -48,7 +54,7 @@ shared across all connections.
          // Ignoring error handling
          struct AdbcDatabase database;
          AdbcDatabaseNew(&database, nullptr);
-         AdbcDatabaseSetOption(&database, "uri", "file:mydb.db", nullptr);
+         AdbcDatabaseSetOption(&database, "uri", "postgresql://localhost:5433", nullptr);
          AdbcDatabaseInit(&database, nullptr);
 
    .. tab-item:: Python
@@ -56,7 +62,9 @@ shared across all connections.
 
       .. code-block:: python
 
-         import adbc_driver_sqlite.dbapi
+         import adbc_driver_postgresql.dbapi
 
-         with adbc_driver_sqlite.dbapi.connect() as conn:
+
+         uri = "postgresql://localhost:5433"
+         with adbc_driver_postgresql.dbapi.connect(uri) as conn:
              pass
