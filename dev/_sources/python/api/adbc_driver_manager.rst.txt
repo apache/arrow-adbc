@@ -17,9 +17,9 @@
 
 .. default-domain:: py
 
-===================
-adbc_driver_manager
-===================
+=======================
+``adbc_driver_manager``
+=======================
 
 Low-Level API
 =============

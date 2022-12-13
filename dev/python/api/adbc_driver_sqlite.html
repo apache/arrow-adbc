@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="adbc_driver_postgresql" href="adbc_driver_postgresql.html" /><link rel="prev" title="Python API Reference" href="index.html" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Contributing" href="../../contributing.html" /><link rel="prev" title="adbc_driver_postgresql" href="adbc_driver_postgresql.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>adbc_driver_manager - ADBC 0.1.0 (dev) documentation</title>
+        <title>adbc_driver_sqlite - ADBC 0.1.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
@@ -202,9 +202,9 @@
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l3 current current-page"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -234,7 +234,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/api/adbc_driver_manager.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/api/adbc_driver_sqlite.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -256,55 +256,13 @@
           </label>
         </div>
         <article role="main">
-          <section id="adbc-driver-manager">
-<h1><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code><a class="headerlink" href="#adbc-driver-manager" title="Permalink to this heading">#</a></h1>
+          <section id="adbc-driver-sqlite">
+<h1><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code><a class="headerlink" href="#adbc-driver-sqlite" title="Permalink to this heading">#</a></h1>
 <section id="low-level-api">
 <h2>Low-Level API<a class="headerlink" href="#low-level-api" title="Permalink to this heading">#</a></h2>
-<section id="constants-enums">
-<h3>Constants &amp; Enums<a class="headerlink" href="#constants-enums" title="Permalink to this heading">#</a></h3>
-<dl class="py data">
-<dt class="sig sig-object py" id="adbc_driver_manager.INGEST_OPTION_MODE">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">INGEST_OPTION_MODE</span></span><a class="headerlink" href="#adbc_driver_manager.INGEST_OPTION_MODE" title="Permalink to this definition">#</a></dt>
-<dd><p>Whether to append to or create a new table for bulk ingestion.</p>
-</dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="adbc_driver_manager.INGEST_OPTION_MODE_APPEND">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">INGEST_OPTION_MODE_APPEND</span></span><a class="headerlink" href="#adbc_driver_manager.INGEST_OPTION_MODE_APPEND" title="Permalink to this definition">#</a></dt>
-<dd><p>Append to the table for bulk ingestion.</p>
-</dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="adbc_driver_manager.INGEST_OPTION_MODE_CREATE">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">INGEST_OPTION_MODE_CREATE</span></span><a class="headerlink" href="#adbc_driver_manager.INGEST_OPTION_MODE_CREATE" title="Permalink to this definition">#</a></dt>
-<dd><p>Create a new table for bulk ingestion.</p>
-</dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="adbc_driver_manager.INGEST_OPTION_TARGET_TABLE">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">INGEST_OPTION_TARGET_TABLE</span></span><a class="headerlink" href="#adbc_driver_manager.INGEST_OPTION_TARGET_TABLE" title="Permalink to this definition">#</a></dt>
-<dd><p>The table to create/append to for bulk ingestion.</p>
-</dd></dl>
-
-</section>
-<section id="classes">
-<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">#</a></h3>
-</section>
 </section>
 <section id="dbapi-2-0-api">
 <h2>DBAPI 2.0 API<a class="headerlink" href="#dbapi-2-0-api" title="Permalink to this heading">#</a></h2>
-<section id="id1">
-<h3>Constants &amp; Enums<a class="headerlink" href="#id1" title="Permalink to this heading">#</a></h3>
-</section>
-<section id="functions">
-<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">#</a></h3>
-</section>
-<section id="id2">
-<h3>Classes<a class="headerlink" href="#id2" title="Permalink to this heading">#</a></h3>
-</section>
-</section>
-<section id="exceptions">
-<h2>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this heading">#</a></h2>
 </section>
 </section>
 
@@ -313,23 +271,23 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="adbc_driver_postgresql.html">
+          <a class="next-page" href="../../contributing.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></div>
+                <div class="title">Contributing</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="index.html">
+          <a class="prev-page" href="adbc_driver_postgresql.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Python API Reference</div>
+                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></div>
                 
               </div>
             </a>
@@ -363,25 +321,9 @@
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a><ul>
-<li><a class="reference internal" href="#low-level-api">Low-Level API</a><ul>
-<li><a class="reference internal" href="#constants-enums">Constants &amp; Enums</a><ul>
-<li><a class="reference internal" href="#adbc_driver_manager.INGEST_OPTION_MODE"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_MODE</span></code></a></li>
-<li><a class="reference internal" href="#adbc_driver_manager.INGEST_OPTION_MODE_APPEND"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_MODE_APPEND</span></code></a></li>
-<li><a class="reference internal" href="#adbc_driver_manager.INGEST_OPTION_MODE_CREATE"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_MODE_CREATE</span></code></a></li>
-<li><a class="reference internal" href="#adbc_driver_manager.INGEST_OPTION_TARGET_TABLE"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_TARGET_TABLE</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#classes">Classes</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#dbapi-2-0-api">DBAPI 2.0 API</a><ul>
-<li><a class="reference internal" href="#id1">Constants &amp; Enums</a></li>
-<li><a class="reference internal" href="#functions">Functions</a></li>
-<li><a class="reference internal" href="#id2">Classes</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#exceptions">Exceptions</a></li>
+<li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a><ul>
+<li><a class="reference internal" href="#low-level-api">Low-Level API</a></li>
+<li><a class="reference internal" href="#dbapi-2-0-api">DBAPI 2.0 API</a></li>
 </ul>
 </li>
 </ul>

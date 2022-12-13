@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="C/C++/Python" href="../driver/cpp/index.html" /><link rel="prev" title="Versioning and Compatibility" href="versioning.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Java" href="../java/index.html" /><link rel="prev" title="adbc_driver_manager.h" href="../cpp/api/adbc_driver_manager.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Comparison with Other APIs - ADBC 0.1.0 (dev) documentation</title>
+        <title>Go - ADBC 0.1.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
@@ -161,10 +161,10 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Specifications</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="specification.html">ADBC API Standard</a></li>
-<li class="toctree-l1"><a class="reference internal" href="versioning.html">Versioning and Compatibility</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Comparison with Other APIs</a></li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../format/specification.html">ADBC API Standard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/versioning.html">Versioning and Compatibility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/comparison.html">Comparison with Other APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
 <ul>
@@ -182,7 +182,7 @@
 </li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Language-Specific APIs</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../cpp/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
@@ -193,7 +193,7 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../go/index.html">Go</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">Go</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
@@ -234,7 +234,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/format/comparison.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/go/index.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -256,64 +256,13 @@
           </label>
         </div>
         <article role="main">
-          <section id="comparison-with-other-apis">
-<h1>Comparison with Other APIs<a class="headerlink" href="#comparison-with-other-apis" title="Permalink to this heading">#</a></h1>
-<div class="table-wrapper docutils container" id="id1">
-<table class="docutils align-default" id="id1">
-<caption><span class="caption-text">Equivalent concepts between ADBC and other APIs</span><a class="headerlink" href="#id1" title="Permalink to this table">#</a></caption>
-<thead>
-<tr class="row-odd"><th class="head"><p>Concept/API</p></th>
-<th class="head"><p>ADBC</p></th>
-<th class="head"><p>database/sql (Golang)</p></th>
-<th class="head"><p>DBAPI 2.0 (PEP 249)</p></th>
-<th class="head"><p>Flight SQL</p></th>
-<th class="head"><p>JDBC</p></th>
-<th class="head"><p>ODBC</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Shared connection state</p></td>
-<td><p><a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">DB</span></code></p></td>
-<td><p>—</p></td>
-<td><p>—</p></td>
-<td><p>—</p></td>
-<td><p>—</p></td>
-</tr>
-<tr class="row-odd"><td><p>Database connection</p></td>
-<td><p><a class="reference internal" href="../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Conn</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Connection</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">FlightSqlClient</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Connection</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">SQLHANDLE</span></code> (connection)</p></td>
-</tr>
-<tr class="row-even"><td><p>Query state</p></td>
-<td><p><a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Cursor</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Statement</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">SQLHANDLE</span></code> (statement)</p></td>
-</tr>
-<tr class="row-odd"><td><p>Prepared statement handle</p></td>
-<td><p><a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a></p></td>
-<td><p>Stmt</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Cursor</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">PreparedStatement</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">PreparedStatement</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">SQLHANDLE</span></code> (statement)</p></td>
-</tr>
-<tr class="row-even"><td><p>Result set</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ArrowArrayStream</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">*Rows</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Cursor</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">FlightInfo</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ResultSet</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">SQLHANDLE</span></code> (statement)</p></td>
-</tr>
-</tbody>
-</table>
+          <section id="go">
+<h1>Go<a class="headerlink" href="#go" title="Permalink to this heading">#</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Under construction</p>
 </div>
 </section>
 
@@ -322,23 +271,23 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../driver/cpp/index.html">
+          <a class="next-page" href="../java/index.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">C/C++/Python</div>
+                <div class="title">Java</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="versioning.html">
+          <a class="prev-page" href="../cpp/api/adbc_driver_manager.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Versioning and Compatibility</div>
+                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></div>
                 
               </div>
             </a>

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="adbc_driver_postgresql" href="adbc_driver_postgresql.html" /><link rel="prev" title="Python API Reference" href="index.html" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="SQLite Driver" href="sqlite.html" /><link rel="prev" title="Flight SQL Driver" href="flight_sql.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>adbc_driver_manager - ADBC 0.1.0 (dev) documentation</title>
+        <title>PostgreSQL Driver - ADBC 0.1.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
@@ -167,22 +167,22 @@
 <li class="toctree-l1"><a class="reference internal" href="../../format/comparison.html">Comparison with Other APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../driver/cpp/index.html">C/C++/Python</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/cpp/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/cpp/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/cpp/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/cpp/features.html">Feature Support Matrix</a></li>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">C/C++/Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">PostgreSQL Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html">Feature Support Matrix</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../driver/java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/java/flight_sql.html">Flight SQL</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/java/jdbc.html">JDBC Adapter</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../java/flight_sql.html">Flight SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../java/jdbc.html">JDBC Adapter</a></li>
 </ul>
 </li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Language-Specific APIs</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
@@ -199,12 +199,12 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
 </ul>
 </li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l3 current current-page"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../python/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -234,7 +234,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/api/adbc_driver_manager.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/driver/cpp/postgresql.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -256,55 +256,87 @@
           </label>
         </div>
         <article role="main">
-          <section id="adbc-driver-manager">
-<h1><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code><a class="headerlink" href="#adbc-driver-manager" title="Permalink to this heading">#</a></h1>
-<section id="low-level-api">
-<h2>Low-Level API<a class="headerlink" href="#low-level-api" title="Permalink to this heading">#</a></h2>
-<section id="constants-enums">
-<h3>Constants &amp; Enums<a class="headerlink" href="#constants-enums" title="Permalink to this heading">#</a></h3>
-<dl class="py data">
-<dt class="sig sig-object py" id="adbc_driver_manager.INGEST_OPTION_MODE">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">INGEST_OPTION_MODE</span></span><a class="headerlink" href="#adbc_driver_manager.INGEST_OPTION_MODE" title="Permalink to this definition">#</a></dt>
-<dd><p>Whether to append to or create a new table for bulk ingestion.</p>
-</dd></dl>
+          <section id="postgresql-driver">
+<h1>PostgreSQL Driver<a class="headerlink" href="#postgresql-driver" title="Permalink to this heading">#</a></h1>
+<p>The PostgreSQL driver provides access to any database that supports
+the PostgreSQL wire format.  It wraps <a class="reference external" href="https://www.postgresql.org/docs/current/libpq.html">libpq</a>, the client library for
+PostgreSQL.  The project owes credit to 0x0L’s <a class="reference external" href="https://github.com/0x0L/pgeon">pgeon</a> for the
+overall approach.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This project is not affiliated with PostgreSQL in any way.</p>
+</div>
+<section id="status">
+<h2>Status<a class="headerlink" href="#status" title="Permalink to this heading">#</a></h2>
+<p>The PostgreSQL driver is experimental.  Performance/optimization and
+support for complex types and different ADBC features is still
+ongoing.</p>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<p>The PostgreSQL driver is shipped as a standalone library.</p>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
+<p>To connect to a database, supply the “uri” parameter when constructing
+the <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  This should be a <a class="reference external" href="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">connection URI</a>.</p>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
+C++</label><div class="sd-tab-content docutils">
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;adbc.h&quot;</span><span class="cp"></span>
 
-<dl class="py data">
-<dt class="sig sig-object py" id="adbc_driver_manager.INGEST_OPTION_MODE_APPEND">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">INGEST_OPTION_MODE_APPEND</span></span><a class="headerlink" href="#adbc_driver_manager.INGEST_OPTION_MODE_APPEND" title="Permalink to this definition">#</a></dt>
-<dd><p>Append to the table for bulk ingestion.</p>
-</dd></dl>
+<span class="c1">// Ignoring error handling</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span><span class="w"></span>
+<span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;postgresql://localhost:5433&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
+<span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-1">
+Python</label><div class="sd-tab-content docutils">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
 
-<dl class="py data">
-<dt class="sig sig-object py" id="adbc_driver_manager.INGEST_OPTION_MODE_CREATE">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">INGEST_OPTION_MODE_CREATE</span></span><a class="headerlink" href="#adbc_driver_manager.INGEST_OPTION_MODE_CREATE" title="Permalink to this definition">#</a></dt>
-<dd><p>Create a new table for bulk ingestion.</p>
-</dd></dl>
 
-<dl class="py data">
-<dt class="sig sig-object py" id="adbc_driver_manager.INGEST_OPTION_TARGET_TABLE">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">INGEST_OPTION_TARGET_TABLE</span></span><a class="headerlink" href="#adbc_driver_manager.INGEST_OPTION_TARGET_TABLE" title="Permalink to this definition">#</a></dt>
-<dd><p>The table to create/append to for bulk ingestion.</p>
-</dd></dl>
-
+<span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;postgresql://localhost:5433&quot;</span>
+<span class="k">with</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+</div>
+</div>
 </section>
-<section id="classes">
-<h3>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">#</a></h3>
+<section id="supported-features">
+<h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">#</a></h2>
+<section id="bulk-ingestion">
+<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
+<p>Bulk ingestion is supported.  The mapping from Arrow types to
+PostgreSQL types is the same as below.</p>
 </section>
+<section id="partitioned-result-sets">
+<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
+<p>Partitioned result sets are not supported.</p>
 </section>
-<section id="dbapi-2-0-api">
-<h2>DBAPI 2.0 API<a class="headerlink" href="#dbapi-2-0-api" title="Permalink to this heading">#</a></h2>
-<section id="id1">
-<h3>Constants &amp; Enums<a class="headerlink" href="#id1" title="Permalink to this heading">#</a></h3>
+<section id="performance">
+<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this heading">#</a></h3>
+<p>The driver makes use of COPY and the binary format to speed up result
+set reading.  Formal benchmarking is forthcoming.</p>
 </section>
-<section id="functions">
-<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">#</a></h3>
+<section id="transactions">
+<h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">#</a></h3>
+<p>Transactions are supported.</p>
 </section>
-<section id="id2">
-<h3>Classes<a class="headerlink" href="#id2" title="Permalink to this heading">#</a></h3>
+<section id="type-support">
+<h3>Type Support<a class="headerlink" href="#type-support" title="Permalink to this heading">#</a></h3>
+<p>PostgreSQL allows defining new types at runtime, so the driver must
+build a mapping of available types.  This is currently done once at
+startup.</p>
+<p>Type support is currently limited.  Parameter binding and bulk
+ingestion support int16, int32, int64, and string.  Reading result
+sets is limited to int32, int64, float, double, and string.</p>
 </section>
-</section>
-<section id="exceptions">
-<h2>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this heading">#</a></h2>
 </section>
 </section>
 
@@ -313,23 +345,23 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="adbc_driver_postgresql.html">
+          <a class="next-page" href="sqlite.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></div>
+                <div class="title">SQLite Driver</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="index.html">
+          <a class="prev-page" href="flight_sql.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Python API Reference</div>
+                <div class="title">Flight SQL Driver</div>
                 
               </div>
             </a>
@@ -363,25 +395,18 @@
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a><ul>
-<li><a class="reference internal" href="#low-level-api">Low-Level API</a><ul>
-<li><a class="reference internal" href="#constants-enums">Constants &amp; Enums</a><ul>
-<li><a class="reference internal" href="#adbc_driver_manager.INGEST_OPTION_MODE"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_MODE</span></code></a></li>
-<li><a class="reference internal" href="#adbc_driver_manager.INGEST_OPTION_MODE_APPEND"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_MODE_APPEND</span></code></a></li>
-<li><a class="reference internal" href="#adbc_driver_manager.INGEST_OPTION_MODE_CREATE"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_MODE_CREATE</span></code></a></li>
-<li><a class="reference internal" href="#adbc_driver_manager.INGEST_OPTION_TARGET_TABLE"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_TARGET_TABLE</span></code></a></li>
+<li><a class="reference internal" href="#">PostgreSQL Driver</a><ul>
+<li><a class="reference internal" href="#status">Status</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#supported-features">Supported Features</a><ul>
+<li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
+<li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
+<li><a class="reference internal" href="#performance">Performance</a></li>
+<li><a class="reference internal" href="#transactions">Transactions</a></li>
+<li><a class="reference internal" href="#type-support">Type Support</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#classes">Classes</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#dbapi-2-0-api">DBAPI 2.0 API</a><ul>
-<li><a class="reference internal" href="#id1">Constants &amp; Enums</a></li>
-<li><a class="reference internal" href="#functions">Functions</a></li>
-<li><a class="reference internal" href="#id2">Classes</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#exceptions">Exceptions</a></li>
 </ul>
 </li>
 </ul>

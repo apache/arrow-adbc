@@ -15,13 +15,17 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+====
+Java
+====
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: Drivers
 
-   driver_manager
-   concurrency
-   api/index
+   flight_sql
+   jdbc
+
+The ADBC project ships some drivers.  Others may (eventually) be
+available from database vendors or third parties.  The drivers here
+implement the Java API standard.

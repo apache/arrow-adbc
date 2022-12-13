@@ -27,7 +27,7 @@ specific driver.
 Installation
 ============
 
-See :doc:`./install`.
+TODO
 
 Usage
 =====
@@ -50,9 +50,10 @@ entrypoint (see :cpp:type:`AdbcDriverInitFunc`).
     * On MacOS: loads libadbc_driver_sqlite.dylib
     * On Windows: loads adbc_driver_sqlite.dll */
    AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", NULL);
-   /* Set additional options for the specific driver */
+   /* Set additional options for the specific driver, if needed */
+   /* Initialize the database */
    AdbcDatabaseInit(&database, NULL);
-
+   /* Create connections as usual */
 
 API Reference
 =============

@@ -15,13 +15,22 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+.. default-domain:: py
 
-.. toctree::
-   :maxdepth: 2
+==========================
+``adbc_driver_postgresql``
+==========================
 
-   driver_manager
-   concurrency
-   api/index
+Low-Level API
+=============
+
+.. automodule:: adbc_driver_postgresql
+
+.. autofunction:: adbc_driver_postgresql.connect
+
+DBAPI 2.0 API
+=============
+
+.. automodule:: adbc_driver_postgresql.dbapi
+
+.. autofunction:: adbc_driver_postgresql.dbapi.connect

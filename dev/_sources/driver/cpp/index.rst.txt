@@ -15,13 +15,21 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+============
+C/C++/Python
+============
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: Drivers
 
-   driver_manager
-   concurrency
-   api/index
+   flight_sql
+   postgresql
+   sqlite
+
+   features
+
+The ADBC project ships some drivers.  Others may (eventually) be
+available from database vendors or third parties.  The drivers here
+implement the C API standard and are directly usable in C/C++.  They
+also provide Python bindings.

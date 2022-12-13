@@ -15,13 +15,11 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+===
+Go
+===
 
 .. toctree::
    :maxdepth: 2
 
-   driver_manager
-   concurrency
-   api/index
+.. note:: Under construction
