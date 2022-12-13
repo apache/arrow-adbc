@@ -259,11 +259,24 @@
         <article role="main">
           <section id="adbc-driver-postgresql">
 <h1><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code><a class="headerlink" href="#adbc-driver-postgresql" title="Permalink to this heading">#</a></h1>
-<section id="low-level-api">
-<h2>Low-Level API<a class="headerlink" href="#low-level-api" title="Permalink to this heading">#</a></h2>
+<section id="module-adbc_driver_postgresql">
+<span id="low-level-api"></span><h2>Low-Level API<a class="headerlink" href="#module-adbc_driver_postgresql" title="Permalink to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="adbc_driver_postgresql.connect">
+<span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager._lib.AdbcDatabase"><span class="pre">AdbcDatabase</span></a></span></span><a class="headerlink" href="#adbc_driver_postgresql.connect" title="Permalink to this definition">#</a></dt>
+<dd><p>Create a low level ADBC connection to PostgreSQL.</p>
+</dd></dl>
+
 </section>
-<section id="dbapi-2-0-api">
-<h2>DBAPI 2.0 API<a class="headerlink" href="#dbapi-2-0-api" title="Permalink to this heading">#</a></h2>
+<section id="module-adbc_driver_postgresql.dbapi">
+<span id="dbapi-2-0-api"></span><h2>DBAPI 2.0 API<a class="headerlink" href="#module-adbc_driver_postgresql.dbapi" title="Permalink to this heading">#</a></h2>
+<p>DBAPI 2.0-compatible facade for the ADBC libpq driver.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="adbc_driver_postgresql.dbapi.connect">
+<span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.dbapi.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><span class="pre">Connection</span></a></span></span><a class="headerlink" href="#adbc_driver_postgresql.dbapi.connect" title="Permalink to this definition">#</a></dt>
+<dd><p>Connect to PostgreSQL via ADBC.</p>
+</dd></dl>
+
 </section>
 </section>
 
@@ -323,8 +336,14 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a><ul>
-<li><a class="reference internal" href="#low-level-api">Low-Level API</a></li>
-<li><a class="reference internal" href="#dbapi-2-0-api">DBAPI 2.0 API</a></li>
+<li><a class="reference internal" href="#module-adbc_driver_postgresql">Low-Level API</a><ul>
+<li><a class="reference internal" href="#adbc_driver_postgresql.connect"><code class="docutils literal notranslate"><span class="pre">connect()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-adbc_driver_postgresql.dbapi">DBAPI 2.0 API</a><ul>
+<li><a class="reference internal" href="#adbc_driver_postgresql.dbapi.connect"><code class="docutils literal notranslate"><span class="pre">connect()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
