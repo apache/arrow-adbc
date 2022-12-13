@@ -12,6 +12,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
     
     
 
@@ -295,14 +296,71 @@ Python</label><div class="sd-tab-content docutils">
 </div>
 </div>
 </div>
-<section id="additional-configuration-options">
-<h3>Additional Configuration Options<a class="headerlink" href="#additional-configuration-options" title="Permalink to this heading">#</a></h3>
-<p>The Flight SQL driver supports some additional configuration options
-in addition to the “standard” ADBC options.</p>
+</section>
+<section id="supported-features">
+<h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">#</a></h2>
+<p>The Flight SQL driver generally supports features defined in the ADBC
+API specification 1.0.0, as well as some additional, custom options.</p>
+<section id="authentication">
+<h3>Authentication<a class="headerlink" href="#authentication" title="Permalink to this heading">#</a></h3>
+<p>The driver does no authentication by default.</p>
+<p>The driver implements one optional authentication scheme that mimics
+the Arrow Flight SQL JDBC driver.  This can be enabled by setting the
+option <code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.authorization_header</span></code> on the
+<a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  The client provides credentials by setting
+the option value to the value of the <code class="docutils literal notranslate"><span class="pre">authorization</span></code> header sent
+from client to server.  The server then responds with an
+<code class="docutils literal notranslate"><span class="pre">authorization</span></code> header on the first request.  The value of this
+header will then be sent back as the <code class="docutils literal notranslate"><span class="pre">authorization</span></code> header on all
+future requests.</p>
+</section>
+<section id="bulk-ingestion">
+<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
+<p>Flight SQL does not have a dedicated API for bulk ingestion of Arrow
+data into a given table.  The driver instead constructs SQL statements
+to create and insert into the table.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The driver does not escape or validate the names of
+tables or columns.  As a precaution, it instead limits
+identifier names to letters, numbers, and underscores.
+Bulk ingestion should not be used with untrusted user
+input.</p>
+</div>
+<p>The driver binds a batch of data at a time for efficiency.  Also, the
+generated SQL statements hardcode <code class="docutils literal notranslate"><span class="pre">?</span></code> as the parameter identifier.</p>
+</section>
+<section id="client-options">
+<h3>Client Options<a class="headerlink" href="#client-options" title="Permalink to this heading">#</a></h3>
+<p>The options used for creating the Flight RPC client can be customized.
+These options map 1:1 with the options in FlightClientOptions:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.tls_root_certs</span></code></dt><dd><p>Override the root certificates used to validate the server’s TLS
+certificate.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.override_hostname</span></code></dt><dd><p>Override the hostname used to verify the server’s TLS certificate.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.cert_chain</span></code></dt><dd><p>The certificate chain to use for mTLS.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.private_key</span></code></dt><dd><p>The private key to use for mTLS.</p>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.generic_int_option.</span></code>
+<code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.generic_string_option.</span></code></p>
+<blockquote>
+<div><p>Option prefixes used to specify generic transport-layer options.</p>
+</div></blockquote>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.disable_server_verification</span></code></dt><dd><p>Disable verification of the server’s TLS certificate.  Value
+should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
+</dd>
+</dl>
+</section>
 <section id="custom-call-headers">
-<h4>Custom Call Headers<a class="headerlink" href="#custom-call-headers" title="Permalink to this heading">#</a></h4>
+<h3>Custom Call Headers<a class="headerlink" href="#custom-call-headers" title="Permalink to this heading">#</a></h3>
 <p>Custom HTTP headers can be attached to requests via options that apply
-to both <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a> and <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>.</p>
+to <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>, <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>, and
+<a class="reference internal" href="../../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>.</p>
 <dl>
 <dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.call_header.&lt;HEADER</span> <span class="pre">NAME&gt;</span></code></dt><dd><p>Add the header <code class="docutils literal notranslate"><span class="pre">&lt;HEADER</span> <span class="pre">NAME&gt;</span></code> to outgoing requests with the given
 value.</p>
@@ -313,8 +371,40 @@ value.</p>
 </dd>
 </dl>
 </section>
+<section id="distributed-result-sets">
+<h3>Distributed Result Sets<a class="headerlink" href="#distributed-result-sets" title="Permalink to this heading">#</a></h3>
+<p>The driver will fetch all partitions (FlightEndpoints) returned by the
+server, in an unspecified order (note that Flight SQL itself does not
+define an ordering on these partitions).  If an endpoint has no
+locations, the data will be fetched using the original server
+connection.  Else, the driver will try each location given, in order,
+until a request succeeds.  If the connection or request fails, it will
+try the next location.</p>
+<p>The driver does not currently cache or pool these secondary
+connections.  It also does not retry connections or requests.
+Requests are made sequentially, one at a time—the driver does not
+parallelize requests or perform readahead.</p>
+</section>
+<section id="metadata">
+<h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h3>
+<p>The driver currently will not populate column constraint info (foreign
+keys, primary keys, etc.) in <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv424AdbcConnectionGetObjectsP14AdbcConnectioniPKcPKcPKcPPKcPKcP16ArrowArrayStreamP9AdbcError" title="AdbcConnectionGetObjects"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcConnectionGetObjects()</span></code></a>.
+Also, catalog filters are evaluated as simple string matches, not
+<code class="docutils literal notranslate"><span class="pre">LIKE</span></code>-style patterns.</p>
+</section>
+<section id="partitioned-result-sets">
+<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
+<p>The Flight SQL driver supports ADBC’s partitioned result sets.  When
+requested, each partition of a result set contains a serialized
+FlightInfo, containing one of the FlightEndpoints of the original
+response.  Clients who may wish to introspect the partition can do so
+by deserializing the contained FlightInfo from the ADBC partitions.
+(For example, a client that wishes to distribute work across multiple
+workers or machines may want to try to take advantage of locality
+information that ADBC does not have.)</p>
+</section>
 <section id="timeouts">
-<h4>Timeouts<a class="headerlink" href="#timeouts" title="Permalink to this heading">#</a></h4>
+<h3>Timeouts<a class="headerlink" href="#timeouts" title="Permalink to this heading">#</a></h3>
 <p>By default, timeouts are not used for RPC calls.  They can be set via
 special options on <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>.  In general, it is
 best practice to set timeouts to avoid unexpectedly getting stuck.
@@ -338,8 +428,13 @@ calls that implement bulk ingestion, or transaction support.</p>
 </dd>
 </dl>
 </section>
+<section id="transactions">
+<h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">#</a></h3>
+<p>The driver will issue transaction RPCs, but the driver will not check
+the server’s SqlInfo to determine whether this is supported first.</p>
+</section>
 <section id="type-mapping">
-<h4>Type Mapping<a class="headerlink" href="#type-mapping" title="Permalink to this heading">#</a></h4>
+<h3>Type Mapping<a class="headerlink" href="#type-mapping" title="Permalink to this heading">#</a></h3>
 <p>When executing a bulk ingestion operation, the driver needs to be able
 to construct appropriate SQL queries for the database.  (The driver
 does not currently support using Substrait plans instead.)  In
@@ -350,6 +445,12 @@ this mapping, which can be done by setting special options on
 Flight SQL metadata to construct this mapping.)</p>
 <p>All such options begin with <code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.quirks.ingest_type.</span></code>
 and are followed by a type name below.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The driver does <strong>not</strong> escape or validate the values
+here.  They should not come from untrusted user input, or
+a SQL injection vulnerability may result.</p>
+</div>
 <div class="table-wrapper docutils container" id="id1">
 <table class="docutils align-default" id="id1">
 <caption><span class="caption-text">Type Names</span><a class="headerlink" href="#id1" title="Permalink to this table">#</a></caption>
@@ -415,18 +516,6 @@ and are followed by a type name below.</p>
 </div>
 </section>
 </section>
-<section id="partitioned-result-set-support">
-<h3>Partitioned Result Set Support<a class="headerlink" href="#partitioned-result-set-support" title="Permalink to this heading">#</a></h3>
-<p>The Flight SQL driver supports ADBC’s partitioned result sets, mapping
-them onto FlightEndpoints.  Each partition of a result set contains a
-serialized FlightInfo, containing one of the FlightEndpoints of the
-original response.  Clients who may wish to introspect the partition
-can do so by deserializing the contained FlightInfo from the ADBC
-partitions.  (For example, a client that wishes to distribute work
-across multiple workers or machines may want to try to take advantage
-of locality information that ADBC does not have.)</p>
-</section>
-</section>
 </section>
 
         </article>
@@ -486,14 +575,18 @@ of locality information that ADBC does not have.)</p>
             <ul>
 <li><a class="reference internal" href="#">Flight SQL Driver</a><ul>
 <li><a class="reference internal" href="#installation">Installation</a></li>
-<li><a class="reference internal" href="#usage">Usage</a><ul>
-<li><a class="reference internal" href="#additional-configuration-options">Additional Configuration Options</a><ul>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#supported-features">Supported Features</a><ul>
+<li><a class="reference internal" href="#authentication">Authentication</a></li>
+<li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
+<li><a class="reference internal" href="#client-options">Client Options</a></li>
 <li><a class="reference internal" href="#custom-call-headers">Custom Call Headers</a></li>
+<li><a class="reference internal" href="#distributed-result-sets">Distributed Result Sets</a></li>
+<li><a class="reference internal" href="#metadata">Metadata</a></li>
+<li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
 <li><a class="reference internal" href="#timeouts">Timeouts</a></li>
+<li><a class="reference internal" href="#transactions">Transactions</a></li>
 <li><a class="reference internal" href="#type-mapping">Type Mapping</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#partitioned-result-set-support">Partitioned Result Set Support</a></li>
 </ul>
 </li>
 </ul>
