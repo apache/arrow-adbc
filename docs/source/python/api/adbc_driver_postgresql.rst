@@ -15,16 +15,22 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=======
-Drivers
-=======
+.. default-domain:: py
 
-The project ships with a number of drivers for particular database
-protocols/databases.  More may be available from third parties.
+==========================
+``adbc_driver_postgresql``
+==========================
 
-.. toctree::
-   :maxdepth: 1
+Low-Level API
+=============
 
-   flight_sql
-   postgresql
-   sqlite
+.. automodule:: adbc_driver_postgresql
+
+.. autofunction:: adbc_driver_postgresql.connect
+
+DBAPI 2.0 API
+=============
+
+.. automodule:: adbc_driver_postgresql.dbapi
+
+.. autofunction:: adbc_driver_postgresql.dbapi.connect

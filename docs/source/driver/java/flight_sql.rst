@@ -15,13 +15,19 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+==========
+Flight SQL
+==========
 
-.. toctree::
-   :maxdepth: 2
+The Flight SQL Driver provides access to any database implementing a
+:doc:`arrow:format/FlightSql` compatible endpoint.
 
-   driver_manager
-   concurrency
-   api/index
+Installation
+============
+
+Add a dependency on ``org.apache.arrow.adbc:adbc-driver-flight-sql``.
+
+Usage
+=====
+
+Provide the parameter ``adbc.url`` when creating the database.

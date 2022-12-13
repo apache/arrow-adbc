@@ -22,6 +22,5 @@ Python
 .. toctree::
    :maxdepth: 2
 
-   ../cpp/install
-   ../cpp/driver/index
+   driver_manager
    api/index

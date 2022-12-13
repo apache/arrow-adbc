@@ -29,11 +29,17 @@ overall approach.
 .. _libpq: https://www.postgresql.org/docs/current/libpq.html
 .. _pgeon: https://github.com/0x0L/pgeon
 
+Status
+======
+
+The PostgreSQL driver is experimental.  Performance/optimization and
+support for complex types and different ADBC features is still
+ongoing.
+
 Installation
 ============
 
-The PostgreSQL driver is shipped as a standalone library.  See
-:ref:`Installation <cpp-install-libpq>`.
+The PostgreSQL driver is shipped as a standalone library.
 
 Usage
 =====
@@ -68,3 +74,39 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
          uri = "postgresql://localhost:5433"
          with adbc_driver_postgresql.dbapi.connect(uri) as conn:
              pass
+
+Supported Features
+==================
+
+Bulk Ingestion
+--------------
+
+Bulk ingestion is supported.  The mapping from Arrow types to
+PostgreSQL types is the same as below.
+
+Partitioned Result Sets
+-----------------------
+
+Partitioned result sets are not supported.
+
+Performance
+-----------
+
+The driver makes use of COPY and the binary format to speed up result
+set reading.  Formal benchmarking is forthcoming.
+
+Transactions
+------------
+
+Transactions are supported.
+
+Type Support
+------------
+
+PostgreSQL allows defining new types at runtime, so the driver must
+build a mapping of available types.  This is currently done once at
+startup.
+
+Type support is currently limited.  Parameter binding and bulk
+ingestion support int16, int32, int64, and string.  Reading result
+sets is limited to int32, int64, float, double, and string.

@@ -15,13 +15,18 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+============
+JDBC Adapter
+============
 
-.. toctree::
-   :maxdepth: 2
+The JDBC Adapter provides access to any database with a JDBC driver.
 
-   driver_manager
-   concurrency
-   api/index
+Installation
+============
+
+Add a dependency on ``org.apache.arrow.adbc:adbc-driver-jdbc``.
+
+Usage
+=====
+
+Provide the parameter ``adbc.url`` when creating the database.

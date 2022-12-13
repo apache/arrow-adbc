@@ -45,6 +45,7 @@ from ._lib import (
     NotSupportedError,
     OperationalError,
     ProgrammingError,
+    Warning,
 )
 from ._version import __version__
 
@@ -72,4 +73,5 @@ __all__ = [
     "NotSupportedError",
     "OperationalError",
     "ProgrammingError",
+    "Warning",
 ]

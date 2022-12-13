@@ -56,12 +56,12 @@ Example::
 
    * - Linux
      - Yes ✅
-     - No ❌
+     - Yes ✅
 
    * - macOS
      - Yes ✅
-     - No ❌
+     - Yes ✅
 
    * - Windows
-     - No ❌
+     - No ✅
      - No ❌

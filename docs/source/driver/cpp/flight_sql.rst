@@ -26,7 +26,7 @@ Installation
 ============
 
 The Flight SQL driver is shipped as part of the Arrow C++ libraries
-and PyArrow.  See :ref:`Installation <cpp-install-flight-sql>`.
+and PyArrow.
 
 Usage
 =====
