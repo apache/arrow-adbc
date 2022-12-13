@@ -27,33 +27,39 @@ query parameters.  These APIs are then implemented by drivers (or a
 driver manager) that use some underlying protocol to work with
 specific databases.
 
-ADBC aims to provide applications with a single API to work with
-multiple databases, both Arrow-native and not.  Application code
-should not need to juggle conversions from non-Arrow-native
-datasources alongside bindings for multiple Arrow-native database
-protocols.  And Arrow Flight SQL by itself cannot solve this problem,
-because it's a specific wire protocol that not all databases will
-implement.
+ADBC aims to provide applications with a single, Arrow-based API to
+work with multiple databases, whether Arrow-native or not.
+Application code should not need to juggle conversions from
+non-Arrow-native datasources alongside bindings for multiple
+Arrow-native database protocols.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Specifications:
+   :caption: Specifications
 
    format/specification
    format/versioning
    format/comparison
 
 .. toctree::
+   :maxdepth: 2
+   :caption: Drivers
+
+   driver/cpp/index
+   driver/java/index
+
+.. toctree::
    :maxdepth: 1
-   :caption: Supported Environments:
+   :caption: Language-Specific APIs
 
    C/C++ <cpp/index>
+   Go <go/index>
    Java <java/index>
    Python <python/index>
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contributing:
+   :caption: Contributing
 
    contributing
    nightly

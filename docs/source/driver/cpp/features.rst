@@ -15,13 +15,34 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+======================
+Feature Support Matrix
+======================
 
-.. toctree::
-   :maxdepth: 2
+.. list-table:: ADBC Feature Support
+   :header-rows: 1
 
-   driver_manager
-   concurrency
-   api/index
+   * - Driver
+     - Bulk Ingestion
+     - Metadata
+     - Partitioned Result Sets
+     - Prepared Statements
+     - Transactions
+
+   * - SQLite
+     - Yes
+     - Yes
+     - No
+     - Yes
+     - Yes
+
+Bulk Ingestion
+  Creating or appending to a database table from an Arrow table.
+
+Metadata
+  Functions like :cpp:func:`AdbcConnectionGetObjects` that get
+  metadata about the database catalog, etc.
+
+Partitioned Result Sets
+  Being able to read individual chunks of a (generally distributed)
+  result set (:cpp:func:`AdbcStatementExecutePartitions`).

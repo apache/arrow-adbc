@@ -20,6 +20,8 @@ Python API Reference
 ====================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    adbc_driver_manager
+   adbc_driver_postgresql
+   adbc_driver_sqlite

@@ -15,13 +15,22 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+.. default-domain:: py
 
-.. toctree::
-   :maxdepth: 2
+======================
+``adbc_driver_sqlite``
+======================
 
-   driver_manager
-   concurrency
-   api/index
+Low-Level API
+=============
+
+.. automodule:: adbc_driver_sqlite
+
+.. autofunction:: adbc_driver_sqlite.connect
+
+DBAPI 2.0 API
+=============
+
+.. automodule:: adbc_driver_sqlite.dbapi
+
+.. autofunction:: adbc_driver_sqlite.dbapi.connect

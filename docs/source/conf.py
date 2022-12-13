@@ -45,6 +45,18 @@ try:
 except ImportError:
     autodoc_mock_imports = ["adbc_driver_manager"]
 
+try:
+    import adbc_driver_postgresql
+    import adbc_driver_postgresql.dbapi  # noqa: F401
+except ImportError:
+    autodoc_mock_imports = ["adbc_driver_postgresql"]
+
+try:
+    import adbc_driver_sqlite
+    import adbc_driver_sqlite.dbapi  # noqa: F401
+except ImportError:
+    autodoc_mock_imports = ["adbc_driver_sqlite"]
+
 autodoc_default_options = {
     "show-inheritance": True,
 }

@@ -21,11 +21,17 @@ SQLite Driver
 
 The SQLite driver provides access to SQLite databases.
 
+Status
+======
+
+The SQLite driver is essentially a "reference" driver that was used
+during ADBC development.  It generally supports most ADBC features but
+has not received attention to optimization.
+
 Installation
 ============
 
-The SQLite driver is shipped as a standalone library.  See
-:ref:`Installation <cpp-install-sqlite>`.
+The SQLite driver is shipped as a standalone library.
 
 Usage
 =====
@@ -60,3 +66,47 @@ shared across all connections.
 
          with adbc_driver_sqlite.dbapi.connect() as conn:
              pass
+
+Supported Features
+==================
+
+Bulk Ingestion
+--------------
+
+Bulk ingestion is supported.  The mapping from Arrow types to SQLite
+types is the same as below.
+
+Partitioned Result Sets
+-----------------------
+
+Partitioned result sets are not supported.
+
+Transactions
+------------
+
+Transactions are supported.
+
+Type Inference/Type Support
+---------------------------
+
+SQLite does not enforce that values in a column have the same type.
+The SQLite driver will attempt to infer the best Arrow type for a
+column as the result set is read.  When reading the first batch of
+data, the driver will be in "type promotion" mode.  The inferred type
+of each column begins as INT64, and will convert to DOUBLE, then
+STRING, if needed.  After that, reading more batches will attempt to
+convert to the inferred types.  An error will be raised if this is not
+possible (e.g. if a string value is read but the column was inferred
+to be of type INT64).
+
+In the future, other behaviors may also be supported.
+
+Bound parameters will be translated to SQLite's integer,
+floating-point, or text types as appropriate.  Supported Arrow types
+are: signed and unsigned integers, (large) strings, float, and double.
+
+Driver-specific options:
+
+``adbc.sqlite.query.batch_rows``
+    The size of batches to read.  Hence, this also controls how many
+    rows are read to infer the Arrow type.
