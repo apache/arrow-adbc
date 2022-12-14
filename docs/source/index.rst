@@ -50,6 +50,12 @@ Arrow-native database protocols.
 
 .. toctree::
    :maxdepth: 1
+   :caption: Tutorials
+
+   python/quickstart
+
+.. toctree::
+   :maxdepth: 1
    :caption: Language-Specific APIs
 
    C/C++ <cpp/index>

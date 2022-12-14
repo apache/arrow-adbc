@@ -15,11 +15,14 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
+.. _contributing:
+
 ============
 Contributing
 ============
 
-To contribute, see CONTRIBUTING.md_ in the repository.
+To contribute, and for build instructions, see CONTRIBUTING.md_ in the
+repository.
 
 .. _CONTRIBUTING.md:
    https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md

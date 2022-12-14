@@ -33,6 +33,7 @@ extensions = [
     "breathe",
     "numpydoc",
     "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx_copybutton",
     "sphinx_design",
@@ -69,6 +70,16 @@ breathe_default_project = "adbc"
 breathe_projects = {
     "adbc": "../../c/apidoc/xml/",
 }
+
+# -- Options for doctest -----------------------------------------------------
+
+doctest_global_setup = """
+try:
+    import adbc_driver_sqlite
+    import adbc_driver_sqlite.dbapi  # noqa: F401
+except ImportError:
+    adbc_driver_sqlite = None
+"""
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

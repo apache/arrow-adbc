@@ -41,6 +41,20 @@ Installation
 
 The PostgreSQL driver is shipped as a standalone library.
 
+.. tab-set::
+
+   .. tab-item:: C++
+      :sync: cpp
+
+      See :ref:`contributing` to build and install the package from source.
+
+   .. tab-item:: Python
+      :sync: python
+
+      .. code-block:: shell
+
+         pip install adbc_driver_postgresql
+
 Usage
 =====
 

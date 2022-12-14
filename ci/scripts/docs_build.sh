@@ -27,6 +27,7 @@ main() {
 
     pushd "$source_dir/docs"
     make html
+    make doctest
 }
 
 main "$@"
