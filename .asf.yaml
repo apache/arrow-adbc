@@ -32,4 +32,4 @@ notifications:
 
 publish:
   whoami: asf-site
-  subdir: adbc/docs
+  subdir: adbc
