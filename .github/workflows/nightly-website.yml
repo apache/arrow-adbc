@@ -63,9 +63,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          pip install versjon
-          versjon
-          git add --force main/ index.html
+          git add --force main/
       - name: Push changes to asf-site branch
         run: |
           git config --global user.name 'github-actions[bot]'
