@@ -63,7 +63,13 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          git add --force main/
+          pip install sphobjinv
+          rm -rf versions.txt
+          touch versions.txt
+          for inv in */objects.inv; do
+              echo "$(dirname $inv);$(sphobjinv convert json $inv - | jq -r .version)" >> versions.txt
+          done
+          git add --force main/ versions.txt
       - name: Push changes to asf-site branch
         run: |
           git config --global user.name 'github-actions[bot]'
