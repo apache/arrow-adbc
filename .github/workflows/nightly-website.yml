@@ -59,15 +59,16 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs
-          path: dev
+          path: main
       - name: Build
         shell: bash
         run: |
-          ls -laR
+          pip install versjon
+          versjon
+          git add --force main/ index.html
       - name: Push changes to asf-site branch
         run: |
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'actions@github.com'
-          git add --force dev/
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git commit -m "publish documentation" --allow-empty
           git push origin asf-site:asf-site
