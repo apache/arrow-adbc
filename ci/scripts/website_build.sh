@@ -49,7 +49,7 @@ main() {
     local -r regex='^([0-9]+\.[0-9]+\.[0-9]+)$'
     if [[ "${new_version}" =~ $regex ]]; then
         cp -r "${docs}" "${site}/${new_version}"
-        git -C "${site}" add --force "${site}/${new_version}"
+        git -C "${site}" add --force "${new_version}"
     else
         # Assume this is dev docs
         rm -rf "${site}/main"
