@@ -29,3 +29,7 @@ notifications:
   issues:       github@arrow.apache.org
   pullrequests: github@arrow.apache.org
   jira_options: link label worklog
+
+publish:
+  whoami: asf-site
+  subdir: adbc

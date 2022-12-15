@@ -21,7 +21,14 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'apache-arrow-adbc-*'
   workflow_dispatch: {}
+
+# Ensure concurrent builds don't stomp on each other
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -52,22 +59,29 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          path: site
           # NOTE: needed to push at the end
           persist-credentials: true
           ref: asf-site
-      - name: Add dev docs
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          path: scripts
+          persist-credentials: false
+      - name: Download docs
         uses: actions/download-artifact@v3
         with:
           name: docs
-          path: dev
+          path: temp
       - name: Build
         shell: bash
         run: |
-          ls -laR
+          pip install sphobjinv
+          ./scripts/ci/scripts/website_build.sh "$(pwd)/scripts" "$(pwd)/site" "$(pwd)/temp"
       - name: Push changes to asf-site branch
         run: |
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'actions@github.com'
-          git add --force dev/
+          cd site
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git commit -m "publish documentation" --allow-empty
           git push origin asf-site:asf-site

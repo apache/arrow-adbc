@@ -22,6 +22,8 @@ project = "ADBC"
 copyright = "2022, Apache Arrow Developers"
 author = "the Apache Arrow Developers"
 release = "0.1.0 (dev)"
+# Needed to generate version switcher
+version = release
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

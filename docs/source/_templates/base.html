@@ -1,0 +1,90 @@
+{#
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements.  See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership.  The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied.  See the License for the
+ specific language governing permissions and limitations
+ under the License.
+#}
+
+{% extends "furo/base.html" %}
+
+{% set rel_docs_top = pagename.split('/') | map(attribute='notfound', default='..') | join('/') %}
+
+{% block extrahead %}
+<script>
+  const currentVersion = "{{ version }}";
+  const versionsRoot = "{{ rel_docs_top }}";
+</script>
+<style>
+  #version-switcher {
+    background: var(--color-background-primary);
+    bottom: 2em;
+    box-shadow: 0 .1rem .25rem var(--sd-color-shadow),0 0 .0625rem rgba(0,0,0,.1);
+    position: fixed;
+    right: 2em;
+    z-index: 9999;
+  }
+
+  #version-switcher button {
+    background-color: var(--sd-color-card-header);
+    border: 0;
+    color: var(--sd-color-card-text);
+    cursor: pointer;
+    font-family: var(--font-stack);
+    padding: 0.5em;
+    width: 100%;
+  }
+
+  #version-switcher button::after {
+    content: "▼";
+  }
+
+  #version-switcher.open button::after {
+    content: "▲";
+  }
+
+  #version-switcher div.versions {
+    height: 0;
+    overflow-y: hidden;
+    padding: 0 0.5em;
+    transition: all 0.2s ease-in;
+  }
+
+  #version-switcher.open div.versions {
+    height: 8em;
+    overflow-y: scroll;
+  }
+
+  #version-switcher .active {
+    font-weight: bold;
+  }
+</style>
+{% endblock %}
+
+{# Inject skeleton of version switcher #}
+{% block body -%}
+{{ super() }}
+<nav id="version-switcher">
+  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: {{ version }}</button>
+  <div class="versions">
+    <ul></ul>
+  </div>
+</nav>
+{%- endblock %}
+
+{# Inject relative script - this should resolve to https://arrow.apache.org/adbc/version.js #}
+{% block scripts -%}
+{{ super() }}
+<script async defer src="{{ rel_docs_top }}/version.js"></script>
+{%- endblock %}
