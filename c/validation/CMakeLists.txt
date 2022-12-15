@@ -54,5 +54,5 @@ install(EXPORT AdbcValidationTargets
         DESTINATION "lib/cmake/AdbcValidation")
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfigVersion.cmake"
-        DESTINATION "lib/cmake/AdbcValidation"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/AdbcValidation"
         COMPONENT Devel)
