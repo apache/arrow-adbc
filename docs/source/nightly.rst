@@ -41,11 +41,15 @@ Python
 Packages can be installed from an alternative package index:
 https://gemfury.com/arrow-adbc-nightlies
 
+.. warning:: You MUST explicitly specify the version, since otherwise
+             pip will install the latest version by lexicographical
+             ordering, which will likely be some random, old build.
+
 Example::
 
-  $ pip install \
-        --extra-index-url https://gemfury.com/arrow-adbc-nightlies \
-        adbc_driver_manager
+  pip install \
+        --extra-index-url https://repo.fury.io/arrow-adbc-nightlies \
+        adbc_driver_manager==0.0.0+g265a1b6
 
 .. list-table:: Supported platforms for nightly Python wheels
    :header-rows: 1

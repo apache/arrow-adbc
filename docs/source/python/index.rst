@@ -22,5 +22,6 @@ Python
 .. toctree::
    :maxdepth: 2
 
+   quickstart
    driver_manager
    api/index
