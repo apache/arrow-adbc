@@ -239,6 +239,10 @@
 </ul>
 </li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="python/quickstart.html">Quickstart (Python)</a></li>
+</ul>
 <p class="caption" role="heading"><span class="caption-text">Language-Specific APIs</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -258,6 +262,7 @@
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="python/quickstart.html">Quickstart (Python)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="python/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
@@ -335,10 +340,16 @@ developers.</p>
 <h2>Python<a class="headerlink" href="#python" title="Permalink to this heading">#</a></h2>
 <p>Packages can be installed from an alternative package index:
 <a class="reference external" href="https://gemfury.com/arrow-adbc-nightlies">https://gemfury.com/arrow-adbc-nightlies</a></p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>You MUST explicitly specify the version, since otherwise
+pip will install the latest version by lexicographical
+ordering, which will likely be some random, old build.</p>
+</div>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install \
-      --extra-index-url https://gemfury.com/arrow-adbc-nightlies \
-      adbc_driver_manager
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> \
+      <span class="o">--</span><span class="n">extra</span><span class="o">-</span><span class="n">index</span><span class="o">-</span><span class="n">url</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">repo</span><span class="o">.</span><span class="n">fury</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-</span><span class="n">nightlies</span> \
+      <span class="n">adbc_driver_manager</span><span class="o">==</span><span class="mf">0.0.0</span><span class="o">+</span><span class="n">g265a1b6</span>
 </pre></div>
 </div>
 <div class="table-wrapper docutils container" id="id1">

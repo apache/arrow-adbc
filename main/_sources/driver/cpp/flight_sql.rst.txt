@@ -26,7 +26,9 @@ Installation
 ============
 
 The Flight SQL driver is shipped as part of the Arrow C++ libraries
-and PyArrow.
+and PyArrow.  See the `main Arrow project website
+<https://arrow.apache.org/install/>`_ for instructions.  Version >= 11
+is required.
 
 Usage
 =====
@@ -116,8 +118,10 @@ These options map 1:1 with the options in FlightClientOptions:
 ``arrow.flight.sql.client_option.private_key``
     The private key to use for mTLS.
 
-``arrow.flight.sql.client_option.generic_int_option.``
-``arrow.flight.sql.client_option.generic_string_option.``
+``arrow.flight.sql.client_option.generic_int_option.<OPTION_NAME>``
+    Option prefixes used to specify generic transport-layer options.
+
+``arrow.flight.sql.client_option.generic_string_option.<OPTION_NAME>``
     Option prefixes used to specify generic transport-layer options.
 
 ``arrow.flight.sql.client_option.disable_server_verification``
