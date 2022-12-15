@@ -78,6 +78,7 @@ jobs:
           ./scripts/ci/scripts/website_build.sh "$(pwd)/scripts" "$(pwd)/site" "$(pwd)/temp"
       - name: Push changes to asf-site branch
         run: |
+          cd site
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git commit -m "publish documentation" --allow-empty
