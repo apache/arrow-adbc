@@ -34,7 +34,7 @@ set_target_properties(adbc_validation
 install(TARGETS adbc_validation
         EXPORT AdbcValidationTargets
         LIBRARY DESTINATION lib
-        PUBLIC_HEADER DESTINATION include)
+        PUBLIC_HEADER DESTINATION include/adbc_validation/)
 
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfigVersion.cmake"
