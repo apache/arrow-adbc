@@ -231,10 +231,37 @@ def test_query_fetch_df(sqlite):
 
 
 @pytest.mark.sqlite
-def test_query_parameters(sqlite):
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        (1.0, 2),
+        pyarrow.record_batch([[1.0], [2]], names=["float", "int"]),
+        pyarrow.table([[1.0], [2]], names=["float", "int"]),
+    ],
+)
+def test_execute_parameters(sqlite, parameters):
     with sqlite.cursor() as cur:
-        cur.execute("SELECT ? + 1, ?", (1.0, 2))
+        cur.execute("SELECT ? + 1, ?", parameters)
         assert cur.fetchall() == [(2.0, 2)]
+
+
+@pytest.mark.sqlite
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        [(1, "a"), (3, None)],
+        pyarrow.record_batch([[1, 3], ["a", None]], names=["float", "str"]),
+        pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]),
+        pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]).to_batches()[0],
+    ],
+)
+def test_executemany_parameters(sqlite, parameters):
+    with sqlite.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS executemany")
+        cur.execute("CREATE TABLE executemany (int, str)")
+        cur.executemany("INSERT INTO executemany VALUES (? * 2, ?)", parameters)
+        cur.execute("SELECT * FROM executemany ORDER BY int ASC")
+        assert cur.fetchall() == [(2, "a"), (6, None)]
 
 
 @pytest.mark.sqlite
