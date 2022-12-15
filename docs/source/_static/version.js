@@ -29,7 +29,7 @@ window.addEventListener("DOMContentLoaded", () => {
     // Format:
     // path;version\npath2;version2;\n...
     // Versions are sorted at generation time
-    window.versions
+    versions
         .trim()
         .split(/\n/g)
         .map((version) => version.split(/;/))
