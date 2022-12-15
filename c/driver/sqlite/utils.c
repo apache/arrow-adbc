@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <nanoarrow.h>
+#include <nanoarrow/nanoarrow.h>
 
 static size_t kErrorBufferSize = 256;
 static char kErrorPrefix[] = "[SQLite] ";

@@ -74,7 +74,12 @@ endif()
 # Nanoarrow definition
 add_library(nanoarrow STATIC EXCLUDE_FROM_ALL
             ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c)
-set_property(TARGET nanoarrow PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_target_properties(nanoarrow
+                      PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+                                 "${REPOSITORY_ROOT}/c/vendor/"
+                                 INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
+                                 "${REPOSITORY_ROOT}/c/vendor/"
+                                 POSITION_INDEPENDENT_CODE ON)
 
 # Set common build options
 macro(adbc_configure_target TARGET)

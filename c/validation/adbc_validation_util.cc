@@ -151,11 +151,13 @@ void IsAdbcStatusCode::DescribeNegationTo(std::ostream* os) const {
   } while (false);
 
 int MakeSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& fields) {
-  CHECK_ERRNO(ArrowSchemaInit(schema, NANOARROW_TYPE_STRUCT));
+  ArrowSchemaInit(schema);
+  CHECK_ERRNO(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT));
   CHECK_ERRNO(ArrowSchemaAllocateChildren(schema, fields.size()));
   size_t i = 0;
   for (const SchemaField& field : fields) {
-    CHECK_ERRNO(ArrowSchemaInit(schema->children[i], field.type));
+    ArrowSchemaInit(schema->children[i]);
+    CHECK_ERRNO(ArrowSchemaSetType(schema->children[i], field.type));
     CHECK_ERRNO(ArrowSchemaSetName(schema->children[i], field.name.c_str()));
     if (!field.nullable) {
       schema->children[i]->flags &= ~ARROW_FLAG_NULLABLE;

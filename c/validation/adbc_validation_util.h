@@ -30,7 +30,7 @@
 #include <adbc.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <nanoarrow.h>
+#include <nanoarrow/nanoarrow.h>
 
 namespace adbc_validation {
 

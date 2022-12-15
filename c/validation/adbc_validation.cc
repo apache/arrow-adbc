@@ -31,7 +31,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest.h>
-#include <nanoarrow.h>
+#include <nanoarrow/nanoarrow.h>
 
 #include "adbc_validation_util.h"
 
