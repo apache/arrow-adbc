@@ -52,24 +52,25 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          path: site
           # NOTE: needed to push at the end
           persist-credentials: true
           ref: asf-site
-      - name: Add dev docs
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          path: scripts
+          persist-credentials: false
+      - name: Download docs
         uses: actions/download-artifact@v3
         with:
           name: docs
-          path: main
+          path: temp
       - name: Build
         shell: bash
         run: |
           pip install sphobjinv
-          rm -rf versions.txt
-          touch versions.txt
-          for inv in */objects.inv; do
-              echo "$(dirname $inv);$(sphobjinv convert json $inv - | jq -r .version)" >> versions.txt
-          done
-          git add --force main/ versions.txt
+          ./scripts/ci/scripts/website_build.sh "$(pwd)/scripts" "$(pwd)/site" "$(pwd)/temp"
       - name: Push changes to asf-site branch
         run: |
           git config --global user.name 'github-actions[bot]'
