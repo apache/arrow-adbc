@@ -23,6 +23,11 @@ on:
       - main
   workflow_dispatch: {}
 
+# Ensure concurrent builds don't stomp on each other
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   build:
     name: "Build Website"
