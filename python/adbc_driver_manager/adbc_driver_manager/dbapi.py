@@ -516,6 +516,19 @@ class Cursor(_Closeable):
             self._results.close()
         self._stmt.close()
 
+    def _bind(self, parameters) -> None:
+        if isinstance(parameters, pyarrow.RecordBatch):
+            arr_handle = _lib.ArrowArrayHandle()
+            sch_handle = _lib.ArrowSchemaHandle()
+            parameters._export_to_c(arr_handle.address, sch_handle.address)
+            self._stmt.bind(arr_handle, sch_handle)
+            return
+        if isinstance(parameters, pyarrow.Table):
+            parameters = parameters.to_reader()
+        stream_handle = _lib.ArrowArrayStreamHandle()
+        parameters._export_to_c(stream_handle.address)
+        self._stmt.bind_stream(stream_handle)
+
     def _prepare_execute(self, operation, parameters=None) -> None:
         self._results = None
         if operation != self._last_query:
@@ -531,39 +544,68 @@ class Cursor(_Closeable):
                 # Not all drivers support it
                 pass
 
-        if parameters:
+        if isinstance(
+            parameters, (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader)
+        ):
+            self._bind(parameters)
+        elif parameters:
             rb = pyarrow.record_batch(
-                [
-                    [
-                        param_value,
-                    ]
-                    for param_value in parameters
-                ],
+                [[param_value] for param_value in parameters],
                 names=[str(i) for i in range(len(parameters))],
             )
-            arr_handle = _lib.ArrowArrayHandle()
-            sch_handle = _lib.ArrowSchemaHandle()
-            rb._export_to_c(arr_handle.address, sch_handle.address)
-            self._stmt.bind(arr_handle, sch_handle)
+            self._bind(rb)
 
-    def execute(self, operation, parameters=None) -> None:
-        """Execute a query."""
+    def execute(self, operation: Union[bytes, str], parameters=None) -> None:
+        """
+        Execute a query.
+
+        Parameters
+        ----------
+        operation : bytes or str
+            The query to execute.  Pass SQL queries as strings,
+            (serialized) Substrait plans as bytes.
+        parameters
+            Parameters to bind.  Can be a Python sequence (to provide
+            a single set of parameters), or an Arrow record batch,
+            table, or record batch reader (to provide multiple
+            parameters, which will each be bound in turn).
+        """
         self._prepare_execute(operation, parameters)
         handle, self._rowcount = self._stmt.execute_query()
         self._results = _RowIterator(
             pyarrow.RecordBatchReader._import_from_c(handle.address)
         )
 
-    def executemany(self, operation, seq_of_parameters):
-        """Execute a query with multiple parameter sets."""
+    def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
+        """
+        Execute a query with multiple parameter sets.
+
+        This method does not generate a result set.
+
+        Parameters
+        ----------
+        operation : bytes or str
+            The query to execute.  Pass SQL queries as strings,
+            (serialized) Substrait plans as bytes.
+        parameters
+            Parameters to bind.  Can be a list of Python sequences, or
+            an Arrow record batch, table, or record batch reader.  If
+            None, then the query will be executed once, else it will
+            be executed once per row.
+        """
         self._results = None
         if operation != self._last_query:
             self._last_query = operation
             self._stmt.set_sql_query(operation)
             self._stmt.prepare()
 
-        if seq_of_parameters:
-            rb = pyarrow.record_batch(
+        if isinstance(
+            seq_of_parameters,
+            (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader),
+        ):
+            arrow_parameters = seq_of_parameters
+        elif seq_of_parameters:
+            arrow_parameters = pyarrow.record_batch(
                 [
                     pyarrow.array([row[col_idx] for row in seq_of_parameters])
                     for col_idx in range(len(seq_of_parameters[0]))
@@ -571,12 +613,9 @@ class Cursor(_Closeable):
                 names=[str(i) for i in range(len(seq_of_parameters[0]))],
             )
         else:
-            rb = pyarrow.record_batch([])
+            arrow_parameters = pyarrow.record_batch([])
 
-        arr_handle = _lib.ArrowArrayHandle()
-        sch_handle = _lib.ArrowSchemaHandle()
-        rb._export_to_c(arr_handle.address, sch_handle.address)
-        self._stmt.bind(arr_handle, sch_handle)
+        self._bind(arrow_parameters)
         self._rowcount = self._stmt.execute_update()
 
     def fetchone(self) -> tuple:
