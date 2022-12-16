@@ -1,0 +1,272 @@
+# -*- ruby -*-
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+require "pathname"
+
+arrow_source = ENV["ARROW_SOURCE"]
+if arrow_source.nil?
+  raise "You must set ARROW_SOURCE environment variable"
+end
+ARROW_SOURCE = File.expand_path(arrow_source)
+require "#{ARROW_SOURCE}/dev/tasks/linux-packages/package-task"
+require "#{ARROW_SOURCE}/dev/release/binary-task"
+
+
+module Helper
+  private
+  def top_source_dir
+    Pathname(__dir__).parent.parent
+  end
+
+  def detect_version(release_time)
+    version_env = ENV["VERSION"]
+    return version_env if version_env
+
+    meson_build = top_source_dir / "c" / "cmake_modules" / "AdbcDefines.cmake"
+    version = meson_build.read.scan(/ADBC_VERSION "(.+?)"/)[0][0]
+    formatted_release_time = release_time.strftime("%Y%m%d")
+    version.gsub(/-SNAPSHOT\z/) {"-dev#{formatted_release_time}"}
+  end
+
+  def detect_release_time
+    release_time_env = ENV["RELEASE_TIME"]
+    if release_time_env
+      Time.parse(release_time_env).utc
+    else
+      Time.now.utc
+    end
+  end
+end
+
+class ADBCPackageTask < PackageTask
+  include Helper
+
+  def initialize
+    release_time = detect_release_time
+    super("apache-arrow-adbc", detect_version(release_time), release_time)
+  end
+
+  def define
+    super
+    define_rc_tasks
+    define_release_tasks
+  end
+
+  private
+  def define_archive_task
+    file @archive_name do
+      case @version
+      when /\A\d+\.\d+\.\d+-rc\d+\z/
+        download_rc_archive
+      when /\A\d+\.\d+\.\d+\z/
+        download_released_archive
+      else
+        build_archive
+      end
+    end
+
+    if deb_archive_name != @archive_name
+      file deb_archive_name => @archive_name do
+        cp(@archive_name, deb_archive_name)
+      end
+    end
+
+    if rpm_archive_name != @archive_name
+      file rpm_archive_name => @archive_name do
+        cp(@archive_name, rpm_archive_name)
+      end
+    end
+  end
+
+  def download_rc_archive
+    base_url = "https://dist.apache.org/repos/dist/dev/arrow"
+    archive_name_no_rc = @archive_name.gsub(/-rc\d+(\.tar\.gz)\z/, "\\1")
+    url = "#{base_url}/#{@package}-#{@version}/#{archive_name_no_rc}"
+    download(url, @archive_name)
+  end
+
+  def download_release_archive
+    base_url = "https://www.apache.org/dyn/closer.lua/arrow"
+    archive_name_no_rc = @archive_name.gsub(/-rc\d+(\.tar\.gz)\z/, "\\1")
+    url = "#{base_url}/#{@package}-#{@version}/#{archive_name_no_rc}"
+    url += "?action=download"
+    download(url, @archive_name)
+  end
+
+  def build_archive
+    cd(top_source_dir) do
+      sh("git",
+         "archive",
+         "HEAD",
+         "--output", @full_archive_name,
+         "--prefix", "#{@archive_base_name}/")
+    end
+  end
+
+  def apt_targets_default
+    [
+      "debian-bullseye",
+      # "debian-bullseye-arm64",
+      "debian-bookworm",
+      # "debian-bookworm-arm64",
+      "ubuntu-jammy",
+      # "ubuntu-jammy-arm64",
+    ]
+  end
+
+  def yum_targets_default
+    [
+      "almalinux-8",
+      # "almalinux-8-aarch64",
+      "almalinux-9",
+      # "almalinux-9-aarch64",
+    ]
+  end
+
+  def github_repository
+    ENV["GITHUB_REPOSITORY"] || "apache/arrow-adbc"
+  end
+
+  def docker_image(os, architecture)
+    "ghcr.io/#{github_repository}/package-#{super}"
+  end
+
+  def built_package_url(target_namespace, target)
+    url = "https://github.com/#{github_repository}"
+    url << "/releases/download/#{@version}/"
+    case target_namespace
+    when :apt
+      if target.end_with?("-arm64")
+        url << "#{target}.tar.gz"
+      else
+        url << "#{target}-amd64.tar.gz"
+      end
+    when :yum
+      if target.end_with?("-aarch64")
+        url << "#{target}.tar.gz"
+      else
+        url << "#{target}-x86_64.tar.gz"
+      end
+    end
+    url
+  end
+
+  def package_dir_name
+    "#{@package}-#{@version}"
+  end
+
+  def download_packages(target_namespace)
+    download_dir = "#{ARROW_SOURCE}/packages/#{package_dir_name}"
+    mkdir_p(download_dir)
+    __send__("#{target_namespace}_targets").each do |target|
+      url = built_package_url(target_namespace, target)
+      archive = download(url, download_dir)
+      cd(download_dir) do
+        sh("tar", "xf", archive)
+      end
+    end
+  end
+
+  def upload_rc(target_namespace)
+    targets = __send__("#{target_namespace}_targets")
+    cd(apache_arrow_dir) do
+      env = {
+        "CROSSBOW_JOB_ID" => package_dir_name,
+        "DEB_PACKAGE_NAME" => @package,
+        "STAGING" => ENV["STAGING"] || "no",
+        "UPLOAD_DEFAULT" => "0",
+      }
+      targets.each do |target|
+        distribution = target.split("-")[0].upcase
+        env["UPLOAD_#{distribution}"] = "1"
+      end
+      sh(env,
+         "dev/release/05-binary-upload.sh",
+         @version,
+         "0")
+    end
+  end
+
+  def define_rc_tasks
+    [:apt, :yum].each do |target_namespace|
+      tasks = []
+      namespace target_namespace do
+        desc "Upload RC #{target_namespace} packages"
+        task :rc do
+          download_packages(target_namespace)
+          upload_rc(target_namespace)
+        end
+        tasks << "#{target_namespace}:release"
+      end
+      task target_namespace => tasks
+    end
+  end
+
+  def release(target_namespace)
+    targets = __send__("#{target_namespace}_targets")
+    cd(apache_arrow_dir) do
+      env = {
+        "STAGING" => ENV["STAGING"] || "no",
+        "DEPLOY_DEFAULT" => "0",
+      }
+      targets.each do |target|
+        distribution = target.split("-")[0].upcase
+        env["DEPLOY_#{distribution}"] = "1"
+      end
+      sh(env,
+         "dev/release/post-02-binary.sh",
+         @version,
+         "0")
+    end
+  end
+
+  def define_release_tasks
+    [:apt, :yum].each do |target_namespace|
+      tasks = []
+      namespace target_namespace do
+        desc "Release #{target_namespace} packages"
+        task :release do
+          release(target_namespace)
+        end
+        tasks << "#{target_namespace}:release"
+      end
+      task target_namespace => tasks
+    end
+  end
+
+  def enable_yum?
+    false
+  end
+end
+
+class ADBCLocalBinaryTask < LocalBinaryTask
+  include Helper
+
+  def initialize
+    super([], top_source_dir.expand_path)
+  end
+
+  private
+  def version
+    @version ||= detect_version(detect_release_time)
+  end
+end
+
+ADBCPackageTask.new.define
+ADBCLocalBinaryTask.new.define

@@ -45,7 +45,8 @@ pkgconfig = import('pkgconfig')
 pkgconfig_variables = ['girdir=@0@'.format(gir_dir)]
 
 base_include_directories = [
-  include_directories('.')
+  include_directories('.'),
+  include_directories('..'),
 ]
 
 gi_fatal_warnings = (build_machine.system() != 'windows')
@@ -72,8 +73,10 @@ install_data('../LICENSE.txt',
              'README.md',
              install_dir: data_dir / 'doc' / meson.project_name())
 
-ruby = find_program('ruby')
-test_run_rb = files('test/run.rb')
-test('unit test',
-     ruby,
-     args: [test_run_rb])
+ruby = find_program('ruby', required: false)
+if ruby.found()
+  test_run_rb = files('test/run.rb')
+  test('unit test',
+       ruby,
+       args: [test_run_rb])
+endif

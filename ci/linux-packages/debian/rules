@@ -1,0 +1,75 @@
+#!/usr/bin/make -f
+# -*- makefile-gmake -*-
+#
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+
+export DEB_BUILD_MAINT_OPTIONS=reproducible=-timeless
+
+%:
+	dh $@ --with gir
+
+CMAKE_BUILD_TYPE = RelWithDebInfo
+
+override_dh_auto_configure:
+	dh_auto_configure				\
+	  --sourcedirectory=c/driver_manager		\
+	  --builddirectory=c/driver_manager.build	\
+	  --buildsystem=cmake+ninja			\
+	  --						\
+	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	dh_auto_configure				\
+	  --sourcedirectory=c/driver/postgresql		\
+	  --builddirectory=c/driver/postgresql.build	\
+	  --buildsystem=cmake+ninja			\
+	  --						\
+	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	dh_auto_configure				\
+	  --sourcedirectory=c/driver/sqlite		\
+	  --builddirectory=c/driver/sqlite.build	\
+	  --buildsystem=cmake+ninja			\
+	  --						\
+	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+
+override_dh_auto_build:
+	dh_auto_build					\
+	  --sourcedirectory=c/driver_manager		\
+	  --builddirectory=c/driver_manager.build
+	dh_auto_build					\
+	  --sourcedirectory=c/driver/postgresql		\
+	  --builddirectory=c/driver/postgresql.build
+	dh_auto_build					\
+	  --sourcedirectory=c/driver/sqlite		\
+	  --builddirectory=c/driver/sqlite.build
+	dh_auto_configure				\
+	  --sourcedirectory=glib			\
+	  --builddirectory=glib.build			\
+	  --buildsystem=meson+ninja			\
+	  --						\
+	  --buildtype=debugoptimized			\
+	  -Dadbc_build_dir=../c/driver_manager.build
+	env							\
+	  LD_LIBRARY_PATH=$(CURDIR)/c/driver_manager.build	\
+	    dh_auto_build					\
+	      --sourcedirectory=glib				\
+	      --builddirectory=glib.build			\
+	      --buildsystem=meson+ninja
+
+override_dh_auto_install:
+	dh_auto_install					\
+	  --sourcedirectory=c/driver_manager		\
+	  --builddirectory=c/driver_manager.build
+	dh_auto_install					\
+	  --sourcedirectory=c/driver/postgresql		\
+	  --builddirectory=c/driver/postgresql.build
+	dh_auto_install					\
+	  --sourcedirectory=c/driver/sqlite		\
+	  --builddirectory=c/driver/sqlite.build
+	dh_auto_install				\
+	   --sourcedirectory=glib		\
+	   --builddirectory=glib.build		\
+	   --buildsystem=meson+ninja
+
+override_dh_auto_test:
