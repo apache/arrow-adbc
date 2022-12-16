@@ -243,15 +243,9 @@ AdbcStatusCode SqliteConnectionGetInfoAppendStringImpl(struct ArrowArray* array,
   struct ArrowStringView value = ArrowCharView(info_value);
   CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[1]->children[0], value),
            error);
-  // Append type code (by hand)
-  struct ArrowBuffer* codes = ArrowArrayBuffer(array->children[1], 0);
-  CHECK_NA(INTERNAL, ArrowBufferAppendInt8(codes, 0), error);
-  // Append type offset (by hand)
-  struct ArrowBuffer* offsets = ArrowArrayBuffer(array->children[1], 1);
-  CHECK_NA(INTERNAL,
-           ArrowBufferAppendInt32(offsets, array->children[1]->children[0]->length - 1),
+  // Append type code/offset
+  CHECK_NA(INTERNAL, ArrowArrayFinishUnionElement(array->children[1], /*type_id=*/0),
            error);
-  array->children[1]->length++;
   return ADBC_STATUS_OK;
 }
 
