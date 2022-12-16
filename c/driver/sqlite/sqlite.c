@@ -261,10 +261,8 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(const uint32_t* info_codes,
                                            struct ArrowArray* array,
                                            struct AdbcError* error) {
   ArrowSchemaInit(schema);
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT), error);
-  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema, /*num_columns=*/2), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(schema, /*num_columns=*/2), error);
 
-  ArrowSchemaInit(schema->children[0]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_UINT32),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(schema->children[0], "info_name"), error);
@@ -273,7 +271,6 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(const uint32_t* info_codes,
   struct ArrowSchema* info_value = schema->children[1];
   // TODO(apache/arrow-nanoarrow#73): formal union support
   // initialize with dummy then override
-  ArrowSchemaInit(info_value);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value, NANOARROW_TYPE_UINT32), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetFormat(info_value, "+ud:0,1,2,3,4,5"), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value, "info_value"), error);
@@ -395,171 +392,127 @@ AdbcStatusCode SqliteConnectionGetInfo(struct AdbcConnection* connection,
 AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
                                                 struct AdbcError* error) {
   ArrowSchemaInit(schema);
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT), error);
-  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema, /*num_columns=*/2), error);
-  ArrowSchemaInit(schema->children[0]);
+  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(schema, /*num_columns=*/2), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(schema->children[0], "catalog_name"), error);
-  ArrowSchemaInit(schema->children[1]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_LIST), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(schema->children[1], "catalog_db_schemas"),
            error);
-  CHECK_NA(INTERNAL,
-           ArrowSchemaSetType(schema->children[1]->children[0], NANOARROW_TYPE_STRUCT),
-           error);
-  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema->children[1]->children[0], 2),
+  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(schema->children[1]->children[0], 2),
            error);
 
   struct ArrowSchema* db_schema_schema = schema->children[1]->children[0];
-  ArrowSchemaInit(db_schema_schema->children[0]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(db_schema_schema->children[0], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(db_schema_schema->children[0], "db_schema_name"),
            error);
-  ArrowSchemaInit(db_schema_schema->children[1]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(db_schema_schema->children[1], NANOARROW_TYPE_LIST), error);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetName(db_schema_schema->children[1], "db_schema_tables"), error);
   CHECK_NA(INTERNAL,
-           ArrowSchemaSetType(db_schema_schema->children[1]->children[0],
-                              NANOARROW_TYPE_STRUCT),
-           error);
-  CHECK_NA(INTERNAL,
-           ArrowSchemaAllocateChildren(db_schema_schema->children[1]->children[0], 4),
+           ArrowSchemaSetTypeStruct(db_schema_schema->children[1]->children[0], 4),
            error);
 
   struct ArrowSchema* table_schema = db_schema_schema->children[1]->children[0];
-  ArrowSchemaInit(table_schema->children[0]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(table_schema->children[0], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(table_schema->children[0], "table_name"), error);
   table_schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
-  ArrowSchemaInit(table_schema->children[1]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(table_schema->children[1], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(table_schema->children[1], "table_type"), error);
   table_schema->children[1]->flags &= ~ARROW_FLAG_NULLABLE;
-  ArrowSchemaInit(table_schema->children[2]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(table_schema->children[2], NANOARROW_TYPE_LIST),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(table_schema->children[2], "table_columns"),
            error);
-  CHECK_NA(
-      INTERNAL,
-      ArrowSchemaSetType(table_schema->children[2]->children[0], NANOARROW_TYPE_STRUCT),
-      error);
-  CHECK_NA(INTERNAL,
-           ArrowSchemaAllocateChildren(table_schema->children[2]->children[0], 19),
+  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(table_schema->children[2]->children[0], 19),
            error);
-  ArrowSchemaInit(table_schema->children[3]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(table_schema->children[3], NANOARROW_TYPE_LIST),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(table_schema->children[3], "table_constraints"),
            error);
-  CHECK_NA(
-      INTERNAL,
-      ArrowSchemaSetType(table_schema->children[3]->children[0], NANOARROW_TYPE_STRUCT),
-      error);
-  CHECK_NA(INTERNAL,
-           ArrowSchemaAllocateChildren(table_schema->children[3]->children[0], 4), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(table_schema->children[3]->children[0], 4),
+           error);
 
   struct ArrowSchema* column_schema = table_schema->children[2]->children[0];
-  ArrowSchemaInit(column_schema->children[0]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[0], NANOARROW_TYPE_STRING), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[0], "column_name"),
            error);
   column_schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
-  ArrowSchemaInit(column_schema->children[1]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(column_schema->children[1], NANOARROW_TYPE_INT32),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[1], "ordinal_position"),
            error);
-  ArrowSchemaInit(column_schema->children[2]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[2], NANOARROW_TYPE_STRING), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[2], "remarks"), error);
-  ArrowSchemaInit(column_schema->children[3]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(column_schema->children[3], NANOARROW_TYPE_INT16),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[3], "xdbc_data_type"),
            error);
-  ArrowSchemaInit(column_schema->children[4]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[4], NANOARROW_TYPE_STRING), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[4], "xdbc_type_name"),
            error);
-  ArrowSchemaInit(column_schema->children[5]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(column_schema->children[5], NANOARROW_TYPE_INT32),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[5], "xdbc_column_size"),
            error);
-  ArrowSchemaInit(column_schema->children[6]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(column_schema->children[6], NANOARROW_TYPE_INT16),
            error);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetName(column_schema->children[6], "xdbc_decimal_digits"), error);
-  ArrowSchemaInit(column_schema->children[7]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(column_schema->children[7], NANOARROW_TYPE_INT16),
            error);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetName(column_schema->children[7], "xdbc_num_prec_radix"), error);
-  ArrowSchemaInit(column_schema->children[8]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(column_schema->children[8], NANOARROW_TYPE_INT16),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[8], "xdbc_nullable"),
            error);
-  ArrowSchemaInit(column_schema->children[9]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[9], NANOARROW_TYPE_STRING), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[9], "xdbc_column_def"),
            error);
-  ArrowSchemaInit(column_schema->children[10]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[10], NANOARROW_TYPE_INT16), error);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetName(column_schema->children[10], "xdbc_sql_data_type"), error);
-  ArrowSchemaInit(column_schema->children[11]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[11], NANOARROW_TYPE_INT16), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[11], "xdbc_datetime_sub"),
            error);
-  ArrowSchemaInit(column_schema->children[12]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[12], NANOARROW_TYPE_INT32), error);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetName(column_schema->children[12], "xdbc_char_octet_length"),
            error);
-  ArrowSchemaInit(column_schema->children[13]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[13], NANOARROW_TYPE_STRING), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[13], "xdbc_is_nullable"),
            error);
-  ArrowSchemaInit(column_schema->children[14]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[14], NANOARROW_TYPE_STRING), error);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetName(column_schema->children[14], "xdbc_scope_catalog"), error);
-  ArrowSchemaInit(column_schema->children[15]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[15], NANOARROW_TYPE_STRING), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[15], "xdbc_scope_schema"),
            error);
-  ArrowSchemaInit(column_schema->children[16]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(column_schema->children[16], NANOARROW_TYPE_STRING), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(column_schema->children[16], "xdbc_scope_table"),
            error);
-  ArrowSchemaInit(column_schema->children[17]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(column_schema->children[17], NANOARROW_TYPE_BOOL),
            error);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetName(column_schema->children[17], "xdbc_is_autoincrement"),
            error);
-  ArrowSchemaInit(column_schema->children[18]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(column_schema->children[18], NANOARROW_TYPE_BOOL),
            error);
   CHECK_NA(INTERNAL,
@@ -567,20 +520,17 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
            error);
 
   struct ArrowSchema* constraint_schema = table_schema->children[3]->children[0];
-  ArrowSchemaInit(constraint_schema->children[0]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(constraint_schema->children[0], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetName(constraint_schema->children[0], "constraint_name"), error);
-  ArrowSchemaInit(constraint_schema->children[1]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(constraint_schema->children[1], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetName(constraint_schema->children[1], "constraint_type"), error);
   constraint_schema->children[1]->flags &= ~ARROW_FLAG_NULLABLE;
-  ArrowSchemaInit(constraint_schema->children[2]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(constraint_schema->children[2], NANOARROW_TYPE_LIST),
            error);
@@ -592,7 +542,6 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
                               NANOARROW_TYPE_STRING),
            error);
   constraint_schema->children[2]->flags &= ~ARROW_FLAG_NULLABLE;
-  ArrowSchemaInit(constraint_schema->children[3]);
   CHECK_NA(INTERNAL,
            ArrowSchemaSetType(constraint_schema->children[3], NANOARROW_TYPE_LIST),
            error);
@@ -600,29 +549,21 @@ AdbcStatusCode SqliteConnectionGetObjectsSchema(struct ArrowSchema* schema,
            ArrowSchemaSetName(constraint_schema->children[3], "constraint_column_usage"),
            error);
   CHECK_NA(INTERNAL,
-           ArrowSchemaSetType(constraint_schema->children[3]->children[0],
-                              NANOARROW_TYPE_STRUCT),
-           error);
-  CHECK_NA(INTERNAL,
-           ArrowSchemaAllocateChildren(constraint_schema->children[3]->children[0], 4),
+           ArrowSchemaSetTypeStruct(constraint_schema->children[3]->children[0], 4),
            error);
 
   struct ArrowSchema* usage_schema = constraint_schema->children[3]->children[0];
-  ArrowSchemaInit(usage_schema->children[0]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(usage_schema->children[0], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(usage_schema->children[0], "fk_catalog"), error);
-  ArrowSchemaInit(usage_schema->children[1]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(usage_schema->children[1], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(usage_schema->children[1], "fk_db_schema"),
            error);
-  ArrowSchemaInit(usage_schema->children[2]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(usage_schema->children[2], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(usage_schema->children[2], "fk_table"), error);
   usage_schema->children[2]->flags &= ~ARROW_FLAG_NULLABLE;
-  ArrowSchemaInit(usage_schema->children[3]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(usage_schema->children[3], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(usage_schema->children[3], "fk_column_name"),
