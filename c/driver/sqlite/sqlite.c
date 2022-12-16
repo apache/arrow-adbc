@@ -269,34 +269,25 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(const uint32_t* info_codes,
   schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
 
   struct ArrowSchema* info_value = schema->children[1];
-  // TODO(apache/arrow-nanoarrow#73): formal union support
-  // initialize with dummy then override
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value, NANOARROW_TYPE_UINT32), error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetFormat(info_value, "+ud:0,1,2,3,4,5"), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetTypeUnion(info_value, NANOARROW_TYPE_DENSE_UNION, 6),
+           error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value, "info_value"), error);
-  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(info_value, /*num_columns=*/6), error);
 
-  ArrowSchemaInit(info_value->children[0]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[0], NANOARROW_TYPE_STRING),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[0], "string_value"), error);
-  ArrowSchemaInit(info_value->children[1]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[1], NANOARROW_TYPE_BOOL),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[1], "bool_value"), error);
-  ArrowSchemaInit(info_value->children[2]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[2], NANOARROW_TYPE_INT64),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[2], "int64_value"), error);
-  ArrowSchemaInit(info_value->children[3]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[3], NANOARROW_TYPE_INT32),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[3], "int32_bitmask"), error);
-  ArrowSchemaInit(info_value->children[4]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[4], NANOARROW_TYPE_LIST),
            error);
   CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[4], "string_list"), error);
-  ArrowSchemaInit(info_value->children[5]);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[5], NANOARROW_TYPE_MAP),
            error);
   CHECK_NA(INTERNAL,
