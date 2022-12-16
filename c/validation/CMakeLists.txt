@@ -19,6 +19,7 @@ cmake_minimum_required(VERSION 3.18)
 get_filename_component(REPOSITORY_ROOT "../../" ABSOLUTE)
 list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcVersion)
+include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 project(adbc_validation
         VERSION "${ADBC_BASE_VERSION}"
