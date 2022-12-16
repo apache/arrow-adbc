@@ -16,8 +16,13 @@
 # under the License.
 
 cmake_minimum_required(VERSION 3.18)
+get_filename_component(REPOSITORY_ROOT "../../" ABSOLUTE)
+list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
+include(AdbcVersion)
 include(CMakePackageConfigHelpers)
-project(adbc_validation LANGUAGES CXX)
+project(adbc_validation
+        VERSION "${ADBC_BASE_VERSION}"
+        LANGUAGES CXX)
 
 find_package(GTest REQUIRED)
 get_filename_component(REPOSITORY_ROOT "../../" ABSOLUTE)
@@ -33,12 +38,11 @@ set_target_properties(adbc_validation
 
 install(TARGETS adbc_validation
         EXPORT AdbcValidationTargets
-        LIBRARY DESTINATION lib
-        PUBLIC_HEADER DESTINATION include/adbc_validation/)
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/adbc_validation/")
 
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfigVersion.cmake"
-  VERSION main
   COMPATIBILITY AnyNewerVersion)
 export(EXPORT AdbcValidationTargets
        FILE "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationTargets.cmake"
@@ -51,7 +55,7 @@ configure_package_config_file("AdbcValidationConfig.cmake.in"
 install(EXPORT AdbcValidationTargets
         FILE AdbcValidationTargets.cmake
         NAMESPACE AdbcValidation::
-        DESTINATION "lib/cmake/AdbcValidation")
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/AdbcValidation")
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/AdbcValidation/AdbcValidationConfigVersion.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/AdbcValidation"
