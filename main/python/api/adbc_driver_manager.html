@@ -1288,14 +1288,43 @@ provide this information.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.execute">
-<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.execute" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.execute" title="Permalink to this definition">#</a></dt>
 <dd><p>Execute a query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>operation</strong><span class="classifier">bytes or str</span></dt><dd><p>The query to execute.  Pass SQL queries as strings,
+(serialized) Substrait plans as bytes.</p>
+</dd>
+<dt><strong>parameters</strong></dt><dd><p>Parameters to bind.  Can be a Python sequence (to provide
+a single set of parameters), or an Arrow record batch,
+table, or record batch reader (to provide multiple
+parameters, which will each be bound in turn).</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.executemany">
-<span class="sig-name descname"><span class="pre">executemany</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seq_of_parameters</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.executemany" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">executemany</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seq_of_parameters</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.executemany" title="Permalink to this definition">#</a></dt>
 <dd><p>Execute a query with multiple parameter sets.</p>
+<p>This method does not generate a result set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>operation</strong><span class="classifier">bytes or str</span></dt><dd><p>The query to execute.  Pass SQL queries as strings,
+(serialized) Substrait plans as bytes.</p>
+</dd>
+<dt><strong>parameters</strong></dt><dd><p>Parameters to bind.  Can be a list of Python sequences, or
+an Arrow record batch, table, or record batch reader.  If
+None, then the query will be executed once, else it will
+be executed once per row.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
