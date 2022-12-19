@@ -22,36 +22,34 @@ set -u
 set -o pipefail
 
 main() {
-    local -r source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local -r source_top_dir="$(cd "${source_dir}/../../" && pwd)"
+    local -r source_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    local -r source_top_dir="$( cd "${source_dir}/../../" && pwd )"
 
-    if [ $# -ne 3 ]; then
-        echo "Usage: $0 <arrow-dir> <version> <rc-number>"
-        echo "Usage: $0 ../arrow 1.0.0 0"
-        exit
+    if [ "$#" -ne 2 ]; then
+        echo "Usage: $0 <version> <rc-num>"
+        exit 1
     fi
 
-    local -r arrow_dir="$(cd "$1" && pwd)"
-    local -r version="$2"
-    local -r rc_number="$3"
+    local -r version="$1"
+    local -r rc_number="$2"
     local -r tag="apache-arrow-adbc-${version}-rc${rc_number}"
 
     : ${REPOSITORY:="apache/arrow-adbc"}
 
-    export ARROW_ARTIFACTS_DIR="$(pwd)/packages/${tag}/java"
-    rm -rf "${ARROW_ARTIFACTS_DIR}"
-    mkdir -p "${ARROW_ARTIFACTS_DIR}"
-    gh release download \
-       --dir "${ARROW_ARTIFACTS_DIR}" \
-       --pattern "*.jar" \
-       --pattern "*.jar.asc" \
-       --pattern "*.pom" \
-       --pattern "*.pom.asc" \
-       --repo "${REPOSITORY}" \
-       "${tag}"
+    header "Publishing release ${version}"
 
-    export UPLOAD_FORCE_SIGN=0
-    "${arrow_dir}/dev/release/06-java-upload.sh" "${version}" "${rc_number}"
+    gh release edit \
+       --repo "${REPOSITORY}" \
+       "${tag}" \
+       --title="ADBC Libraries ${version}" \
+       --prerelease=false \
+       --tag="apache-arrow-adbc-${version}"
+}
+
+header() {
+    echo "============================================================"
+    echo "${1}"
+    echo "============================================================"
 }
 
 main "$@"

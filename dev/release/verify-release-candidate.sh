@@ -488,7 +488,7 @@ test_go() {
 ensure_source_directory() {
   show_header "Ensuring source directory"
 
-  dist_name="adbc-${VERSION}"
+  dist_name="apache-arrow-adbc-${VERSION}"
 
   if [ "${SOURCE_KIND}" = "local" ]; then
     # Local arrow repository, testing repositories should be already present
@@ -570,7 +570,7 @@ test_binary_distribution() {
                        --dest="${BINARY_DIR}" \
                        --package_type=github \
                        --repository="${SOURCE_REPOSITORY}" \
-                       --tag="adbc-${VERSION}-rc${RC_NUMBER}"
+                       --tag="apache-arrow-adbc-${VERSION}-rc${RC_NUMBER}"
   fi
 
   if [ ${TEST_BINARY} -gt 0 ]; then

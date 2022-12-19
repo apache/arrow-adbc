@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -14,8 +16,32 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+#
+set -ue
 
-commitizen
-gh
-pre-commit
-twine
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 <version> <next_version>"
+  exit 1
+fi
+
+. $SOURCE_DIR/utils-prepare.sh
+
+version=$1
+next_version=$2
+next_version_snapshot="${next_version}-SNAPSHOT"
+
+########################## Update Snapshot Version ##########################
+
+git fetch --all --prune --tags --force -j$(nproc)
+git switch main
+git rebase apache/main
+
+echo "Updating versions for ${next_version_snapshot}"
+update_versions "${version}" "${next_version}" "snapshot"
+git commit -m "chore: update versions for ${next_version_snapshot}"
+echo "Bumped versions on branch."
+
+echo "Pushing changes to apache/arrow-adbc:main"
+git push apache main

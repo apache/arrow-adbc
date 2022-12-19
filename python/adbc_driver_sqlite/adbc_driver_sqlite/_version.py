@@ -34,7 +34,9 @@ package_root = os.path.dirname(os.path.realpath(__file__))
 package_name = os.path.basename(package_root)
 
 STATIC_VERSION_FILE = "_static_version.py"
-TAG_RELEASE_FORMAT = re.compile(r"^adbc-([0-9]+\.[0-9]+\.[0-9]+)(?:-rc[0-9]+)?$")
+TAG_RELEASE_FORMAT = re.compile(
+    r"^apache-arrow-adbc-([0-9]+\.[0-9]+\.[0-9]+)(?:-rc[0-9]+)?$"
+)
 
 
 def get_version(version_file=STATIC_VERSION_FILE):
