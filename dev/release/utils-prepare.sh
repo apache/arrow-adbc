@@ -35,9 +35,9 @@ update_versions() {
   local major_version=${version%%.*}
 
   pushd "${ADBC_DIR}/c/"
-  sed -i.bak -E "s/set\(ADBC_VERSION \".+\"\)/set(ADBC_VERSION \"${version}\")/g" cmake_modules/AdbcDefines.cmake
-  rm cmake_modules/AdbcDefines.cmake.bak
-  git add cmake_modules/AdbcDefines.cmake
+  sed -i.bak -E "s/set\(ADBC_VERSION \".+\"\)/set(ADBC_VERSION \"${version}\")/g" cmake_modules/AdbcVersion.cmake
+  rm cmake_modules/AdbcVersion.cmake.bak
+  git add cmake_modules/AdbcVersion.cmake
   popd
 
   sed -i.bak -E "s/release = \".+\"/release = \"${docs_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
