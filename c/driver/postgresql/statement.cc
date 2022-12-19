@@ -27,7 +27,7 @@
 
 #include <adbc.h>
 #include <libpq-fe.h>
-#include <nanoarrow.h>
+#include <nanoarrow/nanoarrow.h>
 
 #include "connection.h"
 #include "type.h"
@@ -108,8 +108,8 @@ struct Handle {
 AdbcStatusCode InferSchema(const TypeMapping& type_mapping, PGresult* result,
                            struct ArrowSchema* out, struct AdbcError* error) {
   const int num_fields = PQnfields(result);
-  CHECK_NA_ADBC(ArrowSchemaInit(out, NANOARROW_TYPE_STRUCT), error);
-  CHECK_NA_ADBC(ArrowSchemaAllocateChildren(out, num_fields), error);
+  ArrowSchemaInit(out);
+  CHECK_NA_ADBC(ArrowSchemaSetTypeStruct(out, num_fields), error);
   for (int i = 0; i < num_fields; i++) {
     ArrowType field_type = NANOARROW_TYPE_NA;
     const Oid pg_type = PQftype(result, i);
@@ -150,7 +150,7 @@ AdbcStatusCode InferSchema(const TypeMapping& type_mapping, PGresult* result,
                  "\") has unimplemented type code ", pg_type);
         return ADBC_STATUS_NOT_IMPLEMENTED;
     }
-    CHECK_NA_ADBC(ArrowSchemaInit(out->children[i], field_type), error);
+    CHECK_NA_ADBC(ArrowSchemaSetType(out->children[i], field_type), error);
     CHECK_NA_ADBC(ArrowSchemaSetName(out->children[i], PQfname(result, i)), error);
   }
   return ADBC_STATUS_OK;

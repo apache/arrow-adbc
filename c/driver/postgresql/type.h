@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <nanoarrow.h>
+#include <nanoarrow/nanoarrow.h>
 
 namespace adbcpq {
 

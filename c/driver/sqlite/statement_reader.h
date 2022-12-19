@@ -20,7 +20,7 @@
 #pragma once
 
 #include <adbc.h>
-#include <nanoarrow.h>
+#include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
 #ifdef __cplusplus

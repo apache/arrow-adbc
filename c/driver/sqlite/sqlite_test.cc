@@ -26,7 +26,7 @@
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
-#include <nanoarrow.h>
+#include <nanoarrow/nanoarrow.h>
 
 #include "statement_reader.h"
 #include "validation/adbc_validation.h"

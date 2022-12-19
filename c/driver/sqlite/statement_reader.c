@@ -22,7 +22,7 @@
 #include <stdio.h>
 
 #include <adbc.h>
-#include <nanoarrow.h>
+#include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
 #include "utils.h"
@@ -517,12 +517,12 @@ AdbcStatusCode StatementReaderInferFinalize(
     sqlite3_stmt* stmt, int num_columns, int64_t num_rows, struct StatementReader* reader,
     struct ArrowBitmap* validity, struct ArrowBuffer* data, struct ArrowBuffer* binary,
     enum ArrowType* current_type, struct AdbcError* error) {
-  CHECK_NA(INTERNAL, ArrowSchemaInit(&reader->schema, NANOARROW_TYPE_STRUCT), error);
-  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(&reader->schema, num_columns), error);
+  ArrowSchemaInit(&reader->schema);
+  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(&reader->schema, num_columns), error);
   for (int col = 0; col < num_columns; col++) {
     struct ArrowSchema* field = reader->schema.children[col];
     const char* name = sqlite3_column_name(stmt, col);
-    CHECK_NA(INTERNAL, ArrowSchemaInit(field, current_type[col]), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetType(field, current_type[col]), error);
     CHECK_NA(INTERNAL, ArrowSchemaSetName(field, name), error);
   }
   CHECK_NA(INTERNAL,

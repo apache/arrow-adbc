@@ -40,8 +40,7 @@ namespace internal {
 static inline void init_pointer(struct ArrowSchema* data) { data->release = nullptr; }
 
 static inline void move_pointer(struct ArrowSchema* src, struct ArrowSchema* dst) {
-  memcpy(dst, src, sizeof(struct ArrowSchema));
-  src->release = nullptr;
+  ArrowSchemaMove(src, dst);
 }
 
 static inline void release_pointer(struct ArrowSchema* data) {
@@ -53,8 +52,7 @@ static inline void release_pointer(struct ArrowSchema* data) {
 static inline void init_pointer(struct ArrowArray* data) { data->release = nullptr; }
 
 static inline void move_pointer(struct ArrowArray* src, struct ArrowArray* dst) {
-  memcpy(dst, src, sizeof(struct ArrowArray));
-  src->release = nullptr;
+  ArrowArrayMove(src, dst);
 }
 
 static inline void release_pointer(struct ArrowArray* data) {
@@ -69,8 +67,7 @@ static inline void init_pointer(struct ArrowArrayStream* data) {
 
 static inline void move_pointer(struct ArrowArrayStream* src,
                                 struct ArrowArrayStream* dst) {
-  memcpy(dst, src, sizeof(struct ArrowArrayStream));
-  src->release = nullptr;
+  ArrowArrayStreamMove(src, dst);
 }
 
 static inline void release_pointer(ArrowArrayStream* data) {
@@ -90,20 +87,17 @@ static inline void release_pointer(struct ArrowBuffer* data) { ArrowBufferReset(
 static inline void init_pointer(struct ArrowBitmap* data) { ArrowBitmapInit(data); }
 
 static inline void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
-  ArrowBufferMove(&src->buffer, &dst->buffer);
-  dst->size_bits = src->size_bits;
-  src->size_bits = 0;
+  ArrowBitmapMove(src, dst);
 }
 
 static inline void release_pointer(struct ArrowBitmap* data) { ArrowBitmapReset(data); }
 
 static inline void init_pointer(struct ArrowArrayView* data) {
-  ArrowArrayViewInit(data, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowArrayViewInitFromType(data, NANOARROW_TYPE_UNINITIALIZED);
 }
 
 static inline void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {
-  memcpy(dst, src, sizeof(struct ArrowArrayView));
-  init_pointer(src);
+  ArrowArrayViewMove(src, dst);
 }
 
 static inline void release_pointer(struct ArrowArrayView* data) {
