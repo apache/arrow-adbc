@@ -237,7 +237,7 @@ jobs:
         arch: ["amd64", "arm64v8"]
         manylinux_version: ["2014"]
         is_pr:
-          - ${{ startsWith(github.ref, 'refs/pull/' }}
+          - ${{ startsWith(github.ref, 'refs/pull/') }}
         exclude:
           # Don't run arm64v8 build on PRs since the build is excessively slow
           - arch: arm64v8
