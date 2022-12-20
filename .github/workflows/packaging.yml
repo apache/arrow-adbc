@@ -34,7 +34,6 @@ on:
     # Automatically build on RC tags
     branches-ignore:
       - '**'
-
     tags:
       - 'apache-arrow-adbc-*-rc*'
   schedule:
