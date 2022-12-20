@@ -1,0 +1,4 @@
+usr/include/adbc-glib/
+usr/lib/*/libadbc-glib.so
+usr/lib/*/pkgconfig/adbc-glib.pc
+usr/share/gir-1.0/ADBC-*.gir

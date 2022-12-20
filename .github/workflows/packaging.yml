@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Packaging - Nightly Artifacts
+name: Packaging
 
 on:
   push:
@@ -121,6 +121,109 @@ jobs:
           sudo -E ./ci/scripts/java_jar_upload.sh "$(pwd)"
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+
+  linux:
+    name: Linux ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - debian-bookworm
+          - debian-bullseye
+          - ubuntu-jammy
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/checkout@v3
+        with:
+          repository: apache/arrow
+          path: arrow
+
+      - name: Set environment variables
+        run: |
+          echo "ARROW_SOURCE=$(pwd)/arrow" >> $GITHUB_ENV
+          case ${{ matrix.target }} in
+            debian-*|ubuntu-*)
+              echo "TASK_NAMESPACE=apt" >> $GITHUB_ENV
+              echo "APT_TARGETS=${{ matrix.target }}" >> $GITHUB_ENV
+              ;;
+          esac
+          distribution=$(echo ${{ matrix.target }} | cut -d- -f1)
+          echo "DISTRIBUTION=${distribution}" >> $GITHUB_ENV
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ruby
+
+      - name: Cache ccache
+        uses: actions/cache@v3
+        with:
+          path: ci/linux-packages/${{ env.TASK_NAMESPACE }}/build/${{ matrix.target }}/ccache
+          key: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-{{ "${{ hashFiles('adbc.h', 'c/**', 'glib/**') }}" }}
+          restore-keys: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-
+
+      - name: Login to GitHub Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build
+        run: |
+          pushd ci/linux-packages
+          rake version:update
+          rake docker:pull || :
+          rake --trace ${TASK_NAMESPACE}:build BUILD_DIR=build
+          popd
+
+      - name: Prepare artifacts
+        run: |
+          cp -a \
+            ci/linux-packages/${{ env.TASK_NAMESPACE }}/repositories/${DISTRIBUTION} \
+            ./
+          tar czf ${{ matrix.target }}.tar.gz ${DISTRIBUTION}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            ${{ matrix.target }}.tar.gz
+
+      - name: Push Docker image
+        run: |
+          pushd ci/linux-packages
+          rake docker:push || :
+          popd
+
+      - name: Set up test
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            apt-utils \
+            createrepo-c \
+            devscripts \
+            gpg \
+            rpm
+          gem install apt-dists-merge
+          (echo "Key-Type: RSA"; \
+           echo "Key-Length: 4096"; \
+           echo "Name-Real: Test"; \
+           echo "Name-Email: test@example.com"; \
+           echo "%no-protection") | \
+            gpg --full-generate-key --batch
+          GPG_KEY_ID=$(gpg --list-keys --with-colon test@example.com | grep fpr | cut -d: -f10)
+          echo "GPG_KEY_ID=${GPG_KEY_ID}" >> ${GITHUB_ENV}
+          gpg --export --armor test@example.com > ci/linux-packages/KEYS
+
+      - name: Test
+        run: |
+          pushd ci/linux-packages
+          rake --trace ${TASK_NAMESPACE}:test
+          popd
 
   python-manylinux:
     name: "Python ${{ matrix.arch }} manylinux${{ matrix.manylinux_version }}"
@@ -441,6 +544,7 @@ jobs:
     needs:
       - docs
       - java
+      - linux
       - python-manylinux
       - python-macos
       - python-windows

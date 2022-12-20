@@ -106,3 +106,13 @@ java-native-cpp/
 target/
 
 *.log
+
+# Linux packages
+/ci/linux-packages/*.tar.gz
+/ci/linux-packages/KEYS
+/ci/linux-packages/apt/build.sh
+/ci/linux-packages/apt/build/
+/ci/linux-packages/apt/env.sh
+/ci/linux-packages/apt/merged/
+/ci/linux-packages/apt/repositories/
+/ci/linux-packages/apt/tmp/

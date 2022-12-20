@@ -1,0 +1,4 @@
+usr/lib/*/cmake/AdbcDriverSQLite/
+usr/lib/*/libadbc_driver_sqlite.a
+usr/lib/*/libadbc_driver_sqlite.so
+usr/lib/*/pkgconfig/adbc-driver-sqlite.pc

@@ -1,0 +1,151 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+Source: apache-arrow-adbc
+Section: devel
+Priority: optional
+Maintainer: Apache Arrow Developers <dev@arrow.apache.org>
+Build-Depends:
+  cmake,
+  debhelper-compat (= 12),
+  gobject-introspection,
+  libgirepository1.0-dev,
+  libpq-dev,
+  libsqlite3-dev,
+  tzdata,
+  valac
+Standards-Version: 4.5.0
+Homepage: https://arrow.apache.org/adbc/
+
+Package: libadbc-driver-manager100
+Section: libs
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends:
+  ${misc:Depends},
+  ${shlibs:Depends}
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides C++ library files.
+
+Package: libadbc-driver-manager-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends:
+  ${misc:Depends},
+  libadbc-driver-manager100 (= ${binary:Version})
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides C++ header files.
+
+Package: libadbc-driver-postgresql100
+Section: libs
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends:
+  ${misc:Depends},
+  ${shlibs:Depends}
+Description: Apache Arrow Database Connectivity (ADBC) PostgreSQL driver
+ .
+ This package provides an ADBC driver for PostgreSQL
+
+Package: libadbc-driver-postgresql-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends:
+  ${misc:Depends},
+  libadbc-driver-postgresql100 (= ${binary:Version})
+Description: Apache Arrow Database Connectivity (ADBC) PostgreSQL driver
+ .
+ This package provides CMake package, pkg-config package and so on.
+
+Package: libadbc-driver-sqlite100
+Section: libs
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends:
+  ${misc:Depends},
+  ${shlibs:Depends}
+Description: Apache Arrow Database Connectivity (ADBC) PostgreSQL driver
+ .
+ This package provides an ADBC driver for PostgreSQL
+
+Package: libadbc-driver-sqlite-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends:
+  ${misc:Depends},
+  libadbc-driver-sqlite100 (= ${binary:Version})
+Description: Apache Arrow Database Connectivity (ADBC) SQLite driver
+ .
+ This package provides CMake package, pkg-config package and so on.
+
+Package: libadbc-glib1
+Section: libs
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends:
+  ${misc:Depends},
+  ${shlibs:Depends},
+  libadbc-driver-manager100 (= ${binary:Version})
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides GLib based library files.
+
+Package: gir1.2-adbc-1.0
+Section: introspection
+Architecture: any
+Multi-Arch: same
+Depends:
+  ${gir:Depends},
+  ${misc:Depends}
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides GObject Introspection typelib files.
+
+Package: libadbc-glib-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends:
+  ${misc:Depends},
+  gir1.2-adbc-1.0 (= ${binary:Version}),
+  libadbc-driver-manager-dev (= ${binary:Version}),
+  libarrow-glib-dev
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides GLib based header files.
+
+Package: libadbc-glib-doc
+Section: doc
+Architecture: all
+Multi-Arch: foreign
+Depends:
+  ${misc:Depends}
+Recommends:
+  libglib2.0-doc,
+  libarrow-glib-doc
+Description: Apache Arrow Database Connectivity (ADBC) driver manager
+ .
+ This package provides documentations.

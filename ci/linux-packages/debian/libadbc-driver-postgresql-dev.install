@@ -1,0 +1,4 @@
+usr/lib/*/cmake/AdbcDriverPostgreSQL/
+usr/lib/*/libadbc_driver_postgresql.a
+usr/lib/*/libadbc_driver_postgresql.so
+usr/lib/*/pkgconfig/adbc-driver-postgresql.pc

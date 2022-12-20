@@ -1,0 +1,92 @@
+#!/usr/bin/make -f
+# -*- makefile-gmake -*-
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+
+export DEB_BUILD_MAINT_OPTIONS=reproducible=-timeless
+
+%:
+	dh $@ --with gir
+
+CMAKE_BUILD_TYPE = RelWithDebInfo
+
+override_dh_auto_configure:
+	dh_auto_configure				\
+	  --sourcedirectory=c/driver_manager		\
+	  --builddirectory=c/driver_manager.build	\
+	  --buildsystem=cmake+ninja			\
+	  --						\
+	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	dh_auto_configure				\
+	  --sourcedirectory=c/driver/postgresql		\
+	  --builddirectory=c/driver/postgresql.build	\
+	  --buildsystem=cmake+ninja			\
+	  --						\
+	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	dh_auto_configure				\
+	  --sourcedirectory=c/driver/sqlite		\
+	  --builddirectory=c/driver/sqlite.build	\
+	  --buildsystem=cmake+ninja			\
+	  --						\
+	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+
+override_dh_auto_build:
+	dh_auto_build					\
+	  --sourcedirectory=c/driver_manager		\
+	  --builddirectory=c/driver_manager.build
+	dh_auto_build					\
+	  --sourcedirectory=c/driver/postgresql		\
+	  --builddirectory=c/driver/postgresql.build
+	dh_auto_build					\
+	  --sourcedirectory=c/driver/sqlite		\
+	  --builddirectory=c/driver/sqlite.build
+	dh_auto_configure				\
+	  --sourcedirectory=glib			\
+	  --builddirectory=glib.build			\
+	  --buildsystem=meson+ninja			\
+	  --						\
+	  --buildtype=debugoptimized			\
+	  -Dadbc_build_dir=../c/driver_manager.build
+	env							\
+	  LD_LIBRARY_PATH=$(CURDIR)/c/driver_manager.build	\
+	    dh_auto_build					\
+	      --sourcedirectory=glib				\
+	      --builddirectory=glib.build			\
+	      --buildsystem=meson+ninja
+
+override_dh_auto_install:
+	dh_auto_install					\
+	  --sourcedirectory=c/driver_manager		\
+	  --builddirectory=c/driver_manager.build
+	dh_auto_install					\
+	  --sourcedirectory=c/driver/postgresql		\
+	  --builddirectory=c/driver/postgresql.build
+	dh_auto_install					\
+	  --sourcedirectory=c/driver/sqlite		\
+	  --builddirectory=c/driver/sqlite.build
+	dh_auto_install				\
+	   --sourcedirectory=glib		\
+	   --builddirectory=glib.build		\
+	   --buildsystem=meson+ninja
+
+override_dh_auto_test:
