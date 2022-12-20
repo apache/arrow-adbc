@@ -18,17 +18,16 @@
 
 set -ex
 
+# Usage: java_jar_upload.sh jar1.pom jar2.pom ...
+
 main() {
-    local -r source_dir="${1}"
-    local settings_file=$(mktemp adbc.settingsXXXXXXXX.xml --tmpdir)
+    local settings_file=$(mktemp adbc.settingsXXXXXXXX)
     trap 'rm -f "$settings_file"' ERR EXIT INT TERM
 
     if [[ -z "${GEMFURY_PUSH_TOKEN}" ]]; then
         echo "GEMFURY_PUSH_TOKEN must be set"
         exit 1
     fi
-
-    pushd "${source_dir}/java"
 
     cat <<SETTINGS > "${settings_file}"
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -51,14 +50,36 @@ main() {
 </settings>
 SETTINGS
 
-    mvn \
-        -Dmaven.install.skip=true \
-        -Drat.skip=true \
-        -DskipTests \
-        --settings "${settings_file}" \
-        deploy
+    for pom in "$@"; do
+        echo "Deploying ${pom}"
+        local mvnArgs=""
 
-    popd
+        local filename=$(basename "${pom}" .pom)
+        local jar=$(dirname "${pom}")/"${filename}.jar"
+        local sources=$(dirname "${pom}")/"${filename}-javadoc.jar"
+        local javadoc=$(dirname "${pom}")/"${filename}-sources.jar"
+
+        if [[ -f "${sources}" ]]; then
+            mvnArgs="${mvnArgs} -Dsources=${sources}"
+        fi
+
+        if [[ -f "${javadoc}" ]]; then
+            mvnArgs="${mvnArgs} -Djavadoc=${javadoc}"
+        fi
+
+        mvn \
+            -Dmaven.install.skip=true \
+            -Drat.skip=true \
+            -DskipTests \
+            --settings "${settings_file}" \
+            deploy:deploy-file \
+            -DrepositoryId=fury \
+            -Durl=https://maven.fury.io/arrow-adbc-nightlies/ \
+            -DgeneratePom=false \
+            -Dfile="${jar}" \
+            -DpomFile="${pom}" \
+            ${mvnArgs}
+    done
 }
 
 main "$@"

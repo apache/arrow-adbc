@@ -18,10 +18,23 @@
 name: Packaging
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "adbc.h"
+      - "c/**"
+      - "ci/**"
+      - "glib/**"
+      - "python/**"
+      - "ruby/**"
+      - ".github/workflows/packaging.yml"
+
   push:
     # Automatically build on RC tags
     branches-ignore:
       - '**'
+
     tags:
       - 'apache-arrow-adbc-*-rc*'
   schedule:
@@ -112,15 +125,6 @@ jobs:
           path: |
             dist/*.jar
             dist/*.pom
-
-      - name: Upload JARs to Gemfury
-        shell: bash
-        if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
-        run: |
-          # Preserve env vars so GEMFURY_PUSH_TOKEN gets preserved
-          sudo -E ./ci/scripts/java_jar_upload.sh "$(pwd)"
-        env:
-          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
   linux:
     name: Linux ${{ matrix.target }}
@@ -232,7 +236,6 @@ jobs:
       matrix:
         arch: ["amd64", "arm64v8"]
         manylinux_version: ["2014"]
-      # Let this one run in parallel because the arm64 build is so much slower
     steps:
       - uses: actions/checkout@v3
         with:
@@ -282,22 +285,12 @@ jobs:
           env PYTHON=3.10 docker-compose run python-wheel-manylinux-test
           env PYTHON=3.11 docker-compose run python-wheel-manylinux-test
 
-      - name: Upload wheels to Gemfury
-        shell: bash
-        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true)
-        run: |
-          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgresql,sqlite}/repaired_wheels/*.whl
-        env:
-          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
-
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
     runs-on: macos-latest
     strategy:
       matrix:
         arch: ["amd64", "arm64v8"]
-      # Limit parallelism; gemfury appears to return 409 CONFLICT on concurrent uploads
-      max-parallel: 1
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
       PYTHON: "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10"
@@ -383,28 +376,12 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
-      - name: Upload wheels to Gemfury
-        shell: bash
-        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true)
-        run: |
-          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgresql,sqlite}/repaired_wheels/*.whl
-        env:
-          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
-
   python-windows:
     name: "Python ${{ matrix.python_version }} Windows"
     runs-on: windows-latest
     strategy:
       matrix:
-        python_version: ["3.9.13", "3.10.8", "3.11.0"]
-        include:
-          - python_version: "3.9.13"
-            PYTHON_HOME: "C:\\Python39"
-          - python_version: "3.10.8"
-            PYTHON_HOME: "C:\\Python310"
-
-      # Limit parallelism; gemfury appears to return 409 CONFLICT on concurrent uploads
-      max-parallel: 1
+        python_version: ["3.9", "3.10", "3.11"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg
@@ -448,10 +425,9 @@ jobs:
           popd
 
       - name: Install Python ${{ matrix.python_version }}
-        shell: pwsh
-        run: |
-          choco install --no-progress -y python --version=${{ matrix.python_version }}
-          echo ("PATH=${{ matrix.PYTHON_HOME }};" + $env:PATH) >> $env:GITHUB_ENV
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python_version }}
 
       - name: Build wheel
         shell: cmd
@@ -477,16 +453,6 @@ jobs:
           python -m venv venv
           CALL venv\Scripts\activate.bat
           .\ci\scripts\python_wheel_windows_test.bat %cd%
-
-      - name: Upload wheels to Gemfury
-        shell: pwsh
-        if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
-        run: |
-          foreach ($wheel in Get-ChildItem python\adbc_driver_*\repaired_wheels\*.whl) {
-              .\ci\scripts\python_wheel_upload.ps1 $wheel.FullName
-          }
-        env:
-          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
   python-sdist:
     name: "Python sdist"
@@ -528,14 +494,6 @@ jobs:
         shell: bash
         run: |
           docker-compose run python-sdist-test
-
-      - name: Upload sdist to Gemfury
-        shell: bash
-        if: github.ref == 'refs/heads/main' && (github.event.schedule || github.event.inputs.upload_artifacts == true || github.event.inputs.upload_artifacts == 'true')
-        run: |
-          ./ci/scripts/python_wheel_upload.sh python/adbc_driver_{manager,postgresql,sqlite}/dist/*.tar.gz
-        env:
-          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
 
   release:
     name: "Create release"
@@ -583,3 +541,43 @@ jobs:
             ${UPLOAD}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  upload-gemfury:
+    name: "Upload packages to Gemfury"
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
+    needs:
+      - java
+      - python-manylinux
+      - python-macos
+      - python-windows
+      - python-sdist
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Get All Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: nightly-artifacts
+      - name: Upload
+        shell: bash
+        run: |
+          # Deduplicate wheels built in different jobs with same tag
+          mkdir -p upload-staging
+          find ./nightly-artifacts/ \
+            '(' \
+              -name '*.jar' -or \
+              -name '*.pom' -or \
+              -name '*.whl' -or \
+              -name 'adbc_*.tar.gz' \
+            ')' \
+            -exec mv '{}' upload-staging \;
+
+          # Java
+          ./ci/scripts/java_jar_upload.sh upload-staging/*.pom
+          # Python
+          ./ci/scripts/python_wheel_upload.sh upload-staging/adbc_*.tar.gz upload-staging/*.whl
+        env:
+          GEMFURY_PUSH_TOKEN: foo
