@@ -76,5 +76,12 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
+  - repo: local
+    hooks:
+    - id: apache-rat
+      name: Check for unapproved licenses
+      language: script
+      pass_filenames: false
+      entry: "./dev/release/run-rat.sh ."
 
 exclude: "^c/vendor/.*"

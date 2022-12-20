@@ -2,5 +2,7 @@
 ci/linux-packages/changelog
 ci/linux-packages/*.install
 dev/release/rat_exclude_files.txt
+filtered_rat.txt
 go/adbc/status_string.go
 go/adbc/go.sum
+rat.txt
