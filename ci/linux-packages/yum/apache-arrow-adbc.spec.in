@@ -155,15 +155,15 @@ This package provides an ADBC driver for PostgreSQL.
 %license LICENSE.txt NOTICE.txt
 %{_libdir}/libadbc_driver_postgresql.so.*
 
-%package driver-postgresql%{major_version}-devel
+%package driver-postgresql-devel
 Summary:	Libraries and header files for ADBC PostgreSQL driver
 License:	Apache-2.0
 Requires:	driver-postgresql%{major_version}-libs = %{version}-%{release}
 
-%description driver-postgresql%{major_version}-devel
+%description driver-postgresql-devel
 Libraries and header files for ADBC PostgreSQL driver.
 
-%files driver-postgresql%{major_version}-devel
+%files driver-postgresql-devel
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
@@ -186,15 +186,15 @@ This package provides an ADBC driver for SQLite
 %license LICENSE.txt NOTICE.txt
 %{_libdir}/libadbc_driver_sqlite.so.*
 
-%package driver-sqlite%{major_version}-devel
+%package driver-sqlite-devel
 Summary:	Libraries and header files for ADBC SQLite driver
 License:	Apache-2.0
 Requires:	driver-sqlite%{major_version}-libs = %{version}-%{release}
 
-%description driver-sqlite%{major_version}-devel
+%description driver-sqlite-devel
 Libraries and header files for ADBC SQLite driver.
 
-%files driver-sqlite%{major_version}-devel
+%files driver-sqlite-devel
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
