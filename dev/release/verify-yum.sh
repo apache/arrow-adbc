@@ -91,7 +91,7 @@ if [ "${TYPE}" = "local" ]; then
     -e "s,baseurl=https://apache\.jfrog\.io/artifactory/arrow/,baseurl=file://${local_prefix}/yum/repositories/,g" \
     -e "s,RPM-GPG-KEY-Apache-Arrow,RPM-GPG-KEY-Apache-ADBC,g" \
     /etc/yum.repos.d/Apache-Arrow.repo > \
-    /etc/yum.repos.d/Apache-ADBC.repo > \
+    /etc/yum.repos.d/Apache-ADBC.repo
   keys="${local_prefix}/KEYS"
   if [ -f "${keys}" ]; then
     cp "${keys}" /etc/pki/rpm-gpg/RPM-GPG-KEY-Apache-ADBC
