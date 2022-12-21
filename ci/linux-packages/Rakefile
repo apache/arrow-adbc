@@ -38,7 +38,7 @@ module Helper
     version_env = ENV["VERSION"]
     return version_env if version_env
 
-    meson_build = top_source_dir / "c" / "cmake_modules" / "AdbcDefines.cmake"
+    meson_build = top_source_dir / "c" / "cmake_modules" / "AdbcVersion.cmake"
     version = meson_build.read.scan(/ADBC_VERSION "(.+?)"/)[0][0]
     formatted_release_time = release_time.strftime("%Y%m%d")
     version.gsub(/-SNAPSHOT\z/) {"-dev#{formatted_release_time}"}
