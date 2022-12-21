@@ -82,12 +82,18 @@ if [ "${TYPE}" = "local" ]; then
       package_version="${VERSION}-1"
       ;;
   esac
+  case "${distribution}" in
+    almalinux)
+      package_version+=".el${distribution_version}"
+      ;;
+  esac
 else
   package_version="${VERSION}"
 fi
 
 if [ "${TYPE}" = "local" ]; then
   sed \
+    -e "s,^\\[apache-arrow-,\\[apache-adbc-,g" \
     -e "s,baseurl=https://apache\.jfrog\.io/artifactory/arrow/,baseurl=file://${local_prefix}/yum/repositories/,g" \
     -e "s,RPM-GPG-KEY-Apache-Arrow,RPM-GPG-KEY-Apache-ADBC,g" \
     /etc/yum.repos.d/Apache-Arrow.repo > \
