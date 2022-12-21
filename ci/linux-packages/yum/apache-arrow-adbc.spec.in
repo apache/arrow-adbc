@@ -158,7 +158,7 @@ This package provides an ADBC driver for PostgreSQL.
 %package driver-postgresql-devel
 Summary:	Libraries and header files for ADBC PostgreSQL driver
 License:	Apache-2.0
-Requires:	driver-postgresql%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-driver-postgresql%{major_version}-libs = %{version}-%{release}
 
 %description driver-postgresql-devel
 Libraries and header files for ADBC PostgreSQL driver.
@@ -189,7 +189,7 @@ This package provides an ADBC driver for SQLite
 %package driver-sqlite-devel
 Summary:	Libraries and header files for ADBC SQLite driver
 License:	Apache-2.0
-Requires:	driver-sqlite%{major_version}-libs = %{version}-%{release}
+Requires:	%{name}-driver-sqlite%{major_version}-libs = %{version}-%{release}
 
 %description driver-sqlite-devel
 Libraries and header files for ADBC SQLite driver.
