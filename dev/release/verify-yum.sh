@@ -142,11 +142,11 @@ ${install_command} \
 echo "::endgroup::"
 
 echo "::group::Test ADBC PostgreSQL Driver"
-${APT_INSTALL} adbc-driver-postgresql-devel-${package_version}
+${install_command} --enablerepo=epel adbc-driver-postgresql-devel-${package_version}
 echo "::endgroup::"
 
 echo "::group::Test ADBC SQLite Driver"
-${APT_INSTALL} adbc-driver-sqlite-devel-${package_version}
+${install_command} --enablerepo=epel adbc-driver-sqlite-devel-${package_version}
 echo "::endgroup::"
 
 echo "::group::Test Apache Arrow GLib"
