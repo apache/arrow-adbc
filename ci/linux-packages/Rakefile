@@ -249,10 +249,6 @@ class ADBCPackageTask < PackageTask
       task target_namespace => tasks
     end
   end
-
-  def enable_yum?
-    false
-  end
 end
 
 class ADBCLocalBinaryTask < LocalBinaryTask

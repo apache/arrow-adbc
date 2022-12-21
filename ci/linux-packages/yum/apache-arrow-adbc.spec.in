@@ -1,0 +1,256 @@
+# -*- sh-shell: rpm -*-
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+%define major_version %(echo @VERSION@ | grep -o '^[0-9]*')
+
+%if %{rhel} >= 9
+%define adbc_cmake_builddir %{__cmake_builddir}
+%define adbc_cmake %cmake
+%define adbc_cmake_build make -C %{adbc_cmake_builddir} %{?_smp_mflags}
+%define adbc_cmake_install %cmake_install
+%else
+%define adbc_cmake_builddir build
+%define adbc_cmake %cmake3 -S . -B %{adbc_cmake_builddir}
+%define adbc_cmake_build make -C %{adbc_cmake_builddir} %{?_smp_mflags}
+%define adbc_cmake_install DESTDIR="%{buildroot}" make -C %{adbc_cmake_builddir} install
+%endif
+
+Name:		adbc
+Version:	@VERSION@
+Release:	@RELEASE@%{?dist}
+Summary:	Apache Arrow Database Connectivity (ADBC) is an Apache Arrow based database access API
+
+License:	Apache-2.0
+URL:		https://arrow.apache.org/adbc/
+Source0:	https://www.apache.org/dyn/closer.lua?action=download&path=/arrow/arrow-adbc-%{version}/apache-arrow-adbc-%{version}.tar.gz
+
+BuildRequires:	cmake
+BuildRequires:	gcc-c++
+BuildRequires:	gobject-introspection-devel
+BuildRequires:	libpq-devel
+BuildRequires:	ninja-build
+BuildRequires:	pkgconfig
+BuildRequires:	sqlite-devel
+
+%description
+Apache Arrow Database Connectivity (ADBC) is an Apache Arrow based database access API
+
+%prep
+%setup -q -n apache-arrow-adbc-%{version}
+
+%build
+cmake_build_type=RelWithDebInfo
+meson_build_type=debugoptimized
+
+cd c/driver_manager
+%adbc_cmake \
+  -DCMAKE_BUILD_TYPE=${cmake_build_type} \
+  -G"Unix Makefiles"
+%adbc_cmake_build
+cd -
+
+cd c/driver/postgresql
+%adbc_cmake \
+  -DCMAKE_BUILD_TYPE=${cmake_build_type} \
+  -G"Unix Makefiles"
+%adbc_cmake_build
+cd -
+
+cd c/driver/sqlite
+%adbc_cmake \
+  -DCMAKE_BUILD_TYPE=${cmake_build_type} \
+  -G"Unix Makefiles"
+%adbc_cmake_build
+cd -
+
+cd glib
+pip3 install meson
+meson setup build \
+  --buildtype=${meson_build_type} \
+  --default-library=both \
+  --libdir=%{_libdir} \
+  --prefix=%{_prefix} \
+  -Dadbc_build_dir=$PWD/../c/driver_manager/%{adbc_cmake_builddir}
+
+LD_LIBRARY_PATH=$PWD/../c/driver_manager/%{adbc_cmake_builddir}/ \
+  meson compile -C build %{?_smp_mflags}
+cd -
+
+%install
+cd c/driver_manager
+%adbc_cmake_install
+cd -
+
+cd c/driver/postgresql
+%adbc_cmake_install
+cd -
+
+cd c/driver/sqlite
+%adbc_cmake_install
+cd -
+
+cd glib
+DESTDIR=%{buildroot} meson install -C build
+cd -
+
+%package driver-manager%{major_version}-libs
+Summary:	Runtime libraries for ADBC driver manager
+License:	Apache-2.0
+
+%description driver-manager%{major_version}-libs
+This package contains the libraries for ADBC driver manager.
+
+%files driver-manager%{major_version}-libs
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/libadbc_driver_manager.so.*
+
+%package driver-manager-devel
+Summary:	Libraries and header files for ADBC driver manager
+License:	Apache-2.0
+Requires:	%{name}-driver-manager%{major_version}-libs = %{version}-%{release}
+
+%description driver-manager-devel
+Libraries and header files for ADBC driver manager.
+
+%files driver-manager-devel
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_includedir}/adbc.h
+%{_includedir}/adbc_driver_manager.h
+%{_libdir}/cmake/AdbcDriverManager/
+%{_libdir}/libadbc_driver_manager.a
+%{_libdir}/libadbc_driver_manager.so
+%{_libdir}/pkgconfig/adbc-driver-manager.pc
+
+%package driver-postgresql%{major_version}-libs
+Summary:	ADBC PostgreSQL driver
+License:	Apache-2.0
+Requires:	libpq
+
+%description driver-postgresql%{major_version}-libs
+This package provides an ADBC driver for PostgreSQL.
+
+%files driver-postgresql%{major_version}-libs
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/libadbc_driver_postgresql.so.*
+
+%package driver-postgresql%{major_version}-devel
+Summary:	Libraries and header files for ADBC PostgreSQL driver
+License:	Apache-2.0
+Requires:	driver-postgresql%{major_version}-libs = %{version}-%{release}
+
+%description driver-postgresql%{major_version}-devel
+Libraries and header files for ADBC PostgreSQL driver.
+
+%files driver-postgresql%{major_version}-devel
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/cmake/AdbcDriverPostgreSQL/
+%{_libdir}/libadbc_driver_postgresql.a
+%{_libdir}/libadbc_driver_postgresql.so
+%{_libdir}/pkgconfig/adbc-driver-postgresql.pc
+
+%package driver-sqlite%{major_version}-libs
+Summary:	ADBC SQLite driver
+License:	Apache-2.0
+Requires:	libpq
+
+%description driver-sqlite%{major_version}-libs
+This package provides an ADBC driver for SQLite
+
+%files driver-sqlite%{major_version}-libs
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/libadbc_driver_sqlite.so.*
+
+%package driver-sqlite%{major_version}-devel
+Summary:	Libraries and header files for ADBC SQLite driver
+License:	Apache-2.0
+Requires:	driver-sqlite%{major_version}-libs = %{version}-%{release}
+
+%description driver-sqlite%{major_version}-devel
+Libraries and header files for ADBC SQLite driver.
+
+%files driver-sqlite%{major_version}-devel
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/cmake/AdbcDriverSQLite/
+%{_libdir}/libadbc_driver_sqlite.a
+%{_libdir}/libadbc_driver_sqlite.so
+%{_libdir}/pkgconfig/adbc-driver-sqlite.pc
+
+%package glib%{major_version}-libs
+Summary:	Runtime libraries for ADBC GLib
+License:	Apache-2.0
+Requires:	%{name}-driver-manager%{major_version}-libs = %{version}-%{release}
+Requires:	glib2
+
+%description glib%{major_version}-libs
+This package contains the libraries for ADBC GLib.
+
+%files glib%{major_version}-libs
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/girepository-1.0/ADBC-*.typelib
+%{_libdir}/libadbc-glib.so.*
+
+%package glib-devel
+Summary:	Libraries and header files for ADBC GLib
+License:	Apache-2.0
+Requires:	%{name}-driver-manager-devel = %{version}-%{release}
+Requires:	%{name}-glib%{major_version}-libs = %{version}-%{release}
+Requires:	glib2-devel
+Requires:	gobject-introspection-devel
+
+%description glib-devel
+Libraries and header files for ADBC GLib.
+
+%files glib-devel
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_datadir}/gir-1.0/ADBC-*.gir
+%{_includedir}/adbc-glib/
+%{_libdir}/libadbc-glib.a
+%{_libdir}/libadbc-glib.so
+%{_libdir}/pkgconfig/adbc-glib.pc
+
+%package glib-doc
+Summary:	Documentation for ADBC GLib
+License:	Apache-2.0
+
+%description glib-doc
+Documentation for ADBC GLib.
+
+%files glib-doc
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_docdir}/adbc-glib/
+
+%changelog

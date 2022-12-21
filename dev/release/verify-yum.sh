@@ -37,77 +37,64 @@ VERSION="$1"
 TYPE="$2"
 
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOP_SOURCE_DIR="${SOURCE_DIR}/../.."
-local_prefix="${TOP_SOURCE_DIR}/ci/linux-packages"
+local_prefix="${SOURCE_DIR}/../../ci/linux-packages"
 
+artifactory_base_url="https://apache.jfrog.io/artifactory/arrow"
+
+distribution=$(. /etc/os-release && echo "${ID}")
+distribution_version=$(. /etc/os-release && echo "${VERSION_ID}" | grep -o "^[0-9]*")
+repository_version="${distribution_version}"
+
+ruby_devel_packages=(ruby-devel)
+install_command="dnf install -y --enablerepo=crb"
+uninstall_command="dnf remove -y"
+clean_command="dnf clean"
+info_command="dnf info --enablerepo=crb"
 
 echo "::group::Prepare repository"
 
-export DEBIAN_FRONTEND=noninteractive
-
-APT_INSTALL="apt install -y -V --no-install-recommends"
-
-apt update
-${APT_INSTALL} \
-  ca-certificates \
-  curl \
-  lsb-release
-
-code_name="$(lsb_release --codename --short)"
-distribution="$(lsb_release --id --short | tr 'A-Z' 'a-z')"
-artifactory_base_url="https://apache.jfrog.io/artifactory/arrow/${distribution}"
-case "${TYPE}" in
-  rc|staging-rc|staging-release)
-    suffix=${TYPE%-release}
-    artifactory_base_url+="-${suffix}"
+case "${distribution}-${distribution_version}" in
+  almalinux-8)
+    distribution_prefix="almalinux"
+    ruby_devel_packages+=(redhat-rpm-config)
+    install_command="dnf install -y --enablerepo=powertools"
+    info_command="dnf info --enablerepo=powertools"
+    ;;
+  almalinux-*)
+    distribution_prefix="almalinux"
+    ruby_devel_packages+=(redhat-rpm-config)
     ;;
 esac
 
-case "${distribution}-${code_name}" in
-  debian-*)
-    sed \
-      -i"" \
-      -e "s/ main$/ main contrib non-free/g" \
-      /etc/apt/sources.list
-    ;;
-esac
-
-curl \
-    --fail \
-    --location \
-    --remote-name \
-     https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-${APT_INSTALL} ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+${install_command} \
+    ${artifactory_base_url}/${distribution_prefix}/${repository_version}/apache-arrow-release-latest.rpm
 
 if [ "${TYPE}" = "local" ]; then
   case "${VERSION}" in
     *-dev*)
-      package_version="$(echo "${VERSION}" | sed -e 's/-dev\(.*\)$/~dev\1/g')"
+      package_version="$(echo "${VERSION}" | sed -e 's/-dev\(.*\)$/-0.dev\1/g')"
       ;;
     *-rc*)
       package_version="$(echo "${VERSION}" | sed -e 's/-rc.*$//g')"
+      package_version+="-1"
       ;;
     *)
-      package_version="${VERSION}"
+      package_version="${VERSION}-1"
       ;;
   esac
-  package_version+="-1"
 else
-  package_version="${VERSION}-1"
+  package_version="${VERSION}"
 fi
 
 if [ "${TYPE}" = "local" ]; then
   sed \
-    -e "s,^URIs: .*$,URIs: file://${local_prefix}/apt/repositories/${distribution},g" \
-    -e "s,^Signed-By: .*$,Signed-By: /usr/share/keyrings/apache-arrow-adbc-apt-source.gpg,g" \
-    /etc/apt/sources.list.d/apache-arrow.sources > \
-    /etc/apt/sources.list.d/apache-arrow-adbc.sources
+    -e "s,baseurl=https://apache\.jfrog\.io/artifactory/arrow/,baseurl=file://${local_prefix}/yum/repositories/,g" \
+    -e "s,RPM-GPG-KEY-Apache-Arrow,RPM-GPG-KEY-Apache-ADBC,g" \
+    /etc/yum.repos.d/Apache-Arrow.repo > \
+    /etc/yum.repos.d/Apache-ADBC.repo > \
   keys="${local_prefix}/KEYS"
   if [ -f "${keys}" ]; then
-    gpg \
-      --no-default-keyring \
-      --keyring /usr/share/keyrings/apache-arrow-adbc-apt-source.gpg \
-      --import "${keys}"
+    cp "${keys}" /etc/pki/rpm-gpg/RPM-GPG-KEY-Apache-ADBC
   fi
 else
   case "${TYPE}" in
@@ -115,28 +102,27 @@ else
       suffix=${TYPE%-release}
       sed \
         -i"" \
-        -e "s,^URIs: \\(.*\\)/,URIs: \\1-${suffix}/,g" \
-        /etc/apt/sources.list.d/apache-arrow.sources
+        -e "s,/almalinux/,/almalinux-${suffix}/,g" \
+        -e "s,/centos/,/centos-${suffix}/,g" \
+        -e "s,/amazon-linux/,/amazon-linux-${suffix}/,g" \
+        /etc/yum.repos.d/Apache-Arrow.repo
       ;;
   esac
 fi
-
-apt update
 
 echo "::endgroup::"
 
 
 echo "::group::Test ADBC Driver Manager"
-${APT_INSTALL} libadbc-driver-manager-dev=${package_version}
-required_packages=()
-required_packages+=(cmake)
-required_packages+=(gcc)
-required_packages+=(make)
-required_packages+=(pkg-config)
-${APT_INSTALL} ${required_packages[@]}
+${install_command} --enablerepo=epel adbc-driver-manager-devel-${package_version}
+${install_command} \
+  cmake \
+  gcc \
+  make \
+  pkg-config
 # TODO
 # mkdir -p build
-# cp -a ${TOP_SOURCE_DIR}/c/driver_manager/example build/
+# cp -a "${TOP_SOURCE_DIR}/cpp/examples/minimal_build" build/
 # pushd build/example
 # cmake .
 # make -j$(nproc)
@@ -149,24 +135,21 @@ ${APT_INSTALL} ${required_packages[@]}
 # popd
 echo "::endgroup::"
 
-
 echo "::group::Test ADBC PostgreSQL Driver"
-${APT_INSTALL} libadbc-driver-postgresql-dev=${package_version}
+${APT_INSTALL} adbc-driver-postgresql-devel-${package_version}
 echo "::endgroup::"
-
 
 echo "::group::Test ADBC SQLite Driver"
-${APT_INSTALL} libadbc-driver-sqlite-dev=${package_version}
+${APT_INSTALL} adbc-driver-sqlite-devel-${package_version}
 echo "::endgroup::"
 
-
-echo "::group::Test ADBC GLib"
+echo "::group::Test Apache Arrow GLib"
 export G_DEBUG=fatal-warnings
 
-${APT_INSTALL} libadbc-glib-dev=${package_version}
-${APT_INSTALL} libadbc-glib-doc=${package_version}
+${install_command} --enablerepo=epel adbc-glib-devel-${package_version}
+${install_command} --enablerepo=epel adbc-glib-doc-${package_version}
 
-${APT_INSTALL} ruby-dev rubygems-integration
+${install_command} "${ruby_devel_packages[@]}"
 gem install gobject-introspection
 ruby -r gi -e "p GI.load('ADBC')"
 echo "::endgroup::"
