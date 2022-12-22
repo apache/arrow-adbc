@@ -132,6 +132,8 @@ jobs:
       fail-fast: false
       matrix:
         target:
+          - almalinux-8
+          - almalinux-9
           - debian-bookworm
           - debian-bullseye
           - ubuntu-jammy
@@ -147,6 +149,10 @@ jobs:
         run: |
           echo "ARROW_SOURCE=$(pwd)/arrow" >> $GITHUB_ENV
           case ${{ matrix.target }} in
+            almalinux-*)
+              echo "TASK_NAMESPACE=yum" >> $GITHUB_ENV
+              echo "YUM_TARGETS=${{ matrix.target }}" >> $GITHUB_ENV
+              ;;
             debian-*|ubuntu-*)
               echo "TASK_NAMESPACE=apt" >> $GITHUB_ENV
               echo "APT_TARGETS=${{ matrix.target }}" >> $GITHUB_ENV

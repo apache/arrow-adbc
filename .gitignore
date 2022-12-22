@@ -116,3 +116,9 @@ target/
 /ci/linux-packages/apt/merged/
 /ci/linux-packages/apt/repositories/
 /ci/linux-packages/apt/tmp/
+/ci/linux-packages/yum/build.sh
+/ci/linux-packages/yum/build/
+/ci/linux-packages/yum/env.sh
+/ci/linux-packages/yum/merged/
+/ci/linux-packages/yum/repositories/
+/ci/linux-packages/yum/tmp/
