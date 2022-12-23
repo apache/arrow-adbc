@@ -89,6 +89,8 @@ python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools 
 for component in $COMPONENTS; do
     pushd ${source_dir}/python/$component
 
+    component_dashes=${component//_/-}
+
     echo "=== Clean build artifacts ==="
     rm -rf ./build ./dist ./repaired_wheels ./$component/*.so ./$component/*.so.*
 
@@ -103,7 +105,7 @@ for component in $COMPONENTS; do
     # causing the build to fail.
     python setup.py sdist
     if [[ "$component" = "adbc_driver_manager" ]]; then
-        python -m cibuildwheel --output-dir repaired_wheels/ dist/$component-*.tar.gz
+        python -m cibuildwheel --output-dir repaired_wheels/ dist/$component_dashes-*.tar.gz
     else
         python -m pip wheel -w dist -vvv .
 
