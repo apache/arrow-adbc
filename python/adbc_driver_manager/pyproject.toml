@@ -16,7 +16,7 @@
 # under the License.
 
 [project]
-name = "adbc_driver_manager"
+name = "adbc-driver-manager"
 description = "A generic entrypoint for ADBC drivers."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}

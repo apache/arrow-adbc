@@ -16,7 +16,7 @@
 # under the License.
 
 [project]
-name = "adbc_driver_postgresql"
+name = "adbc-driver-postgresql"
 description = "A libpq-based ADBC driver for working with PostgreSQL."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}

@@ -16,7 +16,7 @@
 # under the License.
 
 [project]
-name = "adbc_driver_sqlite"
+name = "adbc-driver-sqlite"
 description = "An ADBC driver for working with SQLite."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
