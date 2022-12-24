@@ -153,8 +153,14 @@ Build source and binaries and submit them
     #   https://repository.apache.org/#stagingRepositories
     dev/release/04-java-upload.sh <version> <rc-number>
 
+    # Sign and upload the deb/rpm packages and APT/Yum repositories
+    #
+    # This reuses release scripts in apache/arrow. So you need to
+    # specify cloned apache/arrow directory.
+    dev/release/05-linux-upload.sh <arrow-dir> <version> <rc-number>
+
     # Start verifications for binaries and wheels
-    dev/release/05-binary-verify.sh <version> <rc-number>
+    dev/release/06-binary-verify.sh <version> <rc-number>
 
 Verify the Release
 ------------------
@@ -199,7 +205,7 @@ Be sure to go through on the following checklist:
    .. code-block:: Bash
 
       # dev/release/post-01-upload.sh 0.1.0 0
-      dev/release/post-01-upload.sh <version> <rc>
+      dev/release/post-01-upload.sh <version> <rc-number>
       git push --tag apache apache-arrow-adbc-<version>
 
 .. dropdown:: Create the final GitHub release
@@ -211,7 +217,7 @@ Be sure to go through on the following checklist:
    .. code-block:: Bash
 
       # dev/release/post-02-binary.sh 0.1.0 0
-      dev/release/post-02-binary.sh <version> <rc number>
+      dev/release/post-02-binary.sh <version> <rc-number>
 
 .. dropdown:: Update website
    :class-title: sd-fs-5
@@ -246,7 +252,19 @@ Be sure to go through on the following checklist:
    .. code-block:: Bash
 
       # dev/release/post-04-go.sh 10.0.0
-      dev/release/post-04-go.sh X.Y.Z
+      dev/release/post-04-go.sh <version>
+
+.. dropdown:: Deploy APT/Yum repositories
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   .. code-block:: Bash
+
+      # This reuses release scripts in apache/arrow. So you need to
+      # specify cloned apache/arrow directory.
+      #
+      # dev/release/post-05-linux.sh ../arrow 10.0.0 0
+      dev/release/post-05-linux.sh <arrow-dir> <version> <rc-number>
 
 .. dropdown:: Announce the new release
    :class-title: sd-fs-5
@@ -270,7 +288,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-05-remove-old-artifacts.sh
+      dev/release/post-06-remove-old-artifacts.sh
 
 .. dropdown:: Bump versions
    :class-title: sd-fs-5
@@ -278,7 +296,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-06-bump-versions.sh 0.1.0 0.2.0
-      dev/release/post-06-bump-versions.sh <version> <next_version>
+      # dev/release/post-07-bump-versions.sh 0.1.0 0.2.0
+      dev/release/post-07-bump-versions.sh <version> <next_version>
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml
