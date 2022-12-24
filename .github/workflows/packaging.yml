@@ -163,6 +163,12 @@ jobs:
           distribution=$(echo ${{ matrix.target }} | cut -d- -f1)
           echo "DISTRIBUTION=${distribution}" >> $GITHUB_ENV
 
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION=${GITHUB_REF_NAME#apache-arrow-adbc-}
+            VERSION=${VERSION%-rc*}
+            echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          fi
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -585,6 +591,9 @@ jobs:
               -name '*.pom' -or \
               -name '*.whl' -or \
               -name 'adbc_*.tar.gz' \
+              -name 'almalinux-*.tar.gz' \
+              -name 'debian-*.tar.gz' \
+              -name 'ubuntu-*.tar.gz' \
             ')' \
             -exec mv '{}' upload-staging \;
 

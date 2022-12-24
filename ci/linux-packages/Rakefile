@@ -71,14 +71,7 @@ class ADBCPackageTask < PackageTask
   private
   def define_archive_task
     file @archive_name do
-      case @version
-      when /\A\d+\.\d+\.\d+-rc\d+\z/
-        download_rc_archive
-      when /\A\d+\.\d+\.\d+\z/
-        download_released_archive
-      else
-        build_archive
-      end
+      build_archive
     end
 
     if deb_archive_name != @archive_name
@@ -92,21 +85,6 @@ class ADBCPackageTask < PackageTask
         cp(@archive_name, rpm_archive_name)
       end
     end
-  end
-
-  def download_rc_archive
-    base_url = "https://dist.apache.org/repos/dist/dev/arrow"
-    archive_name_no_rc = @archive_name.gsub(/-rc\d+(\.tar\.gz)\z/, "\\1")
-    url = "#{base_url}/#{@package}-#{@version}/#{archive_name_no_rc}"
-    download(url, @archive_name)
-  end
-
-  def download_released_archive
-    base_url = "https://www.apache.org/dyn/closer.lua/arrow"
-    archive_name_no_rc = @archive_name.gsub(/-rc\d+(\.tar\.gz)\z/, "\\1")
-    url = "#{base_url}/#{@package}-#{@version}/#{archive_name_no_rc}"
-    url += "?action=download"
-    download(url, @archive_name)
   end
 
   def build_archive

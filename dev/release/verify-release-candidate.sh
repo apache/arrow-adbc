@@ -167,10 +167,51 @@ test_binary() {
 
 test_apt() {
   show_header "Testing APT packages"
+
+  local verify_type=rc
+  if [ "${TEST_STAGING:-0}" -gt 0 ]; then
+    verify_type=staging-${verify_type}
+  fi
+  for target in "debian:bullseye" \
+                "debian:bookworm" \
+                "ubuntu:jammy"; do \
+    show_info "Verifying ${target}..."
+    if ! docker run \
+	   --rm \
+           --security-opt="seccomp=unconfined" \
+           --volume "${ADBC_DIR}":/host:delegated \
+           "${target}" \
+           /host/dev/release/verify-apt.sh \
+           "${VERSION}" \
+           "${verify_type}"; then
+      echo "Failed to verify the APT repository for ${target}"
+      exit 1
+    fi
+  done
 }
 
 test_yum() {
   show_header "Testing Yum packages"
+
+  local verify_type=rc
+  if [ "${TEST_STAGING:-0}" -gt 0 ]; then
+    verify_type=staging-${verify_type}
+  fi
+  for target in "almalinux:9" \
+                "almalinux:8"; do
+    show_info "Verifying ${target}..."
+    if ! docker run \
+           --rm \
+           --security-opt="seccomp=unconfined" \
+           --volume "${ADBC_DIR}":/host:delegated \
+           "${target}" \
+           /host/dev/release/verify-yum.sh \
+           "${VERSION}" \
+           "${verify_type}"; then
+      echo "Failed to verify the Yum repository for ${target}"
+      exit 1
+    fi
+  done
 }
 
 setup_tempdir() {
