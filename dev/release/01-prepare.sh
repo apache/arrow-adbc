@@ -50,14 +50,15 @@ fi
 
 echo "Updating changelog for $version"
 # Update changelog
-cz ch --incremental --unreleased-version "ADBC Libraries ${version} RC ${rc_number}"
+cz ch --incremental --unreleased-version "ADBC Libraries ${version}"
 git add ${SOURCE_DIR}/../../CHANGELOG.md
 git commit -m "chore: update CHANGELOG.md for $version"
 
 echo "Prepare release ${version} on tag ${release_candidate_tag}"
 
 update_versions "${version}" "${next_version}" "release"
-git commit -m "chore: update versions for ${version}"
+# --allow-empty required for RCs after the first
+git commit -m "chore: update versions for ${version}" --allow-empty
 
 ######################### Tag the Release Candidate #########################
 
