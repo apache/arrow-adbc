@@ -47,7 +47,7 @@ update_versions() {
   pushd "${ADBC_DIR}/java/"
   mvn versions:set "-DnewVersion=${version}" '-DoldVersion=*'
   find . -type f -name pom.xml.versionsBackup -delete
-  sed -i.bak -E "s|<adbc.version>.+</adbc.version>|<adbc.version>${version}</adbc.version>|g" pom.xml
+  sed -i.bak -E "s|<adbc\\.version>.+</adbc\\.version>|<adbc.version>${version}</adbc.version>|g" pom.xml
   rm pom.xml.bak
   git add "pom.xml" "**/pom.xml"
   popd
@@ -59,4 +59,43 @@ update_versions() {
   sed -i.bak -E "s/VERSION = \".+\"/VERSION = \"${version}\"/g" "${ADBC_DIR}/ruby/lib/adbc/version.rb"
   rm "${ADBC_DIR}/ruby/lib/adbc/version.rb.bak"
   git add "${ADBC_DIR}/ruby/lib/adbc/version.rb"
+
+  if [ ${type} = "release" ]; then
+    pushd "${ADBC_DIR}/ci/linux-packages"
+    rake version:update VERSION=${version}
+    git add debian*/changelog yum/*.spec.in
+    popd
+  else
+    so_version() {
+      local -r version=$1
+      local -r major_version=$(echo $version | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
+      local -r minor_version=$(echo $version | sed -E -e 's/^[0-9]+\.([0-9]+)\.[0-9]+$/\1/')
+      printf "%0d%02d" ${major_version} ${minor_version}
+    }
+    local -r deb_lib_suffix=$(so_version ${base_version})
+    local -r next_deb_lib_suffix=$(so_version ${next_version})
+    pushd "${ADBC_DIR}/ci/linux-packages"
+    if [ "${deb_lib_suffix}" != "${next_deb_lib_suffix}" ]; then
+      for target in debian*/lib*${deb_lib_suffix}.install; do
+        git mv \
+          ${target} \
+          $(echo ${target} | sed -e "s/${deb_lib_suffix}/${next_deb_lib_suffix}/")
+      done
+      sed -i.bak -E \
+        -e "s/(lib[-a-z]*)${deb_lib_suffix}/\\1${next_deb_lib_suffix}/g" \
+        debian*/control*
+      rm -f debian*/control*.bak
+      git add debian*/control*
+    fi
+    local -r base_major_version=$(echo ${base_version} | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
+    local -r next_major_version=$(echo ${next_version} | sed -E -e 's/^([0-9]+)\.[0-9]+\.[0-9]+$/\1/')
+    if [ "${base_major_version}" != "${next_major_version}" ]; then
+      for target in debian*/libadbc-glib${base_major_version}.install; do
+        git mv \
+          ${target} \
+          $(echo ${target} | sed -e "s/${base_major_version}/${next_major_version}/")
+      done
+    fi
+    popd
+  fi
 }

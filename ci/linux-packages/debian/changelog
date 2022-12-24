@@ -1,0 +1,5 @@
+apache-arrow-adbc (0.1.0-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Sutou Kouhei <kou@clear-code.com>  Mon, 26 Dec 2022 02:13:01 -0000
