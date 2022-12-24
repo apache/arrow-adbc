@@ -128,8 +128,6 @@ jobs:
   linux:
     name: Linux ${{ matrix.target }}
     runs-on: ubuntu-latest
-    # TODO(GH-259): disable Linux packaging builds in RC builds for now
-    if: "!startsWith(github.ref, 'refs/tags')"
     strategy:
       fail-fast: false
       matrix:
