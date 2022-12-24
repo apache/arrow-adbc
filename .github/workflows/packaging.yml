@@ -543,6 +543,9 @@ jobs:
               -name '*.pom' -or \
               -name '*.whl' -or \
               -name 'adbc_*.tar.gz' \
+              -name 'almalinux-*.tar.gz' \
+              -name 'debian-*.tar.gz' \
+              -name 'ubuntu-*.tar.gz' \
             ')' \
             -exec mv '{}' upload-staging \;
 
@@ -589,9 +592,6 @@ jobs:
               -name '*.pom' -or \
               -name '*.whl' -or \
               -name 'adbc_*.tar.gz' \
-              -name 'almalinux-*.tar.gz' \
-              -name 'debian-*.tar.gz' \
-              -name 'ubuntu-*.tar.gz' \
             ')' \
             -exec mv '{}' upload-staging \;
 
