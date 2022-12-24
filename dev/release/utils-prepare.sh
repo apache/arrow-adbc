@@ -52,7 +52,7 @@ update_versions() {
   git add "pom.xml" "**/pom.xml"
   popd
 
-  sed -i.bak -E "s/version: '.+'/release = '${version}'/g" "${ADBC_DIR}/glib/meson.build"
+  sed -i.bak -E "s/version: '.+'/version: '${version}'/g" "${ADBC_DIR}/glib/meson.build"
   rm "${ADBC_DIR}/glib/meson.build.bak"
   git add "${ADBC_DIR}/glib/meson.build"
 
