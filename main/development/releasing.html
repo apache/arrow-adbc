@@ -398,6 +398,9 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># First cherry-pick any commits by hand.</span>
 <span class="n">git</span> <span class="n">switch</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
 <span class="n">git</span> <span class="n">cherry</span><span class="o">-</span><span class="n">pick</span> <span class="o">...</span>
+<span class="c1"># Revert the commit that created the changelog so we can</span>
+<span class="c1"># regenerate it in 01-source.sh</span>
+<span class="n">git</span> <span class="n">revert</span> <span class="o">&lt;</span><span class="n">CHANGELOG</span> <span class="n">COMMIT</span><span class="o">&gt;</span>
 <span class="c1"># Push the updated maintenance branch to the remote repository</span>
 <span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
 </pre></div>
@@ -405,8 +408,8 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 </div>
 </div>
 </section>
-<section id="create-the-release-candidate-branch-from-the-updated-maintenance-branch">
-<h3>Create the Release Candidate branch from the updated maintenance branch<a class="headerlink" href="#create-the-release-candidate-branch-from-the-updated-maintenance-branch" title="Permalink to this heading">#</a></h3>
+<section id="create-the-release-candidate-tag-from-the-updated-maintenance-branch">
+<h3>Create the Release Candidate tag from the updated maintenance branch<a class="headerlink" href="#create-the-release-candidate-tag-from-the-updated-maintenance-branch" title="Permalink to this heading">#</a></h3>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Start from the updated maintenance branch.</span>
 <span class="n">git</span> <span class="n">switch</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
 
@@ -681,7 +684,7 @@ dev/release/post-07-bump-versions.sh &lt;version&gt; &lt;next_version&gt;
 <li><a class="reference internal" href="#before-creating-a-release-candidate">Before creating a Release Candidate</a></li>
 <li><a class="reference internal" href="#creating-a-release-candidate">Creating a Release Candidate</a><ul>
 <li><a class="reference internal" href="#create-or-update-the-corresponding-maintenance-branch">Create or update the corresponding maintenance branch</a></li>
-<li><a class="reference internal" href="#create-the-release-candidate-branch-from-the-updated-maintenance-branch">Create the Release Candidate branch from the updated maintenance branch</a></li>
+<li><a class="reference internal" href="#create-the-release-candidate-tag-from-the-updated-maintenance-branch">Create the Release Candidate tag from the updated maintenance branch</a></li>
 <li><a class="reference internal" href="#build-source-and-binaries-and-submit-them">Build source and binaries and submit them</a></li>
 <li><a class="reference internal" href="#verify-the-release">Verify the Release</a></li>
 </ul>

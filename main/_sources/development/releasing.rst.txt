@@ -108,11 +108,14 @@ Create or update the corresponding maintenance branch
          # First cherry-pick any commits by hand.
          git switch maint-X.Y.Z
          git cherry-pick ...
+         # Revert the commit that created the changelog so we can
+         # regenerate it in 01-source.sh
+         git revert <CHANGELOG COMMIT>
          # Push the updated maintenance branch to the remote repository
          git push -u apache maint-X.Y.Z
 
-Create the Release Candidate branch from the updated maintenance branch
------------------------------------------------------------------------
+Create the Release Candidate tag from the updated maintenance branch
+--------------------------------------------------------------------
 
 .. code-block::
 
