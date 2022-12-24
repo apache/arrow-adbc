@@ -40,6 +40,13 @@ main() {
     local -r rc_number="$2"
     local -r tag="apache-arrow-adbc-${version}-rc${rc_number}"
 
+    if [[ ! -f "${source_dir}/.env" ]]; then
+        echo "You must create ${source_dir}/.env"
+        echo "You can use ${source_dir}/.env.example as a template"
+    fi
+
+    source "${source_dir}/.env"
+
     echo "Preparing source for tag ${tag}"
     local -r release_hash=$(cd "${source_top_dir}" && git rev-list --max-count=1 ${tag} --)
 
@@ -71,7 +78,12 @@ main() {
     "${source_dir}/run-rat.sh" "${tarball}"
 
     # Sign the archive
-    gpg --armor --output "${tarball}.asc" --detach-sig "${tarball}"
+    gpg \
+        --armor \
+        --detach-sign \
+        --local-user "${GPG_KEY_ID}" \
+        --output "${tarball}.asc" \
+        "${tarball}"
     ${sha256_generate} "${tarball}" | tee "${tarball}.sha256"
     ${sha512_generate} "${tarball}" | tee "${tarball}.sha512"
 
@@ -92,7 +104,7 @@ main() {
 
         # commit to svn
         svn add "tmp/${tagrc}"
-        svn ci -m "Apache Arrow ADBC ${version} RC${rc}" "tmp/${tagrc}"
+        svn ci -m "Apache Arrow ADBC ${version} RC${rc_number}" "tmp/${tagrc}"
 
         # clean up
         rm -rf tmp
