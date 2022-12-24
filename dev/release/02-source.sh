@@ -57,7 +57,7 @@ main() {
 
     echo "Using commit ${release_hash}"
 
-    local -r tarball="${tag}.tar.gz"
+    local -r tarball="apache-arrow-adbc-${version}.tar.gz"
 
     pushd "${source_top_dir}"
 

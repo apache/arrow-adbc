@@ -102,7 +102,7 @@ download_dist_file() {
 }
 
 download_rc_file() {
-  download_dist_file apache-arrow-${VERSION}-rc${RC_NUMBER}/$1
+  download_dist_file apache-arrow-adbc-${VERSION}-rc${RC_NUMBER}/$1
 }
 
 import_gpg_keys() {

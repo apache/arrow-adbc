@@ -56,6 +56,7 @@ jobs:
           TEST_DEFAULT: "0"
           TEST_BINARIES: "1"
           USE_CONDA: "1"
+          VERBOSE: "1"
         run: |
           ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
 
@@ -86,6 +87,7 @@ jobs:
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"
           USE_CONDA: "1"
+          VERBOSE: "1"
         run: |
           ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
       - name: Verify
@@ -96,5 +98,6 @@ jobs:
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"
           USE_CONDA: "1"
+          VERBOSE: "1"
         run: |
           .\dev\release\verify-release-candidate.ps1 ${{ inputs.version }} ${{ inputs.rc }}
