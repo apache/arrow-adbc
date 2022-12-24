@@ -45,7 +45,7 @@ update_versions() {
   git add "${ADBC_DIR}/docs/source/conf.py"
 
   pushd "${ADBC_DIR}/java/"
-  mvn versions:set "-DnewVersion=${version}"
+  mvn versions:set "-DnewVersion=${version}" '-DoldVersion=*'
   find . -type f -name pom.xml.versionsBackup -delete
   sed -i.bak -E "s|<adbc.version>.+</adbc.version>|<adbc.version>${version}</adbc.version>|g" pom.xml
   rm pom.xml.bak
