@@ -50,6 +50,8 @@ Some steps of the release require being a committer or a PMC member.
       # You might need to export GPG_TTY=$(tty) to properly prompt for a passphrase
       mvn clean install -Papache-release
 
+- An `Artifactory`_ API key (log in with your ASF credentials, then generate it from your profile in the upper-right). You must set the Artifactory API key in ``dev/release/.env`` (see ``dev/release/.env.example`` for a template).
+
 - Install ``en_US.UTF-8`` locale. You can confirm available locales by ``locale -a``.
 - Install Conda with conda-forge, and create and activate the environment.
 
@@ -58,6 +60,12 @@ Some steps of the release require being a committer or a PMC member.
      mamba create -n adbc -c conda-forge --file ci/conda_env_dev.txt
 
   This will install two tools used in the release process: ``commitizen`` (generates changelog from commit messages) and ``gh`` (submit jobs/download artifacts).
+
+- Install Docker.
+
+- Clone the main Arrow repository (https://github.com/apache/arrow) and symlink ``arrow-adbc/dev/release/.env`` to ``arrow/dev/release/.env``.  Some release scripts depend on the scripts in the main Arrow repository.
+
+.. _Artifactory: https://apache.jfrog.io
 
 Before creating a Release Candidate
 ===================================
@@ -154,7 +162,7 @@ Build source and binaries and submit them
     # Note that you need to press the "Close" button manually by Web interface
     # after you complete the script:
     #   https://repository.apache.org/#stagingRepositories
-    dev/release/04-java-upload.sh <version> <rc-number>
+    dev/release/04-java-upload.sh <arrow-dir> <version> <rc-number>
 
     # Sign and upload the deb/rpm packages and APT/Yum repositories
     #
