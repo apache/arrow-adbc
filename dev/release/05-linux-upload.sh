@@ -56,7 +56,7 @@ main() {
         tar xf ${tar_gz} -C tmp
         base_dir=${tar_gz%.tar.gz}
         mkdir -p ${base_dir}
-        find tmp -type f -print0 | xargs -0 mv -t ${base_dir}
+        find tmp -type f -exec mv '{}' ${base_dir} ';'
         rm -rf tmp
 	rm -f ${tar_gz}
     done
