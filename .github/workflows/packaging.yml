@@ -542,9 +542,9 @@ jobs:
               -name '*.jar' -or \
               -name '*.pom' -or \
               -name '*.whl' -or \
-              -name 'adbc_*.tar.gz' \
-              -name 'almalinux-*.tar.gz' \
-              -name 'debian-*.tar.gz' \
+              -name 'adbc_*.tar.gz' -or \
+              -name 'almalinux-*.tar.gz' -or \
+              -name 'debian-*.tar.gz' -or \
               -name 'ubuntu-*.tar.gz' \
             ')' \
             -exec mv '{}' upload-staging \;
