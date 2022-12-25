@@ -611,7 +611,8 @@ test_binary_distribution() {
                        --dest="${BINARY_DIR}" \
                        --package_type=github \
                        --repository="${SOURCE_REPOSITORY}" \
-                       --tag="apache-arrow-adbc-${VERSION}-rc${RC_NUMBER}"
+                       --tag="apache-arrow-adbc-${VERSION}-rc${RC_NUMBER}" \
+                       --num_parallel 4
   fi
 
   if [ ${TEST_BINARY} -gt 0 ]; then
