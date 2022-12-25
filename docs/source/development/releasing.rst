@@ -105,12 +105,12 @@ Create or update the corresponding maintenance branch
 
       .. code-block::
 
-         # First cherry-pick any commits by hand.
          git switch maint-X.Y.Z
+         # Remove the commits that created the changelog and bumped the
+         # versions, since 01-source.sh will redo those steps
+         git reset --hard HEAD~2
+         # Cherry-pick any commits by hand.
          git cherry-pick ...
-         # Revert the commit that created the changelog so we can
-         # regenerate it in 01-source.sh
-         git revert <CHANGELOG COMMIT>
          # Push the updated maintenance branch to the remote repository
          git push -u apache maint-X.Y.Z
 
@@ -131,7 +131,7 @@ Create the Release Candidate tag from the updated maintenance branch
 
    dev/release/01-prepare.sh <version> <next-version> <rc-number>
 
-   git push -u apache apache-arrow-adbc-<version>-rc<rc-number>
+   git push -u apache apache-arrow-adbc-<version>-rc<rc-number> maint-<version>
 
 Build source and binaries and submit them
 -----------------------------------------
