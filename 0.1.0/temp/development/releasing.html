@@ -347,6 +347,7 @@ performing a release.</p>
 </pre></div>
 </div>
 </li>
+<li><p>An <a class="reference external" href="https://apache.jfrog.io">Artifactory</a> API key (log in with your ASF credentials, then generate it from your profile in the upper-right). You must set the Artifactory API key in <code class="docutils literal notranslate"><span class="pre">dev/release/.env</span></code> (see <code class="docutils literal notranslate"><span class="pre">dev/release/.env.example</span></code> for a template).</p></li>
 <li><p>Install <code class="docutils literal notranslate"><span class="pre">en_US.UTF-8</span></code> locale. You can confirm available locales by <code class="docutils literal notranslate"><span class="pre">locale</span> <span class="pre">-a</span></code>.</p></li>
 <li><p>Install Conda with conda-forge, and create and activate the environment.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mamba</span> <span class="n">create</span> <span class="o">-</span><span class="n">n</span> <span class="n">adbc</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="o">--</span><span class="n">file</span> <span class="n">ci</span><span class="o">/</span><span class="n">conda_env_dev</span><span class="o">.</span><span class="n">txt</span>
@@ -354,6 +355,8 @@ performing a release.</p>
 </div>
 <p>This will install two tools used in the release process: <code class="docutils literal notranslate"><span class="pre">commitizen</span></code> (generates changelog from commit messages) and <code class="docutils literal notranslate"><span class="pre">gh</span></code> (submit jobs/download artifacts).</p>
 </li>
+<li><p>Install Docker.</p></li>
+<li><p>Clone the main Arrow repository (<a class="reference external" href="https://github.com/apache/arrow">https://github.com/apache/arrow</a>) and symlink <code class="docutils literal notranslate"><span class="pre">arrow-adbc/dev/release/.env</span></code> to <code class="docutils literal notranslate"><span class="pre">arrow/dev/release/.env</span></code>.  Some release scripts depend on the scripts in the main Arrow repository.</p></li>
 </ul>
 </section>
 <section id="before-creating-a-release-candidate">
@@ -395,12 +398,12 @@ Initial Release Candidate</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
 </input><label class="sd-tab-label" for="sd-tab-item-1">
 Follow up Release Candidates</label><div class="sd-tab-content docutils">
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># First cherry-pick any commits by hand.</span>
-<span class="n">git</span> <span class="n">switch</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">switch</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
+<span class="c1"># Remove the commits that created the changelog and bumped the</span>
+<span class="c1"># versions, since 01-source.sh will redo those steps</span>
+<span class="n">git</span> <span class="n">reset</span> <span class="o">--</span><span class="n">hard</span> <span class="n">HEAD</span><span class="o">~</span><span class="mi">2</span>
+<span class="c1"># Cherry-pick any commits by hand.</span>
 <span class="n">git</span> <span class="n">cherry</span><span class="o">-</span><span class="n">pick</span> <span class="o">...</span>
-<span class="c1"># Revert the commit that created the changelog so we can</span>
-<span class="c1"># regenerate it in 01-source.sh</span>
-<span class="n">git</span> <span class="n">revert</span> <span class="o">&lt;</span><span class="n">CHANGELOG</span> <span class="n">COMMIT</span><span class="o">&gt;</span>
 <span class="c1"># Push the updated maintenance branch to the remote repository</span>
 <span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
 </pre></div>
@@ -422,7 +425,7 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 
 <span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">01</span><span class="o">-</span><span class="n">prepare</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="nb">next</span><span class="o">-</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
-<span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">apache</span><span class="o">-</span><span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-&lt;</span><span class="n">version</span><span class="o">&gt;-</span><span class="n">rc</span><span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">apache</span><span class="o">-</span><span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-&lt;</span><span class="n">version</span><span class="o">&gt;-</span><span class="n">rc</span><span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span> <span class="n">maint</span><span class="o">-&lt;</span><span class="n">version</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 </section>
@@ -444,7 +447,7 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <span class="c1"># Note that you need to press the &quot;Close&quot; button manually by Web interface</span>
 <span class="c1"># after you complete the script:</span>
 <span class="c1">#   https://repository.apache.org/#stagingRepositories</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">04</span><span class="o">-</span><span class="n">java</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">04</span><span class="o">-</span><span class="n">java</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Sign and upload the deb/rpm packages and APT/Yum repositories</span>
 <span class="c1">#</span>
