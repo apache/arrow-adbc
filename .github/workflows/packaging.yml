@@ -245,7 +245,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: ["amd64", "arm64v8"]
+        arch: ["amd64"]
         manylinux_version: ["2014"]
         is_pr:
           - ${{ startsWith(github.ref, 'refs/pull/') }}
@@ -534,6 +534,8 @@ jobs:
         run: |
           RELEASE_TAG=${GITHUB_REF#refs/*/}
 
+          ls -laR release-artifacts/
+
           # Deduplicate wheels built in different jobs with same tag
           mkdir -p upload-staging
           find ./release-artifacts/ \
@@ -542,12 +544,15 @@ jobs:
               -name '*.jar' -or \
               -name '*.pom' -or \
               -name '*.whl' -or \
-              -name 'adbc_*.tar.gz' \
-              -name 'almalinux-*.tar.gz' \
-              -name 'debian-*.tar.gz' \
+              -name 'adbc_*.tar.gz' -or \
+              -name 'almalinux-*.tar.gz' -or \
+              -name 'debian-*.tar.gz' -or \
               -name 'ubuntu-*.tar.gz' \
             ')' \
+            -exec echo '{}' \; \
             -exec mv '{}' upload-staging \;
+
+          ls -laR upload-staging/
 
           UPLOAD=$(find upload-staging -type f | sort | uniq)
 
