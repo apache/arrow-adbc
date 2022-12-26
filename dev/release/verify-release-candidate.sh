@@ -619,6 +619,7 @@ test_binary_distribution() {
     ${PYTHON:-python3} "$ARROW_SOURCE_DIR/dev/release/download_rc_binaries.py" \
                        $VERSION $RC_NUMBER \
                        --dest="${BINARY_DIR}" \
+                       --num_parallel 4 \
                        --package_type=github \
                        --repository="${SOURCE_REPOSITORY}" \
                        --tag="apache-arrow-adbc-${VERSION}-rc${RC_NUMBER}"
