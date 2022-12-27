@@ -93,7 +93,7 @@ typedef enum {
 
 #define GADBC_ERROR gadbc_error_quark()
 
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 GQuark gadbc_error_quark(void);
 
 G_END_DECLS

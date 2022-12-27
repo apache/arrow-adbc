@@ -25,13 +25,13 @@
 
 G_BEGIN_DECLS
 
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 GADBCError gadbc_error_from_status_code(AdbcStatusCode status_code);
 
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_error_check(GError** error, AdbcStatusCode status_code,
                            struct AdbcError* adbc_error, const gchar* context);
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 void gadbc_error_warn(AdbcStatusCode status_code, struct AdbcError* adbc_error,
                       const gchar* context);
 
