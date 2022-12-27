@@ -23,7 +23,8 @@ main() {
     local -r dist_dir=${2}
 
     echo "=== Clean artifacts from local Maven repository ==="
-    local -r maven_repo=$(mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout)/org/apache/arrow/adbc
+    # sed is for removing "^[[0m" at the end
+    local -r maven_repo=$(mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout | sed -e 's/\x1b\[0m//')/org/apache/arrow/adbc
     if [[ -d "${maven_repo}" ]]; then
         find "${maven_repo}" \
              "(" -name "*.jar" -o -name "*.zip" -o -name "*.pom" ")" \
