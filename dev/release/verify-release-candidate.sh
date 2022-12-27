@@ -532,8 +532,8 @@ test_go() {
 
 
   export CGO_ENABLED=1
-  "${ADBC_SOURCE_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
-  "${ADBC_SOURCE_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
+  "${ADBC_SOURCE_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
+  "${ADBC_SOURCE_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
 }
 
 ensure_source_directory() {
