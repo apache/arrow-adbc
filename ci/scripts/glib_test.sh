@@ -69,7 +69,7 @@ test_subproject() {
     echo "Testing Gem"
     local gem_flags=""
     if [[ "$(uname)" = "Darwin" ]]; then
-        gem_flags='--with-cflags="-D_LIBCPP_DISABLE_AVAILABILITY" --with-cppflags="-D_LIBCPP_DISABLE_AVAILABILITY"'
+        gem_flags='-- --with-cflags="-D_LIBCPP_DISABLE_AVAILABILITY" --with-cppflags="-D_LIBCPP_DISABLE_AVAILABILITY"'
     fi
 
     gem install --install-dir "${build_dir}/gems" pkg/*.gem ${gem_flags}
