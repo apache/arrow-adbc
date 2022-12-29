@@ -26,10 +26,10 @@ test_subproject() {
     local -r build_dir="${2}"
     local -r install_dir="${3}"
 
-    export DYLD_LIBRARY_PATH="${install_dir}/lib"
-    export GI_TYPELIB_PATH="${build_dir}/glib/adbc-glib"
-    export LD_LIBRARY_PATH="${install_dir}/lib"
-    export PKG_CONFIG_PATH="${install_dir}/lib/pkgconfig"
+    export DYLD_LIBRARY_PATH="${install_dir}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
+    export GI_TYPELIB_PATH="${build_dir}/glib/adbc-glib${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
+    export LD_LIBRARY_PATH="${install_dir}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    export PKG_CONFIG_PATH="${install_dir}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
     if [[ -n "${CONDA_PREFIX}" ]]; then
         export GI_TYPELIB_PATH="${GI_TYPELIB_PATH}:${CONDA_PREFIX}/lib/girepository-1.0"
         export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${CONDA_PREFIX}/lib/pkgconfig"
