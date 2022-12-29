@@ -34,15 +34,12 @@ test_subproject() {
         export GI_TYPELIB_PATH="${GI_TYPELIB_PATH}:${CONDA_PREFIX}/lib/girepository-1.0"
         export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${CONDA_PREFIX}/lib/pkgconfig"
     fi
+    # Required to avoid errors relating to symbols not available on
+    # older macOS (which the build will target by default)
+    export MACOSX_DEPLOYMENT_TARGET=10.14
 
     pushd "${source_dir}/glib"
     echo "Testing GLib"
-
-    if [[ "$(uname)" = "Darwin" ]]; then
-        bundle config build.red-arrow -- \
-               --with-cflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\" \
-               --with-cppflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\"
-    fi
 
     bundle install
     bundle exec \
@@ -54,12 +51,6 @@ test_subproject() {
     pushd "${source_dir}/ruby"
     echo "Testing Ruby"
 
-    if [[ "$(uname)" = "Darwin" ]]; then
-        bundle config build.red-arrow -- \
-               --with-cflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\" \
-               --with-cppflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\"
-    fi
-
     bundle install
     bundle exec \
            env DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" \
@@ -67,12 +58,7 @@ test_subproject() {
     bundle exec rake build
 
     echo "Testing Gem"
-    local gem_flags=""
-    if [[ "$(uname)" = "Darwin" ]]; then
-        gem_flags='-- --with-cflags="-D_LIBCPP_DISABLE_AVAILABILITY" --with-cppflags="-D_LIBCPP_DISABLE_AVAILABILITY"'
-    fi
-
-    gem install --install-dir "${build_dir}/gems" pkg/*.gem -- ${gem_flags}
+    gem install --install-dir "${build_dir}/gems" pkg/*.gem
     popd
 }
 
