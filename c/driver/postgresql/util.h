@@ -40,12 +40,15 @@ namespace adbcpq {
 #define CONCAT(x, y) x##y
 #define MAKE_NAME(x, y) CONCAT(x, y)
 
-#if defined(__linux__)
-static inline uint64_t SwapNetworkToHost(uint64_t x) { return be64toh(x); }
-static inline uint64_t SwapHostToNetwork(uint64_t x) { return htobe64(x); }
+#if defined(_WIN32)
+static inline uint64_t SwapNetworkToHost(uint64_t x) { return ntohll(x); }
+static inline uint64_t SwapHostToNetwork(uint64_t x) { return htonll(x); }
 #elif defined(__APPLE__)
 static inline uint64_t SwapNetworkToHost(uint64_t x) { return OSSwapBigToHostInt64(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return OSSwapHostToBigInt64(x); }
+#else
+static inline uint64_t SwapNetworkToHost(uint64_t x) { return be64toh(x); }
+static inline uint64_t SwapHostToNetwork(uint64_t x) { return htobe64(x); }
 #endif
 
 // see arrow/util/string_builder.h
