@@ -22,17 +22,17 @@ require "gemfury"
 
 client = Gemfury::Client.new(user_api_key: ENV["GEMFURY_API_TOKEN"])
 
-for artifact in client.list
+client.list.each do |artifact|
   puts artifact["name"]
   versions = client.versions(artifact["name"])
   versions.sort_by! { |v| v["created_at"] }
 
   # Keep last two versions
-  for version in versions[0...-2]
+  versions[0...-2].each do |version|
     client.yank_version(artifact["name"], version["version"])
     puts "Yanked #{artifact['name']} #{version['version']} (created #{version['created_at']})"
   end
-  for version in versions.last(2)
+  versions.last(2).each do |version|
     puts "Kept #{artifact['name']} #{version['version']} (created #{version['created_at']})"
   end
 end
