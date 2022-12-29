@@ -36,6 +36,7 @@ test_subproject() {
     fi
 
     pushd "${source_dir}/glib"
+    echo "Testing GLib"
 
     if [[ "$(uname)" = "Darwin" ]]; then
         bundle config build.red-arrow -- \
@@ -51,6 +52,7 @@ test_subproject() {
 
     export GI_TYPELIB_PATH="${install_dir}/lib/girepository-1.0:${GI_TYPELIB_PATH}"
     pushd "${source_dir}/ruby"
+    echo "Testing Ruby"
 
     if [[ "$(uname)" = "Darwin" ]]; then
         bundle config build.red-arrow -- \
@@ -63,7 +65,14 @@ test_subproject() {
            env DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" \
            ruby test/run.rb
     bundle exec rake build
-    gem install --install-dir "${build_dir}/gems" pkg/*.gem
+
+    echo "Testing Gem"
+    local gem_flags=""
+    if [[ "$(uname)" = "Darwin" ]]; then
+        gem_flags='--with-cflags="-D_LIBCPP_DISABLE_AVAILABILITY" --with-cppflags="-D_LIBCPP_DISABLE_AVAILABILITY"'
+    fi
+
+    gem install --install-dir "${build_dir}/gems" pkg/*.gem ${gem_flags}
     popd
 }
 
