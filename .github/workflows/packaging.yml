@@ -193,9 +193,7 @@ jobs:
         shell: bash
         run: |
           pushd adbc/
-          docker-compose run \
-            -e SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} \
-            java-dist
+          docker-compose run java-dist
           popd
           cp -a adbc/dist/ ./
 
