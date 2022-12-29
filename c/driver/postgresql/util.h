@@ -29,6 +29,8 @@
 
 #if defined(__linux__)
 #include <endian.h>
+#elif defined(__APPLE__)
+#include <libkern/OSByteOrder.h>
 #endif
 
 #include "adbc.h"
@@ -41,6 +43,9 @@ namespace adbcpq {
 #if defined(__linux__)
 static inline uint64_t ntohll(uint64_t x) { return be64toh(x); }
 static inline uint64_t htonll(uint64_t x) { return htobe64(x); }
+#elif defined(__APPLE__) && !defined(ntohll)
+static inline uint64_t ntohll(uint64_t x) { return OSSwapBigToHostInt64(x); }
+static inline uint64_t htonll(uint64_t x) { return OSSwapHostToBigInt64(x); }
 #endif
 
 // see arrow/util/string_builder.h
