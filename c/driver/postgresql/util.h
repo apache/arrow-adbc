@@ -29,6 +29,8 @@
 
 #if defined(__linux__)
 #include <endian.h>
+#elif defined(__APPLE__)
+#include <libkern/OSByteOrder.h>
 #endif
 
 #include "adbc.h"
@@ -38,9 +40,15 @@ namespace adbcpq {
 #define CONCAT(x, y) x##y
 #define MAKE_NAME(x, y) CONCAT(x, y)
 
-#if defined(__linux__)
-static inline uint64_t ntohll(uint64_t x) { return be64toh(x); }
-static inline uint64_t htonll(uint64_t x) { return htobe64(x); }
+#if defined(_WIN32)
+static inline uint64_t SwapNetworkToHost(uint64_t x) { return ntohll(x); }
+static inline uint64_t SwapHostToNetwork(uint64_t x) { return htonll(x); }
+#elif defined(__APPLE__)
+static inline uint64_t SwapNetworkToHost(uint64_t x) { return OSSwapBigToHostInt64(x); }
+static inline uint64_t SwapHostToNetwork(uint64_t x) { return OSSwapHostToBigInt64(x); }
+#else
+static inline uint64_t SwapNetworkToHost(uint64_t x) { return be64toh(x); }
+static inline uint64_t SwapHostToNetwork(uint64_t x) { return htobe64(x); }
 #endif
 
 // see arrow/util/string_builder.h
@@ -127,7 +135,7 @@ static inline uint32_t LoadNetworkUInt32(const char* buf) {
 static inline int64_t LoadNetworkUInt64(const char* buf) {
   uint64_t v = 0;
   std::memcpy(&v, buf, sizeof(uint64_t));
-  return ntohll(v);
+  return SwapNetworkToHost(v);
 }
 
 static inline int32_t LoadNetworkInt32(const char* buf) {
@@ -139,7 +147,7 @@ static inline int64_t LoadNetworkInt64(const char* buf) {
 }
 
 static inline uint64_t ToNetworkInt64(int64_t v) {
-  return htonll(static_cast<uint64_t>(v));
+  return SwapHostToNetwork(static_cast<uint64_t>(v));
 }
 
 }  // namespace adbcpq
