@@ -29,14 +29,14 @@ struct _GADBCStatementClass {
   GObjectClass parent_class;
 };
 
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 GADBCStatement* gadbc_statement_new(GADBCConnection* connection, GError** error);
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_statement_release(GADBCStatement* statement, GError** error);
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_statement_set_sql_query(GADBCStatement* statement, const gchar* query,
                                        GError** error);
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_statement_execute(GADBCStatement* statement, gpointer* c_abi_array_stream,
                                  gint64* n_rows_affected, GError** error);
 

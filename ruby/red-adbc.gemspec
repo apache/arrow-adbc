@@ -23,7 +23,13 @@ require_relative "lib/adbc/version"
 
 Gem::Specification.new do |spec|
   spec.name = "red-adbc"
-  spec.version = ADBC::VERSION
+  version_components = [
+    ADBC::Version::MAJOR.to_s,
+    ADBC::Version::MINOR.to_s,
+    ADBC::Version::MICRO.to_s,
+    ADBC::Version::TAG,
+  ]
+  spec.version = version_components.compact.join(".")
   spec.homepage = "https://arrow.apache.org/"
   spec.authors = ["Apache Arrow Developers"]
   spec.email = ["dev@arrow.apache.org"]

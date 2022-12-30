@@ -64,7 +64,7 @@ static void gadbc_database_class_init(GADBCDatabaseClass* klass) {
  *
  * Returns: A newly created #GADBCDatabase.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 GADBCDatabase* gadbc_database_new(GError** error) {
   GADBCDatabase* database = g_object_new(GADBC_TYPE_DATABASE, NULL);
@@ -93,7 +93,7 @@ GADBCDatabase* gadbc_database_new(GError** error) {
  *
  * Returns: %TRUE if this database is released successfully, %FALSE otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 gboolean gadbc_database_release(GADBCDatabase* database, GError** error) {
   const gchar* context = "[adbc][database][release]";
@@ -123,7 +123,7 @@ gboolean gadbc_database_release(GADBCDatabase* database, GError** error) {
  *
  * Returns: %TRUE if option is set successfully, %FALSE otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 gboolean gadbc_database_set_option(GADBCDatabase* database, const gchar* key,
                                    const gchar* value, GError** error) {
@@ -150,7 +150,7 @@ gboolean gadbc_database_set_option(GADBCDatabase* database, const gchar* key,
  *
  * Returns: %TRUE if initialization is done successfully, %FALSE otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 gboolean gadbc_database_init(GADBCDatabase* database, GError** error) {
   const gchar* context = "[adbc][database][init]";
@@ -173,7 +173,7 @@ gboolean gadbc_database_init(GADBCDatabase* database, GError** error) {
  * Returns: (nullable): The underlying `AdbcDatabase` if this database
  *   isn't released yet, %NULL otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 struct AdbcDatabase* gadbc_database_get_raw(GADBCDatabase* database, const gchar* context,
                                             GError** error) {

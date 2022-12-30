@@ -71,7 +71,7 @@ static void gadbc_connection_class_init(GADBCConnectionClass* klass) {
  *
  * Returns: A newly created #GADBCConnection.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 GADBCConnection* gadbc_connection_new(GError** error) {
   GADBCConnection* connection = g_object_new(GADBC_TYPE_CONNECTION, NULL);
@@ -100,7 +100,7 @@ GADBCConnection* gadbc_connection_new(GError** error) {
  *
  * Returns: %TRUE if this connection is released successfully, %FALSE otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 gboolean gadbc_connection_release(GADBCConnection* connection, GError** error) {
   const gchar* context = "[adbc][connection][release]";
@@ -131,7 +131,7 @@ gboolean gadbc_connection_release(GADBCConnection* connection, GError** error) {
  *
  * Returns: %TRUE if option is set successfully, %FALSE otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 gboolean gadbc_connection_set_option(GADBCConnection* connection, const gchar* key,
                                      const gchar* value, GError** error) {
@@ -160,7 +160,7 @@ gboolean gadbc_connection_set_option(GADBCConnection* connection, const gchar* k
  *
  * Returns: %TRUE if initialization is done successfully, %FALSE otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* database,
                                GError** error) {
@@ -193,7 +193,7 @@ gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* datab
  * Returns: (nullable): The underlying `AdbcConnection` if this connection
  *   isn't released yet, %NULL otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 struct AdbcConnection* gadbc_connection_get_raw(GADBCConnection* connection,
                                                 const gchar* context, GError** error) {

@@ -72,7 +72,7 @@ static void gadbc_statement_class_init(GADBCStatementClass* klass) {
  * Returns: A newly created #GADBCStatement for @connection on success,
  *   %NULL otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 GADBCStatement* gadbc_statement_new(GADBCConnection* connection, GError** error) {
   const gchar* context = "[adbc][statement][new]";
@@ -109,7 +109,7 @@ GADBCStatement* gadbc_statement_new(GADBCConnection* connection, GError** error)
  *
  * Returns: %TRUE if this statement is released successfully, %FALSE otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 gboolean gadbc_statement_release(GADBCStatement* statement, GError** error) {
   const gchar* context = "[adbc][statement][release]";
@@ -142,7 +142,7 @@ gboolean gadbc_statement_release(GADBCStatement* statement, GError** error) {
  *
  * Returns: %TRUE if option is set successfully, %FALSE otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 gboolean gadbc_statement_set_sql_query(GADBCStatement* statement, const gchar* query,
                                        GError** error) {
@@ -174,7 +174,7 @@ gboolean gadbc_statement_set_sql_query(GADBCStatement* statement, const gchar* q
  *
  * Returns: %TRUE if option is set successfully, %FALSE otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 gboolean gadbc_statement_execute(GADBCStatement* statement, gpointer* c_abi_array_stream,
                                  gint64* n_rows_affected, GError** error) {
@@ -212,7 +212,7 @@ gboolean gadbc_statement_execute(GADBCStatement* statement, gpointer* c_abi_arra
  * Returns: (nullable): The underlying `AdbcStatement` if this statement
  *   isn't released yet, %NULL otherwise.
  *
- * Since: 1.0.0
+ * Since: 0.1.0
  */
 struct AdbcStatement* gadbc_statement_get_raw(GADBCStatement* statement,
                                               const gchar* context, GError** error) {

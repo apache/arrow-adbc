@@ -137,7 +137,7 @@ Create the Release Candidate tag from the updated maintenance branch
    # <rc-number> starts at 0 and increments every time the Release Candidate is burned
    # so for the first RC this would be: dev/release/01-prepare.sh 4.0.0 5.0.0 0
 
-   dev/release/01-prepare.sh <version> <next-version> <rc-number>
+   dev/release/01-prepare.sh <arrow-dir> <version> <next-version> <rc-number>
 
    git push -u apache apache-arrow-adbc-<version>-rc<rc-number> maint-<version>
 
@@ -146,18 +146,19 @@ Build source and binaries and submit them
 
 .. code-block::
 
-    # Build the source release tarball
-    dev/release/02-source.sh <version> <rc-number>
-
-    # Download the produced binaries, sign them, and add the
+    # Download the produced source and binaries, sign them, and add the
     # signatures to the GitHub release
     #
     # On macOS the only way I could get this to work was running "echo
     # "UPDATESTARTUPTTY" | gpg-connect-agent" before running this
     # comment otherwise I got errors referencing "ioctl" errors.
-    dev/release/03-binary-sign.sh <version> <rc-number>
+    dev/release/02-sign.sh <version> <rc-number>
 
-    # Sign and upload the Java artifacts
+    # Upload the source release tarball and signs to
+    # https://dist.apache.org/repos/dist/dev/arrow .
+    dev/release/03-source.sh <version> <rc-number>
+
+    # Upload the Java artifacts
     #
     # Note that you need to press the "Close" button manually by Web interface
     # after you complete the script:
@@ -307,7 +308,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-07-bump-versions.sh 0.1.0 0.2.0
-      dev/release/post-07-bump-versions.sh <version> <next_version>
+      # dev/release/post-07-bump-versions.sh ../arrow 0.1.0 0.2.0
+      dev/release/post-07-bump-versions.sh <arrow-dir> <version> <next_version>
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml

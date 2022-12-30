@@ -76,17 +76,14 @@ main() {
        --repo "${REPOSITORY}" \
        --notes "${release_notes}"
 
-    header "Upload signed tarballs"
-    gh release upload \
-       --repo "${REPOSITORY}" \
-       "${tag}" \
-       "${tarball}.tar.gz" \
-       "${tarball}.tar.gz.asc" \
-       "${tarball}.tar.gz.sha256" \
-       "${tarball}.tar.gz.sha512"
+    header "Upload signatures for source"
+    upload_asset_signatures "${tag}" $(find "${download_dir}" -type f \( -name 'apache-arrow-adbc-*.tar.gz' \))
 
     header "Upload signatures for Java"
     upload_asset_signatures "${tag}" $(find "${download_dir}" -type f \( -name '*.jar' -or -name '*.pom' \))
+
+    header "Upload signatures for Linux packages"
+    upload_asset_signatures "${tag}" $(find "${download_dir}" -type f \( -name 'almalinux-*.tar.gz' -or -name 'debian-*.tar.gz' -or -name 'ubuntu-*.tar.gz' \))
 
     header "Upload signatures for Python"
     upload_asset_signatures "${tag}" $(find "${download_dir}" -type f \( -name '*.whl' -or -name 'adbc_*.tar.gz' \))

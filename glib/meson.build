@@ -23,9 +23,9 @@ project('adbc-glib',
           'c_std=c99',
         ],
         license: 'Apache-2.0',
-        version: '1.0.0')
+        version: '0.1.0-SNAPSHOT')
 
-version_numbers = meson.project_version().split('.')
+version_numbers = meson.project_version().split('-')[0].split('.')
 version_major = version_numbers[0].to_int()
 version_minor = version_numbers[1].to_int()
 version_micro = version_numbers[2].to_int()

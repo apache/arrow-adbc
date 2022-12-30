@@ -21,16 +21,20 @@ set -ue
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ "$#" -ne 2 ]; then
-  echo "Usage: $0 <version> <next_version>"
+if [ "$#" -ne 3 ]; then
+  echo "Usage: $0 <arrow-dir> <version> <next_version>"
+  echo "Usage: $0 ../arrow 0.1.0 1.0.0"
   exit 1
 fi
 
 . $SOURCE_DIR/utils-prepare.sh
 
-version=$1
-next_version=$2
+arrow_dir=$1
+version=$2
+next_version=$3
 next_version_snapshot="${next_version}-SNAPSHOT"
+
+export ARROW_SOURCE="$(cd "${arrow_dir}" && pwd)"
 
 ########################## Update Snapshot Version ##########################
 

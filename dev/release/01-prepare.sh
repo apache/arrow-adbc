@@ -21,17 +21,21 @@ set -ue
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ "$#" -ne 3 ]; then
-  echo "Usage: $0 <version> <next_version> <rc-num>"
+if [ "$#" -ne 4 ]; then
+  echo "Usage: $0 <arrow-dir> <version> <next_version> <rc-num>"
+  echo "Usage: $0 ../arrow 0.1.0 1.0.0 0"
   exit 1
 fi
 
 . $SOURCE_DIR/utils-prepare.sh
 
-version=$1
-next_version=$2
+arrow_dir=$1
+version=$2
+next_version=$3
 next_version_snapshot="${next_version}-SNAPSHOT"
-rc_number=$3
+rc_number=$4
+
+export ARROW_SOURCE="$(cd "${arrow_dir}" && pwd)"
 
 release_candidate_tag="apache-arrow-adbc-${version}-rc${rc_number}"
 

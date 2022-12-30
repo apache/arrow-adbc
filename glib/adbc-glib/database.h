@@ -31,14 +31,14 @@ struct _GADBCDatabaseClass {
   GObjectClass parent_class;
 };
 
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 GADBCDatabase* gadbc_database_new(GError** error);
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_database_release(GADBCDatabase* database, GError** error);
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_database_set_option(GADBCDatabase* database, const gchar* key,
                                    const gchar* value, GError** error);
-GADBC_AVAILABLE_IN_1_0
+GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_database_init(GADBCDatabase* database, GError** error);
 
 G_END_DECLS
