@@ -168,6 +168,11 @@ test_binary() {
 test_apt() {
   show_header "Testing APT packages"
 
+  if ! type docker > /dev/null 2>&1; then
+    show_info "Skip because Docker isn't installed"
+    return 0
+  fi
+
   local verify_type=rc
   if [ "${TEST_STAGING:-0}" -gt 0 ]; then
     verify_type=staging-${verify_type}
@@ -193,6 +198,11 @@ test_apt() {
 test_yum() {
   show_header "Testing Yum packages"
 
+  if ! type docker > /dev/null 2>&1; then
+    show_info "Skip because Docker isn't installed"
+    return 0
+  fi
+
   local verify_type=rc
   if [ "${TEST_STAGING:-0}" -gt 0 ]; then
     verify_type=staging-${verify_type}
@@ -217,6 +227,8 @@ test_yum() {
 setup_tempdir() {
   cleanup() {
     if [ "${TEST_SUCCESS}" = "yes" ]; then
+      # Go modules are installed with 0444.
+      chmod -R u+w "${ARROW_TMPDIR}"
       rm -fr "${ARROW_TMPDIR}"
     else
       echo "Failed to verify release candidate. See ${ARROW_TMPDIR} for details."
@@ -522,8 +534,8 @@ test_go() {
 
 
   export CGO_ENABLED=1
-  "${ADBC_SOURCE_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
-  "${ADBC_SOURCE_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
+  "${ADBC_SOURCE_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
+  "${ADBC_SOURCE_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
 }
 
 ensure_source_directory() {
@@ -609,6 +621,7 @@ test_binary_distribution() {
     ${PYTHON:-python3} "$ARROW_SOURCE_DIR/dev/release/download_rc_binaries.py" \
                        $VERSION $RC_NUMBER \
                        --dest="${BINARY_DIR}" \
+                       --num_parallel 4 \
                        --package_type=github \
                        --repository="${SOURCE_REPOSITORY}" \
                        --tag="apache-arrow-adbc-${VERSION}-rc${RC_NUMBER}"
