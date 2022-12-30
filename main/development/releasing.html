@@ -423,7 +423,7 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <span class="c1"># &lt;rc-number&gt; starts at 0 and increments every time the Release Candidate is burned</span>
 <span class="c1"># so for the first RC this would be: dev/release/01-prepare.sh 4.0.0 5.0.0 0</span>
 
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">01</span><span class="o">-</span><span class="n">prepare</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="nb">next</span><span class="o">-</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">01</span><span class="o">-</span><span class="n">prepare</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="nb">next</span><span class="o">-</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">apache</span><span class="o">-</span><span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-&lt;</span><span class="n">version</span><span class="o">&gt;-</span><span class="n">rc</span><span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span> <span class="n">maint</span><span class="o">-&lt;</span><span class="n">version</span><span class="o">&gt;</span>
 </pre></div>
@@ -431,18 +431,19 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 </section>
 <section id="build-source-and-binaries-and-submit-them">
 <h3>Build source and binaries and submit them<a class="headerlink" href="#build-source-and-binaries-and-submit-them" title="Permalink to this heading">#</a></h3>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build the source release tarball</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">02</span><span class="o">-</span><span class="n">source</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
-
-<span class="c1"># Download the produced binaries, sign them, and add the</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the produced source and binaries, sign them, and add the</span>
 <span class="c1"># signatures to the GitHub release</span>
 <span class="c1">#</span>
 <span class="c1"># On macOS the only way I could get this to work was running &quot;echo</span>
 <span class="c1"># &quot;UPDATESTARTUPTTY&quot; | gpg-connect-agent&quot; before running this</span>
 <span class="c1"># comment otherwise I got errors referencing &quot;ioctl&quot; errors.</span>
-<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">03</span><span class="o">-</span><span class="n">binary</span><span class="o">-</span><span class="n">sign</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">02</span><span class="o">-</span><span class="n">sign</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
-<span class="c1"># Sign and upload the Java artifacts</span>
+<span class="c1"># Upload the source release tarball and signs to</span>
+<span class="c1"># https://dist.apache.org/repos/dist/dev/arrow .</span>
+<span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">03</span><span class="o">-</span><span class="n">source</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
+
+<span class="c1"># Upload the Java artifacts</span>
 <span class="c1">#</span>
 <span class="c1"># Note that you need to press the &quot;Close&quot; button manually by Web interface</span>
 <span class="c1"># after you complete the script:</span>
@@ -626,8 +627,8 @@ Bump versions<div class="sd-summary-down docutils">
 <div class="sd-summary-up docutils">
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
 </summary><div class="sd-summary-content sd-card-body docutils">
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-07-bump-versions.sh 0.1.0 0.2.0</span>
-dev/release/post-07-bump-versions.sh &lt;version&gt; &lt;next_version&gt;
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-07-bump-versions.sh ../arrow 0.1.0 0.2.0</span>
+dev/release/post-07-bump-versions.sh &lt;arrow-dir&gt; &lt;version&gt; &lt;next_version&gt;
 </pre></div>
 </div>
 </div>
