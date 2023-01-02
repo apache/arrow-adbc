@@ -20,15 +20,34 @@ set -ex
 
 # Usage: java_jar_upload.sh jar1.pom jar2.pom ...
 
-main() {
-    local settings_file=$(mktemp adbc.settingsXXXXXXXX)
-    trap 'rm -f "$settings_file"' ERR EXIT INT TERM
+retry() {
+    local -r retries="${1}"
+    shift
 
+    local attempt=0
+    while ! "$@"; do
+        local last_status="$?"
+        attempt=$((attempt + 1))
+        if [[ "${attempt}" -lt "${retries}" ]]; then
+            local delay=$((2 ** ${attempt}))
+            echo "Attempt ${attempt}/${retries}, waiting ${delay} seconds"
+            sleep "${delay}"
+        else
+            echo "Attempt ${attempt}/${retries}, exiting"
+            return "${last_status}"
+        fi
+    done
+    return 0
+}
+
+main() {
     if [[ -z "${GEMFURY_PUSH_TOKEN}" ]]; then
         echo "GEMFURY_PUSH_TOKEN must be set"
         exit 1
     fi
 
+    local settings_file=$(mktemp adbc.settingsXXXXXXXX)
+    trap 'rm -f "$settings_file"' ERR EXIT INT TERM
     cat <<SETTINGS > "${settings_file}"
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -67,7 +86,9 @@ SETTINGS
             mvnArgs="${mvnArgs} -Djavadoc=${javadoc}"
         fi
 
-        mvn \
+        # apache/arrow-adbc#285: Gemfury appears to be flaky with some
+        # 503s, so retry each upload.
+        retry 3 mvn \
             -Dmaven.install.skip=true \
             -Drat.skip=true \
             -DskipTests \
