@@ -23,7 +23,7 @@ echo "=== (%PYTHON_VERSION%) Installing wheels ==="
 
 FOR %%c IN (adbc_driver_manager adbc_driver_postgresql adbc_driver_sqlite) DO (
     FOR %%w IN (%source_dir%\python\%%c\dist\*.whl) DO (
-        pip install --force-reinstall %%w || exit /B 1
+        pip install --no-deps --force-reinstall %%w || exit /B 1
     )
 )
 

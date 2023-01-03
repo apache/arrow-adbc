@@ -83,7 +83,7 @@ FOR %%c IN (adbc_driver_manager adbc_driver_postgresql adbc_driver_sqlite) DO (
     python %%c\_version.py
 
     echo "=== (%PYTHON_VERSION%) Building %%c wheel ==="
-    python -m pip wheel -w dist -vvv . || exit /B 1
+    python -m pip wheel --no-deps -w dist -vvv . || exit /B 1
 
     echo "=== (%PYTHON_VERSION%) Re-tag %%c wheel ==="
     FOR %%w IN (dist\*.whl) DO (

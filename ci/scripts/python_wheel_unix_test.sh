@@ -40,10 +40,10 @@ for component in ${COMPONENTS}; do
     fi
 
     if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then
-        pip install --force-reinstall \
+        pip install --no-deps --force-reinstall \
             ${source_dir}/python/${component}/repaired_wheels/*-${PYTHON_TAG}-*.whl
     elif [[ -d ${source_dir}/python/${component}/dist/ ]]; then
-        pip install --force-reinstall \
+        pip install --no-deps --force-reinstall \
             ${source_dir}/python/${component}/dist/*-${PYTHON_TAG}-*.whl
     else
         echo "NOTE: assuming wheels are already installed"
