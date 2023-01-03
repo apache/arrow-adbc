@@ -41,7 +41,7 @@ build_drivers "${source_dir}" "${build_dir}"
 
 echo "=== Installing sdists ==="
 for component in ${COMPONENTS}; do
-    pip install --force-reinstall ${source_dir}/python/${component}/dist/*.tar.gz
+    pip install --no-deps --force-reinstall ${source_dir}/python/${component}/dist/*.tar.gz
 done
 pip install pytest pyarrow pandas
 
