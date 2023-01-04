@@ -28,10 +28,20 @@ manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
 
 ## Building
 
-Dependencies: a build of the SQLite driver.
+Dependencies: a build of the SQLite driver, and the
+`adbc-driver-manager` Python package.  Optionally, install PyArrow to
+use the DBAPI 2.0-compatible interface.
 
 Set the environment variable `ADBC_SQLITE_LIBRARY` to the path to
 `libadbc_driver_sqlite.{dll,dylib,so}` before running `pip install`.
+
+```
+# If not already installed
+pip install -e ../adbc_driver_manager
+
+export ADBC_SQLITE_LIBRARY=/path/to/libadbc_driver_sqlite.so
+pip install -e --no-deps .
+```
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
 general build process.

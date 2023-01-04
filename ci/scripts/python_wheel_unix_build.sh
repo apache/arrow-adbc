@@ -107,7 +107,7 @@ for component in $COMPONENTS; do
     if [[ "$component" = "adbc_driver_manager" ]]; then
         python -m cibuildwheel --output-dir repaired_wheels/ dist/$component_dashes-*.tar.gz
     else
-        python -m pip wheel -w dist -vvv .
+        python -m pip wheel --no-deps -w dist -vvv .
 
         # Retag the wheel
         python "${script_dir}/python_wheel_fix_tag.py" --plat-name="${PLAT_NAME}" dist/$component-*.whl
