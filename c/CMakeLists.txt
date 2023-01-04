@@ -27,12 +27,14 @@ project(adbc_driver_manager
         LANGUAGES CXX)
 include(CTest)
 
-add_subdirectory(driver_manager)
+if(ADBC_BUILD_DRIVER_MANAGER)
+  add_subdirectory(driver_manager)
+endif()
 
-if(ADBC_BUILD_SQLITE)
+if(ADBC_BUILD_DRIVER_SQLITE)
   add_subdirectory(driver/sqlite)
 endif()
 
-if(ADBC_BUILD_POSTGRES)
+if(ADBC_BUILD_DRIVER_POSTGRESQL)
   add_subdirectory(driver/postgresql)
 endif()

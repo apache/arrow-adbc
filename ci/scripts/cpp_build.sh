@@ -32,11 +32,14 @@ set -e
 : ${ADBC_CMAKE_ARGS:=""}
 : ${CMAKE_BUILD_TYPE:=Debug}
 
-build_subproject() {
+main() {
     local -r source_dir="${1}"
     local -r build_dir="${2}"
-    local -r install_dir="${3}"
-    local -r subproject="${4}"
+    local install_dir="${3}"
+
+    if [[ -z "${install_dir}" ]]; then
+        install_dir="${build_dir}/local"
+    fi
 
     if [[ -z "${CMAKE_INSTALL_PREFIX}" ]]; then
         CMAKE_INSTALL_PREFIX="${install_dir}"
@@ -56,33 +59,12 @@ build_subproject() {
           -DADBC_USE_UBSAN="${ADBC_USE_UBSAN}" \
           -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
           -DCMAKE_INSTALL_LIBDIR=lib \
-          -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
+          -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}" \
+          -DADBC_BUILD_DRIVER_MANAGER="${ADBC_BUILD_DRIVER_MANAGER}" \
+          -DADBC_BUILD_DRIVER_POSTGRESQL="${ADBC_BUILD_DRIVER_POSTGRESQL}" \
+          -DADBC_BUILD_DRIVER_SQLITE="${ADBC_BUILD_DRIVER_SQLITE}" \
     set +x
     cmake --build . --target install -j
-
-    popd
-}
-
-main() {
-    local -r source_dir="${1}"
-    local -r build_dir="${2}"
-    local install_dir="${3}"
-
-    if [[ -z "${install_dir}" ]]; then
-        install_dir="${build_dir}/local"
-    fi
-
-    if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then
-        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver_manager
-    fi
-
-    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
-        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver/postgresql
-    fi
-
-    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
-        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver/sqlite
-    fi
 }
 
 main "$@"
