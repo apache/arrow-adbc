@@ -15,16 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
-
-project(adbc_driver_sqlite
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
-include(CTest)
 
 find_package(SQLite3)
 if(SQLite3_FOUND)
