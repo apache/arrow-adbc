@@ -508,8 +508,8 @@ Upload source release artifacts to Subversion<div class="sd-summary-down docutil
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">A PMC member must commit the source release artifacts to Subversion:</p>
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-01-upload.sh 0.1.0 0</span>
-dev/release/post-01-upload.sh &lt;version&gt; &lt;rc-number&gt;
-git push --tag apache apache-arrow-adbc-&lt;version&gt;
+dev/release/post-01-upload.sh<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
+git<span class="w"> </span>push<span class="w"> </span>--tag<span class="w"> </span>apache<span class="w"> </span>apache-arrow-adbc-&lt;version&gt;
 </pre></div>
 </div>
 </div>
@@ -522,7 +522,7 @@ Create the final GitHub release<div class="sd-summary-down docutils">
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">A committer must create the final GitHub release:</p>
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-02-binary.sh 0.1.0 0</span>
-dev/release/post-02-binary.sh &lt;version&gt; &lt;rc-number&gt;
+dev/release/post-02-binary.sh<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
 </pre></div>
 </div>
 </div>
@@ -545,7 +545,7 @@ Upload wheels/sdist to PyPI<div class="sd-summary-down docutils">
 </summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">We use the twine tool to upload wheels to PyPI:</p>
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-03-python.sh 10.0.0</span>
-dev/release/post-03-python.sh &lt;version&gt;
+dev/release/post-03-python.sh<span class="w"> </span>&lt;version&gt;
 </pre></div>
 </div>
 </div>
@@ -570,7 +570,7 @@ Update tags for Go modules<div class="sd-summary-down docutils">
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
 </summary><div class="sd-summary-content sd-card-body docutils">
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-04-go.sh 10.0.0</span>
-dev/release/post-04-go.sh &lt;version&gt;
+dev/release/post-04-go.sh<span class="w"> </span>&lt;version&gt;
 </pre></div>
 </div>
 </div>
@@ -585,7 +585,7 @@ Deploy APT/Yum repositories<div class="sd-summary-down docutils">
 <span class="c1"># specify cloned apache/arrow directory.</span>
 <span class="c1">#</span>
 <span class="c1"># dev/release/post-05-linux.sh ../arrow 10.0.0 0</span>
-dev/release/post-05-linux.sh &lt;arrow-dir&gt; &lt;version&gt; &lt;rc-number&gt;
+dev/release/post-05-linux.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;rc-number&gt;
 </pre></div>
 </div>
 </div>
@@ -628,7 +628,7 @@ Bump versions<div class="sd-summary-down docutils">
 <svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-up" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M18.78 15.28a.75.75 0 000-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25a.75.75 0 101.06 1.06L12 9.56l5.72 5.72a.75.75 0 001.06 0z"></path></svg></div>
 </summary><div class="sd-summary-content sd-card-body docutils">
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-07-bump-versions.sh ../arrow 0.1.0 0.2.0</span>
-dev/release/post-07-bump-versions.sh &lt;arrow-dir&gt; &lt;version&gt; &lt;next_version&gt;
+dev/release/post-07-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;version&gt;<span class="w"> </span>&lt;next_version&gt;
 </pre></div>
 </div>
 </div>
