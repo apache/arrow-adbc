@@ -27,12 +27,16 @@ client.list.each do |artifact|
   versions = client.versions(artifact["name"])
   versions.sort_by! { |v| v["created_at"] }
 
-  # Keep last two versions
-  versions[0...-2].each do |version|
-    client.yank_version(artifact["name"], version["version"])
-    puts "Yanked #{artifact['name']} #{version['version']} (created #{version['created_at']})"
-  end
-  versions.last(2).each do |version|
-    puts "Kept #{artifact['name']} #{version['version']} (created #{version['created_at']})"
+  # Keep all versions uploaded within 2 days of the last uploaded version
+  cutoff = DateTime.parse(versions.last['created_at']) - 2.0
+
+  versions.each do |version|
+    time = DateTime.parse(version['created_at'])
+    if time < cutoff
+      client.yank_version(artifact["name"], version["version"])
+      puts "Yanked #{artifact['name']} #{version['version']} (created #{version['created_at']})"
+    else
+      puts "Kept #{artifact['name']} #{version['version']} (created #{version['created_at']})"
+    end
   end
 end
