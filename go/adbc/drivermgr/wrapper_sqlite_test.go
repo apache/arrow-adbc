@@ -40,19 +40,22 @@ type DriverMgrSuite struct {
 
 	ctx  context.Context
 	drv  adbc.Driver
+	db   adbc.Database
 	conn adbc.Connection
 }
 
 func (dm *DriverMgrSuite) SetupSuite() {
 	dm.ctx = context.TODO()
-	dm.drv = &drivermgr.Driver{}
-	dm.NoError(dm.drv.SetOptions(map[string]string{
+	dm.drv = drivermgr.Driver{}
+	var err error
+	dm.db, err = dm.drv.NewDatabase(map[string]string{
 		"driver": "adbc_driver_sqlite",
-	}))
+	})
+	dm.NoError(err)
 }
 
 func (dm *DriverMgrSuite) SetupTest() {
-	cnxn, err := dm.drv.Open(dm.ctx)
+	cnxn, err := dm.db.Open(dm.ctx)
 	dm.Require().NoError(err)
 	dm.conn = cnxn
 }
@@ -197,22 +200,22 @@ func TestDriverMgr(t *testing.T) {
 func TestDriverMgrCustomInitFunc(t *testing.T) {
 	// explicitly set entrypoint
 	var drv drivermgr.Driver
-	assert.NoError(t, drv.SetOptions(map[string]string{
+	db, err := drv.NewDatabase(map[string]string{
 		"driver":     "adbc_driver_sqlite",
 		"entrypoint": "AdbcDriverInit",
-	}))
-	cnxn, err := drv.Open(context.Background())
+	})
+	assert.NoError(t, err)
+	cnxn, err := db.Open(context.Background())
 	assert.NoError(t, err)
 	require.NoError(t, cnxn.Close())
 
 	// set invalid entrypoint
 	drv = drivermgr.Driver{}
-	assert.NoError(t, drv.SetOptions(map[string]string{
+	db, err = drv.NewDatabase(map[string]string{
 		"driver":     "adbc_driver_sqlite",
 		"entrypoint": "ThisSymbolDoesNotExist",
-	}))
-	cnxn, err = drv.Open(context.Background())
-	assert.Nil(t, cnxn)
+	})
+	assert.Nil(t, db)
 	var exp *adbc.Error
 	assert.ErrorAs(t, err, &exp)
 	assert.Equal(t, adbc.StatusInternal, exp.Code)

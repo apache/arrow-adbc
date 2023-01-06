@@ -183,6 +183,10 @@ const (
 // A driver can also optionally implement io.Closer if there is a need
 // or desire for it.
 type Driver interface {
+	NewDatabase(opts map[string]string) (Database, error)
+}
+
+type Database interface {
 	SetOptions(map[string]string) error
 	Open(ctx context.Context) (Connection, error)
 }
