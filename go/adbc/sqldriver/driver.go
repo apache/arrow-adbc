@@ -87,7 +87,8 @@ func parseConnectStr(str string) (ret map[string]string, err error) {
 }
 
 type connector struct {
-	driver adbc.Driver
+	db  adbc.Database
+	drv adbc.Driver
 }
 
 // Connect returns a connection to the database. Connect may
@@ -103,17 +104,17 @@ type connector struct {
 //
 // The returned connection is only used by one goroutine at a time.
 func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
-	cnxn, err := c.driver.Open(ctx)
+	cnxn, err := c.db.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &conn{Conn: cnxn, drv: c.driver}, nil
+	return &conn{Conn: cnxn, drv: c.db}, nil
 }
 
 // Driver returns the underlying Driver of the connector,
 // mainly to maintain compatibility with the Driver method on sql.DB
-func (c *connector) Driver() driver.Driver { return &Driver{c.driver} }
+func (c *connector) Driver() driver.Driver { return Driver{c.drv} }
 
 type Driver struct {
 	Driver adbc.Driver
@@ -129,21 +130,11 @@ type Driver struct {
 //
 // The returned connection is only used by one goroutine at a time.
 func (d Driver) Open(name string) (driver.Conn, error) {
-	opts, err := parseConnectStr(name)
+	connector, err := d.OpenConnector(name)
 	if err != nil {
 		return nil, err
 	}
-	err = d.Driver.SetOptions(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	cnxn, err := d.Driver.Open(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	return &conn{Conn: cnxn, drv: d.Driver}, nil
+	return connector.Connect(context.Background())
 }
 
 // OpenConnector expects the same format as driver.Open
@@ -152,12 +143,13 @@ func (d Driver) OpenConnector(name string) (driver.Connector, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = d.Driver.SetOptions(opts)
+
+	db, err := d.Driver.NewDatabase(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return &connector{d.Driver}, nil
+	return &connector{db, d.Driver}, db.SetOptions(opts)
 }
 
 type ctxOptsKey struct{}
@@ -178,7 +170,7 @@ func GetOptionsFromCtx(ctx context.Context) map[string]string {
 // multiple goroutines. It is assumed to be stateful.
 type conn struct {
 	Conn adbc.Connection
-	drv  adbc.Driver
+	drv  adbc.Database
 }
 
 // Close invalidates and potentially stops any current prepared
