@@ -149,7 +149,7 @@ func (d Driver) OpenConnector(name string) (driver.Connector, error) {
 		return nil, err
 	}
 
-	return &connector{db, d.Driver}, db.SetOptions(opts)
+	return &connector{db, d.Driver}, nil
 }
 
 type ctxOptsKey struct{}
