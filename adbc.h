@@ -288,6 +288,22 @@ struct ADBC_EXPORT AdbcError {
 /// For use as the value in SetOption calls.
 #define ADBC_OPTION_VALUE_DISABLED "false"
 
+/// \brief Canonical option name for URIs.
+///
+/// Should be used as the expected option name to specify
+/// a URI for any ADBC driver.
+#define ADBC_OPTION_URI "uri"
+/// \brief Canonical option name for usernames.
+///
+/// Should be used as the expected option name to specify
+/// a username to a driver for authentication.
+#define ADBC_OPTION_USERNAME "username"
+/// \brief Canonical option name for passwords.
+///
+/// Should be used as the expected option name to specify
+/// a password for authentication to a driver.
+#define ADBC_OPTION_PASSWORD "password"
+
 /// \brief The database vendor/product name (e.g. the server name).
 ///   (type: utf8).
 ///

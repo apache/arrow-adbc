@@ -36,6 +36,30 @@ provides a place to hold ownership of the in-memory database.
 - Go: ``Driver``
 - Java: ``org.apache.arrow.adbc.core.AdbcDatabase``
 
+URIs
+----
+
+When specifying the URI of the database, there is a standard option
+name to pass to drivers. This is the string `uri`, available in
+the implementations via helpers:
+
+- C/C++: :c:macro:`ADBC_OPTION_URI`
+- Go: ``OptionKeyURI``
+- Java: ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_URL
+
+Authentication
+--------------
+
+Standard options are defined for specifying the username and password
+for authentication to a driver. Further authentication options would
+be driver specific, such as a particular driver supporting the use
+of kerberos auth or plain auth, etc.
+
+- C/C++: :c:macro:`ADBC_OPTION_USERNAME` and :c:macro:`ADBC_OPTION_PASSWORD`
+- Go: ``OptionKeyUsername`` and ``OptionKeyPassword``
+- Java: ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_USER`` and ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_PASS``
+
+
 Connections
 ===========
 
