@@ -45,7 +45,7 @@ the implementations via helpers:
 
 - C/C++: :c:macro:`ADBC_OPTION_URI`
 - Go: ``OptionKeyURI``
-- Java: ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_URL
+- Java: ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_URL``
 
 Authentication
 --------------
