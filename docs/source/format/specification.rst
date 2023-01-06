@@ -33,7 +33,7 @@ means common configuration and caches.  For in-memory databases, it
 provides a place to hold ownership of the in-memory database.
 
 - C/C++: :cpp:class:`AdbcDatabase`
-- Go: ``Driver``
+- Go: ``Database``
 - Java: ``org.apache.arrow.adbc.core.AdbcDatabase``
 
 URIs
@@ -45,7 +45,7 @@ the implementations via helpers:
 
 - C/C++: :c:macro:`ADBC_OPTION_URI`
 - Go: ``OptionKeyURI``
-- Java: ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_URL``
+- Java: ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_URI``
 
 Authentication
 --------------
@@ -57,7 +57,7 @@ of kerberos auth or plain auth, etc.
 
 - C/C++: :c:macro:`ADBC_OPTION_USERNAME` and :c:macro:`ADBC_OPTION_PASSWORD`
 - Go: ``OptionKeyUsername`` and ``OptionKeyPassword``
-- Java: ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_USER`` and ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_PASS``
+- Java: ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_USERNAME`` and ``org.apache.arrow.adbc.core.AdbcDriver#PARAM_PASSWORD``
 
 
 Connections

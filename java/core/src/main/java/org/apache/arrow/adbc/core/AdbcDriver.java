@@ -22,13 +22,16 @@ import java.util.Map;
 /** A handle to an ADBC database driver. */
 public interface AdbcDriver {
   /** The standard parameter name for a connection URL (type String). */
-  String PARAM_URL = "uri";
+  @Deprecated
+  String PARAM_URL = "url";
+  /** The standard parameter name for a connection URI (type String). */
+  String PARAM_URI = "uri";
   /** The standard parameter name for SQL quirks configuration (type SqlQuirks). */
   String PARAM_SQL_QUIRKS = "adbc.sql.quirks";
   /** The standard parameter name for an auth username (type String). */
-  String PARAM_USER = "username";
+  String PARAM_USERNAME = "username";
   /** The standard parameter name for an auth password (type String). */
-  String PARAM_PASS = "password";
+  String PARAM_PASSWORD = "password";
 
   /**
    * Open a database via this driver.
