@@ -28,6 +28,7 @@ import (
 	"github.com/apache/arrow/go/v10/arrow/memory"
 	"github.com/bluele/gcache"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 type statement struct {
@@ -186,8 +187,17 @@ func (s *statement) SetSubstraitPlan(plan []byte) error {
 // The driver will call release on the passed in Record when it is done,
 // but it may not do this until the statement is closed or another
 // record is bound.
-func (s *statement) Bind(ctx context.Context, values arrow.Record) error {
-	panic("not implemented") // TODO: Implement
+func (s *statement) Bind(_ context.Context, values arrow.Record) error {
+	// TODO: handle bulk insert situation
+
+	if s.prepared == nil {
+		return adbc.Error{
+			Msg:  "[Flight SQL Statement] must call Prepare before calling Bind",
+			Code: adbc.StatusInvalidState}
+	}
+
+	s.prepared.SetParameters(values)
+	return nil
 }
 
 // BindStream uses a record batch stream to bind parameters for this
@@ -196,7 +206,10 @@ func (s *statement) Bind(ctx context.Context, values arrow.Record) error {
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
 func (s *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
-	panic("not implemented") // TODO: Implement
+	return adbc.Error{
+		Msg:  "[Flight SQL Statement] BindStream not yet implemented",
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 // GetParameterSchema returns an Arrow schema representation of
@@ -241,6 +254,50 @@ func (s *statement) GetParameterSchema() (*arrow.Schema, error) {
 //
 // If the driver does not support partitioned results, this will return
 // an error with a StatusNotImplemented code.
-func (s *statement) ExecutePartitions(_ context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
-	panic("not implemented") // TODO: Implement
+func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
+	if s.authToken != "" {
+		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", s.authToken)
+	}
+
+	var (
+		info *flight.FlightInfo
+		out  adbc.Partitions
+		err  error
+	)
+
+	if s.prepared != nil {
+		info, err = s.prepared.Execute(ctx)
+	} else if s.query != "" {
+		info, err = s.cl.Execute(ctx, s.query)
+	} else {
+		return nil, out, -1, adbc.Error{
+			Msg:  "[Flight SQL Statement] cannot call ExecuteQuery without a query or prepared statement",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	if err != nil {
+		return nil, out, -1, adbcFromFlightStatus(err)
+	}
+
+	sc, err := flight.DeserializeSchema(info.Schema, s.alloc)
+	if err != nil {
+		return nil, out, -1, adbcFromFlightStatus(err)
+	}
+
+	out.NumPartitions = uint64(len(info.Endpoint))
+	out.PartitionIDs = make([][]byte, out.NumPartitions)
+	for i, e := range info.Endpoint {
+		data, err := proto.Marshal(e)
+		if err != nil {
+			return sc, out, -1, adbc.Error{
+				Msg:  err.Error(),
+				Code: adbc.StatusInternal,
+			}
+		}
+
+		out.PartitionIDs[i] = data
+	}
+
+	return sc, out, info.TotalRecords, nil
 }
