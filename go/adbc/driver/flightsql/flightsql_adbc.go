@@ -33,20 +33,25 @@ package flightsql
 import (
 	"context"
 	"crypto/tls"
+	"io"
 	"net/url"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v10/arrow"
 	"github.com/apache/arrow/go/v10/arrow/array"
+	"github.com/apache/arrow/go/v10/arrow/flight"
 	"github.com/apache/arrow/go/v10/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v10/arrow/memory"
+	"github.com/bluele/gcache"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -139,53 +144,113 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 	return nil
 }
 
-func (d *database) getFlightClient(ctx context.Context) (context.Context, *flightsql.Client, error) {
+func getFlightClient(ctx context.Context, loc string, d *database) (string, *flightsql.Client, error) {
 	cl, err := flightsql.NewClient(d.uri.String(), nil, nil, grpc.WithTransportCredentials(d.creds))
 	if err != nil {
-		return ctx, nil, adbc.Error{
+		return "", nil, adbc.Error{
 			Msg:  err.Error(),
 			Code: adbc.StatusIO,
 		}
 	}
 
 	cl.Alloc = d.alloc
+	var auth string
 	if d.user != "" {
 		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass)
 		if err != nil {
-			return ctx, nil, adbc.Error{
+			return "", nil, adbc.Error{
 				Msg:  err.Error(),
 				Code: adbc.StatusUnauthenticated,
 			}
 		}
+
+		if md, ok := metadata.FromOutgoingContext(ctx); ok {
+			auth = md.Get("Authorization")[0]
+		}
 	}
 
-	return ctx, cl, nil
+	return auth, cl, nil
+}
+
+type clientConn struct {
+	authToken string
+	cl        *flightsql.Client
 }
 
 func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
-	_, cl, err := d.getFlightClient(ctx)
+	auth, cl, err := getFlightClient(ctx, d.uri.String(), d)
 	if err != nil {
 		return nil, err
 	}
 
-	var auth string
-	if md, ok := metadata.FromOutgoingContext(ctx); ok {
-		auth = md.Get("Authorization")[0]
-	}
-	return &cnxn{cl: cl, authToken: auth, db: d}, nil
+	cache := gcache.New(20).LRU().
+		Expiration(5 * time.Minute).
+		LoaderFunc(func(loc interface{}) (interface{}, error) {
+			uri, ok := loc.(string)
+			if !ok {
+				return nil, adbc.Error{Code: adbc.StatusInternal}
+			}
+
+			authToken, cl, err := getFlightClient(context.Background(), uri, d)
+			if err != nil {
+				return nil, err
+			}
+
+			cl.Alloc = d.alloc
+			return clientConn{authToken, cl}, nil
+		}).
+		EvictedFunc(func(_, client interface{}) {
+			conn := client.(clientConn)
+			conn.cl.Close()
+		}).Build()
+	return &cnxn{cl: cl, authToken: auth, db: d, clientCache: cache}, nil
 }
 
 type cnxn struct {
 	cl        *flightsql.Client
 	authToken string
 
-	db *database
+	db          *database
+	clientCache gcache.Cache
 }
 
 var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
 	adbc.InfoVendorName:         flightsql.SqlInfoFlightSqlServerName,
 	adbc.InfoVendorVersion:      flightsql.SqlInfoFlightSqlServerVersion,
 	adbc.InfoVendorArrowVersion: flightsql.SqlInfoFlightSqlServerArrowVersion,
+}
+
+func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache) (rdr *flight.Reader, err error) {
+	if len(endpoint.Location) == 0 {
+		return cl.DoGet(ctx, endpoint.Ticket)
+	}
+
+	var (
+		cc interface{}
+	)
+
+	md, _ := metadata.FromOutgoingContext(ctx)
+	for _, loc := range endpoint.Location {
+		cc, err = clientCache.Get(loc)
+		if err != nil {
+			continue
+		}
+
+		conn := cc.(clientConn)
+		if conn.authToken != "" {
+			md.Set("Authorization", conn.authToken)
+		} else {
+			md.Delete("Authorization")
+		}
+		rdr, err = conn.cl.DoGet(metadata.NewOutgoingContext(ctx, md), endpoint.Ticket)
+		if err != nil {
+			continue
+		}
+
+		return
+	}
+
+	return nil, err
 }
 
 // GetInfo returns metadata about the database/driver.
@@ -257,20 +322,7 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 	}
 
 	for _, endpoint := range info.Endpoint {
-		// TODO: reuse clients if multiple endpoints are the same location
-		var cl *flightsql.Client
-		if len(endpoint.Location) == 0 {
-			cl = c.cl
-		} else {
-			// TODO: try all locations if something fails
-			ctx, cl, err = c.db.getFlightClient(ctx)
-			if err != nil {
-				return nil, err
-			}
-			defer cl.Close()
-		}
-
-		rdr, err := cl.DoGet(ctx, endpoint.Ticket)
+		rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache)
 		if err != nil {
 			return nil, adbcFromFlightStatus(err)
 		}
@@ -400,7 +452,48 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 }
 
 func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
-	panic("not implemented") // TODO: Implement
+	opts := &flightsql.GetTablesOpts{
+		Catalog:                catalog,
+		DbSchemaFilterPattern:  dbSchema,
+		TableNameFilterPattern: &tableName,
+		IncludeSchema:          true,
+	}
+
+	ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", c.authToken)
+	info, err := c.cl.GetTables(ctx, opts)
+	if err != nil {
+		return nil, adbcFromFlightStatus(err)
+	}
+
+	rdr, err := doGet(ctx, c.cl, info.Endpoint[0], c.clientCache)
+	if err != nil {
+		return nil, adbcFromFlightStatus(err)
+	}
+	defer rdr.Release()
+
+	rec, err := rdr.Read()
+	if err != nil {
+		if err == io.EOF {
+			return nil, adbc.Error{
+				Msg:  "No table found",
+				Code: adbc.StatusNotFound,
+			}
+		}
+		return nil, adbcFromFlightStatus(err)
+	}
+
+	// returned schema should be
+	//    0: catalog_name: utf8
+	//    1: db_schema_name: utf8
+	//    2: table_name: utf8 not null
+	//    3: table_type: utf8 not null
+	//    4: table_schema: bytes not null
+	schemaBytes := rec.Column(4).(*array.Binary).Value(0)
+	s, err := flight.DeserializeSchema(schemaBytes, c.db.alloc)
+	if err != nil {
+		return nil, adbcFromFlightStatus(err)
+	}
+	return s, nil
 }
 
 // GetTableTypes returns a list of the table types in the database.
@@ -411,8 +504,14 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //		----------------|--------------
 //		table_type			| utf8 not null
 //
-func (c *cnxn) GetTableTypes(_ context.Context) (array.RecordReader, error) {
-	panic("not implemented") // TODO: Implement
+func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
+	ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", c.authToken)
+	info, err := c.cl.GetTableTypes(ctx)
+	if err != nil {
+		return nil, adbcFromFlightStatus(err)
+	}
+
+	return newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache)
 }
 
 // Commit commits any pending transactions on this connection, it should
@@ -420,7 +519,9 @@ func (c *cnxn) GetTableTypes(_ context.Context) (array.RecordReader, error) {
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
 func (c *cnxn) Commit(_ context.Context) error {
-	panic("not implemented") // TODO: Implement
+	return adbc.Error{
+		Msg:  "[Flight SQL] Transaction methods are not implemented yet",
+		Code: adbc.StatusNotImplemented}
 }
 
 // Rollback rolls back any pending transactions. Only used if autocommit
@@ -428,23 +529,43 @@ func (c *cnxn) Commit(_ context.Context) error {
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
 func (c *cnxn) Rollback(_ context.Context) error {
-	panic("not implemented") // TODO: Implement
+	return adbc.Error{
+		Msg:  "[Flight SQL] Transaction methods are not implemented yet",
+		Code: adbc.StatusNotImplemented}
 }
 
 // NewStatement initializes a new statement object tied to this connection
 func (c *cnxn) NewStatement() (adbc.Statement, error) {
-	panic("not implemented") // TODO: Implement
+	return &statement{
+		alloc:       c.db.alloc,
+		cl:          c.cl,
+		clientCache: c.clientCache,
+		authToken:   c.authToken,
+	}, nil
 }
 
 // Close closes this connection and releases any associated resources.
 func (c *cnxn) Close() error {
-	panic("not implemented") // TODO: Implement
+	return c.cl.Close()
 }
 
 // ReadPartition constructs a statement for a partition of a query. The
 // results can then be read independently using the returned RecordReader.
 //
 // A partition can be retrieved by using ExecutePartitions on a statement.
-func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error) {
-	panic("not implemented") // TODO: Implement
+func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (rdr array.RecordReader, err error) {
+	var endpoint flight.FlightEndpoint
+	if err := proto.Unmarshal(serializedPartition, &endpoint); err != nil {
+		return nil, adbc.Error{
+			Msg:  err.Error(),
+			Code: adbc.StatusInvalidArgument,
+		}
+	}
+
+	ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", c.authToken)
+	rdr, err = doGet(ctx, c.cl, &endpoint, c.clientCache)
+	if err != nil {
+		return nil, adbcFromFlightStatus(err)
+	}
+	return rdr, nil
 }

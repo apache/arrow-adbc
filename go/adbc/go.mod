@@ -21,10 +21,12 @@ go 1.18
 
 require (
 	github.com/apache/arrow/go/v10 v10.0.1
+	github.com/bluele/gcache v0.0.2
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 	golang.org/x/tools v0.1.12
 	google.golang.org/grpc v1.49.0
+	google.golang.org/protobuf v1.28.1
 )
 
 require (
@@ -50,6 +52,5 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
