@@ -82,6 +82,6 @@ repos:
       name: Check for unapproved licenses
       language: script
       pass_filenames: false
-      entry: "./dev/release/run-rat.sh ."
+      entry: "./ci/scripts/run_rat_local.sh"
 
 exclude: "^c/vendor/.*"
