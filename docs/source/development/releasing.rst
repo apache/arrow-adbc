@@ -188,25 +188,42 @@ Approval requires a net of 3 +1 votes from PMC members. A release cannot be veto
 How to Verify Release Candidates
 --------------------------------
 
-#. Download the source archive from dist.apache.org. A link to the source release is given in the vote email.
-#. Download the signature and hash files as well.
-#. Verify the signature::
+#. Install dependencies. If you are not using Conda (see below), you will need to install all dependencies to build and verify all languages. Either way, at minimum, you will need:
 
-     $ gpg --verify apache-arrow-adbc-0.1.0.tar.gz.asc
+   - cURL
+   - Docker (to verify binaries)
+   - Git
+   - GnuPG
+   - shasum (built into macOS) or sha256sum/sha512sum (on Linux)
 
-   You may have to import the maintainer keys first::
+#. Download the source archive from dist.apache.org. A link to the source release is given in the vote email::
 
-     $ wget https://dist.apache.org/repos/dist/release/arrow/KEYS
-     $ gpg --import KEYS
-#. Verify the checksums::
+     $ wget https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-adbc-0.1.0-rc6/apache-arrow-adbc-0.1.0.tar.gz
 
-     # For Linux
-     $ sha256sum -c apache-arrow-adbc-0.1.0.tar.gz.sha256
-     $ sha512sum -c apache-arrow-adbc-0.1.0.tar.gz.sha512
+#. If you wish to verify the GPG signature and checksums well (the script will also verify these):
 
-     # For macOS
-     $ shashum -a 256 -c apache-arrow-adbc-0.1.0.tar.gz.sha256
-     $ shashum -a 512 -c apache-arrow-adbc-0.1.0.tar.gz.sha512
+   #. Download the signature and hash files::
+
+        $ wget https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-adbc-0.1.0-rc6/apache-arrow-adbc-0.1.0.tar.gz.{asc,sha256,sha512}
+
+   #. Verify the signature::
+
+        $ gpg --verify apache-arrow-adbc-0.1.0.tar.gz.asc
+
+      You may have to import the maintainer keys first::
+
+        $ wget https://dist.apache.org/repos/dist/release/arrow/KEYS
+        $ gpg --import KEYS
+   #. Verify the checksums::
+
+        # For Linux
+        $ sha256sum -c apache-arrow-adbc-0.1.0.tar.gz.sha256
+        $ sha512sum -c apache-arrow-adbc-0.1.0.tar.gz.sha512
+
+        # For macOS
+        $ shashum -a 256 -c apache-arrow-adbc-0.1.0.tar.gz.sha256
+        $ shashum -a 512 -c apache-arrow-adbc-0.1.0.tar.gz.sha512
+
 #. Extract the archive::
 
      $ tar xf apache-arrow-adbc-0.1.0.tar.gz
@@ -226,6 +243,7 @@ How to Verify Release Candidates
    - ``USE_CONDA=1`` to download and set up Conda for dependencies.
      In this case, fewer dependencies are required from the system.
      (Git, GnuPG, cURL, and some others are still required.)
+
 #. Once finished and once the script passes, reply to the mailing list
    vote thread with a +1 or a -1.
 
