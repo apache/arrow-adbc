@@ -26,7 +26,7 @@
 // You can then open a flightsql connection with the database/sql
 // standard package by using:
 //
-//     db, err := sql.Open("flightsql", "adbc.url=<flight sql db url>")
+//     db, err := sql.Open("flightsql", "uri=<flight sql db url>")
 //
 package flightsql
 
