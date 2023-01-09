@@ -142,6 +142,9 @@ AdbcStatusCode InferSchema(const TypeMapping& type_mapping, PGresult* result,
       case PgType::kInt8:
         field_type = NANOARROW_TYPE_INT64;
         break;
+      case PgType::kVarBinary:
+        field_type = NANOARROW_TYPE_BINARY;
+        break;
       case PgType::kText:
       case PgType::kVarChar:
         field_type = NANOARROW_TYPE_STRING;
@@ -517,6 +520,26 @@ int TupleReader::AppendNext(struct ArrowSchemaView* fields, const char* buf, int
     CHECK_NA(ArrowBitmapAppend(bitmap, field_length >= 0, 1));
 
     switch (fields[col].data_type) {
+      case NANOARROW_TYPE_BOOL: {
+        // DCHECK_EQ(field_length, 1);
+        struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
+        uint8_t raw_value = buf[0];
+        buf += 1;
+
+        if (raw_value != 0 && raw_value != 1) {
+          last_error_ = StringBuilder("[libpq] Column #", col + 1, " (\"",
+                                      schema_.children[col]->name,
+                                      "\"): invalid BOOL value ", raw_value);
+          return EINVAL;
+        }
+
+        int64_t bytes_required = _ArrowRoundUpToMultipleOf8(*row_count + 1) / 8;
+        if (bytes_required > buffer->size_bytes) {
+          CHECK_NA(ArrowBufferAppendFill(buffer, 0, bytes_required - buffer->size_bytes));
+        }
+        ArrowBitsSetTo(buffer->data, *row_count, 1, raw_value);
+        break;
+      }
       case NANOARROW_TYPE_DOUBLE: {
         // DCHECK_EQ(field_length, 8);
         static_assert(sizeof(double) == sizeof(uint64_t),
@@ -541,6 +564,14 @@ int TupleReader::AppendNext(struct ArrowSchemaView* fields, const char* buf, int
         CHECK_NA(ArrowBufferAppendFloat(buffer, value));
         break;
       }
+      case NANOARROW_TYPE_INT16: {
+        // DCHECK_EQ(field_length, 2);
+        struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
+        int32_t value = LoadNetworkInt16(buf);
+        buf += sizeof(int32_t);
+        CHECK_NA(ArrowBufferAppendInt16(buffer, value));
+        break;
+      }
       case NANOARROW_TYPE_INT32: {
         // DCHECK_EQ(field_length, 4);
         struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
@@ -555,6 +586,16 @@ int TupleReader::AppendNext(struct ArrowSchemaView* fields, const char* buf, int
         int64_t value = field_length < 0 ? 0 : LoadNetworkInt64(buf);
         buf += sizeof(int64_t);
         CHECK_NA(ArrowBufferAppendInt64(buffer, value));
+        break;
+      }
+      case NANOARROW_TYPE_BINARY: {
+        struct ArrowBuffer* offset = ArrowArrayBuffer(out->children[col], 1);
+        struct ArrowBuffer* data = ArrowArrayBuffer(out->children[col], 2);
+        const int32_t last_offset =
+            reinterpret_cast<const int32_t*>(offset->data)[*row_count];
+        CHECK_NA(ArrowBufferAppendInt32(offset, last_offset + field_length));
+        CHECK_NA(ArrowBufferAppend(data, buf, field_length));
+        buf += field_length;
         break;
       }
       case NANOARROW_TYPE_STRING: {

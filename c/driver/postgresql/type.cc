@@ -47,8 +47,12 @@ uint32_t TypeMapping::GetOid(PgType type) const {
 bool FromPgTypreceive(const char* typreceive, PgType* out) {
   if (std::strcmp(typreceive, "bitrecv") == 0) {
     *out = PgType::kBit;
+  } else if (std::strcmp(typreceive, "bytearecv") == 0) {
+    *out = PgType::kVarBinary;
   } else if (std::strcmp(typreceive, "boolrecv") == 0) {
     *out = PgType::kBool;
+  } else if (std::strcmp(typreceive, "bpcharrecv") == 0) {
+    *out = PgType::kVarChar;
   } else if (std::strcmp(typreceive, "date_recv") == 0) {
     *out = PgType::kDate;
   } else if (std::strcmp(typreceive, "float4recv") == 0) {
