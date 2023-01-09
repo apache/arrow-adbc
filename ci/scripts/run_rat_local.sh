@@ -35,7 +35,7 @@ main() {
 
     # Need to prefix with directory since check-rat-report.py always removes one layer
     if [[ "$(uname)" = "Darwin" ]]; then
-        git ls-files | tar -s 's|^|adbc/|' --files-from=- --create --gzip --file="${ARCHIVE}"
+        git ls-files | tar -s '|.*|adbc/~|' --files-from=- --create --gzip --file="${ARCHIVE}"
     else
         git ls-files | tar --transform='s|^|adbc/|' --files-from=- --create --gzip --file="${ARCHIVE}"
     fi
