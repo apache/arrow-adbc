@@ -185,6 +185,50 @@ Voting and approval
 Start the vote thread on dev@arrow.apache.org and supply instructions for verifying the integrity of the release.
 Approval requires a net of 3 +1 votes from PMC members. A release cannot be vetoed.
 
+How to Verify Release Candidates
+--------------------------------
+
+#. Download the source archive from dist.apache.org. A link to the source release is given in the vote email.
+#. Download the signature and hash files as well.
+#. Verify the signature::
+
+     $ gpg --verify apache-arrow-adbc-0.1.0.tar.gz.asc
+
+   You may have to import the maintainer keys first::
+
+     $ wget https://dist.apache.org/repos/dist/release/arrow/KEYS
+     $ gpg --import KEYS
+#. Verify the checksums::
+
+     # For Linux
+     $ sha256sum -c apache-arrow-adbc-0.1.0.tar.gz.sha256
+     $ sha512sum -c apache-arrow-adbc-0.1.0.tar.gz.sha512
+
+     # For macOS
+     $ shashum -a 256 -c apache-arrow-adbc-0.1.0.tar.gz.sha256
+     $ shashum -a 512 -c apache-arrow-adbc-0.1.0.tar.gz.sha512
+#. Extract the archive::
+
+     $ tar xf apache-arrow-adbc-0.1.0.tar.gz
+#. Run the verification script::
+
+     $ cd apache-arrow-adbc-0.1.0-rc6
+     # Pass the version and the RC number
+     $ ./dev/release/verify-release-candidate.sh 0.1.0 6
+
+   You will have to install any system dependencies required
+   (e.g. CMake, libpq, Go, ...).  These environment variables may be helpful:
+
+   - ``ARROW_TMPDIR=path/to/directory`` to specify the temporary
+     directory used.  Using a fixed directory can help avoid repeating
+     the same setup and build steps if the script has to be run
+     multiple times.
+   - ``USE_CONDA=1`` to download and set up Conda for dependencies.
+     In this case, fewer dependencies are required from the system.
+     (Git, GnuPG, cURL, and some others are still required.)
+#. Once finished and once the script passes, reply to the mailing list
+   vote thread with a +1 or a -1.
+
 Post-release tasks
 ==================
 

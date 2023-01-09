@@ -65,7 +65,7 @@ Arrow-native database protocols.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Development:
+   :caption: Development
 
    development/contributing
    development/nightly
