@@ -7,5 +7,6 @@ go/adbc/drivermgr/adbc.h
 go/adbc/drivermgr/adbc_driver_manager.cc
 go/adbc/drivermgr/adbc_driver_manager.h
 go/adbc/status_string.go
+go/adbc/infocode_string.go
 go/adbc/go.sum
 rat.txt
