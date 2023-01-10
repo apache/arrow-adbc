@@ -47,5 +47,11 @@ update_versions "${version}" "${next_version}" "snapshot"
 git commit -m "chore: update versions for ${next_version_snapshot}"
 echo "Bumped versions on branch."
 
+############################# Update Changelog ##############################
+
+git checkout apache-arrow-adbc-${version} -- CHANGELOG.md
+git commit -m "chore: update changelog for ${version}"
+echo "Updated changelog on branch."
+
 echo "Pushing changes to apache/arrow-adbc:main"
 git push apache main

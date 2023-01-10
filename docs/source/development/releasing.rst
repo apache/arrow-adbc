@@ -306,6 +306,10 @@ Be sure to go through on the following checklist:
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
 
+   This will bump version numbers embedded in files and filenames.
+
+   It will also update the changelog to the newly released changelog.
+
    .. code-block:: Bash
 
       # dev/release/post-07-bump-versions.sh ../arrow 0.1.0 0.2.0
