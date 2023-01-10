@@ -196,6 +196,13 @@ How to Verify Release Candidates
    - GnuPG
    - shasum (built into macOS) or sha256sum/sha512sum (on Linux)
 
+Other language specific dependencies and tools are:
+- C++ dependencies: gcc and g++ compilers
+- Python: Python3 interpreter
+- Ruby dependencies: bundler, glib2 development package, gobject-introsepction development package, ruby development package, and the rake, red-arrow and test-unit gems
+- Java dependencies: maven and Java development kit
+- Go: go compiler
+- Other tools: cmake, libpq development package, meson, ninja-build and sqlite development package 
 #. Download the source archive from dist.apache.org. A link to the source release is given in the vote email::
 
      $ wget https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-adbc-0.1.0-rc6/apache-arrow-adbc-0.1.0.tar.gz
