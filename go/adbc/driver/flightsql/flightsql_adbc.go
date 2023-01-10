@@ -28,6 +28,7 @@
 //
 //     db, err := sql.Open("flightsql", "uri=<flight sql db url>")
 //
+// The URI passed *must* contain a scheme, most likely "grpc+tcp://"
 package flightsql
 
 import (
@@ -55,8 +56,8 @@ import (
 )
 
 const (
-	OptionSSLInsecure = "adbc.flightsql.ssl.insecure"
-	OptionSSLCertFile = "adbc.flightsql.ssl.cert"
+	OptionSSLInsecure = "adbc.flight.sql.client_option.tls_skip_verify"
+	OptionSSLCertFile = "adbc.flight.sql.client_option.tls_root_certs"
 
 	infoDriverName = "ADBC Flight SQL Driver - Go"
 )
@@ -145,7 +146,7 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 }
 
 func getFlightClient(ctx context.Context, loc string, d *database) (string, *flightsql.Client, error) {
-	cl, err := flightsql.NewClient(d.uri.String(), nil, nil, grpc.WithTransportCredentials(d.creds))
+	cl, err := flightsql.NewClient(d.uri.Host, nil, nil, grpc.WithTransportCredentials(d.creds))
 	if err != nil {
 		return "", nil, adbc.Error{
 			Msg:  err.Error(),
@@ -178,7 +179,7 @@ type clientConn struct {
 }
 
 func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
-	auth, cl, err := getFlightClient(ctx, d.uri.String(), d)
+	auth, cl, err := getFlightClient(ctx, d.uri.Host, d)
 	if err != nil {
 		return nil, err
 	}
@@ -546,7 +547,15 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 
 // Close closes this connection and releases any associated resources.
 func (c *cnxn) Close() error {
-	return c.cl.Close()
+	if c.cl == nil {
+		return adbc.Error{
+			Msg:  "[Flight SQL Connection] trying to close already closed connection",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+	err := c.cl.Close()
+	c.cl = nil
+	return err
 }
 
 // ReadPartition constructs a statement for a partition of a query. The

@@ -58,7 +58,6 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	defer func() {
 		if err != nil {
 			cancelFn()
-			wg.Wait()
 			for rec := range ch {
 				rec.Release()
 			}
@@ -66,6 +65,11 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	}()
 
 	wg.Add(len(info.Endpoint))
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
 
 	for _, ep := range info.Endpoint {
 		go func(endpoint *flight.FlightEndpoint) {
@@ -77,18 +81,13 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 			}
 			defer rdr.Release()
 
-			for rdr.Next() && ctx.Err() != nil {
+			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.Record()
 				rec.Retain()
 				ch <- rec
 			}
 		}(ep)
 	}
-
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
 
 	return &reader{
 		refCount: 1,
