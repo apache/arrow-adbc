@@ -273,7 +273,7 @@
 </ul>
 </li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nightly.html">Nightly Packages</a></li>
@@ -470,6 +470,91 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <h2>Voting and approval<a class="headerlink" href="#voting-and-approval" title="Permalink to this heading">#</a></h2>
 <p>Start the vote thread on <a class="reference external" href="mailto:dev&#37;&#52;&#48;arrow&#46;apache&#46;org">dev<span>&#64;</span>arrow<span>&#46;</span>apache<span>&#46;</span>org</a> and supply instructions for verifying the integrity of the release.
 Approval requires a net of 3 +1 votes from PMC members. A release cannot be vetoed.</p>
+<section id="how-to-verify-release-candidates">
+<h3>How to Verify Release Candidates<a class="headerlink" href="#how-to-verify-release-candidates" title="Permalink to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>Install dependencies. If you are not using Conda (see below), you will need to install all dependencies to build and verify all languages. Either way, at minimum, you will need:</p>
+<ul class="simple">
+<li><p>cURL</p></li>
+<li><p>Docker (to verify binaries)</p></li>
+<li><p>Git</p></li>
+<li><p>GnuPG</p></li>
+<li><p>shasum (built into macOS) or sha256sum/sha512sum (on Linux)</p></li>
+</ul>
+<p>If not using Conda, you will need roughly:</p>
+<ul class="simple">
+<li><p>C and C++ compilers (or the equivalent of <code class="docutils literal notranslate"><span class="pre">build-essential</span></code> for your platform)</p></li>
+<li><p>Python 3</p></li>
+<li><p>Ruby with headers</p></li>
+<li><p>bundler, rake, red-arrow, and test-unit Ruby gems</p></li>
+<li><p>GLib and gobject-introspection with headers</p></li>
+<li><p>Java JRE and JDK (Java 8+)</p></li>
+<li><p>Go</p></li>
+<li><p>CMake, ninja-build, libpq (with headers), SQLite (with headers)</p></li>
+</ul>
+</li>
+<li><p>Download the source archive from dist.apache.org. A link to the source release is given in the vote email:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-adbc-0.1.0-rc6/apache-arrow-adbc-0.1.0.tar.gz
+</pre></div>
+</div>
+</li>
+<li><p>If you wish to verify the GPG signature and checksums well (the script will also verify these):</p>
+<ol class="arabic">
+<li><p>Download the signature and hash files:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-adbc-0.1.0-rc6/apache-arrow-adbc-0.1.0.tar.gz.{asc,sha256,sha512}
+</pre></div>
+</div>
+</li>
+<li><p>Verify the signature:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ gpg --verify apache-arrow-adbc-0.1.0.tar.gz.asc
+</pre></div>
+</div>
+<p>You may have to import the maintainer keys first:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://dist.apache.org/repos/dist/release/arrow/KEYS
+$ gpg --import KEYS
+</pre></div>
+</div>
+</li>
+<li><p>Verify the checksums:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># For Linux
+$ sha256sum -c apache-arrow-adbc-0.1.0.tar.gz.sha256
+$ sha512sum -c apache-arrow-adbc-0.1.0.tar.gz.sha512
+
+# For macOS
+$ shashum -a 256 -c apache-arrow-adbc-0.1.0.tar.gz.sha256
+$ shashum -a 512 -c apache-arrow-adbc-0.1.0.tar.gz.sha512
+</pre></div>
+</div>
+</li>
+</ol>
+</li>
+<li><p>Extract the archive:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tar xf apache-arrow-adbc-0.1.0.tar.gz
+</pre></div>
+</div>
+</li>
+<li><p>Run the verification script:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd apache-arrow-adbc-0.1.0-rc6
+# Pass the version and the RC number
+$ ./dev/release/verify-release-candidate.sh 0.1.0 6
+</pre></div>
+</div>
+<p>You will have to install any system dependencies required
+(e.g. CMake, libpq, Go, …).  These environment variables may be helpful:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ARROW_TMPDIR=path/to/directory</span></code> to specify the temporary
+directory used.  Using a fixed directory can help avoid repeating
+the same setup and build steps if the script has to be run
+multiple times.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">USE_CONDA=1</span></code> to download and set up Conda for dependencies.
+In this case, fewer dependencies are required from the system.
+(Git, GnuPG, cURL, and some others are still required.)</p></li>
+</ul>
+</li>
+<li><p>Once finished and once the script passes, reply to the mailing list
+vote thread with a +1 or a -1.</p></li>
+</ol>
+</section>
 </section>
 <section id="post-release-tasks">
 <h2>Post-release tasks<a class="headerlink" href="#post-release-tasks" title="Permalink to this heading">#</a></h2>
@@ -693,7 +778,10 @@ dev/release/post-07-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;<sp
 <li><a class="reference internal" href="#verify-the-release">Verify the Release</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#voting-and-approval">Voting and approval</a></li>
+<li><a class="reference internal" href="#voting-and-approval">Voting and approval</a><ul>
+<li><a class="reference internal" href="#how-to-verify-release-candidates">How to Verify Release Candidates</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#post-release-tasks">Post-release tasks</a></li>
 </ul>
 </li>
