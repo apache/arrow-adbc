@@ -351,6 +351,25 @@ Be sure to go through on the following checklist:
       # dev/release/post-05-linux.sh ../arrow 10.0.0 0
       dev/release/post-05-linux.sh <arrow-dir> <version> <rc-number>
 
+.. dropdown:: Upload Ruby packages to RubyGems
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   You must be one of owners of https://rubygems.org/gems/red-adbc
+   . If you aren't an owner of red-adbc yet, an existing owner must
+   run the following command line to add you to red-adbc owners:
+
+   .. code-block:: Bash
+
+      gem owner -a ${RUBYGEMS_ORG_ACCOUNT_FOR_RELEASE_MANAGER} red-adbc
+
+   An owner of red-adbc can upload:
+
+   .. code-block:: Bash
+
+      # dev/release/post-06-ruby.sh 1.0.0
+      dev/release/post-06-ruby.sh <version>
+
 .. dropdown:: Announce the new release
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
@@ -373,7 +392,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-06-remove-old-artifacts.sh
+      dev/release/post-07-remove-old-artifacts.sh
 
 .. dropdown:: Bump versions
    :class-title: sd-fs-5
@@ -385,7 +404,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-07-bump-versions.sh ../arrow 0.1.0 0.2.0
-      dev/release/post-07-bump-versions.sh <arrow-dir> <version> <next_version>
+      # dev/release/post-08-bump-versions.sh ../arrow 0.1.0 0.2.0
+      dev/release/post-08-bump-versions.sh <arrow-dir> <version> <next_version>
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml
