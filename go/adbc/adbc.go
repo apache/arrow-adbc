@@ -45,6 +45,7 @@ import (
 )
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type Status -linecomment
+//go:generate go run golang.org/x/tools/cmd/stringer -type InfoCode -linecomment
 
 // Error is the detailed error for an operation
 type Error struct {
@@ -196,18 +197,18 @@ type InfoCode uint32
 const (
 	// The database vendor/product name (e.g. the server name)
 	// (type: utf8)
-	InfoVendorName InfoCode = 0
+	InfoVendorName InfoCode = 0 // VendorName
 	// The database vendor/product version (type: utf8)
-	InfoVendorVersion InfoCode = 1
+	InfoVendorVersion InfoCode = 1 // VendorVersion
 	// The database vendor/product Arrow library version (type: utf8)
-	InfoVendorArrowVersion InfoCode = 2
+	InfoVendorArrowVersion InfoCode = 2 // VendorArrowVersion
 
 	// The driver name (type: utf8)
-	InfoDriverName InfoCode = 100
+	InfoDriverName InfoCode = 100 // DriverName
 	// The driver version (type: utf8)
-	InfoDriverVersion InfoCode = 101
+	InfoDriverVersion InfoCode = 101 // DriverVersion
 	// The driver Arrow library version (type: utf8)
-	InfoDriverArrowVersion InfoCode = 102
+	InfoDriverArrowVersion InfoCode = 102 // DriverArrowVersion
 )
 
 type ObjectDepth int
