@@ -49,5 +49,5 @@ window.addEventListener("DOMContentLoaded", () => {
 
 const versions = `
 0.1.0;0.1.0
-main;0.1.0 (dev)
+main;0.2.0 (dev)
 `;
