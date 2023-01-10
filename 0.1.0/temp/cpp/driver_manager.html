@@ -339,18 +339,18 @@ addition to the driver-specific connection parameters: <code class="docutils lit
 to load, or the path to a library to load. <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>, if
 provided, should be the name of the symbol that serves as the ADBC
 entrypoint (see <a class="reference internal" href="api/adbc.html#_CPPv418AdbcDriverInitFunc" title="AdbcDriverInitFunc"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code></a>).</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* Ignoring error handling */</span><span class="w"></span>
-<span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span><span class="w"></span>
-<span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">database</span><span class="p">));</span><span class="w"></span>
-<span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* Ignoring error handling */</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
+<span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">database</span><span class="p">));</span>
+<span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
 <span class="cm">/* On Linux: loads libadbc_driver_sqlite.so</span>
 <span class="cm"> * On MacOS: loads libadbc_driver_sqlite.dylib</span>
-<span class="cm"> * On Windows: loads adbc_driver_sqlite.dll */</span><span class="w"></span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;adbc_driver_sqlite&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
-<span class="cm">/* Set additional options for the specific driver, if needed */</span><span class="w"></span>
-<span class="cm">/* Initialize the database */</span><span class="w"></span>
-<span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span><span class="w"></span>
-<span class="cm">/* Create connections as usual */</span><span class="w"></span>
+<span class="cm"> * On Windows: loads adbc_driver_sqlite.dll */</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;adbc_driver_sqlite&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
+<span class="cm">/* Set additional options for the specific driver, if needed */</span>
+<span class="cm">/* Initialize the database */</span>
+<span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
+<span class="cm">/* Create connections as usual */</span>
 </pre></div>
 </div>
 </section>
