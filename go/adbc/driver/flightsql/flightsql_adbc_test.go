@@ -42,10 +42,12 @@ type FlightSQLQuirks struct {
 	srv *example.SQLiteFlightSQLServer
 	s   flight.Server
 
-	mem *memory.CheckedAllocator
+	done chan bool
+	mem  *memory.CheckedAllocator
 }
 
 func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
+	s.done = make(chan bool)
 	var err error
 	s.mem = memory.NewCheckedAllocator(memory.DefaultAllocator)
 	s.s = flight.NewServerWithMiddleware(nil)
@@ -57,6 +59,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 	require.NoError(t, s.s.Init("localhost:0"))
 	s.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
 	go func() {
+		defer close(s.done)
 		_ = s.s.Serve()
 	}()
 
@@ -65,6 +68,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 
 func (s *FlightSQLQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 	s.s.Shutdown()
+	<-s.done
 	s.srv = nil
 	s.mem.AssertSize(t, 0)
 }
