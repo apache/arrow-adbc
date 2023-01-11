@@ -473,7 +473,7 @@ Approval requires a net of 3 +1 votes from PMC members. A release cannot be veto
 <section id="how-to-verify-release-candidates">
 <h3>How to Verify Release Candidates<a class="headerlink" href="#how-to-verify-release-candidates" title="Permalink to this heading">#</a></h3>
 <ol class="arabic">
-<li><p>Install dependencies. If you are not using Conda (see below), you will need to install all dependencies to build and verify all languages. Either way, at minimum, you will need:</p>
+<li><p>Install dependencies.  At minimum, you will need:</p>
 <ul class="simple">
 <li><p>cURL</p></li>
 <li><p>Docker (to verify binaries)</p></li>
@@ -481,7 +481,8 @@ Approval requires a net of 3 +1 votes from PMC members. A release cannot be veto
 <li><p>GnuPG</p></li>
 <li><p>shasum (built into macOS) or sha256sum/sha512sum (on Linux)</p></li>
 </ul>
-<p>If not using Conda, you will need roughly:</p>
+<p>You will also need to install all dependencies to build and verify all languages.
+Roughly, this means:</p>
 <ul class="simple">
 <li><p>C and C++ compilers (or the equivalent of <code class="docutils literal notranslate"><span class="pre">build-essential</span></code> for your platform)</p></li>
 <li><p>Python 3</p></li>
@@ -492,57 +493,23 @@ Approval requires a net of 3 +1 votes from PMC members. A release cannot be veto
 <li><p>Go</p></li>
 <li><p>CMake, ninja-build, libpq (with headers), SQLite (with headers)</p></li>
 </ul>
+<p>Alternatively, you can have the verification script download and install dependencies automatically via Conda.
+See the environment variables below.</p>
 </li>
-<li><p>Download the source archive from dist.apache.org. A link to the source release is given in the vote email:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-adbc-0.1.0-rc6/apache-arrow-adbc-0.1.0.tar.gz
-</pre></div>
-</div>
-</li>
-<li><p>If you wish to verify the GPG signature and checksums well (the script will also verify these):</p>
-<ol class="arabic">
-<li><p>Download the signature and hash files:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-adbc-0.1.0-rc6/apache-arrow-adbc-0.1.0.tar.gz.{asc,sha256,sha512}
-</pre></div>
-</div>
-</li>
-<li><p>Verify the signature:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ gpg --verify apache-arrow-adbc-0.1.0.tar.gz.asc
-</pre></div>
-</div>
-<p>You may have to import the maintainer keys first:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ wget https://dist.apache.org/repos/dist/release/arrow/KEYS
-$ gpg --import KEYS
-</pre></div>
-</div>
-</li>
-<li><p>Verify the checksums:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># For Linux
-$ sha256sum -c apache-arrow-adbc-0.1.0.tar.gz.sha256
-$ sha512sum -c apache-arrow-adbc-0.1.0.tar.gz.sha512
-
-# For macOS
-$ shashum -a 256 -c apache-arrow-adbc-0.1.0.tar.gz.sha256
-$ shashum -a 512 -c apache-arrow-adbc-0.1.0.tar.gz.sha512
-</pre></div>
-</div>
-</li>
-</ol>
-</li>
-<li><p>Extract the archive:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tar xf apache-arrow-adbc-0.1.0.tar.gz
-</pre></div>
-</div>
+<li><p>Clone the project:</p>
+<blockquote>
+<div><p>$ git clone <a class="reference external" href="https://github.com/apache/arrow-adbc.git">https://github.com/apache/arrow-adbc.git</a></p>
+</div></blockquote>
 </li>
 <li><p>Run the verification script:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd apache-arrow-adbc-0.1.0-rc6
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd apache-arrow-adbc
 # Pass the version and the RC number
 $ ./dev/release/verify-release-candidate.sh 0.1.0 6
 </pre></div>
 </div>
-<p>You will have to install any system dependencies required
-(e.g. CMake, libpq, Go, …).  These environment variables may be helpful:</p>
+<p>These environment variables may be helpful:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">ARROW_TMPDIR=path/to/directory</span></code> to specify the temporary
+<li><p><code class="docutils literal notranslate"><span class="pre">ARROW_TMPDIR=/path/to/directory</span></code> to specify the temporary
 directory used.  Using a fixed directory can help avoid repeating
 the same setup and build steps if the script has to be run
 multiple times.</p></li>
