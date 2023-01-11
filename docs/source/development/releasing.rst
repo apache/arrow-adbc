@@ -387,7 +387,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-08-website.sh ../arrow-site 0.0.0 0.1.0
-      dev/release/post-08-website.sh <arrow-site-dir> <prev_version> <version>
+      # dev/release/post-09-website.sh ../arrow-site 0.0.0 0.1.0
+      dev/release/post-09-website.sh <arrow-site-dir> <prev_version> <version>
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml
