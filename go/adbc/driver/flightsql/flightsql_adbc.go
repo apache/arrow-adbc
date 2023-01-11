@@ -145,41 +145,50 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 	return nil
 }
 
-func getFlightClient(ctx context.Context, loc string, d *database) (string, *flightsql.Client, error) {
-	cl, err := flightsql.NewClient(d.uri.Host, nil, nil, grpc.WithTransportCredentials(d.creds))
+type bearerAuthMiddleware struct {
+	token string
+}
+
+func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
+	if b.token != "" {
+		return metadata.AppendToOutgoingContext(ctx, "authorization", b.token)
+	}
+
+	return ctx
+}
+
+func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.Client, error) {
+	authMiddle := &bearerAuthMiddleware{}
+
+	cl, err := flightsql.NewClient(d.uri.Host, nil, []flight.ClientMiddleware{
+		flight.CreateClientMiddleware(authMiddle)}, grpc.WithTransportCredentials(d.creds))
 	if err != nil {
-		return "", nil, adbc.Error{
+		return nil, adbc.Error{
 			Msg:  err.Error(),
 			Code: adbc.StatusIO,
 		}
 	}
 
 	cl.Alloc = d.alloc
-	var auth string
 	if d.user != "" {
 		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass)
 		if err != nil {
-			return "", nil, adbc.Error{
+			return nil, adbc.Error{
 				Msg:  err.Error(),
 				Code: adbc.StatusUnauthenticated,
 			}
 		}
 
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
-			auth = md.Get("Authorization")[0]
+			authMiddle.token = md.Get("Authorization")[0]
 		}
 	}
 
-	return auth, cl, nil
-}
-
-type clientConn struct {
-	authToken string
-	cl        *flightsql.Client
+	return cl, nil
 }
 
 func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
-	auth, cl, err := getFlightClient(ctx, d.uri.Host, d)
+	cl, err := getFlightClient(ctx, d.uri.Host, d)
 	if err != nil {
 		return nil, err
 	}
@@ -192,24 +201,23 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 				return nil, adbc.Error{Code: adbc.StatusInternal}
 			}
 
-			authToken, cl, err := getFlightClient(context.Background(), uri, d)
+			cl, err := getFlightClient(context.Background(), uri, d)
 			if err != nil {
 				return nil, err
 			}
 
 			cl.Alloc = d.alloc
-			return clientConn{authToken, cl}, nil
+			return cl, nil
 		}).
 		EvictedFunc(func(_, client interface{}) {
-			conn := client.(clientConn)
-			conn.cl.Close()
+			conn := client.(*flightsql.Client)
+			conn.Close()
 		}).Build()
-	return &cnxn{cl: cl, authToken: auth, db: d, clientCache: cache}, nil
+	return &cnxn{cl: cl, db: d, clientCache: cache}, nil
 }
 
 type cnxn struct {
-	cl        *flightsql.Client
-	authToken string
+	cl *flightsql.Client
 
 	db          *database
 	clientCache gcache.Cache
@@ -230,20 +238,14 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 		cc interface{}
 	)
 
-	md, _ := metadata.FromOutgoingContext(ctx)
 	for _, loc := range endpoint.Location {
 		cc, err = clientCache.Get(loc)
 		if err != nil {
 			continue
 		}
 
-		conn := cc.(clientConn)
-		if conn.authToken != "" {
-			md.Set("Authorization", conn.authToken)
-		} else {
-			md.Delete("Authorization")
-		}
-		rdr, err = conn.cl.DoGet(metadata.NewOutgoingContext(ctx, md), endpoint.Ticket)
+		conn := cc.(*flightsql.Client)
+		rdr, err = conn.DoGet(ctx, endpoint.Ticket)
 		if err != nil {
 			continue
 		}
@@ -316,7 +318,6 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 		}
 	}
 
-	ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", c.authToken)
 	info, err := c.cl.GetSqlInfo(ctx, translated)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
@@ -460,7 +461,6 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 		IncludeSchema:          true,
 	}
 
-	ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", c.authToken)
 	info, err := c.cl.GetTables(ctx, opts)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
@@ -506,7 +506,6 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //		table_type			| utf8 not null
 //
 func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
-	ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", c.authToken)
 	info, err := c.cl.GetTableTypes(ctx)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
@@ -541,7 +540,6 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 		alloc:       c.db.alloc,
 		cl:          c.cl,
 		clientCache: c.clientCache,
-		authToken:   c.authToken,
 	}, nil
 }
 
@@ -571,7 +569,6 @@ func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (r
 		}
 	}
 
-	ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", c.authToken)
 	rdr, err = doGet(ctx, c.cl, &endpoint, c.clientCache)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
