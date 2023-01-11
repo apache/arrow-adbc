@@ -52,8 +52,8 @@ repos:
     rev: v1.49.0
     hooks:
     - id: golangci-lint
-      entry: bash -c 'cd go/adbc && golangci-lint run --fix'
-      args: [--fix]
+      entry: bash -c 'cd go/adbc && golangci-lint run --fix --timeout 2m'
+      types_or: [go]
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
     rev: v2.3.0
     hooks:
