@@ -27,7 +27,7 @@ main() {
     local -r prev_version="$2"
     local -r version="$3"
 
-    if [[ -z "${POST_DATE:+}" ]]; then
+    if [[ -z "${POST_DATE:-}" ]]; then
         local -r date=$(date "+%Y-%m-%d")
     else
         local -r date="${POST_DATE}"
