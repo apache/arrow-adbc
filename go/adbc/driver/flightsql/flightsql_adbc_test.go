@@ -54,9 +54,11 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 	s.srv.Alloc = s.mem
 
 	s.s.RegisterFlightService(flightsql.NewFlightServer(s.srv))
-	s.s.Init("localhost:0")
+	require.NoError(t, s.s.Init("localhost:0"))
 	s.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
-	go s.s.Serve()
+	go func() {
+		require.NoError(t, s.s.Serve())
+	}()
 
 	return driver.Driver{Alloc: s.mem}
 }
