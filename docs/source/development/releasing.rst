@@ -188,7 +188,7 @@ Approval requires a net of 3 +1 votes from PMC members. A release cannot be veto
 How to Verify Release Candidates
 --------------------------------
 
-#. Install dependencies. If you are not using Conda (see below), you will need to install all dependencies to build and verify all languages. Either way, at minimum, you will need:
+#. Install dependencies.  At minimum, you will need:
 
    - cURL
    - Docker (to verify binaries)
@@ -196,7 +196,8 @@ How to Verify Release Candidates
    - GnuPG
    - shasum (built into macOS) or sha256sum/sha512sum (on Linux)
 
-   If not using Conda, you will need roughly:
+   You will also need to install all dependencies to build and verify all languages.
+   Roughly, this means:
 
    - C and C++ compilers (or the equivalent of ``build-essential`` for your platform)
    - Python 3
@@ -207,47 +208,22 @@ How to Verify Release Candidates
    - Go
    - CMake, ninja-build, libpq (with headers), SQLite (with headers)
 
-#. Download the source archive from dist.apache.org. A link to the source release is given in the vote email::
+   Alternatively, you can have the verification script download and install dependencies automatically via Conda.
+   See the environment variables below.
 
-     $ wget https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-adbc-0.1.0-rc6/apache-arrow-adbc-0.1.0.tar.gz
+#. Clone the project:
 
-#. If you wish to verify the GPG signature and checksums well (the script will also verify these):
+     $ git clone https://github.com/apache/arrow-adbc.git
 
-   #. Download the signature and hash files::
-
-        $ wget https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-adbc-0.1.0-rc6/apache-arrow-adbc-0.1.0.tar.gz.{asc,sha256,sha512}
-
-   #. Verify the signature::
-
-        $ gpg --verify apache-arrow-adbc-0.1.0.tar.gz.asc
-
-      You may have to import the maintainer keys first::
-
-        $ wget https://dist.apache.org/repos/dist/release/arrow/KEYS
-        $ gpg --import KEYS
-   #. Verify the checksums::
-
-        # For Linux
-        $ sha256sum -c apache-arrow-adbc-0.1.0.tar.gz.sha256
-        $ sha512sum -c apache-arrow-adbc-0.1.0.tar.gz.sha512
-
-        # For macOS
-        $ shashum -a 256 -c apache-arrow-adbc-0.1.0.tar.gz.sha256
-        $ shashum -a 512 -c apache-arrow-adbc-0.1.0.tar.gz.sha512
-
-#. Extract the archive::
-
-     $ tar xf apache-arrow-adbc-0.1.0.tar.gz
 #. Run the verification script::
 
-     $ cd apache-arrow-adbc-0.1.0-rc6
+     $ cd apache-arrow-adbc
      # Pass the version and the RC number
      $ ./dev/release/verify-release-candidate.sh 0.1.0 6
 
-   You will have to install any system dependencies required
-   (e.g. CMake, libpq, Go, ...).  These environment variables may be helpful:
+   These environment variables may be helpful:
 
-   - ``ARROW_TMPDIR=path/to/directory`` to specify the temporary
+   - ``ARROW_TMPDIR=/path/to/directory`` to specify the temporary
      directory used.  Using a fixed directory can help avoid repeating
      the same setup and build steps if the script has to be run
      multiple times.
