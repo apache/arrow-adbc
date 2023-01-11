@@ -44,6 +44,7 @@ test_subproject() {
                --with-cppflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\"
     fi
 
+    bundle config set --local path 'vendor/bundle'
     bundle install
     bundle exec \
            env DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" \
@@ -60,6 +61,7 @@ test_subproject() {
                --with-cppflags=\"-D_LIBCPP_DISABLE_AVAILABILITY\"
     fi
 
+    bundle config set --local path 'vendor/bundle'
     bundle install
     bundle exec \
            env DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" \
