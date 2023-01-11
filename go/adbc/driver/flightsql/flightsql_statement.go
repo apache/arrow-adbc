@@ -27,13 +27,11 @@ import (
 	"github.com/apache/arrow/go/v10/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v10/arrow/memory"
 	"github.com/bluele/gcache"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
 
 type statement struct {
 	alloc       memory.Allocator
-	authToken   string
 	cl          *flightsql.Client
 	clientCache gcache.Cache
 
@@ -42,12 +40,7 @@ type statement struct {
 }
 
 func (s *statement) closePreparedStatement() error {
-	ctx := context.Background()
-	if s.authToken != "" {
-		ctx = metadata.NewOutgoingContext(ctx,
-			metadata.Pairs("Authorization", s.authToken))
-	}
-	return s.prepared.Close(ctx)
+	return s.prepared.Close(context.Background())
 }
 
 // Close releases any relevant resources associated with this statement
@@ -59,11 +52,17 @@ func (s *statement) Close() (err error) {
 		err = s.closePreparedStatement()
 		s.prepared = nil
 	}
-	if s.cl != nil {
-		s.authToken = ""
-		s.cl = nil
-		s.clientCache = nil
+
+	if s.cl == nil {
+		return adbc.Error{
+			Msg:  "[Flight SQL Statement] cannot close already closed statement",
+			Code: adbc.StatusInvalidState,
+		}
 	}
+
+	s.cl = nil
+	s.clientCache = nil
+
 	return err
 }
 
@@ -98,10 +97,6 @@ func (s *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
-	if s.authToken != "" {
-		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", s.authToken)
-	}
-
 	var info *flight.FlightInfo
 	if s.prepared != nil {
 		info, err = s.prepared.Execute(ctx)
@@ -126,10 +121,6 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (s *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
-	if s.authToken != "" {
-		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", s.authToken)
-	}
-
 	if s.prepared != nil {
 		return s.prepared.ExecuteUpdate(ctx)
 	}
@@ -154,9 +145,6 @@ func (s *statement) Prepare(ctx context.Context) error {
 		}
 	}
 
-	if s.authToken != "" {
-		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", s.authToken)
-	}
 	prep, err := s.cl.Prepare(ctx, s.alloc, s.query)
 	if err != nil {
 		return adbcFromFlightStatus(err)
@@ -248,20 +236,17 @@ func (s *statement) GetParameterSchema() (*arrow.Schema, error) {
 // ExecutePartitions executes the current statement and gets the results
 // as a partitioned result set.
 //
-// It returns the Schema of the result set, the collection of partition
-// descriptors and the number of rows affected, if known. If unknown,
-// the number of rows affected will be -1.
+// It returns the Schema of the result set (if available, nil otherwise),
+// the collection of partition descriptors and the number of rows affected,
+// if known. If unknown, the number of rows affected will be -1.
 //
 // If the driver does not support partitioned results, this will return
 // an error with a StatusNotImplemented code.
 func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
-	if s.authToken != "" {
-		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", s.authToken)
-	}
-
 	var (
 		info *flight.FlightInfo
 		out  adbc.Partitions
+		sc   *arrow.Schema
 		err  error
 	)
 
@@ -280,9 +265,11 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 		return nil, out, -1, adbcFromFlightStatus(err)
 	}
 
-	sc, err := flight.DeserializeSchema(info.Schema, s.alloc)
-	if err != nil {
-		return nil, out, -1, adbcFromFlightStatus(err)
+	if len(info.Schema) > 0 {
+		sc, err = flight.DeserializeSchema(info.Schema, s.alloc)
+		if err != nil {
+			return nil, out, -1, adbcFromFlightStatus(err)
+		}
 	}
 
 	out.NumPartitions = uint64(len(info.Endpoint))

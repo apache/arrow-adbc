@@ -43,13 +43,6 @@ type reader struct {
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache) (rdr array.RecordReader, err error) {
-	schema, err := flight.DeserializeSchema(info.Schema, alloc)
-	if err != nil {
-		return nil, adbc.Error{
-			Msg:  err.Error(),
-			Code: adbc.StatusInvalidState}
-	}
-
 	var cancelFn context.CancelFunc
 	ctx, cancelFn = context.WithCancel(ctx)
 	ch := make(chan arrow.Record, 5)
@@ -71,7 +64,36 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		close(ch)
 	}()
 
-	for _, ep := range info.Endpoint {
+	endpoints := info.Endpoint
+
+	var schema *arrow.Schema
+	if info.Schema != nil {
+		schema, err = flight.DeserializeSchema(info.Schema, alloc)
+		if err != nil {
+			return nil, adbc.Error{
+				Msg:  err.Error(),
+				Code: adbc.StatusInvalidState}
+		}
+	} else {
+		rdr, err := doGet(ctx, cl, endpoints[0], clCache)
+		if err != nil {
+			return nil, adbcFromFlightStatus(err)
+		}
+		schema = rdr.Schema()
+		go func() {
+			defer wg.Done()
+			defer rdr.Release()
+			for rdr.Next() && ctx.Err() == nil {
+				rec := rdr.Record()
+				rec.Retain()
+				ch <- rec
+			}
+		}()
+
+		endpoints = endpoints[1:]
+	}
+
+	for _, ep := range endpoints {
 		go func(endpoint *flight.FlightEndpoint) {
 			defer wg.Done()
 

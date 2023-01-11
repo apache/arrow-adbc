@@ -50,6 +50,8 @@ type DriverQuirks interface {
 	SupportsPartitionedData() bool
 	// Whether transactions are supported (Commit/Rollback on connection)
 	SupportsTransactions() bool
+	// Whether retrieving the schema of prepared statement params is supported
+	SupportsGetParameterSchema() bool
 	// Expected Metadata responses
 	GetMetadata(adbc.InfoCode) interface{}
 	// Create a sample table from an arrow record
@@ -264,4 +266,159 @@ func (c *ConnectionTests) TestMetadataGetTableTypes() {
 
 	c.Truef(adbc.TableTypesSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.TableTypesSchema, rdr.Schema())
 	c.True(rdr.Next())
+}
+
+type StatementTests struct {
+	suite.Suite
+
+	Driver adbc.Driver
+	Quirks DriverQuirks
+
+	DB   adbc.Database
+	Cnxn adbc.Connection
+	ctx  context.Context
+}
+
+func (s *StatementTests) SetupTest() {
+	s.Driver = s.Quirks.SetupDriver(s.T())
+	var err error
+	s.DB, err = s.Driver.NewDatabase(s.Quirks.DatabaseOptions())
+	s.Require().NoError(err)
+	s.ctx = context.Background()
+	s.Cnxn, err = s.DB.Open(s.ctx)
+	s.Require().NoError(err)
+}
+
+func (s *StatementTests) TearDownTest() {
+	s.Require().NoError(s.Cnxn.Close())
+	s.Quirks.TearDownDriver(s.T(), s.Driver)
+	s.Cnxn = nil
+	s.DB = nil
+	s.Driver = nil
+}
+
+func (s *StatementTests) TestNewStatement() {
+	stmt, err := s.Cnxn.NewStatement()
+	s.NoError(err)
+	s.NotNil(stmt)
+	s.NoError(stmt.Close())
+
+	var adbcError adbc.Error
+	s.ErrorAs(stmt.Close(), &adbcError)
+	s.Equal(adbc.StatusInvalidState, adbcError.Code)
+
+	stmt, err = s.Cnxn.NewStatement()
+	s.NoError(err)
+	_, _, err = stmt.ExecuteQuery(s.ctx)
+	s.ErrorAs(err, &adbcError)
+	s.Equal(adbc.StatusInvalidState, adbcError.Code)
+}
+
+func (s *StatementTests) TestSqlPartitionedInts() {
+	stmt, err := s.Cnxn.NewStatement()
+	s.Require().NoError(err)
+	defer stmt.Close()
+
+	s.NoError(stmt.SetSqlQuery("SELECT 42"))
+
+	var adbcError adbc.Error
+	if !s.Quirks.SupportsPartitionedData() {
+		_, _, _, err := stmt.ExecutePartitions(s.ctx)
+		s.ErrorAs(err, &adbcError)
+		s.Equal(adbc.StatusNotImplemented, adbcError.Code)
+		return
+	}
+
+	sc, part, rows, err := stmt.ExecutePartitions(s.ctx)
+	s.Require().NoError(err)
+
+	s.EqualValues(1, part.NumPartitions)
+	s.Len(part.PartitionIDs, 1)
+	s.True(rows == 1 || rows == -1, rows)
+
+	if sc != nil {
+		s.Len(sc.Fields(), 1)
+	}
+
+	cxn, err := s.DB.Open(s.ctx)
+	s.Require().NoError(err)
+	defer cxn.Close()
+
+	rdr, err := cxn.ReadPartition(s.ctx, part.PartitionIDs[0])
+	s.Require().NoError(err)
+	defer rdr.Release()
+
+	sc = rdr.Schema()
+	s.Require().NotNil(sc)
+	s.Len(sc.Fields(), 1)
+
+	s.True(rdr.Next())
+	rec := rdr.Record()
+	s.EqualValues(1, rec.NumCols())
+	s.EqualValues(1, rec.NumRows())
+
+	switch arr := rec.Column(0).(type) {
+	case *array.Int32:
+		s.EqualValues(42, arr.Value(0))
+	case *array.Int64:
+		s.EqualValues(42, arr.Value(0))
+	}
+
+	s.False(rdr.Next())
+}
+
+func (s *StatementTests) TestSQLPrepareGetParameterSchema() {
+	stmt, err := s.Cnxn.NewStatement()
+	s.NoError(err)
+	defer stmt.Close()
+
+	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
+	s.NoError(stmt.SetSqlQuery(query))
+	s.NoError(stmt.Prepare(s.ctx))
+
+	sc, err := stmt.GetParameterSchema()
+	if !s.Quirks.SupportsGetParameterSchema() {
+		var adbcError adbc.Error
+		s.ErrorAs(err, &adbcError)
+		s.Equal(adbc.StatusNotImplemented, adbcError.Code)
+		return
+	}
+	s.NoError(err)
+
+	// it's allowed to be nil as some systems don't provide param schemas
+	if sc != nil {
+		s.Len(sc.Fields(), 2)
+	}
+}
+
+func (s *StatementTests) TestSQLPrepareSelectNoParams() {
+	stmt, err := s.Cnxn.NewStatement()
+	s.NoError(err)
+	defer stmt.Close()
+
+	s.NoError(stmt.SetSqlQuery("SELECT 1"))
+	s.NoError(stmt.Prepare(s.ctx))
+
+	rdr, n, err := stmt.ExecuteQuery(s.ctx)
+	s.Require().NoError(err)
+	s.True(n == 1 || n == -1)
+	defer rdr.Release()
+
+	sc := rdr.Schema()
+	s.Require().NotNil(sc)
+	s.Len(sc.Fields(), 1)
+
+	s.True(rdr.Next())
+	rec := rdr.Record()
+	s.EqualValues(1, rec.NumCols())
+	s.EqualValues(1, rec.NumRows())
+
+	switch arr := rec.Column(0).(type) {
+	case *array.Int32:
+		s.EqualValues(1, arr.Value(0))
+	case *array.Int64:
+		s.EqualValues(1, arr.Value(0))
+	}
+
+	s.False(rdr.Next())
 }

@@ -57,7 +57,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 	require.NoError(t, s.s.Init("localhost:0"))
 	s.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
 	go func() {
-		require.NoError(t, s.s.Serve())
+		_ = s.s.Serve()
 	}()
 
 	return driver.Driver{Alloc: s.mem}
@@ -171,6 +171,7 @@ func (s *FlightSQLQuirks) BindParameter(_ int) string         { return "?" }
 func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool { return true }
 func (s *FlightSQLQuirks) SupportsPartitionedData() bool      { return true }
 func (s *FlightSQLQuirks) SupportsTransactions() bool         { return false }
+func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool   { return false }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
@@ -196,4 +197,5 @@ func TestADBCFlightSQL(t *testing.T) {
 	q := &FlightSQLQuirks{}
 	suite.Run(t, &validation.DatabaseTests{Quirks: q})
 	suite.Run(t, &validation.ConnectionTests{Quirks: q})
+	suite.Run(t, &validation.StatementTests{Quirks: q})
 }
