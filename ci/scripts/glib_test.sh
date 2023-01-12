@@ -74,7 +74,9 @@ test_subproject() {
         gem_flags='-- --with-cflags="-D_LIBCPP_DISABLE_AVAILABILITY" --with-cppflags="-D_LIBCPP_DISABLE_AVAILABILITY"'
     fi
 
-    gem install --install-dir "${build_dir}/gems" pkg/*.gem -- ${gem_flags}
+    export GEM_HOME="${build_dir}/gems"
+    export PATH="${GEM_HOME}/bin:${PATH}"
+    gem install pkg/*.gem -- ${gem_flags}
     popd
 }
 
