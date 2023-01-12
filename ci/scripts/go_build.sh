@@ -36,6 +36,12 @@ main() {
 
     go build -v ./...
 
+    pushd ./pkg
+
+    make all
+
+    popd
+
     popd
 }
 
