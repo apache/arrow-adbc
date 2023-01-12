@@ -484,7 +484,9 @@ test_glib() {
 
   # Install bundler if doesn't exist
   if ! bundle --version; then
-    gem install --no-document bundler --install-dir="${ARROW_TMPDIR}/glib-build/gems" pkg/*.gem -- ${gem_flags}
+    export GEM_HOME="${ARROW_TMPDIR}/gems"
+    PATH="${GEM_HOME}/bin:${PATH}"
+    gem install --no-document bundler
   fi
 
   if [ "${USE_CONDA}" -gt 0 ]; then
