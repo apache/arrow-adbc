@@ -36,11 +36,13 @@ main() {
 
     go build -v ./...
 
-    pushd ./pkg
+    if [[ "${CGO_ENABLED}" = 1 ]]; then
+        pushd ./pkg
 
-    make all
+        make all
 
-    popd
+        popd
+    fi
 
     popd
 }
