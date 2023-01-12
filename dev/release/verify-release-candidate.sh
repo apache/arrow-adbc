@@ -484,8 +484,8 @@ test_glib() {
 
   # Install bundler if doesn't exist
   if ! bundle --version; then
-    export GEM_HOME="${ARROW_TMPDIR}/gems"
-    PATH="${GEM_HOME}/bin:${PATH}"
+    export GEM_HOME="${ARROW_TMPDIR}/glib-build/gems"
+    export PATH="${GEM_HOME}/bin:${PATH}"
     gem install --no-document bundler
   fi
 
