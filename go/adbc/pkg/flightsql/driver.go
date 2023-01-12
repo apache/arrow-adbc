@@ -17,6 +17,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:build driverlib
+
 package main
 
 // #include "../../drivermgr/adbc.h"

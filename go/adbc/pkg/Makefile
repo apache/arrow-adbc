@@ -23,7 +23,7 @@ DRIVERS := \
 all: $(DRIVERS)
 
 libadbc_%_go.so: %
-	$(GO_BUILD) -o $@ -buildmode=c-shared ./$<
+	$(GO_BUILD) -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w" ./$<
 	rm libadbc_$<_go.h
 
 clean:
