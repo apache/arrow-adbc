@@ -15,12 +15,11 @@
 # limitations under the License.
 
 GO_BUILD=go build
-
-SUFFIX != if [ "$$(go env GOOS)" = "linux" ]; then \
-						echo "so"; \
-					else \
-						echo "dylib"; \
-					fi
+ifeq ($(shell go env GOOS),linux)
+	SUFFIX=so
+else
+	SUFFIX=dylib
+endif
 
 DRIVERS := \
 	libadbc_flightsql_go.$(SUFFIX)

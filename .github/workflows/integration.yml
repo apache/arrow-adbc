@@ -145,8 +145,8 @@ jobs:
     name: "Integration/${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     strategy:
-      matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+      matrix: # macos-latest having issues with docker?
+        os: ["ubuntu-latest"]
     needs: [cpp-conda-unix, go-unix]
     services:
       dremio:
