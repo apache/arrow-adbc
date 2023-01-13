@@ -148,6 +148,14 @@ jobs:
       matrix:
         os: ["macos-latest", "ubuntu-latest"]
     needs: [cpp-conda-unix, go-unix]
+    services:
+      dremio:
+        image: dremio/dremio-oss
+        ports:
+          - 9047:9047
+          - 32010:32010
+          - 31010:31010
+          - 45678:45678
     steps:
       - name: Get CachePath
         id: cache-path
@@ -168,3 +176,17 @@ jobs:
         shell: bash -l {0}
         run: |
           ls -l $HOME/local/**
+
+      - name: Bootstrap Dremio instance
+        shell: bash -l {0}
+        id: bootstrap
+        run: |
+          curl -X PUT -H "Content-Type: application/json" "http://dremio:9047/apiv2/bootstrap/firstuser" \
+            -d '{"userName":"citest","firstName":"citest","lastName":"citest","email":"citest@noreply.org","createdAt":1673639429913,"password":"p4ssw0rd","extra":null}'
+          LOGIN=`curl -X POST -H "Content-Type: application/json" "http://dremio:9047/apiv2/login" \
+            -d '{"userName":"citest","password":"p4ssw0rd"}'`
+          echo "LOGIN_RESP=$LOGIN" >> $GITHUB_OUTPUT
+
+      - name: Print Token
+        shell: bash -l {0}
+        run: echo "_dremio${{ fromJSON(steps.bootstrap.outputs.LOGIN_RESP).token }}"

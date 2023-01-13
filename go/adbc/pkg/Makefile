@@ -16,13 +16,19 @@
 
 GO_BUILD=go build
 
+SUFFIX != if [ "$$(go env GOOS)" = "linux" ]; then \
+						echo "so"; \
+					else \
+						echo "dylib"; \
+					fi
+
 DRIVERS := \
-	libadbc_flightsql_go.so
+	libadbc_flightsql_go.$(SUFFIX)
 
 .PHONY: all
 all: $(DRIVERS)
 
-libadbc_%_go.so: %
+libadbc_%_go.$(SUFFIX): %	
 	$(GO_BUILD) -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w" ./$<
 	rm libadbc_$<_go.h
 
