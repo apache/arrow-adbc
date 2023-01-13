@@ -92,6 +92,6 @@ AdbcStatusCode FlightSQLStatementExecutePartitions(struct AdbcStatement* stmt,
                                                    struct AdbcError* err);
 AdbcStatusCode FlightSQLDriverInit(int version, void* rawDriver, struct AdbcError* err);
 
-static inline void errRelease(struct AdbcError* error) { error->release(error); }
+static inline void FlightSQLerrRelease(struct AdbcError* error) { error->release(error); }
 
-void release_error(struct AdbcError* error);
+void FlightSQL_release_error(struct AdbcError* error);

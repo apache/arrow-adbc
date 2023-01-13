@@ -25,6 +25,12 @@
 extern "C" {
 #endif
 
+void {{.Prefix}}_release_error(struct AdbcError* error) {
+  free(error->message);
+  error->message = NULL;
+  error->release = NULL;
+}
+
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
   return {{.Prefix}}DatabaseNew(database, error);
 }

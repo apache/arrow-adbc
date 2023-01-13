@@ -52,12 +52,8 @@ AdbcStatusCode {{.Prefix}}StatementSetOption(struct AdbcStatement* stmt, const c
 AdbcStatusCode {{.Prefix}}StatementExecutePartitions(struct AdbcStatement* stmt, struct ArrowSchema* schema, struct AdbcPartitions* partitions, int64_t* affected, struct AdbcError* err);
 AdbcStatusCode {{.Prefix}}DriverInit(int version, void* rawDriver, struct AdbcError* err);
 
-static inline void errRelease(struct AdbcError* error) {
+static inline void {{.Prefix}}errRelease(struct AdbcError* error) {
   error->release(error);
 }
 
-static void release_error(struct AdbcError* error) {
-  free(error->message);
-  error->message = NULL;
-  error->release = NULL;
-}
+void {{.Prefix}}_release_error(struct AdbcError* error);

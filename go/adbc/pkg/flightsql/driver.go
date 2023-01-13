@@ -55,12 +55,12 @@ func setErr(err *C.struct_AdbcError, format string, vals ...interface{}) {
 	}
 
 	if err.release != nil {
-		C.errRelease(err)
+		C.FlightSQLerrRelease(err)
 	}
 
 	msg := errPrefix + fmt.Sprintf(format, vals...)
 	err.message = C.CString(msg)
-	err.release = (*[0]byte)(C.release_error)
+	err.release = (*[0]byte)(C.FlightSQL_release_error)
 }
 
 func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
