@@ -150,7 +150,14 @@ jobs:
     needs: [cpp-conda-unix, go-unix]
     services:
       dremio:
-        image: dremio/dremio-oss
+        image: dremio/dremio-oss:latest
+        env:
+          DREMIO_JAVA_EXTRA_OPTS: "-Ddebug.addDefaultUser=true -Ddremio.eula.disabled=true"
+        options: >-
+          --health-cmd "curl --fail http://localhost:9047/ || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
         ports:
           - 9047:9047
           - 32010:32010
@@ -180,11 +187,9 @@ jobs:
       - name: Bootstrap Dremio instance
         shell: bash -l {0}
         id: bootstrap
-        run: |
-          curl -X PUT -H "Content-Type: application/json" "http://localhost:9047/apiv2/bootstrap/firstuser" \
-            -d '{"userName":"citest","firstName":"citest","lastName":"citest","email":"citest@noreply.org","createdAt":1673639429913,"password":"p4ssw0rd","extra":null}'
+        run: |          
           LOGIN=`curl -X POST -H "Content-Type: application/json" "http://localhost:9047/apiv2/login" \
-            -d '{"userName":"citest","password":"p4ssw0rd"}'`
+            -d '{"userName":"dremio","password":"dremio123"}'`
           echo "LOGIN_RESP=$LOGIN" >> $GITHUB_OUTPUT
 
       - name: Print Token
