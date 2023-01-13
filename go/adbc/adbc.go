@@ -153,6 +153,9 @@ const (
 	OptionKeyReadOnly           = "adbc.connection.readonly"
 	OptionValueIngestModeCreate = "adbc.ingest.mode.create"
 	OptionValueIngestModeAppend = "adbc.ingest.mode.append"
+	OptionKeyURI                = "uri"
+	OptionKeyUsername           = "username"
+	OptionKeyPassword           = "password"
 )
 
 type OptionIsolationLevel string
