@@ -50,7 +50,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-latest", "ubuntu-latest"]    
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -88,6 +88,7 @@ jobs:
             --file ci/conda_env_glib.txt \
             --file ci/conda_env_python.txt
       - name: Build and Install (No ASan)
+        id: build-install
         shell: bash -l {0}
         run: |
           # Python and others need something that don't use the ASAN runtime
@@ -97,11 +98,11 @@ jobs:
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-
+          echo "CACHEPATH=$HOME/local" >> $GITHUB_OUTPUT
       - name: Cache builds
         uses: actions/cache/save@v3
         with:
-          path: ${{ env.HOME}}/local
+          path: ${{ steps.build-install.outputs.CACHEPATH }}
           key: ${{ runner.os }}-cpp-${{ github.sha }}
 
   go-unix:
@@ -124,6 +125,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Build shared lib
+        id: build-shared
         shell: bash -l {0}
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
@@ -131,11 +133,12 @@ jobs:
           make
           mkdir -p $HOME/local/lib
           mv *.so $HOME/local/lib/
+          echo "CACHEPATH=$HOME/local" >> $GITHUB_OUTPUT
           popd
       - name: Cache builds
         uses: actions/cache/save@v3
         with:
-          path: ${{ env.HOME}}/local
+          path: ${{ steps.build-shared.outputs.CACHEPATH }}
           key: ${{ runner.os }}-go-${{ github.sha }}
 
   run-tests:
@@ -146,16 +149,22 @@ jobs:
         os: ["macos-latest", "ubuntu-latest"]
     needs: [cpp-conda-unix, go-unix]
     steps:
+      - name: Get CachePath
+        id: cache-path
+        shell: bash -l {0}
+        run: |
+          echo "CACHEPATH=$HOME/local" >> $GITHUB_OUTPUT
       - name: Restore CPP build
         uses: actions/cache/restore@v3
         with:
-          path: ${{ env.HOME }}/local
+          path: ${{ steps.cache-path.outputs.CACHEPATH }}
           key: ${{ runner.os }}-cpp-${{ github.sha }}
       - name: Restore Go build
         uses: actions/cache/restore@v3
         with:
-          path: ${{ env.HOME }}/local
+          path: ${{ steps.cache-path.outputs.CACHEPATH }}
           key: ${{ runner.os }}-go-${{ github.sha }}
       - name: Prove it worked
+        shell: bash -l {0}
         run: |
           ls -l $HOME/local/**
