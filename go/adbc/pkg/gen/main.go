@@ -177,6 +177,8 @@ func process(data interface{}, specs []pathSpec) {
 				log.Fatalf("error formatting '%s': %s", spec.in, err)
 			}
 		}
-		ioutil.WriteFile(spec.out, generated, fileMode(spec.in))
+		if err := ioutil.WriteFile(spec.out, generated, fileMode(spec.in)); err != nil {
+			log.Fatal(err)
+		}
 	}
 }

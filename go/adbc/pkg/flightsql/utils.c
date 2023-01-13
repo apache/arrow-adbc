@@ -19,7 +19,7 @@
 
 // clang-format off
 //go:build driverlib
-// clang-format on
+//  clang-format on
 
 #include "utils.h"
 
@@ -70,8 +70,7 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
                                      uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
-  return FlightSQLConnectionGetInfo(connection, info_codes, info_codes_length, out,
-                                    error);
+  return FlightSQLConnectionGetInfo(connection, info_codes, info_codes_length, out, error);
 }
 
 AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
@@ -81,7 +80,7 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         struct ArrowArrayStream* out,
                                         struct AdbcError* error) {
   return FlightSQLConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
-                                       table_type, column_name, out, error);
+                                    table_type, column_name, out, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -90,7 +89,7 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
                                             struct ArrowSchema* schema,
                                             struct AdbcError* error) {
   return FlightSQLConnectionGetTableSchema(connection, catalog, db_schema, table_name,
-                                           schema, error);
+                                        schema, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
@@ -105,7 +104,7 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error) {
   return FlightSQLConnectionReadPartition(connection, serialized_partition,
-                                          serialized_length, out, error);
+                                       serialized_length, out, error);
 }
 
 AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
@@ -181,7 +180,7 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               int64_t* rows_affected,
                                               struct AdbcError* error) {
   return FlightSQLStatementExecutePartitions(statement, schema, partitions, rows_affected,
-                                             error);
+                                          error);
 }
 
 ADBC_EXPORT
