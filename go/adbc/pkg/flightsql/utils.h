@@ -94,8 +94,4 @@ AdbcStatusCode FlightSQLDriverInit(int version, void* rawDriver, struct AdbcErro
 
 static inline void errRelease(struct AdbcError* error) { error->release(error); }
 
-static void release_error(struct AdbcError* error) {
-  free(error->message);
-  error->message = NULL;
-  error->release = NULL;
-}
+extern void release_error(struct AdbcError* error);

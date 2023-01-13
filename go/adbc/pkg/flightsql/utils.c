@@ -27,6 +27,13 @@
 extern "C" {
 #endif
 
+void release_error(struct AdbcError* error) {
+  free(error->message);
+  error->message = NULL;
+  error->release = NULL;
+}
+
+
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
   return FlightSQLDatabaseNew(database, error);
 }
