@@ -22,6 +22,9 @@ package drivermgr
 // #include <stdlib.h>
 //
 // void releaseErr(struct AdbcError* err) { err->release(err); }
+// struct ArrowArray* allocArr() {
+//     return (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
+// }
 //
 import "C"
 import (
@@ -39,7 +42,73 @@ type option struct {
 	key, val *C.char
 }
 
-type Driver struct {
+func convOptions(incoming map[string]string, existing map[string]option) {
+	for k, v := range incoming {
+		o, ok := existing[k]
+		if !ok {
+			o.key = C.CString(k)
+			o.val = C.CString(v)
+			existing[k] = o
+			continue
+		}
+
+		C.free(unsafe.Pointer(o.val))
+		o.val = C.CString(v)
+		existing[k] = o
+	}
+}
+
+type Driver struct{}
+
+func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	dbOptions := make(map[string]option)
+	convOptions(opts, dbOptions)
+
+	db := &Database{
+		options: make(map[string]option),
+	}
+
+	var err C.struct_AdbcError
+	db.db = (*C.struct_AdbcDatabase)(unsafe.Pointer(C.malloc(C.sizeof_struct_AdbcDatabase)))
+	if code := adbc.Status(C.AdbcDatabaseNew(db.db, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+
+	for _, o := range dbOptions {
+		if code := adbc.Status(C.AdbcDatabaseSetOption(db.db, o.key, o.val, &err)); code != adbc.StatusOK {
+			errOut := toAdbcError(code, &err)
+			C.AdbcDatabaseRelease(db.db, &err)
+			db.db = nil
+			return nil, errOut
+		}
+	}
+
+	if code := adbc.Status(C.AdbcDatabaseInit(db.db, &err)); code != adbc.StatusOK {
+		errOut := toAdbcError(code, &err)
+		C.AdbcDatabaseRelease(db.db, &err)
+		db.db = nil
+		return nil, errOut
+	}
+
+	runtime.SetFinalizer(db, func(db *Database) {
+		if db.db != nil {
+			var err C.struct_AdbcError
+			code := adbc.Status(C.AdbcDatabaseRelease(db.db, &err))
+			if code != adbc.StatusOK {
+				panic(toAdbcError(code, &err))
+			}
+		}
+
+		for _, o := range db.options {
+			C.free(unsafe.Pointer(o.key))
+			C.free(unsafe.Pointer(o.val))
+		}
+	})
+
+	return db, nil
+}
+
+type Database struct {
 	options map[string]option
 	db      *C.struct_AdbcDatabase
 }
@@ -57,7 +126,7 @@ func toAdbcError(code adbc.Status, e *C.struct_AdbcError) error {
 	return err
 }
 
-func (d *Driver) SetOptions(options map[string]string) error {
+func (d *Database) SetOptions(options map[string]string) error {
 	if d.options == nil {
 		d.options = make(map[string]option)
 	}
@@ -78,44 +147,20 @@ func (d *Driver) SetOptions(options map[string]string) error {
 	return nil
 }
 
-func (d *Driver) Open(context.Context) (adbc.Connection, error) {
+func (d *Database) Open(context.Context) (adbc.Connection, error) {
 	var err C.struct_AdbcError
-	if d.db == nil {
-		d.db = (*C.struct_AdbcDatabase)(unsafe.Pointer(C.malloc(C.sizeof_struct_AdbcDatabase)))
-		if code := adbc.Status(C.AdbcDatabaseNew(d.db, &err)); code != adbc.StatusOK {
-			return nil, toAdbcError(code, &err)
-		}
-
-		for _, o := range d.options {
-			if code := adbc.Status(C.AdbcDatabaseSetOption(d.db, o.key, o.val, &err)); code != adbc.StatusOK {
-				errOut := toAdbcError(code, &err)
-				C.AdbcDatabaseRelease(d.db, &err)
-				d.db = nil
-				return nil, errOut
-			}
-		}
-
-		if code := adbc.Status(C.AdbcDatabaseInit(d.db, &err)); code != adbc.StatusOK {
-			errOut := toAdbcError(code, &err)
-			C.AdbcDatabaseRelease(d.db, &err)
-			d.db = nil
-			return nil, errOut
-		}
-
-		runtime.SetFinalizer(d, func(drv *Driver) {
-			if drv.db != nil {
-				var err C.struct_AdbcError
-				code := adbc.Status(C.AdbcDatabaseRelease(drv.db, &err))
-				if code != adbc.StatusOK {
-					panic(toAdbcError(code, &err))
-				}
-			}
-		})
-	}
 
 	var c C.struct_AdbcConnection
 	if code := adbc.Status(C.AdbcConnectionNew(&c, &err)); code != adbc.StatusOK {
 		return nil, toAdbcError(code, &err)
+	}
+
+	for _, o := range d.options {
+		if code := adbc.Status(C.AdbcConnectionSetOption(&c, o.key, o.val, &err)); code != adbc.StatusOK {
+			errOut := toAdbcError(code, &err)
+			C.AdbcConnectionRelease(&c, &err)
+			return nil, errOut
+		}
 	}
 
 	if code := adbc.Status(C.AdbcConnectionInit(&c, d.db, &err)); code != adbc.StatusOK {
@@ -280,13 +325,22 @@ func (s *stmt) SetSubstraitPlan(plan []byte) error {
 
 func (s *stmt) Bind(_ context.Context, values arrow.Record) error {
 	var (
-		arr    cdata.CArrowArray
-		schema cdata.CArrowSchema
-		err    C.struct_AdbcError
-	)
-	cdata.ExportArrowRecordBatch(values, &arr, &schema)
+		arr    = C.allocArr()
+		schema C.struct_ArrowSchema
 
-	code := adbc.Status(C.AdbcStatementBind(s.st, (*C.struct_ArrowArray)(unsafe.Pointer(&arr)), (*C.struct_ArrowSchema)(unsafe.Pointer(&schema)), &err))
+		cdArr    = (*cdata.CArrowArray)(unsafe.Pointer(arr))
+		cdSchema = (*cdata.CArrowSchema)(unsafe.Pointer(&schema))
+		err      C.struct_AdbcError
+	)
+	cdata.ExportArrowRecordBatch(values, cdArr, cdSchema)
+	defer func() {
+		cdata.ReleaseCArrowArray(cdArr)
+		cdata.ReleaseCArrowSchema(cdSchema)
+
+		C.free(unsafe.Pointer(arr))
+	}()
+
+	code := adbc.Status(C.AdbcStatementBind(s.st, arr, &schema, &err))
 	if code != adbc.StatusOK {
 		return toAdbcError(code, &err)
 	}
