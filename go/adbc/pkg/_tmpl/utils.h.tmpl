@@ -15,7 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// clang-format off
 //go:build driverlib
+// clang-format on
 
 #pragma once
 
@@ -50,8 +52,8 @@ AdbcStatusCode {{.Prefix}}StatementSetOption(struct AdbcStatement* stmt, const c
 AdbcStatusCode {{.Prefix}}StatementExecutePartitions(struct AdbcStatement* stmt, struct ArrowSchema* schema, struct AdbcPartitions* partitions, int64_t* affected, struct AdbcError* err);
 AdbcStatusCode {{.Prefix}}DriverInit(int version, void* rawDriver, struct AdbcError* err);
 
-static inline void errRelease(struct AdbcError* error) { 
-  error->release(error); 
+static inline void errRelease(struct AdbcError* error) {
+  error->release(error);
 }
 
 static void release_error(struct AdbcError* error) {

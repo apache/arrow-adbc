@@ -17,44 +17,82 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// clang-format off
 //go:build driverlib
+// clang-format on
 
 #pragma once
 
-#include "../../drivermgr/adbc.h"
 #include <stdlib.h>
+#include "../../drivermgr/adbc.h"
 
 AdbcStatusCode FlightSQLDatabaseNew(struct AdbcDatabase* db, struct AdbcError* err);
-AdbcStatusCode FlightSQLDatabaseSetOption(struct AdbcDatabase* db, const char* key, const char* value, struct AdbcError* err);
+AdbcStatusCode FlightSQLDatabaseSetOption(struct AdbcDatabase* db, const char* key,
+                                          const char* value, struct AdbcError* err);
 AdbcStatusCode FlightSQLDatabaseInit(struct AdbcDatabase* db, struct AdbcError* err);
 AdbcStatusCode FlightSQLDatabaseRelease(struct AdbcDatabase* db, struct AdbcError* err);
 AdbcStatusCode FlightSQLConnectionNew(struct AdbcConnection* cnxn, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionSetOption(struct AdbcConnection* cnxn, const char* key, const char* val, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionInit(struct AdbcConnection* cnxn, struct AdbcDatabase* db, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionRelease(struct AdbcConnection* cnxn, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes, size_t len, struct ArrowArrayStream* out, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionGetObjects(struct AdbcConnection* cnxn, int depth, const char* catalog, const char* dbSchema, const char* tableName, const char** tableType, const char* columnName, struct ArrowArrayStream* out, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionGetTableSchema(struct AdbcConnection* cnxn, const char* catalog, const char* dbSchema, const char* tableName, struct ArrowSchema* schema, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionGetTableTypes(struct AdbcConnection* cnxn, struct ArrowArrayStream* out, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionReadPartition(struct AdbcConnection* cnxn, const uint8_t* serialized, size_t serializedLen, struct ArrowArrayStream* out, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionCommit(struct AdbcConnection* cnxn, struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionRollback(struct AdbcConnection* cnxn, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementNew(struct AdbcConnection* cnxn, struct AdbcStatement* stmt, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementRelease(struct AdbcStatement* stmt, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementPrepare(struct AdbcStatement* stmt, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementExecuteQuery(struct AdbcStatement* stmt, struct ArrowArrayStream* out, int64_t* affected, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementSetSqlQuery(struct AdbcStatement* stmt, const char* query, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementSetSubstraitPlan(struct AdbcStatement* stmt, const uint8_t* plan, size_t length, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementBind(struct AdbcStatement* stmt, struct ArrowArray* values, struct ArrowSchema* schema, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementBindStream(struct AdbcStatement* stmt, struct ArrowArrayStream* stream, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementGetParameterSchema(struct AdbcStatement* stmt, struct ArrowSchema* schema, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementSetOption(struct AdbcStatement* stmt, const char* key, const char* value, struct AdbcError* err);
-AdbcStatusCode FlightSQLStatementExecutePartitions(struct AdbcStatement* stmt, struct ArrowSchema* schema, struct AdbcPartitions* partitions, int64_t* affected, struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionSetOption(struct AdbcConnection* cnxn, const char* key,
+                                            const char* val, struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionInit(struct AdbcConnection* cnxn,
+                                       struct AdbcDatabase* db, struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionRelease(struct AdbcConnection* cnxn,
+                                          struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes,
+                                          size_t len, struct ArrowArrayStream* out,
+                                          struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionGetObjects(
+    struct AdbcConnection* cnxn, int depth, const char* catalog, const char* dbSchema,
+    const char* tableName, const char** tableType, const char* columnName,
+    struct ArrowArrayStream* out, struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionGetTableSchema(
+    struct AdbcConnection* cnxn, const char* catalog, const char* dbSchema,
+    const char* tableName, struct ArrowSchema* schema, struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionGetTableTypes(struct AdbcConnection* cnxn,
+                                                struct ArrowArrayStream* out,
+                                                struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionReadPartition(struct AdbcConnection* cnxn,
+                                                const uint8_t* serialized,
+                                                size_t serializedLen,
+                                                struct ArrowArrayStream* out,
+                                                struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionCommit(struct AdbcConnection* cnxn,
+                                         struct AdbcError* err);
+AdbcStatusCode FlightSQLConnectionRollback(struct AdbcConnection* cnxn,
+                                           struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementNew(struct AdbcConnection* cnxn,
+                                     struct AdbcStatement* stmt, struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementRelease(struct AdbcStatement* stmt,
+                                         struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementPrepare(struct AdbcStatement* stmt,
+                                         struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementExecuteQuery(struct AdbcStatement* stmt,
+                                              struct ArrowArrayStream* out,
+                                              int64_t* affected, struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementSetSqlQuery(struct AdbcStatement* stmt,
+                                             const char* query, struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementSetSubstraitPlan(struct AdbcStatement* stmt,
+                                                  const uint8_t* plan, size_t length,
+                                                  struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementBind(struct AdbcStatement* stmt,
+                                      struct ArrowArray* values,
+                                      struct ArrowSchema* schema, struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementBindStream(struct AdbcStatement* stmt,
+                                            struct ArrowArrayStream* stream,
+                                            struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementGetParameterSchema(struct AdbcStatement* stmt,
+                                                    struct ArrowSchema* schema,
+                                                    struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementSetOption(struct AdbcStatement* stmt, const char* key,
+                                           const char* value, struct AdbcError* err);
+AdbcStatusCode FlightSQLStatementExecutePartitions(struct AdbcStatement* stmt,
+                                                   struct ArrowSchema* schema,
+                                                   struct AdbcPartitions* partitions,
+                                                   int64_t* affected,
+                                                   struct AdbcError* err);
 AdbcStatusCode FlightSQLDriverInit(int version, void* rawDriver, struct AdbcError* err);
 
-static inline void errRelease(struct AdbcError* error) { 
-  error->release(error); 
-}
+static inline void errRelease(struct AdbcError* error) { error->release(error); }
 
 static void release_error(struct AdbcError* error) {
   free(error->message);

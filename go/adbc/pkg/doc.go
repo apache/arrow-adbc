@@ -15,8 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//go:build driverlib
-
 // Package pkg contains CGO based drivers that can be compiled to
 // shared-libraries via go build -buildmode=c-shared.
 //
