@@ -143,6 +143,7 @@ AdbcStatusCode InferSchema(const TypeMapping& type_mapping, PGresult* result,
         field_type = NANOARROW_TYPE_INT64;
         break;
       case PgType::kText:
+      case PgType::kVarChar:
         field_type = NANOARROW_TYPE_STRING;
         break;
       default:
