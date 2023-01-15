@@ -484,6 +484,7 @@ test_glib() {
 
   # Install bundler if doesn't exist
   if ! bundle --version; then
+    # This is for old Ruby. Recent Ruby bundles Bundler.
     export GEM_HOME="${ARROW_TMPDIR}/glib-build/gems"
     export PATH="${GEM_HOME}/bin:${PATH}"
     gem install --no-document bundler
