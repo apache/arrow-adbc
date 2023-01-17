@@ -50,7 +50,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]    
+        os: ["macos-latest", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -132,7 +132,7 @@ jobs:
           pushd go/adbc/pkg
           make
           mkdir -p $HOME/local/lib
-          mv lib* $HOME/local/lib/          
+          mv lib* $HOME/local/lib/
           echo "CACHEPATH=$HOME/local" >> $GITHUB_OUTPUT
           popd
       - name: Cache builds
@@ -187,7 +187,7 @@ jobs:
       - name: Bootstrap Dremio instance
         shell: bash -l {0}
         id: bootstrap
-        run: |          
+        run: |
           LOGIN=`curl -X POST -H "Content-Type: application/json" "http://localhost:9047/apiv2/login" \
             -d '{"userName":"dremio","password":"dremio123"}'`
           echo "LOGIN_RESP=$LOGIN" >> $GITHUB_OUTPUT

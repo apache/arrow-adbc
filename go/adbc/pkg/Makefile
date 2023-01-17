@@ -27,7 +27,7 @@ DRIVERS := \
 .PHONY: all
 all: $(DRIVERS)
 
-libadbc_%_go.$(SUFFIX): %	
+libadbc_%_go.$(SUFFIX): %
 	$(GO_BUILD) -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w" ./$<
 	rm libadbc_$<_go.h
 
