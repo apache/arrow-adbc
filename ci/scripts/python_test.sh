@@ -19,6 +19,7 @@
 set -e
 
 : ${BUILD_ALL:=1}
+: ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
@@ -45,6 +46,10 @@ main() {
 
     if [[ -z "${install_dir}" ]]; then
         install_dir="${build_dir}/local"
+    fi
+
+    if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
+        test_subproject "${source_dir}" "${install_dir}" adbc_driver_flightsql
     fi
 
     if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then

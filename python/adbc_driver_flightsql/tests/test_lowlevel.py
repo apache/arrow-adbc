@@ -15,6 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_flightsql, adbc_driver_manager, adbc_driver_postgresql, adbc_driver_sqlite
-profile = black
+import pyarrow
+
+import adbc_driver_flightsql
+import adbc_driver_manager
+
+
+def test_query_trivial(dremio):
+    with adbc_driver_manager.AdbcStatement(dremio) as stmt:
+        stmt.set_sql_query("SELECT 1")
+        stream, _ = stmt.execute_query()
+        reader = pyarrow.RecordBatchReader._import_from_c(stream.address)
+        assert reader.read_all()
+
+
+def test_version():
+    assert adbc_driver_flightsql.__version__

@@ -15,6 +15,30 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_flightsql, adbc_driver_manager, adbc_driver_postgresql, adbc_driver_sqlite
-profile = black
+import os
+
+import pytest
+
+import adbc_driver_flightsql
+import adbc_driver_flightsql.dbapi
+import adbc_driver_manager
+
+
+@pytest.fixture
+def dremio_uri():
+    dremio_uri = os.environ.get("ADBC_DREMIO_TEST_URI")
+    if not dremio_uri:
+        pytest.skip("Set ADBC_DREMIO_TEST_URI to run tests")
+
+
+@pytest.fixture
+def dremio(dremio_uri):
+    with adbc_driver_flightsql.connect(dremio_uri) as db:
+        with adbc_driver_manager.AdbcConnection(db) as conn:
+            yield conn
+
+
+@pytest.fixture
+def dremio_dbapi(dremio_uri):
+    with adbc_driver_flightsql.dbapi.connect(dremio_uri) as conn:
+        yield conn

@@ -103,6 +103,12 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 		return nil, adbc.Error{Msg: err.Error(), Code: adbc.StatusInvalidArgument}
 	}
 
+	if db.uri.Scheme == "grpc+tls" {
+		db.creds = credentials.NewTLS(&tls.Config{})
+	} else {
+		db.creds = insecure.NewCredentials()
+	}
+
 	return db, db.SetOptions(opts)
 }
 
@@ -116,22 +122,32 @@ type database struct {
 
 func (d *database) SetOptions(cnOptions map[string]string) error {
 	if val, ok := cnOptions[OptionSSLInsecure]; ok && val == adbc.OptionValueEnabled {
-		d.creds = insecure.NewCredentials()
-	} else {
-		// option specified path to certificate file
-		if cert, ok := cnOptions[OptionSSLCertFile]; ok {
-			c, err := credentials.NewClientTLSFromFile(cert, "")
-			if err != nil {
-				return adbc.Error{
-					Msg:  "invalid SSL certificate passed",
-					Code: adbc.StatusInvalidArgument,
-				}
+		if d.uri.Scheme != "grpc+tls" {
+			return adbc.Error{
+				Msg:  "Connection is not TLS-enabled",
+				Code: adbc.StatusInvalidArgument,
 			}
-			d.creds = c
-		} else if d.creds == nil {
-			// use local root certificates
-			d.creds = credentials.NewTLS(&tls.Config{})
 		}
+		d.creds = credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
+	}
+
+	// option specified path to certificate file
+	if cert, ok := cnOptions[OptionSSLCertFile]; ok {
+		if d.uri.Scheme != "grpc+tls" {
+			return adbc.Error{
+				Msg:  "Connection is not TLS-enabled",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
+		c, err := credentials.NewClientTLSFromFile(cert, "")
+		if err != nil {
+			return adbc.Error{
+				Msg:  "invalid SSL certificate passed",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		d.creds = c
 	}
 
 	if u, ok := cnOptions[adbc.OptionKeyUsername]; ok {

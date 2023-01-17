@@ -75,8 +75,7 @@ func (s *FlightSQLQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 
 func (s *FlightSQLQuirks) DatabaseOptions() map[string]string {
 	return map[string]string{
-		adbc.OptionKeyURI:        "grpc+tcp://" + s.s.Addr().String(),
-		driver.OptionSSLInsecure: adbc.OptionValueEnabled,
+		adbc.OptionKeyURI: "grpc+tcp://" + s.s.Addr().String(),
 	}
 }
 

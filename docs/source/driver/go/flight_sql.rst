@@ -25,10 +25,19 @@ The Flight SQL Driver provides access to any database implementing a
 Installation
 ============
 
-The Flight SQL driver is shipped as part of the Arrow C++ libraries
-and PyArrow.  See the `main Arrow project website
-<https://arrow.apache.org/install/>`_ for instructions.  Version >= 11
-is required.
+The Flight SQL driver is shipped as a standalone library.
+
+.. tab-set::
+
+   .. tab-item:: Go
+      :sync: go
+
+   .. tab-item:: Python
+      :sync: python
+
+      .. code-block:: shell
+
+         pip install adbc_driver_sqlite
 
 Usage
 =====
