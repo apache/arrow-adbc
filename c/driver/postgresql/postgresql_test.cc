@@ -258,13 +258,13 @@ static std::initializer_list<TypeTestCase> kFloatTypeCases = {
 };
 static std::initializer_list<TypeTestCase> kIntTypeCases = {
     {"SMALLINT", "SMALLINT", std::to_string(std::numeric_limits<int16_t>::min()),
-     NANOARROW_TYPE_INT16, std::numeric_limits<int16_t>::min()},
+     NANOARROW_TYPE_INT16, static_cast<int64_t>(std::numeric_limits<int16_t>::min())},
     {"INT", "INT", std::to_string(std::numeric_limits<int32_t>::min()),
-     NANOARROW_TYPE_INT32, std::numeric_limits<int32_t>::min()},
+     NANOARROW_TYPE_INT32, static_cast<int64_t>(std::numeric_limits<int32_t>::min())},
     {"BIGINT", "BIGINT", std::to_string(std::numeric_limits<int64_t>::min()),
      NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::min()},
     {"SERIAL", "SERIAL", std::to_string(std::numeric_limits<int32_t>::max()),
-     NANOARROW_TYPE_INT32, std::numeric_limits<int32_t>::max()},
+     NANOARROW_TYPE_INT32, static_cast<int64_t>(std::numeric_limits<int32_t>::max())},
     {"BIGSERIAL", "BIGSERIAL", std::to_string(std::numeric_limits<int64_t>::max()),
      NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::max()},
 };
