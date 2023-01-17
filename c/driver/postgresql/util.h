@@ -126,6 +126,12 @@ static inline void SetError(struct AdbcError* error, Args&&... args) {
 
 /// Endianness helpers
 
+static inline uint16_t LoadNetworkUInt16(const char* buf) {
+  uint16_t v = 0;
+  std::memcpy(&v, buf, sizeof(uint16_t));
+  return ntohs(v);
+}
+
 static inline uint32_t LoadNetworkUInt32(const char* buf) {
   uint32_t v = 0;
   std::memcpy(&v, buf, sizeof(uint32_t));
@@ -136,6 +142,10 @@ static inline int64_t LoadNetworkUInt64(const char* buf) {
   uint64_t v = 0;
   std::memcpy(&v, buf, sizeof(uint64_t));
   return SwapNetworkToHost(v);
+}
+
+static inline int16_t LoadNetworkInt16(const char* buf) {
+  return static_cast<int16_t>(LoadNetworkUInt16(buf));
 }
 
 static inline int32_t LoadNetworkInt32(const char* buf) {

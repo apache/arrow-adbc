@@ -64,7 +64,7 @@ FROM
       type_mapping_->Insert(oid, typname, typreceive);
     }
   } else {
-    SetError(error, "Failed to execute build type mapping table: ", PQerrorMessage(conn));
+    SetError(error, "Failed to build type mapping table: ", PQerrorMessage(conn));
     final_status = ADBC_STATUS_IO;
   }
   PQclear(result);

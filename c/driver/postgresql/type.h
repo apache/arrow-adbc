@@ -39,6 +39,7 @@ enum class PgType : uint8_t {
   kTimestamp,
   kTimestampTz,
   kTimeTz,
+  kVarBinary,
   kVarChar,
 };
 

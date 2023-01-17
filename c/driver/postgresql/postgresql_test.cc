@@ -17,11 +17,19 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <limits>
+#include <optional>
+#include <variant>
 
 #include <adbc.h>
+#include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
+#include <nanoarrow/nanoarrow.h>
 
 #include "validation/adbc_validation.h"
+#include "validation/adbc_validation_util.h"
+
+using adbc_validation::IsOkStatus;
 
 class PostgresQuirks : public adbc_validation::DriverQuirks {
  public:
@@ -115,3 +123,157 @@ class PostgresStatementTest : public ::testing::Test,
   PostgresQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(PostgresStatementTest)
+
+struct TypeTestCase {
+  std::string name;
+  std::string sql_type;
+  std::string sql_literal;
+  ArrowType arrow_type;
+  std::variant<bool, int64_t, double, std::string> scalar;
+
+  static std::string FormatName(const ::testing::TestParamInfo<TypeTestCase>& info) {
+    return info.param.name;
+  }
+};
+
+class PostgresTypeTest : public ::testing::TestWithParam<TypeTestCase> {
+ public:
+  void SetUp() override {
+    ASSERT_THAT(AdbcDatabaseNew(&database_, &error_), IsOkStatus(&error_));
+    ASSERT_THAT(quirks_.SetupDatabase(&database_, &error_), IsOkStatus(&error_));
+    ASSERT_THAT(AdbcDatabaseInit(&database_, &error_), IsOkStatus(&error_));
+
+    ASSERT_THAT(AdbcConnectionNew(&connection_, &error_), IsOkStatus(&error_));
+    ASSERT_THAT(AdbcConnectionInit(&connection_, &database_, &error_),
+                IsOkStatus(&error_));
+
+    ASSERT_THAT(AdbcStatementNew(&connection_, &statement_, &error_),
+                IsOkStatus(&error_));
+
+    ASSERT_THAT(quirks_.DropTable(&connection_, "foo", &error_), IsOkStatus(&error_));
+  }
+  void TearDown() override {
+    if (statement_.private_data) {
+      ASSERT_THAT(AdbcStatementRelease(&statement_, &error_), IsOkStatus(&error_));
+    }
+    if (connection_.private_data) {
+      ASSERT_THAT(AdbcConnectionRelease(&connection_, &error_), IsOkStatus(&error_));
+    }
+    if (database_.private_data) {
+      ASSERT_THAT(AdbcDatabaseRelease(&database_, &error_), IsOkStatus(&error_));
+    }
+
+    if (error_.release) error_.release(&error_);
+  }
+
+ protected:
+  PostgresQuirks quirks_;
+  struct AdbcError error_ = {};
+  struct AdbcDatabase database_ = {};
+  struct AdbcConnection connection_ = {};
+  struct AdbcStatement statement_ = {};
+};
+
+TEST_P(PostgresTypeTest, SelectValue) {
+  // create table
+  std::string query = "CREATE TABLE foo (col ";
+  query += GetParam().sql_type;
+  query += ")";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement_, query.c_str(), &error_),
+              IsOkStatus(&error_));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, /*out=*/nullptr,
+                                        /*rows_affected=*/nullptr, &error_),
+              IsOkStatus(&error_));
+
+  // insert value
+  query = "INSERT INTO foo(col) VALUES ( ";
+  query += GetParam().sql_literal;
+  query += ")";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement_, query.c_str(), &error_),
+              IsOkStatus(&error_));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, /*out=*/nullptr,
+                                        /*rows_affected=*/nullptr, &error_),
+              IsOkStatus(&error_));
+
+  // select
+  adbc_validation::StreamReader reader;
+  query = "SELECT * FROM foo";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement_, query.c_str(), &error_),
+              IsOkStatus(&error_));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, &reader.stream.value,
+                                        /*rows_affected=*/nullptr, &error_),
+              IsOkStatus(&error_));
+
+  // check type
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      &reader.schema.value, {{std::nullopt, GetParam().arrow_type, true}}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_FALSE(ArrowArrayViewIsNull(&reader.array_view.value, 0));
+  ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], 0));
+
+  // check value
+  ASSERT_NO_FATAL_FAILURE(std::visit(
+      [&](auto&& arg) -> void {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, bool>) {
+          ASSERT_EQ(static_cast<int64_t>(arg),
+                    ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], 0));
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+          ASSERT_EQ(arg, ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], 0));
+        } else if constexpr (std::is_same_v<T, double>) {
+          ASSERT_EQ(arg,
+                    ArrowArrayViewGetDoubleUnsafe(reader.array_view->children[0], 0));
+        } else if constexpr (std::is_same_v<T, std::string>) {
+          ArrowStringView view =
+              ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
+          ASSERT_EQ(arg.size(), view.n_bytes);
+          ASSERT_EQ(0, std::strncmp(arg.c_str(), view.data, arg.size()));
+        } else {
+          FAIL() << "Unimplemented case";
+        }
+      },
+      GetParam().scalar));
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(nullptr, reader.array->release);
+}
+
+static std::initializer_list<TypeTestCase> kBoolTypeCases = {
+    {"BOOL_TRUE", "BOOLEAN", "TRUE", NANOARROW_TYPE_BOOL, true},
+    {"BOOL_FALSE", "BOOLEAN", "FALSE", NANOARROW_TYPE_BOOL, false},
+};
+static std::initializer_list<TypeTestCase> kBinaryTypeCases = {
+    {"BYTEA", "BYTEA", R"('\000\001\002\003\004\005\006\007'::bytea)",
+     NANOARROW_TYPE_BINARY, std::string("\x00\x01\x02\x03\x04\x05\x06\x07", 8)},
+    {"TEXT", "TEXT", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
+    {"CHAR6_1", "CHAR(6)", "'foo'", NANOARROW_TYPE_STRING, "foo   "},
+    {"CHAR6_2", "CHAR(6)", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
+    {"VARCHAR", "VARCHAR", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
+};
+static std::initializer_list<TypeTestCase> kFloatTypeCases = {
+    {"REAL", "REAL", "-1E0", NANOARROW_TYPE_FLOAT, -1.0},
+    {"DOUBLE_PRECISION", "DOUBLE PRECISION", "-1E0", NANOARROW_TYPE_DOUBLE, -1.0},
+};
+static std::initializer_list<TypeTestCase> kIntTypeCases = {
+    {"SMALLINT", "SMALLINT", std::to_string(std::numeric_limits<int16_t>::min()),
+     NANOARROW_TYPE_INT16, std::numeric_limits<int16_t>::min()},
+    {"INT", "INT", std::to_string(std::numeric_limits<int32_t>::min()),
+     NANOARROW_TYPE_INT32, std::numeric_limits<int32_t>::min()},
+    {"BIGINT", "BIGINT", std::to_string(std::numeric_limits<int64_t>::min()),
+     NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::min()},
+    {"SERIAL", "SERIAL", std::to_string(std::numeric_limits<int32_t>::max()),
+     NANOARROW_TYPE_INT32, std::numeric_limits<int32_t>::max()},
+    {"BIGSERIAL", "BIGSERIAL", std::to_string(std::numeric_limits<int64_t>::max()),
+     NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::max()},
+};
+
+INSTANTIATE_TEST_SUITE_P(BoolType, PostgresTypeTest, testing::ValuesIn(kBoolTypeCases),
+                         TypeTestCase::FormatName);
+INSTANTIATE_TEST_SUITE_P(BinaryTypes, PostgresTypeTest,
+                         testing::ValuesIn(kBinaryTypeCases), TypeTestCase::FormatName);
+INSTANTIATE_TEST_SUITE_P(FloatTypes, PostgresTypeTest, testing::ValuesIn(kFloatTypeCases),
+                         TypeTestCase::FormatName);
+INSTANTIATE_TEST_SUITE_P(IntTypes, PostgresTypeTest, testing::ValuesIn(kIntTypeCases),
+                         TypeTestCase::FormatName);
