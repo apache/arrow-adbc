@@ -29,7 +29,7 @@ all: $(DRIVERS)
 
 libadbc_driver_%_go.$(SUFFIX): %
 	$(GO_BUILD) -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w" ./$<
-	rm libadbc_$<_go.h
+	rm *.h
 
 clean:
 	rm $(DRIVERS)
