@@ -241,36 +241,32 @@ TEST_P(PostgresTypeTest, SelectValue) {
 }
 
 static std::initializer_list<TypeTestCase> kBoolTypeCases = {
-    TypeTestCase{"BOOL_TRUE", "BOOLEAN", "TRUE", NANOARROW_TYPE_BOOL, true},
-    TypeTestCase{"BOOL_FALSE", "BOOLEAN", "FALSE", NANOARROW_TYPE_BOOL, false},
+    {"BOOL_TRUE", "BOOLEAN", "TRUE", NANOARROW_TYPE_BOOL, true},
+    {"BOOL_FALSE", "BOOLEAN", "FALSE", NANOARROW_TYPE_BOOL, false},
 };
 static std::initializer_list<TypeTestCase> kBinaryTypeCases = {
-    TypeTestCase{"BYTEA", "BYTEA", R"('\000\001\002\003\004\005\006\007'::bytea)",
-                 NANOARROW_TYPE_BINARY,
-                 std::string("\x00\x01\x02\x03\x04\x05\x06\x07", 8)},
-    TypeTestCase{"TEXT", "TEXT", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
-    TypeTestCase{"CHAR6_1", "CHAR(6)", "'foo'", NANOARROW_TYPE_STRING, "foo   "},
-    TypeTestCase{"CHAR6_2", "CHAR(6)", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
-    TypeTestCase{"VARCHAR", "VARCHAR", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
+    {"BYTEA", "BYTEA", R"('\000\001\002\003\004\005\006\007'::bytea)",
+     NANOARROW_TYPE_BINARY, std::string("\x00\x01\x02\x03\x04\x05\x06\x07", 8)},
+    {"TEXT", "TEXT", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
+    {"CHAR6_1", "CHAR(6)", "'foo'", NANOARROW_TYPE_STRING, "foo   "},
+    {"CHAR6_2", "CHAR(6)", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
+    {"VARCHAR", "VARCHAR", "'foobar'", NANOARROW_TYPE_STRING, "foobar"},
 };
 static std::initializer_list<TypeTestCase> kFloatTypeCases = {
-    TypeTestCase{"REAL", "REAL", "-1E0", NANOARROW_TYPE_FLOAT, -1.0},
-    TypeTestCase{"DOUBLE_PRECISION", "DOUBLE PRECISION", "-1E0", NANOARROW_TYPE_DOUBLE,
-                 -1.0},
+    {"REAL", "REAL", "-1E0", NANOARROW_TYPE_FLOAT, -1.0},
+    {"DOUBLE_PRECISION", "DOUBLE PRECISION", "-1E0", NANOARROW_TYPE_DOUBLE, -1.0},
 };
 static std::initializer_list<TypeTestCase> kIntTypeCases = {
-    TypeTestCase{"SMALLINT", "SMALLINT",
-                 std::to_string(std::numeric_limits<int16_t>::min()),
-                 NANOARROW_TYPE_INT16, std::numeric_limits<int16_t>::min()},
-    TypeTestCase{"INT", "INT", std::to_string(std::numeric_limits<int32_t>::min()),
-                 NANOARROW_TYPE_INT32, std::numeric_limits<int32_t>::min()},
-    TypeTestCase{"BIGINT", "BIGINT", std::to_string(std::numeric_limits<int64_t>::min()),
-                 NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::min()},
-    TypeTestCase{"SERIAL", "SERIAL", std::to_string(std::numeric_limits<int32_t>::max()),
-                 NANOARROW_TYPE_INT32, std::numeric_limits<int32_t>::max()},
-    TypeTestCase{"BIGSERIAL", "BIGSERIAL",
-                 std::to_string(std::numeric_limits<int64_t>::max()),
-                 NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::max()},
+    {"SMALLINT", "SMALLINT", std::to_string(std::numeric_limits<int16_t>::min()),
+     NANOARROW_TYPE_INT16, std::numeric_limits<int16_t>::min()},
+    {"INT", "INT", std::to_string(std::numeric_limits<int32_t>::min()),
+     NANOARROW_TYPE_INT32, std::numeric_limits<int32_t>::min()},
+    {"BIGINT", "BIGINT", std::to_string(std::numeric_limits<int64_t>::min()),
+     NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::min()},
+    {"SERIAL", "SERIAL", std::to_string(std::numeric_limits<int32_t>::max()),
+     NANOARROW_TYPE_INT32, std::numeric_limits<int32_t>::max()},
+    {"BIGSERIAL", "BIGSERIAL", std::to_string(std::numeric_limits<int64_t>::max()),
+     NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::max()},
 };
 
 INSTANTIATE_TEST_SUITE_P(BoolType, PostgresTypeTest, testing::ValuesIn(kBoolTypeCases),
