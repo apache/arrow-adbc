@@ -18,6 +18,9 @@
 package drivermgr
 
 // #cgo !windows LDFLAGS: -ldl
+// #cgo windows CFLAGS: -DADBC_EXPORTING
+// #cgo windows CPPFLAGS: -DADBC_EXPORTING
+// #define ADBC_EXPORTING
 // #include "adbc.h"
 // #include <stdlib.h>
 //

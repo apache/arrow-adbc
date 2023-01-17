@@ -675,7 +675,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
     return ADBC_STATUS_INTERNAL;
   }
 
-  void* load_handle = GetProcAddress(handle, entrypoint);
+  void* load_handle = reinterpret_cast<void*>(GetProcAddress(handle, entrypoint));
   init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
   if (!init_func) {
     std::string message = "GetProcAddress(";
