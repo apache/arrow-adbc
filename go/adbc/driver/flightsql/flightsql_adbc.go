@@ -239,7 +239,7 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 	)
 
 	for _, loc := range endpoint.Location {
-		cc, err = clientCache.Get(loc)
+		cc, err = clientCache.Get(loc.Uri)
 		if err != nil {
 			continue
 		}
@@ -481,6 +481,12 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 			}
 		}
 		return nil, adbcFromFlightStatus(err)
+	}
+
+	if rec.NumRows() == 0 {
+		return nil, adbc.Error{
+			Code: adbc.StatusNotFound,
+		}
 	}
 
 	// returned schema should be

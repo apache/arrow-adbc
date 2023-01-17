@@ -1,0 +1,59 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+// clang-format off
+//go:build driverlib
+// clang-format on
+
+#pragma once
+
+#include "../../drivermgr/adbc.h"
+#include <stdlib.h>
+
+AdbcStatusCode {{.Prefix}}DatabaseNew(struct AdbcDatabase* db, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}DatabaseSetOption(struct AdbcDatabase* db, const char* key, const char* value, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}DatabaseInit(struct AdbcDatabase* db, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}DatabaseRelease(struct AdbcDatabase* db, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionNew(struct AdbcConnection* cnxn, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionSetOption(struct AdbcConnection* cnxn, const char* key, const char* val, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionInit(struct AdbcConnection* cnxn, struct AdbcDatabase* db, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionRelease(struct AdbcConnection* cnxn, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes, size_t len, struct ArrowArrayStream* out, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionGetObjects(struct AdbcConnection* cnxn, int depth, const char* catalog, const char* dbSchema, const char* tableName, const char** tableType, const char* columnName, struct ArrowArrayStream* out, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionGetTableSchema(struct AdbcConnection* cnxn, const char* catalog, const char* dbSchema, const char* tableName, struct ArrowSchema* schema, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionGetTableTypes(struct AdbcConnection* cnxn, struct ArrowArrayStream* out, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionReadPartition(struct AdbcConnection* cnxn, const uint8_t* serialized, size_t serializedLen, struct ArrowArrayStream* out, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionCommit(struct AdbcConnection* cnxn, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionRollback(struct AdbcConnection* cnxn, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementNew(struct AdbcConnection* cnxn, struct AdbcStatement* stmt, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementRelease(struct AdbcStatement* stmt, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementPrepare(struct AdbcStatement* stmt, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementExecuteQuery(struct AdbcStatement* stmt, struct ArrowArrayStream* out, int64_t* affected, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementSetSqlQuery(struct AdbcStatement* stmt, const char* query, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementSetSubstraitPlan(struct AdbcStatement* stmt, const uint8_t* plan, size_t length, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementBind(struct AdbcStatement* stmt, struct ArrowArray* values, struct ArrowSchema* schema, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementBindStream(struct AdbcStatement* stmt, struct ArrowArrayStream* stream, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementGetParameterSchema(struct AdbcStatement* stmt, struct ArrowSchema* schema, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementSetOption(struct AdbcStatement* stmt, const char* key, const char* value, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}StatementExecutePartitions(struct AdbcStatement* stmt, struct ArrowSchema* schema, struct AdbcPartitions* partitions, int64_t* affected, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}DriverInit(int version, void* rawDriver, struct AdbcError* err);
+
+static inline void {{.Prefix}}errRelease(struct AdbcError* error) {
+  error->release(error);
+}
+
+void {{.Prefix}}_release_error(struct AdbcError* error);
