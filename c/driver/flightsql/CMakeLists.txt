@@ -16,10 +16,26 @@
 # under the License.
 
 cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../.." ABSOLUTE)
-message(STATUS "${REPOSITORY_ROOT}")
+get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
 list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
+include(GoUtils)
 
-project(adbc_flightsql_tests VERSION "${ADBC_BASE_VERSION}")
+project(adbc_driver_flightsql VERSION "${ADBC_BASE_VERSION}")
+
+set(LDFLAGS "$<$<CONFIG:Release>:-s> $<$<CONFIG:Release>:-w>")
+add_go_shared_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
+                  adbc_driver_flightsql_go
+                  SOURCES
+                  driver.go
+                  utils.h
+                  utils.c
+                  BUILD_TAGS
+                  driverlib
+                  PKG_CONFIG_NAME
+                  adbc-driver-flightsql
+                  SHARED_LINK_FLAGS
+                  ${LDFLAGS})
+
+validate_config()

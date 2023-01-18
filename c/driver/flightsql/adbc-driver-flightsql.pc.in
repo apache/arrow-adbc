@@ -15,15 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-add_go_shared_lib(${CMAKE_CURRENT_SOURCE_DIR}
-                  adbc_driver_flightsql_go
-                  SOURCES
-                  driver.go
-                  utils.h
-                  utils.c
-                  BUILD_TAGS
-                  driverlib
-                  SHARED_LINK_FLAGS
-                  "-s -w")
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=@ADBC_PKG_CONFIG_LIBDIR@
 
-validate_config()
+Name: Apache Arrow Database Connectivity (ADBC) FlightSQL driver
+Description: The ADBC FlightSQL driver provides an ADBC driver for Flight SQL.
+Version: @ADBC_VERSION@
+Libs: -L${libdir} -ladbc_driver_flightsql_go
