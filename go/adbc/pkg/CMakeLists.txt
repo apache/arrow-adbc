@@ -22,7 +22,6 @@ include(AdbcDefines)
 include(BuildUtils)
 include(GoUtils)
 
-project(go_adbc_drivers
-        VERSION "${ADBC_BASE_VERSION}")
+project(go_adbc_drivers VERSION "${ADBC_BASE_VERSION}")
 
 add_subdirectory(flightsql)

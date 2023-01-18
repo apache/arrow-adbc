@@ -15,14 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
-add_go_shared_lib(${CMAKE_CURRENT_SOURCE_DIR} adbc_driver_flightsql_go
-  SOURCES
-  driver.go
-  utils.h
-  utils.c
-  BUILD_TAGS
-  driverlib
-  SHARED_LINK_FLAGS
-  "-s -w")
+add_go_shared_lib(${CMAKE_CURRENT_SOURCE_DIR}
+                  adbc_driver_flightsql_go
+                  SOURCES
+                  driver.go
+                  utils.h
+                  utils.c
+                  BUILD_TAGS
+                  driverlib
+                  SHARED_LINK_FLAGS
+                  "-s -w")
 
 validate_config()

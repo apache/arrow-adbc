@@ -22,5 +22,4 @@ list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
 
-project(adbc_flightsql_tests
-        VERSION "${ADBC_BASE_VERSION}")
+project(adbc_flightsql_tests VERSION "${ADBC_BASE_VERSION}")
