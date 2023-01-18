@@ -26,7 +26,7 @@ function(install_cmake_package PACKAGE_NAME EXPORT_NAME)
   set(CONFIG_VERSION_CMAKE "${PACKAGE_NAME}ConfigVersion.cmake")
   set(BUILT_CONFIG_VERSION_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_VERSION_CMAKE}")
   write_basic_package_version_file("${BUILT_CONFIG_VERSION_CMAKE}"
-                                  COMPATIBILITY SameMajorVersion)
+                                   COMPATIBILITY SameMajorVersion)
   set(INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PACKAGE_NAME}")
   install(FILES "${BUILT_CONFIG_CMAKE}" "${BUILT_CONFIG_VERSION_CMAKE}"
           DESTINATION "${INSTALL_CMAKEDIR}")
@@ -40,14 +40,8 @@ endfunction()
 
 function(add_go_shared_lib GO_MOD_DIR GO_LIBNAME)
   set(options)
-  set(one_value_args 
-      BUILD_TAGS 
-      SHARED_LINK_FLAGS
-      CMAKE_PACKAGE_NAME
-      PKG_CONFIG_NAME)
-  set(multi_value_args 
-      SOURCES
-      OUTPUTS)
+  set(one_value_args BUILD_TAGS SHARED_LINK_FLAGS CMAKE_PACKAGE_NAME PKG_CONFIG_NAME)
+  set(multi_value_args SOURCES OUTPUTS)
 
   cmake_parse_arguments(ARG
                         "${options}"
@@ -70,21 +64,22 @@ function(add_go_shared_lib GO_MOD_DIR GO_LIBNAME)
     set(GO_BUILD_TAGS "-tags=${ARG_BUILD_TAGS}")
   endif()
   set(ARG_SHARED_LINK_FLAGS
-        "${ARG_SHARED_LINK_FLAGS} -extldflags -Wl,-soname,${LIB_NAME}.${ADBC_SO_VERSION}")
-  if(DEFINED ARG_SHARED_LINK_FLAGS)    
+      "${ARG_SHARED_LINK_FLAGS} -extldflags -Wl,-soname,${LIB_NAME}.${ADBC_SO_VERSION}")
+  if(DEFINED ARG_SHARED_LINK_FLAGS)
     separate_arguments(ARG_SHARED_LINK_FLAGS NATIVE_COMMAND "${ARG_SHARED_LINK_FLAGS}")
-    set(GO_LDFLAGS "-ldflags=\"${ARG_SHARED_LINK_FLAGS}\"")  
+    set(GO_LDFLAGS "-ldflags=\"${ARG_SHARED_LINK_FLAGS}\"")
   endif()
 
   set(LIBOUT "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}")
   list(TRANSFORM ARG_SOURCES PREPEND "${GO_MOD_DIR}/")
-  add_custom_command(OUTPUT "${LIBOUT}.${ADBC_FULL_SO_VERSION}"                            
+  add_custom_command(OUTPUT "${LIBOUT}.${ADBC_FULL_SO_VERSION}"
                      WORKING_DIRECTORY ${GO_MOD_DIR}
                      DEPENDS ${ARG_SOURCES}
                      COMMAND ${GO_BIN} build "${GO_BUILD_TAGS}" -o
                              "${LIBOUT}.${ADBC_FULL_SO_VERSION}" -buildmode=c-shared
                              "${GO_LDFLAGS}" .
-                     COMMAND ${CMAKE_COMMAND} -E remove -f "${LIBOUT}.${ADBC_SO_VERSION}.0.h"                     
+                     COMMAND ${CMAKE_COMMAND} -E remove -f
+                             "${LIBOUT}.${ADBC_SO_VERSION}.0.h"
                      COMMENT "Building Go Shared lib ${GO_LIBNAME}"
                      COMMAND_EXPAND_LISTS)
 
@@ -100,11 +95,11 @@ function(add_go_shared_lib GO_MOD_DIR GO_LIBNAME)
   add_custom_target(${GO_LIBNAME}_target ALL
                     DEPENDS "${LIBOUT}.${ADBC_FULL_SO_VERSION}"
                             "${LIBOUT}.${ADBC_SO_VERSION}" "${LIBOUT}")
-  add_library(${GO_LIBNAME} SHARED IMPORTED)  
+  add_library(${GO_LIBNAME} SHARED IMPORTED)
   set_target_properties(${GO_LIBNAME}
                         PROPERTIES IMPORTED_LOCATION "${LIBOUT}.${ADBC_FULL_SO_VERSION}"
                                    IMPORTED_SONAME "${LIB_NAME}")
-  
+
   if(ARG_OUTPUTS)
     list(APPEND ${ARG_OUTPUTS} ${GO_LIBNAME} ${GO_LIBNAME}_target)
   endif()
@@ -128,16 +123,22 @@ function(add_go_shared_lib GO_MOD_DIR GO_LIBNAME)
     else()
       set(_lib_install_name "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
     endif()
-    set_target_properties(${GO_LIBNAME}
-                          PROPERTIES INSTALL_NAME_DIR "${_lib_install_name}")
+    set_target_properties(${GO_LIBNAME} PROPERTIES INSTALL_NAME_DIR
+                                                   "${_lib_install_name}")
   endif()
-  
-  install(IMPORTED_RUNTIME_ARTIFACTS ${GO_LIBNAME} ${INSTALL_IS_OPTIONAL}
-          RUNTIME DESTINATION ${RUNTIME_INSTALL_DIR}
-          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+  install(IMPORTED_RUNTIME_ARTIFACTS
+          ${GO_LIBNAME}
+          ${INSTALL_IS_OPTIONAL}
+          RUNTIME
+          DESTINATION
+          ${RUNTIME_INSTALL_DIR}
+          LIBRARY
+          DESTINATION
+          ${CMAKE_INSTALL_LIBDIR})
   install(FILES "${LIBOUT}.${ADBC_SO_VERSION}" TYPE LIB)
-  
-  # if(ARG_CMAKE_PACKAGE_NAME)    
+
+  # if(ARG_CMAKE_PACKAGE_NAME)
   #   install_cmake_package(${ARG_CMAKE_PACKAGE_NAME} ${GO_LIBNAME}_export)
   # endif()
 
