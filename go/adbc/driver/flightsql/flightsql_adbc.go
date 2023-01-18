@@ -256,6 +256,21 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 	return nil, err
 }
 
+func (c *cnxn) SetOption(key, value string) error {
+	switch key {
+	case adbc.OptionKeyAutoCommit:
+		return adbc.Error{
+			Msg:  "[Flight SQL] transactions not yet supported",
+			Code: adbc.StatusNotImplemented,
+		}
+	default:
+		return adbc.Error{
+			Msg:  "[Flight SQL] unknown connection option",
+			Code: adbc.StatusNotImplemented,
+		}
+	}
+}
+
 // GetInfo returns metadata about the database/driver.
 //
 // The result is an Arrow dataset with the following schema:
@@ -581,3 +596,7 @@ func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (r
 	}
 	return rdr, nil
 }
+
+var (
+	_ adbc.PostInitOptions = (*cnxn)(nil)
+)
