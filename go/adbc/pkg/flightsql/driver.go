@@ -599,8 +599,8 @@ func FlightSQLStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 	}
 
 	partitions.num_partitions = C.size_t(part.NumPartitions)
-	partitions.partitions = (**C.cuint8_t)(C.malloc(C.ulong(unsafe.Sizeof((*C.uint8_t)(nil)) * uintptr(part.NumPartitions))))
-	partitions.partition_lengths = (*C.size_t)(C.malloc(C.ulong(unsafe.Sizeof(C.size_t(0)) * uintptr(part.NumPartitions))))
+	partitions.partitions = (**C.cuint8_t)(C.malloc(C.size_t(unsafe.Sizeof((*C.uint8_t)(nil)) * uintptr(part.NumPartitions))))
+	partitions.partition_lengths = (*C.size_t)(C.malloc(C.size_t(unsafe.Sizeof(C.size_t(0)) * uintptr(part.NumPartitions))))
 
 	partIDs := fromCArr[*C.cuint8_t](partitions.partitions, int(partitions.num_partitions))
 	partLens := fromCArr[C.size_t](partitions.partition_lengths, int(partitions.num_partitions))
