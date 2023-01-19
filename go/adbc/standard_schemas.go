@@ -17,7 +17,7 @@
 
 package adbc
 
-import "github.com/apache/arrow/go/v10/arrow"
+import "github.com/apache/arrow/go/v11/arrow"
 
 var (
 	GetInfoSchema = arrow.NewSchema([]arrow.Field{
