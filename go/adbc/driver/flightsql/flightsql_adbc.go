@@ -57,7 +57,7 @@ import (
 
 const (
 	OptionSSLSkipVerify = "adbc.flight.sql.client_option.tls_skip_verify"
-	OptionSSLCertFile = "adbc.flight.sql.client_option.tls_root_certs"
+	OptionSSLCertFile   = "adbc.flight.sql.client_option.tls_root_certs"
 
 	infoDriverName = "ADBC Flight SQL Driver - Go"
 )
