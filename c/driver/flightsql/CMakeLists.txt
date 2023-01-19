@@ -49,7 +49,7 @@ else()
 endif()
 
 if(ADBC_BUILD_TESTS)
-  add_test_case(driver_dremio_flightsql_test
+  add_test_case(driver_flightsql_test
                 PREFIX
                 adbc
                 SOURCES
@@ -59,8 +59,8 @@ if(ADBC_BUILD_TESTS)
                 EXTRA_LINK_LIBS
                 nanoarrow
                 ${TEST_LINK_LIBS})
-  target_compile_features(adbc-driver-dremio-flightsql-test PRIVATE cxx_std_17)
-  adbc_configure_target(adbc-driver-dremio-flightsql-test)
+  target_compile_features(adbc-driver-flightsql-test PRIVATE cxx_std_17)
+  adbc_configure_target(adbc-driver-flightsql-test)
 endif()
 
 validate_config()
