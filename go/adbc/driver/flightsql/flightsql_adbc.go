@@ -34,6 +34,7 @@ package flightsql
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/url"
 	"runtime/debug"
@@ -176,7 +177,12 @@ func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
 func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.Client, error) {
 	authMiddle := &bearerAuthMiddleware{}
 
-	cl, err := flightsql.NewClient(d.uri.Host, nil, []flight.ClientMiddleware{
+	uri, err := url.Parse(loc)
+	if err != nil {
+		return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
+	}
+
+	cl, err := flightsql.NewClient(uri.Host, nil, []flight.ClientMiddleware{
 		flight.CreateClientMiddleware(authMiddle)}, grpc.WithTransportCredentials(d.creds))
 	if err != nil {
 		return nil, adbc.Error{
@@ -204,7 +210,7 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 }
 
 func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
-	cl, err := getFlightClient(ctx, d.uri.Host, d)
+	cl, err := getFlightClient(ctx, d.uri.String(), d)
 	if err != nil {
 		return nil, err
 	}
