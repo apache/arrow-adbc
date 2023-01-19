@@ -42,7 +42,7 @@ class DremioFlightSQLQuirks : public adbc_validation::DriverQuirks {
   bool supports_transactions() const override { return false; }
   bool supports_get_sql_info() const override { return false; }
   bool supports_get_objects() const override { return false; }
-  bool supports_bulk_ingest() const override { return false; }  
+  bool supports_bulk_ingest() const override { return false; }
   bool supports_partitioned_data() const override { return true; }
   bool supports_dynamic_parameter_binding() const override { return false; }
 };

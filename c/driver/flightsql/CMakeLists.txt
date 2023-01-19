@@ -27,17 +27,17 @@ include(CTest)
 
 set(LDFLAGS "$<$<CONFIG:Release>:-s> $<$<CONFIG:Release>:-w>")
 add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
-                  adbc_driver_flightsql
-                  SOURCES
-                  driver.go
-                  utils.h
-                  utils.c
-                  BUILD_TAGS
-                  driverlib
-                  PKG_CONFIG_NAME
-                  adbc-driver-flightsql
-                  SHARED_LINK_FLAGS
-                  ${LDFLAGS})
+           adbc_driver_flightsql
+           SOURCES
+           driver.go
+           utils.h
+           utils.c
+           BUILD_TAGS
+           driverlib
+           PKG_CONFIG_NAME
+           adbc-driver-flightsql
+           SHARED_LINK_FLAGS
+           ${LDFLAGS})
 
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
