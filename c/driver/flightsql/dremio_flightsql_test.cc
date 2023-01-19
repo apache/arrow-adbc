@@ -59,7 +59,7 @@ class DremioFlightSQLTest : public ::testing::Test, public adbc_validation::Data
 ADBCV_TEST_DATABASE(DremioFlightSQLTest)
 
 class DremioFlightSQLConnectionTest : public ::testing::Test,
-                                public adbc_validation::ConnectionTest {
+                                      public adbc_validation::ConnectionTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
@@ -71,7 +71,7 @@ class DremioFlightSQLConnectionTest : public ::testing::Test,
 ADBCV_TEST_CONNECTION(DremioFlightSQLConnectionTest)
 
 class DremioFlightSQLStatementTest : public ::testing::Test,
-                               public adbc_validation::StatementTest {
+                                     public adbc_validation::StatementTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
