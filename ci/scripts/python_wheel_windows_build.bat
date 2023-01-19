@@ -32,6 +32,13 @@ IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
 %VCPKG_ROOT%\vcpkg install --triplet=%VCPKG_TARGET_TRIPLET% libpq sqlite3
 
+set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\flightsql\adbc_driver_flightsql.dll
+
+mkdir %build_dir%\flightsql
+pushd %source_dir%\go\adbc\pkg
+go build -tags driverlib -o %ADBC_FLIGHTSQL_LIBRARY% -buildmode=c-shared ./flightsql
+popd
+
 mkdir %build_dir%\postgresql
 pushd %build_dir%\postgresql
 
@@ -76,7 +83,7 @@ python -m pip install --upgrade pip delvewheel wheel
 
 FOR /F %%i IN ('python -c "import sysconfig; print(sysconfig.get_platform())"') DO set PLAT_NAME=%%i
 
-FOR %%c IN (adbc_driver_manager adbc_driver_postgresql adbc_driver_sqlite) DO (
+FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite) DO (
     pushd %source_dir%\python\%%c
 
     echo "=== (%PYTHON_VERSION%) Checking %%c version ==="

@@ -111,6 +111,8 @@ jobs:
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
         shell: bash -l {0}
+        env:
+          CGO_ENABLED: "1"
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
@@ -422,6 +424,14 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Build Python Driver Flight SQL
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQLGO=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Test Python Driver Flight SQL
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQLGO=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Python Driver PostgreSQL
         shell: bash -l {0}
         run: |

@@ -42,6 +42,13 @@ main() {
         make all
 
         popd
+
+        mkdir -p "${install_dir}/lib"
+        if [[ $(go env GOOS) == "linux" ]]; then
+            cp ./pkg/libadbc_driver_flightsql.so "${install_dir}/lib"
+        else
+            cp ./pkg/libadbc_driver_flightsql.dylib "${install_dir}/lib"
+        fi
     fi
 
     popd

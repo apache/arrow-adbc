@@ -15,6 +15,31 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_flightsql, adbc_driver_manager, adbc_driver_postgresql, adbc_driver_sqlite
-profile = black
+import importlib.resources
+import typing
+
+import adbc_driver_manager
+
+from ._version import __version__
+
+__all__ = ["connect", "__version__"]
+
+
+def connect(
+    uri: str, db_kwargs: typing.Optional[typing.Dict[str, str]] = None
+) -> adbc_driver_manager.AdbcDatabase:
+    """
+    Create a low level ADBC connection to a Flight SQL backend.
+
+    Parameters
+    ----------
+    uri : str
+        The URI to connect to.
+    db_kwargs : dict, optional
+        Initial database connection parameters.
+    """
+    root = importlib.resources.files(__package__)
+    entrypoint = root.joinpath("libadbc_driver_flightsql.so")
+    return adbc_driver_manager.AdbcDatabase(
+        driver=str(entrypoint), uri=uri, **(db_kwargs or {})
+    )

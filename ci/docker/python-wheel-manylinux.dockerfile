@@ -24,3 +24,6 @@ ARG VCPKG
 FROM ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
 
 RUN yum install -y docker
+RUN wget https://go.dev/dl/go1.19.5.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.19.5.linux-amd64.tar.gz
+ENV PATH="${PATH}:/usr/local/go/bin"

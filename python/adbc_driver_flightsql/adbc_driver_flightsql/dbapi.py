@@ -16,14 +16,14 @@
 # under the License.
 
 """
-DBAPI 2.0-compatible facade for the ADBC SQLite driver.
+DBAPI 2.0-compatible facade for the ADBC Arrow Flight SQL driver.
 """
 
 import typing
 
+import adbc_driver_flightsql
 import adbc_driver_manager
 import adbc_driver_manager.dbapi
-import adbc_driver_sqlite
 
 __all__ = [
     "BINARY",
@@ -92,14 +92,31 @@ ROWID = adbc_driver_manager.dbapi.ROWID
 # Functions
 
 
-def connect(uri: typing.Optional[str] = None) -> "Connection":
-    """Connect to SQLite via ADBC."""
+def connect(
+    uri: str,
+    db_kwargs: typing.Optional[typing.Dict[str, str]] = None,
+    conn_kwargs: typing.Optional[typing.Dict[str, str]] = None,
+) -> "Connection":
+    """
+    Connect to a Flight SQL backend via ADBC.
+
+    Parameters
+    ----------
+    uri : str
+        The URI to connect to.
+    db_kwargs : dict, optional
+        Initial database connection parameters.
+    conn_kwargs : dict, optional
+        Connection-specific parameters.  (ADBC differentiates between
+        a 'database' object shared between multiple 'connection'
+        objects.)
+    """
     db = None
     conn = None
 
     try:
-        db = adbc_driver_sqlite.connect(uri)
-        conn = adbc_driver_manager.AdbcConnection(db)
+        db = adbc_driver_flightsql.connect(uri, db_kwargs=db_kwargs)
+        conn = adbc_driver_manager.AdbcConnection(db, **(conn_kwargs or {}))
         return adbc_driver_manager.dbapi.Connection(db, conn)
     except Exception:
         if conn:

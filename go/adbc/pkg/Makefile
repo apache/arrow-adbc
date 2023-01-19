@@ -22,12 +22,12 @@ else
 endif
 
 DRIVERS := \
-	libadbc_driver_flightsql_go.$(SUFFIX)
+	libadbc_driver_flightsql.$(SUFFIX)
 
 .PHONY: all
 all: $(DRIVERS)
 
-libadbc_driver_%_go.$(SUFFIX): %
+libadbc_driver_%.$(SUFFIX): %
 	$(GO_BUILD) -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w" ./$<
 	rm *.h
 

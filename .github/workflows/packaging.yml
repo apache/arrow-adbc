@@ -391,6 +391,7 @@ jobs:
           name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
           path: |
+            adbc/python/adbc_driver_flightsql/repaired_wheels/*.whl
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
@@ -462,6 +463,13 @@ jobs:
           ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
           popd
 
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.18.6
+          check-latest: true
+          cache: true
+          cache-dependency-path: adbc/go/adbc/go.sum
+
       - name: Install Python
         shell: bash
         run: |
@@ -488,6 +496,7 @@ jobs:
           name: python-${{ matrix.arch }}-macos
           retention-days: 7
           path: |
+            adbc/python/adbc_driver_flightsql/repaired_wheels/*.whl
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
@@ -575,6 +584,13 @@ jobs:
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
 
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.18.6
+          check-latest: true
+          cache: true
+          cache-dependency-path: adbc/go/adbc/go.sum
+
       - name: Install Python ${{ matrix.python_version }}
         uses: actions/setup-python@v4
         with:
@@ -596,6 +612,7 @@ jobs:
           name: python${{ matrix.python_version }}-windows
           retention-days: 7
           path: |
+            adbc/python/adbc_driver_flightsql/repaired_wheels/*.whl
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
@@ -652,6 +669,7 @@ jobs:
           name: python${{ matrix.python_version }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
           path: |
+            adbc/python/adbc_driver_flightsql/dist/*.tar.gz
             adbc/python/adbc_driver_manager/dist/*.tar.gz
             adbc/python/adbc_driver_postgresql/dist/*.tar.gz
             adbc/python/adbc_driver_sqlite/dist/*.tar.gz
