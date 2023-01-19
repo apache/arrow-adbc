@@ -85,9 +85,11 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     set(LIB_NAME_SHARED
         "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
-    set(ARG_SHARED_LINK_FLAGS
-        "${ARG_SHARED_LINK_FLAGS} -extldflags -Wl,-soname,${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
-    )
+    if(NOT APPLE)
+      set(ARG_SHARED_LINK_FLAGS
+          "${ARG_SHARED_LINK_FLAGS} -extldflags -Wl,-soname,${LIB_NAME_SHARED}.${ADBC_SO_VERSION}")
+    endif()
+    
     if(DEFINED ARG_SHARED_LINK_FLAGS)
       separate_arguments(ARG_SHARED_LINK_FLAGS NATIVE_COMMAND "${ARG_SHARED_LINK_FLAGS}")
       set(GO_LDFLAGS "-ldflags=\"${ARG_SHARED_LINK_FLAGS}\"")
