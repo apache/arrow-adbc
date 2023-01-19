@@ -108,6 +108,7 @@ jobs:
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
+          export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
         shell: bash -l {0}
@@ -172,6 +173,10 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+      - name: BuildPostgreSQL Driver
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Build Driver Manager
         shell: bash -l {0}
         run: |
@@ -247,7 +252,7 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
-      - name: BuildPostgreSQL Driver
+      - name: Build PostgreSQL Driver
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
