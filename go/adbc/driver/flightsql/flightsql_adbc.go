@@ -56,7 +56,7 @@ import (
 )
 
 const (
-	OptionSSLInsecure = "adbc.flight.sql.client_option.tls_skip_verify"
+	OptionSSLSkipVerify = "adbc.flight.sql.client_option.tls_skip_verify"
 	OptionSSLCertFile = "adbc.flight.sql.client_option.tls_root_certs"
 
 	infoDriverName = "ADBC Flight SQL Driver - Go"
@@ -103,12 +103,6 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 		return nil, adbc.Error{Msg: err.Error(), Code: adbc.StatusInvalidArgument}
 	}
 
-	if db.uri.Scheme == "grpc+tls" {
-		db.creds = credentials.NewTLS(&tls.Config{})
-	} else {
-		db.creds = insecure.NewCredentials()
-	}
-
 	return db, db.SetOptions(opts)
 }
 
@@ -121,7 +115,13 @@ type database struct {
 }
 
 func (d *database) SetOptions(cnOptions map[string]string) error {
-	if val, ok := cnOptions[OptionSSLInsecure]; ok && val == adbc.OptionValueEnabled {
+	if d.uri.Scheme == "grpc+tls" {
+		d.creds = credentials.NewTLS(&tls.Config{})
+	} else {
+		d.creds = insecure.NewCredentials()
+	}
+
+	if val, ok := cnOptions[OptionSSLSkipVerify]; ok && val == adbc.OptionValueEnabled {
 		if d.uri.Scheme != "grpc+tls" {
 			return adbc.Error{
 				Msg:  "Connection is not TLS-enabled",
