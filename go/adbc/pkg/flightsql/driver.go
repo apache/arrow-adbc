@@ -177,13 +177,8 @@ func FlightSQLDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError
 	if !checkDBAlloc(db, err, "AdbcDatabaseRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
-	h := (*(*cgo.Handle)(db.private_data))
-
-	cdb := h.Value().(*cDatabase)
-	if cdb.db == nil {
-		setErr(err, "AdbcDatabaseRelease: attempting to release uninitialized database")
-		return C.ADBC_STATUS_INVALID_STATE
-	}
+	h := (*(*cgo.Handle)(db.private_data))	
+	cdb := h.Value().(*cDatabase)	
 	cdb.db = nil
 	cdb.opts = nil
 	C.free(unsafe.Pointer(db.private_data))
@@ -277,16 +272,16 @@ func FlightSQLConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_Adb
 	h := (*(*cgo.Handle)(cnxn.private_data))
 
 	conn := h.Value().(*cConn)
-	if conn.cnxn == nil {
-		setErr(err, "AdbcConnectionRelease: attempting to release uninitialized connection")
-		return C.ADBC_STATUS_INVALID_STATE
-	}
 	defer func() {
 		conn.cnxn = nil
 		C.free(unsafe.Pointer(cnxn.private_data))
 		cnxn.private_data = nil
 		h.Delete()
 	}()
+	if conn.cnxn == nil {
+		return C.ADBC_STATUS_OK
+	}
+	
 	return C.AdbcStatusCode(errToAdbcErr(err, conn.cnxn.Close()))
 }
 

@@ -53,6 +53,21 @@ class DriverQuirks {
 
   /// \brief Whether AdbcStatementExecutePartitions should work
   virtual bool supports_partitioned_data() const { return false; }
+
+  /// \brief Whether transaction methods are implemented
+  virtual bool supports_transactions() const { return true; }
+
+  /// \brief Whether GetSqlInfo is implemented
+  virtual bool supports_get_sql_info() const { return true; }
+
+  /// \brief Whether GetObjects is implemented
+  virtual bool supports_get_objects() const { return true; }
+
+  /// \brief Whether bulk ingest is supported
+  virtual bool supports_bulk_ingest() const { return true; }
+
+  /// \brief Whether dynamic parameter bindings are supported for prepare
+  virtual bool supports_dynamic_parameter_binding() const { return true; }
 };
 
 class DatabaseTest {

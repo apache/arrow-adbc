@@ -141,7 +141,7 @@ func (s *statement) Prepare(ctx context.Context) error {
 	if s.query == "" {
 		return adbc.Error{
 			Msg:  "[FlightSQL Statement] must call SetSqlQuery before Prepare",
-			Code: adbc.StatusInvalidArgument,
+			Code: adbc.StatusInvalidState,
 		}
 	}
 

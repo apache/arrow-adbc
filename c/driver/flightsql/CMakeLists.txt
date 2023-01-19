@@ -26,7 +26,7 @@ project(adbc_driver_flightsql VERSION "${ADBC_BASE_VERSION}")
 include(CTest)
 
 set(LDFLAGS "$<$<CONFIG:Release>:-s> $<$<CONFIG:Release>:-w>")
-add_go_shared_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
+add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
                   adbc_driver_flightsql
                   SOURCES
                   driver.go
@@ -41,6 +41,27 @@ add_go_shared_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
 
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
+
+if(ADBC_TEST_LINKAGE STREQUAL "shared")
+  set(TEST_LINK_LIBS adbc_driver_flightsql_shared)
+else()
+  set(TEST_LINK_LIBS adbc_driver_flightsql_static)
+endif()
+
+if(ADBC_BUILD_TESTS)
+  add_test_case(driver_dremio_flightsql_test
+                PREFIX
+                adbc
+                SOURCES
+                dremio_flightsql_test.cc
+                ../../validation/adbc_validation.cc
+                ../../validation/adbc_validation_util.cc
+                EXTRA_LINK_LIBS
+                nanoarrow
+                ${TEST_LINK_LIBS})
+  target_compile_features(adbc-driver-dremio-flightsql-test PRIVATE cxx_std_17)
+  adbc_configure_target(adbc-driver-dremio-flightsql-test)
+endif()
 
 validate_config()
 config_summary_message()

@@ -38,7 +38,7 @@ function(install_cmake_package PACKAGE_NAME EXPORT_NAME)
           EXPORT_LINK_INTERFACE_LIBRARIES)
 endfunction()
 
-function(add_go_shared_lib GO_MOD_DIR GO_LIBNAME)
+function(add_go_lib GO_MOD_DIR GO_LIBNAME)
   set(options)
   set(one_value_args BUILD_TAGS SHARED_LINK_FLAGS CMAKE_PACKAGE_NAME PKG_CONFIG_NAME BUILD_STATIC BUILD_SHARED)
   set(multi_value_args SOURCES OUTPUTS)
