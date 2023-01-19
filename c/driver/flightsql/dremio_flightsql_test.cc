@@ -34,8 +34,10 @@ class DremioFlightSQLQuirks : public adbc_validation::DriverQuirks {
     const char* user = std::getenv("ADBC_DREMIO_FLIGHTSQL_USER");
     const char* pass = std::getenv("ADBC_DREMIO_FLIGHTSQL_PASS");
     EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri, error), IsOkStatus(error));
-    EXPECT_THAT(AdbcDatabaseSetOption(database, "username", user, error), IsOkStatus(error));
-    EXPECT_THAT(AdbcDatabaseSetOption(database, "password", pass, error), IsOkStatus(error));
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "username", user, error),
+                IsOkStatus(error));
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "password", pass, error),
+                IsOkStatus(error));
     return ADBC_STATUS_OK;
   }
 
