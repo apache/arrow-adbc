@@ -28,12 +28,12 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v10/arrow"
-	"github.com/apache/arrow/go/v10/arrow/array"
-	"github.com/apache/arrow/go/v10/arrow/flight"
-	"github.com/apache/arrow/go/v10/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v10/arrow/flight/flightsql/example"
-	"github.com/apache/arrow/go/v10/arrow/memory"
+	"github.com/apache/arrow/go/v11/arrow"
+	"github.com/apache/arrow/go/v11/arrow/array"
+	"github.com/apache/arrow/go/v11/arrow/flight"
+	"github.com/apache/arrow/go/v11/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v11/arrow/flight/flightsql/example"
+	"github.com/apache/arrow/go/v11/arrow/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -191,7 +191,7 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	case adbc.InfoVendorVersion:
 		return "sqlite 3"
 	case adbc.InfoVendorArrowVersion:
-		return "10.0.1"
+		return "11.0.0-SNAPSHOT"
 	}
 
 	return nil
