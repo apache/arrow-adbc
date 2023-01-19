@@ -33,13 +33,13 @@ Dependencies: a build of the Apache Arrow Flight SQL driver, and the
 use the DBAPI 2.0-compatible interface.
 
 Set the environment variable `ADBC_FLIGHTSQL_LIBRARY` to the path to
-`libadbc_driver_flightsql_go.{dll,dylib,so}` before running `pip install`.
+`libadbc_driver_flightsql.{dll,dylib,so}` before running `pip install`.
 
 ```
 # If not already installed
 pip install -e ../adbc_driver_manager
 
-export ADBC_FLIGHTSQL_LIBRARY=/path/to/libadbc_driver_flightsql_go.so
+export ADBC_FLIGHTSQL_LIBRARY=/path/to/libadbc_driver_flightsql.so
 pip install -e --no-deps .
 ```
 

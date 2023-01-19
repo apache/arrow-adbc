@@ -35,13 +35,13 @@ function build_drivers {
     export VCPKG_OVERLAY_TRIPLETS="${source_dir}/ci/vcpkg/triplets/"
 
     if [[ $(uname) == "Linux" ]]; then
-        export ADBC_FLIGHTSQL_LIBRARY=${source_dir}/go/adbc/pkg/libadbc_driver_flightsql_go.so
+        export ADBC_FLIGHTSQL_LIBRARY=${source_dir}/go/adbc/pkg/libadbc_driver_flightsql.so
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
         export CMAKE_ARGUMENTS=""
     else # macOS
-        export ADBC_FLIGHTSQL_LIBRARY=${source_dir}/go/adbc/pkg/libadbc_driver_flightsql_go.dylib
+        export ADBC_FLIGHTSQL_LIBRARY=${source_dir}/go/adbc/pkg/libadbc_driver_flightsql.dylib
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"

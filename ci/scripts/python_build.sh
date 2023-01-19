@@ -36,7 +36,7 @@ build_subproject() {
     local -r subproject="${3}"
 
     if [[ "${subproject}" = "adbc_driver_flightsql" ]]; then
-        export ADBC_FLIGHTSQL_LIBRARY="${install_dir}/lib/libadbc_driver_flightsql_go.${ADBC_LIBRARY_SUFFIX}"
+        export ADBC_FLIGHTSQL_LIBRARY="${install_dir}/lib/libadbc_driver_flightsql.${ADBC_LIBRARY_SUFFIX}"
     elif [[ "${subproject}" = "adbc_driver_postgresql" ]]; then
         export ADBC_POSTGRESQL_LIBRARY="${install_dir}/lib/libadbc_driver_postgresql.${ADBC_LIBRARY_SUFFIX}"
     elif [[ "${subproject}" = "adbc_driver_sqlite" ]]; then
