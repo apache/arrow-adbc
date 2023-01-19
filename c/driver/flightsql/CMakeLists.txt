@@ -23,10 +23,11 @@ include(BuildUtils)
 include(GoUtils)
 
 project(adbc_driver_flightsql VERSION "${ADBC_BASE_VERSION}")
+include(CTest)
 
 set(LDFLAGS "$<$<CONFIG:Release>:-s> $<$<CONFIG:Release>:-w>")
 add_go_shared_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
-                  adbc_driver_flightsql_go
+                  adbc_driver_flightsql
                   SOURCES
                   driver.go
                   utils.h
@@ -38,4 +39,8 @@ add_go_shared_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
                   SHARED_LINK_FLAGS
                   ${LDFLAGS})
 
+include_directories(SYSTEM ${REPOSITORY_ROOT})
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
+
 validate_config()
+config_summary_message()

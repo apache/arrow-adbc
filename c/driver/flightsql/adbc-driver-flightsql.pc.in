@@ -20,5 +20,6 @@ libdir=@ADBC_PKG_CONFIG_LIBDIR@
 
 Name: Apache Arrow Database Connectivity (ADBC) FlightSQL driver
 Description: The ADBC FlightSQL driver provides an ADBC driver for Flight SQL.
+URL: https://github.com/apache/arrow-adbc
 Version: @ADBC_VERSION@
-Libs: -L${libdir} -ladbc_driver_flightsql_go
+Libs: -L${libdir} -ladbc_driver_flightsql
