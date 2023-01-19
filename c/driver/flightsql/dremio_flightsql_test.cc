@@ -28,9 +28,9 @@ class DremioFlightSQLQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
-    const char* uri = std::getenv("FLIGHTSQL_URI");
-    const char* user = std::getenv("FLIGHTSQL_USER");
-    const char* pass = std::getenv("FLIGHTSQL_PASS");
+    const char* uri = std::getenv("ADBC_DREMIO_FLIGHTSQL_URI");
+    const char* user = std::getenv("ADBC_DREMIO_FLIGHTSQL_USER");
+    const char* pass = std::getenv("ADBC_DREMIO_FLIGHTSQL_PASS");
     EXPECT_EQ(AdbcDatabaseSetOption(database, "uri", uri, error), ADBC_STATUS_OK);
     EXPECT_EQ(AdbcDatabaseSetOption(database, "username", user, error), ADBC_STATUS_OK);
     EXPECT_EQ(AdbcDatabaseSetOption(database, "password", pass, error), ADBC_STATUS_OK);
