@@ -651,6 +651,7 @@ func FlightSQLDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcErr
 	driver.StatementExecuteQuery = (*[0]byte)(C.FlightSQLStatementExecuteQuery)
 	driver.StatementExecutePartitions = (*[0]byte)(C.FlightSQLStatementExecutePartitions)
 	driver.StatementGetParameterSchema = (*[0]byte)(C.FlightSQLStatementGetParameterSchema)
+	driver.StatementPrepare = (*[0]byte)(C.FlightSQLStatementPrepare)
 
 	return C.ADBC_STATUS_OK
 }
