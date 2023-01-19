@@ -24,6 +24,8 @@
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
+using adbc_validation::IsOkStatus;
+
 class DremioFlightSQLQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
@@ -31,9 +33,9 @@ class DremioFlightSQLQuirks : public adbc_validation::DriverQuirks {
     const char* uri = std::getenv("ADBC_DREMIO_FLIGHTSQL_URI");
     const char* user = std::getenv("ADBC_DREMIO_FLIGHTSQL_USER");
     const char* pass = std::getenv("ADBC_DREMIO_FLIGHTSQL_PASS");
-    EXPECT_EQ(AdbcDatabaseSetOption(database, "uri", uri, error), ADBC_STATUS_OK);
-    EXPECT_EQ(AdbcDatabaseSetOption(database, "username", user, error), ADBC_STATUS_OK);
-    EXPECT_EQ(AdbcDatabaseSetOption(database, "password", pass, error), ADBC_STATUS_OK);
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri, error), IsOkStatus(error));
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "username", user, error), IsOkStatus(error));
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "password", pass, error), IsOkStatus(error));
     return ADBC_STATUS_OK;
   }
 

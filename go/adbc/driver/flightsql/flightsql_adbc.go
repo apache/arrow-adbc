@@ -37,7 +37,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"os"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -364,7 +363,6 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 	for _, endpoint := range info.Endpoint {
 		rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
 			return nil, adbcFromFlightStatus(err)
 		}
 
