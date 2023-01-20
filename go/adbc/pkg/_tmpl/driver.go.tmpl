@@ -648,6 +648,7 @@ func {{.Prefix}}DriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcE
 	driver.StatementExecuteQuery = (*[0]byte)(C.{{.Prefix}}StatementExecuteQuery)
 	driver.StatementExecutePartitions = (*[0]byte)(C.{{.Prefix}}StatementExecutePartitions)
 	driver.StatementGetParameterSchema = (*[0]byte)(C.{{.Prefix}}StatementGetParameterSchema)
+	driver.StatementPrepare = (*[0]byte)(C.{{.Prefix}}StatementPrepare)
 
 	return C.ADBC_STATUS_OK
 }
