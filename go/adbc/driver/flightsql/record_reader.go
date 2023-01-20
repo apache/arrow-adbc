@@ -19,7 +19,6 @@ package flightsql
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -29,6 +28,7 @@ import (
 	"github.com/apache/arrow/go/v11/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v11/arrow/memory"
 	"github.com/bluele/gcache"
+	"golang.org/x/sync/errgroup"
 )
 
 type reader struct {
@@ -36,6 +36,7 @@ type reader struct {
 	schema   *arrow.Schema
 	ch       chan arrow.Record
 	rec      arrow.Record
+	err      error
 
 	cancelFn context.CancelFunc
 }
@@ -43,11 +44,10 @@ type reader struct {
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache) (rdr array.RecordReader, err error) {
-	var cancelFn context.CancelFunc
-	ctx, cancelFn = context.WithCancel(ctx)
 	ch := make(chan arrow.Record, 5)
+	group, ctx := errgroup.WithContext(ctx)
+	ctx, cancelFn := context.WithCancel(ctx)
 
-	var wg sync.WaitGroup
 	defer func() {
 		if err != nil {
 			cancelFn()
@@ -57,19 +57,13 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		}
 	}()
 
-	wg.Add(len(info.Endpoint))
-
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-
 	endpoints := info.Endpoint
 
 	var schema *arrow.Schema
 	if info.Schema != nil {
 		schema, err = flight.DeserializeSchema(info.Schema, alloc)
 		if err != nil {
+			close(ch)
 			return nil, adbc.Error{
 				Msg:  err.Error(),
 				Code: adbc.StatusInvalidState}
@@ -80,26 +74,38 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 			return nil, adbcFromFlightStatus(err)
 		}
 		schema = rdr.Schema()
-		go func() {
-			defer wg.Done()
+		group.Go(func() error {
 			defer rdr.Release()
 			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.Record()
 				rec.Retain()
 				ch <- rec
 			}
-		}()
+			return rdr.Err()
+		})
 
 		endpoints = endpoints[1:]
 	}
 
-	for _, ep := range endpoints {
-		go func(endpoint *flight.FlightEndpoint) {
-			defer wg.Done()
+	reader := &reader{
+		refCount: 1,
+		ch:       ch,
+		err:      nil,
+		cancelFn: cancelFn,
+		schema:   schema,
+	}
 
+	go func() {
+		reader.err = group.Wait()
+		close(ch)
+	}()
+
+	for _, ep := range endpoints {
+		endpoint := ep
+		group.Go(func() error {
 			rdr, err := doGet(ctx, cl, endpoint, clCache)
 			if err != nil {
-				return
+				return err
 			}
 			defer rdr.Release()
 
@@ -108,15 +114,11 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				rec.Retain()
 				ch <- rec
 			}
-		}(ep)
+			return rdr.Err()
+		})
 	}
 
-	return &reader{
-		refCount: 1,
-		ch:       ch,
-		cancelFn: cancelFn,
-		schema:   schema,
-	}, nil
+	return reader, nil
 }
 
 func (r *reader) Retain() {
@@ -133,6 +135,10 @@ func (r *reader) Release() {
 			rec.Release()
 		}
 	}
+}
+
+func (r *reader) Err() error {
+	return r.err
 }
 
 func (r *reader) Next() bool {
