@@ -1,0 +1,53 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# If we are building from within the nanoarrow repo, we want to use cmake
+# to regenerate the bundled header/source
+if [ -f "../../adbc.h" ]; then
+  echo "Bundling nanoarrow using ../../adbc.h"
+  rm -f src/adbc.h src/adbc_driver_manager.h src/adbc_driver_manager.cc
+  cp ../../adbc.h \
+    ../../c/driver_manager/adbc_driver_manager.h \
+    ../../c/driver_manager/adbc_driver_manager.cc \
+    src
+fi
+
+if [ -f "src/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then
+  echo "Found vendored ADBC"
+  exit 0
+fi
+
+# We have a situation where the package has been built via R CMD build
+# but there is no vendored nanoarrow. This occurs with
+# remotes::install_github() with the default arguments. In this case, pull
+# the latest bundled version from GitHub. To ensure commit-level consistency,
+# use remotes::install_github(build = FALSE)
+curl -L https://github.com/apache/arrow-adbc/raw/main/adbc.h \
+  --output src/adbc.h --silent
+curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driver_manager.h \
+  --output src/adbc_driver_manager.h --silent
+curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driver_manager.cc \
+  --output src/adbc_driver_manager.cc --silent
+
+if [ -f "src/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then
+  echo "Fetched ADBC from https://github.com/apache/arrow-adbc"
+  exit 0
+fi
+
+echo "Vendored src/adbc.h and/or src/adbc_driver_manager.cc are missing"
+echo "This source package was probably built incorrectly and it's probably not your fault"
+exit 1
