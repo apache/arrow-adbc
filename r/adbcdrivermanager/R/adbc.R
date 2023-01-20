@@ -182,7 +182,7 @@ adbc_connection_get_info <- function(connection, info_codes) {
 #' @rdname adbc_connection_get_info
 #' @export
 adbc_connection_get_objects <- function(connection, depth, catalog, db_schema,
-                                         table_name, table_type, column_name) {
+                                        table_name, table_type, column_name) {
   error <- adbc_allocate_error()
   out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
   status <- .Call(

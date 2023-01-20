@@ -45,4 +45,3 @@ names.adbc_error <- function(x, ...) {
 `$.adbc_error` <- function(x, i, ...) {
   x[[i]]
 }
-
