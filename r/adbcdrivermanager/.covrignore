@@ -1,0 +1,3 @@
+src/adbc.h
+src/adbc_driver_manager.h
+src/adbc_driver_manager.cc
