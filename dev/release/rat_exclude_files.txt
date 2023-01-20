@@ -10,8 +10,8 @@ go/adbc/status_string.go
 go/adbc/infocode_string.go
 go/adbc/go.sum
 rat.txt
-DESCRIPTION
-NAMESPACE
-.Rbuildignore
+r/adbcdrivermanager/DESCRIPTION
+r/adbcdrivermanager/NAMESPACE
+r/adbcdrivermanager/.Rbuildignore
 *.Rproj
 *.Rd
