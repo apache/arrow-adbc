@@ -16,8 +16,8 @@
 # under the License.
 
 # This file updates the call entries in src/init.c such that R code
-# can use .Call(nanoarrow_c_some_function_name) for all C functions
-# with the signature SEXP nanoarrow_c_some_function_name(...).
+# can use .Call(RAdbcSomeFunction, ...) for all C functions
+# with the signature SEXP RAdbcSomeFunction(...).
 
 library(tidyverse)
 

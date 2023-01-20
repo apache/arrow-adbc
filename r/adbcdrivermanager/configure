@@ -15,10 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# If we are building from within the nanoarrow repo, we want to use cmake
-# to regenerate the bundled header/source
+# If we are building from within the ADBC repo, we copy the files we
+# need to ensure commit-level consistency
 if [ -f "../../adbc.h" ]; then
-  echo "Bundling nanoarrow using ../../adbc.h"
+  echo "Copying files from local ADBC"
   rm -f src/adbc.h src/adbc_driver_manager.h src/adbc_driver_manager.cc
   cp ../../adbc.h \
     ../../c/driver_manager/adbc_driver_manager.h \
@@ -32,9 +32,9 @@ if [ -f "src/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_d
 fi
 
 # We have a situation where the package has been built via R CMD build
-# but there is no vendored nanoarrow. This occurs with
+# but there is no vendored adbc.h or driver manager. This occurs with
 # remotes::install_github() with the default arguments. In this case, pull
-# the latest bundled version from GitHub. To ensure commit-level consistency,
+# the latest files from GitHub. To ensure commit-level consistency,
 # use remotes::install_github(build = FALSE)
 curl -L https://github.com/apache/arrow-adbc/raw/main/adbc.h \
   --output src/adbc.h --silent
