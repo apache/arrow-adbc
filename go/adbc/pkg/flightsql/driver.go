@@ -78,11 +78,29 @@ func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
 	return adbc.StatusUnknown
 }
 
+// Allocate a new cgo.Handle and store its address in a heap-allocated
+// uintptr_t.  Experimentally, this was found to be necessary, else
+// something (the Go runtime?) would corrupt (garbage-collect?) the
+// handle.
+func createHandle(hndl cgo.Handle) unsafe.Pointer {
+	// uintptr_t* hptr = malloc(sizeof(uintptr_t));
+	hptr := (*C.uintptr_t)(C.malloc(C.sizeof_uintptr_t))
+	// *hptr = (uintptr)hndl;
+	*hptr = C.uintptr_t(uintptr(hndl))
+	return unsafe.Pointer(hptr)
+}
+
 func getFromHandle[T any](ptr unsafe.Pointer) *T {
-	return (*(*cgo.Handle)(ptr)).Value().(*T)
+	// uintptr_t* hptr = (uintptr_t*)ptr;
+	hptr := (*C.uintptr_t)(ptr)
+	return cgo.Handle((uintptr)(*hptr)).Value().(*T)
 }
 
 func checkDBAlloc(db *C.struct_AdbcDatabase, err *C.struct_AdbcError, fname string) bool {
+	if db == nil {
+		setErr(err, "%s: database not allocated", fname)
+		return false
+	}
 	if db.private_data == nil {
 		setErr(err, "%s: database not allocated", fname)
 		return false
@@ -116,7 +134,7 @@ func FlightSQLDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.
 	}
 	dbobj := &cDatabase{opts: make(map[string]string)}
 	hndl := cgo.NewHandle(dbobj)
-	db.private_data = unsafe.Pointer(&hndl)
+	db.private_data = createHandle(hndl)
 	return C.ADBC_STATUS_OK
 }
 
@@ -156,7 +174,7 @@ func FlightSQLDatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C
 
 //export FlightSQLDatabaseRelease
 func FlightSQLDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.AdbcStatusCode {
-	if !checkDBAlloc(db, err, "AdbcDatabaseInit") {
+	if !checkDBAlloc(db, err, "AdbcDatabaseRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 	h := (*(*cgo.Handle)(db.private_data))
@@ -168,8 +186,10 @@ func FlightSQLDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError
 	}
 	cdb.db = nil
 	cdb.opts = nil
+	C.free(unsafe.Pointer(db.private_data))
 	db.private_data = nil
 	h.Delete()
+
 	return C.ADBC_STATUS_OK
 }
 
@@ -178,6 +198,10 @@ type cConn struct {
 }
 
 func checkConnAlloc(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname string) bool {
+	if cnxn == nil {
+		setErr(err, "%s: connection not allocated", fname)
+		return false
+	}
 	if cnxn.private_data == nil {
 		setErr(err, "%s: connection not allocated", fname)
 		return false
@@ -206,7 +230,7 @@ func FlightSQLConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcErr
 	}
 
 	hndl := cgo.NewHandle(&cConn{})
-	cnxn.private_data = unsafe.Pointer(&hndl)
+	cnxn.private_data = createHandle(hndl)
 	return C.ADBC_STATUS_OK
 }
 
@@ -259,6 +283,7 @@ func FlightSQLConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_Adb
 	}
 	defer func() {
 		conn.cnxn = nil
+		C.free(unsafe.Pointer(cnxn.private_data))
 		cnxn.private_data = nil
 		h.Delete()
 	}()
@@ -435,7 +460,7 @@ func FlightSQLStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcSta
 	}
 
 	h := cgo.NewHandle(st)
-	stmt.private_data = unsafe.Pointer(&h)
+	stmt.private_data = createHandle(h)
 	return C.ADBC_STATUS_OK
 }
 
@@ -453,6 +478,7 @@ func FlightSQLStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 
 	h := (*(*cgo.Handle)(stmt.private_data))
 	st := h.Value().(adbc.Statement)
+	C.free(stmt.private_data)
 	stmt.private_data = nil
 
 	e := st.Close()
@@ -570,6 +596,7 @@ func releasePartitions(partitions *C.struct_AdbcPartitions) {
 	C.free(unsafe.Pointer(partitions.partitions))
 	C.free(unsafe.Pointer(partitions.partition_lengths))
 	h := (*(*cgo.Handle)(partitions.private_data))
+	C.free(partitions.private_data)
 	h.Delete()
 }
 
@@ -610,7 +637,7 @@ func FlightSQLStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 	}
 
 	h := cgo.NewHandle(part)
-	partitions.private_data = unsafe.Pointer(&h)
+	partitions.private_data = createHandle(h)
 	partitions.release = (*[0]byte)(C.releasePartitions)
 	return C.ADBC_STATUS_OK
 }

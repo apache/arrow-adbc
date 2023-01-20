@@ -487,7 +487,10 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 // All non-empty, non-nil strings should be a search pattern (as described
 // earlier).
 func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
-	panic("not implemented") // TODO: Implement
+	return nil, adbc.Error{
+		Msg:  "Not implemented: GetObjects",
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
