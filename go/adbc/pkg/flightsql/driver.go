@@ -503,16 +503,27 @@ func FlightSQLStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	rdr, n, e := st.ExecuteQuery(context.Background())
-	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
-	}
+	if out == nil {
+		n, e := st.ExecuteUpdate(context.Background())
+		if e != nil {
+			return C.AdbcStatusCode(errToAdbcErr(err, e))
+		}
 
-	if affected != nil {
-		*affected = C.int64_t(n)
-	}
+		if affected != nil {
+			*affected = C.int64_t(n)
+		}
+	} else {
+		rdr, n, e := st.ExecuteQuery(context.Background())
+		if e != nil {
+			return C.AdbcStatusCode(errToAdbcErr(err, e))
+		}
 
-	cdata.ExportRecordReader(rdr, toCdataStream(out))
+		if affected != nil {
+			*affected = C.int64_t(n)
+		}
+
+		cdata.ExportRecordReader(rdr, toCdataStream(out))
+	}
 	return C.ADBC_STATUS_OK
 }
 

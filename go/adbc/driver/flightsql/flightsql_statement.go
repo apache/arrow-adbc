@@ -194,10 +194,14 @@ func (s *statement) Bind(_ context.Context, values arrow.Record) error {
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
 func (s *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
-	return adbc.Error{
-		Msg:  "[Flight SQL Statement] BindStream not yet implemented",
-		Code: adbc.StatusNotImplemented,
+	if s.prepared == nil {
+		return adbc.Error{
+			Msg:  "[Flight SQL Statement] must call Prepare before calling Bind",
+			Code: adbc.StatusInvalidState}
 	}
+
+	s.prepared.SetRecordReader(stream)
+	return nil
 }
 
 // GetParameterSchema returns an Arrow schema representation of
