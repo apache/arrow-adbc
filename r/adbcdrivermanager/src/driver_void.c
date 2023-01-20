@@ -186,7 +186,7 @@ static AdbcStatusCode VoidStatementBind(struct AdbcStatement* statement,
                                         struct ArrowSchema* schema,
                                         struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
-}
+}  // NOLINT(whitespace/indent)
 
 static AdbcStatusCode VoidStatementBindStream(struct AdbcStatement* statement,
                                               struct ArrowArrayStream* stream,
@@ -200,7 +200,7 @@ static AdbcStatusCode VoidStatementExecutePartitions(struct AdbcStatement* state
                                                      int64_t* rows_affected,
                                                      struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
-}
+}  // NOLINT(whitespace/indent)
 
 static AdbcStatusCode VoidStatementExecuteQuery(struct AdbcStatement* statement,
                                                 struct ArrowArrayStream* out,
