@@ -35,13 +35,13 @@ function build_drivers {
     export VCPKG_OVERLAY_TRIPLETS="${source_dir}/ci/vcpkg/triplets/"
 
     if [[ $(uname) == "Linux" ]]; then
-        export ADBC_FLIGHTSQL_LIBRARY=${source_dir}/go/adbc/pkg/libadbc_driver_flightsql.so
+        export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.so
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
         export CMAKE_ARGUMENTS=""
     else # macOS
-        export ADBC_FLIGHTSQL_LIBRARY=${source_dir}/go/adbc/pkg/libadbc_driver_flightsql.dylib
+        export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.dylib
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
@@ -69,7 +69,23 @@ function build_drivers {
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
     echo "=== Building driver/flightsql ==="
-    make -C ${source_dir}/go/adbc/pkg all
+    mkdir -p ${build_dir}/driver/flightsql
+    pushd ${build_dir}/driver/flightsql
+    cmake \
+        -G ${CMAKE_GENERATOR} \
+        -DADBC_BUILD_SHARED=ON \
+        -DADBC_BUILD_STATIC=OFF \
+        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_INSTALL_PREFIX=${build_dir} \
+        -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
+        -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
+        ${CMAKE_ARGUMENTS} \
+        -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
+        -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
+        ${source_dir}/c/driver/flightsql
+    cmake --build . --target install --verbose -j
+    popd
 
     echo "=== Building driver/postgresql ==="
     mkdir -p ${build_dir}/driver/postgresql

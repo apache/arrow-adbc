@@ -22,6 +22,8 @@ set -ex
 source_dir=${1}
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+git config --global --add safe.directory ${source_dir}
+
 source "${script_dir}/python_util.sh"
 
 echo "=== (${PYTHON_VERSION}) Building ADBC sdists ==="
