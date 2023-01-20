@@ -28,6 +28,7 @@ on:
       - "glib/**"
       - "go/**"
       - "python/**"
+      - "r/**"
       - "ruby/**"
       - ".github/workflows/native-unix.yml"
   push:
@@ -38,6 +39,7 @@ on:
       - "glib/**"
       - "go/**"
       - "python/**"
+      - "r/**"
       - "ruby/**"
       - ".github/workflows/native-unix.yml"
 
@@ -491,6 +493,7 @@ jobs:
       
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          pak-version: devel
           extra-packages: any::rcmdcheck
           needs: check
           working-directory: r/${{ matrix.config.pkg }}
