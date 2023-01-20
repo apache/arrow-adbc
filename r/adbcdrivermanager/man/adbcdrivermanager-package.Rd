@@ -6,7 +6,7 @@
 \alias{adbcdrivermanager-package}
 \title{adbcdrivermanager: 'Arrow' Database Connectivity ('ADBC') Driver Manager}
 \description{
-Provides a developer-facing interface to 'Arrow' Database Connectivity ('ADBC') for the purposes of driver development, driver testing, and building high-level database interfaces for users.
+Provides a developer-facing interface to 'Arrow' Database Connectivity ('ADBC') for the purposes of driver development, driver testing, and building high-level database interfaces for users. 'ADBC' is an API standard for database access libraries that uses 'Arrow' for result sets and query parameters.
 }
 \seealso{
 Useful links:
@@ -18,6 +18,11 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: Dewey Dunnington \email{dewey@dunnington.ca} (\href{https://orcid.org/0000-0002-9415-4582}{ORCID})
+
+Authors:
+\itemize{
+  \item Apache Arrow \email{dev@arrow.apache.org} [copyright holder]
+}
 
 }
 \keyword{internal}
