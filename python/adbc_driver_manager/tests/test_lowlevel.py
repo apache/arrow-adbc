@@ -254,3 +254,24 @@ def test_autocommit(sqlite):
         handle, _ = stmt.execute_query()
         table = _import(handle).read_all()
         assert table == pyarrow.Table.from_batches([data])
+
+
+@pytest.mark.sqlite
+def test_child_tracking(sqlite):
+    with adbc_driver_manager.AdbcDatabase(driver="adbc_driver_sqlite") as db:
+        with adbc_driver_manager.AdbcConnection(db) as conn:
+            with adbc_driver_manager.AdbcStatement(conn):
+                with pytest.raises(
+                    RuntimeError,
+                    match="Cannot close AdbcDatabase with open AdbcConnection",
+                ):
+                    db.close()
+                with pytest.raises(
+                    RuntimeError,
+                    match="Cannot close AdbcConnection with open AdbcStatement",
+                ):
+                    conn.close()
+            with pytest.raises(
+                RuntimeError, match="Cannot close AdbcDatabase with open AdbcConnection"
+            ):
+                db.close()
