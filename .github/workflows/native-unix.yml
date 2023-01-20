@@ -485,12 +485,12 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
-      
+
       - name: Copy ADBC components into the package
         run: |
           cd r/${{ matrix.config.pkg }}
           bash configure
-      
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           pak-version: devel
