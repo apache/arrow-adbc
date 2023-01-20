@@ -494,7 +494,7 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           pak-version: devel
-          extra-packages: any::rcmdcheck, any::apache/arrow-nanoarrow/r
+          extra-packages: any::rcmdcheck, apache/arrow-nanoarrow/r
           needs: check
           working-directory: r/${{ matrix.config.pkg }}
 
