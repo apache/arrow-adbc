@@ -186,7 +186,7 @@ static AdbcStatusCode MonkeyStatementBind(struct AdbcStatement* statement,
                                           struct ArrowSchema* schema,
                                           struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
-}
+} // NOLINT(whitespace/indent)
 
 static AdbcStatusCode MonkeyStatementBindStream(struct AdbcStatement* statement,
                                                 struct ArrowArrayStream* stream,
@@ -200,7 +200,7 @@ static AdbcStatusCode MonkeyStatementExecutePartitions(struct AdbcStatement* sta
                                                        int64_t* rows_affected,
                                                        struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
-}
+} // NOLINT(whitespace/indent)
 
 static AdbcStatusCode MonkeyStatementExecuteQuery(struct AdbcStatement* statement,
                                                   struct ArrowArrayStream* out,
