@@ -67,7 +67,7 @@ function build_drivers {
     "${VCPKG_ROOT}/vcpkg" install sqlite3 \
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
-
+    
     echo "=== Building driver/flightsql ==="
     mkdir -p ${build_dir}/driver/flightsql
     pushd ${build_dir}/driver/flightsql
@@ -83,6 +83,8 @@ function build_drivers {
         ${CMAKE_ARGUMENTS} \
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
+        -DCMAKE_C_COMPILER=$(which gcc) \
+        -DCMAKE_CXX_COMPILER=$(which g++) \
         ${source_dir}/c/driver/flightsql
     cmake --build . --target install --verbose -j
     popd

@@ -44,7 +44,7 @@ services:
     image: ${ARCH}/python:${PYTHON}
     volumes:
       - .:/adbc:delegated
-    command: /adbc/ci/scripts/python_sdist_build.sh /adbc
+    command: "/bin/bash -c 'git config --global --add safe.directory /adbc && source /adbc/ci/scripts/python_sdist_build.sh /adbc'"
 
   python-sdist-test:
     image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
@@ -52,7 +52,7 @@ services:
       - python-wheel-manylinux  # shared image
     volumes:
       - .:/adbc:delegated
-    command: "'/adbc/ci/scripts/python_sdist_test.sh ${ARCH} /adbc'"
+    command: "'git config --global --add safe.directory /adbc && source /adbc/ci/scripts/python_sdist_test.sh ${ARCH} /adbc'"
 
   ############################ Python wheels ##################################
 
