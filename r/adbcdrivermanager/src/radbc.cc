@@ -9,9 +9,7 @@
 
 static AdbcError global_error_;
 
-static void adbc_global_error_init(void) {
-  memset(&global_error_, 0, sizeof(AdbcError));
-}
+static void adbc_global_error_init(void) { memset(&global_error_, 0, sizeof(AdbcError)); }
 
 static void adbc_global_error_reset(void) {
   if (global_error_.release != nullptr) {
@@ -113,7 +111,6 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
 
   return database_xptr;
 }
-
 
 extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
                                        SEXP error_xptr) {
