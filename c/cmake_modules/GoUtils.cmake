@@ -18,26 +18,6 @@
 find_program(GO_BIN "go" REQUIRED)
 message(STATUS "Detecting Go executable: Found ${GO_BIN}")
 
-function(install_cmake_package PACKAGE_NAME EXPORT_NAME)
-  set(CONFIG_CMAKE "${PACKAGE_NAME}Config.cmake")
-  set(BUILT_CONFIG_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_CMAKE}")
-  configure_package_config_file("${CONFIG_CMAKE}.in" "${BUILT_CONFIG_CMAKE}"
-                                INSTALL_DESTINATION "${ARROW_CMAKE_DIR}/${PACKAGE_NAME}")
-  set(CONFIG_VERSION_CMAKE "${PACKAGE_NAME}ConfigVersion.cmake")
-  set(BUILT_CONFIG_VERSION_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_VERSION_CMAKE}")
-  write_basic_package_version_file("${BUILT_CONFIG_VERSION_CMAKE}"
-                                   COMPATIBILITY SameMajorVersion)
-  set(INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PACKAGE_NAME}")
-  install(FILES "${BUILT_CONFIG_CMAKE}" "${BUILT_CONFIG_VERSION_CMAKE}"
-          DESTINATION "${INSTALL_CMAKEDIR}")
-  set(TARGETS_CMAKE "${PACKAGE_NAME}Targets.cmake")
-  install(EXPORT ${EXPORT_NAME}
-          DESTINATION "${INSTALL_CMAKEDIR}"
-          NAMESPACE "${PACKAGE_NAME}::"
-          FILE "${TARGETS_CMAKE}"
-          EXPORT_LINK_INTERFACE_LIBRARIES)
-endfunction()
-
 function(add_go_lib GO_MOD_DIR GO_LIBNAME)
   set(options)
   set(one_value_args
