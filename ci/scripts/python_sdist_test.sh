@@ -21,14 +21,18 @@ set -e
 set -x
 set -o pipefail
 
-if [ "$#" -ne 2 ]; then
-  echo "Usage: $0 <arch> <adbc-src-dir>"
+if [ "$#" -lt 2 ]; then
+  echo "Usage: $0 <arch> <adbc-src-dir> <adbc-build-dir>"
   exit 1
 fi
 
 arch=${1}
 source_dir=${2}
-build_dir="${source_dir}/build"
+if [ "$#" -ge 3 ]; then
+    build_dir=${3}
+else
+    build_dir="${source_dir}/build"
+fi
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 source "${script_dir}/python_util.sh"
