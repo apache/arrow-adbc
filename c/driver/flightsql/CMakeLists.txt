@@ -22,7 +22,9 @@ include(AdbcDefines)
 include(BuildUtils)
 include(GoUtils)
 
-project(adbc_driver_flightsql VERSION "${ADBC_BASE_VERSION}")
+project(adbc_driver_flightsql
+        VERSION "${ADBC_BASE_VERSION}"
+        LANGUAGES C CXX)
 include(CTest)
 
 set(LDFLAGS "$<$<CONFIG:Release>:-s> $<$<CONFIG:Release>:-w>")

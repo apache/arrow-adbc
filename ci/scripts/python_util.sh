@@ -55,6 +55,23 @@ function build_drivers {
         fi
     fi
 
+    echo "=== Building driver/flightsql ==="
+    mkdir -p ${build_dir}/driver/flightsql
+    pushd ${build_dir}/driver/flightsql
+    cmake \
+        -DADBC_BUILD_SHARED=ON \
+        -DADBC_BUILD_STATIC=OFF \
+        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_INSTALL_PREFIX=${build_dir} \
+        -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
+        ${CMAKE_ARGUMENTS} \
+        ${source_dir}/c/driver/flightsql
+    cmake --build . --target install --verbose -j
+    popd
+
+    echo "=== Setup VCPKG ==="
+
     pushd "${VCPKG_ROOT}"
     # XXX: patch an odd issue where the path of some file is inconsistent between builds
     patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-inconsistent-path.patch" || true
@@ -84,25 +101,6 @@ function build_drivers {
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
         ${source_dir}/c/driver/postgresql
-    cmake --build . --target install --verbose -j
-    popd
-
-    echo "=== Building driver/flightsql ==="
-    mkdir -p ${build_dir}/driver/flightsql
-    pushd ${build_dir}/driver/flightsql
-    cmake \
-        -G ${CMAKE_GENERATOR} \
-        -DADBC_BUILD_SHARED=ON \
-        -DADBC_BUILD_STATIC=OFF \
-        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_INSTALL_PREFIX=${build_dir} \
-        -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
-        -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
-        ${CMAKE_ARGUMENTS} \
-        -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
-        -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
-        ${source_dir}/c/driver/flightsql
     cmake --build . --target install --verbose -j
     popd
 
