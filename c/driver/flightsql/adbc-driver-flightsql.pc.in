@@ -19,7 +19,7 @@ prefix=@CMAKE_INSTALL_PREFIX@
 libdir=@ADBC_PKG_CONFIG_LIBDIR@
 
 Name: Apache Arrow Database Connectivity (ADBC) Flight SQL driver
-Description: The ADBC FlightSQL driver provides an ADBC driver for Flight SQL.
+Description: The ADBC Flight SQL driver provides an ADBC driver for Flight SQL.
 URL: https://github.com/apache/arrow-adbc
 Version: @ADBC_VERSION@
 Libs: -L${libdir} -ladbc_driver_flightsql
