@@ -15,25 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# All of the following environment variables are required to set default values
-# for the parameters in docker-compose.yml.
+ARG GO
+FROM golang:${GO}
 
-# Default repository to pull and push images from
-REPO=apache/arrow-dev
+ARG ARROW_MAJOR_VERSION
 
-# different architecture notations
-ARCH=amd64
-ARCH_ALIAS=x86_64
-ARCH_SHORT=amd64
+RUN go install github.com/apache/arrow/go/v${ARROW_MAJOR_VERSION}/arrow/flight/flightsql/example/cmd/sqlite_flightsql_server@latest
+EXPOSE 8080
 
-# Default versions for various dependencies
-JDK=8
-MANYLINUX=2014
-MAVEN=3.5.4
-PYTHON=3.10
-GO=1.19.5
-ARROW_MAJOR_VERSION=11
-
-# Used through docker-compose.yml and serves as the default version for the
-# ci/scripts/install_vcpkg.sh script.
-VCPKG="2871ddd918cecb9cb642bcb9c56897f397283192"
+ENTRYPOINT /go/bin/sqlite_flightsql_server -port 8080
