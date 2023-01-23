@@ -40,6 +40,8 @@ services:
       args:
         GO: ${GO}
         ARROW_MAJOR_VERSION: ${ARROW_MAJOR_VERSION}        
+    ports:
+      - 8080:8080
 
   ############################ Java JARs ######################################
 
