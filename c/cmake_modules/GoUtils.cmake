@@ -77,11 +77,19 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     endif()
 
     set(LIBOUT_SHARED "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME_SHARED}")
+    set(GO_ENV_VARS "CGO_ENABLED=1")
+
+    if(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
+      list(APPEND GO_ENV_VARS "GOARCH=amd64")
+    elseif(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+      list(APPEND GO_ENV_VARS "GOARCH=arm64")
+    endif()
 
     add_custom_command(OUTPUT "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
                        WORKING_DIRECTORY ${GO_MOD_DIR}
                        DEPENDS ${ARG_SOURCES}
-                       COMMAND ${GO_BIN} build "${GO_BUILD_TAGS}" -o
+                       COMMAND ${CMAKE_COMMAND} -E env "${GO_ENV_VARS}" ${GO_BIN} build
+                               "${GO_BUILD_TAGS}" -o
                                "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
                                -buildmode=c-shared "${GO_LDFLAGS}" .
                        COMMAND ${CMAKE_COMMAND} -E remove -f
