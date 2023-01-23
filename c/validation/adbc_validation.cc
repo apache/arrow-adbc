@@ -1189,7 +1189,8 @@ void StatementTest::TestSqlPrepareGetParameterSchema() {
   Handle<struct ArrowSchema> schema;
   // if schema cannot be determined we should get NOT IMPLEMENTED returned
   ASSERT_THAT(AdbcStatementGetParameterSchema(&statement, &schema.value, &error),
-              ::testing::AnyOf(IsOkStatus(&error), IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error)));
+              ::testing::AnyOf(IsOkStatus(&error),
+                               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error)));
   if (schema->release != nullptr) {
     ASSERT_EQ(2, schema->n_children);
   }
@@ -1269,9 +1270,9 @@ void StatementTest::TestSqlPrepareSelectParams() {
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_EQ(2, reader.schema->n_children);
 
-  const std::vector<std::optional<int32_t>> expected_int32 {42, -42, std::nullopt};
-  const std::vector<std::optional<int64_t>> expected_int64 {42, -42, std::nullopt};
-  const std::vector<std::optional<std::string>> expected_string { "", std::nullopt, "bar"};
+  const std::vector<std::optional<int32_t>> expected_int32{42, -42, std::nullopt};
+  const std::vector<std::optional<int64_t>> expected_int64{42, -42, std::nullopt};
+  const std::vector<std::optional<std::string>> expected_string{"", std::nullopt, "bar"};
 
   int64_t nrows = 0;
   while (nrows < 3) {
@@ -1284,18 +1285,21 @@ void StatementTest::TestSqlPrepareSelectParams() {
 
     switch (reader.fields[0].data_type) {
       case NANOARROW_TYPE_INT32:
-        ASSERT_NO_FATAL_FAILURE(
-            CompareArray<int32_t>(reader.array_view->children[0], {expected_int32.begin() + start, expected_int32.begin() + end}));
+        ASSERT_NO_FATAL_FAILURE(CompareArray<int32_t>(
+            reader.array_view->children[0],
+            {expected_int32.begin() + start, expected_int32.begin() + end}));
         break;
       case NANOARROW_TYPE_INT64:
-        ASSERT_NO_FATAL_FAILURE(
-            CompareArray<int64_t>(reader.array_view->children[0], {expected_int64.begin() + start, expected_int64.begin() + end}));
+        ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(
+            reader.array_view->children[0],
+            {expected_int64.begin() + start, expected_int64.begin() + end}));
         break;
       default:
         FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
     }
-    ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[1],
-                                                      {expected_string.begin() + start, expected_string.begin() + end}));
+    ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(
+        reader.array_view->children[1],
+        {expected_string.begin() + start, expected_string.begin() + end}));
     nrows += reader.array->length;
   }
   ASSERT_EQ(3, nrows);
