@@ -289,11 +289,11 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_FLIGHTSQL: "1"
         run: |
-          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"  
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Start sqlite server
         shell: bash -l {0}
         run: |
-          docker-compose up -d golang-sqlite-flightsql 
+          docker-compose up -d golang-sqlite-flightsql
       - name: Test FlightSQL Driver against Dremio and SQLite
         shell: bash -l {0}
         env:

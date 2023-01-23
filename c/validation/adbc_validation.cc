@@ -1132,7 +1132,7 @@ void StatementTest::TestSqlPartitionedInts() {
   ASSERT_EQ(1, partitions->num_partitions);
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
   // it's allowed for Executepartitions to return a nil schema if one is not available
-  if (schema->release != nullptr) {    
+  if (schema->release != nullptr) {
     ASSERT_EQ(1, schema->n_children);
   }
 
@@ -1277,7 +1277,7 @@ void StatementTest::TestSqlPrepareSelectParams() {
   while (nrows < 3) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_EQ(2, reader.array->n_children);  
+    ASSERT_EQ(2, reader.array->n_children);
 
     auto start = nrows;
     auto end = nrows + reader.array->length;
