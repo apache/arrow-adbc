@@ -38,6 +38,21 @@ services:
       - .:/adbc:delegated
     command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
 
+  ############################ Python conda ##################################
+
+  # Must be run as docker-compose run -e HOST_USER_ID=$(id -u) python-conda
+  python-conda:
+    image: condaforge/linux-anvil-cos7-x86_64
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c 'conda config --remove channels defaults && /adbc/ci/scripts/python_conda_build.sh /adbc ${ARCH_CONDA_FORGE}.yaml /adbc/build'"
+
+  python-conda-test:
+    image: condaforge/mambaforge
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c '/adbc/ci/scripts/python_conda_test.sh /adbc /adbc/build'"
+
   ############################ Python sdist ##################################
 
   python-sdist:

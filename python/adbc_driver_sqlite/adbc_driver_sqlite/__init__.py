@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import functools
 import importlib.resources
 import typing
 
@@ -27,8 +28,22 @@ __all__ = ["connect", "__version__"]
 
 def connect(uri: typing.Optional[str] = None) -> adbc_driver_manager.AdbcDatabase:
     """Create a low level ADBC connection to SQLite."""
+    if uri is None:
+        return adbc_driver_manager.AdbcDatabase(driver=_driver_path())
+    return adbc_driver_manager.AdbcDatabase(driver=_driver_path(), uri=uri)
+
+
+@functools.cache
+def _driver_path() -> str:
     root = importlib.resources.files(__package__)
     entrypoint = root.joinpath("libadbc_driver_sqlite.so")
-    if uri is None:
-        return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint))
-    return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)
+    if entrypoint.is_file():
+        return str(entrypoint)
+    is_conda = root.joinpath(".is_conda")
+    if is_conda.is_file():
+        with is_conda.open() as source:
+            return source.read().strip()
+    raise RuntimeError(f"Could not find driver, was {__package__} properly installed?")
+
+
+_driver_path()

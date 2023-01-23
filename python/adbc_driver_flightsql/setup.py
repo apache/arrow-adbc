@@ -33,6 +33,7 @@ library = os.environ.get("ADBC_FLIGHTSQL_LIBRARY")
 target = source_root.joinpath(
     "./adbc_driver_flightsql/libadbc_driver_flightsql.so"
 ).resolve()
+is_conda = os.environ.get("_ADBC_IS_CONDA", "").strip()
 if not library:
     if os.environ.get("_ADBC_IS_SDIST", "").strip().lower() in ("1", "true"):
         print("Building sdist, not requiring ADBC_FLIGHTSQL_LIBRARY")
@@ -40,6 +41,12 @@ if not library:
         print("Driver already exists (but may be stale?), continuing")
     else:
         raise ValueError("Must provide ADBC_FLIGHTSQL_LIBRARY")
+elif is_conda:
+    print("Building Conda package")
+    # The name of the library is written to a marker file in the package.  At
+    # runtime, __init__.py will load this and use it as the library to dlopen.
+    with source_root.joinpath("./adbc_driver_flightsql/.is_conda").open("w") as sink:
+        sink.write("adbc_driver_flightsql")
 else:
     shutil.copy(library, target)
 

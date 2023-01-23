@@ -15,7 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# setuptools manifest
-
-include adbc_driver_sqlite/libadbc_driver_sqlite.so
-include adbc_driver_sqlite/.is_conda
+build_platform:
+  linux_aarch64: linux_64
+  linux_ppc64le: linux_64
+  osx_arm64: osx_64
+conda_forge_output_validation: true
+github:
+  branch_name: main
+  tooling_branch_name: main
+recipe_dir: .
+skip_render:
+  - .gitignore
+  - LICENSE.txt
+  - README.md
+test_on_native_only: true

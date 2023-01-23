@@ -18,3 +18,4 @@
 # setuptools manifest
 
 include adbc_driver_postgresql/libadbc_driver_postgresql.so
+include adbc_driver_postgresql/.is_conda

@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import functools
 import importlib.resources
 import typing
 
@@ -38,8 +39,22 @@ def connect(
     db_kwargs : dict, optional
         Initial database connection parameters.
     """
+    return adbc_driver_manager.AdbcDatabase(
+        driver=_driver_path(), uri=uri, **(db_kwargs or {})
+    )
+
+
+@functools.cache
+def _driver_path() -> str:
     root = importlib.resources.files(__package__)
     entrypoint = root.joinpath("libadbc_driver_flightsql.so")
-    return adbc_driver_manager.AdbcDatabase(
-        driver=str(entrypoint), uri=uri, **(db_kwargs or {})
-    )
+    if entrypoint.is_file():
+        return str(entrypoint)
+    is_conda = root.joinpath(".is_conda")
+    if is_conda.is_file():
+        with is_conda.open() as source:
+            return source.read().strip()
+    raise RuntimeError(f"Could not find driver, was {__package__} properly installed?")
+
+
+_driver_path()

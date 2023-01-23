@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,7 +16,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# setuptools manifest
+set -e
+set -o pipefail
+set -u
+set -x
 
-include adbc_driver_sqlite/libadbc_driver_sqlite.so
-include adbc_driver_sqlite/.is_conda
+: ${CHANNEL:="arrow-adbc-nightlies"}
+
+main() {
+    anaconda -t "${ANACONDA_API_TOKEN}" \
+             upload \
+             --user "${CHANNEL}" \
+             "$@"
+}
+
+main "$@"

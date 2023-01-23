@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import functools
 import importlib.resources
 
 import adbc_driver_manager
@@ -26,6 +27,20 @@ __all__ = ["connect", "__version__"]
 
 def connect(uri: str) -> adbc_driver_manager.AdbcDatabase:
     """Create a low level ADBC connection to PostgreSQL."""
+    return adbc_driver_manager.AdbcDatabase(driver=_driver_path(), uri=uri)
+
+
+@functools.cache
+def _driver_path() -> str:
     root = importlib.resources.files(__package__)
     entrypoint = root.joinpath("libadbc_driver_postgresql.so")
-    return adbc_driver_manager.AdbcDatabase(driver=str(entrypoint), uri=uri)
+    if entrypoint.is_file():
+        return str(entrypoint)
+    is_conda = root.joinpath(".is_conda")
+    if is_conda.is_file():
+        with is_conda.open() as source:
+            return source.read().strip()
+    raise RuntimeError(f"Could not find driver, was {__package__} properly installed?")
+
+
+_driver_path()
