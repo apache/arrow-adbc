@@ -34,6 +34,7 @@ package flightsql
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/url"
@@ -57,8 +58,11 @@ import (
 )
 
 const (
-	OptionSSLSkipVerify = "adbc.flight.sql.client_option.tls_skip_verify"
-	OptionSSLCertFile   = "adbc.flight.sql.client_option.tls_root_certs"
+	OptionMTLSCertChain       = "adbc.flight.sql.client_option.mtls_cert_chain"
+	OptionMTLSPrivateKey      = "adbc.flight.sql.client_option.mtls_private_key"
+	OptionSSLOverrideHostname = "adbc.flight.sql.client_option.tls_override_hostname"
+	OptionSSLSkipVerify       = "adbc.flight.sql.client_option.tls_skip_verify"
+	OptionSSLRootCerts        = "adbc.flight.sql.client_option.tls_root_certs"
 
 	infoDriverName = "ADBC Flight SQL Driver - Go"
 )
@@ -86,6 +90,7 @@ type Driver struct {
 }
 
 func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	opts = maps.Clone(opts)
 	uri, ok := opts[adbc.OptionKeyURI]
 	if !ok {
 		return nil, adbc.Error{
@@ -93,6 +98,7 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 			Code: adbc.StatusInvalidArgument,
 		}
 	}
+	delete(opts, adbc.OptionKeyURI)
 
 	db := &database{alloc: d.Alloc}
 	if db.alloc == nil {
@@ -116,47 +122,81 @@ type database struct {
 }
 
 func (d *database) SetOptions(cnOptions map[string]string) error {
-	if d.uri.Scheme == "grpc+tls" {
-		d.creds = credentials.NewTLS(&tls.Config{})
-	} else {
-		d.creds = insecure.NewCredentials()
-	}
+	var tlsConfig tls.Config
 
-	if val, ok := cnOptions[OptionSSLSkipVerify]; ok && val == adbc.OptionValueEnabled {
-		if d.uri.Scheme != "grpc+tls" {
-			return adbc.Error{
-				Msg:  "Connection is not TLS-enabled",
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		d.creds = credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
-	}
-
-	// option specified path to certificate file
-	if cert, ok := cnOptions[OptionSSLCertFile]; ok {
-		if d.uri.Scheme != "grpc+tls" {
-			return adbc.Error{
-				Msg:  "Connection is not TLS-enabled",
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-
-		c, err := credentials.NewClientTLSFromFile(cert, "")
+	mtlsCert := cnOptions[OptionMTLSCertChain]
+	mtlsKey := cnOptions[OptionMTLSPrivateKey]
+	if mtlsCert != "" && mtlsKey != "" {
+		cert, err := tls.X509KeyPair([]byte(mtlsCert), []byte(mtlsKey))
 		if err != nil {
 			return adbc.Error{
-				Msg:  "invalid SSL certificate passed",
+				Msg:  fmt.Sprintf("Invalid mTLS certificate: %#v", err),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		d.creds = c
+		tlsConfig.Certificates = []tls.Certificate{cert}
+		delete(cnOptions, OptionMTLSCertChain)
+		delete(cnOptions, OptionMTLSPrivateKey)
+	} else if mtlsCert != "" {
+		return adbc.Error{
+			Msg:  fmt.Sprintf("Must provide both '%s' and '%s', only provided '%s'", OptionMTLSCertChain, OptionMTLSPrivateKey, OptionMTLSCertChain),
+			Code: adbc.StatusInvalidArgument,
+		}
+	} else if mtlsKey != "" {
+		return adbc.Error{
+			Msg:  fmt.Sprintf("Must provide both '%s' and '%s', only provided '%s'", OptionMTLSCertChain, OptionMTLSPrivateKey, OptionMTLSPrivateKey),
+			Code: adbc.StatusInvalidArgument,
+		}
 	}
+
+	if hostname, ok := cnOptions[OptionSSLOverrideHostname]; ok {
+		tlsConfig.ServerName = hostname
+		delete(cnOptions, OptionSSLOverrideHostname)
+	}
+
+	if val, ok := cnOptions[OptionSSLSkipVerify]; ok {
+		if val == adbc.OptionValueEnabled {
+			tlsConfig.InsecureSkipVerify = true
+		} else if val == adbc.OptionValueDisabled {
+			tlsConfig.InsecureSkipVerify = false
+		} else {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		delete(cnOptions, OptionSSLSkipVerify)
+	}
+
+	if cert, ok := cnOptions[OptionSSLRootCerts]; ok {
+		cp := x509.NewCertPool()
+		if !cp.AppendCertsFromPEM([]byte(cert)) {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': failed to append certificates", OptionSSLRootCerts),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		tlsConfig.RootCAs = cp
+		delete(cnOptions, OptionSSLRootCerts)
+	}
+
+	d.creds = credentials.NewTLS(&tlsConfig)
 
 	if u, ok := cnOptions[adbc.OptionKeyUsername]; ok {
 		d.user = u
+		delete(cnOptions, adbc.OptionKeyUsername)
 	}
 
 	if p, ok := cnOptions[adbc.OptionKeyPassword]; ok {
 		d.pass = p
+		delete(cnOptions, adbc.OptionKeyPassword)
+	}
+
+	for key := range cnOptions {
+		return adbc.Error{
+			Msg:  fmt.Sprintf("Unknown database option '%s'", key),
+			Code: adbc.StatusInvalidArgument,
+		}
 	}
 
 	return nil
@@ -181,9 +221,13 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 	if err != nil {
 		return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
 	}
+	creds := d.creds
+	if uri.Scheme == "grpc" || uri.Scheme == "grpc+tcp" {
+		creds = insecure.NewCredentials()
+	}
 
 	cl, err := flightsql.NewClient(uri.Host, nil, []flight.ClientMiddleware{
-		flight.CreateClientMiddleware(authMiddle)}, grpc.WithTransportCredentials(d.creds))
+		flight.CreateClientMiddleware(authMiddle)}, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, adbc.Error{
 			Msg:  err.Error(),
@@ -611,15 +655,23 @@ func (c *cnxn) Close() error {
 //
 // A partition can be retrieved by using ExecutePartitions on a statement.
 func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (rdr array.RecordReader, err error) {
-	var endpoint flight.FlightEndpoint
-	if err := proto.Unmarshal(serializedPartition, &endpoint); err != nil {
+	var info flight.FlightInfo
+	if err := proto.Unmarshal(serializedPartition, &info); err != nil {
 		return nil, adbc.Error{
 			Msg:  err.Error(),
 			Code: adbc.StatusInvalidArgument,
 		}
 	}
 
-	rdr, err = doGet(ctx, c.cl, &endpoint, c.clientCache)
+	// The driver only ever returns one endpoint.
+	if len(info.Endpoint) != 1 {
+		return nil, adbc.Error{
+			Msg:  fmt.Sprintf("Invalid partition: expected 1 endpoint, got %d", len(info.Endpoint)),
+			Code: adbc.StatusInvalidArgument,
+		}
+	}
+
+	rdr, err = doGet(ctx, c.cl, info.Endpoint[0], c.clientCache)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
 	}

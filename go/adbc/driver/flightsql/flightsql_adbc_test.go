@@ -36,6 +36,7 @@ import (
 	"github.com/apache/arrow/go/v11/arrow/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 type FlightSQLQuirks struct {
@@ -201,4 +202,130 @@ func TestADBCFlightSQL(t *testing.T) {
 	suite.Run(t, &validation.DatabaseTests{Quirks: q})
 	suite.Run(t, &validation.ConnectionTests{Quirks: q})
 	suite.Run(t, &validation.StatementTests{Quirks: q})
+
+	suite.Run(t, &PartitionTests{Quirks: q})
+	suite.Run(t, &SSLTests{Quirks: q})
+}
+
+// Driver-specific tests
+
+type SSLTests struct {
+	suite.Suite
+
+	Driver adbc.Driver
+	Quirks validation.DriverQuirks
+}
+
+func (suite *SSLTests) SetupTest() {
+	suite.Driver = suite.Quirks.SetupDriver(suite.T())
+}
+
+func (suite *SSLTests) TearDownTest() {
+	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.Driver = nil
+}
+
+func (suite *SSLTests) TestMutualTLS() {
+	// Just checks that the option is accepted - doesn't actually configure TLS
+	options := suite.Quirks.DatabaseOptions()
+
+	options["adbc.flight.sql.client_option.mtls_cert_chain"] = "certs"
+	_, err := suite.Driver.NewDatabase(options)
+	suite.Require().ErrorContains(err, "Must provide both")
+
+	options["adbc.flight.sql.client_option.mtls_private_key"] = "key"
+	_, err = suite.Driver.NewDatabase(options)
+	suite.Require().ErrorContains(err, "Invalid mTLS certificate")
+
+	delete(options, "adbc.flight.sql.client_option.mtls_cert_chain")
+	_, err = suite.Driver.NewDatabase(options)
+	suite.Require().ErrorContains(err, "Must provide both")
+}
+
+func (suite *SSLTests) TestOverrideHostname() {
+	// Just checks that the option is accepted - doesn't actually configure TLS
+	options := suite.Quirks.DatabaseOptions()
+	options["adbc.flight.sql.client_option.tls_override_hostname"] = "hostname"
+	_, err := suite.Driver.NewDatabase(options)
+	suite.Require().NoError(err)
+}
+
+func (suite *SSLTests) TestRootCerts() {
+	// Just checks that the option is accepted - doesn't actually configure TLS
+	options := suite.Quirks.DatabaseOptions()
+	options["adbc.flight.sql.client_option.tls_root_certs"] = "these are not valid certs"
+	_, err := suite.Driver.NewDatabase(options)
+	suite.Require().ErrorContains(err, "Invalid value for database option 'adbc.flight.sql.client_option.tls_root_certs': failed to append certificates")
+}
+
+func (suite *SSLTests) TestSkipVerify() {
+	options := suite.Quirks.DatabaseOptions()
+	options["adbc.flight.sql.client_option.tls_skip_verify"] = "true"
+	_, err := suite.Driver.NewDatabase(options)
+	suite.Require().NoError(err)
+
+	options = suite.Quirks.DatabaseOptions()
+	options["adbc.flight.sql.client_option.tls_skip_verify"] = "false"
+	_, err = suite.Driver.NewDatabase(options)
+	suite.Require().NoError(err)
+
+	options = suite.Quirks.DatabaseOptions()
+	options["adbc.flight.sql.client_option.tls_skip_verify"] = "invalid"
+	_, err = suite.Driver.NewDatabase(options)
+	suite.Require().ErrorContains(err, "Invalid value for database option 'adbc.flight.sql.client_option.tls_skip_verify': 'invalid'")
+}
+
+func (suite *SSLTests) TestUnknownOption() {
+	options := suite.Quirks.DatabaseOptions()
+	options["unknown option"] = "unknown value"
+	_, err := suite.Driver.NewDatabase(options)
+	suite.Require().ErrorContains(err, "Unknown database option 'unknown option'")
+}
+
+type PartitionTests struct {
+	suite.Suite
+
+	Driver adbc.Driver
+	Quirks validation.DriverQuirks
+
+	DB   adbc.Database
+	Cnxn adbc.Connection
+	ctx  context.Context
+}
+
+func (suite *PartitionTests) SetupTest() {
+	suite.Driver = suite.Quirks.SetupDriver(suite.T())
+	var err error
+	suite.DB, err = suite.Driver.NewDatabase(suite.Quirks.DatabaseOptions())
+	suite.Require().NoError(err)
+	suite.ctx = context.Background()
+	suite.Cnxn, err = suite.DB.Open(suite.ctx)
+	suite.Require().NoError(err)
+}
+
+func (suite *PartitionTests) TearDownTest() {
+	suite.Require().NoError(suite.Cnxn.Close())
+	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.Cnxn = nil
+	suite.DB = nil
+	suite.Driver = nil
+}
+
+func (suite *PartitionTests) TestIntrospectPartitions() {
+	stmt, err := suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(stmt.SetSqlQuery("SELECT 42"))
+
+	_, partitions, _, err := stmt.ExecutePartitions(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(uint64(1), partitions.NumPartitions)
+
+	info := &flight.FlightInfo{}
+	suite.Require().NoError(proto.Unmarshal(partitions.PartitionIDs[0], info))
+	suite.Require().Equal(int64(-1), info.TotalBytes)
+	suite.Require().Equal(int64(-1), info.TotalRecords)
+	suite.Require().Equal(1, len(info.Endpoint))
+	suite.Require().Equal(0, len(info.Endpoint[0].Location))
 }
