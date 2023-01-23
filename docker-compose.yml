@@ -48,11 +48,20 @@ services:
 
   python-sdist-test:
     image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
-    depends_on:
-      - python-wheel-manylinux  # shared image
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
+      dockerfile: ci/docker/python-wheel-manylinux.dockerfile
+      args:
+        ARCH: ${ARCH}
+        MANYLINUX: ${MANYLINUX}
+        PYTHON: ${PYTHON}
+        REPO: ${REPO}
+        VCPKG: ${VCPKG}
     volumes:
       - .:/adbc:delegated
-    command: "'git config --global --add safe.directory /adbc && source /adbc/ci/scripts/python_sdist_test.sh ${ARCH} /adbc /adbcbuild'"
+    command: "'git config --global --add safe.directory /adbc && source /adbc/ci/scripts/python_sdist_test.sh ${ARCH} /adbc'"
 
   ############################ Python wheels ##################################
 
