@@ -20,6 +20,7 @@
 """Low-level ADBC API."""
 
 import enum
+import threading
 import typing
 from typing import List, Tuple
 
@@ -389,11 +390,39 @@ cdef class _AdbcHandle:
     """
     Base class for ADBC handles, which are context managers.
     """
+
+    cdef:
+        size_t _open_children
+        object _lock
+        str _child_type
+
+    def __init__(self, str child_type):
+        self._lock = threading.Lock()
+        self._child_type = child_type
+
     def __enter__(self) -> "Self":
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
+
+    cdef _open_child(self):
+        with self._lock:
+            self._open_children += 1
+
+    cdef _close_child(self):
+        with self._lock:
+            if self._open_children == 0:
+                raise RuntimeError(
+                    f"Underflow in closing this {self._child_type}")
+            self._open_children -= 1
+
+    cdef _check_open_children(self):
+        with self._lock:
+            if self._open_children != 0:
+                raise RuntimeError(
+                    f"Cannot close {self.__class__.__name__} "
+                    f"with open {self._child_type}")
 
 
 cdef class ArrowSchemaHandle:
@@ -458,6 +487,7 @@ cdef class AdbcDatabase(_AdbcHandle):
         CAdbcDatabase database
 
     def __init__(self, **kwargs) -> None:
+        super().__init__("AdbcConnection")
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
         cdef const char* c_key
@@ -487,14 +517,16 @@ cdef class AdbcDatabase(_AdbcHandle):
 
     def close(self) -> None:
         """Release the handle to the database."""
-        if self.database.private_data == NULL:
-            return
-
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
-        with nogil:
-            status = AdbcDatabaseRelease(&self.database, &c_error)
-        check_error(status, &c_error)
+        self._check_open_children()
+        with self._lock:
+            if self.database.private_data == NULL:
+                return
+
+            with nogil:
+                status = AdbcDatabaseRelease(&self.database, &c_error)
+            check_error(status, &c_error)
 
 
 cdef class AdbcConnection(_AdbcHandle):
@@ -516,6 +548,7 @@ cdef class AdbcConnection(_AdbcHandle):
         CAdbcConnection connection
 
     def __init__(self, AdbcDatabase database, **kwargs) -> None:
+        super().__init__("AdbcStatement")
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
         cdef const char* c_key
@@ -534,11 +567,17 @@ cdef class AdbcConnection(_AdbcHandle):
             c_key = key
             c_value = value
             status = AdbcConnectionSetOption(&self.connection, c_key, c_value, &c_error)
+            if status != ADBC_STATUS_OK:
+                AdbcConnectionRelease(&self.connection, NULL)
             check_error(status, &c_error)
 
         with nogil:
             status = AdbcConnectionInit(&self.connection, &database.database, &c_error)
+            if status != ADBC_STATUS_OK:
+                AdbcConnectionRelease(&self.connection, NULL)
         check_error(status, &c_error)
+
+        database._open_child()
 
     def commit(self) -> None:
         """Commit the current transaction."""
@@ -719,15 +758,17 @@ cdef class AdbcConnection(_AdbcHandle):
 
     def close(self) -> None:
         """Release the handle to the connection."""
-        if self.connection.private_data == NULL:
-            return
-
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
+        self._check_open_children()
+        with self._lock:
+            if self.connection.private_data == NULL:
+                return
 
-        with nogil:
-            status = AdbcConnectionRelease(&self.connection, &c_error)
-        check_error(status, &c_error)
+            with nogil:
+                status = AdbcConnectionRelease(&self.connection, &c_error)
+            check_error(status, &c_error)
+            self.database._close_child()
 
 
 cdef class AdbcStatement(_AdbcHandle):
@@ -743,10 +784,13 @@ cdef class AdbcStatement(_AdbcHandle):
         The connection to create the statement for.
     """
     cdef:
+        AdbcConnection connection
         CAdbcStatement statement
 
     def __init__(self, AdbcConnection connection) -> None:
+        super().__init__("(no child type)")
         cdef CAdbcError c_error = empty_error()
+        self.connection = connection
         memset(&self.statement, 0, cython.sizeof(CAdbcStatement))
 
         with nogil:
@@ -755,6 +799,8 @@ cdef class AdbcStatement(_AdbcHandle):
                 &self.statement,
                 &c_error)
         check_error(status, &c_error)
+
+        connection._open_child()
 
     def bind(self, data, schema) -> None:
         """
@@ -819,14 +865,16 @@ cdef class AdbcStatement(_AdbcHandle):
         check_error(status, &c_error)
 
     def close(self) -> None:
-        if self.statement.private_data == NULL:
-            return
-
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
-        with nogil:
-            status = AdbcStatementRelease(&self.statement, &c_error)
-        check_error(status, &c_error)
+        self.connection._close_child()
+        with self._lock:
+            if self.statement.private_data == NULL:
+                return
+
+            with nogil:
+                status = AdbcStatementRelease(&self.statement, &c_error)
+            check_error(status, &c_error)
 
     def execute_query(self) -> Tuple[ArrowArrayStreamHandle, int]:
         """
