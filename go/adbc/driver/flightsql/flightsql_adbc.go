@@ -564,20 +564,24 @@ func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 // only be used if autocommit is disabled.
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
+// When not supported, the convention is that it should act as if autocommit
+// is enabled and return INVALID_STATE errors.
 func (c *cnxn) Commit(_ context.Context) error {
 	return adbc.Error{
 		Msg:  "[Flight SQL] Transaction methods are not implemented yet",
-		Code: adbc.StatusNotImplemented}
+		Code: adbc.StatusInvalidState}
 }
 
 // Rollback rolls back any pending transactions. Only used if autocommit
 // is disabled.
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
+// When not supported, the convention is that it should act as if autocommit
+// is enabled and return INVALID_STATE errors.
 func (c *cnxn) Rollback(_ context.Context) error {
 	return adbc.Error{
 		Msg:  "[Flight SQL] Transaction methods are not implemented yet",
-		Code: adbc.StatusNotImplemented}
+		Code: adbc.StatusInvalidState}
 }
 
 // NewStatement initializes a new statement object tied to this connection

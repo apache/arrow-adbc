@@ -22,6 +22,7 @@ set -e
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
+: ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 
 test_subproject() {
     local -r build_dir="${1}"
@@ -59,6 +60,10 @@ main() {
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
         test_subproject "${build_dir}" driver/sqlite
+    fi
+
+    if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
+        test_subproject "${build_dir}" driver/flightsql
     fi
 }
 

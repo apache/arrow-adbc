@@ -141,10 +141,6 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 	defer cnxn.Close()
 
 	expectedCode := adbc.StatusInvalidState
-	if !c.Quirks.SupportsTransactions() {
-		expectedCode = adbc.StatusNotImplemented
-	}
-
 	var adbcError adbc.Error
 	err := cnxn.Commit(ctx)
 	c.ErrorAs(err, &adbcError)

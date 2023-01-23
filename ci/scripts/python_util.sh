@@ -35,13 +35,13 @@ function build_drivers {
     export VCPKG_OVERLAY_TRIPLETS="${source_dir}/ci/vcpkg/triplets/"
 
     if [[ $(uname) == "Linux" ]]; then
-        export ADBC_FLIGHTSQL_LIBRARY=${source_dir}/go/adbc/pkg/libadbc_driver_flightsql.so
+        export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.so
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
         export CMAKE_ARGUMENTS=""
     else # macOS
-        export ADBC_FLIGHTSQL_LIBRARY=${source_dir}/go/adbc/pkg/libadbc_driver_flightsql.dylib
+        export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.dylib
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
@@ -55,6 +55,23 @@ function build_drivers {
         fi
     fi
 
+    echo "=== Building driver/flightsql ==="
+    mkdir -p ${build_dir}/driver/flightsql
+    pushd ${build_dir}/driver/flightsql
+    cmake \
+        -DADBC_BUILD_SHARED=ON \
+        -DADBC_BUILD_STATIC=OFF \
+        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_INSTALL_PREFIX=${build_dir} \
+        -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
+        ${CMAKE_ARGUMENTS} \
+        ${source_dir}/c/driver/flightsql
+    cmake --build . --target install --verbose -j
+    popd
+
+    echo "=== Setup VCPKG ==="
+
     pushd "${VCPKG_ROOT}"
     # XXX: patch an odd issue where the path of some file is inconsistent between builds
     patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-inconsistent-path.patch" || true
@@ -67,9 +84,6 @@ function build_drivers {
     "${VCPKG_ROOT}/vcpkg" install sqlite3 \
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
-
-    echo "=== Building driver/flightsql ==="
-    make -C ${source_dir}/go/adbc/pkg all
 
     echo "=== Building driver/postgresql ==="
     mkdir -p ${build_dir}/driver/postgresql

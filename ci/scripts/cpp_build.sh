@@ -22,6 +22,7 @@ set -e
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
+: ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 
 : ${ADBC_BUILD_SHARED:=ON}
 : ${ADBC_BUILD_STATIC:=OFF}
@@ -82,6 +83,10 @@ main() {
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
         build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver/sqlite
+    fi
+
+    if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
+        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver/flightsql
     fi
 }
 

@@ -173,6 +173,9 @@ void ConnectionTest::TestAutocommitDefault() {
 void ConnectionTest::TestAutocommitToggle() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  if (!quirks()->supports_transactions()) {
+    GTEST_SKIP();
+  }
 
   // It is OK to enable autocommit when it is already enabled
   ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
@@ -217,6 +220,10 @@ void IngestSampleTable(struct AdbcConnection* connection, struct AdbcError* erro
 void ConnectionTest::TestMetadataGetInfo() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (!quirks()->supports_get_sql_info()) {
+    GTEST_SKIP();
+  }
 
   StreamReader reader;
   std::vector<uint32_t> info = {
@@ -275,6 +282,9 @@ void ConnectionTest::TestMetadataGetInfo() {
 }
 
 void ConnectionTest::TestMetadataGetTableSchema() {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
@@ -376,6 +386,10 @@ void ConnectionTest::TestMetadataGetObjectsCatalogs() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
   {
     StreamReader reader;
     ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr,
@@ -419,6 +433,10 @@ void ConnectionTest::TestMetadataGetObjectsCatalogs() {
 void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
 
   {
     // Expect at least one catalog, at least one schema, and tables should be null
@@ -491,6 +509,10 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
 void ConnectionTest::TestMetadataGetObjectsTables() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
@@ -567,6 +589,10 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
 void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
@@ -634,6 +660,9 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
 }
 
 void ConnectionTest::TestMetadataGetObjectsColumns() {
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
   // TODO: test could be more robust if we ingested a few tables
   ASSERT_EQ(ADBC_OBJECT_DEPTH_COLUMNS, ADBC_OBJECT_DEPTH_ALL);
 
@@ -800,6 +829,10 @@ void StatementTest::TestRelease() {
 }
 
 void StatementTest::TestSqlIngestInts() {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
 
@@ -851,6 +884,10 @@ void StatementTest::TestSqlIngestInts() {
 }
 
 void StatementTest::TestSqlIngestAppend() {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+
   // Ingest
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
@@ -926,6 +963,10 @@ void StatementTest::TestSqlIngestAppend() {
 }
 
 void StatementTest::TestSqlIngestErrors() {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+
   // Ingest without bind
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
@@ -1002,6 +1043,10 @@ void StatementTest::TestSqlIngestErrors() {
 }
 
 void StatementTest::TestSqlIngestMultipleConnections() {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
 
@@ -1077,7 +1122,7 @@ void StatementTest::TestSqlPartitionedInts() {
     ASSERT_THAT(AdbcStatementExecutePartitions(&statement, &schema.value,
                                                &partitions.value, &rows_affected, &error),
                 IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
-    return;
+    GTEST_SKIP();
   }
 
   ASSERT_THAT(AdbcStatementExecutePartitions(&statement, &schema.value, &partitions.value,
@@ -1125,6 +1170,10 @@ void StatementTest::TestSqlPartitionedInts() {
 }
 
 void StatementTest::TestSqlPrepareGetParameterSchema() {
+  if (!quirks()->supports_dynamic_parameter_binding()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   std::string query = "SELECT ";
   query += quirks()->BindParameter(0);
@@ -1178,6 +1227,10 @@ void StatementTest::TestSqlPrepareSelectNoParams() {
 }
 
 void StatementTest::TestSqlPrepareSelectParams() {
+  if (!quirks()->supports_dynamic_parameter_binding()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   std::string query = "SELECT ";
   query += quirks()->BindParameter(0);
@@ -1235,6 +1288,10 @@ void StatementTest::TestSqlPrepareSelectParams() {
 }
 
 void StatementTest::TestSqlPrepareUpdate() {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
@@ -1309,6 +1366,10 @@ void StatementTest::TestSqlPrepareUpdateNoParams() {
 }
 
 void StatementTest::TestSqlPrepareUpdateStream() {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
@@ -1406,6 +1467,10 @@ void StatementTest::TestSqlPrepareErrorNoQuery() {
 // TODO: need test of overlapping reads - make sure behavior is as described
 
 void StatementTest::TestSqlPrepareErrorParamCountMismatch() {
+  if (!quirks()->supports_dynamic_parameter_binding()) {
+    GTEST_SKIP();
+  }
+
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
@@ -1478,7 +1543,7 @@ void StatementTest::TestSqlQueryInts() {
 
 void StatementTest::TestSqlQueryFloats() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT CAST(1.0 AS REAL)", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT CAST(1.0 AS FLOAT)", &error),
               IsOkStatus(&error));
 
   {
@@ -1571,6 +1636,10 @@ void StatementTest::TestSqlQueryErrors() {
 }
 
 void StatementTest::TestTransactions() {
+  if (!quirks()->supports_transactions()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
 

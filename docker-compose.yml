@@ -44,7 +44,7 @@ services:
     image: ${ARCH}/python:${PYTHON}
     volumes:
       - .:/adbc:delegated
-    command: /adbc/ci/scripts/python_sdist_build.sh /adbc
+    command: "/bin/bash -c 'git config --global --add safe.directory /adbc && source /adbc/ci/scripts/python_sdist_build.sh /adbc'"
 
   python-sdist-test:
     image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
@@ -52,7 +52,7 @@ services:
       - python-wheel-manylinux  # shared image
     volumes:
       - .:/adbc:delegated
-    command: "'/adbc/ci/scripts/python_sdist_test.sh ${ARCH} /adbc'"
+    command: "'git config --global --add safe.directory /adbc && source /adbc/ci/scripts/python_sdist_test.sh ${ARCH} /adbc /adbcbuild'"
 
   ############################ Python wheels ##################################
 
@@ -71,7 +71,7 @@ services:
         VCPKG: ${VCPKG}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - .:/adbc:delegated
+      - .:/adbc
     # Must set safe.directory so miniver won't error when calling git
     command: "'git config --global --add safe.directory /adbc && git config --global --get safe.directory && /adbc/ci/scripts/python_wheel_unix_build.sh ${ARCH} /adbc /adbc/build'"
 

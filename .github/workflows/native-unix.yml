@@ -108,6 +108,7 @@ jobs:
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
+          export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
         shell: bash -l {0}
@@ -164,12 +165,6 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
 
-      - name: Start PostgreSQL
-        shell: bash -l {0}
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          docker run --detach --rm -p 5432:5432 -e POSTGRES_DB=tempdb -e POSTGRES_PASSWORD=password postgres
-
       - name: Build SQLite3 Driver
         shell: bash -l {0}
         run: |
@@ -178,19 +173,10 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
-      - name: Build PostgreSQL Driver
+      - name: BuildPostgreSQL Driver
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test PostgreSQL Driver
-        shell: bash -l {0}
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
-        run: |
-          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
       - name: Build Driver Manager
         shell: bash -l {0}
         run: |
@@ -200,6 +186,121 @@ jobs:
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+
+  # ------------------------------------------------------------
+  # C/C++ driver service integration tests
+  # ------------------------------------------------------------
+  drivers-integration-conda:
+    name: "C/C++ (Conda) Driver Service Integration Tests"
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: tempdb
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      dremio:
+        image: dremio/dremio-oss:latest
+        env:
+          DREMIO_JAVA_EXTRA_OPTS: "-Ddebug.addDefaultUser=true -Ddremio.eula.disabled=true"
+        options: >-
+          --health-cmd "curl --fail http://localhost:9047/ || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 9047:9047
+          - 32010:32010
+          - 31010:31010
+          - 45678:45678
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        shell: bash
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache/restore@v3
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -c conda-forge \
+            --file ci/conda_env_cpp.txt
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.18.6
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
+      - name: Build PostgreSQL Driver
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test PostgreSQL Driver
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+      - name: Login To Dremio
+        shell: bash -l {0}
+        id: bootstrap
+        run: |
+          LOGIN=`curl -X POST -H "Content-Type: application/json" "http://localhost:9047/apiv2/login" \
+            -d '{"userName":"dremio","password":"dremio123"}'`
+          echo "login_resp=$LOGIN" >> $GITHUB_OUTPUT
+      - name: Auth Token
+        shell: bash -l {0}
+        id: auth
+        run: |
+          echo "token=_dremio${{ fromJSON(steps.bootstrap.outputs.login_resp).token }}" >> $GITHUB_OUTPUT
+      - name: Add Samples Catalog
+        shell: bash -l {0}
+        run: |
+          curl -X PUT -H "content-type: application/json" -H "authorization: ${{ steps.auth.outputs.token }}" \
+            "http://localhost:9047/apiv2/source/Samples/" -d '{"config":{"externalBucketList":["samples.dremio.com"],
+            "credentialType":"NONE","secure":false,"propertyList":[]},"name":"Samples","accelerationRefreshPeriod":3600000,
+            "accelerationGracePeriod":10800000,"accelerationNeverRefresh":true,"accelerationNeverExpire":true,"type":"S3"}'
+      - name: Build FlightSQL Driver
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_FLIGHTSQL: "1"
+        run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test FlightSQL Driver against Dremio
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_FLIGHTSQL: "1"
+          ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
+          ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
+          ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
+        run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
 
   # ------------------------------------------------------------
   # GLib/Ruby
