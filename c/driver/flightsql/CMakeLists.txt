@@ -56,6 +56,7 @@ if(ADBC_BUILD_TESTS)
                 adbc
                 SOURCES
                 dremio_flightsql_test.cc
+                sqlite_flightsql_test.cc
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS

@@ -52,6 +52,8 @@ type DriverQuirks interface {
 	SupportsTransactions() bool
 	// Whether retrieving the schema of prepared statement params is supported
 	SupportsGetParameterSchema() bool
+	// Whether it supports dynamic parameter binding in queries
+	SupportsDynamicParameterBinding() bool
 	// Expected Metadata responses
 	GetMetadata(adbc.InfoCode) interface{}
 	// Create a sample table from an arrow record
@@ -417,4 +419,30 @@ func (s *StatementTests) TestSQLPrepareSelectNoParams() {
 	}
 
 	s.False(rdr.Next())
+}
+
+func (s *StatementTests) TestSqlPrepareErrorParamCountMismatch() {
+	if !s.Quirks.SupportsDynamicParameterBinding() {
+		s.T().SkipNow()
+	}
+
+	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
+	stmt, err := s.Cnxn.NewStatement()
+	s.NoError(err)
+	defer stmt.Close()
+
+	s.NoError(stmt.SetSqlQuery(query))
+	s.NoError(stmt.Prepare(s.ctx))
+
+	batchbldr := array.NewRecordBuilder(memory.DefaultAllocator, arrow.NewSchema(
+		[]arrow.Field{{Name: "int64s", Type: arrow.PrimitiveTypes.Int64}}, nil))
+	defer batchbldr.Release()
+	bldr := batchbldr.Field(0).(*array.Int64Builder)
+	bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
+	batch := batchbldr.NewRecord()
+	defer batch.Release()
+
+	s.NoError(stmt.Bind(s.ctx, batch))
+	_, _, err = stmt.ExecuteQuery(s.ctx)
+	s.Error(err)
 }

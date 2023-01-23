@@ -20,7 +20,7 @@ module github.com/apache/arrow-adbc/go/adbc
 go 1.18
 
 require (
-	github.com/apache/arrow/go/v11 v11.0.0-20230120215317-f7aa50dbeccd
+	github.com/apache/arrow/go/v11 v11.0.0-20230123162338-589b5b2bda05
 	github.com/bluele/gcache v0.0.2
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91

@@ -1131,8 +1131,10 @@ void StatementTest::TestSqlPartitionedInts() {
   // Assume only 1 partition
   ASSERT_EQ(1, partitions->num_partitions);
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
-  ASSERT_NE(nullptr, schema->release);
-  ASSERT_EQ(1, schema->n_children);
+  // it's allowed for Executepartitions to return a nil schema if one is not available
+  if (schema->release != nullptr) {    
+    ASSERT_EQ(1, schema->n_children);
+  }
 
   Handle<struct AdbcConnection> connection2;
   StreamReader reader;
@@ -1179,14 +1181,18 @@ void StatementTest::TestSqlPrepareGetParameterSchema() {
   query += quirks()->BindParameter(0);
   query += ", ";
   query += quirks()->BindParameter(1);
+
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
 
   Handle<struct ArrowSchema> schema;
+  // if schema cannot be determined we should get NOT IMPLEMENTED returned
   ASSERT_THAT(AdbcStatementGetParameterSchema(&statement, &schema.value, &error),
-              IsOkStatus(&error));
-  ASSERT_EQ(2, schema->n_children);
+              ::testing::AnyOf(IsOkStatus(&error), IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error)));
+  if (schema->release != nullptr) {
+    ASSERT_EQ(2, schema->n_children);
+  }
   // Can't assume anything about names or types here
 }
 
@@ -1263,25 +1269,36 @@ void StatementTest::TestSqlPrepareSelectParams() {
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_EQ(2, reader.schema->n_children);
 
-  ASSERT_NO_FATAL_FAILURE(reader.Next());
-  ASSERT_NE(nullptr, reader.array->release);
-  ASSERT_EQ(3, reader.array->length);
-  ASSERT_EQ(2, reader.array->n_children);
+  const std::vector<std::optional<int32_t>> expected_int32 {42, -42, std::nullopt};
+  const std::vector<std::optional<int64_t>> expected_int64 {42, -42, std::nullopt};
+  const std::vector<std::optional<std::string>> expected_string { "", std::nullopt, "bar"};
 
-  switch (reader.fields[0].data_type) {
-    case NANOARROW_TYPE_INT32:
-      ASSERT_NO_FATAL_FAILURE(
-          CompareArray<int32_t>(reader.array_view->children[0], {42, -42, std::nullopt}));
-      break;
-    case NANOARROW_TYPE_INT64:
-      ASSERT_NO_FATAL_FAILURE(
-          CompareArray<int64_t>(reader.array_view->children[0], {42, -42, std::nullopt}));
-      break;
-    default:
-      FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
+  int64_t nrows = 0;
+  while (nrows < 3) {
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(2, reader.array->n_children);  
+
+    auto start = nrows;
+    auto end = nrows + reader.array->length;
+
+    switch (reader.fields[0].data_type) {
+      case NANOARROW_TYPE_INT32:
+        ASSERT_NO_FATAL_FAILURE(
+            CompareArray<int32_t>(reader.array_view->children[0], {expected_int32.begin() + start, expected_int32.begin() + end}));
+        break;
+      case NANOARROW_TYPE_INT64:
+        ASSERT_NO_FATAL_FAILURE(
+            CompareArray<int64_t>(reader.array_view->children[0], {expected_int64.begin() + start, expected_int64.begin() + end}));
+        break;
+      default:
+        FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
+    }
+    ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[1],
+                                                      {expected_string.begin() + start, expected_string.begin() + end}));
+    nrows += reader.array->length;
   }
-  ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[1],
-                                                    {"", std::nullopt, "bar"}));
+  ASSERT_EQ(3, nrows);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_EQ(nullptr, reader.array->release);
