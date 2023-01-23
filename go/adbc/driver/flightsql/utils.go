@@ -44,6 +44,8 @@ func adbcFromFlightStatus(err error) error {
 		adbcCode = adbc.StatusUnauthenticated
 	case codes.Unavailable:
 		adbcCode = adbc.StatusIO
+	case codes.Unimplemented:
+		adbcCode = adbc.StatusNotImplemented
 	case codes.PermissionDenied:
 		adbcCode = adbc.StatusUnauthorized
 	default:
