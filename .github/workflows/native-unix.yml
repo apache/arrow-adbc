@@ -290,7 +290,7 @@ jobs:
           BUILD_DRIVER_FLIGHTSQL: "1"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Start sqlite server
+      - name: Start SQLite server
         shell: bash -l {0}
         run: |
           docker-compose up -d golang-sqlite-flightsql
