@@ -290,7 +290,11 @@ jobs:
           BUILD_DRIVER_FLIGHTSQL: "1"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test FlightSQL Driver against Dremio
+      - name: Start SQLite server
+        shell: bash -l {0}
+        run: |
+          docker-compose up -d golang-sqlite-flightsql
+      - name: Test FlightSQL Driver against Dremio and SQLite
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
@@ -298,9 +302,14 @@ jobs:
           ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
           ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
           ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
+          ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+      - name: Stop SQLite server
+        shell: bash -l {0}
+        run: |
+          docker-compose down
 
   # ------------------------------------------------------------
   # GLib/Ruby

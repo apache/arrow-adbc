@@ -26,43 +26,37 @@
 
 using adbc_validation::IsOkStatus;
 
-class DremioFlightSqlQuirks : public adbc_validation::DriverQuirks {
+class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
-    const char* uri = std::getenv("ADBC_DREMIO_FLIGHTSQL_URI");
-    const char* user = std::getenv("ADBC_DREMIO_FLIGHTSQL_USER");
-    const char* pass = std::getenv("ADBC_DREMIO_FLIGHTSQL_PASS");
+    const char* uri = std::getenv("ADBC_SQLITE_FLIGHTSQL_URI");
     EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri, error), IsOkStatus(error));
-    EXPECT_THAT(AdbcDatabaseSetOption(database, "username", user, error),
-                IsOkStatus(error));
-    EXPECT_THAT(AdbcDatabaseSetOption(database, "password", pass, error),
-                IsOkStatus(error));
     return ADBC_STATUS_OK;
   }
 
   std::string BindParameter(int index) const override { return "?"; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_transactions() const override { return false; }
-  bool supports_get_sql_info() const override { return false; }
+  bool supports_get_sql_info() const override { return true; }
   bool supports_get_objects() const override { return false; }
   bool supports_bulk_ingest() const override { return false; }
   bool supports_partitioned_data() const override { return true; }
-  bool supports_dynamic_parameter_binding() const override { return false; }
+  bool supports_dynamic_parameter_binding() const override { return true; }
 };
 
-class DremioFlightSqlTest : public ::testing::Test, public adbc_validation::DatabaseTest {
+class SqliteFlightSqlTest : public ::testing::Test, public adbc_validation::DatabaseTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
  protected:
-  DremioFlightSqlQuirks quirks_;
+  SqliteFlightSqlQuirks quirks_;
 };
-ADBCV_TEST_DATABASE(DremioFlightSqlTest)
+ADBCV_TEST_DATABASE(SqliteFlightSqlTest)
 
-class DremioFlightSqlConnectionTest : public ::testing::Test,
+class SqliteFlightSqlConnectionTest : public ::testing::Test,
                                       public adbc_validation::ConnectionTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
@@ -70,11 +64,11 @@ class DremioFlightSqlConnectionTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
  protected:
-  DremioFlightSqlQuirks quirks_;
+  SqliteFlightSqlQuirks quirks_;
 };
-ADBCV_TEST_CONNECTION(DremioFlightSqlConnectionTest)
+ADBCV_TEST_CONNECTION(SqliteFlightSqlConnectionTest)
 
-class DremioFlightSqlStatementTest : public ::testing::Test,
+class SqliteFlightSqlStatementTest : public ::testing::Test,
                                      public adbc_validation::StatementTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
@@ -82,6 +76,6 @@ class DremioFlightSqlStatementTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
  protected:
-  DremioFlightSqlQuirks quirks_;
+  SqliteFlightSqlQuirks quirks_;
 };
-ADBCV_TEST_STATEMENT(DremioFlightSqlStatementTest)
+ADBCV_TEST_STATEMENT(SqliteFlightSqlStatementTest)

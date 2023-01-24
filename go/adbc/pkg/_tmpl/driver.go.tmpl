@@ -34,6 +34,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"runtime/cgo"
 	"unsafe"
 
@@ -182,7 +183,13 @@ func {{.Prefix}}DatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcErr
 	C.free(unsafe.Pointer(db.private_data))
 	db.private_data = nil
 	h.Delete()
-
+	// manually trigger GC for two reasons:
+	//  1. ASAN expects the release callback to be called before
+	//     the process ends, but GC is not deterministic. So by manually
+	//     triggering the GC we ensure the release callback gets called.
+	//  2. Creates deterministic GC behavior by all Release functions
+	//     triggering a garbage collection
+	runtime.GC()
 	return C.ADBC_STATUS_OK
 }
 
@@ -275,6 +282,13 @@ func {{.Prefix}}ConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_A
 		C.free(unsafe.Pointer(cnxn.private_data))
 		cnxn.private_data = nil
 		h.Delete()
+		// manually trigger GC for two reasons:
+		//  1. ASAN expects the release callback to be called before
+		//     the process ends, but GC is not deterministic. So by manually
+		//     triggering the GC we ensure the release callback gets called.
+		//  2. Creates deterministic GC behavior by all Release functions
+		//     triggering a garbage collection
+		runtime.GC()
 	}()
 	if conn.cnxn == nil {
 		return C.ADBC_STATUS_OK
@@ -475,6 +489,13 @@ func {{.Prefix}}StatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_Adb
 
 	e := st.Close()
 	h.Delete()
+	// manually trigger GC for two reasons:
+	//  1. ASAN expects the release callback to be called before
+	//     the process ends, but GC is not deterministic. So by manually
+	//     triggering the GC we ensure the release callback gets called.
+	//  2. Creates deterministic GC behavior by all Release functions
+	//     triggering a garbage collection
+	runtime.GC()
 	return C.AdbcStatusCode(errToAdbcErr(err, e))
 }
 

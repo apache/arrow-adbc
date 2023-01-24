@@ -52,10 +52,14 @@ type DriverQuirks interface {
 	SupportsTransactions() bool
 	// Whether retrieving the schema of prepared statement params is supported
 	SupportsGetParameterSchema() bool
+	// Whether it supports dynamic parameter binding in queries
+	SupportsDynamicParameterBinding() bool
 	// Expected Metadata responses
 	GetMetadata(adbc.InfoCode) interface{}
 	// Create a sample table from an arrow record
 	CreateSampleTable(tableName string, r arrow.Record) error
+
+	Alloc() memory.Allocator
 }
 
 type DatabaseTests struct {
@@ -216,7 +220,7 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 }
 
 func (c *ConnectionTests) TestMetadataGetTableSchema() {
-	rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, arrow.NewSchema(
+	rec, _, err := array.RecordFromJSON(c.Quirks.Alloc(), arrow.NewSchema(
 		[]arrow.Field{
 			{Name: "ints", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
 			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true},
@@ -387,6 +391,59 @@ func (s *StatementTests) TestSQLPrepareGetParameterSchema() {
 	}
 }
 
+func (s *StatementTests) TestSQLPrepareSelectParams() {
+	if !s.Quirks.SupportsDynamicParameterBinding() {
+		s.T().SkipNow()
+	}
+
+	stmt, err := s.Cnxn.NewStatement()
+	s.NoError(err)
+	defer stmt.Close()
+
+	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
+	s.Require().NoError(stmt.SetSqlQuery(query))
+	s.Require().NoError(stmt.Prepare(s.ctx))
+
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+		{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(s.Quirks.Alloc(), schema)
+	defer bldr.Release()
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
+	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"", "", "bar"}, []bool{true, false, true})
+	batch := bldr.NewRecord()
+	defer batch.Release()
+
+	s.Require().NoError(stmt.Bind(s.ctx, batch))
+	rdr, affected, err := stmt.ExecuteQuery(s.ctx)
+	s.Require().NoError(err)
+	defer rdr.Release()
+	s.True(affected == 1 || affected == -1, affected)
+
+	var nrows int64
+	for rdr.Next() {
+		rec := rdr.Record()
+		s.Require().NotNil(rec)
+		s.EqualValues(2, rec.NumCols())
+
+		start, end := nrows, nrows+rec.NumRows()
+		switch arr := rec.Column(0).(type) {
+		case *array.Int32:
+
+		case *array.Int64:
+			s.True(array.SliceEqual(arr, 0, int64(arr.Len()), batch.Column(0), start, end))
+		}
+
+		s.True(array.SliceEqual(rec.Column(1), 0, rec.NumRows(), batch.Column(1), start, end))
+		nrows += rec.NumRows()
+	}
+	s.EqualValues(3, nrows)
+	s.False(rdr.Next())
+	s.NoError(rdr.Err())
+}
+
 func (s *StatementTests) TestSQLPrepareSelectNoParams() {
 	stmt, err := s.Cnxn.NewStatement()
 	s.NoError(err)
@@ -417,4 +474,30 @@ func (s *StatementTests) TestSQLPrepareSelectNoParams() {
 	}
 
 	s.False(rdr.Next())
+}
+
+func (s *StatementTests) TestSqlPrepareErrorParamCountMismatch() {
+	if !s.Quirks.SupportsDynamicParameterBinding() {
+		s.T().SkipNow()
+	}
+
+	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
+	stmt, err := s.Cnxn.NewStatement()
+	s.NoError(err)
+	defer stmt.Close()
+
+	s.NoError(stmt.SetSqlQuery(query))
+	s.NoError(stmt.Prepare(s.ctx))
+
+	batchbldr := array.NewRecordBuilder(s.Quirks.Alloc(), arrow.NewSchema(
+		[]arrow.Field{{Name: "int64s", Type: arrow.PrimitiveTypes.Int64}}, nil))
+	defer batchbldr.Release()
+	bldr := batchbldr.Field(0).(*array.Int64Builder)
+	bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
+	batch := batchbldr.NewRecord()
+	defer batch.Release()
+
+	s.NoError(stmt.Bind(s.ctx, batch))
+	_, _, err = stmt.ExecuteQuery(s.ctx)
+	s.Error(err)
 }

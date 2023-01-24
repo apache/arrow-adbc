@@ -71,6 +71,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	} else {
 		rdr, err := doGet(ctx, cl, endpoints[0], clCache)
 		if err != nil {
+			close(ch)
 			return nil, adbcFromFlightStatus(err)
 		}
 		schema = rdr.Schema()

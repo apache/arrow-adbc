@@ -61,6 +61,15 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
 
   list(TRANSFORM ARG_SOURCES PREPEND "${GO_MOD_DIR}/")
 
+  # go asan only works on linux/amd64 and linux/arm64
+  if(ADBC_USE_ASAN)
+    if(CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+      if(NOT APPLE AND NOT MSVC_TOOLCHAIN)
+        set(GO_BUILD_FLAGS "-asan")
+      endif()
+    endif()
+  endif()
+
   if(BUILD_SHARED)
     set(LIB_NAME_SHARED
         "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -89,7 +98,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                        WORKING_DIRECTORY ${GO_MOD_DIR}
                        DEPENDS ${ARG_SOURCES}
                        COMMAND ${CMAKE_COMMAND} -E env "${GO_ENV_VARS}" ${GO_BIN} build
-                               "${GO_BUILD_TAGS}" -o
+                               "${GO_BUILD_TAGS}" "${GO_BUILD_FLAGS}" -o
                                "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
                                -buildmode=c-shared "${GO_LDFLAGS}" .
                        COMMAND ${CMAKE_COMMAND} -E remove -f
@@ -165,7 +174,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                        WORKING_DIRECTORY ${GO_MOD_DIR}
                        DEPENDS ${ARG_SOURCES}
                        COMMAND ${GO_BIN} build "${GO_BUILD_TAGS}" -o "${LIBOUT_STATIC}"
-                               -buildmode=c-archive .
+                               -buildmode=c-archive "${GO_BUILD_FLAGS}" .
                        COMMAND ${CMAKE_COMMAND} -E remove -f "${LIBOUT_HEADER}"
                        COMMENT "Building Go Static lib ${GO_LIBNAME}"
                        COMMAND_EXPAND_LISTS)
@@ -181,9 +190,6 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
 
     install(FILES "${LIBOUT_STATIC}" TYPE LIB)
   endif()
-  # if(ARG_CMAKE_PACKAGE_NAME)
-  #   install_cmake_package(${ARG_CMAKE_PACKAGE_NAME} ${GO_LIBNAME}_export)
-  # endif()
 
   if(ARG_PKG_CONFIG_NAME)
     arrow_add_pkg_config("${ARG_PKG_CONFIG_NAME}")

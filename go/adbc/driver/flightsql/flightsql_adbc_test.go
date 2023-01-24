@@ -170,11 +170,13 @@ func (s *FlightSQLQuirks) CreateSampleTable(tableName string, r arrow.Record) er
 	return nil
 }
 
-func (s *FlightSQLQuirks) BindParameter(_ int) string         { return "?" }
-func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool { return true }
-func (s *FlightSQLQuirks) SupportsPartitionedData() bool      { return true }
-func (s *FlightSQLQuirks) SupportsTransactions() bool         { return false }
-func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool   { return false }
+func (s *FlightSQLQuirks) Alloc() memory.Allocator               { return s.mem }
+func (s *FlightSQLQuirks) BindParameter(_ int) string            { return "?" }
+func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool    { return true }
+func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
+func (s *FlightSQLQuirks) SupportsTransactions() bool            { return false }
+func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
+func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:

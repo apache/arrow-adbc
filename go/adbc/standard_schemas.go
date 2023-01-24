@@ -34,7 +34,7 @@ var (
 						arrow.ListOf(arrow.PrimitiveTypes.Int32)), Nullable: true},
 			},
 			[]arrow.UnionTypeCode{0, 1, 2, 3, 4, 5},
-		)},
+		), Nullable: true},
 	}, nil)
 
 	TableTypesSchema = arrow.NewSchema([]arrow.Field{{Name: "table_type", Type: arrow.BinaryTypes.String}}, nil)
