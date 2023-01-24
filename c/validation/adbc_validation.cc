@@ -54,6 +54,50 @@ namespace {
 }  // namespace
 
 //------------------------------------------------------------
+// DriverQuirks
+
+AdbcStatusCode DoIngestSampleTable(struct AdbcConnection* connection,
+                                   const std::string& name, struct AdbcError* error) {
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  CHECK_OK(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64},
+                                      {"strings", NANOARROW_TYPE_STRING}}));
+  CHECK_OK((MakeBatch<int64_t, std::string>(&schema.value, &array.value, &na_error,
+                                            {42, -42, std::nullopt},
+                                            {"foo", std::nullopt, ""})));
+
+  Handle<struct AdbcStatement> statement;
+  CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
+  CHECK_OK(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                  name.c_str(), error));
+  CHECK_OK(AdbcStatementBind(&statement.value, &array.value, &schema.value, error));
+  CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+  CHECK_OK(AdbcStatementRelease(&statement.value, error));
+  return ADBC_STATUS_OK;
+}
+
+void IngestSampleTable(struct AdbcConnection* connection, struct AdbcError* error) {
+  ASSERT_THAT(DoIngestSampleTable(connection, "bulk_ingest", error), IsOkStatus(error));
+}
+
+AdbcStatusCode DriverQuirks::EnsureSampleTable(struct AdbcConnection* connection,
+                                               const std::string& name,
+                                               struct AdbcError* error) const {
+  CHECK_OK(DropTable(connection, name, error));
+  return CreateSampleTable(connection, name, error);
+}
+
+AdbcStatusCode DriverQuirks::CreateSampleTable(struct AdbcConnection* connection,
+                                               const std::string& name,
+                                               struct AdbcError* error) const {
+  if (!supports_bulk_ingest()) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+  return DoIngestSampleTable(connection, name, error);
+}
+
+//------------------------------------------------------------
 // Tests of AdbcDatabase
 
 void DatabaseTest::SetUpTest() {
@@ -192,30 +236,6 @@ void ConnectionTest::TestAutocommitToggle() {
 
 //------------------------------------------------------------
 // Tests of metadata
-
-void IngestSampleTable(struct AdbcConnection* connection, struct AdbcError* error) {
-  Handle<struct ArrowSchema> schema;
-  Handle<struct ArrowArray> array;
-  struct ArrowError na_error;
-  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64},
-                                         {"strings", NANOARROW_TYPE_STRING}}),
-              IsOkErrno());
-  ASSERT_THAT((MakeBatch<int64_t, std::string>(&schema.value, &array.value, &na_error,
-                                               {42, -42, std::nullopt},
-                                               {"foo", std::nullopt, ""})),
-              IsOkErrno());
-
-  Handle<struct AdbcStatement> statement;
-  ASSERT_THAT(AdbcStatementNew(connection, &statement.value, error), IsOkStatus(error));
-  ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                     "bulk_ingest", error),
-              IsOkStatus(error));
-  ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, error),
-              IsOkStatus(error));
-  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error),
-              IsOkStatus(error));
-  ASSERT_THAT(AdbcStatementRelease(&statement.value, error), IsOkStatus(error));
-}
 
 void ConnectionTest::TestMetadataGetInfo() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
@@ -513,9 +533,8 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
-  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
 
   std::vector<std::pair<const char*, bool>> test_cases = {
       {nullptr, true}, {"bulk_%", true}, {"asdf%", false}};
@@ -593,9 +612,8 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
     GTEST_SKIP();
   }
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
-  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
 
   std::vector<const char*> table_types(2);
   table_types[0] = "this_table_type_does_not_exist";
@@ -668,9 +686,8 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
 
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
-  ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
 
   struct TestCase {
     std::optional<std::string> filter;
