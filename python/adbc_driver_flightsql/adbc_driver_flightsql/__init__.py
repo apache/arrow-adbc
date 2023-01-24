@@ -16,7 +16,6 @@
 # under the License.
 
 import functools
-import importlib.resources
 import typing
 
 import adbc_driver_manager
@@ -46,15 +45,28 @@ def connect(
 
 @functools.cache
 def _driver_path() -> str:
+    import importlib.resources
+    import pathlib
+    import sys
+
+    # Wheels bundle the shared library
     root = importlib.resources.files(__package__)
+    # The filename is always the same regardless of platform
     entrypoint = root.joinpath("libadbc_driver_flightsql.so")
     if entrypoint.is_file():
         return str(entrypoint)
-    is_conda = root.joinpath(".is_conda")
-    if is_conda.is_file():
-        with is_conda.open() as source:
-            return source.read().strip()
-    raise RuntimeError(f"Could not find driver, was {__package__} properly installed?")
 
+    # Search sys.prefix + '/lib' (Unix, Conda on Unix)
+    root = pathlib.Path(sys.prefix)
+    for filename in ("libadbc_driver_flightsql.so", "libadbc_driver_flightsql.dylib"):
+        entrypoint = root.joinpath('lib', filename)
+        if entrypoint.is_file():
+            return str(entrypoint)
 
-_driver_path()
+    # Conda on Windows
+    entrypoint = root.joinpath('bin', "adbc_driver_flightsql.dll")
+    if entrypoint.is_file():
+        return str(entrypoint)
+
+    # Fall back to (DY)LD_LIBRARY_PATH/PATH
+    return "adbc_driver_flightsql"

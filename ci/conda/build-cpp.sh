@@ -31,7 +31,7 @@ case "${PKG_NAME}" in
         ;;
     adbc-driver-sqlite-cpp)
         export PKG_ROOT=c/driver/sqlite
-        ;
+        ;;
     *)
         echo "Unknown package ${PKG_NAME}"
         exit 1

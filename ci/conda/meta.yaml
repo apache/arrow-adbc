@@ -146,7 +146,6 @@ outputs:
         - cross-python_{{ target_platform }}                                     # [build_platform != target_platform]
         - cython
         - pip
-        - poetry
         - python {{ python }}
         - setuptools
       host:
