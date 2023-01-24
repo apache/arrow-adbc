@@ -59,12 +59,12 @@ def _driver_path() -> str:
     # Search sys.prefix + '/lib' (Unix, Conda on Unix)
     root = pathlib.Path(sys.prefix)
     for filename in ("libadbc_driver_flightsql.so", "libadbc_driver_flightsql.dylib"):
-        entrypoint = root.joinpath('lib', filename)
+        entrypoint = root.joinpath("lib", filename)
         if entrypoint.is_file():
             return str(entrypoint)
 
     # Conda on Windows
-    entrypoint = root.joinpath('bin', "adbc_driver_flightsql.dll")
+    entrypoint = root.joinpath("bin", "adbc_driver_flightsql.dll")
     if entrypoint.is_file():
         return str(entrypoint)
 
