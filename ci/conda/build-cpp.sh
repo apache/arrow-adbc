@@ -18,19 +18,25 @@
 
 set -ex
 
-if [[ "${PKG_NAME}" = "adbc-driver-manager-cpp" ]]; then
-    export PKG_ROOT=c/driver_manager
-elif [[ "${PKG_NAME}" = "adbc-driver-flightsql-go" ]]; then
-    export CGO_ENABLED=1
-    export PKG_ROOT=c/driver/flightsql
-elif [[ "${PKG_NAME}" = "adbc-driver-postgresql-cpp" ]]; then
-    export PKG_ROOT=c/driver/postgresql
-elif [[ "${PKG_NAME}" = "adbc-driver-sqlite-cpp" ]]; then
-    export PKG_ROOT=c/driver/sqlite
-else
-    echo "Unknown package ${PKG_NAME}"
-    exit 1
-fi
+case "${PKG_NAME}" in
+    adbc-driver-manager-cpp)
+        export PKG_ROOT=c/driver_manager
+        ;;
+    adbc-driver-flightsql-go)
+        export CGO_ENABLED=1
+        export PKG_ROOT=c/driver/flightsql
+        ;;
+    adbc-driver-postgresql-cpp)
+        export PKG_ROOT=c/driver/postgresql
+        ;;
+    adbc-driver-sqlite-cpp)
+        export PKG_ROOT=c/driver/sqlite
+        ;
+    *)
+        echo "Unknown package ${PKG_NAME}"
+        exit 1
+        ;;
+esac
 
 if [[ "${target_platform}" == "linux-aarch64" ]] ||
        [[ "${target_platform}" == "osx-arm64" ]]; then
