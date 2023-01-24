@@ -279,7 +279,9 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 	out.NumPartitions = uint64(len(info.Endpoint))
 	out.PartitionIDs = make([][]byte, out.NumPartitions)
 	for i, e := range info.Endpoint {
-		data, err := proto.Marshal(e)
+		partition := proto.Clone(info).(*flight.FlightInfo)
+		partition.Endpoint = []*flight.FlightEndpoint{e}
+		data, err := proto.Marshal(partition)
 		if err != nil {
 			return sc, out, -1, adbc.Error{
 				Msg:  err.Error(),

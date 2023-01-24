@@ -32,6 +32,10 @@ The Flight SQL driver is shipped as a standalone library.
    .. tab-item:: Go
       :sync: go
 
+      .. code-block:: shell
+
+         go get github.com/apache/arrow-adbc/go
+
    .. tab-item:: Python
       :sync: python
 
@@ -57,6 +61,7 @@ the :cpp:class:`AdbcDatabase`.
          // Ignoring error handling
          struct AdbcDatabase database;
          AdbcDatabaseNew(&database, nullptr);
+         AdbcDatabaseSetOption(&database, "driver", "adbc_driver_flightsql", nullptr);
          AdbcDatabaseSetOption(&database, "uri", "grpc://localhost:8080", nullptr);
          AdbcDatabaseInit(&database, nullptr);
 
@@ -65,10 +70,9 @@ the :cpp:class:`AdbcDatabase`.
 
       .. code-block:: python
 
-         import pyarrow.flight_sql
+         import adbc_driver_flightsql.dbapi
 
-
-         with pyarrow.flight_sql.connect("grpc://localhost:8080") as conn:
+         with adbc_driver_flightsql.dbapi.connect("grpc://localhost:8080") as conn:
              pass
 
 Supported Features
@@ -80,33 +84,28 @@ API specification 1.0.0, as well as some additional, custom options.
 Authentication
 --------------
 
-The driver does no authentication by default.
+The driver does no authentication by default.  The driver implements a
+few optional authentication schemes:
 
-The driver implements one optional authentication scheme that mimics
-the Arrow Flight SQL JDBC driver.  This can be enabled by setting the
-option ``arrow.flight.sql.authorization_header`` on the
-:cpp:class:`AdbcDatabase`.  The client provides credentials by setting
-the option value to the value of the ``authorization`` header sent
-from client to server.  The server then responds with an
-``authorization`` header on the first request.  The value of this
-header will then be sent back as the ``authorization`` header on all
-future requests.
+- Mutual TLS (mTLS): see "Client Options" below.
+- An HTTP-style scheme mimicking the Arrow Flight SQL JDBC driver.
+
+  Set the options ``username`` and ``password`` on the
+  :cpp:class:`AdbcDatabase`.  Alternatively, set the option
+  ``arrow.flight.sql.authorization_header`` for full control.
+
+  The client provides credentials sending an ``authorization`` from
+  client to server.  The server then responds with an
+  ``authorization`` header on the first request.  The value of this
+  header will then be sent back as the ``authorization`` header on all
+  future requests.
 
 Bulk Ingestion
 --------------
 
 Flight SQL does not have a dedicated API for bulk ingestion of Arrow
-data into a given table.  The driver instead constructs SQL statements
-to create and insert into the table.
-
-.. warning:: The driver does not escape or validate the names of
-             tables or columns.  As a precaution, it instead limits
-             identifier names to letters, numbers, and underscores.
-             Bulk ingestion should not be used with untrusted user
-             input.
-
-The driver binds a batch of data at a time for efficiency.  Also, the
-generated SQL statements hardcode ``?`` as the parameter identifier.
+data into a given table.  The driver does not currently implement bulk
+ingestion as a result.
 
 Client Options
 --------------
@@ -114,28 +113,28 @@ Client Options
 The options used for creating the Flight RPC client can be customized.
 These options map 1:1 with the options in FlightClientOptions:
 
+``arrow.flight.sql.client_option.mtls_cert_chain``
+    The certificate chain to use for mTLS.
+
+``arrow.flight.sql.client_option.mtls_private_key``
+    The private key to use for mTLS.
+
+``arrow.flight.sql.client_option.tls_override_hostname``
+    Override the hostname used to verify the server's TLS certificate.
+
+``arrow.flight.sql.client_option.tls_skip_verify``
+    Disable verification of the server's TLS certificate.  Value
+    should be ``true`` or ``false``.
+
 ``arrow.flight.sql.client_option.tls_root_certs``
     Override the root certificates used to validate the server's TLS
     certificate.
-
-``arrow.flight.sql.client_option.override_hostname``
-    Override the hostname used to verify the server's TLS certificate.
-
-``arrow.flight.sql.client_option.cert_chain``
-    The certificate chain to use for mTLS.
-
-``arrow.flight.sql.client_option.private_key``
-    The private key to use for mTLS.
 
 ``arrow.flight.sql.client_option.generic_int_option.<OPTION_NAME>``
     Option prefixes used to specify generic transport-layer options.
 
 ``arrow.flight.sql.client_option.generic_string_option.<OPTION_NAME>``
     Option prefixes used to specify generic transport-layer options.
-
-``arrow.flight.sql.client_option.disable_server_verification``
-    Disable verification of the server's TLS certificate.  Value
-    should be ``true`` or ``false``.
 
 Custom Call Headers
 -------------------
@@ -221,47 +220,9 @@ The options are as follows:
 Transactions
 ------------
 
-The driver will issue transaction RPCs, but the driver will not check
-the server's SqlInfo to determine whether this is supported first.
-
-Type Mapping
-------------
-
-When executing a bulk ingestion operation, the driver needs to be able
-to construct appropriate SQL queries for the database.  (The driver
-does not currently support using Substrait plans instead.)  In
-particular, a mapping from Arrow types to SQL type names is required.
-While a default mapping is provided, the client may wish to override
-this mapping, which can be done by setting special options on
-:cpp:class:`AdbcDatabase`.  (The driver does not currently inspect
-Flight SQL metadata to construct this mapping.)
-
-All such options begin with ``arrow.flight.sql.quirks.ingest_type.``
-and are followed by a type name below.
-
-.. warning:: The driver does **not** escape or validate the values
-             here.  They should not come from untrusted user input, or
-             a SQL injection vulnerability may result.
-
-.. csv-table:: Type Names
-   :header: "Arrow Type Name", "Default SQL Type Name"
-
-   binary,BLOB
-   bool,BOOLEAN
-   date32,DATE
-   date64,DATE
-   decimal128,NUMERIC
-   decimal256,NUMERIC
-   double,DOUBLE PRECISION
-   float,REAL
-   int16,SMALLINT
-   int32,INT
-   int64,BIGINT
-   large_binary,BLOB
-   large_string,TEXT
-   string,TEXT
-   time32,TIME
-   time64,TIME
-   timestamp,TIMESTAMP
+The driver supports transactions.  It will first check the server's
+SqlInfo to determine whether this is supported.  Otherwise,
+transaction-related ADBC APIs will return
+:c:type:`ADBC_STATUS_NOT_IMPLEMENTED`.
 
 .. _DBAPI 2.0: https://peps.python.org/pep-0249/
