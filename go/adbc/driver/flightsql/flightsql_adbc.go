@@ -126,7 +126,8 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 
 	mtlsCert := cnOptions[OptionMTLSCertChain]
 	mtlsKey := cnOptions[OptionMTLSPrivateKey]
-	if mtlsCert != "" && mtlsKey != "" {
+	switch {
+	case mtlsCert != "" && mtlsKey != "":
 		cert, err := tls.X509KeyPair([]byte(mtlsCert), []byte(mtlsKey))
 		if err != nil {
 			return adbc.Error{
@@ -137,12 +138,12 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 		tlsConfig.Certificates = []tls.Certificate{cert}
 		delete(cnOptions, OptionMTLSCertChain)
 		delete(cnOptions, OptionMTLSPrivateKey)
-	} else if mtlsCert != "" {
+	case mtlsCert != "":
 		return adbc.Error{
 			Msg:  fmt.Sprintf("Must provide both '%s' and '%s', only provided '%s'", OptionMTLSCertChain, OptionMTLSPrivateKey, OptionMTLSCertChain),
 			Code: adbc.StatusInvalidArgument,
 		}
-	} else if mtlsKey != "" {
+	case mtlsKey != "":
 		return adbc.Error{
 			Msg:  fmt.Sprintf("Must provide both '%s' and '%s', only provided '%s'", OptionMTLSCertChain, OptionMTLSPrivateKey, OptionMTLSPrivateKey),
 			Code: adbc.StatusInvalidArgument,
