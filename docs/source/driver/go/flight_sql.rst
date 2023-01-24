@@ -87,13 +87,15 @@ Authentication
 The driver does no authentication by default.  The driver implements a
 few optional authentication schemes:
 
-- A user/password scheme: TODO
 - Mutual TLS (mTLS): see "Client Options" below.
 - An HTTP-style scheme mimicking the Arrow Flight SQL JDBC driver.
-  Set the option ``arrow.flight.sql.authorization_header`` on the
-  :cpp:class:`AdbcDatabase`.  The client provides credentials by
-  setting the option value to the value of the ``authorization``
-  header sent from client to server.  The server then responds with an
+
+  Set the options ``username`` and ``password`` on the
+  :cpp:class:`AdbcDatabase`.  Alternatively, set the option
+  ``arrow.flight.sql.authorization_header`` for full control.
+
+  The client provides credentials sending a ``authorization`` from
+  client to server.  The server then responds with an
   ``authorization`` header on the first request.  The value of this
   header will then be sent back as the ``authorization`` header on all
   future requests.
