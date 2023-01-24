@@ -179,12 +179,19 @@ func FlightSQLDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 	h := (*(*cgo.Handle)(db.private_data))
+
 	cdb := h.Value().(*cDatabase)
 	cdb.db = nil
 	cdb.opts = nil
 	C.free(unsafe.Pointer(db.private_data))
 	db.private_data = nil
 	h.Delete()
+	// manually trigger GC for two reasons:
+	//  1. ASAN expects the release callback to be called before
+	//     the process ends, but GC is not deterministic. So by manually
+	//     triggering the GC we ensure the release callback gets called.
+	//  2. Creates deterministic GC behavior by all Release functions
+	//     triggering a garbage collection
 	runtime.GC()
 	return C.ADBC_STATUS_OK
 }
@@ -278,12 +285,17 @@ func FlightSQLConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_Adb
 		C.free(unsafe.Pointer(cnxn.private_data))
 		cnxn.private_data = nil
 		h.Delete()
+		// manually trigger GC for two reasons:
+		//  1. ASAN expects the release callback to be called before
+		//     the process ends, but GC is not deterministic. So by manually
+		//     triggering the GC we ensure the release callback gets called.
+		//  2. Creates deterministic GC behavior by all Release functions
+		//     triggering a garbage collection
 		runtime.GC()
 	}()
 	if conn.cnxn == nil {
 		return C.ADBC_STATUS_OK
 	}
-
 	return C.AdbcStatusCode(errToAdbcErr(err, conn.cnxn.Close()))
 }
 
@@ -477,8 +489,15 @@ func FlightSQLStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 	st := h.Value().(adbc.Statement)
 	C.free(stmt.private_data)
 	stmt.private_data = nil
+
 	e := st.Close()
 	h.Delete()
+	// manually trigger GC for two reasons:
+	//  1. ASAN expects the release callback to be called before
+	//     the process ends, but GC is not deterministic. So by manually
+	//     triggering the GC we ensure the release callback gets called.
+	//  2. Creates deterministic GC behavior by all Release functions
+	//     triggering a garbage collection
 	runtime.GC()
 	return C.AdbcStatusCode(errToAdbcErr(err, e))
 }
