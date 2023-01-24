@@ -184,7 +184,7 @@ func FlightSQLDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError
 	cdb.opts = nil
 	C.free(unsafe.Pointer(db.private_data))
 	db.private_data = nil
-	h.Delete()	
+	h.Delete()
 	runtime.GC()
 	return C.ADBC_STATUS_OK
 }
@@ -476,7 +476,7 @@ func FlightSQLStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 	h := (*(*cgo.Handle)(stmt.private_data))
 	st := h.Value().(adbc.Statement)
 	C.free(stmt.private_data)
-	stmt.private_data = nil	
+	stmt.private_data = nil
 	e := st.Close()
 	h.Delete()
 	runtime.GC()
