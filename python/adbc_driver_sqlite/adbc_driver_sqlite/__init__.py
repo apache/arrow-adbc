@@ -16,7 +16,6 @@
 # under the License.
 
 import functools
-import importlib.resources
 import typing
 
 import adbc_driver_manager
@@ -35,15 +34,31 @@ def connect(uri: typing.Optional[str] = None) -> adbc_driver_manager.AdbcDatabas
 
 @functools.cache
 def _driver_path() -> str:
+    import importlib.resources
+    import pathlib
+    import sys
+
+    driver = "adbc_driver_sqlite"
+
+    # Wheels bundle the shared library
     root = importlib.resources.files(__package__)
-    entrypoint = root.joinpath("libadbc_driver_sqlite.so")
+    # The filename is always the same regardless of platform
+    entrypoint = root.joinpath(f"lib{driver}.so")
     if entrypoint.is_file():
         return str(entrypoint)
-    is_conda = root.joinpath(".is_conda")
-    if is_conda.is_file():
-        with is_conda.open() as source:
-            return source.read().strip()
-    raise RuntimeError(f"Could not find driver, was {__package__} properly installed?")
 
+    # Search sys.prefix + '/lib' (Unix, Conda on Unix)
+    root = pathlib.Path(sys.prefix)
+    for filename in (f"lib{driver}.so", f"lib{driver}.dylib"):
+        entrypoint = root.joinpath("lib", filename)
+        if entrypoint.is_file():
+            return str(entrypoint)
 
-_driver_path()
+    # Conda on Windows
+    entrypoint = root.joinpath("bin", f"{driver}.dll")
+    if entrypoint.is_file():
+        return str(entrypoint)
+
+    # Let the driver manager fall back to (DY)LD_LIBRARY_PATH/PATH
+    # (It will insert 'lib', 'so', etc. as needed)
+    return driver

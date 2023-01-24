@@ -31,20 +31,15 @@ repo_root = source_root.joinpath("../../")
 
 library = os.environ.get("ADBC_SQLITE_LIBRARY")
 target = source_root.joinpath("./adbc_driver_sqlite/libadbc_driver_sqlite.so").resolve()
-is_conda = os.environ.get("_ADBC_IS_CONDA", "").strip()
 if not library:
     if os.environ.get("_ADBC_IS_SDIST", "").strip().lower() in ("1", "true"):
         print("Building sdist, not requiring ADBC_SQLITE_LIBRARY")
+    elif os.environ.get("_ADBC_IS_CONDA", "").strip().lower() in ("1", "true"):
+        print("Building Conda package, not requiring ADBC_SQLITE_LIBRARY")
     elif target.is_file():
         print("Driver already exists (but may be stale?), continuing")
     else:
         raise ValueError("Must provide ADBC_SQLITE_LIBRARY")
-elif is_conda:
-    print("Building Conda package")
-    # The name of the library is written to a marker file in the package.  At
-    # runtime, __init__.py will load this and use it as the library to dlopen.
-    with source_root.joinpath("./adbc_driver_sqlite/.is_conda").open("w") as sink:
-        sink.write("adbc_driver_sqlite")
 else:
     shutil.copy(library, target)
 

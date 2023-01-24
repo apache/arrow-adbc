@@ -18,4 +18,3 @@
 # setuptools manifest
 
 include adbc_driver_flightsql/libadbc_driver_flightsql.so
-include adbc_driver_flightsql/.is_conda

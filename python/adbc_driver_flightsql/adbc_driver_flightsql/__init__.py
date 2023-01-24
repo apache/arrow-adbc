@@ -49,24 +49,27 @@ def _driver_path() -> str:
     import pathlib
     import sys
 
+    driver = "adbc_driver_flightsql"
+
     # Wheels bundle the shared library
     root = importlib.resources.files(__package__)
     # The filename is always the same regardless of platform
-    entrypoint = root.joinpath("libadbc_driver_flightsql.so")
+    entrypoint = root.joinpath(f"lib{driver}.so")
     if entrypoint.is_file():
         return str(entrypoint)
 
     # Search sys.prefix + '/lib' (Unix, Conda on Unix)
     root = pathlib.Path(sys.prefix)
-    for filename in ("libadbc_driver_flightsql.so", "libadbc_driver_flightsql.dylib"):
+    for filename in (f"lib{driver}.so", f"lib{driver}.dylib"):
         entrypoint = root.joinpath("lib", filename)
         if entrypoint.is_file():
             return str(entrypoint)
 
     # Conda on Windows
-    entrypoint = root.joinpath("bin", "adbc_driver_flightsql.dll")
+    entrypoint = root.joinpath("bin", f"{driver}.dll")
     if entrypoint.is_file():
         return str(entrypoint)
 
-    # Fall back to (DY)LD_LIBRARY_PATH/PATH
-    return "adbc_driver_flightsql"
+    # Let the driver manager fall back to (DY)LD_LIBRARY_PATH/PATH
+    # (It will insert 'lib', 'so', etc. as needed)
+    return driver
