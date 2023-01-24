@@ -94,7 +94,7 @@ few optional authentication schemes:
   :cpp:class:`AdbcDatabase`.  Alternatively, set the option
   ``arrow.flight.sql.authorization_header`` for full control.
 
-  The client provides credentials sending a ``authorization`` from
+  The client provides credentials sending an ``authorization`` from
   client to server.  The server then responds with an
   ``authorization`` header on the first request.  The value of this
   header will then be sent back as the ``authorization`` header on all
