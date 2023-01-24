@@ -306,7 +306,7 @@ jobs:
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
-      - name: Stop sqlite server
+      - name: Stop SQLite server
         shell: bash -l {0}
         run: |
           docker-compose down
