@@ -237,7 +237,7 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 	}
 
 	cl.Alloc = d.alloc
-	if d.user != "" {
+	if d.user != "" || d.pass != "" {
 		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass)
 		if err != nil {
 			return nil, adbc.Error{
