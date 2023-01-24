@@ -70,10 +70,10 @@ func getIsolationlevel(lvl sql.IsolationLevel) adbc.OptionIsolationLevel {
 	return ""
 }
 
-func parseConnectStr(str string) (ret map[string]string, err error) {
+func ParseConnectStr(str string) (ret map[string]string, err error) {
 	ret = make(map[string]string)
 	for _, kv := range strings.Split(str, ";") {
-		parsed := strings.Split(kv, "=")
+		parsed := strings.SplitN(kv, "=", 2)
 		if len(parsed) != 2 {
 			return nil, &adbc.Error{
 				Msg:  "invalid format for connection string",
@@ -139,7 +139,7 @@ func (d Driver) Open(name string) (driver.Conn, error) {
 
 // OpenConnector expects the same format as driver.Open
 func (d Driver) OpenConnector(name string) (driver.Connector, error) {
-	opts, err := parseConnectStr(name)
+	opts, err := ParseConnectStr(name)
 	if err != nil {
 		return nil, err
 	}
