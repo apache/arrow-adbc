@@ -328,7 +328,14 @@
 <p>The Flight SQL driver is shipped as a standalone library.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-0">
+</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-0">
+Go</label><div class="sd-tab-content docutils">
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-1">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_sqlite
 </pre></div>
@@ -341,26 +348,26 @@ Python</label><div class="sd-tab-content docutils">
 <p>To connect to a database, supply the “uri” parameter when constructing
 the <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
 <div class="sd-tab-set docutils">
-<input checked="checked" id="sd-tab-item-1" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-1">
+<input checked="checked" id="sd-tab-item-2" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-2">
 C++</label><div class="sd-tab-content docutils">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;adbc.h&quot;</span>
 
 <span class="c1">// Ignoring error handling</span>
 <span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;adbc_driver_flightsql&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span>
 <span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;grpc://localhost:8080&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span>
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span>
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-2" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-2">
+<input id="sd-tab-item-3" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-3">
 Python</label><div class="sd-tab-content docutils">
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pyarrow.flight_sql</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_flightsql.dbapi</span>
 
-
-<span class="k">with</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">flight_sql</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;grpc://localhost:8080&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">adbc_driver_flightsql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;grpc://localhost:8080&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
     <span class="k">pass</span>
 </pre></div>
 </div>
@@ -373,53 +380,48 @@ Python</label><div class="sd-tab-content docutils">
 API specification 1.0.0, as well as some additional, custom options.</p>
 <section id="authentication">
 <h3>Authentication<a class="headerlink" href="#authentication" title="Permalink to this heading">#</a></h3>
-<p>The driver does no authentication by default.</p>
-<p>The driver implements one optional authentication scheme that mimics
-the Arrow Flight SQL JDBC driver.  This can be enabled by setting the
-option <code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.authorization_header</span></code> on the
-<a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  The client provides credentials by setting
-the option value to the value of the <code class="docutils literal notranslate"><span class="pre">authorization</span></code> header sent
-from client to server.  The server then responds with an
+<p>The driver does no authentication by default.  The driver implements a
+few optional authentication schemes:</p>
+<ul>
+<li><p>Mutual TLS (mTLS): see “Client Options” below.</p></li>
+<li><p>An HTTP-style scheme mimicking the Arrow Flight SQL JDBC driver.</p>
+<p>Set the options <code class="docutils literal notranslate"><span class="pre">username</span></code> and <code class="docutils literal notranslate"><span class="pre">password</span></code> on the
+<a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  Alternatively, set the option
+<code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.authorization_header</span></code> for full control.</p>
+<p>The client provides credentials sending an <code class="docutils literal notranslate"><span class="pre">authorization</span></code> from
+client to server.  The server then responds with an
 <code class="docutils literal notranslate"><span class="pre">authorization</span></code> header on the first request.  The value of this
 header will then be sent back as the <code class="docutils literal notranslate"><span class="pre">authorization</span></code> header on all
 future requests.</p>
+</li>
+</ul>
 </section>
 <section id="bulk-ingestion">
 <h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
 <p>Flight SQL does not have a dedicated API for bulk ingestion of Arrow
-data into a given table.  The driver instead constructs SQL statements
-to create and insert into the table.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>The driver does not escape or validate the names of
-tables or columns.  As a precaution, it instead limits
-identifier names to letters, numbers, and underscores.
-Bulk ingestion should not be used with untrusted user
-input.</p>
-</div>
-<p>The driver binds a batch of data at a time for efficiency.  Also, the
-generated SQL statements hardcode <code class="docutils literal notranslate"><span class="pre">?</span></code> as the parameter identifier.</p>
+data into a given table.  The driver does not currently implement bulk
+ingestion as a result.</p>
 </section>
 <section id="client-options">
 <h3>Client Options<a class="headerlink" href="#client-options" title="Permalink to this heading">#</a></h3>
 <p>The options used for creating the Flight RPC client can be customized.
 These options map 1:1 with the options in FlightClientOptions:</p>
 <dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.mtls_cert_chain</span></code></dt><dd><p>The certificate chain to use for mTLS.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.mtls_private_key</span></code></dt><dd><p>The private key to use for mTLS.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.tls_override_hostname</span></code></dt><dd><p>Override the hostname used to verify the server’s TLS certificate.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.tls_skip_verify</span></code></dt><dd><p>Disable verification of the server’s TLS certificate.  Value
+should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
+</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.tls_root_certs</span></code></dt><dd><p>Override the root certificates used to validate the server’s TLS
 certificate.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.override_hostname</span></code></dt><dd><p>Override the hostname used to verify the server’s TLS certificate.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.cert_chain</span></code></dt><dd><p>The certificate chain to use for mTLS.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.private_key</span></code></dt><dd><p>The private key to use for mTLS.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.generic_int_option.&lt;OPTION_NAME&gt;</span></code></dt><dd><p>Option prefixes used to specify generic transport-layer options.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.generic_string_option.&lt;OPTION_NAME&gt;</span></code></dt><dd><p>Option prefixes used to specify generic transport-layer options.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.disable_server_verification</span></code></dt><dd><p>Disable verification of the server’s TLS certificate.  Value
-should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
 </dd>
 </dl>
 </section>
@@ -497,90 +499,10 @@ calls that implement bulk ingestion, or transaction support.</p>
 </section>
 <section id="transactions">
 <h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">#</a></h3>
-<p>The driver will issue transaction RPCs, but the driver will not check
-the server’s SqlInfo to determine whether this is supported first.</p>
-</section>
-<section id="type-mapping">
-<h3>Type Mapping<a class="headerlink" href="#type-mapping" title="Permalink to this heading">#</a></h3>
-<p>When executing a bulk ingestion operation, the driver needs to be able
-to construct appropriate SQL queries for the database.  (The driver
-does not currently support using Substrait plans instead.)  In
-particular, a mapping from Arrow types to SQL type names is required.
-While a default mapping is provided, the client may wish to override
-this mapping, which can be done by setting special options on
-<a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  (The driver does not currently inspect
-Flight SQL metadata to construct this mapping.)</p>
-<p>All such options begin with <code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.quirks.ingest_type.</span></code>
-and are followed by a type name below.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>The driver does <strong>not</strong> escape or validate the values
-here.  They should not come from untrusted user input, or
-a SQL injection vulnerability may result.</p>
-</div>
-<div class="table-wrapper docutils container" id="id1">
-<table class="docutils align-default" id="id1">
-<caption><span class="caption-text">Type Names</span><a class="headerlink" href="#id1" title="Permalink to this table">#</a></caption>
-<thead>
-<tr class="row-odd"><th class="head"><p>Arrow Type Name</p></th>
-<th class="head"><p>Default SQL Type Name</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>binary</p></td>
-<td><p>BLOB</p></td>
-</tr>
-<tr class="row-odd"><td><p>bool</p></td>
-<td><p>BOOLEAN</p></td>
-</tr>
-<tr class="row-even"><td><p>date32</p></td>
-<td><p>DATE</p></td>
-</tr>
-<tr class="row-odd"><td><p>date64</p></td>
-<td><p>DATE</p></td>
-</tr>
-<tr class="row-even"><td><p>decimal128</p></td>
-<td><p>NUMERIC</p></td>
-</tr>
-<tr class="row-odd"><td><p>decimal256</p></td>
-<td><p>NUMERIC</p></td>
-</tr>
-<tr class="row-even"><td><p>double</p></td>
-<td><p>DOUBLE PRECISION</p></td>
-</tr>
-<tr class="row-odd"><td><p>float</p></td>
-<td><p>REAL</p></td>
-</tr>
-<tr class="row-even"><td><p>int16</p></td>
-<td><p>SMALLINT</p></td>
-</tr>
-<tr class="row-odd"><td><p>int32</p></td>
-<td><p>INT</p></td>
-</tr>
-<tr class="row-even"><td><p>int64</p></td>
-<td><p>BIGINT</p></td>
-</tr>
-<tr class="row-odd"><td><p>large_binary</p></td>
-<td><p>BLOB</p></td>
-</tr>
-<tr class="row-even"><td><p>large_string</p></td>
-<td><p>TEXT</p></td>
-</tr>
-<tr class="row-odd"><td><p>string</p></td>
-<td><p>TEXT</p></td>
-</tr>
-<tr class="row-even"><td><p>time32</p></td>
-<td><p>TIME</p></td>
-</tr>
-<tr class="row-odd"><td><p>time64</p></td>
-<td><p>TIME</p></td>
-</tr>
-<tr class="row-even"><td><p>timestamp</p></td>
-<td><p>TIMESTAMP</p></td>
-</tr>
-</tbody>
-</table>
-</div>
+<p>The driver supports transactions.  It will first check the server’s
+SqlInfo to determine whether this is supported.  Otherwise,
+transaction-related ADBC APIs will return
+<a class="reference internal" href="../../cpp/api/adbc.html#c.ADBC_STATUS_NOT_IMPLEMENTED" title="ADBC_STATUS_NOT_IMPLEMENTED"><code class="xref c c-type docutils literal notranslate"><span class="pre">ADBC_STATUS_NOT_IMPLEMENTED</span></code></a>.</p>
 </section>
 </section>
 </section>
@@ -635,7 +557,6 @@ a SQL injection vulnerability may result.</p>
 <li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
 <li><a class="reference internal" href="#timeouts">Timeouts</a></li>
 <li><a class="reference internal" href="#transactions">Transactions</a></li>
-<li><a class="reference internal" href="#type-mapping">Type Mapping</a></li>
 </ul>
 </li>
 </ul>
