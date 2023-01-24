@@ -26,7 +26,7 @@
 
 using adbc_validation::IsOkStatus;
 
-class DremioFlightSQLQuirks : public adbc_validation::DriverQuirks {
+class DremioFlightSqlQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
@@ -51,18 +51,18 @@ class DremioFlightSQLQuirks : public adbc_validation::DriverQuirks {
   bool supports_dynamic_parameter_binding() const override { return false; }
 };
 
-class DremioFlightSQLTest : public ::testing::Test, public adbc_validation::DatabaseTest {
+class DremioFlightSqlTest : public ::testing::Test, public adbc_validation::DatabaseTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
  protected:
-  DremioFlightSQLQuirks quirks_;
+  DremioFlightSqlQuirks quirks_;
 };
-ADBCV_TEST_DATABASE(DremioFlightSQLTest)
+ADBCV_TEST_DATABASE(DremioFlightSqlTest)
 
-class DremioFlightSQLConnectionTest : public ::testing::Test,
+class DremioFlightSqlConnectionTest : public ::testing::Test,
                                       public adbc_validation::ConnectionTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
@@ -70,11 +70,11 @@ class DremioFlightSQLConnectionTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
  protected:
-  DremioFlightSQLQuirks quirks_;
+  DremioFlightSqlQuirks quirks_;
 };
-ADBCV_TEST_CONNECTION(DremioFlightSQLConnectionTest)
+ADBCV_TEST_CONNECTION(DremioFlightSqlConnectionTest)
 
-class DremioFlightSQLStatementTest : public ::testing::Test,
+class DremioFlightSqlStatementTest : public ::testing::Test,
                                      public adbc_validation::StatementTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
@@ -82,6 +82,6 @@ class DremioFlightSQLStatementTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
  protected:
-  DremioFlightSQLQuirks quirks_;
+  DremioFlightSqlQuirks quirks_;
 };
-ADBCV_TEST_STATEMENT(DremioFlightSQLStatementTest)
+ADBCV_TEST_STATEMENT(DremioFlightSqlStatementTest)

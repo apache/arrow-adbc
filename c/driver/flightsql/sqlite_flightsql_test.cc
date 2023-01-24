@@ -26,7 +26,7 @@
 
 using adbc_validation::IsOkStatus;
 
-class SqliteFlightSQLQuirks : public adbc_validation::DriverQuirks {
+class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
@@ -45,18 +45,18 @@ class SqliteFlightSQLQuirks : public adbc_validation::DriverQuirks {
   bool supports_dynamic_parameter_binding() const override { return true; }
 };
 
-class SqliteFlightSQLTest : public ::testing::Test, public adbc_validation::DatabaseTest {
+class SqliteFlightSqlTest : public ::testing::Test, public adbc_validation::DatabaseTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
  protected:
-  SqliteFlightSQLQuirks quirks_;
+  SqliteFlightSqlQuirks quirks_;
 };
-ADBCV_TEST_DATABASE(SqliteFlightSQLTest)
+ADBCV_TEST_DATABASE(SqliteFlightSqlTest)
 
-class SqliteFlightSQLConnectionTest : public ::testing::Test,
+class SqliteFlightSqlConnectionTest : public ::testing::Test,
                                       public adbc_validation::ConnectionTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
@@ -64,11 +64,11 @@ class SqliteFlightSQLConnectionTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
  protected:
-  SqliteFlightSQLQuirks quirks_;
+  SqliteFlightSqlQuirks quirks_;
 };
-ADBCV_TEST_CONNECTION(SqliteFlightSQLConnectionTest)
+ADBCV_TEST_CONNECTION(SqliteFlightSqlConnectionTest)
 
-class SqliteFlightSQLStatementTest : public ::testing::Test,
+class SqliteFlightSqlStatementTest : public ::testing::Test,
                                      public adbc_validation::StatementTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
@@ -76,6 +76,6 @@ class SqliteFlightSQLStatementTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
  protected:
-  SqliteFlightSQLQuirks quirks_;
+  SqliteFlightSqlQuirks quirks_;
 };
-ADBCV_TEST_STATEMENT(SqliteFlightSQLStatementTest)
+ADBCV_TEST_STATEMENT(SqliteFlightSqlStatementTest)
