@@ -107,10 +107,6 @@ target/
 
 *.log
 
-# Conda packages
-
-/ci/conda/build_artifacts/
-
 # Linux packages
 /ci/linux-packages/*.tar.gz
 /ci/linux-packages/KEYS
