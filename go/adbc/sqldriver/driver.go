@@ -70,7 +70,7 @@ func getIsolationlevel(lvl sql.IsolationLevel) adbc.OptionIsolationLevel {
 	return ""
 }
 
-func ParseConnectStr(str string) (ret map[string]string, err error) {
+func parseConnectStr(str string) (ret map[string]string, err error) {
 	ret = make(map[string]string)
 	for _, kv := range strings.Split(str, ";") {
 		parsed := strings.SplitN(kv, "=", 2)
@@ -139,7 +139,7 @@ func (d Driver) Open(name string) (driver.Conn, error) {
 
 // OpenConnector expects the same format as driver.Open
 func (d Driver) OpenConnector(name string) (driver.Connector, error) {
-	opts, err := ParseConnectStr(name)
+	opts, err := parseConnectStr(name)
 	if err != nil {
 		return nil, err
 	}
