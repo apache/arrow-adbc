@@ -265,7 +265,7 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 		LoaderFunc(func(loc interface{}) (interface{}, error) {
 			uri, ok := loc.(string)
 			if !ok {
-				return nil, adbc.Error{Code: adbc.StatusInternal}
+				return nil, adbc.Error{Msg: fmt.Sprintf("Location must be a string, got %#v", uri), Code: adbc.StatusInternal}
 			}
 
 			cl, err := getFlightClient(context.Background(), uri, d)
@@ -602,7 +602,7 @@ func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 		return nil, adbcFromFlightStatus(err)
 	}
 
-	return newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache)
+	return newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache, 5)
 }
 
 // Commit commits any pending transactions on this connection, it should
@@ -635,6 +635,7 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 		alloc:       c.db.alloc,
 		cl:          c.cl,
 		clientCache: c.clientCache,
+		queueSize:   5,
 	}, nil
 }
 

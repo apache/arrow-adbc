@@ -19,6 +19,8 @@ package flightsql
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v11/arrow"
@@ -30,13 +32,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	OptionStatementQueueSize = "arrow.flight.sql.rpc.queue_size"
+)
+
 type statement struct {
 	alloc       memory.Allocator
 	cl          *flightsql.Client
 	clientCache gcache.Cache
 
-	query    string
-	prepared *flightsql.PreparedStatement
+	query     string
+	prepared  *flightsql.PreparedStatement
+	queueSize int
 }
 
 func (s *statement) closePreparedStatement() error {
@@ -68,9 +75,28 @@ func (s *statement) Close() (err error) {
 
 // SetOption sets a string option on this statement
 func (s *statement) SetOption(key string, val string) error {
-	return adbc.Error{
-		Msg:  "[FlightSQL Statement] SetOption not implemented",
-		Code: adbc.StatusNotImplemented,
+	switch key {
+	case OptionStatementQueueSize:
+		var err error
+		var size int
+		if size, err = strconv.Atoi(val); err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for statement option '%s': '%s' is not a positive integer", OptionStatementQueueSize, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		} else if size <= 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for statement option '%s': '%s' is not a positive integer", OptionStatementQueueSize, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		s.queueSize = size
+		return nil
+	default:
+		return adbc.Error{
+			Msg:  "[FlightSQL Statement] SetOption not implemented",
+			Code: adbc.StatusNotImplemented,
+		}
 	}
 }
 
@@ -114,7 +140,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}
 
 	nrec = info.TotalRecords
-	rdr, err = newRecordReader(ctx, s.alloc, s.cl, info, s.clientCache)
+	rdr, err = newRecordReader(ctx, s.alloc, s.cl, info, s.clientCache, s.queueSize)
 	return
 }
 
