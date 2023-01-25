@@ -47,10 +47,11 @@ type statement struct {
 	query     string
 	prepared  *flightsql.PreparedStatement
 	queueSize int
+	timeouts  timeoutOption
 }
 
 func (s *statement) closePreparedStatement() error {
-	return s.prepared.Close(context.Background())
+	return s.prepared.Close(context.Background(), s.timeouts)
 }
 
 // Close releases any relevant resources associated with this statement
@@ -89,6 +90,36 @@ func (s *statement) SetOption(key string, val string) error {
 	}
 
 	switch key {
+	case OptionTimeoutFetch:
+		timeout, err := getTimeoutOptionValue(val)
+		if err != nil {
+			return adbc.Error{
+				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
+					OptionTimeoutFetch, val, err.Error()),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		s.timeouts.fetchTimeout = timeout
+	case OptionTimeoutQuery:
+		timeout, err := getTimeoutOptionValue(val)
+		if err != nil {
+			return adbc.Error{
+				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
+					OptionTimeoutFetch, val, err.Error()),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		s.timeouts.queryTimeout = timeout
+	case OptionTimeoutUpdate:
+		timeout, err := getTimeoutOptionValue(val)
+		if err != nil {
+			return adbc.Error{
+				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
+					OptionTimeoutFetch, val, err.Error()),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		s.timeouts.updateTimeout = timeout
 	case OptionStatementQueueSize:
 		var err error
 		var size int
@@ -111,6 +142,7 @@ func (s *statement) SetOption(key string, val string) error {
 			Code: adbc.StatusNotImplemented,
 		}
 	}
+	return nil
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -139,9 +171,9 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var info *flight.FlightInfo
 	if s.prepared != nil {
-		info, err = s.prepared.Execute(ctx)
+		info, err = s.prepared.Execute(ctx, s.timeouts)
 	} else if s.query != "" {
-		info, err = s.cl.Execute(ctx, s.query)
+		info, err = s.cl.Execute(ctx, s.query, s.timeouts)
 	} else {
 		return nil, -1, adbc.Error{
 			Msg:  "[Flight SQL Statement] cannot call ExecuteQuery without a query or prepared statement",
@@ -154,7 +186,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}
 
 	nrec = info.TotalRecords
-	rdr, err = newRecordReader(ctx, s.alloc, s.cl, info, s.clientCache, s.queueSize)
+	rdr, err = newRecordReader(ctx, s.alloc, s.cl, info, s.clientCache, s.queueSize, s.timeouts)
 	return
 }
 
@@ -163,11 +195,11 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 func (s *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	if s.prepared != nil {
-		return s.prepared.ExecuteUpdate(ctx)
+		return s.prepared.ExecuteUpdate(ctx, s.timeouts)
 	}
 
 	if s.query != "" {
-		return s.cl.ExecuteUpdate(ctx, s.query)
+		return s.cl.ExecuteUpdate(ctx, s.query, s.timeouts)
 	}
 
 	return -1, adbc.Error{
@@ -187,7 +219,7 @@ func (s *statement) Prepare(ctx context.Context) error {
 		}
 	}
 
-	prep, err := s.cl.Prepare(ctx, s.alloc, s.query)
+	prep, err := s.cl.Prepare(ctx, s.alloc, s.query, s.timeouts)
 	if err != nil {
 		return adbcFromFlightStatus(err)
 	}
@@ -299,9 +331,9 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 	)
 
 	if s.prepared != nil {
-		info, err = s.prepared.Execute(ctx)
+		info, err = s.prepared.Execute(ctx, s.timeouts)
 	} else if s.query != "" {
-		info, err = s.cl.Execute(ctx, s.query)
+		info, err = s.cl.Execute(ctx, s.query, s.timeouts)
 	} else {
 		return nil, out, -1, adbc.Error{
 			Msg:  "[Flight SQL Statement] cannot call ExecuteQuery without a query or prepared statement",

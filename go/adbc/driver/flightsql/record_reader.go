@@ -29,6 +29,7 @@ import (
 	"github.com/apache/arrow/go/v11/arrow/memory"
 	"github.com/bluele/gcache"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 )
 
 type reader struct {
@@ -44,7 +45,7 @@ type reader struct {
 
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
-func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache, bufferSize int) (rdr array.RecordReader, err error) {
+func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache, bufferSize int, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
 	endpoints := info.Endpoint
 	var schema *arrow.Schema
 	if len(endpoints) == 0 {
@@ -85,7 +86,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				Code: adbc.StatusInvalidState}
 		}
 	} else {
-		rdr, err := doGet(ctx, cl, endpoints[0], clCache)
+		rdr, err := doGet(ctx, cl, endpoints[0], clCache, opts...)
 		if err != nil {
 			return nil, adbcFromFlightStatus(err)
 		}
@@ -125,7 +126,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				defer close(chs[endpointIndex])
 			}
 
-			rdr, err := doGet(ctx, cl, endpoint, clCache)
+			rdr, err := doGet(ctx, cl, endpoint, clCache, opts...)
 			if err != nil {
 				return err
 			}
