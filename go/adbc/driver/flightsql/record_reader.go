@@ -46,7 +46,6 @@ type reader struct {
 // gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache) (rdr array.RecordReader, err error) {
 	endpoints := info.Endpoint
-	numEndpoints := len(endpoints)
 	var schema *arrow.Schema
 	if len(endpoints) == 0 {
 		if info.Schema == nil {
@@ -68,6 +67,8 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	ch := make(chan arrow.Record, 5)
 	group, ctx := errgroup.WithContext(ctx)
 	ctx, cancelFn := context.WithCancel(ctx)
+	// We may mutate endpoints below
+	numEndpoints := len(endpoints)
 
 	if info.Schema != nil {
 		schema, err = flight.DeserializeSchema(info.Schema, alloc)
