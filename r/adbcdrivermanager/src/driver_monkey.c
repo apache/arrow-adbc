@@ -247,7 +247,7 @@ static AdbcStatusCode MonkeyStatementRelease(struct AdbcStatement* statement,
   }
 
   struct MonkeyStatementPrivate* statement_private =
-      (struct MonkeyStatementPrivate*)malloc(sizeof(struct MonkeyStatementPrivate));
+      (struct MonkeyStatementPrivate*)statement->private_data;
   if (statement_private->stream.release != NULL) {
     statement_private->stream.release(&statement_private->stream);
   }
