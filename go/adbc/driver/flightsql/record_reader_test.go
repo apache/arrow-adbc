@@ -19,6 +19,7 @@ package flightsql
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"testing"
 
@@ -44,10 +45,17 @@ func orderingSchema() *arrow.Schema {
 
 type testFlightService struct {
 	flight.BaseFlightServer
-	alloc memory.Allocator
+	alloc        memory.Allocator
+	failureCount int
 }
 
 func (f *testFlightService) DoGet(request *flight.Ticket, stream flight.FlightService_DoGetServer) error {
+	// Crude way to make requests fail until retried enough times
+	if f.failureCount > 0 {
+		f.failureCount--
+		return fmt.Errorf("Failed request")
+	}
+
 	schema := orderingSchema()
 	wr := flight.NewRecordWriter(stream, ipc.WithSchema(schema))
 	defer wr.Close()
@@ -86,6 +94,7 @@ type RecordReaderTests struct {
 
 	alloc   *memory.CheckedAllocator
 	server  flight.Server
+	service *testFlightService
 	cl      *flightsql.Client
 	clCache gcache.Cache
 }
@@ -95,8 +104,8 @@ func (suite *RecordReaderTests) SetupSuite() {
 
 	suite.server = flight.NewServerWithMiddleware(nil)
 	suite.NoError(suite.server.Init("localhost:0"))
-	svc := &testFlightService{alloc: suite.alloc}
-	suite.server.RegisterFlightService(svc)
+	suite.service = &testFlightService{alloc: suite.alloc}
+	suite.server.RegisterFlightService(suite.service)
 
 	go func() {
 		// Explicitly ignore error
@@ -133,6 +142,90 @@ func (suite *RecordReaderTests) TearDownSuite() {
 	suite.clCache.Purge()
 	suite.server.Shutdown()
 	suite.alloc.AssertSize(suite.T(), 0)
+}
+
+func (suite *RecordReaderTests) TestFallbackFailedConnection() {
+	goodLocation := "grpc://" + suite.server.Addr().String()
+	badLocation := "grpc://127.0.0.2:1234"
+	info := flight.FlightInfo{
+		Schema: flight.SerializeSchema(orderingSchema(), suite.alloc),
+		Endpoint: []*flight.FlightEndpoint{
+			{
+				Ticket:   &flight.Ticket{Ticket: []byte{0}},
+				Location: []*flight.Location{{Uri: badLocation}, {Uri: goodLocation}},
+			},
+		},
+	}
+
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	suite.NoError(err)
+	defer reader.Release()
+
+	suite.True(reader.Schema().Equal(orderingSchema()))
+	suite.True(reader.Next())
+	suite.True(reader.Next())
+	suite.True(reader.Next())
+	suite.True(reader.Next())
+	suite.False(reader.Next())
+	suite.NoError(reader.Err())
+}
+
+func (suite *RecordReaderTests) TestFallbackFailedDoGet() {
+	defer func() {
+		suite.service.failureCount = 0
+	}()
+
+	suite.service.failureCount = 2
+	goodLocation := "grpc://" + suite.server.Addr().String()
+	info := flight.FlightInfo{
+		Schema: flight.SerializeSchema(orderingSchema(), suite.alloc),
+		Endpoint: []*flight.FlightEndpoint{
+			{
+				Ticket:   &flight.Ticket{Ticket: []byte{0}},
+				Location: []*flight.Location{{Uri: goodLocation}, {Uri: goodLocation}, {Uri: goodLocation}},
+			},
+		},
+	}
+
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	suite.NoError(err)
+	defer reader.Release()
+
+	suite.True(reader.Schema().Equal(orderingSchema()))
+	suite.True(reader.Next())
+	suite.True(reader.Next())
+	suite.True(reader.Next())
+	suite.True(reader.Next())
+	suite.False(reader.Next())
+	suite.NoError(reader.Err())
+
+	// Not enough retries
+	suite.service.failureCount = 4
+	reader, err = newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	suite.NoError(err)
+	defer reader.Release()
+	suite.False(reader.Next())
+	suite.Error(reader.Err())
+}
+
+func (suite *RecordReaderTests) TestFallbackFailed() {
+	badLocation := "grpc://127.0.0.2:1234"
+	info := flight.FlightInfo{
+		Schema: flight.SerializeSchema(orderingSchema(), suite.alloc),
+		Endpoint: []*flight.FlightEndpoint{
+			{
+				Ticket:   &flight.Ticket{Ticket: []byte{0}},
+				Location: []*flight.Location{{Uri: badLocation}, {Uri: badLocation}},
+			},
+		},
+	}
+
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	suite.NoError(err)
+	defer reader.Release()
+
+	suite.False(reader.Next())
+	suite.Error(reader.Err())
 }
 
 func (suite *RecordReaderTests) TestNoEndpoints() {
