@@ -222,6 +222,14 @@ which is made available under the Creative Commons CC0 license.
 
 --------------------------------------------------------------------------------
 
+The files under ci/conda/.ci-support have the following license
+
+BSD 3-clause license
+Copyright (c) 2015-2022, conda-forge
+All rights reserved.
+
+--------------------------------------------------------------------------------
+
 3rdparty dependency Go is statically linked in certain binary distributions,
 like the Python wheels. The Go project is under the BSD 3-clause license +
 PATENTS weak patent termination clause

@@ -257,7 +257,7 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 	}
 
 	cl.Alloc = d.alloc
-	if d.user != "" {
+	if d.user != "" || d.pass != "" {
 		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass)
 		if err != nil {
 			return nil, adbc.Error{
@@ -285,7 +285,7 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 		LoaderFunc(func(loc interface{}) (interface{}, error) {
 			uri, ok := loc.(string)
 			if !ok {
-				return nil, adbc.Error{Code: adbc.StatusInternal}
+				return nil, adbc.Error{Msg: fmt.Sprintf("Location must be a string, got %#v", uri), Code: adbc.StatusInternal}
 			}
 
 			cl, err := getFlightClient(context.Background(), uri, d)
@@ -636,7 +636,7 @@ func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 		return nil, adbcFromFlightStatus(err)
 	}
 
-	return newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache)
+	return newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache, 5)
 }
 
 // Commit commits any pending transactions on this connection, it should
@@ -670,6 +670,7 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 		cl:          c.cl,
 		clientCache: c.clientCache,
 		hdrs:        c.hdrs.Copy(),
+		queueSize:   5,
 	}, nil
 }
 

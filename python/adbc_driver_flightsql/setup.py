@@ -36,6 +36,8 @@ target = source_root.joinpath(
 if not library:
     if os.environ.get("_ADBC_IS_SDIST", "").strip().lower() in ("1", "true"):
         print("Building sdist, not requiring ADBC_FLIGHTSQL_LIBRARY")
+    elif os.environ.get("_ADBC_IS_CONDA", "").strip().lower() in ("1", "true"):
+        print("Building Conda package, not requiring ADBC_FLIGHTSQL_LIBRARY")
     elif target.is_file():
         print("Driver already exists (but may be stale?), continuing")
     else:

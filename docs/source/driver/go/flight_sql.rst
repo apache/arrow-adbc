@@ -162,8 +162,16 @@ try the next location.
 
 The driver does not currently cache or pool these secondary
 connections.  It also does not retry connections or requests.
-Requests are made sequentially, one at a time—the driver does not
-parallelize requests or perform readahead.
+
+All partitions are fetched in parallel.  A limited number of batches
+are queued per partition.  Data is returned to the client in the order
+of the partitions.
+
+The queue size can be changed by setting an option on the
+:cpp:class:`AdbcStatement`:
+
+``arrow.flight.sql.rpc.queue_size``
+    The number of batches to queue per partition.  Defaults to 5.
 
 Metadata
 --------

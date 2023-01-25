@@ -224,6 +224,7 @@ func TestADBCFlightSQL(t *testing.T) {
 
 	suite.Run(t, &PartitionTests{Quirks: q})
 	suite.Run(t, &SSLTests{Quirks: q})
+  suite.Run(t, &StatementTests{Quirks: q})
 	suite.Run(t, &HeaderTests{Quirks: q})
 }
 
@@ -350,6 +351,60 @@ func (suite *PartitionTests) TestIntrospectPartitions() {
 	suite.Require().Equal(0, len(info.Endpoint[0].Location))
 }
 
+type StatementTests struct {
+	suite.Suite
+
+	Driver adbc.Driver
+	Quirks validation.DriverQuirks
+
+	DB   adbc.Database
+	Cnxn adbc.Connection
+	Stmt adbc.Statement
+	ctx  context.Context
+}
+
+func (suite *StatementTests) SetupTest() {
+	suite.Driver = suite.Quirks.SetupDriver(suite.T())
+	var err error
+	suite.DB, err = suite.Driver.NewDatabase(suite.Quirks.DatabaseOptions())
+
+	suite.Require().NoError(err)
+	suite.ctx = context.Background()
+	suite.Cnxn, err = suite.DB.Open(suite.ctx)
+	suite.Require().NoError(err)
+}
+
+func (suite *StatementTests) TearDownTest() {
+	suite.Require().NoError(suite.Stmt.Close())
+	suite.Require().NoError(suite.Cnxn.Close())
+	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.Cnxn = nil
+	suite.DB = nil
+	suite.Driver = nil
+}
+
+func (suite *StatementTests) TestQueueSizeOption() {
+	var err error
+	option := "arrow.flight.sql.rpc.queue_size"
+
+	err = suite.Stmt.SetOption(option, "")
+	suite.Require().ErrorContains(err, "Invalid value for statement option 'arrow.flight.sql.rpc.queue_size': '' is not a positive integer")
+
+	err = suite.Stmt.SetOption(option, "foo")
+	suite.Require().ErrorContains(err, "Invalid value for statement option 'arrow.flight.sql.rpc.queue_size': 'foo' is not a positive integer")
+
+	err = suite.Stmt.SetOption(option, "-1")
+	suite.Require().ErrorContains(err, "Invalid value for statement option 'arrow.flight.sql.rpc.queue_size': '-1' is not a positive integer")
+
+	err = suite.Stmt.SetOption(option, "1")
+	suite.Require().NoError(err)
+}
+
+func (suite *StatementTests) TestUnknownOption() {
+	err := suite.Stmt.SetOption("unknown option", "")
+	suite.Require().ErrorContains(err, "Unknown statement option 'unknown option'")
+}
+
 type HeaderTests struct {
 	suite.Suite
 
@@ -368,18 +423,16 @@ func (suite *HeaderTests) SetupTest() {
 	opts[driver.OptionAuthorizationHeader] = "auth-header-token"
 	opts["adbc.flight.sql.rpc.call_header.x-header-one"] = "value 1"
 	suite.DB, err = suite.Driver.NewDatabase(opts)
-	suite.Require().NoError(err)
+
+  suite.Require().NoError(err)
 	suite.ctx = context.Background()
 	suite.Cnxn, err = suite.DB.Open(suite.ctx)
 	suite.Require().NoError(err)
 }
 
 func (suite *HeaderTests) TearDownTest() {
-	suite.Require().NoError(suite.Cnxn.Close())
-	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
-	suite.Cnxn = nil
-	suite.DB = nil
-	suite.Driver = nil
+	suite.Stmt, err = suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
 }
 
 func (suite *HeaderTests) TestDatabaseOptAuthorization() {

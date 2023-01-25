@@ -73,7 +73,7 @@ func getIsolationlevel(lvl sql.IsolationLevel) adbc.OptionIsolationLevel {
 func parseConnectStr(str string) (ret map[string]string, err error) {
 	ret = make(map[string]string)
 	for _, kv := range strings.Split(str, ";") {
-		parsed := strings.Split(kv, "=")
+		parsed := strings.SplitN(kv, "=", 2)
 		if len(parsed) != 2 {
 			return nil, &adbc.Error{
 				Msg:  "invalid format for connection string",
@@ -186,6 +186,32 @@ type conn struct {
 // indefinitely (e.g. apply a timeout)
 func (c *conn) Close() error {
 	return c.Conn.Close()
+}
+
+func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
+	namedValues := make([]driver.NamedValue, len(values))
+	for i, value := range values {
+		namedValues[i] = driver.NamedValue{
+			// nb: Name field is optional
+			Ordinal: i,
+			Value:   value,
+		}
+	}
+	return c.QueryContext(context.Background(), query, namedValues)
+}
+
+func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	s, err := c.Conn.NewStatement()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = s.SetSqlQuery(query); err != nil {
+		s.Close()
+		return nil, err
+	}
+
+	return (&stmt{stmt: s}).QueryContext(ctx, args)
 }
 
 // Begin exists to fulfill the Conn interface, but will return an error.

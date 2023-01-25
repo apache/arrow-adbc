@@ -15,26 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# All of the following environment variables are required to set default values
-# for the parameters in docker-compose.yml.
-
-# Default repository to pull and push images from
-REPO=apache/arrow-dev
-
-# different architecture notations
-ARCH=amd64
-ARCH_ALIAS=x86_64
-ARCH_SHORT=amd64
-ARCH_CONDA_FORGE=linux_64_
-
-# Default versions for various dependencies
-JDK=8
-MANYLINUX=2014
-MAVEN=3.5.4
-PYTHON=3.10
-GO=1.19.5
-ARROW_MAJOR_VERSION=11
-
-# Used through docker-compose.yml and serves as the default version for the
-# ci/scripts/install_vcpkg.sh script.
-VCPKG="2871ddd918cecb9cb642bcb9c56897f397283192"
+build_platform:
+  linux_aarch64: linux_64
+  linux_ppc64le: linux_64
+  osx_arm64: osx_64
+conda_forge_output_validation: true
+github:
+  branch_name: main
+  tooling_branch_name: main
+recipe_dir: .
+skip_render:
+  - .gitignore
+  - LICENSE.txt
+  - README.md
+test_on_native_only: true
