@@ -19,7 +19,6 @@ package flightsql
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"testing"
 
@@ -91,7 +90,7 @@ type RecordReaderTests struct {
 	clCache gcache.Cache
 }
 
-func (suite *RecordReaderTests) SetupTest() {
+func (suite *RecordReaderTests) SetupSuite() {
 	suite.alloc = memory.NewCheckedAllocator(memory.DefaultAllocator)
 
 	suite.server = flight.NewServerWithMiddleware(nil)
@@ -100,8 +99,8 @@ func (suite *RecordReaderTests) SetupTest() {
 	suite.server.RegisterFlightService(svc)
 
 	go func() {
-		err := suite.server.Serve()
-		suite.NoError(err)
+		// Explicitly ignore error
+		_ = suite.server.Serve()
 	}()
 
 	var err error
@@ -114,8 +113,6 @@ func (suite *RecordReaderTests) SetupTest() {
 			if !ok {
 				return nil, adbc.Error{Code: adbc.StatusInternal}
 			}
-
-			fmt.Printf("Connecting to %s\n", uri)
 
 			cl, err := getFlightClientTest(context.Background(), uri)
 			if err != nil {
@@ -131,7 +128,7 @@ func (suite *RecordReaderTests) SetupTest() {
 		}).Build()
 }
 
-func (suite *RecordReaderTests) TearDownTest() {
+func (suite *RecordReaderTests) TearDownSuite() {
 	suite.cl.Close()
 	suite.clCache.Purge()
 	suite.server.Shutdown()
