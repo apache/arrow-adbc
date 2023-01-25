@@ -73,7 +73,7 @@ func getIsolationlevel(lvl sql.IsolationLevel) adbc.OptionIsolationLevel {
 func parseConnectStr(str string) (ret map[string]string, err error) {
 	ret = make(map[string]string)
 	for _, kv := range strings.Split(str, ";") {
-		parsed := strings.Split(kv, "=")
+		parsed := strings.SplitN(kv, "=", 2)
 		if len(parsed) != 2 {
 			return nil, &adbc.Error{
 				Msg:  "invalid format for connection string",
