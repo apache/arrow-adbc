@@ -635,6 +635,7 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 		alloc:       c.db.alloc,
 		cl:          c.cl,
 		clientCache: c.clientCache,
+		queueSize:   5,
 	}, nil
 }
 

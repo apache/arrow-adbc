@@ -75,9 +75,11 @@ func (s *statement) Close() (err error) {
 
 // SetOption sets a string option on this statement
 func (s *statement) SetOption(key string, val string) error {
-	switch {
-	case key == OptionStatementQueueSize:
-		if size, err := strconv.Atoi(val); err != nil {
+	switch key {
+	case OptionStatementQueueSize:
+		var err error
+		var size int
+		if size, err = strconv.Atoi(val); err != nil {
 			return adbc.Error{
 				Msg:  fmt.Sprintf("Invalid value for statement option '%s': '%s' is not a positive integer", OptionStatementQueueSize, val),
 				Code: adbc.StatusInvalidArgument,
@@ -87,9 +89,8 @@ func (s *statement) SetOption(key string, val string) error {
 				Msg:  fmt.Sprintf("Invalid value for statement option '%s': '%s' is not a positive integer", OptionStatementQueueSize, val),
 				Code: adbc.StatusInvalidArgument,
 			}
-		} else {
-			s.queueSize = size
 		}
+		s.queueSize = size
 		return nil
 	default:
 		return adbc.Error{
@@ -139,11 +140,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}
 
 	nrec = info.TotalRecords
-	queueSize := 5
-	if s.queueSize > 0 {
-		queueSize = s.queueSize
-	}
-	rdr, err = newRecordReader(ctx, s.alloc, s.cl, info, s.clientCache, queueSize)
+	rdr, err = newRecordReader(ctx, s.alloc, s.cl, info, s.clientCache, s.queueSize)
 	return
 }
 
