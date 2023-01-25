@@ -19,6 +19,7 @@ package flightsql
 
 import (
 	"context"
+	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v11/arrow"
@@ -27,6 +28,7 @@ import (
 	"github.com/apache/arrow/go/v11/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v11/arrow/memory"
 	"github.com/bluele/gcache"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -35,6 +37,7 @@ type statement struct {
 	cl          *flightsql.Client
 	clientCache gcache.Cache
 
+	hdrs     metadata.MD
 	query    string
 	prepared *flightsql.PreparedStatement
 }
@@ -68,8 +71,18 @@ func (s *statement) Close() (err error) {
 
 // SetOption sets a string option on this statement
 func (s *statement) SetOption(key string, val string) error {
+	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
+		name := strings.TrimPrefix(key, OptionRPCCallHeaderPrefix)
+		if val == "" {
+			s.hdrs.Delete(name)
+		} else {
+			s.hdrs.Append(name, val)
+		}
+		return nil
+	}
+
 	return adbc.Error{
-		Msg:  "[FlightSQL Statement] SetOption not implemented",
+		Msg:  "[Flight SQL] unknown statement option",
 		Code: adbc.StatusNotImplemented,
 	}
 }
@@ -97,6 +110,7 @@ func (s *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
+	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var info *flight.FlightInfo
 	if s.prepared != nil {
 		info, err = s.prepared.Execute(ctx)
@@ -121,6 +135,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (s *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
+	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	if s.prepared != nil {
 		return s.prepared.ExecuteUpdate(ctx)
 	}
@@ -138,6 +153,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) error {
+	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	if s.query == "" {
 		return adbc.Error{
 			Msg:  "[FlightSQL Statement] must call SetSqlQuery before Prepare",
@@ -193,7 +209,7 @@ func (s *statement) Bind(_ context.Context, values arrow.Record) error {
 //
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
-func (s *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
+func (s *statement) BindStream(_ context.Context, stream array.RecordReader) error {
 	if s.prepared == nil {
 		return adbc.Error{
 			Msg:  "[Flight SQL Statement] must call Prepare before calling Bind",
@@ -247,6 +263,8 @@ func (s *statement) GetParameterSchema() (*arrow.Schema, error) {
 // If the driver does not support partitioned results, this will return
 // an error with a StatusNotImplemented code.
 func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
+	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
+
 	var (
 		info *flight.FlightInfo
 		out  adbc.Partitions

@@ -63,8 +63,9 @@ const (
 	OptionSSLOverrideHostname = "adbc.flight.sql.client_option.tls_override_hostname"
 	OptionSSLSkipVerify       = "adbc.flight.sql.client_option.tls_skip_verify"
 	OptionSSLRootCerts        = "adbc.flight.sql.client_option.tls_root_certs"
-
-	infoDriverName = "ADBC Flight SQL Driver - Go"
+	OptionAuthorizationHeader = "adbc.flight.sql.authorization_header"
+	OptionRPCCallHeaderPrefix = "adbc.flight.sql.rpc.call_header."
+	infoDriverName            = "ADBC Flight SQL Driver - Go"
 )
 
 var (
@@ -100,7 +101,7 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	}
 	delete(opts, adbc.OptionKeyURI)
 
-	db := &database{alloc: d.Alloc}
+	db := &database{alloc: d.Alloc, hdrs: make(metadata.MD)}
 	if db.alloc == nil {
 		db.alloc = memory.DefaultAllocator
 	}
@@ -117,6 +118,7 @@ type database struct {
 	uri        *url.URL
 	creds      credentials.TransportCredentials
 	user, pass string
+	hdrs       metadata.MD
 
 	alloc memory.Allocator
 }
@@ -183,17 +185,38 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 
 	d.creds = credentials.NewTLS(&tlsConfig)
 
+	if auth, ok := cnOptions[OptionAuthorizationHeader]; ok {
+		d.hdrs.Set("authorization", auth)
+		delete(cnOptions, OptionAuthorizationHeader)
+	}
+
 	if u, ok := cnOptions[adbc.OptionKeyUsername]; ok {
+		if d.hdrs.Len() > 0 {
+			return adbc.Error{
+				Msg:  "Authorization header already provided, do not provide user/pass also",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
 		d.user = u
 		delete(cnOptions, adbc.OptionKeyUsername)
 	}
 
 	if p, ok := cnOptions[adbc.OptionKeyPassword]; ok {
+		if d.hdrs.Len() > 0 {
+			return adbc.Error{
+				Msg:  "Authorization header already provided, do not provide user/pass also",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
 		d.pass = p
 		delete(cnOptions, adbc.OptionKeyPassword)
 	}
 
-	for key := range cnOptions {
+	for key, val := range cnOptions {
+		if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
+			d.hdrs.Append(strings.TrimPrefix(key, OptionRPCCallHeaderPrefix), val)
+			continue
+		}
 		return adbc.Error{
 			Msg:  fmt.Sprintf("Unknown database option '%s'", key),
 			Code: adbc.StatusInvalidArgument,
@@ -204,19 +227,16 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 }
 
 type bearerAuthMiddleware struct {
-	token string
+	hdrs metadata.MD
 }
 
 func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
-	if b.token != "" {
-		return metadata.AppendToOutgoingContext(ctx, "authorization", b.token)
-	}
-
-	return ctx
+	md, _ := metadata.FromOutgoingContext(ctx)
+	return metadata.NewOutgoingContext(ctx, metadata.Join(md, b.hdrs))
 }
 
 func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.Client, error) {
-	authMiddle := &bearerAuthMiddleware{}
+	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy()}
 
 	uri, err := url.Parse(loc)
 	if err != nil {
@@ -247,7 +267,7 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 		}
 
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
-			authMiddle.token = md.Get("Authorization")[0]
+			authMiddle.hdrs.Set("authorization", md.Get("Authorization")[0])
 		}
 	}
 
@@ -280,7 +300,7 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 			conn := client.(*flightsql.Client)
 			conn.Close()
 		}).Build()
-	return &cnxn{cl: cl, db: d, clientCache: cache}, nil
+	return &cnxn{cl: cl, db: d, clientCache: cache, hdrs: make(metadata.MD)}, nil
 }
 
 type cnxn struct {
@@ -288,6 +308,7 @@ type cnxn struct {
 
 	db          *database
 	clientCache gcache.Cache
+	hdrs        metadata.MD
 }
 
 var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
@@ -324,7 +345,19 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 }
 
 func (c *cnxn) SetOption(key, value string) error {
+	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
+		name := strings.TrimPrefix(key, OptionRPCCallHeaderPrefix)
+		if value == "" {
+			c.hdrs.Delete(name)
+		} else {
+			c.hdrs.Append(name, value)
+		}
+		return nil
+	}
+
 	switch key {
+	case OptionAuthorizationHeader:
+		c.hdrs.Set("authorization", value)
 	case adbc.OptionKeyAutoCommit:
 		return adbc.Error{
 			Msg:  "[Flight SQL] transactions not yet supported",
@@ -336,6 +369,8 @@ func (c *cnxn) SetOption(key, value string) error {
 			Code: adbc.StatusNotImplemented,
 		}
 	}
+
+	return nil
 }
 
 // GetInfo returns metadata about the database/driver.
@@ -400,6 +435,7 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 		}
 	}
 
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	info, err := c.cl.GetSqlInfo(ctx, translated)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
@@ -546,6 +582,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 		IncludeSchema:          true,
 	}
 
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	info, err := c.cl.GetTables(ctx, opts)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
@@ -597,6 +634,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //		table_type			| utf8 not null
 //
 func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	info, err := c.cl.GetTableTypes(ctx)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
@@ -635,6 +673,9 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 		alloc:       c.db.alloc,
 		cl:          c.cl,
 		clientCache: c.clientCache,
+		// don't copy the headers so that calling SetOption to add more
+		// headers on the connection still propagates
+		hdrs: c.hdrs,
 	}, nil
 }
 
@@ -646,6 +687,7 @@ func (c *cnxn) Close() error {
 			Code: adbc.StatusInvalidState,
 		}
 	}
+
 	err := c.cl.Close()
 	c.cl = nil
 	return err
@@ -672,6 +714,7 @@ func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (r
 		}
 	}
 
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	rdr, err = doGet(ctx, c.cl, info.Endpoint[0], c.clientCache)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)

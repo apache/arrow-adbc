@@ -36,22 +36,39 @@ import (
 	"github.com/apache/arrow/go/v11/arrow/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
 
+type HeaderServerMiddleware struct {
+	recordedHeaders metadata.MD
+}
+
+func (hm *HeaderServerMiddleware) StartCall(ctx context.Context) context.Context {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		hm.recordedHeaders = metadata.Join(md, hm.recordedHeaders)
+	}
+	return ctx
+}
+
+func (hm *HeaderServerMiddleware) CallCompleted(context.Context, error) {}
+
 type FlightSQLQuirks struct {
-	srv *example.SQLiteFlightSQLServer
-	s   flight.Server
+	srv    *example.SQLiteFlightSQLServer
+	s      flight.Server
+	middle HeaderServerMiddleware
 
 	done chan bool
 	mem  *memory.CheckedAllocator
 }
 
 func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
+	s.middle.recordedHeaders = make(metadata.MD)
+
 	s.done = make(chan bool)
 	var err error
 	s.mem = memory.NewCheckedAllocator(memory.DefaultAllocator)
-	s.s = flight.NewServerWithMiddleware(nil)
+	s.s = flight.NewServerWithMiddleware([]flight.ServerMiddleware{flight.CreateServerMiddleware(&s.middle)})
 	s.srv, err = example.NewSQLiteFlightSQLServer()
 	require.NoError(t, err)
 	s.srv.Alloc = s.mem
@@ -207,6 +224,7 @@ func TestADBCFlightSQL(t *testing.T) {
 
 	suite.Run(t, &PartitionTests{Quirks: q})
 	suite.Run(t, &SSLTests{Quirks: q})
+	suite.Run(t, &HeaderTests{Quirks: q})
 }
 
 // Driver-specific tests
@@ -330,4 +348,118 @@ func (suite *PartitionTests) TestIntrospectPartitions() {
 	suite.Require().Equal(int64(-1), info.TotalRecords)
 	suite.Require().Equal(1, len(info.Endpoint))
 	suite.Require().Equal(0, len(info.Endpoint[0].Location))
+}
+
+type HeaderTests struct {
+	suite.Suite
+
+	Driver adbc.Driver
+	Quirks *FlightSQLQuirks
+
+	DB   adbc.Database
+	Cnxn adbc.Connection
+	ctx  context.Context
+}
+
+func (suite *HeaderTests) SetupTest() {
+	suite.Driver = suite.Quirks.SetupDriver(suite.T())
+	var err error
+	opts := suite.Quirks.DatabaseOptions()
+	opts[driver.OptionAuthorizationHeader] = "auth-header-token"
+	opts["adbc.flight.sql.rpc.call_header.x-header-one"] = "value 1"
+	suite.DB, err = suite.Driver.NewDatabase(opts)
+	suite.Require().NoError(err)
+	suite.ctx = context.Background()
+	suite.Cnxn, err = suite.DB.Open(suite.ctx)
+	suite.Require().NoError(err)
+}
+
+func (suite *HeaderTests) TearDownTest() {
+	suite.Require().NoError(suite.Cnxn.Close())
+	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.Cnxn = nil
+	suite.DB = nil
+	suite.Driver = nil
+}
+
+func (suite *HeaderTests) TestDatabaseOptAuthorization() {
+	stmt, err := suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+	_, _, err = stmt.ExecuteQuery(suite.ctx)
+	suite.Error(err)
+
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("authorization"), "auth-header-token")
+}
+
+func (suite *HeaderTests) TestConnection() {
+	stmt, err := suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption(driver.OptionAuthorizationHeader, "auth-cnxn-token"))
+	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", "my span id"))
+	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-user-agent", "Flight SQL ADBC"))
+
+	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+	_, _, err = stmt.ExecuteQuery(suite.ctx)
+	suite.Error(err)
+
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("authorization"), "auth-cnxn-token")
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-span-id"), "my span id")
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-user-agent"), "Flight SQL ADBC")
+}
+
+func (suite *HeaderTests) TestStatement() {
+	stmt, err := suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(stmt.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", "my span id"))
+	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+	_, _, err = stmt.ExecuteQuery(suite.ctx)
+	suite.Error(err)
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-span-id"), "my span id")
+	suite.Quirks.middle.recordedHeaders = metadata.MD{}
+
+	// set to empty string to remove it
+	suite.Require().NoError(stmt.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", ""))
+	_, _, err = stmt.ExecuteQuery(suite.ctx)
+	suite.Error(err)
+	suite.NotContains(suite.Quirks.middle.recordedHeaders, "x-span-id")
+	suite.Quirks.middle.recordedHeaders = metadata.MD{}
+
+	// inherit connection headers
+	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", "my span id"))
+	_, _, err = stmt.ExecuteQuery(suite.ctx)
+	suite.Error(err)
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-span-id"), "my span id")
+}
+
+func (suite *HeaderTests) TestCombined() {
+	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-header-two", "value 2"))
+
+	stmt, err := suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(stmt.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-header-three", "value 3"))
+	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+	_, _, err = stmt.ExecuteQuery(suite.ctx)
+	suite.Error(err)
+
+	// added in setuptest for database options
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-one"), "value 1")
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-two"), "value 2")
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-three"), "value 3")
 }
