@@ -602,7 +602,7 @@ func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 		return nil, adbcFromFlightStatus(err)
 	}
 
-	return newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache)
+	return newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache, 5)
 }
 
 // Commit commits any pending transactions on this connection, it should

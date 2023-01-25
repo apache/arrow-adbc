@@ -114,7 +114,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}
 
 	nrec = info.TotalRecords
-	rdr, err = newRecordReader(ctx, s.alloc, s.cl, info, s.clientCache)
+	rdr, err = newRecordReader(ctx, s.alloc, s.cl, info, s.clientCache, 5)
 	return
 }
 

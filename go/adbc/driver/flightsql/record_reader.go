@@ -44,7 +44,7 @@ type reader struct {
 
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
-func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache) (rdr array.RecordReader, err error) {
+func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache, bufferSize int) (rdr array.RecordReader, err error) {
 	endpoints := info.Endpoint
 	var schema *arrow.Schema
 	if len(endpoints) == 0 {
@@ -64,17 +64,22 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		return array.NewRecordReader(schema, []arrow.Record{})
 	}
 
-	ch := make(chan arrow.Record, 5)
+	ch := make(chan arrow.Record, bufferSize)
 	group, ctx := errgroup.WithContext(ctx)
 	ctx, cancelFn := context.WithCancel(ctx)
 	// We may mutate endpoints below
 	numEndpoints := len(endpoints)
 
-	if info.Schema != nil {
-		schema, err = flight.DeserializeSchema(info.Schema, alloc)
+	defer func() {
 		if err != nil {
 			close(ch)
 			cancelFn()
+		}
+	}()
+
+	if info.Schema != nil {
+		schema, err = flight.DeserializeSchema(info.Schema, alloc)
+		if err != nil {
 			return nil, adbc.Error{
 				Msg:  err.Error(),
 				Code: adbc.StatusInvalidState}
@@ -82,8 +87,6 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	} else {
 		rdr, err := doGet(ctx, cl, endpoints[0], clCache)
 		if err != nil {
-			close(ch)
-			cancelFn()
 			return nil, adbcFromFlightStatus(err)
 		}
 		schema = rdr.Schema()
@@ -115,7 +118,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	for i, ep := range endpoints {
 		endpoint := ep
 		endpointIndex := i
-		chs[endpointIndex] = make(chan arrow.Record, 5)
+		chs[endpointIndex] = make(chan arrow.Record, bufferSize)
 		group.Go(func() error {
 			// Close channels (except the last) so that Next can move on to the next channel properly
 			if endpointIndex != lastChannelIndex {
@@ -180,14 +183,12 @@ func (r *reader) Next() bool {
 		return false
 	}
 
-	for r.rec == nil {
-		r.rec = <-r.chs[r.curChIndex]
-		if r.rec == nil {
-			r.curChIndex++
-		}
-		if r.curChIndex >= len(r.chs) {
+	var ok bool
+	for r.curChIndex < len(r.chs) {
+		if r.rec, ok = <-r.chs[r.curChIndex]; ok {
 			break
 		}
+		r.curChIndex++
 	}
 	return r.rec != nil
 }
