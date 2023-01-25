@@ -32,11 +32,12 @@ import (
 )
 
 type reader struct {
-	refCount int64
-	schema   *arrow.Schema
-	ch       chan arrow.Record
-	rec      arrow.Record
-	err      error
+	refCount   int64
+	schema     *arrow.Schema
+	chs        []chan arrow.Record
+	curChIndex int
+	rec        arrow.Record
+	err        error
 
 	cancelFn context.CancelFunc
 }
@@ -44,26 +45,35 @@ type reader struct {
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache) (rdr array.RecordReader, err error) {
+	endpoints := info.Endpoint
+	numEndpoints := len(endpoints)
+	var schema *arrow.Schema
+	if len(endpoints) == 0 {
+		if info.Schema == nil {
+			return nil, adbc.Error{
+				Msg:  "Server returned FlightInfo with no schema and no endpoints, cannot read stream",
+				Code: adbc.StatusInternal,
+			}
+		}
+		schema, err = flight.DeserializeSchema(info.Schema, alloc)
+		if err != nil {
+			return nil, adbc.Error{
+				Msg:  "Server returned FlightInfo with invalid schema and no endpoints, cannot read stream",
+				Code: adbc.StatusInternal,
+			}
+		}
+		return array.NewRecordReader(schema, []arrow.Record{})
+	}
+
 	ch := make(chan arrow.Record, 5)
 	group, ctx := errgroup.WithContext(ctx)
 	ctx, cancelFn := context.WithCancel(ctx)
 
-	defer func() {
-		if err != nil {
-			cancelFn()
-			for rec := range ch {
-				rec.Release()
-			}
-		}
-	}()
-
-	endpoints := info.Endpoint
-
-	var schema *arrow.Schema
 	if info.Schema != nil {
 		schema, err = flight.DeserializeSchema(info.Schema, alloc)
 		if err != nil {
 			close(ch)
+			cancelFn()
 			return nil, adbc.Error{
 				Msg:  err.Error(),
 				Code: adbc.StatusInvalidState}
@@ -72,6 +82,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		rdr, err := doGet(ctx, cl, endpoints[0], clCache)
 		if err != nil {
 			close(ch)
+			cancelFn()
 			return nil, adbcFromFlightStatus(err)
 		}
 		schema = rdr.Schema()
@@ -88,22 +99,28 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		endpoints = endpoints[1:]
 	}
 
+	chs := make([]chan arrow.Record, numEndpoints)
+	chs[0] = ch
 	reader := &reader{
 		refCount: 1,
-		ch:       ch,
+		chs:      chs,
 		err:      nil,
 		cancelFn: cancelFn,
 		schema:   schema,
 	}
 
-	go func() {
-		reader.err = group.Wait()
-		close(ch)
-	}()
+	lastChannelIndex := len(chs) - 1
 
-	for _, ep := range endpoints {
+	for i, ep := range endpoints {
 		endpoint := ep
+		endpointIndex := i
+		chs[endpointIndex] = make(chan arrow.Record, 5)
 		group.Go(func() error {
+			// Close channels (except the last) so that Next can move on to the next channel properly
+			if endpointIndex != lastChannelIndex {
+				defer close(chs[endpointIndex])
+			}
+
 			rdr, err := doGet(ctx, cl, endpoint, clCache)
 			if err != nil {
 				return err
@@ -113,11 +130,19 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.Record()
 				rec.Retain()
-				ch <- rec
+				chs[endpointIndex] <- rec
 			}
+
 			return rdr.Err()
 		})
 	}
+
+	go func() {
+		reader.err = group.Wait()
+		// Don't close the last channel until after the group is finished, so that
+		// Next() can only return after reader.err may have been set
+		close(chs[lastChannelIndex])
+	}()
 
 	return reader, nil
 }
@@ -132,8 +157,10 @@ func (r *reader) Release() {
 			r.rec.Release()
 		}
 		r.cancelFn()
-		for rec := range r.ch {
-			rec.Release()
+		for _, ch := range r.chs {
+			for rec := range ch {
+				rec.Release()
+			}
 		}
 	}
 }
@@ -148,7 +175,19 @@ func (r *reader) Next() bool {
 		r.rec = nil
 	}
 
-	r.rec = <-r.ch
+	if r.curChIndex >= len(r.chs) {
+		return false
+	}
+
+	for r.rec == nil {
+		r.rec = <-r.chs[r.curChIndex]
+		if r.rec == nil {
+			r.curChIndex++
+		}
+		if r.curChIndex >= len(r.chs) {
+			break
+		}
+	}
 	return r.rec != nil
 }
 

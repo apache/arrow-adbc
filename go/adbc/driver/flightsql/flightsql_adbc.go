@@ -265,7 +265,7 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 		LoaderFunc(func(loc interface{}) (interface{}, error) {
 			uri, ok := loc.(string)
 			if !ok {
-				return nil, adbc.Error{Code: adbc.StatusInternal}
+				return nil, adbc.Error{Msg: fmt.Sprintf("Location must be a string, got %#v", uri), Code: adbc.StatusInternal}
 			}
 
 			cl, err := getFlightClient(context.Background(), uri, d)
