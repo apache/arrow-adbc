@@ -224,7 +224,7 @@ func TestADBCFlightSQL(t *testing.T) {
 
 	suite.Run(t, &PartitionTests{Quirks: q})
 	suite.Run(t, &SSLTests{Quirks: q})
-  suite.Run(t, &StatementTests{Quirks: q})
+	suite.Run(t, &StatementTests{Quirks: q})
 	suite.Run(t, &HeaderTests{Quirks: q})
 }
 
@@ -372,6 +372,8 @@ func (suite *StatementTests) SetupTest() {
 	suite.ctx = context.Background()
 	suite.Cnxn, err = suite.DB.Open(suite.ctx)
 	suite.Require().NoError(err)
+	suite.Stmt, err = suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
 }
 
 func (suite *StatementTests) TearDownTest() {
@@ -424,15 +426,18 @@ func (suite *HeaderTests) SetupTest() {
 	opts["adbc.flight.sql.rpc.call_header.x-header-one"] = "value 1"
 	suite.DB, err = suite.Driver.NewDatabase(opts)
 
-  suite.Require().NoError(err)
+	suite.Require().NoError(err)
 	suite.ctx = context.Background()
 	suite.Cnxn, err = suite.DB.Open(suite.ctx)
 	suite.Require().NoError(err)
 }
 
 func (suite *HeaderTests) TearDownTest() {
-	suite.Stmt, err = suite.Cnxn.NewStatement()
-	suite.Require().NoError(err)
+	suite.Require().NoError(suite.Cnxn.Close())
+	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.Cnxn = nil
+	suite.DB = nil
+	suite.Driver = nil
 }
 
 func (suite *HeaderTests) TestDatabaseOptAuthorization() {

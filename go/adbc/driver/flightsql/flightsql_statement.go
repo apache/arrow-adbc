@@ -19,7 +19,7 @@ package flightsql
 
 import (
 	"context"
-	"fmt"  
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -87,7 +87,7 @@ func (s *statement) SetOption(key string, val string) error {
 		}
 		return nil
 	}
-	
+
 	switch key {
 	case OptionStatementQueueSize:
 		var err error
@@ -107,7 +107,7 @@ func (s *statement) SetOption(key string, val string) error {
 		return nil
 	default:
 		return adbc.Error{
-			Msg:  "[FlightSQL Statement] SetOption not implemented",
+			Msg:  "[Flight SQL] Unknown statement option '" + key + "'",
 			Code: adbc.StatusNotImplemented,
 		}
 	}
