@@ -395,14 +395,17 @@ func (suite *HeaderTests) TestDatabaseOptAuthorization() {
 }
 
 func (suite *HeaderTests) TestConnection() {
+	// can't change authorization header on connection, you have to set it
+	// as an option on the database object when creating the connection.
+	suite.Require().Error(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption(driver.OptionAuthorizationHeader, "auth-cnxn-token"))
+	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", "my span id"))
+
 	stmt, err := suite.Cnxn.NewStatement()
 	suite.Require().NoError(err)
 	defer stmt.Close()
 
-	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
-		SetOption(driver.OptionAuthorizationHeader, "auth-cnxn-token"))
-	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
-		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", "my span id"))
 	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
 		SetOption("adbc.flight.sql.rpc.call_header.x-user-agent", "Flight SQL ADBC"))
 
@@ -410,18 +413,27 @@ func (suite *HeaderTests) TestConnection() {
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
 	suite.Error(err)
 
-	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("authorization"), "auth-cnxn-token")
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("authorization"), "auth-header-token")
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-span-id"), "my span id")
-	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-user-agent"), "Flight SQL ADBC")
+	// adding a header to the connection *after* constructing a statement does not
+	// propagate to the statement. This is important, for example, if you wanted
+	// different open telemetry headers on different statements of a connection.
+	suite.NotContains(suite.Quirks.middle.recordedHeaders, "x-user-agent")
 }
 
 func (suite *HeaderTests) TestStatement() {
+	// inherit connection headers
+	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", "my span id"))
+
 	stmt, err := suite.Cnxn.NewStatement()
 	suite.Require().NoError(err)
 	defer stmt.Close()
 
-	suite.Require().NoError(stmt.(adbc.PostInitOptions).
-		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", "my span id"))
+	// changes do not propagate to previously created statements
+	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", "super span id"))
+
 	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
 	suite.Error(err)
@@ -436,12 +448,13 @@ func (suite *HeaderTests) TestStatement() {
 	suite.NotContains(suite.Quirks.middle.recordedHeaders, "x-span-id")
 	suite.Quirks.middle.recordedHeaders = metadata.MD{}
 
-	// inherit connection headers
-	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+	suite.Require().NoError(stmt.(adbc.PostInitOptions).
 		SetOption("adbc.flight.sql.rpc.call_header.x-span-id", "my span id"))
+
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
 	suite.Error(err)
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-span-id"), "my span id")
+	suite.Quirks.middle.recordedHeaders = metadata.MD{}
 }
 
 func (suite *HeaderTests) TestCombined() {

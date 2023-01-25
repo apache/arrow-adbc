@@ -356,8 +356,6 @@ func (c *cnxn) SetOption(key, value string) error {
 	}
 
 	switch key {
-	case OptionAuthorizationHeader:
-		c.hdrs.Set("authorization", value)
 	case adbc.OptionKeyAutoCommit:
 		return adbc.Error{
 			Msg:  "[Flight SQL] transactions not yet supported",
@@ -369,8 +367,6 @@ func (c *cnxn) SetOption(key, value string) error {
 			Code: adbc.StatusNotImplemented,
 		}
 	}
-
-	return nil
 }
 
 // GetInfo returns metadata about the database/driver.
@@ -673,9 +669,7 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 		alloc:       c.db.alloc,
 		cl:          c.cl,
 		clientCache: c.clientCache,
-		// don't copy the headers so that calling SetOption to add more
-		// headers on the connection still propagates
-		hdrs: c.hdrs,
+		hdrs:        c.hdrs.Copy(),
 	}, nil
 }
 
