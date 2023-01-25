@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import importlib.resources
+import functools
 import typing
 
 import adbc_driver_manager
@@ -38,8 +38,38 @@ def connect(
     db_kwargs : dict, optional
         Initial database connection parameters.
     """
-    root = importlib.resources.files(__package__)
-    entrypoint = root.joinpath("libadbc_driver_flightsql.so")
     return adbc_driver_manager.AdbcDatabase(
-        driver=str(entrypoint), uri=uri, **(db_kwargs or {})
+        driver=_driver_path(), uri=uri, **(db_kwargs or {})
     )
+
+
+@functools.cache
+def _driver_path() -> str:
+    import importlib.resources
+    import pathlib
+    import sys
+
+    driver = "adbc_driver_flightsql"
+
+    # Wheels bundle the shared library
+    root = importlib.resources.files(__package__)
+    # The filename is always the same regardless of platform
+    entrypoint = root.joinpath(f"lib{driver}.so")
+    if entrypoint.is_file():
+        return str(entrypoint)
+
+    # Search sys.prefix + '/lib' (Unix, Conda on Unix)
+    root = pathlib.Path(sys.prefix)
+    for filename in (f"lib{driver}.so", f"lib{driver}.dylib"):
+        entrypoint = root.joinpath("lib", filename)
+        if entrypoint.is_file():
+            return str(entrypoint)
+
+    # Conda on Windows
+    entrypoint = root.joinpath("bin", f"{driver}.dll")
+    if entrypoint.is_file():
+        return str(entrypoint)
+
+    # Let the driver manager fall back to (DY)LD_LIBRARY_PATH/PATH
+    # (It will insert 'lib', 'so', etc. as needed)
+    return driver

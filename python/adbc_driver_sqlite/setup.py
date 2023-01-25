@@ -34,6 +34,8 @@ target = source_root.joinpath("./adbc_driver_sqlite/libadbc_driver_sqlite.so").r
 if not library:
     if os.environ.get("_ADBC_IS_SDIST", "").strip().lower() in ("1", "true"):
         print("Building sdist, not requiring ADBC_SQLITE_LIBRARY")
+    elif os.environ.get("_ADBC_IS_CONDA", "").strip().lower() in ("1", "true"):
+        print("Building Conda package, not requiring ADBC_SQLITE_LIBRARY")
     elif target.is_file():
         print("Driver already exists (but may be stale?), continuing")
     else:

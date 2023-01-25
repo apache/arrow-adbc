@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,26 +17,34 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# All of the following environment variables are required to set default values
-# for the parameters in docker-compose.yml.
+# Build the Conda packages
 
-# Default repository to pull and push images from
-REPO=apache/arrow-dev
+set -e
+set -o pipefail
+set -u
+set -x
 
-# different architecture notations
-ARCH=amd64
-ARCH_ALIAS=x86_64
-ARCH_SHORT=amd64
-ARCH_CONDA_FORGE=linux_64_
+main() {
+    if [[ "$#" != 3 ]]; then
+       echo "Usage: ${0} <adbc-checkout> <platform-config> <output-path>"
+       echo "<platform-config> should be the name of a YAML file in ci/conda/.ci_support."
+       exit 1
+    fi
+    # Path to ADBC repo
+    local -r repo="${1}"
+    local -r platform_config="${repo}/ci/conda/.ci_support/${2}"
+    # Path to output directory
+    local -r output="${3}"
 
-# Default versions for various dependencies
-JDK=8
-MANYLINUX=2014
-MAVEN=3.5.4
-PYTHON=3.10
-GO=1.19.5
-ARROW_MAJOR_VERSION=11
+    mkdir -p "${output}"
+    export PYTHONUNBUFFERED=1
 
-# Used through docker-compose.yml and serves as the default version for the
-# ci/scripts/install_vcpkg.sh script.
-VCPKG="2871ddd918cecb9cb642bcb9c56897f397283192"
+    conda config --show
+
+    conda mambabuild \
+          "${repo}/ci/conda" \
+          -m "${platform_config}" \
+          --output-folder "${output}/conda"
+}
+
+main "$@"

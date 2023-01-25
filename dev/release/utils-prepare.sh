@@ -25,10 +25,12 @@ update_versions() {
   case ${type} in
     release)
       local version=${base_version}
+      local conda_version=${base_version}
       local docs_version=${base_version}
       ;;
     snapshot)
       local version=${next_version}-SNAPSHOT
+      local conda_version=${next_version}
       local docs_version="${next_version} (dev)"
       ;;
   esac
@@ -38,6 +40,12 @@ update_versions() {
   sed -i.bak -E "s/set\(ADBC_VERSION \".+\"\)/set(ADBC_VERSION \"${version}\")/g" cmake_modules/AdbcVersion.cmake
   rm cmake_modules/AdbcVersion.cmake.bak
   git add cmake_modules/AdbcVersion.cmake
+  popd
+
+  pushd "${ADBC_DIR}/ci/conda/"
+  sed -i.bak -E "s/version: .+/version: ${conda_version}/g" meta.yaml
+  rm meta.yaml.bak
+  git add meta.yaml
   popd
 
   sed -i.bak -E "s/release = \".+\"/release = \"${docs_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
