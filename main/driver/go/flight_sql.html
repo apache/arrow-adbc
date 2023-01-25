@@ -450,9 +450,16 @@ connection.  Else, the driver will try each location given, in order,
 until a request succeeds.  If the connection or request fails, it will
 try the next location.</p>
 <p>The driver does not currently cache or pool these secondary
-connections.  It also does not retry connections or requests.
-Requests are made sequentially, one at a time—the driver does not
-parallelize requests or perform readahead.</p>
+connections.  It also does not retry connections or requests.</p>
+<p>All partitions are fetched in parallel.  A limited number of batches
+are queued per partition.  Data is returned to the client in the order
+of the partitions.</p>
+<p>The queue size can be changed by setting an option on the
+<a class="reference internal" href="../../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.queue_size</span></code></dt><dd><p>The number of batches to queue per partition.  Defaults to 5.</p>
+</dd>
+</dl>
 </section>
 <section id="metadata">
 <h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h3>
