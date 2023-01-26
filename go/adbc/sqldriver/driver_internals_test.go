@@ -65,58 +65,58 @@ func TestParseConnectStr(t *testing.T) {
 
 func TestColumnTypeDatabaseTypeName(t *testing.T) {
 	tests := []struct {
-		field  arrow.Field
-		dtName string
+		typ      arrow.DataType
+		typeName string
 	}{
 		{
-			field:  arrow.Field{Type: &arrow.StringType{}},
-			dtName: "utf8",
+			typ:      &arrow.StringType{},
+			typeName: "utf8",
 		},
 		{
-			field:  arrow.Field{Type: &arrow.Date32Type{}},
-			dtName: "date32",
+			typ:      &arrow.Date32Type{},
+			typeName: "date32",
 		},
 		{
-			field:  arrow.Field{Type: &arrow.Date64Type{}},
-			dtName: "date64",
+			typ:      &arrow.Date64Type{},
+			typeName: "date64",
 		},
 		{
-			field:  arrow.Field{Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: "utc"}},
-			dtName: "timestamp[s, tz=utc]",
+			typ:      &arrow.TimestampType{Unit: arrow.Second, TimeZone: "utc"},
+			typeName: "timestamp[s, tz=utc]",
 		},
 		{
-			field:  arrow.Field{Type: &arrow.TimestampType{Unit: arrow.Millisecond}},
-			dtName: "timestamp[ms]",
+			typ:      &arrow.TimestampType{Unit: arrow.Millisecond},
+			typeName: "timestamp[ms]",
 		},
 		{
-			field:  arrow.Field{Type: &arrow.Time32Type{Unit: arrow.Second}},
-			dtName: "time32[s]",
+			typ:      &arrow.Time32Type{Unit: arrow.Second},
+			typeName: "time32[s]",
 		},
 		{
-			field:  arrow.Field{Type: &arrow.Time32Type{Unit: arrow.Microsecond}},
-			dtName: "time32[us]",
+			typ:      &arrow.Time32Type{Unit: arrow.Microsecond},
+			typeName: "time32[us]",
 		},
 		{
-			field:  arrow.Field{Type: &arrow.Time64Type{Unit: arrow.Second}},
-			dtName: "time64[s]",
+			typ:      &arrow.Time64Type{Unit: arrow.Second},
+			typeName: "time64[s]",
 		},
 		{
-			field:  arrow.Field{Type: &arrow.Time64Type{Unit: arrow.Nanosecond}},
-			dtName: "time64[ns]",
+			typ:      &arrow.Time64Type{Unit: arrow.Nanosecond},
+			typeName: "time64[ns]",
 		},
 		{
-			field:  arrow.Field{Type: &arrow.DurationType{Unit: arrow.Nanosecond}},
-			dtName: "duration[ns]",
+			typ:      &arrow.DurationType{Unit: arrow.Nanosecond},
+			typeName: "duration[ns]",
 		},
 	}
 
 	for i, test := range tests {
-		t.Run(fmt.Sprintf("%d-%s", i, test.dtName), func(t *testing.T) {
-			schema := arrow.NewSchema([]arrow.Field{test.field}, nil)
+		t.Run(fmt.Sprintf("%d-%s", i, test.typeName), func(t *testing.T) {
+			schema := arrow.NewSchema([]arrow.Field{{Type: test.typ}}, nil)
 			reader, err := array.NewRecordReader(schema, nil)
 			require.NoError(t, err)
 			r := &rows{rdr: reader}
-			assert.Equal(t, test.dtName, r.ColumnTypeDatabaseTypeName(0))
+			assert.Equal(t, test.typeName, r.ColumnTypeDatabaseTypeName(0))
 		})
 	}
 }
