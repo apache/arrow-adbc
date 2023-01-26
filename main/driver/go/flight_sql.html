@@ -407,21 +407,26 @@ ingestion as a result.</p>
 <p>The options used for creating the Flight RPC client can be customized.
 These options map 1:1 with the options in FlightClientOptions:</p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.mtls_cert_chain</span></code></dt><dd><p>The certificate chain to use for mTLS.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.mtls_cert_chain</span></code></dt><dd><p>The certificate chain to use for mTLS.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.mtls_private_key</span></code></dt><dd><p>The private key to use for mTLS.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.mtls_private_key</span></code></dt><dd><p>The private key to use for mTLS.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.tls_override_hostname</span></code></dt><dd><p>Override the hostname used to verify the server’s TLS certificate.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.tls_override_hostname</span></code></dt><dd><p>Override the hostname used to verify the server’s TLS certificate.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.tls_skip_verify</span></code></dt><dd><p>Disable verification of the server’s TLS certificate.  Value
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.tls_skip_verify</span></code></dt><dd><p>Disable verification of the server’s TLS certificate.  Value
 should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.tls_root_certs</span></code></dt><dd><p>Override the root certificates used to validate the server’s TLS
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.tls_root_certs</span></code></dt><dd><p>Override the root certificates used to validate the server’s TLS
 certificate.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.generic_int_option.&lt;OPTION_NAME&gt;</span></code></dt><dd><p>Option prefixes used to specify generic transport-layer options.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.with_block</span></code></dt><dd><p>Whether connections should wait until connections are established,
+or connect lazily when used.  The latter is gRPC’s default
+behavior, but the driver defaults to eager connection to surface
+errors earlier.  Value should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.client_option.generic_string_option.&lt;OPTION_NAME&gt;</span></code></dt><dd><p>Option prefixes used to specify generic transport-layer options.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.client_option.with_max_msg_size</span></code></dt><dd><p>The maximum message size to accept from the server.  The driver
+defaults to 16 MiB since Flight services tend to return larger
+reponse payloads.  Should be a positive integer number of bytes.</p>
 </dd>
 </dl>
 </section>
@@ -431,7 +436,7 @@ certificate.</p>
 to <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>, <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>, and
 <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>.</p>
 <dl>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.call_header.&lt;HEADER</span> <span class="pre">NAME&gt;</span></code></dt><dd><p>Add the header <code class="docutils literal notranslate"><span class="pre">&lt;HEADER</span> <span class="pre">NAME&gt;</span></code> to outgoing requests with the given
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.call_header.&lt;HEADER</span> <span class="pre">NAME&gt;</span></code></dt><dd><p>Add the header <code class="docutils literal notranslate"><span class="pre">&lt;HEADER</span> <span class="pre">NAME&gt;</span></code> to outgoing requests with the given
 value.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -457,7 +462,7 @@ of the partitions.</p>
 <p>The queue size can be changed by setting an option on the
 <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>:</p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.queue_size</span></code></dt><dd><p>The number of batches to queue per partition.  Defaults to 5.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.queue_size</span></code></dt><dd><p>The number of batches to queue per partition.  Defaults to 5.</p>
 </dd>
 </dl>
 </section>
@@ -486,18 +491,18 @@ special options on <a class="reference internal" href="../../cpp/api/adbc.html#_
 best practice to set timeouts to avoid unexpectedly getting stuck.
 The options are as follows:</p>
 <dl>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.timeout_seconds.fetch</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that fetch
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.timeout_seconds.fetch</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that fetch
 data.  This corresponds to Flight <code class="docutils literal notranslate"><span class="pre">DoGet</span></code> calls.</p>
 <p>For example, this controls the timeout of the underlying Flight
 calls that fetch more data as a result set is consumed.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.timeout_seconds.query</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.timeout_seconds.query</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that
 execute a query.  This corresponds to Flight <code class="docutils literal notranslate"><span class="pre">GetFlightInfo</span></code>
 calls.</p>
 <p>For example, this controls the timeout of the underlying Flight
 calls that implement <code class="xref py py-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code>.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">arrow.flight.sql.rpc.timeout_seconds.update</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.timeout_seconds.update</span></code></dt><dd><p>A timeout (in floating-point seconds) for any API calls that
 upload data or perform other updates.</p>
 <p>For example, this controls the timeout of the underlying Flight
 calls that implement bulk ingestion, or transaction support.</p>
