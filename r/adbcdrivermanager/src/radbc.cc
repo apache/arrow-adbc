@@ -86,8 +86,8 @@ extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr) {
   auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
 
   AdbcError error;
-  int status = AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_0_0, driver,
-                                          &error);
+  int status =
+      AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_0_0, driver, &error);
   adbc_error_stop(status, &error, "RAdbcLoadDriverFromInitFunc()");
 
   UNPROTECT(1);
@@ -111,8 +111,7 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
       Rf_error("Expected external pointer with class '%s'", "adbc_driver_init_func");
     }
 
-    status =
-        AdbcDriverManagerDatabaseSetInitFunc(database, driver_init_func, &error);
+    status = AdbcDriverManagerDatabaseSetInitFunc(database, driver_init_func, &error);
     adbc_error_stop(status, &error, "RAdbcDatabaseNew()");
   }
 
