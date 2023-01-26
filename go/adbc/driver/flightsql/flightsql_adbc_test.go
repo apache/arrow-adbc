@@ -222,6 +222,7 @@ func TestADBCFlightSQL(t *testing.T) {
 	suite.Run(t, &validation.ConnectionTests{Quirks: q})
 	suite.Run(t, &validation.StatementTests{Quirks: q})
 
+	suite.Run(t, &DefaultDialOptionsTests{Quirks: q})
 	suite.Run(t, &PartitionTests{Quirks: q})
 	suite.Run(t, &SSLTests{Quirks: q})
 	suite.Run(t, &StatementTests{Quirks: q})
@@ -230,6 +231,99 @@ func TestADBCFlightSQL(t *testing.T) {
 }
 
 // Driver-specific tests
+
+type DefaultDialOptionsTests struct {
+	suite.Suite
+
+	Driver adbc.Driver
+	Quirks validation.DriverQuirks
+
+	ctx context.Context
+	DB  adbc.Database
+}
+
+func (suite *DefaultDialOptionsTests) SetupSuite() {
+	suite.Driver = suite.Quirks.SetupDriver(suite.T())
+
+	var err error
+	suite.ctx = context.Background()
+	suite.DB, err = suite.Driver.NewDatabase(suite.Quirks.DatabaseOptions())
+	suite.NoError(err)
+
+	cnxn, err := suite.DB.Open(suite.ctx)
+	suite.NoError(err)
+	defer cnxn.Close()
+
+	stmt, err := cnxn.NewStatement()
+	suite.NoError(err)
+	defer stmt.Close()
+
+	// Construct huge table
+	suite.NoError(stmt.SetSqlQuery("CREATE TABLE huge (str)"))
+	_, err = stmt.ExecuteUpdate(suite.ctx)
+	suite.NoError(err)
+
+	// 4 KiB
+	suite.NoError(stmt.SetSqlQuery("INSERT INTO huge (str) VALUES (printf('%.*c', 4096, '!'))"))
+	_, err = stmt.ExecuteUpdate(suite.ctx)
+	suite.NoError(err)
+
+	// 4 MiB
+	suite.NoError(stmt.SetSqlQuery("INSERT INTO huge (str) SELECT * FROM huge"))
+	for i := 0; i < 10; i++ {
+		_, err = stmt.ExecuteUpdate(suite.ctx)
+		suite.NoError(err)
+	}
+}
+
+func (suite *DefaultDialOptionsTests) TearDownSuite() {
+	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.DB = nil
+	suite.Driver = nil
+}
+
+func (suite *DefaultDialOptionsTests) TestMaxIncomingMessageSizeDefault() {
+	opts := suite.Quirks.DatabaseOptions()
+	opts["adbc.flight.sql.client_option.with_max_msg_size"] = "1000000"
+	db, err := suite.Driver.NewDatabase(opts)
+	suite.NoError(err)
+
+	cnxn, err := db.Open(suite.ctx)
+	suite.NoError(err)
+	defer cnxn.Close()
+
+	stmt, err := cnxn.NewStatement()
+	suite.NoError(err)
+	defer stmt.Close()
+
+	suite.NoError(stmt.SetSqlQuery("SELECT * FROM huge"))
+	reader, _, err := stmt.ExecuteQuery(suite.ctx)
+	suite.NoError(err)
+	defer reader.Release()
+
+	for reader.Next() {
+	}
+	suite.ErrorContains(reader.Err(), "received message larger than max")
+}
+
+func (suite *DefaultDialOptionsTests) TestMaxIncomingMessageSizeLow() {
+	cnxn, err := suite.DB.Open(suite.ctx)
+	suite.NoError(err)
+	defer cnxn.Close()
+
+	stmt, err := cnxn.NewStatement()
+	suite.NoError(err)
+	defer stmt.Close()
+
+	suite.NoError(stmt.SetSqlQuery("SELECT * FROM huge"))
+	reader, _, err := stmt.ExecuteQuery(suite.ctx)
+	suite.NoError(err)
+	defer reader.Release()
+
+	for reader.Next() {
+	}
+	suite.NoError(reader.Err())
+}
 
 type SSLTests struct {
 	suite.Suite
@@ -388,16 +482,16 @@ func (suite *StatementTests) TearDownTest() {
 
 func (suite *StatementTests) TestQueueSizeOption() {
 	var err error
-	option := "arrow.flight.sql.rpc.queue_size"
+	option := "adbc.flight.sql.rpc.queue_size"
 
 	err = suite.Stmt.SetOption(option, "")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'arrow.flight.sql.rpc.queue_size': '' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': '' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "foo")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'arrow.flight.sql.rpc.queue_size': 'foo' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': 'foo' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "-1")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'arrow.flight.sql.rpc.queue_size': '-1' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': '-1' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "1")
 	suite.Require().NoError(err)

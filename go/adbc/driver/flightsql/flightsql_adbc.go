@@ -70,6 +70,8 @@ const (
 	OptionSSLOverrideHostname = "adbc.flight.sql.client_option.tls_override_hostname"
 	OptionSSLSkipVerify       = "adbc.flight.sql.client_option.tls_skip_verify"
 	OptionSSLRootCerts        = "adbc.flight.sql.client_option.tls_root_certs"
+	OptionWithBlock           = "adbc.flight.sql.client_option.with_block"
+	OptionWithMaxMsgSize      = "adbc.flight.sql.client_option.with_max_msg_size"
 	OptionAuthorizationHeader = "adbc.flight.sql.authorization_header"
 	OptionTimeoutFetch        = "adbc.flight.sql.rpc.timeout_seconds.fetch"
 	OptionTimeoutQuery        = "adbc.flight.sql.rpc.timeout_seconds.query"
@@ -129,7 +131,28 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 		return nil, adbc.Error{Msg: err.Error(), Code: adbc.StatusInvalidArgument}
 	}
 
+	// Use WithBlock to surface connection errors eagerly
+	// Use WithMaxMsgSize(16 MiB) since Flight services tend to send large messages
+	db.dialOpts.block = true
+	db.dialOpts.maxMsgSize = 16 * 1024 * 1024
+
 	return db, db.SetOptions(opts)
+}
+
+type dbDialOpts struct {
+	opts       []grpc.DialOption
+	block      bool
+	maxMsgSize int
+}
+
+func (d *dbDialOpts) rebuild() {
+	d.opts = []grpc.DialOption{
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(d.maxMsgSize),
+			grpc.MaxCallSendMsgSize(d.maxMsgSize)),
+	}
+	if d.block {
+		d.opts = append(d.opts, grpc.WithBlock())
+	}
 }
 
 type database struct {
@@ -138,6 +161,7 @@ type database struct {
 	user, pass string
 	hdrs       metadata.MD
 	timeout    timeoutOption
+	dialOpts   dbDialOpts
 
 	alloc memory.Allocator
 }
@@ -262,6 +286,38 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 		}
 	}
 
+	if val, ok := cnOptions[OptionWithBlock]; ok {
+		if val == adbc.OptionValueEnabled {
+			d.dialOpts.block = true
+		} else if val == adbc.OptionValueDisabled {
+			d.dialOpts.block = false
+		} else {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionWithBlock, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		delete(cnOptions, OptionWithBlock)
+	}
+	if val, ok := cnOptions[OptionWithMaxMsgSize]; ok {
+		var err error
+		var size int
+		if size, err = strconv.Atoi(val); err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s' is not a positive integer", OptionWithMaxMsgSize, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		} else if size <= 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s' is not a positive integer", OptionWithMaxMsgSize, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		d.dialOpts.maxMsgSize = size
+		delete(cnOptions, OptionWithMaxMsgSize)
+	}
+	d.dialOpts.rebuild()
+
 	for key, val := range cnOptions {
 		if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
 			d.hdrs.Append(strings.TrimPrefix(key, OptionRPCCallHeaderPrefix), val)
@@ -354,8 +410,9 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 	if uri.Scheme == "grpc" || uri.Scheme == "grpc+tcp" {
 		creds = insecure.NewCredentials()
 	}
+	dialOpts := append(d.dialOpts.opts, grpc.WithTransportCredentials(creds))
 
-	cl, err := flightsql.NewClient(uri.Host, nil, middleware, grpc.WithTransportCredentials(creds))
+	cl, err := flightsql.NewClient(uri.Host, nil, middleware, dialOpts...)
 	if err != nil {
 		return nil, adbc.Error{
 			Msg:  err.Error(),

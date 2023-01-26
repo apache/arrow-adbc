@@ -113,28 +113,33 @@ Client Options
 The options used for creating the Flight RPC client can be customized.
 These options map 1:1 with the options in FlightClientOptions:
 
-``arrow.flight.sql.client_option.mtls_cert_chain``
+``adbc.flight.sql.client_option.mtls_cert_chain``
     The certificate chain to use for mTLS.
 
-``arrow.flight.sql.client_option.mtls_private_key``
+``adbc.flight.sql.client_option.mtls_private_key``
     The private key to use for mTLS.
 
-``arrow.flight.sql.client_option.tls_override_hostname``
+``adbc.flight.sql.client_option.tls_override_hostname``
     Override the hostname used to verify the server's TLS certificate.
 
-``arrow.flight.sql.client_option.tls_skip_verify``
+``adbc.flight.sql.client_option.tls_skip_verify``
     Disable verification of the server's TLS certificate.  Value
     should be ``true`` or ``false``.
 
-``arrow.flight.sql.client_option.tls_root_certs``
+``adbc.flight.sql.client_option.tls_root_certs``
     Override the root certificates used to validate the server's TLS
     certificate.
 
-``arrow.flight.sql.client_option.generic_int_option.<OPTION_NAME>``
-    Option prefixes used to specify generic transport-layer options.
+``adbc.flight.sql.client_option.with_block``
+    Whether connections should wait until connections are established,
+    or connect lazily when used.  The latter is gRPC's default
+    behavior, but the driver defaults to eager connection to surface
+    errors earlier.  Value should be ``true`` or ``false``.
 
-``arrow.flight.sql.client_option.generic_string_option.<OPTION_NAME>``
-    Option prefixes used to specify generic transport-layer options.
+``adbc.flight.sql.client_option.with_max_msg_size``
+    The maximum message size to accept from the server.  The driver
+    defaults to 16 MiB since Flight services tend to return larger
+    reponse payloads.  Should be a positive integer number of bytes.
 
 Custom Call Headers
 -------------------
@@ -143,7 +148,7 @@ Custom HTTP headers can be attached to requests via options that apply
 to :cpp:class:`AdbcDatabase`, :cpp:class:`AdbcConnection`, and
 :cpp:class:`AdbcStatement`.
 
-``arrow.flight.sql.rpc.call_header.<HEADER NAME>``
+``adbc.flight.sql.rpc.call_header.<HEADER NAME>``
   Add the header ``<HEADER NAME>`` to outgoing requests with the given
   value.
 
@@ -170,7 +175,7 @@ of the partitions.
 The queue size can be changed by setting an option on the
 :cpp:class:`AdbcStatement`:
 
-``arrow.flight.sql.rpc.queue_size``
+``adbc.flight.sql.rpc.queue_size``
     The number of batches to queue per partition.  Defaults to 5.
 
 Metadata
@@ -203,14 +208,14 @@ special options on :cpp:class:`AdbcConnection`.  In general, it is
 best practice to set timeouts to avoid unexpectedly getting stuck.
 The options are as follows:
 
-``arrow.flight.sql.rpc.timeout_seconds.fetch``
+``adbc.flight.sql.rpc.timeout_seconds.fetch``
     A timeout (in floating-point seconds) for any API calls that fetch
     data.  This corresponds to Flight ``DoGet`` calls.
 
     For example, this controls the timeout of the underlying Flight
     calls that fetch more data as a result set is consumed.
 
-``arrow.flight.sql.rpc.timeout_seconds.query``
+``adbc.flight.sql.rpc.timeout_seconds.query``
     A timeout (in floating-point seconds) for any API calls that
     execute a query.  This corresponds to Flight ``GetFlightInfo``
     calls.
@@ -218,7 +223,7 @@ The options are as follows:
     For example, this controls the timeout of the underlying Flight
     calls that implement :func:`AdbcStatementExecuteQuery`.
 
-``arrow.flight.sql.rpc.timeout_seconds.update``
+``adbc.flight.sql.rpc.timeout_seconds.update``
     A timeout (in floating-point seconds) for any API calls that
     upload data or perform other updates.
 
