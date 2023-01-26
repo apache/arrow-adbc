@@ -226,6 +226,7 @@ func TestADBCFlightSQL(t *testing.T) {
 	suite.Run(t, &SSLTests{Quirks: q})
 	suite.Run(t, &StatementTests{Quirks: q})
 	suite.Run(t, &HeaderTests{Quirks: q})
+	suite.Run(t, new(TimeoutTestSuite))
 }
 
 // Driver-specific tests
@@ -533,4 +534,172 @@ func (suite *HeaderTests) TestCombined() {
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-one"), "value 1")
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-two"), "value 2")
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-three"), "value 3")
+}
+
+type TimeoutTestServer struct {
+	flightsql.BaseServer
+}
+
+func (ts *TimeoutTestServer) DoGetStatement(ctx context.Context, _ flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	// wait till the context is cancelled
+	<-ctx.Done()
+	return nil, nil, arrow.ErrNotImplemented
+}
+
+func (ts *TimeoutTestServer) DoPutCommandStatementUpdate(ctx context.Context, cmd flightsql.StatementUpdate) (int64, error) {
+	if cmd.GetQuery() == "timeout" {
+		<-ctx.Done()
+	}
+	return 0, arrow.ErrNotImplemented
+}
+
+func (ts *TimeoutTestServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	switch cmd.GetQuery() {
+	case "timeout":
+		<-ctx.Done()
+	case "fetch":
+		tkt, _ := flightsql.CreateStatementQueryTicket([]byte("fetch"))
+		info := &flight.FlightInfo{
+			FlightDescriptor: desc,
+			Endpoint: []*flight.FlightEndpoint{
+				{Ticket: &flight.Ticket{Ticket: tkt}},
+			},
+			TotalRecords: -1,
+			TotalBytes:   -1,
+		}
+		return info, nil
+	}
+	return nil, arrow.ErrNotImplemented
+}
+
+type TimeoutTestSuite struct {
+	suite.Suite
+
+	s    flight.Server
+	db   adbc.Database
+	cnxn adbc.Connection
+}
+
+func (ts *TimeoutTestSuite) SetupSuite() {
+	ts.s = flight.NewServerWithMiddleware(nil)
+	ts.s.RegisterFlightService(flightsql.NewFlightServer(&TimeoutTestServer{}))
+	ts.Require().NoError(ts.s.Init("localhost:0"))
+	ts.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
+	go func() {
+		_ = ts.s.Serve()
+	}()
+
+	uri := "grpc+tcp://" + ts.s.Addr().String()
+	var err error
+	ts.db, err = (driver.Driver{}).NewDatabase(map[string]string{
+		"uri": uri,
+	})
+	ts.Require().NoError(err)
+}
+
+func (ts *TimeoutTestSuite) SetupTest() {
+	var err error
+	ts.cnxn, err = ts.db.Open(context.Background())
+	ts.Require().NoError(err)
+}
+
+func (ts *TimeoutTestSuite) TearDownTest() {
+	ts.Require().NoError(ts.cnxn.Close())
+}
+
+func (ts *TimeoutTestSuite) TearDownSuite() {
+	ts.db = nil
+	ts.s.Shutdown()
+}
+
+func (ts *TimeoutTestSuite) TestInvalidValues() {
+	keys := []string{
+		"adbc.flight.sql.rpc.timeout_seconds.fetch",
+		"adbc.flight.sql.rpc.timeout_seconds.query",
+		"adbc.flight.sql.rpc.timeout_seconds.update",
+	}
+	values := []string{"1.1f", "asdf", "inf", "NaN", "-1"}
+
+	for _, k := range keys {
+		for _, v := range values {
+			ts.Run("key="+k+",val="+v, func() {
+				err := ts.cnxn.(adbc.PostInitOptions).SetOption(k, v)
+				var adbcErr adbc.Error
+				ts.ErrorAs(err, &adbcErr)
+				ts.Equal(adbc.StatusInvalidArgument, adbcErr.Code)
+				ts.ErrorContains(err, "invalid timeout option value")
+			})
+		}
+	}
+}
+
+func (ts *TimeoutTestSuite) TestRemoveTimeout() {
+	keys := []string{
+		"adbc.flight.sql.rpc.timeout_seconds.fetch",
+		"adbc.flight.sql.rpc.timeout_seconds.query",
+		"adbc.flight.sql.rpc.timeout_seconds.update",
+	}
+	for _, k := range keys {
+		ts.Run(k, func() {
+			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(k, "1.0"))
+			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(k, "0"))
+		})
+	}
+}
+
+func (ts *TimeoutTestSuite) TestDoActionTimeout() {
+	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.timeout_seconds.update", "0.1"))
+
+	stmt, err := ts.cnxn.NewStatement()
+	ts.Require().NoError(err)
+	defer stmt.Close()
+
+	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
+	var adbcErr adbc.Error
+	ts.ErrorAs(stmt.Prepare(context.Background()), &adbcErr)
+	ts.Equal(adbc.StatusCancelled, adbcErr.Code)
+}
+
+func (ts *TimeoutTestSuite) TestDoGetTimeout() {
+	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.timeout_seconds.fetch", "0.1"))
+
+	stmt, err := ts.cnxn.NewStatement()
+	ts.Require().NoError(err)
+	defer stmt.Close()
+
+	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
+	var adbcErr adbc.Error
+	_, _, err = stmt.ExecuteQuery(context.Background())
+	ts.ErrorAs(err, &adbcErr)
+	ts.Equal(adbc.StatusCancelled, adbcErr.Code)
+}
+
+func (ts *TimeoutTestSuite) TestDoPutTimeout() {
+	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.timeout_seconds.update", "0.1"))
+
+	stmt, err := ts.cnxn.NewStatement()
+	ts.Require().NoError(err)
+	defer stmt.Close()
+
+	ts.Require().NoError(stmt.SetSqlQuery("timeout"))
+	_, err = stmt.ExecuteUpdate(context.Background())
+	ts.Error(err)
+}
+
+func (ts *TimeoutTestSuite) TestGetFlightInfoTimeout() {
+	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.timeout_seconds.query", "0.1"))
+
+	stmt, err := ts.cnxn.NewStatement()
+	ts.Require().NoError(err)
+	defer stmt.Close()
+
+	ts.Require().NoError(stmt.SetSqlQuery("timeout"))
+	var adbcErr adbc.Error
+	_, _, err = stmt.ExecuteQuery(context.Background())
+	ts.ErrorAs(err, &adbcErr)
+	ts.NotEqual(adbc.StatusNotImplemented, adbcErr.Code)
 }

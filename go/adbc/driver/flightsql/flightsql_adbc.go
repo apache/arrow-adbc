@@ -36,11 +36,14 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/url"
 	"regexp"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -68,6 +71,9 @@ const (
 	OptionSSLSkipVerify       = "adbc.flight.sql.client_option.tls_skip_verify"
 	OptionSSLRootCerts        = "adbc.flight.sql.client_option.tls_root_certs"
 	OptionAuthorizationHeader = "adbc.flight.sql.authorization_header"
+	OptionTimeoutFetch        = "adbc.flight.sql.rpc.timeout_seconds.fetch"
+	OptionTimeoutQuery        = "adbc.flight.sql.rpc.timeout_seconds.query"
+	OptionTimeoutUpdate       = "adbc.flight.sql.rpc.timeout_seconds.update"
 	OptionRPCCallHeaderPrefix = "adbc.flight.sql.rpc.call_header."
 	infoDriverName            = "ADBC Flight SQL Driver - Go"
 )
@@ -88,6 +94,14 @@ func init() {
 			}
 		}
 	}
+}
+
+func getTimeoutOptionValue(v string) (time.Duration, error) {
+	timeout, err := strconv.ParseFloat(v, 64)
+	if math.IsNaN(timeout) || math.IsInf(timeout, 0) || timeout < 0 {
+		return 0, errors.New("timeout must be positive and finite")
+	}
+	return time.Duration(timeout * float64(time.Second)), err
 }
 
 type Driver struct {
@@ -123,6 +137,7 @@ type database struct {
 	creds      credentials.TransportCredentials
 	user, pass string
 	hdrs       metadata.MD
+	timeout    timeoutOption
 
 	alloc memory.Allocator
 }
@@ -216,6 +231,37 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 		delete(cnOptions, adbc.OptionKeyPassword)
 	}
 
+	var err error
+	if tv, ok := cnOptions[OptionTimeoutFetch]; ok {
+		if d.timeout.fetchTimeout, err = getTimeoutOptionValue(tv); err != nil {
+			return adbc.Error{
+				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
+					OptionTimeoutFetch, tv, err.Error()),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	}
+
+	if tv, ok := cnOptions[OptionTimeoutQuery]; ok {
+		if d.timeout.queryTimeout, err = getTimeoutOptionValue(tv); err != nil {
+			return adbc.Error{
+				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
+					OptionTimeoutQuery, tv, err.Error()),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	}
+
+	if tv, ok := cnOptions[OptionTimeoutUpdate]; ok {
+		if d.timeout.updateTimeout, err = getTimeoutOptionValue(tv); err != nil {
+			return adbc.Error{
+				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
+					OptionTimeoutUpdate, tv, err.Error()),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	}
+
 	for key, val := range cnOptions {
 		if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
 			d.hdrs.Append(strings.TrimPrefix(key, OptionRPCCallHeaderPrefix), val)
@@ -230,6 +276,57 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 	return nil
 }
 
+type timeoutOption struct {
+	grpc.EmptyCallOption
+
+	// timeout for DoGet requests
+	fetchTimeout time.Duration
+	// timeout for GetFlightInfo requests
+	queryTimeout time.Duration
+	// timeout for DoPut or DoAction requests
+	updateTimeout time.Duration
+}
+
+func getTimeout(method string, callOptions []grpc.CallOption) (time.Duration, bool) {
+	for _, opt := range callOptions {
+		if to, ok := opt.(timeoutOption); ok {
+			var tm time.Duration
+			switch {
+			case strings.HasSuffix(method, "DoGet"):
+				tm = to.fetchTimeout
+			case strings.HasSuffix(method, "GetFlightInfo"):
+				tm = to.queryTimeout
+			case strings.HasSuffix(method, "DoPut") || strings.HasSuffix(method, "DoAction"):
+				tm = to.updateTimeout
+			}
+
+			return tm, tm > 0
+		}
+	}
+
+	return 0, false
+}
+
+func unaryTimeoutInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	if tm, ok := getTimeout(method, opts); ok {
+		ctx, cancel := context.WithTimeout(ctx, tm)
+		defer cancel()
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+
+	return invoker(ctx, method, req, reply, cc, opts...)
+}
+
+func streamTimeoutInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+	if tm, ok := getTimeout(method, opts); ok {
+		ctx, cancel := context.WithTimeout(ctx, tm)
+		defer cancel()
+		return streamer(ctx, desc, cc, method, opts...)
+	}
+
+	return streamer(ctx, desc, cc, method, opts...)
+}
+
 type bearerAuthMiddleware struct {
 	hdrs metadata.MD
 }
@@ -241,6 +338,13 @@ func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
 
 func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.Client, error) {
 	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy()}
+	middleware := []flight.ClientMiddleware{
+		flight.CreateClientMiddleware(authMiddle),
+		{
+			Unary:  unaryTimeoutInterceptor,
+			Stream: streamTimeoutInterceptor,
+		},
+	}
 
 	uri, err := url.Parse(loc)
 	if err != nil {
@@ -251,8 +355,7 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 		creds = insecure.NewCredentials()
 	}
 
-	cl, err := flightsql.NewClient(uri.Host, nil, []flight.ClientMiddleware{
-		flight.CreateClientMiddleware(authMiddle)}, grpc.WithTransportCredentials(creds))
+	cl, err := flightsql.NewClient(uri.Host, nil, middleware, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, adbc.Error{
 			Msg:  err.Error(),
@@ -304,7 +407,8 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 			conn := client.(*flightsql.Client)
 			conn.Close()
 		}).Build()
-	return &cnxn{cl: cl, db: d, clientCache: cache, hdrs: make(metadata.MD)}, nil
+	return &cnxn{cl: cl, db: d, clientCache: cache,
+		hdrs: make(metadata.MD), timeouts: d.timeout}, nil
 }
 
 type cnxn struct {
@@ -313,6 +417,7 @@ type cnxn struct {
 	db          *database
 	clientCache gcache.Cache
 	hdrs        metadata.MD
+	timeouts    timeoutOption
 }
 
 var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
@@ -321,9 +426,9 @@ var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
 	adbc.InfoVendorArrowVersion: flightsql.SqlInfoFlightSqlServerArrowVersion,
 }
 
-func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache) (rdr *flight.Reader, err error) {
+func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache, opts ...grpc.CallOption) (rdr *flight.Reader, err error) {
 	if len(endpoint.Location) == 0 {
-		return cl.DoGet(ctx, endpoint.Ticket)
+		return cl.DoGet(ctx, endpoint.Ticket, opts...)
 	}
 
 	var (
@@ -337,7 +442,7 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 		}
 
 		conn := cc.(*flightsql.Client)
-		rdr, err = conn.DoGet(ctx, endpoint.Ticket)
+		rdr, err = conn.DoGet(ctx, endpoint.Ticket, opts...)
 		if err != nil {
 			continue
 		}
@@ -360,6 +465,36 @@ func (c *cnxn) SetOption(key, value string) error {
 	}
 
 	switch key {
+	case OptionTimeoutFetch:
+		timeout, err := getTimeoutOptionValue(value)
+		if err != nil {
+			return adbc.Error{
+				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
+					OptionTimeoutFetch, value, err.Error()),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		c.timeouts.fetchTimeout = timeout
+	case OptionTimeoutQuery:
+		timeout, err := getTimeoutOptionValue(value)
+		if err != nil {
+			return adbc.Error{
+				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
+					OptionTimeoutFetch, value, err.Error()),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		c.timeouts.queryTimeout = timeout
+	case OptionTimeoutUpdate:
+		timeout, err := getTimeoutOptionValue(value)
+		if err != nil {
+			return adbc.Error{
+				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
+					OptionTimeoutFetch, value, err.Error()),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		c.timeouts.updateTimeout = timeout
 	case adbc.OptionKeyAutoCommit:
 		return adbc.Error{
 			Msg:  "[Flight SQL] transactions not yet supported",
@@ -371,6 +506,8 @@ func (c *cnxn) SetOption(key, value string) error {
 			Code: adbc.StatusNotImplemented,
 		}
 	}
+
+	return nil
 }
 
 // GetInfo returns metadata about the database/driver.
@@ -436,13 +573,13 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	info, err := c.cl.GetSqlInfo(ctx, translated)
+	info, err := c.cl.GetSqlInfo(ctx, translated, c.timeouts)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
 	}
 
 	for _, endpoint := range info.Endpoint {
-		rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache)
+		rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache, c.timeouts)
 		if err != nil {
 			return nil, adbcFromFlightStatus(err)
 		}
@@ -993,12 +1130,12 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	info, err := c.cl.GetTables(ctx, opts)
+	info, err := c.cl.GetTables(ctx, opts, c.timeouts)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
 	}
 
-	rdr, err := doGet(ctx, c.cl, info.Endpoint[0], c.clientCache)
+	rdr, err := doGet(ctx, c.cl, info.Endpoint[0], c.clientCache, c.timeouts)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
 	}
@@ -1045,7 +1182,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //
 func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	info, err := c.cl.GetTableTypes(ctx)
+	info, err := c.cl.GetTableTypes(ctx, c.timeouts)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
 	}
@@ -1085,6 +1222,7 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 		clientCache: c.clientCache,
 		hdrs:        c.hdrs.Copy(),
 		queueSize:   5,
+		timeouts:    c.timeouts,
 	}, nil
 }
 
@@ -1124,7 +1262,7 @@ func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (r
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	rdr, err = doGet(ctx, c.cl, info.Endpoint[0], c.clientCache)
+	rdr, err = doGet(ctx, c.cl, info.Endpoint[0], c.clientCache, c.timeouts)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err)
 	}
