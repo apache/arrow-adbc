@@ -70,6 +70,16 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     endif()
   endif()
 
+  # Go gcflags for disabling optimizations and inlining if debug
+  separate_arguments(GO_BUILD_FLAGS NATIVE_COMMAND
+                     "${GO_BUILD_FLAGS} $<$<CONFIG:DEBUG>:-gcflags=\"-N -l\">")
+
+  # if we're building debug mode then change the default CGO_CFLAGS and CGO_CXXFLAGS from "-g O2" to "-g3"
+  set(GO_ENV_VARS
+      "CGO_ENABLED=1 $<$<CONFIG:DEBUG>:CGO_CFLAGS=-g3> $<$<CONFIG:DEBUG>:CGO_CXXFLAGS=-g3>"
+  )
+  separate_arguments(GO_ENV_VARS NATIVE_COMMAND "${GO_ENV_VARS}")
+
   if(BUILD_SHARED)
     set(LIB_NAME_SHARED
         "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -86,7 +96,6 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     endif()
 
     set(LIBOUT_SHARED "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME_SHARED}")
-    set(GO_ENV_VARS "CGO_ENABLED=1")
 
     if(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
       list(APPEND GO_ENV_VARS "GOARCH=amd64")
@@ -97,10 +106,10 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     add_custom_command(OUTPUT "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
                        WORKING_DIRECTORY ${GO_MOD_DIR}
                        DEPENDS ${ARG_SOURCES}
-                       COMMAND ${CMAKE_COMMAND} -E env "${GO_ENV_VARS}" ${GO_BIN} build
-                               "${GO_BUILD_TAGS}" "${GO_BUILD_FLAGS}" -o
-                               "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
-                               -buildmode=c-shared "${GO_LDFLAGS}" .
+                       COMMAND ${CMAKE_COMMAND} -E env ${GO_ENV_VARS} ${GO_BIN} build
+                               ${GO_BUILD_TAGS} "${GO_BUILD_FLAGS}" -o
+                               ${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}
+                               -buildmode=c-shared ${GO_LDFLAGS} .
                        COMMAND ${CMAKE_COMMAND} -E remove -f
                                "${LIBOUT_SHARED}.${ADBC_SO_VERSION}.0.h"
                        COMMENT "Building Go Shared lib ${GO_LIBNAME}"
@@ -173,7 +182,8 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     add_custom_command(OUTPUT "${LIBOUT_STATIC}"
                        WORKING_DIRECTORY ${GO_MOD_DIR}
                        DEPENDS ${ARG_SOURCES}
-                       COMMAND ${GO_BIN} build "${GO_BUILD_TAGS}" -o "${LIBOUT_STATIC}"
+                       COMMAND ${CMAKE_COMMAND} -E env "${GO_ENV_VARS}" ${GO_BIN} build
+                               "${GO_BUILD_TAGS}" -o "${LIBOUT_STATIC}"
                                -buildmode=c-archive "${GO_BUILD_FLAGS}" .
                        COMMAND ${CMAKE_COMMAND} -E remove -f "${LIBOUT_HEADER}"
                        COMMENT "Building Go Static lib ${GO_LIBNAME}"
