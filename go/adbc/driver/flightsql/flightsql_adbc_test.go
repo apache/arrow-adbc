@@ -585,7 +585,9 @@ func (ts *TimeoutTestSuite) SetupSuite() {
 	ts.s.RegisterFlightService(flightsql.NewFlightServer(&TimeoutTestServer{}))
 	ts.Require().NoError(ts.s.Init("localhost:0"))
 	ts.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
-	go ts.s.Serve()
+	go func() {
+		_ = ts.s.Serve()
+	}()
 
 	uri := "grpc+tcp://" + ts.s.Addr().String()
 	var err error
