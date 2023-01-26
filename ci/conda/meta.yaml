@@ -169,19 +169,17 @@ outputs:
     script: build-python.bat                                                     # [win]
     requirements:
       build:
-        - cross-python_{{ target_platform }}                                     # [build_platform != target_platform]
         - pip
         - setuptools
-        - python
       host:
         - {{ pin_subpackage('adbc-driver-flightsql-go', exact=True) }}
         - pip
-        - python
+        - python >=3.9
         - setuptools
       run:
         - {{ pin_subpackage('adbc-driver-manager') }}
         - {{ pin_subpackage('adbc-driver-flightsql-go', exact=True) }}
-        - python
+        - python >=3.9
       run_constrained:
         - pyarrow >=8.0.0
     test:
@@ -195,19 +193,17 @@ outputs:
     script: build-python.bat                                                     # [win]
     requirements:
       build:
-        - cross-python_{{ target_platform }}                                     # [build_platform != target_platform]
         - pip
         - setuptools
-        - python
       host:
         - {{ pin_subpackage('adbc-driver-postgresql-cpp', exact=True) }}
         - pip
-        - python
+        - python >=3.9
         - setuptools
       run:
         - {{ pin_subpackage('adbc-driver-manager') }}
         - {{ pin_subpackage('adbc-driver-postgresql-cpp', exact=True) }}
-        - python
+        - python >=3.9
       run_constrained:
         - pyarrow >=8.0.0
     test:
@@ -221,19 +217,17 @@ outputs:
     script: build-python.bat                                                     # [win]
     requirements:
       build:
-        - cross-python_{{ target_platform }}                                     # [build_platform != target_platform]
         - pip
         - setuptools
-        - python
       host:
         - {{ pin_subpackage('adbc-driver-sqlite-cpp', exact=True) }}
         - pip
-        - python
+        - python >=3.9
         - setuptools
       run:
         - {{ pin_subpackage('adbc-driver-manager') }}
         - {{ pin_subpackage('adbc-driver-sqlite-cpp', exact=True) }}
-        - python
+        - python >=3.9
       run_constrained:
         - pyarrow >=8.0.0
     test:
