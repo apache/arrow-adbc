@@ -23,7 +23,10 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow/go/v11/arrow"
+	"github.com/apache/arrow/go/v11/arrow/array"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseConnectStr(t *testing.T) {
@@ -57,5 +60,63 @@ func TestParseConnectStr(t *testing.T) {
 	gotOpts, err := parseConnectStr(dsn)
 	if assert.NoError(t, err) {
 		assert.Equal(t, expectOpts, gotOpts)
+	}
+}
+
+func TestColumnTypeDatabaseTypeName(t *testing.T) {
+	tests := []struct {
+		field  arrow.Field
+		dtName string
+	}{
+		{
+			field:  arrow.Field{Type: &arrow.StringType{}},
+			dtName: "utf8",
+		},
+		{
+			field:  arrow.Field{Type: &arrow.Date32Type{}},
+			dtName: "date32",
+		},
+		{
+			field:  arrow.Field{Type: &arrow.Date64Type{}},
+			dtName: "date64",
+		},
+		{
+			field:  arrow.Field{Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: "utc"}},
+			dtName: "timestamp[s, tz=utc]",
+		},
+		{
+			field:  arrow.Field{Type: &arrow.TimestampType{Unit: arrow.Millisecond}},
+			dtName: "timestamp[ms]",
+		},
+		{
+			field:  arrow.Field{Type: &arrow.Time32Type{Unit: arrow.Second}},
+			dtName: "time32[s]",
+		},
+		{
+			field:  arrow.Field{Type: &arrow.Time32Type{Unit: arrow.Microsecond}},
+			dtName: "time32[us]",
+		},
+		{
+			field:  arrow.Field{Type: &arrow.Time64Type{Unit: arrow.Second}},
+			dtName: "time64[s]",
+		},
+		{
+			field:  arrow.Field{Type: &arrow.Time64Type{Unit: arrow.Nanosecond}},
+			dtName: "time64[ns]",
+		},
+		{
+			field:  arrow.Field{Type: &arrow.DurationType{Unit: arrow.Nanosecond}},
+			dtName: "duration[ns]",
+		},
+	}
+
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("%d-%s", i, test.dtName), func(t *testing.T) {
+			schema := arrow.NewSchema([]arrow.Field{test.field}, nil)
+			reader, err := array.NewRecordReader(schema, nil)
+			require.NoError(t, err)
+			r := &rows{rdr: reader}
+			assert.Equal(t, test.dtName, r.ColumnTypeDatabaseTypeName(0))
+		})
 	}
 }
