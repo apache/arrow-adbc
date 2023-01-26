@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	OptionStatementQueueSize = "arrow.flight.sql.rpc.queue_size"
+	OptionStatementQueueSize = "adbc.flight.sql.rpc.queue_size"
 )
 
 type statement struct {
