@@ -191,7 +191,16 @@ static AdbcStatusCode MonkeyStatementBind(struct AdbcStatement* statement,
 static AdbcStatusCode MonkeyStatementBindStream(struct AdbcStatement* statement,
                                                 struct ArrowArrayStream* stream,
                                                 struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  struct MonkeyStatementPrivate* statement_private =
+      (struct MonkeyStatementPrivate*)statement->private_data;
+  if (statement_private->stream.release != NULL) {
+    statement_private->stream.release(&statement_private->stream);
+  }
+
+  memcpy(&statement_private->stream, stream, sizeof(struct ArrowArrayStream));
+  stream->release = NULL;
+
+  return ADBC_STATUS_OK;
 }
 
 static AdbcStatusCode MonkeyStatementExecutePartitions(struct AdbcStatement* statement,
@@ -260,22 +269,6 @@ static AdbcStatusCode MonkeyStatementRelease(struct AdbcStatement* statement,
 static AdbcStatusCode MonkeyStatementSetOption(struct AdbcStatement* statement,
                                                const char* key, const char* value,
                                                struct AdbcError* error) {
-  if (strcmp(key, "result_stream_address") == 0) {
-    char* end_ptr;
-    intptr_t addr = strtoll(value, &end_ptr, 10);
-    struct ArrowArrayStream* src = (struct ArrowArrayStream*)addr;
-    if (src == NULL) {
-      SetErrorConst(error, "result_stream_address was NULL");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    struct MonkeyStatementPrivate* private_data =
-        (struct MonkeyStatementPrivate*)statement->private_data;
-    memcpy(&private_data->stream, src, sizeof(struct ArrowArrayStream));
-    src->release = NULL;
-    return ADBC_STATUS_OK;
-  }
-
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 

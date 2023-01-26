@@ -51,11 +51,12 @@ adbc_connection_init.adbc_database_monkey <- function(database, ...) {
 }
 
 #' @export
-adbc_statement_init.adbc_connection_monkey <- function(connection, stream, ...) {
-  stream <- nanoarrow::as_nanoarrow_array_stream(stream)
-  options <- list(
-    result_stream_address = nanoarrow::nanoarrow_pointer_addr_chr(stream),
-    ...
-  )
-  adbc_statement_init_default(connection, options, subclass = "adbc_statement_monkey")
+adbc_statement_init.adbc_connection_monkey <- function(connection, stream = NULL, ...) {
+  stmt <- adbc_statement_init_default(connection, subclass = "adbc_statement_monkey")
+
+  if (!is.null(stream)) {
+    adbc_statement_bind_stream(stmt, stream)
+  }
+
+  stmt
 }
