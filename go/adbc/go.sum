@@ -7,6 +7,8 @@ github.com/apache/arrow/go/v11 v11.0.0-20230126145647-17ea6fcb5a38 h1:U2LbLZeKxt
 github.com/apache/arrow/go/v11 v11.0.0-20230126145647-17ea6fcb5a38/go.mod h1:ypSOMuPhmiWVOBC7Or8cj/oPiROuXFS2ksXQWGoPRAo=
 github.com/apache/arrow/go/v11 v11.0.0-20230126170101-af400a81e698 h1:YYT0s7erFYXn8dQkjXv8NsenTedMKghVLsHQpl5h7bc=
 github.com/apache/arrow/go/v11 v11.0.0-20230126170101-af400a81e698/go.mod h1:ypSOMuPhmiWVOBC7Or8cj/oPiROuXFS2ksXQWGoPRAo=
+github.com/apache/arrow/go/v11 v11.0.0-20230126180639-8f537ca93922 h1:bTyKthK03dxd4t0gbASzx79uhNiUk16UKde38kUTmLo=
+github.com/apache/arrow/go/v11 v11.0.0-20230126180639-8f537ca93922/go.mod h1:ypSOMuPhmiWVOBC7Or8cj/oPiROuXFS2ksXQWGoPRAo=
 github.com/apache/thrift v0.16.0 h1:qEy6UW60iVOlUy+b9ZR0d5WzUWYGOo4HfopoyBaNmoY=
 github.com/apache/thrift v0.16.0/go.mod h1:PHK3hniurgQaNMZYaCLEqXKsYK8upmhPbmdP2FXSqgU=
 github.com/bluele/gcache v0.0.2 h1:WcbfdXICg7G/DGBh1PFfcirkWOQV+v077yF1pSy3DGw=
