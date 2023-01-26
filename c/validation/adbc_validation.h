@@ -44,6 +44,19 @@ class DriverQuirks {
     return ADBC_STATUS_OK;
   }
 
+  virtual AdbcStatusCode EnsureSampleTable(struct AdbcConnection* connection,
+                                           const std::string& name,
+                                           struct AdbcError* error) const;
+
+  /// \brief Create a table of sample data with a fixed schema for testing.
+  ///
+  /// The table should have two columns:
+  /// - "int64s" with Arrow type int64.
+  /// - "strings" with Arrow type utf8.
+  virtual AdbcStatusCode CreateSampleTable(struct AdbcConnection* connection,
+                                           const std::string& name,
+                                           struct AdbcError* error) const;
+
   /// \brief Return the SQL to reference the bind parameter of the given index
   virtual std::string BindParameter(int index) const { return "?"; }
 

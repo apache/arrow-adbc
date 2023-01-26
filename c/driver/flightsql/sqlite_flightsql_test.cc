@@ -26,6 +26,13 @@
 
 using adbc_validation::IsOkStatus;
 
+#define CHECK_OK(EXPR)                                              \
+  do {                                                              \
+    if (auto adbc_status = (EXPR); adbc_status != ADBC_STATUS_OK) { \
+      return adbc_status;                                           \
+    }                                                               \
+  } while (false)
+
 class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
@@ -35,11 +42,47 @@ class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
     return ADBC_STATUS_OK;
   }
 
+  AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
+                           struct AdbcError* error) const override {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string drop = "DROP TABLE IF EXISTS ";
+    drop += name;
+    CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, drop.c_str(), error));
+    CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+
+    CHECK_OK(AdbcStatementRelease(&statement.value, error));
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode CreateSampleTable(struct AdbcConnection* connection,
+                                   const std::string& name,
+                                   struct AdbcError* error) const override {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string create = "CREATE TABLE ";
+    create += name;
+    create += " (int64s INT, strings TEXT)";
+    CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, create.c_str(), error));
+    CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+
+    std::string insert = "INSERT INTO ";
+    insert += name;
+    insert += " VALUES (42, 'foo'), (-42, NULL), (NULL, '')";
+    CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, insert.c_str(), error));
+    CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+
+    CHECK_OK(AdbcStatementRelease(&statement.value, error));
+    return ADBC_STATUS_OK;
+  }
+
   std::string BindParameter(int index) const override { return "?"; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_transactions() const override { return false; }
   bool supports_get_sql_info() const override { return true; }
-  bool supports_get_objects() const override { return false; }
+  bool supports_get_objects() const override { return true; }
   bool supports_bulk_ingest() const override { return false; }
   bool supports_partitioned_data() const override { return true; }
   bool supports_dynamic_parameter_binding() const override { return true; }
