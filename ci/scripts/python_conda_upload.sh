@@ -26,6 +26,7 @@ set -x
 main() {
     anaconda -t "${ANACONDA_API_TOKEN}" \
              upload \
+             --skip-existing \
              --user "${CHANNEL}" \
              "$@"
 }
