@@ -660,6 +660,22 @@ func (r *rows) ColumnTypeNullable(index int) (nullable, ok bool) {
 	return r.rdr.Schema().Field(index).Nullable, true
 }
 
+func (r *rows) ColumnTypeLength(index int) (length int64, ok bool) {
+	typ := r.rdr.Schema().Field(index).Type
+	switch dt := typ.(type) {
+	case arrow.TemporalWithUnit:
+		// Overload column type length with the type's time unit.
+		// This is safe because fixed-width data types normally return (0, false),
+		// and all types implementing arrow.TemporalWithUnit also implement arrow.FixedWidthDataType.
+		return int64(dt.TimeUnit()), true
+	case arrow.FixedWidthDataType:
+		// Explicitly skip all fixed-width data types.
+		return 0, false
+		// TODO implement cases for remaining types
+	}
+	return 0, false
+}
+
 func (r *rows) ColumnTypePrecisionScale(index int) (precision, scale int64, ok bool) {
 	typ := r.rdr.Schema().Field(index).Type
 	switch dt := typ.(type) {
