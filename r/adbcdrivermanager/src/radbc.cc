@@ -24,35 +24,23 @@
 
 #include "radbc.h"
 
-static AdbcError global_error_;
-
-static void adbc_global_error_init(void) { memset(&global_error_, 0, sizeof(AdbcError)); }
-
-static void adbc_global_error_reset(void) {
-  if (global_error_.release != nullptr) {
-    global_error_.release(&global_error_);
-  }
-
-  adbc_global_error_init();
-}
-
-static const char* adbc_global_error_message() {
-  if (global_error_.message == nullptr) {
+static const char* adbc_error_message(AdbcError* error) {
+  if (error->message == nullptr) {
     return "";
   } else {
-    return global_error_.message;
+    return error->message;
   }
 }
 
-static void adbc_global_error_warn(int code, const char* context) {
+static void adbc_error_warn(int code, AdbcError* error, const char* context) {
   if (code != ADBC_STATUS_OK) {
-    Rf_warning("<%s> %s", context, adbc_global_error_message());
+    Rf_warning("<%s> %s", context, adbc_error_message(error));
   }
 }
 
-static void adbc_global_error_stop(int code, const char* context) {
+static void adbc_error_stop(int code, AdbcError* error, const char* context) {
   if (code != ADBC_STATUS_OK) {
-    Rf_error("<%s> %s", context, adbc_global_error_message());
+    Rf_error("<%s> %s", context, adbc_error_message(error));
   }
 }
 
@@ -63,8 +51,9 @@ static void finalize_database_xptr(SEXP database_xptr) {
   }
 
   if (database->private_data != nullptr) {
-    int status = AdbcDatabaseRelease(database, &global_error_);
-    adbc_global_error_warn(status, "finalize_database_xptr()");
+    AdbcError error;
+    int status = AdbcDatabaseRelease(database, &error);
+    adbc_error_warn(status, &error, "finalize_database_xptr()");
   }
 
   adbc_xptr_default_finalize<AdbcDatabase>(database_xptr);
@@ -77,10 +66,10 @@ extern "C" SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp) {
   SEXP driver_xptr = PROTECT(adbc_allocate_xptr<AdbcDriver>());
   auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
 
-  adbc_global_error_reset();
+  AdbcError error;
   int status =
-      AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_0_0, driver, &global_error_);
-  adbc_global_error_stop(status, "RAdbcLoadDriver()");
+      AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_0_0, driver, &error);
+  adbc_error_stop(status, &error, "RAdbcLoadDriver()");
 
   UNPROTECT(1);
   return driver_xptr;
@@ -96,10 +85,10 @@ extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr) {
   SEXP driver_xptr = PROTECT(adbc_allocate_xptr<AdbcDriver>());
   auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
 
-  adbc_global_error_reset();
+  AdbcError error;
   int status = AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_0_0, driver,
-                                          &global_error_);
-  adbc_global_error_stop(status, "RAdbcLoadDriverFromInitFunc()");
+                                          &error);
+  adbc_error_stop(status, &error, "RAdbcLoadDriverFromInitFunc()");
 
   UNPROTECT(1);
   return driver_xptr;
@@ -110,9 +99,10 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
   R_RegisterCFinalizer(database_xptr, &finalize_database_xptr);
 
   AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  adbc_global_error_reset();
-  int status = AdbcDatabaseNew(database, &global_error_);
-  adbc_global_error_stop(status, "RAdbcDatabaseNew()");
+
+  AdbcError error;
+  int status = AdbcDatabaseNew(database, &error);
+  adbc_error_stop(status, &error, "RAdbcDatabaseNew()");
 
   if (driver_init_func_xptr != R_NilValue) {
     auto driver_init_func =
@@ -120,10 +110,10 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
     if (!Rf_inherits(driver_init_func_xptr, "adbc_driver_init_func")) {
       Rf_error("Expected external pointer with class '%s'", "adbc_driver_init_func");
     }
-    adbc_global_error_reset();
+
     status =
-        AdbcDriverManagerDatabaseSetInitFunc(database, driver_init_func, &global_error_);
-    adbc_global_error_stop(status, "RAdbcDatabaseNew()");
+        AdbcDriverManagerDatabaseSetInitFunc(database, driver_init_func, &error);
+    adbc_error_stop(status, &error, "RAdbcDatabaseNew()");
   }
 
   return database_xptr;
@@ -158,8 +148,9 @@ static void finalize_connection_xptr(SEXP connection_xptr) {
   }
 
   if (connection->private_data != nullptr) {
-    int status = AdbcConnectionRelease(connection, &global_error_);
-    adbc_global_error_warn(status, "finalize_connection_xptr()");
+    AdbcError error;
+    int status = AdbcConnectionRelease(connection, &error);
+    adbc_error_warn(status, &error, "finalize_connection_xptr()");
   }
 
   adbc_xptr_default_finalize<AdbcConnection>(connection_xptr);
@@ -170,9 +161,10 @@ extern "C" SEXP RAdbcConnectionNew() {
   R_RegisterCFinalizer(connection_xptr, &finalize_connection_xptr);
 
   AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
-  adbc_global_error_reset();
-  int status = AdbcConnectionNew(connection, &global_error_);
-  adbc_global_error_stop(status, "RAdbcConnectionNew()");
+
+  AdbcError error;
+  int status = AdbcConnectionNew(connection, &error);
+  adbc_error_stop(status, &error, "RAdbcConnectionNew()");
 
   UNPROTECT(1);
   return connection_xptr;
@@ -313,8 +305,9 @@ static void finalize_statement_xptr(SEXP statement_xptr) {
   }
 
   if (statement->private_data != nullptr) {
-    int status = AdbcStatementRelease(statement, &global_error_);
-    adbc_global_error_warn(status, "finalize_statement_xptr()");
+    AdbcError error;
+    int status = AdbcStatementRelease(statement, &error);
+    adbc_error_warn(status, &error, "finalize_statement_xptr()");
   }
 
   adbc_xptr_default_finalize<AdbcStatement>(statement_xptr);
@@ -326,9 +319,10 @@ extern "C" SEXP RAdbcStatementNew(SEXP connection_xptr) {
   R_RegisterCFinalizer(statement_xptr, &finalize_statement_xptr);
 
   AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
-  adbc_global_error_reset();
-  int status = AdbcStatementNew(connection, statement, &global_error_);
-  adbc_global_error_stop(status, "RAdbcStatementNew()");
+
+  AdbcError error;
+  int status = AdbcStatementNew(connection, statement, &error);
+  adbc_error_stop(status, &error, "RAdbcStatementNew()");
 
   R_SetExternalPtrProtected(statement_xptr, connection_xptr);
 
