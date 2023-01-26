@@ -21,17 +21,14 @@ if "%PKG_NAME%" == "adbc-driver-manager" (
 )
 if "%PKG_NAME%" == "adbc-driver-flightsql" (
     pushd "%SRC_DIR%"\python\adbc_driver_flightsql
-    set ADBC_FLIGHTSQL_LIBRARY=%LIBRARY_BIN%\adbc_driver_flightsql.dll
     goto BUILD
 )
 if "%PKG_NAME%" == "adbc-driver-postgresql" (
     pushd "%SRC_DIR%"\python\adbc_driver_postgresql
-    set ADBC_POSTGRESQL_LIBRARY=%LIBRARY_BIN%\adbc_driver_postgresql.dll
     goto BUILD
 )
 if "%PKG_NAME%" == "adbc-driver-sqlite" (
     pushd "%SRC_DIR%"\python\adbc_driver_sqlite
-    set ADBC_SQLITE_LIBRARY=%LIBRARY_BIN%\adbc_driver_sqlite.dll
     goto BUILD
 )
 echo Unknown package %PKG_NAME%
