@@ -40,6 +40,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -635,15 +636,15 @@ func (r *rows) Next(dest []driver.Value) error {
 		case *array.LargeBinary:
 			dest[i] = col.Value(int(r.curRow))
 		case *array.Date32:
-			dest[i] = col.Value(int(r.curRow))
+			dest[i] = col.Value(int(r.curRow)).ToTime()
 		case *array.Date64:
-			dest[i] = col.Value(int(r.curRow))
+			dest[i] = col.Value(int(r.curRow)).ToTime()
 		case *array.Time32:
-			dest[i] = col.Value(int(r.curRow))
+			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.Time32Type).Unit)
 		case *array.Time64:
-			dest[i] = col.Value(int(r.curRow))
+			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.Time64Type).Unit)
 		case *array.Timestamp:
-			dest[i] = col.Value(int(r.curRow))
+			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.TimestampType).Unit)
 		default:
 			return &adbc.Error{
 				Code: adbc.StatusNotImplemented,
@@ -703,16 +704,8 @@ func (r *rows) ColumnTypeScanType(index int) reflect.Type {
 		return reflect.TypeOf([]byte{})
 	case arrow.STRING:
 		return reflect.TypeOf(string(""))
-	case arrow.TIME32:
-		return reflect.TypeOf(arrow.Time32(0))
-	case arrow.TIME64:
-		return reflect.TypeOf(arrow.Time64(0))
-	case arrow.DATE32:
-		return reflect.TypeOf(arrow.Date32(0))
-	case arrow.DATE64:
-		return reflect.TypeOf(arrow.Date64(0))
-	case arrow.TIMESTAMP:
-		return reflect.TypeOf(arrow.Timestamp(0))
+	case arrow.TIME32, arrow.TIME64, arrow.DATE32, arrow.DATE64, arrow.TIMESTAMP:
+		return reflect.TypeOf(time.Time{})
 	}
 	return nil
 }
