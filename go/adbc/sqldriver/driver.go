@@ -640,9 +640,9 @@ func (r *rows) Next(dest []driver.Value) error {
 		case *array.Date64:
 			dest[i] = col.Value(int(r.curRow)).ToTime()
 		case *array.Time32:
-			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.TimestampType).Unit)
+			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.Time32Type).Unit)
 		case *array.Time64:
-			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.TimestampType).Unit)
+			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.Time64Type).Unit)
 		case *array.Timestamp:
 			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.TimestampType).Unit)
 		default:

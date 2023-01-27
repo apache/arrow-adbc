@@ -18,12 +18,18 @@
 package sqldriver
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow/go/v11/arrow"
+	"github.com/apache/arrow/go/v11/arrow/array"
+	"github.com/apache/arrow/go/v11/arrow/memory"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseConnectStr(t *testing.T) {
@@ -57,5 +63,132 @@ func TestParseConnectStr(t *testing.T) {
 	gotOpts, err := parseConnectStr(dsn)
 	if assert.NoError(t, err) {
 		assert.Equal(t, expectOpts, gotOpts)
+	}
+}
+
+var (
+	tz       = time.FixedZone("North Idaho", -int((8 * time.Hour).Seconds()))
+	testTime = time.Date(2023, time.January, 26, 15, 40, 39, 123456789, tz)
+)
+
+func TestNextRowTypes(t *testing.T) {
+	tests := []struct {
+		arrowType      arrow.DataType
+		arrowValueFunc func(*testing.T, array.Builder)
+		golangValue    any
+	}{
+		{
+			arrowType: &arrow.StringType{},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				b.(*array.StringBuilder).Append("my-string")
+			},
+			golangValue: "my-string",
+		},
+		{
+			arrowType: &arrow.Date32Type{},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				b.(*array.Date32Builder).Append(arrow.Date32FromTime(testTime))
+			},
+			golangValue: testTime.UTC().Truncate(24 * time.Hour),
+		},
+		{
+			arrowType: &arrow.Date64Type{},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				b.(*array.Date64Builder).Append(arrow.Date64FromTime(testTime))
+			},
+			//TODO type DATE64 is "milliseconds since the UNIX epoch", but arrow.Date64FromTime() truncates at 24h
+			// https://arrow.apache.org/docs/cpp/api/datatype.html#_CPPv4N5arrow4Type4type6DATE64E
+			//golangValue: testTime.UTC().Truncate(time.Millisecond),
+			golangValue: testTime.UTC().Truncate(24 * time.Hour),
+		},
+		{
+			arrowType: &arrow.TimestampType{Unit: arrow.Second, TimeZone: "North Idaho"},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				s := testTime.Format("2006-01-02 15:04:05-07:00")
+				timestamp, _, err := arrow.TimestampFromStringInLocation(s, arrow.Second, tz)
+				require.NoError(t, err)
+				b.(*array.TimestampBuilder).Append(timestamp)
+			},
+			golangValue: testTime.UTC().Truncate(time.Second),
+		},
+		{
+			arrowType: &arrow.TimestampType{Unit: arrow.Millisecond},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				s := testTime.Format("2006-01-02 15:04:05.999-07:00")
+				timestamp, _, err := arrow.TimestampFromStringInLocation(s, arrow.Millisecond, tz)
+				require.NoError(t, err)
+				b.(*array.TimestampBuilder).Append(timestamp)
+			},
+			golangValue: testTime.UTC().Truncate(time.Millisecond),
+		},
+		{
+			arrowType: &arrow.Time32Type{Unit: arrow.Second},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				s := testTime.Format("15:04:05")
+				t.Log(s)
+				time32, err := arrow.Time32FromString(s, arrow.Second)
+				require.NoError(t, err)
+				b.(*array.Time32Builder).Append(time32)
+				t.Log("end of avf")
+			},
+			golangValue: time.Date(1970, time.January, 1, testTime.Hour(), testTime.Minute(), testTime.Second(), 0, time.UTC),
+		},
+		{
+			arrowType: &arrow.Time32Type{Unit: arrow.Millisecond},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				s := testTime.Format("15:04:05.999")
+				time32, err := arrow.Time32FromString(s, arrow.Millisecond)
+				require.NoError(t, err)
+				b.(*array.Time32Builder).Append(time32)
+			},
+			golangValue: time.Date(1970, time.January, 1, testTime.Hour(), testTime.Minute(), testTime.Second(), testTime.Nanosecond()-testTime.Nanosecond()%int(time.Millisecond), time.UTC),
+		},
+		{
+			arrowType: &arrow.Time64Type{Unit: arrow.Microsecond},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				s := testTime.Format("15:04:05.999999")
+				time64, err := arrow.Time64FromString(s, arrow.Microsecond)
+				require.NoError(t, err)
+				b.(*array.Time64Builder).Append(time64)
+			},
+			golangValue: time.Date(1970, time.January, 1, testTime.Hour(), testTime.Minute(), testTime.Second(), testTime.Nanosecond()-testTime.Nanosecond()%int(time.Microsecond), time.UTC),
+		},
+		{
+			arrowType: &arrow.Time64Type{Unit: arrow.Nanosecond},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				s := testTime.Format("15:04:05.999999999")
+				time64, err := arrow.Time64FromString(s, arrow.Nanosecond)
+				require.NoError(t, err)
+				b.(*array.Time64Builder).Append(time64)
+			},
+			golangValue: time.Date(1970, time.January, 1, testTime.Hour(), testTime.Minute(), testTime.Second(), testTime.Nanosecond(), time.UTC),
+		},
+	}
+
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("%d-%s", i, test.arrowType.String()), func(t *testing.T) {
+			schema := arrow.NewSchema([]arrow.Field{{Type: test.arrowType}}, nil)
+			recordBuilder := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+			t.Cleanup(recordBuilder.Release)
+			test.arrowValueFunc(t, recordBuilder.Field(0))
+			record := recordBuilder.NewRecord()
+			t.Cleanup(record.Release)
+
+			r := &rows{curRecord: record}
+			dest := make([]driver.Value, 1)
+			err := r.Next(dest)
+			assert.NoError(t, err)
+			assert.IsType(t, test.golangValue, dest[0])
+			assert.Equal(t, test.golangValue, dest[0])
+		})
 	}
 }
