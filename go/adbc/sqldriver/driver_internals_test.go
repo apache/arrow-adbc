@@ -225,12 +225,12 @@ func TestNextRowTypes(t *testing.T) {
 				require.NoError(t, err)
 				b.(*array.Time64Builder).Append(time64)
 			},
-			golangValue: time.Date(1970, time.January, 1, testTime.Hour(), testTime.Minute(), testTime.Second(), testTime.Nanosecond(), time.UTC),      
+			golangValue: time.Date(1970, time.January, 1, testTime.Hour(), testTime.Minute(), testTime.Second(), testTime.Nanosecond(), time.UTC),
 		},
 	}
 
 	for i, test := range tests {
-    t.Run(fmt.Sprintf("%d-%s", i, test.arrowType.String()), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d-%s", i, test.arrowType.String()), func(t *testing.T) {
 			schema := arrow.NewSchema([]arrow.Field{{Type: test.arrowType}}, nil)
 			recordBuilder := array.NewRecordBuilder(memory.DefaultAllocator, schema)
 			t.Cleanup(recordBuilder.Release)
@@ -244,6 +244,6 @@ func TestNextRowTypes(t *testing.T) {
 			assert.NoError(t, err)
 			assert.IsType(t, test.golangValue, dest[0])
 			assert.Equal(t, test.golangValue, dest[0])
-    })
+		})
 	}
 }
