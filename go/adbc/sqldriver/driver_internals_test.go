@@ -99,9 +99,6 @@ func TestNextRowTypes(t *testing.T) {
 				t.Helper()
 				b.(*array.Date64Builder).Append(arrow.Date64FromTime(testTime))
 			},
-			//TODO type DATE64 is "milliseconds since the UNIX epoch", but arrow.Date64FromTime() truncates at 24h
-			// https://arrow.apache.org/docs/cpp/api/datatype.html#_CPPv4N5arrow4Type4type6DATE64E
-			//golangValue: testTime.UTC().Truncate(time.Millisecond),
 			golangValue: testTime.UTC().Truncate(24 * time.Hour),
 		},
 		{
