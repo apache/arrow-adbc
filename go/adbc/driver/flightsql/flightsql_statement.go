@@ -58,7 +58,7 @@ func (s *sqlOrSubstrait) execute(ctx context.Context, cl *flightsql.Client, opts
 	if s.sqlQuery != "" {
 		return cl.Execute(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
-		// TODO: Substrait not supported upstream
+		// TODO(apache/arrow#33935): Substrait not supported upstream
 		return nil, adbc.Error{
 			Code: adbc.StatusNotImplemented,
 			Msg:  "Substrait is not yet implemented",
