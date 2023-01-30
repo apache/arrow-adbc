@@ -66,6 +66,64 @@ func TestParseConnectStr(t *testing.T) {
 	}
 }
 
+func TestColumnTypeDatabaseTypeName(t *testing.T) {
+	tests := []struct {
+		typ      arrow.DataType
+		typeName string
+	}{
+		{
+			typ:      &arrow.StringType{},
+			typeName: "utf8",
+		},
+		{
+			typ:      &arrow.Date32Type{},
+			typeName: "date32",
+		},
+		{
+			typ:      &arrow.Date64Type{},
+			typeName: "date64",
+		},
+		{
+			typ:      &arrow.TimestampType{Unit: arrow.Second, TimeZone: "utc"},
+			typeName: "timestamp[s, tz=utc]",
+		},
+		{
+			typ:      &arrow.TimestampType{Unit: arrow.Millisecond},
+			typeName: "timestamp[ms]",
+		},
+		{
+			typ:      &arrow.Time32Type{Unit: arrow.Second},
+			typeName: "time32[s]",
+		},
+		{
+			typ:      &arrow.Time32Type{Unit: arrow.Microsecond},
+			typeName: "time32[us]",
+		},
+		{
+			typ:      &arrow.Time64Type{Unit: arrow.Second},
+			typeName: "time64[s]",
+		},
+		{
+			typ:      &arrow.Time64Type{Unit: arrow.Nanosecond},
+			typeName: "time64[ns]",
+		},
+		{
+			typ:      &arrow.DurationType{Unit: arrow.Nanosecond},
+			typeName: "duration[ns]",
+		},
+	}
+
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("%d-%s", i, test.typeName), func(t *testing.T) {
+			schema := arrow.NewSchema([]arrow.Field{{Type: test.typ}}, nil)
+			reader, err := array.NewRecordReader(schema, nil)
+			require.NoError(t, err)
+			r := &rows{rdr: reader}
+			assert.Equal(t, test.typeName, r.ColumnTypeDatabaseTypeName(0))
+		})
+	}
+}
+
 var (
 	tz       = time.FixedZone("North Idaho", -int((8 * time.Hour).Seconds()))
 	testTime = time.Date(2023, time.January, 26, 15, 40, 39, 123456789, tz)

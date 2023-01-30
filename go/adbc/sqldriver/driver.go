@@ -657,6 +657,10 @@ func (r *rows) Next(dest []driver.Value) error {
 	return nil
 }
 
+func (r *rows) ColumnTypeDatabaseTypeName(index int) string {
+	return r.rdr.Schema().Field(index).Type.String()
+}
+
 func (r *rows) ColumnTypeNullable(index int) (nullable, ok bool) {
 	return r.rdr.Schema().Field(index).Nullable, true
 }
