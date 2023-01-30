@@ -131,9 +131,10 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 		return nil, adbc.Error{Msg: err.Error(), Code: adbc.StatusInvalidArgument}
 	}
 
-	// Use WithBlock to surface connection errors eagerly
+	// Do not set WithBlock since it converts some types of connection
+	// errors to infinite hangs
 	// Use WithMaxMsgSize(16 MiB) since Flight services tend to send large messages
-	db.dialOpts.block = true
+	db.dialOpts.block = false
 	db.dialOpts.maxMsgSize = 16 * 1024 * 1024
 
 	return db, db.SetOptions(opts)

@@ -24,6 +24,10 @@ import (
 )
 
 func adbcFromFlightStatus(err error) error {
+	if _, ok := err.(adbc.Error); ok {
+		return err
+	}
+
 	var adbcCode adbc.Status
 	switch status.Code(err) {
 	case codes.OK:
