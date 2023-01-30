@@ -36,9 +36,9 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v11/arrow"
-	"github.com/apache/arrow/go/v11/arrow/array"
-	"github.com/apache/arrow/go/v11/arrow/cdata"
+	"github.com/apache/arrow/go/v12/arrow"
+	"github.com/apache/arrow/go/v12/arrow/array"
+	"github.com/apache/arrow/go/v12/arrow/cdata"
 )
 
 type option struct {

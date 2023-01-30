@@ -24,12 +24,13 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v11/arrow"
-	"github.com/apache/arrow/go/v11/arrow/array"
-	"github.com/apache/arrow/go/v11/arrow/flight"
-	"github.com/apache/arrow/go/v11/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v11/arrow/memory"
+	"github.com/apache/arrow/go/v12/arrow"
+	"github.com/apache/arrow/go/v12/arrow/array"
+	"github.com/apache/arrow/go/v12/arrow/flight"
+	"github.com/apache/arrow/go/v12/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v12/arrow/memory"
 	"github.com/bluele/gcache"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
@@ -38,13 +39,76 @@ const (
 	OptionStatementQueueSize = "adbc.flight.sql.rpc.queue_size"
 )
 
+type sqlOrSubstrait struct {
+	sqlQuery      string
+	substraitPlan []byte
+}
+
+func (s *sqlOrSubstrait) setSqlQuery(query string) {
+	s.sqlQuery = query
+	s.substraitPlan = nil
+}
+
+func (s *sqlOrSubstrait) setSubstraitPlan(plan []byte) {
+	s.sqlQuery = ""
+	s.substraitPlan = plan
+}
+
+func (s *sqlOrSubstrait) execute(ctx context.Context, cl *flightsql.Client, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
+	if s.sqlQuery != "" {
+		return cl.Execute(ctx, s.sqlQuery, opts...)
+	} else if s.substraitPlan != nil {
+		// TODO(apache/arrow#33935): Substrait not supported upstream
+		return nil, adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  "Substrait is not yet implemented",
+		}
+	}
+	return nil, adbc.Error{
+		Code: adbc.StatusInvalidState,
+		Msg:  "[Flight SQL Statement] cannot call ExecuteQuery without a query or prepared statement",
+	}
+}
+
+func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cl *flightsql.Client, opts ...grpc.CallOption) (int64, error) {
+	if s.sqlQuery != "" {
+		return cl.ExecuteUpdate(ctx, s.sqlQuery, opts...)
+	} else if s.substraitPlan != nil {
+		// TODO: Substrait not supported upstream
+		return -1, adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  "Substrait is not yet implemented",
+		}
+	}
+	return -1, adbc.Error{
+		Code: adbc.StatusInvalidState,
+		Msg:  "[Flight SQL Statement] cannot call ExecuteUpdate without a query or prepared statement",
+	}
+}
+
+func (s *sqlOrSubstrait) prepare(ctx context.Context, cl *flightsql.Client, alloc memory.Allocator, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
+	if s.sqlQuery != "" {
+		return cl.Prepare(ctx, alloc, s.sqlQuery, opts...)
+	} else if s.substraitPlan != nil {
+		// TODO: Substrait not supported upstream
+		return nil, adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  "Substrait is not yet implemented",
+		}
+	}
+	return nil, adbc.Error{
+		Code: adbc.StatusInvalidState,
+		Msg:  "[FlightSQL Statement] must call SetSqlQuery before Prepare",
+	}
+}
+
 type statement struct {
 	alloc       memory.Allocator
 	cl          *flightsql.Client
 	clientCache gcache.Cache
 
 	hdrs      metadata.MD
-	query     string
+	query     sqlOrSubstrait
 	prepared  *flightsql.PreparedStatement
 	queueSize int
 	timeouts  timeoutOption
@@ -158,7 +222,7 @@ func (s *statement) SetSqlQuery(query string) error {
 		s.prepared = nil
 	}
 
-	s.query = query
+	s.query.setSqlQuery(query)
 	return nil
 }
 
@@ -172,13 +236,8 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	var info *flight.FlightInfo
 	if s.prepared != nil {
 		info, err = s.prepared.Execute(ctx, s.timeouts)
-	} else if s.query != "" {
-		info, err = s.cl.Execute(ctx, s.query, s.timeouts)
 	} else {
-		return nil, -1, adbc.Error{
-			Msg:  "[Flight SQL Statement] cannot call ExecuteQuery without a query or prepared statement",
-			Code: adbc.StatusInvalidState,
-		}
+		info, err = s.query.execute(ctx, s.cl, s.timeouts)
 	}
 
 	if err != nil {
@@ -198,28 +257,14 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 		return s.prepared.ExecuteUpdate(ctx, s.timeouts)
 	}
 
-	if s.query != "" {
-		return s.cl.ExecuteUpdate(ctx, s.query, s.timeouts)
-	}
-
-	return -1, adbc.Error{
-		Msg:  "[Flight SQL Statement] cannot call ExecuteUpdate without a query or prepared statement",
-		Code: adbc.StatusInvalidState,
-	}
+	return s.query.executeUpdate(ctx, s.cl, s.timeouts)
 }
 
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) error {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
-	if s.query == "" {
-		return adbc.Error{
-			Msg:  "[FlightSQL Statement] must call SetSqlQuery before Prepare",
-			Code: adbc.StatusInvalidState,
-		}
-	}
-
-	prep, err := s.cl.Prepare(ctx, s.alloc, s.query, s.timeouts)
+	prep, err := s.query.prepare(ctx, s.cl, s.alloc, s.timeouts)
 	if err != nil {
 		return adbcFromFlightStatus(err)
 	}
@@ -237,10 +282,15 @@ func (s *statement) Prepare(ctx context.Context) error {
 // using any of the Execute methods. If the query is expected to be
 // executed repeatedly, Prepare should be called first on the statement.
 func (s *statement) SetSubstraitPlan(plan []byte) error {
-	return adbc.Error{
-		Msg:  "[FlightSQL Statement] SetSubstraitPlan not implemented",
-		Code: adbc.StatusNotImplemented,
+	if s.prepared != nil {
+		if err := s.closePreparedStatement(); err != nil {
+			return err
+		}
+		s.prepared = nil
 	}
+
+	s.query.setSubstraitPlan(plan)
+	return nil
 }
 
 // Bind uses an arrow record batch to bind parameters to the query.
@@ -332,13 +382,8 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 
 	if s.prepared != nil {
 		info, err = s.prepared.Execute(ctx, s.timeouts)
-	} else if s.query != "" {
-		info, err = s.cl.Execute(ctx, s.query, s.timeouts)
 	} else {
-		return nil, out, -1, adbc.Error{
-			Msg:  "[Flight SQL Statement] cannot call ExecuteQuery without a query or prepared statement",
-			Code: adbc.StatusInvalidState,
-		}
+		info, err = s.query.execute(ctx, s.cl, s.timeouts)
 	}
 
 	if err != nil {

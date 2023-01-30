@@ -18,24 +18,36 @@
 package flightsql_test
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"io"
+	"math/big"
+	"net"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v11/arrow"
-	"github.com/apache/arrow/go/v11/arrow/array"
-	"github.com/apache/arrow/go/v11/arrow/flight"
-	"github.com/apache/arrow/go/v11/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v11/arrow/flight/flightsql/example"
-	"github.com/apache/arrow/go/v11/arrow/memory"
+	"github.com/apache/arrow/go/v12/arrow"
+	"github.com/apache/arrow/go/v12/arrow/array"
+	"github.com/apache/arrow/go/v12/arrow/flight"
+	"github.com/apache/arrow/go/v12/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v12/arrow/flight/flightsql/example"
+	"github.com/apache/arrow/go/v12/arrow/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
@@ -57,6 +69,7 @@ type FlightSQLQuirks struct {
 	srv    *example.SQLiteFlightSQLServer
 	s      flight.Server
 	middle HeaderServerMiddleware
+	opts   []grpc.ServerOption
 
 	done chan bool
 	mem  *memory.CheckedAllocator
@@ -68,7 +81,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 	s.done = make(chan bool)
 	var err error
 	s.mem = memory.NewCheckedAllocator(memory.DefaultAllocator)
-	s.s = flight.NewServerWithMiddleware([]flight.ServerMiddleware{flight.CreateServerMiddleware(&s.middle)})
+	s.s = flight.NewServerWithMiddleware([]flight.ServerMiddleware{flight.CreateServerMiddleware(&s.middle)}, s.opts...)
 	s.srv, err = example.NewSQLiteFlightSQLServer()
 	require.NoError(t, err)
 	s.srv.Alloc = s.mem
@@ -210,7 +223,7 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	case adbc.InfoVendorVersion:
 		return "sqlite 3"
 	case adbc.InfoVendorArrowVersion:
-		return "11.0.0-SNAPSHOT"
+		return "12.0.0-SNAPSHOT"
 	}
 
 	return nil
@@ -223,11 +236,12 @@ func TestADBCFlightSQL(t *testing.T) {
 	suite.Run(t, &validation.StatementTests{Quirks: q})
 
 	suite.Run(t, &DefaultDialOptionsTests{Quirks: q})
-	suite.Run(t, &PartitionTests{Quirks: q})
-	suite.Run(t, &SSLTests{Quirks: q})
-	suite.Run(t, &StatementTests{Quirks: q})
 	suite.Run(t, &HeaderTests{Quirks: q})
-	suite.Run(t, new(TimeoutTestSuite))
+	suite.Run(t, &OptionTests{Quirks: q})
+	suite.Run(t, &PartitionTests{Quirks: q})
+	suite.Run(t, &StatementTests{Quirks: q})
+	suite.Run(t, &TimeoutTestSuite{})
+	suite.Run(t, &TLSTests{Quirks: &FlightSQLQuirks{}})
 }
 
 // Driver-specific tests
@@ -325,23 +339,23 @@ func (suite *DefaultDialOptionsTests) TestMaxIncomingMessageSizeLow() {
 	suite.NoError(reader.Err())
 }
 
-type SSLTests struct {
+type OptionTests struct {
 	suite.Suite
 
 	Driver adbc.Driver
 	Quirks validation.DriverQuirks
 }
 
-func (suite *SSLTests) SetupTest() {
+func (suite *OptionTests) SetupTest() {
 	suite.Driver = suite.Quirks.SetupDriver(suite.T())
 }
 
-func (suite *SSLTests) TearDownTest() {
+func (suite *OptionTests) TearDownTest() {
 	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
 	suite.Driver = nil
 }
 
-func (suite *SSLTests) TestMutualTLS() {
+func (suite *OptionTests) TestMutualTLS() {
 	// Just checks that the option is accepted - doesn't actually configure TLS
 	options := suite.Quirks.DatabaseOptions()
 
@@ -358,7 +372,7 @@ func (suite *SSLTests) TestMutualTLS() {
 	suite.Require().ErrorContains(err, "Must provide both")
 }
 
-func (suite *SSLTests) TestOverrideHostname() {
+func (suite *OptionTests) TestOverrideHostname() {
 	// Just checks that the option is accepted - doesn't actually configure TLS
 	options := suite.Quirks.DatabaseOptions()
 	options["adbc.flight.sql.client_option.tls_override_hostname"] = "hostname"
@@ -366,7 +380,7 @@ func (suite *SSLTests) TestOverrideHostname() {
 	suite.Require().NoError(err)
 }
 
-func (suite *SSLTests) TestRootCerts() {
+func (suite *OptionTests) TestRootCerts() {
 	// Just checks that the option is accepted - doesn't actually configure TLS
 	options := suite.Quirks.DatabaseOptions()
 	options["adbc.flight.sql.client_option.tls_root_certs"] = "these are not valid certs"
@@ -374,7 +388,7 @@ func (suite *SSLTests) TestRootCerts() {
 	suite.Require().ErrorContains(err, "Invalid value for database option 'adbc.flight.sql.client_option.tls_root_certs': failed to append certificates")
 }
 
-func (suite *SSLTests) TestSkipVerify() {
+func (suite *OptionTests) TestSkipVerify() {
 	options := suite.Quirks.DatabaseOptions()
 	options["adbc.flight.sql.client_option.tls_skip_verify"] = "true"
 	_, err := suite.Driver.NewDatabase(options)
@@ -391,7 +405,7 @@ func (suite *SSLTests) TestSkipVerify() {
 	suite.Require().ErrorContains(err, "Invalid value for database option 'adbc.flight.sql.client_option.tls_skip_verify': 'invalid'")
 }
 
-func (suite *SSLTests) TestUnknownOption() {
+func (suite *OptionTests) TestUnknownOption() {
 	options := suite.Quirks.DatabaseOptions()
 	options["unknown option"] = "unknown value"
 	_, err := suite.Driver.NewDatabase(options)
@@ -495,6 +509,17 @@ func (suite *StatementTests) TestQueueSizeOption() {
 
 	err = suite.Stmt.SetOption(option, "1")
 	suite.Require().NoError(err)
+}
+
+func (suite *StatementTests) TestSubstrait() {
+	err := suite.Stmt.SetSubstraitPlan([]byte("foo"))
+	suite.Require().NoError(err)
+
+	_, _, err = suite.Stmt.ExecuteQuery(context.Background())
+	suite.Require().ErrorContains(err, "Substrait is not yet implemented")
+	var adbcError adbc.Error
+	suite.ErrorAs(err, &adbcError)
+	suite.Equal(adbc.StatusNotImplemented, adbcError.Code)
 }
 
 func (suite *StatementTests) TestUnknownOption() {
@@ -796,4 +821,104 @@ func (ts *TimeoutTestSuite) TestGetFlightInfoTimeout() {
 	_, _, err = stmt.ExecuteQuery(context.Background())
 	ts.ErrorAs(err, &adbcErr)
 	ts.NotEqual(adbc.StatusNotImplemented, adbcErr.Code)
+}
+
+type TLSTests struct {
+	suite.Suite
+
+	Driver adbc.Driver
+	Quirks *FlightSQLQuirks
+
+	DB   adbc.Database
+	Cnxn adbc.Connection
+	Stmt adbc.Statement
+	ctx  context.Context
+}
+
+func (suite *TLSTests) SetupTest() {
+	var err error
+
+	// Generate a self-signed certificate in-process for testing
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	suite.Require().NoError(err)
+	certTemplate := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"Unit Tests Incorporated"},
+		},
+		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+	certDer, err := x509.CreateCertificate(rand.Reader, &certTemplate, &certTemplate, &privKey.PublicKey, privKey)
+	suite.Require().NoError(err)
+	buffer := &bytes.Buffer{}
+	suite.Require().NoError(pem.Encode(buffer, &pem.Block{Type: "CERTIFICATE", Bytes: certDer}))
+	certBytes := make([]byte, buffer.Len())
+	copy(certBytes, buffer.Bytes())
+	buffer.Reset()
+	suite.Require().NoError(pem.Encode(buffer, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privKey)}))
+	keyBytes := make([]byte, buffer.Len())
+	copy(keyBytes, buffer.Bytes())
+
+	cert, err := tls.X509KeyPair(certBytes, keyBytes)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(err)
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
+	tlsCreds := credentials.NewTLS(tlsConfig)
+	suite.Quirks.opts = []grpc.ServerOption{grpc.Creds(tlsCreds)}
+
+	suite.Driver = suite.Quirks.SetupDriver(suite.T())
+	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "grpc+tls://" + suite.Quirks.s.Addr().String(),
+		"adbc.flight.sql.client_option.tls_skip_verify": "true",
+	})
+
+	suite.Require().NoError(err)
+	suite.ctx = context.Background()
+	suite.Cnxn, err = suite.DB.Open(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Stmt, err = suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
+}
+
+func (suite *TLSTests) TearDownTest() {
+	suite.Require().NoError(suite.Stmt.Close())
+	suite.Require().NoError(suite.Cnxn.Close())
+	suite.Quirks.TearDownDriver(suite.T(), suite.Driver)
+	suite.Cnxn = nil
+	suite.DB = nil
+	suite.Driver = nil
+}
+
+func (suite *TLSTests) TestSimpleQuery() {
+	suite.NoError(suite.Stmt.SetSqlQuery("SELECT 1"))
+	reader, _, err := suite.Stmt.ExecuteQuery(suite.ctx)
+	suite.NoError(err)
+	defer reader.Release()
+
+	for reader.Next() {
+	}
+	suite.NoError(reader.Err())
+}
+
+func (suite *TLSTests) TestInvalidOptions() {
+	db, err := suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "grpc+tls://" + suite.Quirks.s.Addr().String(),
+		"adbc.flight.sql.client_option.tls_skip_verify": "false",
+	})
+	suite.Require().NoError(err)
+
+	cnxn, err := db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	stmt, err := cnxn.NewStatement()
+	suite.Require().NoError(err)
+
+	suite.NoError(stmt.SetSqlQuery("SELECT 1"))
+	_, _, err = stmt.ExecuteQuery(suite.ctx)
+	suite.Contains(err.Error(), "Unavailable")
 }

@@ -48,13 +48,13 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v11/arrow"
-	"github.com/apache/arrow/go/v11/arrow/array"
-	"github.com/apache/arrow/go/v11/arrow/flight"
-	"github.com/apache/arrow/go/v11/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v11/arrow/flight/flightsql/schema_ref"
-	"github.com/apache/arrow/go/v11/arrow/ipc"
-	"github.com/apache/arrow/go/v11/arrow/memory"
+	"github.com/apache/arrow/go/v12/arrow"
+	"github.com/apache/arrow/go/v12/arrow/array"
+	"github.com/apache/arrow/go/v12/arrow/flight"
+	"github.com/apache/arrow/go/v12/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v12/arrow/flight/flightsql/schema_ref"
+	"github.com/apache/arrow/go/v12/arrow/ipc"
+	"github.com/apache/arrow/go/v12/arrow/memory"
 	"github.com/bluele/gcache"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
@@ -131,9 +131,10 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 		return nil, adbc.Error{Msg: err.Error(), Code: adbc.StatusInvalidArgument}
 	}
 
-	// Use WithBlock to surface connection errors eagerly
+	// Do not set WithBlock since it converts some types of connection
+	// errors to infinite hangs
 	// Use WithMaxMsgSize(16 MiB) since Flight services tend to send large messages
-	db.dialOpts.block = true
+	db.dialOpts.block = false
 	db.dialOpts.maxMsgSize = 16 * 1024 * 1024
 
 	return db, db.SetOptions(opts)
