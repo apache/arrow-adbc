@@ -63,6 +63,7 @@ main() {
     fi
 
     if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
+        export GODEBUG=cgocheck=2
         test_subproject "${build_dir}" driver/flightsql
     fi
 }

@@ -44,9 +44,10 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow/go/v12/arrow/array"
 	"github.com/apache/arrow/go/v12/arrow/cdata"
+	"github.com/apache/arrow/go/v12/arrow/memory/mallocator"
 )
 
-var drv = flightsql.Driver{}
+var drv = flightsql.Driver{Alloc: mallocator.NewMallocator()}
 
 const errPrefix = "[FlightSQL] "
 
@@ -620,11 +621,16 @@ func FlightSQLStatementSetOption(stmt *C.struct_AdbcStatement, key, value *C.cch
 
 //export releasePartitions
 func releasePartitions(partitions *C.struct_AdbcPartitions) {
+	if partitions.private_data == nil {
+		return
+	}
+
 	C.free(unsafe.Pointer(partitions.partitions))
 	C.free(unsafe.Pointer(partitions.partition_lengths))
-	h := (*(*cgo.Handle)(partitions.private_data))
 	C.free(partitions.private_data)
-	h.Delete()
+	partitions.partitions = nil
+	partitions.partition_lengths = nil
+	partitions.private_data = nil
 }
 
 //export FlightSQLStatementExecutePartitions
@@ -656,15 +662,23 @@ func FlightSQLStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 	partitions.partitions = (**C.cuint8_t)(C.malloc(C.size_t(unsafe.Sizeof((*C.uint8_t)(nil)) * uintptr(part.NumPartitions))))
 	partitions.partition_lengths = (*C.size_t)(C.malloc(C.size_t(unsafe.Sizeof(C.size_t(0)) * uintptr(part.NumPartitions))))
 
+	// Copy into C-allocated memory to avoid violating CGO rules
+	totalLen := 0
+	for _, p := range part.PartitionIDs {
+		totalLen += len(p)
+	}
+	partitions.private_data = C.malloc(C.size_t(totalLen))
+	dst := fromCArr[byte]((*byte)(partitions.private_data), totalLen)
+
 	partIDs := fromCArr[*C.cuint8_t](partitions.partitions, int(partitions.num_partitions))
 	partLens := fromCArr[C.size_t](partitions.partition_lengths, int(partitions.num_partitions))
 	for i, p := range part.PartitionIDs {
-		partIDs[i] = (*C.cuint8_t)(unsafe.Pointer(&p[0]))
+		partIDs[i] = (*C.cuint8_t)(&dst[0])
+		copy(dst, p)
+		dst = dst[len(p):]
 		partLens[i] = C.size_t(len(p))
 	}
 
-	h := cgo.NewHandle(part)
-	partitions.private_data = createHandle(h)
 	partitions.release = (*[0]byte)(C.releasePartitions)
 	return C.ADBC_STATUS_OK
 }
