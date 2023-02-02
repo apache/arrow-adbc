@@ -785,7 +785,8 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 	for rdr.Next() {
 		arr := rdr.Record().Column(0).(*array.String)
 		for i := 0; i < arr.Len(); i++ {
-			catalogName := arr.Value(i)
+			// XXX: force copy since accessor is unsafe
+			catalogName := string([]byte(arr.Value(i)))
 			g.appendCatalog(catalogName)
 		}
 	}
@@ -916,6 +917,7 @@ func (g *getObjects) release() {
 
 func (g *getObjects) finish() (array.RecordReader, error) {
 	record := g.builder.NewRecord()
+	defer record.Release()
 	result, err := array.NewRecordReader(g.builder.Schema(), []arrow.Record{record})
 	if err != nil {
 		return nil, adbc.Error{
@@ -1080,9 +1082,9 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 		for i := 0; i < catalog.Len(); i++ {
 			catalogName := ""
 			if !catalog.IsNull(i) {
-				catalogName = catalog.Value(i)
+				catalogName = string([]byte(catalog.Value(i)))
 			}
-			result[catalogName] = append(result[catalogName], dbSchema.Value(i))
+			result[catalogName] = append(result[catalogName], string([]byte(dbSchema.Value(i))))
 		}
 	}
 
@@ -1141,10 +1143,10 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			catalogName := ""
 			dbSchemaName := ""
 			if !catalog.IsNull(i) {
-				catalogName = catalog.Value(i)
+				catalogName = string([]byte(catalog.Value(i)))
 			}
 			if !dbSchema.IsNull(i) {
-				dbSchemaName = dbSchema.Value(i)
+				dbSchemaName = string([]byte(dbSchema.Value(i)))
 			}
 			key := catalogAndSchema{
 				catalog: catalogName,
@@ -1165,8 +1167,8 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			}
 
 			result[key] = append(result[key], tableInfo{
-				name:      tableName.Value(i),
-				tableType: tableType.Value(i),
+				name:      string([]byte(tableName.Value(i))),
+				tableType: string([]byte(tableType.Value(i))),
 				schema:    schema,
 			})
 		}
