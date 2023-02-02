@@ -36,7 +36,8 @@ knitr::opts_chunk$set(
 <!-- badges: end -->
 
 The goal of adbcdrivermanager is to provide a low-level developer-facing interface
-to Arrow Database Connectivity for the purposes of driver development and testing.
+to Arrow Database Connectivity (ADBC) for the purposes of driver development, testing,
+and support for user-facing packages that rely on ADBC drivers.
 
 ## Installation
 
@@ -53,6 +54,35 @@ This is a basic example which shows you how to solve a common problem:
 
 ```{r example}
 library(adbcdrivermanager)
-db <- adbcdrivermanager:::adbc_database_init(adbcdrivermanager:::adbc_driver_void())
-adbcdrivermanager:::adbc_database_release(db)
+
+# Get a reference to a database using a driver. The adbcdrivermanager package
+# contains a few drivers useful for illustration and testing.
+db <- adbc_database_init(adbc_driver_monkey())
+
+# Open a new connection to a database
+con <- adbc_connection_init(db)
+
+# Initialize a new statement from a connection
+stmt <- adbc_statement_init(con)
+
+# The monkey driver allows you to specify the data for a query
+# in advance for testing purposes
+adbc_statement_bind_stream(stmt, nycflights13::flights)
+
+# Set the query
+adbc_statement_set_sql_query(stmt, "SELECT * FROM flights")
+
+# Start executing the query. Results in ADBC are ArrowArrayStream objects,
+# which can be materialized using as.data.frame(), as_tibble(),
+# or converted to an arrow::RecordBatchReader using
+# arrow::as_record_batch_reader()
+(stream <- adbc_statement_execute_query(stmt))
+
+# Materialize the whole query as a tibble
+tibble::as_tibble(stream)
+
+# Clean up!
+adbc_statement_release(stmt)
+adbc_connection_release(con)
+adbc_database_release(db)
 ```
