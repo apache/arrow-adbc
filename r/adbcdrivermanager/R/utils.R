@@ -66,7 +66,7 @@ names.adbc_xptr <- function(x) {
 `[[<-.adbc_xptr` <- function(x, i, value) {
   env <- xptr_env(x)
   env[[i]] <- value
-  x
+  invisible(x)
 }
 
 #' @export
@@ -78,7 +78,7 @@ names.adbc_xptr <- function(x) {
 `$<-.adbc_xptr` <- function(x, name, value) {
   env <- xptr_env(x)
   env[[name]] <- value
-  x
+  invisible(x)
 }
 
 #' @export
