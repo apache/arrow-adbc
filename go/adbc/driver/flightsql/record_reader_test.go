@@ -282,6 +282,35 @@ func (suite *RecordReaderTests) TestNoSchema() {
 	suite.NoError(reader.Err())
 }
 
+func (suite *RecordReaderTests) TestSchemaEndpointMismatch() {
+	location := "grpc://" + suite.server.Addr().String()
+	badSchema := arrow.NewSchema([]arrow.Field{
+		{Name: "epIndex", Type: arrow.PrimitiveTypes.Int32},
+		{Name: "batchIndex", Type: arrow.PrimitiveTypes.Int32},
+	}, nil)
+	info := flight.FlightInfo{
+		Schema: flight.SerializeSchema(badSchema, suite.alloc),
+		Endpoint: []*flight.FlightEndpoint{
+			{
+				Ticket:   &flight.Ticket{Ticket: []byte{0}},
+				Location: []*flight.Location{{Uri: location}},
+			},
+			{
+				Ticket:   &flight.Ticket{Ticket: []byte{1}},
+				Location: []*flight.Location{{Uri: location}},
+			},
+		},
+	}
+
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	suite.NoError(err)
+	defer reader.Release()
+
+	suite.True(reader.Schema().Equal(badSchema))
+	suite.False(reader.Next())
+	suite.ErrorContains(reader.Err(), "returned inconsistent schema: expected schema:")
+}
+
 func (suite *RecordReaderTests) TestOrdering() {
 	// Info with a ton of endpoints; we want to make sure data comes back in order
 	location := "grpc://" + suite.server.Addr().String()

@@ -19,6 +19,7 @@ package flightsql
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -116,6 +117,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 
 	lastChannelIndex := len(chs) - 1
 
+	referenceSchema := removeSchemaMetadata(schema)
 	for i, ep := range endpoints {
 		endpoint := ep
 		endpointIndex := i
@@ -131,6 +133,11 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				return err
 			}
 			defer rdr.Release()
+
+			streamSchema := removeSchemaMetadata(rdr.Schema())
+			if !streamSchema.Equal(referenceSchema) {
+				return fmt.Errorf("endpoint %d returned inconsistent schema: expected %s but got %s", endpointIndex, referenceSchema.String(), streamSchema.String())
+			}
 
 			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.Record()
@@ -200,4 +207,24 @@ func (r *reader) Schema() *arrow.Schema {
 
 func (r *reader) Record() arrow.Record {
 	return r.rec
+}
+
+func removeSchemaMetadata(schema *arrow.Schema) *arrow.Schema {
+	fields := make([]arrow.Field, len(schema.Fields()))
+	for i, field := range schema.Fields() {
+		fields[i] = removeFieldMetadata(&field)
+	}
+	return arrow.NewSchema(fields, nil)
+}
+
+func removeFieldMetadata(field *arrow.Field) arrow.Field {
+	// XXX: this should recurse into the child fields, but there's not
+	// an easy way to navigate this generically - we can improve this
+	// upstream
+	return arrow.Field{
+		Name:     field.Name,
+		Type:     field.Type,
+		Nullable: field.Nullable,
+		Metadata: arrow.Metadata{},
+	}
 }
