@@ -46,7 +46,9 @@ Arrow-native database protocols.
    :caption: Drivers
 
    driver/installation
+   driver/status
    driver/cpp/index
+   driver/go/index
    driver/java/index
 
 .. toctree::
