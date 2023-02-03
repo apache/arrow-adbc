@@ -28,6 +28,9 @@ main() {
 
     : ${REPOSITORY:="apache/arrow-adbc"}
 
+    export SOURCE_DIR="${source_dir}"
+    source "${source_top_dir}/dev/release/utils-prepare.sh"
+
     echo "Starting GitHub Actions workflow on ${REPOSITORY} for ${version} RC${rc_number}"
 
     gh workflow run \
@@ -51,6 +54,52 @@ main() {
 
     echo "Started GitHub Actions workflow with ID: ${run_id}"
     echo "You can wait for completion via: gh run watch --repo ${REPOSITORY} ${run_id}"
+
+    set_resolved_issues "${version}"
+
+    echo "The following draft email has been created to send to the"
+    echo "dev@arrow.apache.org mailing list"
+    echo ""
+    echo "---------------------------------------------------------"
+
+    cat <<MAIL
+To: dev@arrow.apache.org
+Subject: [VOTE] Release Apache Arrow ADBC ${version} - RC${rc_number}
+
+Hello,
+
+I would like to propose the following release candidate (RC${rc_number}) of Apache Arrow ADBC version ${version}. This is a release consisting of ${RESOLVED_ISSUES} resolved GitHub issues [1].
+
+This release candidate is based on commit: [2]
+
+The source release rc${rc_number} is hosted at [3].
+The binary artifacts are hosted at [4][5][6][7][8].
+The changelog is located at [9].
+
+Please download, verify checksums and signatures, run the unit tests, and vote on the release. See [10] for how to validate a release candidate.
+
+See also a verification result on GitHub Actions [11].
+
+The vote will be open for at least 72 hours.
+
+[ ] +1 Release this as Apache Arrow ADBC 0.1.0
+[ ] +0
+[ ] -1 Do not release this as Apache Arrow ADBC 0.1.0 because...
+
+Note: to verify APT/YUM packages on macOS/AArch64, you must \`export DOCKER_DEFAULT_ARCHITECTURE=linux/amd64\`. (Or skip this step by \`export TEST_APT=0 TEST_YUM=0\`.)
+
+[1]: https://github.com/apache/arrow-adbc/issues?q=is%3Aissue+milestone%3A${version}+is%3Aclosed
+[2]: https://github.com/apache/arrow-adbc/releases/tag/${tag}
+[3]: https://dist.apache.org/repos/dist/dev/arrow/${tag}/
+[4]: https://apache.jfrog.io/artifactory/arrow/almalinux-rc/
+[5]: https://apache.jfrog.io/artifactory/arrow/debian-rc/
+[6]: https://apache.jfrog.io/artifactory/arrow/ubuntu-rc/
+[7]: https://repository.apache.org/content/repositories/staging/org/apache/arrow/adbc/
+[8]: https://github.com/apache/arrow-adbc/releases/tag/${tag}
+[9]: https://github.com/apache/arrow-adbc/blob/${tag}/CHANGELOG.md
+[10]: https://cwiki.apache.org/confluence/display/ARROW/How+to+Verify+Release+Candidates
+[11]: https://github.com/apache/arrow-adbc/actions/runs/${run_id}
+MAIL
 }
 
 main "$@"
