@@ -45,6 +45,7 @@ Arrow-native database protocols.
    :maxdepth: 2
    :caption: Drivers
 
+   driver/installation
    driver/cpp/index
    driver/java/index
 
