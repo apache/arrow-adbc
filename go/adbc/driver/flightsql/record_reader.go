@@ -218,12 +218,39 @@ func removeSchemaMetadata(schema *arrow.Schema) *arrow.Schema {
 }
 
 func removeFieldMetadata(field *arrow.Field) arrow.Field {
-	// XXX: this should recurse into the child fields, but there's not
-	// an easy way to navigate this generically - we can improve this
-	// upstream
+	fieldType := field.Type
+
+	if nestedType, ok := field.Type.(arrow.NestedType); ok {
+		childFields := make([]arrow.Field, len(nestedType.Fields()))
+		for i, field := range nestedType.Fields() {
+			childFields[i] = removeFieldMetadata(&field)
+		}
+
+		switch ty := field.Type.(type) {
+		case *arrow.DenseUnionType:
+			fieldType = arrow.DenseUnionOf(childFields, ty.TypeCodes())
+		case *arrow.FixedSizeListType:
+			fieldType = arrow.FixedSizeListOfField(ty.Len(), childFields[0])
+		case *arrow.ListType:
+			fieldType = arrow.ListOfField(childFields[0])
+		case *arrow.LargeListType:
+			fieldType = arrow.LargeListOfField(childFields[0])
+		case *arrow.MapType:
+			mapType := arrow.MapOf(childFields[0].Type, childFields[1].Type)
+			mapType.KeysSorted = ty.KeysSorted
+			fieldType = mapType
+		case *arrow.SparseUnionType:
+			fieldType = arrow.SparseUnionOf(childFields, ty.TypeCodes())
+		case *arrow.StructType:
+			fieldType = arrow.StructOf(childFields...)
+		default:
+			// XXX: ignore it
+		}
+	}
+
 	return arrow.Field{
 		Name:     field.Name,
-		Type:     field.Type,
+		Type:     fieldType,
 		Nullable: field.Nullable,
 		Metadata: arrow.Metadata{},
 	}
