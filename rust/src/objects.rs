@@ -31,14 +31,15 @@
 //! [DatabaseCatalogEntry], [DatabaseSchemaEntry], and [DatabaseTableEntry],
 //! respectively. These can be concrete Rust structs, such as [SimpleCatalogEntry],
 //! [SimpleSchemaEntry], and [SimpleTableEntry]. Or they can be zero-copy views
-//! onto Arrow record batches as returned by the C API ADBC drivers (TODO).
+//! onto Arrow record batches as returned by the C API ADBC drivers. The latter is
+//! implemented in [ImportedCatalogCollection][crate::driver_manager::ImportedCatalogCollection].
 //!
-//! | Trait                        | Simple Rust-based    |
-//! |------------------------------|----------------------|
-//! | [DatabaseCatalogCollection]  | [SimpleSchemaEntry]  |
-//! | [DatabaseCatalogEntry]       | [SimpleCatalogEntry] |
-//! | [DatabaseSchemaEntry]        | [SimpleSchemaEntry]  |
-//! | [DatabaseTableEntry]         | [SimpleTableEntry]   |
+//! | Trait                        | Simple Rust-based    | Arrow RecordBatch view |
+//! |------------------------------|----------------------|------------------------|
+//! | [DatabaseCatalogCollection]  | [SimpleSchemaEntry]  | [ImportedCatalogCollection][crate::driver_manager::ImportedCatalogCollection] |
+//! | [DatabaseCatalogEntry]       | [SimpleCatalogEntry] | [ImportedCatalogEntry][crate::driver_manager::ImportedCatalogEntry] |
+//! | [DatabaseSchemaEntry]        | [SimpleSchemaEntry]  | [ImportedSchemaEntry][crate::driver_manager::ImportedSchemaEntry] |
+//! | [DatabaseTableEntry]         | [SimpleTableEntry]   | [ImportedTableEntry][crate::driver_manager::ImportedTableEntry] |
 //!
 //! There are owned and reference variations of columns, table constraints,
 //! and foreign key usage. Each have a `borrow()` method to transform a owned
@@ -51,6 +52,684 @@
 //! | [ColumnSchema]    | [ColumnSchemaRef]    |
 //! | [TableConstraint] | [TableConstraintRef] |
 //! | [ForeignKeyUsage] | [ForeignKeyUsageRef] |
+use std::sync::Arc;
+
+use arrow::{
+    array::{
+        Array, ArrayBuilder, ArrayDataBuilder, ArrayRef, BooleanBufferBuilder, BooleanBuilder,
+        Int16Builder, Int32BufferBuilder, Int32Builder, ListArray, ListBuilder, StringBuilder,
+        StructArray,
+    },
+    datatypes::{DataType, Field},
+    record_batch::RecordBatch,
+};
+
+pub(crate) struct UsageArrayBuilder {
+    fk_catalog: StringBuilder,
+    fk_db_schema: StringBuilder,
+    fk_table: StringBuilder,
+    fk_column_name: StringBuilder,
+}
+
+impl UsageArrayBuilder {
+    pub fn with_capacity(catalogs: &impl DatabaseCatalogCollection) -> Self {
+        let constraints = catalogs
+            .catalogs()
+            .flat_map(|catalog| catalog.schemas())
+            .flat_map(|schema| schema.tables())
+            .flat_map(|table| table.constraints());
+        let mut num_usages = 0;
+        let mut catalog_len = 0;
+        let mut db_schema_len = 0;
+        let mut table_len = 0;
+        let mut column_len = 0;
+
+        for constraint in constraints {
+            if let TableConstraintTypeRef::ForeignKey { usage } = constraint.constraint_type {
+                num_usages += usage.len();
+
+                for entry in usage {
+                    catalog_len += entry.catalog.map(|s| s.len()).unwrap_or_default();
+                    db_schema_len += entry.db_schema.map(|s| s.len()).unwrap_or_default();
+                    table_len += entry.table.len();
+                    column_len += entry.column_name.len();
+                }
+            }
+        }
+
+        Self {
+            fk_catalog: StringBuilder::with_capacity(num_usages, catalog_len),
+            fk_db_schema: StringBuilder::with_capacity(num_usages, db_schema_len),
+            fk_table: StringBuilder::with_capacity(num_usages, table_len),
+            fk_column_name: StringBuilder::with_capacity(num_usages, column_len),
+        }
+    }
+
+    pub fn schema() -> Vec<Field> {
+        vec![
+            Field::new("fk_catalog", DataType::Utf8, true),
+            Field::new("fk_db_schema", DataType::Utf8, true),
+            Field::new("fk_table", DataType::Utf8, false),
+            Field::new("fk_column_name", DataType::Utf8, false),
+        ]
+    }
+
+    pub fn append_usages(&mut self, usages: &[ForeignKeyUsageRef]) {
+        for usage in usages {
+            self.fk_catalog.append_option(usage.catalog);
+            self.fk_db_schema.append_option(usage.db_schema);
+            self.fk_table.append_value(usage.table);
+            self.fk_column_name.append_value(usage.column_name);
+        }
+    }
+
+    pub fn current_offset(&self) -> i32 {
+        self.fk_table
+            .len()
+            .try_into()
+            .expect("i32 overflow in tables offset.")
+    }
+
+    pub fn finish(mut self) -> StructArray {
+        let arrays: &[ArrayRef; 4] = &[
+            Arc::new(self.fk_catalog.finish()),
+            Arc::new(self.fk_db_schema.finish()),
+            Arc::new(self.fk_table.finish()),
+            Arc::new(self.fk_column_name.finish()),
+        ];
+
+        StructArray::from(
+            Self::schema()
+                .into_iter()
+                .zip(arrays.iter().cloned())
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
+pub(crate) struct ConstraintArrayBuilder {
+    constraint_name: StringBuilder,
+    constraint_type: StringBuilder,
+    constraint_cols: ListBuilder<StringBuilder>,
+    usage: UsageArrayBuilder,
+    usage_offsets: Int32BufferBuilder,
+    usage_validity: BooleanBufferBuilder,
+}
+
+impl ConstraintArrayBuilder {
+    pub fn with_capacity(catalogs: &impl DatabaseCatalogCollection) -> Self {
+        let constraints = catalogs
+            .catalogs()
+            .flat_map(|catalog| catalog.schemas())
+            .flat_map(|schema| schema.tables())
+            .flat_map(|table| table.constraints());
+        let mut num_constraints = 0;
+        let mut name_len = 0;
+        let mut type_len = 0;
+        let mut num_cols = 0;
+        let mut cols_len = 0;
+
+        for constraint in constraints {
+            num_constraints += 1;
+            name_len += constraint.name.map(|s| s.len()).unwrap_or_default();
+            type_len += constraint.constraint_type.variant_name().len();
+            num_cols += constraint.columns.len();
+            cols_len += constraint.columns.iter().map(|s| s.len()).sum::<usize>();
+        }
+
+        let constraint_cols = ListBuilder::with_capacity(
+            StringBuilder::with_capacity(num_cols, cols_len),
+            num_constraints,
+        );
+
+        // Start with first offset;
+        let mut usage_offsets = Int32BufferBuilder::new(num_constraints + 1);
+        usage_offsets.append(0);
+
+        Self {
+            constraint_name: StringBuilder::with_capacity(num_constraints, name_len),
+            constraint_type: StringBuilder::with_capacity(num_constraints, type_len),
+            constraint_cols,
+            usage: UsageArrayBuilder::with_capacity(catalogs),
+            usage_offsets,
+            usage_validity: BooleanBufferBuilder::new(num_constraints),
+        }
+    }
+
+    pub fn schema() -> Vec<Field> {
+        let usage_schema = DataType::Struct(UsageArrayBuilder::schema());
+        vec![
+            Field::new("constraint_name", DataType::Utf8, true),
+            Field::new("constraint_type", DataType::Utf8, false),
+            Field::new(
+                "constraint_column_names",
+                DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
+                false,
+            ),
+            Field::new(
+                "constraint_column_usage",
+                DataType::List(Box::new(Field::new("item", usage_schema, true))),
+                true,
+            ),
+        ]
+    }
+
+    pub fn append_constraints<'a>(
+        &mut self,
+        constraints: impl Iterator<Item = TableConstraintRef<'a>>,
+    ) {
+        for constraint in constraints {
+            self.constraint_name.append_option(constraint.name);
+            self.constraint_type
+                .append_value(constraint.constraint_type.variant_name());
+            for col_name in constraint.columns {
+                self.constraint_cols.values().append_value(col_name);
+            }
+            self.constraint_cols.append(true);
+            match constraint.constraint_type {
+                TableConstraintTypeRef::ForeignKey { usage } => {
+                    self.usage.append_usages(&usage);
+                    self.usage_offsets.append(self.usage.current_offset());
+                    self.usage_validity.append(true);
+                }
+                _ => {
+                    self.usage_offsets.append(self.usage.current_offset());
+                    self.usage_validity.append(false);
+                }
+            }
+        }
+    }
+
+    pub fn current_offset(&self) -> i32 {
+        self.constraint_name
+            .len()
+            .try_into()
+            .expect("i32 overflow for constraints")
+    }
+
+    pub fn finish(mut self) -> StructArray {
+        let usage_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
+            .null_bit_buffer(Some(self.usage_validity.finish()))
+            .add_child_data(self.usage.finish().data().clone())
+            .add_buffer(self.usage_offsets.finish())
+            .build()
+            .expect("usage data is invalid");
+
+        let arrays: &[ArrayRef; 4] = &[
+            Arc::new(self.constraint_name.finish()),
+            Arc::new(self.constraint_type.finish()),
+            Arc::new(self.constraint_cols.finish()),
+            Arc::new(ListArray::from(usage_data)),
+        ];
+
+        StructArray::from(
+            Self::schema()
+                .into_iter()
+                .zip(arrays.iter().cloned())
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
+pub(crate) struct ColumnArrayBuilder {
+    column_name: StringBuilder,
+    ordinal_position: Int32Builder,
+    remarks: StringBuilder,
+    xdbc_data_type: Int16Builder,
+    xdbc_type_name: StringBuilder,
+    xdbc_column_size: Int32Builder,
+    xdbc_decimal_digits: Int16Builder,
+    xdbc_num_prec_radix: Int16Builder,
+    xdbc_nullable: Int16Builder,
+    xdbc_column_def: StringBuilder,
+    xdbc_sql_data_type: Int16Builder,
+    xdbc_datetime_sub: Int16Builder,
+    xdbc_char_octet_length: Int32Builder,
+    xdbc_is_nullable: StringBuilder,
+    xdbc_scope_catalog: StringBuilder,
+    xdbc_scope_schema: StringBuilder,
+    xdbc_scope_table: StringBuilder,
+    xdbc_is_autoincrement: BooleanBuilder,
+    xdbc_is_generatedcolumn: BooleanBuilder,
+}
+
+impl ColumnArrayBuilder {
+    pub fn with_capacity(catalogs: &impl DatabaseCatalogCollection) -> Self {
+        let columns = catalogs
+            .catalogs()
+            .flat_map(|catalog| catalog.schemas())
+            .flat_map(|schema| schema.tables())
+            .flat_map(|table| table.columns());
+
+        let mut num_columns = 0;
+        let mut name_len = 0;
+        let mut remarks_len = 0;
+        let mut xdbc_type_name_len = 0;
+        let mut xdbc_column_def_len = 0;
+        let mut xdbc_is_nullable_len = 0;
+        let mut xdbc_scope_catalog_len = 0;
+        let mut xdbc_scope_schema_len = 0;
+        let mut xdbc_scope_table_len = 0;
+
+        for column in columns {
+            num_columns += 1;
+            name_len += column.name.len();
+            remarks_len += column.remarks.map(|s| s.len()).unwrap_or_default();
+            xdbc_type_name_len = column.xdbc_type_name.map(|s| s.len()).unwrap_or_default();
+            xdbc_column_def_len = column.xdbc_column_def.map(|s| s.len()).unwrap_or_default();
+            xdbc_is_nullable_len = column.xdbc_is_nullable.map(|s| s.len()).unwrap_or_default();
+            xdbc_scope_catalog_len = column
+                .xdbc_scope_catalog
+                .map(|s| s.len())
+                .unwrap_or_default();
+            xdbc_scope_schema_len = column
+                .xdbc_scope_schema
+                .map(|s| s.len())
+                .unwrap_or_default();
+            xdbc_scope_table_len = column.xdbc_scope_table.map(|s| s.len()).unwrap_or_default();
+        }
+
+        Self {
+            column_name: StringBuilder::with_capacity(num_columns, name_len),
+            ordinal_position: Int32Builder::with_capacity(num_columns),
+            remarks: StringBuilder::with_capacity(num_columns, remarks_len),
+            xdbc_data_type: Int16Builder::with_capacity(num_columns),
+            xdbc_type_name: StringBuilder::with_capacity(num_columns, xdbc_type_name_len),
+            xdbc_column_size: Int32Builder::with_capacity(num_columns),
+            xdbc_decimal_digits: Int16Builder::with_capacity(num_columns),
+            xdbc_num_prec_radix: Int16Builder::with_capacity(num_columns),
+            xdbc_nullable: Int16Builder::with_capacity(num_columns),
+            xdbc_column_def: StringBuilder::with_capacity(num_columns, xdbc_column_def_len),
+            xdbc_sql_data_type: Int16Builder::with_capacity(num_columns),
+            xdbc_datetime_sub: Int16Builder::with_capacity(num_columns),
+            xdbc_char_octet_length: Int32Builder::with_capacity(num_columns),
+            xdbc_is_nullable: StringBuilder::with_capacity(num_columns, xdbc_is_nullable_len),
+            xdbc_scope_catalog: StringBuilder::with_capacity(num_columns, xdbc_scope_catalog_len),
+            xdbc_scope_schema: StringBuilder::with_capacity(num_columns, xdbc_scope_schema_len),
+            xdbc_scope_table: StringBuilder::with_capacity(num_columns, xdbc_scope_table_len),
+            xdbc_is_autoincrement: BooleanBuilder::with_capacity(num_columns),
+            xdbc_is_generatedcolumn: BooleanBuilder::with_capacity(num_columns),
+        }
+    }
+
+    pub fn schema() -> Vec<Field> {
+        vec![
+            Field::new("column_name", DataType::Utf8, false),
+            Field::new("ordinal_position", DataType::Int32, true),
+            Field::new("remarks", DataType::Utf8, true),
+            Field::new("xdbc_data_type", DataType::Int16, true),
+            Field::new("xdbc_type_name", DataType::Utf8, true),
+            Field::new("xdbc_column_size", DataType::Int32, true),
+            Field::new("xdbc_decimal_digits", DataType::Int16, true),
+            Field::new("xdbc_num_prec_radix", DataType::Int16, true),
+            Field::new("xdbc_nullable", DataType::Int16, true),
+            Field::new("xdbc_column_def", DataType::Utf8, true),
+            Field::new("xdbc_sql_data_type", DataType::Int16, true),
+            Field::new("xdbc_datetime_sub", DataType::Int16, true),
+            Field::new("xdbc_char_octet_length", DataType::Int32, true),
+            Field::new("xdbc_is_nullable", DataType::Utf8, true),
+            Field::new("xdbc_scope_catalog", DataType::Utf8, true),
+            Field::new("xdbc_scope_schema", DataType::Utf8, true),
+            Field::new("xdbc_scope_table", DataType::Utf8, true),
+            Field::new("xdbc_is_autoincrement", DataType::Boolean, true),
+            Field::new("xdbc_is_generatedcolumn", DataType::Boolean, true),
+        ]
+    }
+
+    pub fn append_columns<'a>(&mut self, columns: impl Iterator<Item = ColumnSchemaRef<'a>>) {
+        for column in columns {
+            self.column_name.append_value(column.name);
+            self.ordinal_position.append_value(column.ordinal_position);
+            self.remarks.append_option(column.remarks);
+            self.xdbc_data_type.append_option(column.xdbc_data_type);
+            self.xdbc_type_name.append_option(column.xdbc_type_name);
+            self.xdbc_column_size.append_option(column.xdbc_column_size);
+            self.xdbc_decimal_digits
+                .append_option(column.xdbc_decimal_digits);
+            self.xdbc_num_prec_radix
+                .append_option(column.xdbc_num_prec_radix);
+            self.xdbc_nullable.append_option(column.xdbc_nullable);
+            self.xdbc_column_def.append_option(column.xdbc_column_def);
+            self.xdbc_sql_data_type
+                .append_option(column.xdbc_sql_data_type);
+            self.xdbc_datetime_sub
+                .append_option(column.xdbc_datetime_sub);
+            self.xdbc_char_octet_length
+                .append_option(column.xdbc_char_octet_length);
+            self.xdbc_is_nullable.append_option(column.xdbc_is_nullable);
+            self.xdbc_scope_catalog
+                .append_option(column.xdbc_scope_catalog);
+            self.xdbc_scope_schema
+                .append_option(column.xdbc_scope_schema);
+            self.xdbc_scope_table.append_option(column.xdbc_scope_table);
+            self.xdbc_is_autoincrement
+                .append_option(column.xdbc_is_autoincrement);
+            self.xdbc_is_generatedcolumn
+                .append_option(column.xdbc_is_generatedcolumn);
+        }
+    }
+
+    pub fn current_offset(&self) -> i32 {
+        self.column_name
+            .len()
+            .try_into()
+            .expect("i32 overflow for number of columns")
+    }
+
+    pub fn finish(mut self) -> StructArray {
+        let arrays: &[ArrayRef; 19] = &[
+            Arc::new(self.column_name.finish()),
+            Arc::new(self.ordinal_position.finish()),
+            Arc::new(self.remarks.finish()),
+            Arc::new(self.xdbc_data_type.finish()),
+            Arc::new(self.xdbc_type_name.finish()),
+            Arc::new(self.xdbc_column_size.finish()),
+            Arc::new(self.xdbc_decimal_digits.finish()),
+            Arc::new(self.xdbc_num_prec_radix.finish()),
+            Arc::new(self.xdbc_nullable.finish()),
+            Arc::new(self.xdbc_column_def.finish()),
+            Arc::new(self.xdbc_sql_data_type.finish()),
+            Arc::new(self.xdbc_datetime_sub.finish()),
+            Arc::new(self.xdbc_char_octet_length.finish()),
+            Arc::new(self.xdbc_is_nullable.finish()),
+            Arc::new(self.xdbc_scope_catalog.finish()),
+            Arc::new(self.xdbc_scope_schema.finish()),
+            Arc::new(self.xdbc_scope_table.finish()),
+            Arc::new(self.xdbc_is_autoincrement.finish()),
+            Arc::new(self.xdbc_is_generatedcolumn.finish()),
+        ];
+        StructArray::from(
+            Self::schema()
+                .into_iter()
+                .zip(arrays.iter().cloned())
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
+pub(crate) struct TableArrayBuilder {
+    table_name: StringBuilder,
+    table_type: StringBuilder,
+    table_columns: ColumnArrayBuilder,
+    columns_offsets: Int32BufferBuilder,
+    // TODO: it would be nice if NullBufferBuilder was public.
+    columns_validity: BooleanBufferBuilder,
+    table_constraints: ConstraintArrayBuilder,
+    constraints_offsets: Int32BufferBuilder,
+    constraints_validity: BooleanBufferBuilder,
+}
+
+impl TableArrayBuilder {
+    pub fn with_capacity<T: DatabaseCatalogCollection>(catalogs: &T) -> Self {
+        let tables = catalogs
+            .catalogs()
+            .flat_map(|catalog| catalog.schemas())
+            .flat_map(|schema| schema.tables());
+
+        let mut num_tables = 0;
+        let mut name_len = 0;
+        let mut type_len = 0;
+
+        for table in tables {
+            num_tables += 1;
+            name_len += table.name().len();
+            type_len += table.table_type().len();
+        }
+
+        let mut columns_offsets = Int32BufferBuilder::new(num_tables);
+        columns_offsets.append(0);
+
+        let mut constraints_offsets = Int32BufferBuilder::new(num_tables);
+        constraints_offsets.append(0);
+
+        Self {
+            table_name: StringBuilder::with_capacity(num_tables, name_len),
+            table_type: StringBuilder::with_capacity(num_tables, type_len),
+            table_columns: ColumnArrayBuilder::with_capacity(catalogs),
+            columns_offsets,
+            columns_validity: BooleanBufferBuilder::new(num_tables),
+            table_constraints: ConstraintArrayBuilder::with_capacity(catalogs),
+            constraints_offsets,
+            constraints_validity: BooleanBufferBuilder::new(num_tables),
+        }
+    }
+
+    pub fn schema() -> Vec<Field> {
+        let constraint_schema = DataType::Struct(ConstraintArrayBuilder::schema());
+        let column_schema = DataType::Struct(ColumnArrayBuilder::schema());
+
+        vec![
+            Field::new("table_name", DataType::Utf8, false),
+            Field::new("table_type", DataType::Utf8, false),
+            Field::new(
+                "table_columns",
+                DataType::List(Box::new(Field::new("item", column_schema, true))),
+                true,
+            ),
+            Field::new(
+                "table_constraints",
+                DataType::List(Box::new(Field::new("item", constraint_schema, true))),
+                true,
+            ),
+        ]
+    }
+
+    pub fn append_tables<'a>(&mut self, tables: impl Iterator<Item = impl DatabaseTableEntry<'a>>) {
+        for table in tables {
+            self.table_name.append_value(table.name());
+            self.table_type.append_value(table.table_type());
+
+            self.table_columns.append_columns(table.columns());
+            self.columns_offsets
+                .append(self.table_columns.current_offset());
+            self.columns_validity.append(true);
+
+            self.table_constraints
+                .append_constraints(table.constraints());
+            self.constraints_offsets
+                .append(self.table_constraints.current_offset());
+            self.constraints_validity.append(true);
+        }
+    }
+
+    pub fn current_offset(&self) -> i32 {
+        self.table_name
+            .len()
+            .try_into()
+            .expect("i32 overflow for tables")
+    }
+
+    pub fn finish(mut self) -> StructArray {
+        let columns_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
+            .null_bit_buffer(Some(self.columns_validity.finish()))
+            .add_child_data(self.table_columns.finish().data().clone())
+            .add_buffer(self.columns_offsets.finish())
+            .build()
+            .expect("columns data is invalid");
+
+        let constraints_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
+            .null_bit_buffer(Some(self.constraints_validity.finish()))
+            .add_child_data(self.table_constraints.finish().data().clone())
+            .add_buffer(self.constraints_offsets.finish())
+            .build()
+            .expect("constraints data is invalid");
+
+        let arrays: &[ArrayRef; 4] = &[
+            Arc::new(self.table_name.finish()),
+            Arc::new(self.table_type.finish()),
+            Arc::new(ListArray::from(columns_data)),
+            Arc::new(ListArray::from(constraints_data)),
+        ];
+
+        StructArray::from(
+            Self::schema()
+                .into_iter()
+                .zip(arrays.iter().cloned())
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
+pub(crate) struct DbSchemaArrayBuilder {
+    db_schema_name: StringBuilder,
+    tables: TableArrayBuilder,
+    tables_offsets: Int32BufferBuilder,
+    tables_validity: BooleanBufferBuilder,
+}
+
+impl DbSchemaArrayBuilder {
+    pub fn with_capacity(catalogs: &impl DatabaseCatalogCollection) -> Self {
+        let schemas = catalogs.catalogs().flat_map(|catalog| catalog.schemas());
+
+        let mut num_schemas = 0;
+        let mut name_len = 0;
+
+        for schema in schemas {
+            num_schemas += 1;
+            name_len += schema.name().map(|s| s.len()).unwrap_or_default();
+        }
+
+        let mut tables_offsets = Int32BufferBuilder::new(num_schemas);
+        tables_offsets.append(0);
+
+        Self {
+            db_schema_name: StringBuilder::with_capacity(num_schemas, name_len),
+            tables: TableArrayBuilder::with_capacity(catalogs),
+            tables_offsets,
+            tables_validity: BooleanBufferBuilder::new(num_schemas),
+        }
+    }
+
+    pub fn schema() -> Vec<Field> {
+        let table_schema = DataType::Struct(TableArrayBuilder::schema());
+
+        vec![
+            Field::new("db_schema_name", DataType::Utf8, true),
+            Field::new(
+                "db_schema_tables",
+                DataType::List(Box::new(Field::new("item", table_schema, true))),
+                true,
+            ),
+        ]
+    }
+
+    pub fn append_schemas<'a>(
+        &mut self,
+        schemas: impl Iterator<Item = impl DatabaseSchemaEntry<'a>>,
+    ) {
+        for schema in schemas {
+            self.db_schema_name.append_option(schema.name());
+            self.tables.append_tables(schema.tables());
+            self.tables_offsets.append(self.tables.current_offset());
+            self.tables_validity.append(true);
+        }
+    }
+
+    pub fn current_offset(&self) -> i32 {
+        self.db_schema_name
+            .len()
+            .try_into()
+            .expect("i32 overflow in db schemas")
+    }
+
+    pub fn finish(mut self) -> StructArray {
+        let tables_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
+            .null_bit_buffer(Some(self.tables_validity.finish()))
+            .add_child_data(self.tables.finish().data().clone())
+            .add_buffer(self.tables_offsets.finish())
+            .build()
+            .expect("columns data is invalid");
+
+        let arrays: &[ArrayRef; 2] = &[
+            Arc::new(self.db_schema_name.finish()),
+            Arc::new(ListArray::from(tables_data)),
+        ];
+
+        StructArray::from(
+            Self::schema()
+                .into_iter()
+                .zip(arrays.iter().cloned())
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
+pub(crate) struct CatalogArrayBuilder {
+    catalog_name: StringBuilder,
+    schemas: DbSchemaArrayBuilder,
+    schemas_offsets: Int32BufferBuilder,
+    schemas_validity: BooleanBufferBuilder,
+}
+
+impl CatalogArrayBuilder {
+    pub fn with_capacity<T: DatabaseCatalogCollection>(collection: &T) -> Self {
+        let catalogs = collection.catalogs();
+
+        let mut num_catalogs = 0;
+        let mut name_len = 0;
+
+        for catalog in catalogs {
+            num_catalogs += 1;
+            name_len += catalog.name().map(|s| s.len()).unwrap_or_default();
+        }
+
+        let mut schemas_offsets = Int32BufferBuilder::new(num_catalogs);
+        schemas_offsets.append(0);
+
+        Self {
+            catalog_name: StringBuilder::with_capacity(num_catalogs, name_len),
+            schemas: DbSchemaArrayBuilder::with_capacity(collection),
+            schemas_offsets,
+            schemas_validity: BooleanBufferBuilder::new(num_catalogs),
+        }
+    }
+
+    pub fn schema() -> Vec<Field> {
+        let db_schema_schema = DataType::Struct(DbSchemaArrayBuilder::schema());
+
+        vec![
+            Field::new("catalog_name", DataType::Utf8, true),
+            Field::new(
+                "catalog_db_schemas",
+                DataType::List(Box::new(Field::new("item", db_schema_schema, true))),
+                true,
+            ),
+        ]
+    }
+
+    pub fn append_catalogs<'a>(
+        &mut self,
+        catalogs: impl Iterator<Item = impl DatabaseCatalogEntry<'a>>,
+    ) {
+        for catalog in catalogs {
+            self.catalog_name.append_option(catalog.name());
+            self.schemas.append_schemas(catalog.schemas());
+            self.schemas_offsets.append(self.schemas.current_offset());
+            self.schemas_validity.append(true);
+        }
+    }
+
+    pub fn finish(mut self) -> StructArray {
+        let schemas_data = ArrayDataBuilder::new(Self::schema()[3].data_type().clone())
+            .null_bit_buffer(Some(self.schemas_validity.finish()))
+            .add_child_data(self.schemas.finish().data().clone())
+            .add_buffer(self.schemas_offsets.finish())
+            .build()
+            .expect("columns data is invalid");
+
+        let arrays: &[ArrayRef; 2] = &[
+            Arc::new(self.catalog_name.finish()),
+            Arc::new(ListArray::from(schemas_data)),
+        ];
+
+        StructArray::from(
+            Self::schema()
+                .into_iter()
+                .zip(arrays.iter().cloned())
+                .collect::<Vec<_>>(),
+        )
+    }
+}
 
 /// A collection of database catalogs, returned by [crate::AdbcConnection::get_objects].
 pub trait DatabaseCatalogCollection {
@@ -70,6 +749,17 @@ pub trait DatabaseCatalogCollection {
     /// This is case sensitive.
     fn catalog(&self, name: Option<&str>) -> Option<Self::CatalogEntryType<'_>> {
         self.catalogs().find(|catalog| catalog.name() == name)
+    }
+
+    /// Get as a record batch, for exporting in the C ADBC API.
+    fn to_record_batch(&self) -> RecordBatch
+    where
+        Self: Sized,
+    {
+        let mut builder = CatalogArrayBuilder::with_capacity(self);
+        builder.append_catalogs(self.catalogs());
+        let array = builder.finish();
+        RecordBatch::from(&array)
     }
 }
 

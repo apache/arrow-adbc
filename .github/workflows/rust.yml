@@ -61,8 +61,55 @@ jobs:
         run: cargo fmt -- --check
       - name: Clippy
         run: cargo clippy --tests
+      - name: Build Driver SQLite (Windows)
+        if: matrix.os == 'windows-latest'
+        working-directory: .
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+          ADBC_BUILD_TESTS: OFF
+        run: |
+          vcpkg --triplet x64-windows install sqlite3
+          $env:CMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build $pwd\rust\build
+          "$pwd\rust\build\bin" >> $env:GITHUB_PATH
+      - name: Build Driver SQLite (Unix)
+        if: matrix.os != 'windows-latest'
+        working-directory: .
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+        run: |
+           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$(pwd)/rust/build"
+           echo "LD_LIBRARY_PATH=$(pwd)/rust/build/lib" >> $GITHUB_ENV
       - name: Test
         shell: bash -l {0}
-        run: cargo test
+        run: |
+          # MacOS library path needs to be set within action, since it is cleared
+          # when new processes are created.
+          export DYLD_LIBRARY_PATH=$(pwd)/build/lib
+          cargo test
       - name: Check docs
         run: cargo doc
+  miri:
+    # Miri is an interpreter for Rust that is used to detect undefined behavior
+    # in tests. However, it can only be run on tests that are entirely in Rust,
+    # so not on any integration tests with other languages.
+    name: "Rust Tests on Miri"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+            fetch-depth: 0
+            persist-credentials: false
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          components: miri
+      - uses: Swatinem/rust-cache@v2
+      - name: Test
+        run: cargo miri test --test test_implement

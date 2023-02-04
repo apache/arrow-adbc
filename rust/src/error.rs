@@ -191,3 +191,58 @@ impl From<ArrowError> for AdbcError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::CStr;
+
+    use crate::ffi::FFI_AdbcError;
+
+    #[test]
+    fn test_adbcerror() {
+        let cases = vec![
+            ("hello", None, None),
+            ("", None, None),
+            ("unicode 😅", None, None),
+            ("msg", Some(20), None),
+            ("msg", None, Some([3, 4, 5, 6, 7])),
+        ];
+
+        for (msg, vendor_code, sqlstate) in cases {
+            let mut err = FFI_AdbcError::new(msg, vendor_code, sqlstate);
+            assert_eq!(
+                unsafe { CStr::from_ptr(err.message).to_str().unwrap() },
+                msg
+            );
+            assert_eq!(err.vendor_code, vendor_code.unwrap_or(-1));
+            assert_eq!(err.sqlstate, sqlstate.unwrap_or([0, 0, 0, 0, 0]));
+
+            assert!(err.release.is_some());
+            let release_func = err.release.unwrap();
+            unsafe { release_func(&mut err) };
+
+            assert!(err.message.is_null());
+        }
+    }
+
+    #[test]
+    fn test_adbcerror_set_message() {
+        let mut error = FFI_AdbcError::empty();
+
+        let msg = "Hello world!";
+        unsafe { FFI_AdbcError::set_message(&mut error, msg) };
+
+        assert_eq!(
+            unsafe { CStr::from_ptr(error.message).to_str().unwrap() },
+            msg
+        );
+        assert_eq!(error.vendor_code, -1);
+        assert_eq!(error.sqlstate, [0, 0, 0, 0, 0]);
+
+        assert!(error.release.is_some());
+        let release_func = error.release.unwrap();
+        unsafe { release_func(&mut error) };
+
+        assert!(error.message.is_null());
+    }
+}
