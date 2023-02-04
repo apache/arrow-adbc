@@ -52,25 +52,60 @@
 //!
 //! # Using C API drivers
 //!
-//! 🚧 TODO
+//! The [driver_manager] module allows loading drivers, either from an initialization
+//! function or by dynamically finding such a function in a dynamic library.
+//!
+//! ```
+//! use arrow::datatypes::Int64Type;
+//! use arrow::array::as_primitive_array;
+//! use arrow::record_batch::RecordBatchReader;
+//!
+//! use arrow_adbc::driver_manager::AdbcDriver;
+//! use arrow_adbc::ADBC_VERSION_1_0_0;
+//! use arrow_adbc::interface::StatementApi;
+//!
+//! # fn main() -> arrow_adbc::driver_manager::Result<()> {
+//! let sqlite_driver = AdbcDriver::load("adbc_driver_sqlite", None, ADBC_VERSION_1_0_0)?;
+//! let sqlite_database = sqlite_driver.new_database()?.init()?;
+//! let sqlite_conn = sqlite_database.new_connection()?.init()?;
+//! let mut sqlite_statement = sqlite_conn.new_statement()?;
+//!
+//! sqlite_statement.set_sql_query("SELECT 1");
+//! let mut results: Box<dyn RecordBatchReader> = sqlite_statement.execute()?
+//!     .result.expect("Query did not have a result");
+//!
+//! let batch = results.next().expect("Result did not have at least one batch")?;
+//! let result = as_primitive_array::<Int64Type>(batch.column(0));
+//!
+//! assert_eq!(result.value(0), 1);
+//! # Ok(())
+//! # }
+//! ```
 //!
 //! # Creating C API drivers
 //!
-//! 🚧 TODO
+//! To implement an ADBC driver with a C interface, use the [implement] module. The macro
+//! [adbc_init_func] will generate adapters from the safe Rust traits you implement
+//! to the FFI interface recognized by ADBC.
 //!
+pub mod driver_manager;
 pub mod error;
+pub mod ffi;
+pub mod implement;
 pub mod info;
 pub mod objects;
+pub(crate) mod utils;
+
+pub const ADBC_VERSION_1_0_0: i32 = 1000000;
 
 use std::collections::HashMap;
 
-use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
+use arrow_array::{RecordBatch, RecordBatchReader};
 use async_trait::async_trait;
-use info::InfoCode;
 
 use crate::error::AdbcError;
-use crate::info::InfoData;
+use crate::info::{InfoCode, InfoData};
 
 /// Databases hold state shared by multiple connections. This typically means
 /// configuration and caches. For in-memory databases, it provides a place to
@@ -260,6 +295,9 @@ pub trait AdbcStatement {
 
     /// Set the SQL query to execute.
     fn set_sql_query(&mut self, query: &str) -> Result<(), AdbcError>;
+
+    /// Set the Substrait plan to execute.
+    fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<(), AdbcError>;
 
     /// Get the schema for bound parameters.
     ///
