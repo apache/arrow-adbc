@@ -438,8 +438,8 @@ struct ADBC_EXPORT AdbcError {
 /// executing a statement.  Instead of setting a SQL query or Substrait
 /// plan, bind the source data via AdbcStatementBind, and set the name
 /// of the table to be created via AdbcStatementSetOption and the
-/// options below.  Then, call AdbcStatementExecute with
-/// ADBC_OUTPUT_TYPE_UPDATE.
+/// options below.  Then, call AdbcStatementExecute with a NULL for
+/// the out parameter (to indicate you do not expect a result set).
 ///
 /// @{
 
@@ -675,6 +675,13 @@ struct ADBC_EXPORT AdbcDriver {
 /// @{
 
 /// \brief Allocate a new (but uninitialized) database.
+///
+/// Callers pass in AdbcDatabase with private_data set to NULL and the
+/// private_driver possibly set.
+///
+/// Drivers should allocate their internal data structure and set the private_data
+/// field to point to the newly allocated struct. This struct should be released
+/// when AdbcDatabaseRelease is called.
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error);
 
@@ -709,6 +716,13 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
 /// @{
 
 /// \brief Allocate a new (but uninitialized) connection.
+///
+/// Callers pass in AdbcConnection with private_data set to NULL and the
+/// private_driver possibly set.
+///
+/// Drivers should allocate their internal data structure and set the private_data
+/// field to point to the newly allocated struct. This struct should be released
+/// when AdbcConnectionRelease is called.
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
                                  struct AdbcError* error);
@@ -1013,6 +1027,13 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
 ///
 /// Set options on the statement, then call AdbcStatementExecuteQuery
 /// or AdbcStatementPrepare.
+///
+/// Callers pass in AdbcStatement with private_data set to NULL and the
+/// private_driver possibly set.
+///
+/// Drivers should allocate their internal data structure and set the private_data
+/// field to point to the newly allocated struct. This struct should be released
+/// when AdbcStatementRelease is called.
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement, struct AdbcError* error);
@@ -1183,7 +1204,11 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
 ///   driver.
 ///
 /// Although drivers may choose any name for this function, the
-/// recommended name is "AdbcDriverInit".
+/// recommended name is "AdbcDriverInit". If you use the recommended
+/// name, then driver managers will be able to automatically find
+/// the entrypoint function. Drivers may also expose the same function
+/// under a unique symbol so that multiple drivers can be statically
+/// linked into a single binary without any conflicts.
 ///
 /// \param[in] version The ADBC revision to attempt to initialize (see
 ///   ADBC_VERSION_1_0_0).
