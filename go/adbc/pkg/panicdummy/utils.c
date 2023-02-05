@@ -165,7 +165,7 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
-                                     uint32_t* info_codes, size_t info_codes_length,
+                                     const uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
   if (out) memset(out, 0, sizeof(*out));

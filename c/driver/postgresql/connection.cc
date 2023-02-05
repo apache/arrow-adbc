@@ -827,13 +827,12 @@ AdbcStatusCode PostgresConnectionGetInfoImpl(const uint32_t* info_codes,
 }
 
 AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
-                                           uint32_t* info_codes, size_t info_codes_length,
+                                           const uint32_t* info_codes,
+                                           size_t info_codes_length,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error) {
-  // XXX: mistake in adbc.h (should have been const pointer)
-  const uint32_t* codes = info_codes;
   if (!info_codes) {
-    codes = kSupportedInfoCodes;
+    info_codes = kSupportedInfoCodes;
     info_codes_length = sizeof(kSupportedInfoCodes) / sizeof(kSupportedInfoCodes[0]);
   }
 
@@ -842,8 +841,8 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
   struct ArrowArray array;
   std::memset(&array, 0, sizeof(array));
 
-  AdbcStatusCode status =
-      PostgresConnectionGetInfoImpl(codes, info_codes_length, &schema, &array, error);
+  AdbcStatusCode status = PostgresConnectionGetInfoImpl(info_codes, info_codes_length,
+                                                        &schema, &array, error);
   if (status != ADBC_STATUS_OK) {
     if (schema.release) schema.release(&schema);
     if (array.release) array.release(&array);

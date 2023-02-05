@@ -350,7 +350,8 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(const uint32_t* info_codes,
 }  // NOLINT(whitespace/indent)
 
 AdbcStatusCode SqliteConnectionGetInfo(struct AdbcConnection* connection,
-                                       uint32_t* info_codes, size_t info_codes_length,
+                                       const uint32_t* info_codes,
+                                       size_t info_codes_length,
                                        struct ArrowArrayStream* out,
                                        struct AdbcError* error) {
   CHECK_CONN_INIT(connection, error);
@@ -1695,7 +1696,7 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
-                                     uint32_t* info_codes, size_t info_codes_length,
+                                     const uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
   return SqliteConnectionGetInfo(connection, info_codes, info_codes_length, out, error);

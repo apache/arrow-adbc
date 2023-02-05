@@ -34,6 +34,7 @@ package main
 //
 // typedef const char cchar_t;
 // typedef const uint8_t cuint8_t;
+// typedef const uint32_t cuint32_t;
 // typedef const struct AdbcError ConstAdbcError;
 //
 // int PanicDummyArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
@@ -1041,7 +1042,7 @@ func toStrSlice(in **C.cchar_t) []string {
 }
 
 //export PanicDummyConnectionGetInfo
-func PanicDummyConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+func PanicDummyConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.cuint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionGetInfo", e)

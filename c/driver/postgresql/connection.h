@@ -34,7 +34,7 @@ class PostgresConnection {
 
   AdbcStatusCode Cancel(struct AdbcError* error);
   AdbcStatusCode Commit(struct AdbcError* error);
-  AdbcStatusCode GetInfo(struct AdbcConnection* connection, uint32_t* info_codes,
+  AdbcStatusCode GetInfo(struct AdbcConnection* connection, const uint32_t* info_codes,
                          size_t info_codes_length, struct ArrowArrayStream* out,
                          struct AdbcError* error);
   AdbcStatusCode GetObjects(struct AdbcConnection* connection, int depth,

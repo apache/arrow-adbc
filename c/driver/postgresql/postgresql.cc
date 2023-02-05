@@ -248,7 +248,8 @@ AdbcStatusCode PostgresConnectionCommit(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode PostgresConnectionGetInfo(struct AdbcConnection* connection,
-                                         uint32_t* info_codes, size_t info_codes_length,
+                                         const uint32_t* info_codes,
+                                         size_t info_codes_length,
                                          struct ArrowArrayStream* stream,
                                          struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
@@ -436,7 +437,7 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
-                                     uint32_t* info_codes, size_t info_codes_length,
+                                     const uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* stream,
                                      struct AdbcError* error) {
   return PostgresConnectionGetInfo(connection, info_codes, info_codes_length, stream,

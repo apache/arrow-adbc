@@ -51,8 +51,9 @@ AdbcStatusCode FlightSQLDatabaseSetOptionInt(struct AdbcDatabase*, const char*, 
 AdbcStatusCode FlightSQLConnectionCancel(struct AdbcConnection*, struct AdbcError*);
 AdbcStatusCode FlightSQLConnectionCommit(struct AdbcConnection* cnxn,
                                          struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes,
-                                          size_t len, struct ArrowArrayStream* out,
+AdbcStatusCode FlightSQLConnectionGetInfo(struct AdbcConnection* cnxn,
+                                          const uint32_t* codes, size_t len,
+                                          struct ArrowArrayStream* out,
                                           struct AdbcError* err);
 AdbcStatusCode FlightSQLConnectionGetObjects(
     struct AdbcConnection* cnxn, int depth, const char* catalog, const char* dbSchema,

@@ -51,8 +51,9 @@ AdbcStatusCode SnowflakeDatabaseSetOptionInt(struct AdbcDatabase*, const char*, 
 AdbcStatusCode SnowflakeConnectionCancel(struct AdbcConnection*, struct AdbcError*);
 AdbcStatusCode SnowflakeConnectionCommit(struct AdbcConnection* cnxn,
                                          struct AdbcError* err);
-AdbcStatusCode SnowflakeConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes,
-                                          size_t len, struct ArrowArrayStream* out,
+AdbcStatusCode SnowflakeConnectionGetInfo(struct AdbcConnection* cnxn,
+                                          const uint32_t* codes, size_t len,
+                                          struct ArrowArrayStream* out,
                                           struct AdbcError* err);
 AdbcStatusCode SnowflakeConnectionGetObjects(
     struct AdbcConnection* cnxn, int depth, const char* catalog, const char* dbSchema,

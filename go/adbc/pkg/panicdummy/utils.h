@@ -52,8 +52,9 @@ AdbcStatusCode PanicDummyDatabaseSetOptionInt(struct AdbcDatabase*, const char*,
 AdbcStatusCode PanicDummyConnectionCancel(struct AdbcConnection*, struct AdbcError*);
 AdbcStatusCode PanicDummyConnectionCommit(struct AdbcConnection* cnxn,
                                           struct AdbcError* err);
-AdbcStatusCode PanicDummyConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes,
-                                           size_t len, struct ArrowArrayStream* out,
+AdbcStatusCode PanicDummyConnectionGetInfo(struct AdbcConnection* cnxn,
+                                           const uint32_t* codes, size_t len,
+                                           struct ArrowArrayStream* out,
                                            struct AdbcError* err);
 AdbcStatusCode PanicDummyConnectionGetObjects(
     struct AdbcConnection* cnxn, int depth, const char* catalog, const char* dbSchema,
