@@ -123,7 +123,8 @@ AdbcStatusCode PostgresConnectionCommit(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode PostgresConnectionGetInfo(struct AdbcConnection* connection,
-                                         uint32_t* info_codes, size_t info_codes_length,
+                                         const uint32_t* info_codes,
+                                         size_t info_codes_length,
                                          struct ArrowArrayStream* stream,
                                          struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -211,7 +212,7 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
-                                     uint32_t* info_codes, size_t info_codes_length,
+                                     const uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* stream,
                                      struct AdbcError* error) {
   return PostgresConnectionGetInfo(connection, info_codes, info_codes_length, stream,

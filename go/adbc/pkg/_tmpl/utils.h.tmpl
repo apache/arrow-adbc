@@ -32,7 +32,7 @@ AdbcStatusCode {{.Prefix}}ConnectionNew(struct AdbcConnection* cnxn, struct Adbc
 AdbcStatusCode {{.Prefix}}ConnectionSetOption(struct AdbcConnection* cnxn, const char* key, const char* val, struct AdbcError* err);
 AdbcStatusCode {{.Prefix}}ConnectionInit(struct AdbcConnection* cnxn, struct AdbcDatabase* db, struct AdbcError* err);
 AdbcStatusCode {{.Prefix}}ConnectionRelease(struct AdbcConnection* cnxn, struct AdbcError* err);
-AdbcStatusCode {{.Prefix}}ConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes, size_t len, struct ArrowArrayStream* out, struct AdbcError* err);
+AdbcStatusCode {{.Prefix}}ConnectionGetInfo(struct AdbcConnection* cnxn, const uint32_t* codes, size_t len, struct ArrowArrayStream* out, struct AdbcError* err);
 AdbcStatusCode {{.Prefix}}ConnectionGetObjects(struct AdbcConnection* cnxn, int depth, const char* catalog, const char* dbSchema, const char* tableName, const char** tableType, const char* columnName, struct ArrowArrayStream* out, struct AdbcError* err);
 AdbcStatusCode {{.Prefix}}ConnectionGetTableSchema(struct AdbcConnection* cnxn, const char* catalog, const char* dbSchema, const char* tableName, struct ArrowSchema* schema, struct AdbcError* err);
 AdbcStatusCode {{.Prefix}}ConnectionGetTableTypes(struct AdbcConnection* cnxn, struct ArrowArrayStream* out, struct AdbcError* err);

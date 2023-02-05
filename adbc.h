@@ -624,7 +624,7 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*DatabaseRelease)(struct AdbcDatabase*, struct AdbcError*);
 
   AdbcStatusCode (*ConnectionCommit)(struct AdbcConnection*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetInfo)(struct AdbcConnection*, uint32_t*, size_t,
+  AdbcStatusCode (*ConnectionGetInfo)(struct AdbcConnection*, const uint32_t*, size_t,
                                       struct ArrowArrayStream*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetObjects)(struct AdbcConnection*, int, const char*,
                                          const char*, const char*, const char**,
@@ -796,7 +796,7 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 /// \param[out] error Error details, if an error occurs.
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
-                                     uint32_t* info_codes, size_t info_codes_length,
+                                     const uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error);
 

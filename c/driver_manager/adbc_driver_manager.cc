@@ -138,7 +138,7 @@ AdbcStatusCode ConnectionCommit(struct AdbcConnection*, struct AdbcError* error)
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-AdbcStatusCode ConnectionGetInfo(struct AdbcConnection* connection, uint32_t* info_codes,
+AdbcStatusCode ConnectionGetInfo(struct AdbcConnection* connection, const uint32_t* info_codes,
                                  size_t info_codes_length, struct ArrowArrayStream* out,
                                  struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -365,7 +365,7 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
-                                     uint32_t* info_codes, size_t info_codes_length,
+                                     const uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
   if (!connection->private_driver) {

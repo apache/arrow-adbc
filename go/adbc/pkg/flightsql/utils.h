@@ -38,7 +38,7 @@ AdbcStatusCode FlightSQLConnectionInit(struct AdbcConnection* cnxn,
                                        struct AdbcDatabase* db, struct AdbcError* err);
 AdbcStatusCode FlightSQLConnectionRelease(struct AdbcConnection* cnxn,
                                           struct AdbcError* err);
-AdbcStatusCode FlightSQLConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes,
+AdbcStatusCode FlightSQLConnectionGetInfo(struct AdbcConnection* cnxn, const uint32_t* codes,
                                           size_t len, struct ArrowArrayStream* out,
                                           struct AdbcError* err);
 AdbcStatusCode FlightSQLConnectionGetObjects(

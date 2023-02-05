@@ -140,7 +140,7 @@ cdef extern from "adbc.h" nogil:
         CAdbcError* error)
     CAdbcStatusCode AdbcConnectionGetInfo(
         CAdbcConnection* connection,
-        uint32_t* info_codes,
+        const uint32_t* info_codes,
         size_t info_codes_length,
         CArrowArrayStream* stream,
         CAdbcError* error)
