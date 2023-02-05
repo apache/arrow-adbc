@@ -15,16 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# If we are building from within the ADBC repo, we copy the files we
-# need to ensure commit-level consistency
-if [ -f "../../adbc.h" ]; then
-  echo "Copying files from local ADBC"
-  rm -f src/adbc.h src/adbc_driver_manager.h src/adbc_driver_manager.cc
-  cp ../../adbc.h \
-    ../../c/driver_manager/adbc_driver_manager.h \
-    ../../c/driver_manager/adbc_driver_manager.cc \
-    src
-fi
+# Run bootstrap.R. This will have already run if we are installing a source
+# package built with pkgbuild::build() with pkgbuild >1.4.0; however, we
+# run it again in case this is R CMD INSTALL on a directory or
+# devtools::load_all(). This will vendor files from elsewhere in the
+# ADBC repo into this package.
+$R_HOME/bin/Rscript bootstrap.R
 
 if [ -f "src/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then
   echo "Found vendored ADBC"
@@ -32,10 +28,8 @@ if [ -f "src/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_d
 fi
 
 # We have a situation where the package has been built via R CMD build
-# but there is no vendored adbc.h or driver manager. This occurs with
-# remotes::install_github() with the default arguments. In this case, pull
-# the latest files from GitHub. To ensure commit-level consistency,
-# use remotes::install_github(build = FALSE)
+# manually or with pkgbuild <=1.4.0. This is common (e.g., pak::pkg_install()
+# or remotes::install_github() or any dependency setups that use either method)
 curl -L https://github.com/apache/arrow-adbc/raw/main/adbc.h \
   --output src/adbc.h --silent
 curl -L https://github.com/apache/arrow-adbc/raw/main/c/driver_manager/adbc_driver_manager.h \

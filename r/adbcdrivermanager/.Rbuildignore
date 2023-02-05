@@ -7,3 +7,4 @@
 ^README\.Rmd$
 ^\.github$
 ^\.covrignore$
+^bootstrap\.R$

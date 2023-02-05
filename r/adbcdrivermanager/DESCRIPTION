@@ -20,6 +20,7 @@ Suggests:
     arrow,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Config/build/bootstrap: TRUE
 URL: https://github.com/paleolimbot/adbcdrivermanager
 BugReports: https://github.com/paleolimbot/adbcdrivermanager/issues
 Imports:
