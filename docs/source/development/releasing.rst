@@ -211,7 +211,7 @@ How to Verify Release Candidates
    Alternatively, you can have the verification script download and install dependencies automatically via Conda.
    See the environment variables below.
 
-#. Clone the project:
+#. Clone the project::
 
      $ git clone https://github.com/apache/arrow-adbc.git
 

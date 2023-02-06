@@ -97,7 +97,7 @@ Note: to verify APT/YUM packages on macOS/AArch64, you must \`export DOCKER_DEFA
 [7]: https://repository.apache.org/content/repositories/staging/org/apache/arrow/adbc/
 [8]: https://github.com/apache/arrow-adbc/releases/tag/${tag}
 [9]: https://github.com/apache/arrow-adbc/blob/${tag}/CHANGELOG.md
-[10]: https://cwiki.apache.org/confluence/display/ARROW/How+to+Verify+Release+Candidates
+[10]: https://arrow.apache.org/adbc/main/development/releasing.html#how-to-verify-release-candidates
 [11]: https://github.com/apache/arrow-adbc/actions/runs/${run_id}
 MAIL
 }
