@@ -15,9 +15,9 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-===
+==
 Go
-===
+==
 
 .. toctree::
    :maxdepth: 1
