@@ -11,8 +11,8 @@ Provides a developer-facing interface to Arrow Database Connectivity (ADBC) for 
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/paleolimbot/adbcdrivermanager}
-  \item Report bugs at \url{https://github.com/paleolimbot/adbcdrivermanager/issues}
+  \item \url{https://github.com/apache/arrow-adbc}
+  \item Report bugs at \url{https://github.com/apache/arrow-adbc/issues}
 }
 
 }
