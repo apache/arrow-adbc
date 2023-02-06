@@ -177,7 +177,7 @@ Build source and binaries and submit them
 Verify the Release
 ------------------
 
-Start the vote thread on dev@arrow.apache.org.
+Start the vote thread on dev@arrow.apache.org using the template email from ``06-binary-verify.sh``.
 
 Voting and approval
 ===================
@@ -211,7 +211,7 @@ How to Verify Release Candidates
    Alternatively, you can have the verification script download and install dependencies automatically via Conda.
    See the environment variables below.
 
-#. Clone the project:
+#. Clone the project::
 
      $ git clone https://github.com/apache/arrow-adbc.git
 

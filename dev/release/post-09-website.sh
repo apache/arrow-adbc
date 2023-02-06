@@ -30,6 +30,9 @@ main() {
     local -r source_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     local -r source_top_dir="$( cd "${source_dir}/../../" && pwd )"
 
+    export SOURCE_DIR="${source_dir}"
+    source "${source_top_dir}/dev/release/utils-prepare.sh"
+
     # Extract ADBC spec version from Doxygen macro in header.
     local -r spec_version=$(grep '[\]version' "${source_top_dir}/adbc.h" | awk '{print $NF}')
     local -r date=${POST_DATE:-$(date "+%Y-%m-%d")}
@@ -37,10 +40,8 @@ main() {
     local -r contributor_command="git shortlog --perl-regexp --author='^((?!dependabot\[bot\]).*)$' -sn apache-arrow-adbc-${prev_version}..apache-arrow-adbc-${version}"
     local -r contributor_list=$(eval "${contributor_command}")
     local -r contributors=$(echo "${contributor_list}" | wc -l)
-    local -r milestone_info=$(gh api /repos/apache/arrow-adbc/milestones -X GET -f 'state=closed' --jq ".[] | select(.title | test(\" ${version}\$\"))")
-    local -r milestone_number=$(echo "${milestone_info}" | jq -r '.number')
-    local -r milestone_url=$(echo "${milestone_info}" | jq -r '.html_url')
-    local -r issues=$(gh api graphql -f query="query { repository(owner: \"apache\", name: \"arrow-adbc\") { milestone(number:${milestone_number}) { issues(states:CLOSED) { totalCount } } } }" --jq '.data.repository.milestone.issues.totalCount')
+
+    set_resolved_issues "${version}"
 
     cat <<EOF | tee "${filename}"
 ---
@@ -70,7 +71,7 @@ limitations under the License.
 -->
 
 The Apache Arrow team is pleased to announce the ${version} release of
-the Apache Arrow ADBC libraries. This covers includes [**${issues}
+the Apache Arrow ADBC libraries. This covers includes [**${RESOLVED_ISSUES}
 resolved issues**][1] from [**${contributors} distinct contributors**][2].
 
 This is a release of the **libraries**, which are at version
@@ -102,7 +103,7 @@ We welcome questions and contributions from all interested.  Issues
 can be filed on [GitHub][4], and questions can be directed to GitHub
 or the [Arrow mailing lists][5].
 
-[1]: ${milestone_url}
+[1]: ${MILESTONE_URL}
 [2]: #contributors
 [3]: https://github.com/apache/arrow-adbc/blob/apache-arrow-adbc-${version}/CHANGELOG.md
 [4]: https://github.com/apache/arrow-adbc/issues
