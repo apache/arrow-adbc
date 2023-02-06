@@ -890,10 +890,17 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install -c conda-forge anaconda-client
+      - name: Clean
+        shell: bash -l {0}
+        continue-on-error: true
+        run: |
+          # Clean all existing packages, OK if we fail
+          ./ci/scripts/python_conda_clean.sh
       - name: Upload
         shell: bash -l {0}
         run: |
           ls -laR conda-packages
+          # Upload fresh packages
           ./ci/scripts/python_conda_upload.sh conda-packages/python-*-conda/*/*.tar.bz2
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
