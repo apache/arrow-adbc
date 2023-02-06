@@ -21,8 +21,8 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
-URL: https://github.com/paleolimbot/adbcdrivermanager
-BugReports: https://github.com/paleolimbot/adbcdrivermanager/issues
+URL: https://github.com/apache/arrow-adbc
+BugReports: https://github.com/apache/arrow-adbc/issues
 Imports:
     nanoarrow
 Remotes: nanoarrow=apache/arrow-nanoarrow/r
