@@ -82,9 +82,9 @@ See also a verification result on GitHub Actions [11].
 
 The vote will be open for at least 72 hours.
 
-[ ] +1 Release this as Apache Arrow ADBC 0.1.0
+[ ] +1 Release this as Apache Arrow ADBC ${version}
 [ ] +0
-[ ] -1 Do not release this as Apache Arrow ADBC 0.1.0 because...
+[ ] -1 Do not release this as Apache Arrow ADBC ${version} because...
 
 Note: to verify APT/YUM packages on macOS/AArch64, you must \`export DOCKER_DEFAULT_ARCHITECTURE=linux/amd64\`. (Or skip this step by \`export TEST_APT=0 TEST_YUM=0\`.)
 
