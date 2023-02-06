@@ -15,34 +15,18 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-======================
-Feature Support Matrix
-======================
+==
+Go
+==
 
-.. list-table:: ADBC Feature Support
-   :header-rows: 1
+.. toctree::
+   :maxdepth: 1
+   :caption: Drivers
 
-   * - Driver
-     - Bulk Ingestion
-     - Metadata
-     - Partitioned Result Sets
-     - Prepared Statements
-     - Transactions
+   flight_sql
 
-   * - SQLite
-     - Yes
-     - Yes
-     - No
-     - Yes
-     - Yes
-
-Bulk Ingestion
-  Creating or appending to a database table from an Arrow table.
-
-Metadata
-  Functions like :cpp:func:`AdbcConnectionGetObjects` that get
-  metadata about the database catalog, etc.
-
-Partitioned Result Sets
-  Being able to read individual chunks of a (generally distributed)
-  result set (:cpp:func:`AdbcStatementExecutePartitions`).
+The ADBC project ships some drivers.  Others may (eventually) be
+available from database vendors or third parties.  The drivers here
+implement the Go API standard and are directly usable in Go.  They
+also provide bindings that let them be used through the C API
+standard, as well as Python bindings on top of that.

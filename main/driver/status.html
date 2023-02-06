@@ -5,10 +5,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="C/C++ API Reference" href="api/index.html" /><link rel="prev" title="Driver Manager" href="driver_manager.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="C/C++/Python" href="cpp/index.html" /><link rel="prev" title="Installation" href="installation.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Concurrency and Thread Safety - ADBC 0.2.0 (dev) documentation</title>
+        <title>Driver Feature Support/Implementation Status - ADBC 0.2.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
@@ -194,7 +194,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -225,21 +225,21 @@
 <li class="toctree-l1"><a class="reference internal" href="../format/comparison.html">Comparison with Other APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/status.html">Driver Feature Support/Implementation Status</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../driver/cpp/index.html">C/C++/Python</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../driver/cpp/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../driver/cpp/sqlite.html">SQLite Driver</a></li>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Driver Feature Support/Implementation Status</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="cpp/index.html">C/C++/Python</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="cpp/postgresql.html">PostgreSQL Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpp/sqlite.html">SQLite Driver</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../driver/go/index.html">Go</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../driver/go/flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="go/index.html">Go</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="go/flight_sql.html">Flight SQL Driver</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../driver/java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../driver/java/flight_sql.html">Flight SQL</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../driver/java/jdbc.html">JDBC Adapter</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="java/flight_sql.html">Flight SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="java/jdbc.html">JDBC Adapter</a></li>
 </ul>
 </li>
 </ul>
@@ -248,13 +248,13 @@
 <li class="toctree-l1"><a class="reference internal" href="../python/quickstart.html">Quickstart (Python)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Language-Specific APIs</span></p>
-<ul class="current">
-<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">C/C++</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Concurrency and Thread Safety</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -302,7 +302,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/cpp/concurrency.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/driver/status.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -318,76 +318,223 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="concurrency-and-thread-safety">
-<h1>Concurrency and Thread Safety<a class="headerlink" href="#concurrency-and-thread-safety" title="Permalink to this heading">#</a></h1>
-<p>In general, objects allow serialized access from multiple threads: one
-thread may make a call, and once finished, another thread may make a
-call.  They do not allow concurrent access from multiple threads.</p>
-<p>Somewhat related is the question of overlapping/concurrent execution
-of multi-step operations, from a single thread or multiple threads.
-For example, two AdbcStatement objects can be created from the same
-AdbcConnection:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">AdbcStatement</span><span class="w"> </span><span class="n">stmt1</span><span class="p">;</span>
-<span class="k">struct</span><span class="w"> </span><span class="nc">AdbcStatement</span><span class="w"> </span><span class="n">stmt2</span><span class="p">;</span>
-
-<span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArrayStream</span><span class="w"> </span><span class="n">out1</span><span class="p">;</span>
-<span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArrayStream</span><span class="w"> </span><span class="n">out2</span><span class="p">;</span>
-
-<span class="cm">/* Ignoring error handling for brevity */</span>
-<span class="n">AdbcStatementNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">conn</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">stmt1</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="n">AdbcStatementNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">conn</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">stmt2</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="n">AdbcStatementSetSqlQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;SELECT * FROM a&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="n">AdbcStatementSetSqlQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt2</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;SELECT * FROM b&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-
-<span class="n">AdbcStatementExecuteQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt1</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">out1</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="n">AdbcStatementExecuteQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt2</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">out2</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="cm">/* What happens to the result set of stmt1? */</span>
-</pre></div>
+          <section id="driver-feature-support-implementation-status">
+<h1>Driver Feature Support/Implementation Status<a class="headerlink" href="#driver-feature-support-implementation-status" title="Permalink to this heading">#</a></h1>
+<section id="implementation-status">
+<h2>Implementation Status<a class="headerlink" href="#implementation-status" title="Permalink to this heading">#</a></h2>
+<p><strong>Experimental</strong> drivers are not feature-complete and the implementation is still progressing.
+<strong>Beta</strong> drivers are (mostly) feature-complete but have only been available for a short time.
+<strong>Stable</strong> drivers are feature-complete (as much as possible for the underlying database) and have been available/tested for a while.</p>
+<div class="table-wrapper docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Driver</p></th>
+<th class="head"><p>Supported Languages <a class="footnote-reference brackets" href="#supported-languages" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></th>
+<th class="head"><p>Implementation Language</p></th>
+<th class="head"><p>Status</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Flight SQL (Go)</p></td>
+<td><p>C, Go</p></td>
+<td><p>Go</p></td>
+<td><p>Beta</p></td>
+</tr>
+<tr class="row-odd"><td><p>Flight SQL (Java)</p></td>
+<td><p>Java</p></td>
+<td><p>Java</p></td>
+<td><p>Experimental</p></td>
+</tr>
+<tr class="row-even"><td><p>JDBC</p></td>
+<td><p>Java</p></td>
+<td><p>Java</p></td>
+<td><p>Experimental</p></td>
+</tr>
+<tr class="row-odd"><td><p>PostgreSQL</p></td>
+<td><p>C</p></td>
+<td><p>C++</p></td>
+<td><p>Experimental</p></td>
+</tr>
+<tr class="row-even"><td><p>SQLite</p></td>
+<td><p>C</p></td>
+<td><p>C</p></td>
+<td><p>Beta</p></td>
+</tr>
+</tbody>
+</table>
 </div>
-<p>What happens if the client application calls
-<a class="reference internal" href="api/adbc.html#_CPPv425AdbcStatementExecuteQueryP13AdbcStatementP16ArrowArrayStreamP7int64_tP9AdbcError" title="AdbcStatementExecuteQuery"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code></a> on <code class="docutils literal notranslate"><span class="pre">stmt1</span></code>, then on <code class="docutils literal notranslate"><span class="pre">stmt2</span></code>,
-without reading the result set of <code class="docutils literal notranslate"><span class="pre">stmt1</span></code>?  Some existing client
-libraries/protocols, like libpq, don’t support concurrent execution of
-queries from a single connection.  So the driver would have to
-either 1) buffer all results into memory during the first <code class="docutils literal notranslate"><span class="pre">Execute</span></code>
-(or otherwise allow the program to continue reading the first result
-set), 2) issue an error on the second <code class="docutils literal notranslate"><span class="pre">Execute</span></code>, or 3) invalidate
-the first statement’s result set on the second <code class="docutils literal notranslate"><span class="pre">Execute</span></code>.</p>
-<p>In this case, ADBC allows drivers to choose 1) or 2).  If possible and
-reasonable, the driver should allow concurrent execution, whether
-because the underlying protocol is designed for it or by buffering
-result sets.  But the driver is allowed to error if it is not possible
-to support it.</p>
-<p>Another use case is having a single statement, but executing it
-multiple times and reading the result sets concurrently.  A client
-might desire to do this with a prepared statement, for instance:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* Ignoring error handling for brevity */</span>
-<span class="k">struct</span><span class="w"> </span><span class="nc">AdbcStatement</span><span class="w"> </span><span class="n">stmt</span><span class="p">;</span>
-<span class="n">AdbcStatementNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">conn</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="n">AdbcStatementSetSqlQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;SELECT * FROM a WHERE foo &gt; ?&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="n">AdbcStatementPrepare</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-
-<span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArrayStream</span><span class="w"> </span><span class="n">stream</span><span class="p">;</span>
-<span class="n">AdbcStatementBind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">array1</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="n">AdbcStatementExecuteQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="cm">/* Spawn a thread to process `stream` */</span>
-
-<span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArrayStream</span><span class="w"> </span><span class="n">stream2</span><span class="p">;</span>
-<span class="n">AdbcStatementBind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">array2</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="n">AdbcStatementExecuteQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">stream2</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="cm">/* What happens to `stream` here? */</span>
-</pre></div>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="supported-languages" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>C drivers are usable from Go, Python, and Ruby as well.</p>
+</aside>
+</aside>
+</section>
+<section id="feature-support">
+<h2>Feature Support<a class="headerlink" href="#feature-support" title="Permalink to this heading">#</a></h2>
+<p>N/A indicates that it is not possible to support this feature in the underlying database.</p>
+<p>See individual driver documentation pages for full details.</p>
+<dl class="simple">
+<dt>Bulk Ingestion</dt><dd><p>Does the driver support <a class="reference internal" href="../format/specification.html#specification-bulk-ingestion"><span class="std std-ref">bulk ingestion of data</span></a> (creating or appending to a database table from an Arrow table)?</p>
+</dd>
+<dt>Database Metadata</dt><dd><p>Does the driver support functions like <a class="reference internal" href="../cpp/api/adbc.html#_CPPv424AdbcConnectionGetObjectsP14AdbcConnectioniPKcPKcPKcPPKcPKcP16ArrowArrayStreamP9AdbcError" title="AdbcConnectionGetObjects"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcConnectionGetObjects()</span></code></a> that get metadata about the database catalog, etc.?</p>
+</dd>
+<dt>Parameterized Queries</dt><dd><p>Does the driver support binding query parameters?</p>
+</dd>
+<dt>Partitioned Data</dt><dd><p>Being able to read individual chunks of a (generally distributed)
+result set (<a class="reference internal" href="../cpp/api/adbc.html#_CPPv430AdbcStatementExecutePartitionsP13AdbcStatementP11ArrowSchemaP14AdbcPartitionsP7int64_tP9AdbcError" title="AdbcStatementExecutePartitions"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecutePartitions()</span></code></a>).</p>
+</dd>
+<dt>Prepared Statements</dt><dd><p>Does the driver support binding query parameters?</p>
+</dd>
+<dt>Full Type Support</dt><dd><p>Does the driver map all database types to/from equivalent Arrow types, as much as is possible?</p>
+</dd>
+<dt>Select Queries</dt><dd><p>Does the driver support queries returning result sets?</p>
+</dd>
+<dt>SQL</dt><dd><p>Does the driver support submitting SQL queries?</p>
+</dd>
+<dt>Transactions</dt><dd><p>Does the driver support explicit transactions (the default is to assume auto-commit)?</p>
+</dd>
+<dt>Substrait</dt><dd><p>Does the driver support submitting Substrait plans?</p>
+</dd>
+<dt>Update Queries</dt><dd><p>Does the driver support queries not returning result sets?</p>
+</dd>
+</dl>
+<div class="table-wrapper docutils container" id="id2">
+<table class="docutils align-default" id="id2">
+<caption><span class="caption-text">General features</span><a class="headerlink" href="#id2" title="Permalink to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Driver</p></th>
+<th class="head"><p>Full Type Support</p></th>
+<th class="head"><p>SQL</p></th>
+<th class="head"><p>Substrait</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Flight SQL (Go)</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>N</p></td>
+</tr>
+<tr class="row-odd"><td><p>Flight SQL (Java)</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>N</p></td>
+</tr>
+<tr class="row-even"><td><p>JDBC</p></td>
+<td><p>N</p></td>
+<td><p>Y</p></td>
+<td><p>N/A</p></td>
+</tr>
+<tr class="row-odd"><td><p>PostgreSQL</p></td>
+<td><p>N</p></td>
+<td><p>Y</p></td>
+<td><p>N/A</p></td>
+</tr>
+<tr class="row-even"><td><p>SQLite</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>N/A</p></td>
+</tr>
+</tbody>
+</table>
 </div>
-<p>ADBC chooses to disallow this (specifically: the second call to
-<code class="docutils literal notranslate"><span class="pre">Execute</span></code> must invalidate the result set of the first call), in line
-with existing APIs that generally do not support ‘overlapping’ usage
-of a single prepared statement in this way.</p>
+<div class="table-wrapper docutils container" id="id3">
+<table class="docutils align-default" id="id3">
+<caption><span class="caption-text">Statement/query-level features</span><a class="headerlink" href="#id3" title="Permalink to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Driver</p></th>
+<th class="head"><p>Partitioned Data</p></th>
+<th class="head"><p>Parameterized Queries</p></th>
+<th class="head"><p>Prepared Statements</p></th>
+<th class="head"><p>Select Queries</p></th>
+<th class="head"><p>Update Queries</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Flight SQL (Go)</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+</tr>
+<tr class="row-odd"><td><p>Flight SQL (Java)</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+</tr>
+<tr class="row-even"><td><p>JDBC</p></td>
+<td><p>N/A</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+</tr>
+<tr class="row-odd"><td><p>PostgreSQL</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>N/A</p></td>
+<td><p>Y</p></td>
+</tr>
+<tr class="row-even"><td><p>SQLite</p></td>
+<td><p>N/A</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper docutils container" id="id4">
+<table class="docutils align-default" id="id4">
+<caption><span class="caption-text">Connection/database-level features</span><a class="headerlink" href="#id4" title="Permalink to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Driver</p></th>
+<th class="head"><p>Bulk Ingestion</p></th>
+<th class="head"><p>Database Metadata (catalogs, etc.)</p></th>
+<th class="head"><p>Transactions</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Flight SQL (Go)</p></td>
+<td><p>N</p></td>
+<td><p>Y</p></td>
+<td><p>N</p></td>
+</tr>
+<tr class="row-odd"><td><p>Flight SQL (Java)</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>N</p></td>
+</tr>
+<tr class="row-even"><td><p>JDBC</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>N</p></td>
+</tr>
+<tr class="row-odd"><td><p>PostgreSQL</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>N</p></td>
+</tr>
+<tr class="row-even"><td><p>SQLite</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+<td><p>Y</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 </section>
 
         </article>
@@ -395,23 +542,23 @@ of a single prepared statement in this way.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="api/index.html">
+          <a class="next-page" href="cpp/index.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">C/C++ API Reference</div>
+                <div class="title">C/C++/Python</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="driver_manager.html">
+          <a class="prev-page" href="installation.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Driver Manager</div>
+                <div class="title">Installation</div>
                 
               </div>
             </a>
@@ -433,8 +580,28 @@ of a single prepared statement in this way.</p>
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Driver Feature Support/Implementation Status</a><ul>
+<li><a class="reference internal" href="#implementation-status">Implementation Status</a></li>
+<li><a class="reference internal" href="#feature-support">Feature Support</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>
