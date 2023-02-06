@@ -29,7 +29,7 @@ C/C++
 At this time, separate packages for C/C++-based drivers are not available.
 
 Go
-===
+==
 
 Add a dependency on the driver package, for example:
 
