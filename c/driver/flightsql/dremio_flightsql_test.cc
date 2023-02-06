@@ -45,7 +45,7 @@ class DremioFlightSqlQuirks : public adbc_validation::DriverQuirks {
   bool supports_concurrent_statements() const override { return true; }
   bool supports_transactions() const override { return false; }
   bool supports_get_sql_info() const override { return false; }
-  bool supports_get_objects() const override { return false; }
+  bool supports_get_objects() const override { return true; }
   bool supports_bulk_ingest() const override { return false; }
   bool supports_partitioned_data() const override { return true; }
   bool supports_dynamic_parameter_binding() const override { return false; }
@@ -68,6 +68,12 @@ class DremioFlightSqlConnectionTest : public ::testing::Test,
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
+
+  void TestMetadataGetObjectsCatalogs() { GTEST_SKIP() << "Dremio reports no catalogs"; }
+  void TestMetadataGetObjectsDbSchemas() { GTEST_SKIP() << "Ingestion not supported"; }
+  void TestMetadataGetObjectsTables() { GTEST_SKIP() << "Ingestion not supported"; }
+  void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Ingestion not supported"; }
+  void TestMetadataGetObjectsColumns() { GTEST_SKIP() << "Ingestion not supported"; }
 
  protected:
   DremioFlightSqlQuirks quirks_;
