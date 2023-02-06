@@ -91,11 +91,13 @@ static inline SEXP adbc_allocate_xptr(SEXP shelter_sexp = R_NilValue) {
   Rf_setAttrib(xptr, R_ClassSymbol, xptr_class);
   UNPROTECT(1);
 
-  SEXP new_env_call = PROTECT(Rf_lang1(Rf_install("new_env")));
-  SEXP new_env =
-      PROTECT(Rf_eval(new_env_call, R_FindNamespace(Rf_mkString("adbcdrivermanager"))));
+  SEXP new_env_sym = PROTECT(Rf_install("new_env"));
+  SEXP new_env_call = PROTECT(Rf_lang1(new_env_sym));
+  SEXP pkg_chr = PROTECT(Rf_mkString("adbcdrivermanager"));
+  SEXP pkg_ns = PROTECT(R_FindNamespace(pkg_chr));
+  SEXP new_env = PROTECT(Rf_eval(new_env_call, pkg_ns));
   R_SetExternalPtrTag(xptr, new_env);
-  UNPROTECT(2);
+  UNPROTECT(5);
 
   UNPROTECT(1);
   return xptr;
