@@ -23,11 +23,8 @@ C/C++/Python
    :maxdepth: 1
    :caption: Drivers
 
-   flight_sql
    postgresql
    sqlite
-
-   features
 
 The ADBC project ships some drivers.  Others may (eventually) be
 available from database vendors or third parties.  The drivers here
