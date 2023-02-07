@@ -64,6 +64,12 @@ case "${TYPE}" in
 esac
 
 case "${distribution}-${code_name}" in
+  debian-bookworm)
+    sed \
+      -i"" \
+      -e "s/ main$/ main contrib non-free/g" \
+      /etc/apt/sources.list.d/debian.sources
+    ;;
   debian-*)
     sed \
       -i"" \
