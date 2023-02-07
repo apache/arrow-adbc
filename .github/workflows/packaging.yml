@@ -862,8 +862,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # TODO(apache/arrow-adbc#377): clean-anaconda job
-
   upload-anaconda:
     name: "Upload packages to Anaconda.org"
     runs-on: ubuntu-latest
