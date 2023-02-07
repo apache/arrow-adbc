@@ -49,3 +49,46 @@
 - **c**: derive version components from base version (#178)
 - **java/driver/jdbc**: use upstream JDBC utilities (#167)
 - **c/validation**: split out test utilities (#151)
+
+## ADBC Libraries 0.2.0 (2023-02-07)
+
+### Fix
+
+- **go/adbc/driver/flightsql**: deal with catalogless schemas (#422)
+- **dev/release**: correct the name of the Go tag (#415)
+- **go/adbc/driver/flightsql**: guard against inconsistent schemas (#409)
+- **go/adbc/driver/driver/flightsql**: use libc allocator (#407)
+- **ci**: make sure Conda packages are properly noarch (#399)
+- **ci**: don't fail Anaconda upload when packages already exist (#398)
+- **go/adbc/sqldriver**: allow equals signs in DSN values (#382)
+- **c/driver/flightsql**: set GOARCH appropriately on macOS (#374)
+- **ci**: don't make jobs depend on each other (#372)
+- **go/adbc/driver/flightsql**: bind ExecuteUpdate, BindStream (#367)
+- **go/adbc/driver/flightsql**: heap-allocate Go handles (#369)
+- **go/adbc/driver/flightsql**: implement RecordReader.Err (#363)
+- **go/adbc/flightsql**: enable Prepare (#362)
+- **go/adbc/driver/flightsql**: connect to URI specified in FlightEndpoint (#361)
+- **go/adbc/driver/flightsql**: cnxn should implement PostInitOptions (#357)
+- **ci**: revert GEM_HOME for RubyGems install test (#351)
+- **dev/release**: Update install location for RubyGems and Bundler (#345)
+- **python**: add driver -> driver manager dependency (#312)
+- **c/driver/postgresql**: define ntohll etc for macOS 10.9 (#305)
+
+### Feat
+
+- **go/sqldriver**: implement database/sql/driver.RowsColumnTypeDatabaseTypeName (#392)
+- **go/sqldriver**: convert Arrow times and dates to Golang time.Time (#393)
+- **go/adbc/driver/flightsql**: bump max incoming message size (#402)
+- **go/adbc/driver/flightsql**: add timeout option handling (#390)
+- **go/adbc/driver/flightsql**: implement GetObjects (#383)
+- **go/adbc/driver/flightsql**: add auth and generic header options (#387)
+- **go/adbc/driver/flightsql**: change parallelization of DoGet (#386)
+- **go/adbc/driver/flightsql,go/adbc/sqldriver**: small improvements (#384)
+- **go/adbc/driver/flightsql**: implement more connection options (#381)
+- **python/adbc_driver_manager**: add more sanity checking (#370)
+- **go/adbc/driver/pkg/cmake**: cmake build for Go shared library drivers (#356)
+- **python**: add Flight SQL driver using Go library (#355)
+- **go/adbc/driver/flightsql**: Build C shared lib for flightsql adbc driver (#347)
+- **c/driver/postgresql**: expand type support (#352)
+- **c/driver/postgresql**: add VARCHAR type support
+- **go/adbc/driver/flightsql**: Native Golang ADBC Flight SQL driver (#322)
