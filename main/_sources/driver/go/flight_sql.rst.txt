@@ -92,7 +92,7 @@ few optional authentication schemes:
 
   Set the options ``username`` and ``password`` on the
   :cpp:class:`AdbcDatabase`.  Alternatively, set the option
-  ``arrow.flight.sql.authorization_header`` for full control.
+  ``adbc.flight.sql.authorization_header`` for full control.
 
   The client provides credentials sending an ``authorization`` from
   client to server.  The server then responds with an
