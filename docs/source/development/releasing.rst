@@ -135,9 +135,9 @@ Create the Release Candidate tag from the updated maintenance branch
    # on OSX use gnu-sed with homebrew: brew install gnu-sed (and export to $PATH)
    #
    # <rc-number> starts at 0 and increments every time the Release Candidate is burned
-   # so for the first RC this would be: dev/release/01-prepare.sh 4.0.0 5.0.0 0
+   # so for the first RC this would be: dev/release/01-prepare.sh 3.0.0 4.0.0 5.0.0 0
 
-   dev/release/01-prepare.sh <arrow-dir> <version> <next-version> <rc-number>
+   dev/release/01-prepare.sh <arrow-dir> <prev-version> <version> <next-version> <rc-number>
 
    git push -u apache apache-arrow-adbc-<version>-rc<rc-number> maint-<version>
 
