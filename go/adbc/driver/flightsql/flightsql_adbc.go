@@ -782,13 +782,20 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 	}
 	defer rdr.Release()
 
+	foundCatalog := false
 	for rdr.Next() {
 		arr := rdr.Record().Column(0).(*array.String)
 		for i := 0; i < arr.Len(); i++ {
 			// XXX: force copy since accessor is unsafe
 			catalogName := string([]byte(arr.Value(i)))
 			g.appendCatalog(catalogName)
+			foundCatalog = true
 		}
+	}
+
+	// Implementations like Dremio report no catalogs, but still have schemas
+	if !foundCatalog && depth != adbc.ObjectDepthCatalogs {
+		g.appendCatalog("")
 	}
 
 	if err = rdr.Err(); err != nil {
