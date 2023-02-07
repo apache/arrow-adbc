@@ -69,8 +69,12 @@ main() {
     rm -rf tmp
 
     echo "Uploaded at https://dist.apache.org/repos/dist/dev/arrow/${tag}"
+}
 
-    popd
+header() {
+    echo "============================================================"
+    echo "${1}"
+    echo "============================================================"
 }
 
 main "$@"
