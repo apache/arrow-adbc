@@ -896,6 +896,8 @@ jobs:
         run: |
           # Clean all existing packages, OK if we fail
           ./ci/scripts/python_conda_clean.sh
+        env:
+          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
       - name: Upload
         shell: bash -l {0}
         run: |
