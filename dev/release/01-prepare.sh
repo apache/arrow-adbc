@@ -21,19 +21,20 @@ set -ue
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ "$#" -ne 4 ]; then
-  echo "Usage: $0 <arrow-dir> <version> <next_version> <rc-num>"
-  echo "Usage: $0 ../arrow 0.1.0 1.0.0 0"
+if [ "$#" -ne 5 ]; then
+  echo "Usage: $0 <arrow-dir> <prev_veresion> <version> <next_version> <rc-num>"
+  echo "Usage: $0 ../arrow 0.1.0 0.2.0 0.3.0 0"
   exit 1
 fi
 
 . $SOURCE_DIR/utils-prepare.sh
 
 arrow_dir=$1
-version=$2
-next_version=$3
+prev_version=$2
+version=$3
+next_version=$4
 next_version_snapshot="${next_version}-SNAPSHOT"
-rc_number=$4
+rc_number=$5
 
 export ARROW_SOURCE="$(cd "${arrow_dir}" && pwd)"
 
@@ -54,7 +55,13 @@ fi
 
 echo "Updating changelog for $version"
 # Update changelog
-cz ch --incremental --unreleased-version "ADBC Libraries ${version}"
+# XXX: commitizen doesn't respect --tag-format with --incremental, so mimic
+# it by hand.
+(
+    echo ;
+    # Strip trailing blank line
+    printf '%s\n' "$(cz ch --dry-run --unreleased-version "ADBC Libraries ${version}" --start-rev apache-arrow-adbc-${prev_version})"
+) >> ${SOURCE_DIR}/../../CHANGELOG.md
 git add ${SOURCE_DIR}/../../CHANGELOG.md
 git commit -m "chore: update CHANGELOG.md for $version"
 
