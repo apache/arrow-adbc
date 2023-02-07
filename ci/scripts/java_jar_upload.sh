@@ -34,7 +34,7 @@ retry() {
             sleep "${delay}"
         else
             echo "Attempt ${attempt}/${retries}, exiting"
-            return "${last_status}"
+            exit "${last_status}"
         fi
     done
     return 0
@@ -69,6 +69,7 @@ main() {
 </settings>
 SETTINGS
 
+    local -r is_root='^arrow-adbc-java-root-.*'
     for pom in "$@"; do
         echo "Deploying ${pom}"
         local mvnArgs=""
@@ -88,18 +89,34 @@ SETTINGS
 
         # apache/arrow-adbc#285: Gemfury appears to be flaky with some
         # 503s, so retry each upload.
-        retry 3 mvn \
-            -Dmaven.install.skip=true \
-            -Drat.skip=true \
-            -DskipTests \
-            --settings "${settings_file}" \
-            deploy:deploy-file \
-            -DrepositoryId=fury \
-            -Durl=https://maven.fury.io/arrow-adbc-nightlies/ \
-            -DgeneratePom=false \
-            -Dfile="${jar}" \
-            -DpomFile="${pom}" \
-            ${mvnArgs}
+        if [[ "${filename}" =~ $is_root ]]; then
+            # The root is POM-only.
+            retry 3 mvn \
+                  -Dmaven.install.skip=true \
+                  -Drat.skip=true \
+                  -DskipTests \
+                  --settings "${settings_file}" \
+                  deploy:deploy-file \
+                  -DrepositoryId=fury \
+                  -Durl=https://maven.fury.io/arrow-adbc-nightlies/ \
+                  -DgeneratePom=false \
+                  -Dfile="${pom}" \
+                  -DpomFile="${pom}" \
+                  ${mvnArgs}
+        else
+            retry 3 mvn \
+                  -Dmaven.install.skip=true \
+                  -Drat.skip=true \
+                  -DskipTests \
+                  --settings "${settings_file}" \
+                  deploy:deploy-file \
+                  -DrepositoryId=fury \
+                  -Durl=https://maven.fury.io/arrow-adbc-nightlies/ \
+                  -DgeneratePom=false \
+                  -Dfile="${jar}" \
+                  -DpomFile="${pom}" \
+                  ${mvnArgs}
+        fi
     done
 }
 
