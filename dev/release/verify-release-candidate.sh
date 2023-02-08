@@ -426,9 +426,12 @@ test_cpp() {
   export ADBC_USE_ASAN=OFF
   export ADBC_USE_UBSAN=OFF
   "${ADBC_SOURCE_DIR}/ci/scripts/cpp_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
+  # FlightSQL driver requires running database for testing
+  export BUILD_DRIVER_FLIGHTSQL=0
   # PostgreSQL driver requires running database for testing
   export BUILD_DRIVER_POSTGRESQL=0
   "${ADBC_SOURCE_DIR}/ci/scripts/cpp_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
+  export BUILD_DRIVER_FLIGHTSQL=1
   export BUILD_DRIVER_POSTGRESQL=1
 }
 
