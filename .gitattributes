@@ -16,6 +16,7 @@
 # under the License.
 
 c/vendor/* linguist-vendored
+python/adbc_driver_flightsql/adbc_driver_flightsql/_static_version.py export-subst
 python/adbc_driver_manager/adbc_driver_manager/_static_version.py export-subst
 python/adbc_driver_postgresql/adbc_driver_postgresql/_static_version.py export-subst
 python/adbc_driver_sqlite/adbc_driver_sqlite/_static_version.py export-subst

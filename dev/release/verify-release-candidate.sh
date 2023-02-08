@@ -89,7 +89,7 @@ show_info() {
 ARROW_DIST_URL='https://dist.apache.org/repos/dist/dev/arrow'
 
 download_dist_file() {
-  if [[ -n "${VERIFICATION_MOCK_DIST_DIR}" && "$1" != "KEYS" ]]; then
+  if [[ -n "${VERIFICATION_MOCK_DIST_DIR}" ]]; then
     cp "${VERIFICATION_MOCK_DIST_DIR}/$1" .
   else
     curl \
@@ -407,9 +407,11 @@ test_cpp() {
   show_header "Build, install and test C++ libraries"
 
   # Build and test C++
+  maybe_setup_go
   maybe_setup_conda \
     --file ci/conda_env_cpp.txt \
-    compilers || exit 1
+    compilers \
+    go=1.18 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"

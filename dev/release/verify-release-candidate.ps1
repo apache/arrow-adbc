@@ -51,6 +51,22 @@ Assumes Mamba is set up and available on the path.
     exit 1
 }
 
+$ArrowDistUrl = "https://dist.apache.org/repos/dist/dev/arrow"
+$DistName = "apache-arrow-adbc-$($Version)"
+
+function Download-Dist-File {
+    $DistUrl = "$($ArrowDistUrl)/$($DistName)-rc$($RcNumber)/$($args[0])"
+    $DistPath = Join-Path $ArrowTempDir $args[0]
+
+    echo "Fetching $($DistUrl)"
+    if ($env:VERIFICATION_MOCK_DIST_DIR -eq $null) {
+        Invoke-WebRequest -Uri $DistUrl -OutFile $DistPath
+    } else {
+        $SourcePath = Join-Path $env:VERIFICATION_MOCK_DIST_DIR $args[0]
+        cp $SourcePath $DistPath
+    }
+}
+
 function Show-Header {
     echo ""
     echo "============================================================"
@@ -74,21 +90,16 @@ Show-Header "Ensure Source Directory"
 if ($SourceKind -eq "local") {
     $ArrowSourceDir = Join-Path $PSScriptRoot "..\.." | Resolve-Path | % { $_.Path }
 } else {
-    $ArrowDistUrl = "https://dist.apache.org/repos/dist/dev/arrow"
-    $DistName = "apache-arrow-adbc-$($Version)"
-    $DistUrl = "$($ArrowDistUrl)/$($DistName)-rc$($RcNumber)/$DistName.tar.gz"
-    $Sha512Url = "$($ArrowDistUrl)/$($DistName)-rc$($RcNumber)/$DistName.tar.gz.sha512"
+    $ArrowSourceDir = Join-Path $ArrowTempDir $DistName
+    New-Item -ItemType Directory -Path $ArrowSourceDir -Force
+
+    Download-Dist-File "$($DistName).tar.gz"
+    Download-Dist-File "$($DistName).tar.gz.sha512"
+
     $DistPath = Join-Path $ArrowTempDir "$($DistName).tar.gz"
     $Sha512Path = Join-Path $ArrowTempDir "$($DistName).tar.gz.sha512"
-    $ArrowSourceDir = Join-Path $ArrowTempDir $DistName
-
-    echo "Fetching $($DistUrl)"
-    New-Item -ItemType Directory -Path $ArrowSourceDir -Force
-    Invoke-WebRequest -Uri $DistUrl -OutFile $DistPath
-    Invoke-WebRequest -Uri $Sha512Url -OutFile $Sha512Path
 
     $ExpectedSha512 = (Get-Content $Sha512Path).Split(" ")[0]
-
     if (-not ((Get-FileHash -Algorithm SHA512 $DistPath).Hash -eq $ExpectedSha512)) {
         echo "SHA512 hash mismatch"
         exit 1
@@ -103,7 +114,8 @@ Show-Header "Create Conda Environment"
 
 mamba create -c conda-forge -f -y -p $(Join-Path $ArrowTempDir conda-env) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_cpp.txt) `
-  --file $(Join-Path $ArrowSourceDir ci\conda_env_python.txt)
+  --file $(Join-Path $ArrowSourceDir ci\conda_env_python.txt) `
+  go=1.18
 
 Invoke-Expression $(conda shell.powershell hook | Out-String)
 conda activate $(Join-Path $ArrowTempDir conda-env)

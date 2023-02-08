@@ -18,8 +18,6 @@
 name: Verification
 
 on:
-  # schedule:
-  #   - cron: "1 0 * * *"
   workflow_dispatch:
     inputs:
       version:
@@ -79,8 +77,6 @@ jobs:
           miniforge-variant: Mambaforge
           miniforge-version: latest
           use-mamba: true
-          # Required for caching
-          use-only-tar-bz2: true
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
