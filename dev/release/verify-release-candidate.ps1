@@ -77,26 +77,18 @@ if ($SourceKind -eq "local") {
     $ArrowDistUrl = "https://dist.apache.org/repos/dist/dev/arrow"
     $DistName = "apache-arrow-adbc-$($Version)"
     $DistUrl = "$($ArrowDistUrl)/$($DistName)-rc$($RcNumber)/$DistName.tar.gz"
-    $Sha256Url = "$($ArrowDistUrl)/$($DistName)-rc$($RcNumber)/$DistName.tar.gz.sha256"
     $Sha512Url = "$($ArrowDistUrl)/$($DistName)-rc$($RcNumber)/$DistName.tar.gz.sha512"
     $DistPath = Join-Path $ArrowTempDir "$($DistName).tar.gz"
-    $Sha256Path = Join-Path $ArrowTempDir "$($DistName).tar.gz.sha256"
     $Sha512Path = Join-Path $ArrowTempDir "$($DistName).tar.gz.sha512"
     $ArrowSourceDir = Join-Path $ArrowTempDir $DistName
 
     echo "Fetching $($DistUrl)"
     New-Item -ItemType Directory -Path $ArrowSourceDir -Force
     Invoke-WebRequest -Uri $DistUrl -OutFile $DistPath
-    Invoke-WebRequest -Uri $Sha256Url -OutFile $Sha256Path
     Invoke-WebRequest -Uri $Sha512Url -OutFile $Sha512Path
 
-    $ExpectedSha256 = (Get-Content $Sha256Path).Split(" ")[0]
     $ExpectedSha512 = (Get-Content $Sha512Path).Split(" ")[0]
 
-    if (-not ((Get-FileHash -Algorithm SHA256 $DistPath).Hash -eq $ExpectedSha256)) {
-        echo "SHA256 hash mismatch"
-        exit 1
-    }
     if (-not ((Get-FileHash -Algorithm SHA512 $DistPath).Hash -eq $ExpectedSha512)) {
         echo "SHA512 hash mismatch"
         exit 1
