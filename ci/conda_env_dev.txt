@@ -17,5 +17,6 @@
 
 commitizen
 gh
+jq
 pre-commit
 twine
