@@ -19,8 +19,11 @@
 # package built with pkgbuild::build() with pkgbuild >1.4.0; however, we
 # run it again in case this is R CMD INSTALL on a directory or
 # devtools::load_all(). This will vendor files from elsewhere in the
-# ADBC repo into this package.
-$R_HOME/bin/Rscript bootstrap.R
+# ADBC repo into this package. If the file doesn't exist, we're installing
+# from a pre-built tarball.
+if [ -f bootstrap.R ]; then
+  $R_HOME/bin/Rscript bootstrap.R
+fi
 
 if [ -f "src/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then
   echo "Found vendored ADBC"
