@@ -372,6 +372,12 @@ performing a release.</p>
 <span class="n">mamba</span> <span class="n">activate</span> <span class="n">adbc</span>
 </pre></div>
 </div>
+<section id="check-nightly-verification-job">
+<h3>Check Nightly Verification Job<a class="headerlink" href="#check-nightly-verification-job" title="Permalink to this heading">#</a></h3>
+<p>Ensure that the <a class="reference external" href="https://github.com/apache/arrow-adbc/actions/workflows/nightly-verify.yml">verification job</a>
+is passing.  This simulates part of the release verification workflow
+to detect issues ahead of time.</p>
+</section>
 </section>
 <section id="creating-a-release-candidate">
 <h2>Creating a Release Candidate<a class="headerlink" href="#creating-a-release-candidate" title="Permalink to this heading">#</a></h2>
@@ -767,7 +773,10 @@ dev/release/post-09-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;<spa
 <li><a class="reference internal" href="#">Release Management Guide</a><ul>
 <li><a class="reference internal" href="#principles">Principles</a></li>
 <li><a class="reference internal" href="#preparing-for-the-release">Preparing for the release</a></li>
-<li><a class="reference internal" href="#before-creating-a-release-candidate">Before creating a Release Candidate</a></li>
+<li><a class="reference internal" href="#before-creating-a-release-candidate">Before creating a Release Candidate</a><ul>
+<li><a class="reference internal" href="#check-nightly-verification-job">Check Nightly Verification Job</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#creating-a-release-candidate">Creating a Release Candidate</a><ul>
 <li><a class="reference internal" href="#create-or-update-the-corresponding-maintenance-branch">Create or update the corresponding maintenance branch</a></li>
 <li><a class="reference internal" href="#create-the-release-candidate-tag-from-the-updated-maintenance-branch">Create the Release Candidate tag from the updated maintenance branch</a></li>
