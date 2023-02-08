@@ -1,0 +1,157 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Verification (Nightly)
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Prepare version
+        shell: bash
+        run: |
+          VERSION=$(grep 'set(ADBC_VERSION' c/cmake_modules/AdbcVersion.cmake | \
+                      grep -E -o '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Create archive
+        shell: bash
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag \
+            -a apache-arrow-adbc-${VERSION}-rc0 \
+            -m "ADBC Libraries ${VERSION} RC 0"
+          ci/scripts/source_build.sh \
+            apache-arrow-adbc-${VERSION} \
+            apache-arrow-adbc-${VERSION}-rc0
+
+      - name: Create fake GPG key
+        shell: bash
+        run: |
+          gpg \
+            --quick-gen-key \
+            --batch \
+            --passphrase '' \
+            user@localhost
+
+          gpg \
+            --list-sigs >> KEYS
+
+          gpg \
+            --armor \
+            --export >> KEYS
+
+      - name: Create sum/signature
+        shell: bash
+        run: |
+          gpg \
+            --armor \
+            --detach-sign \
+            --output apache-arrow-adbc-${VERSION}.tar.gz.asc \
+            apache-arrow-adbc-${VERSION}.tar.gz
+
+          shasum --algorithm 512 \
+            apache-arrow-adbc-${VERSION}.tar.gz > apache-arrow-adbc-${VERSION}.tar.gz.sha512
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: source
+          retention-days: 7
+          path: |
+            KEYS
+            apache-arrow-adbc-${{ env.VERSION }}.tar.gz
+            apache-arrow-adbc-${{ env.VERSION }}.tar.gz.asc
+            apache-arrow-adbc-${{ env.VERSION }}.tar.gz.sha512
+
+  source-conda:
+    name: "Verify Source (Conda)/${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    needs:
+      - source
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          path: arrow-adbc
+          persist-credentials: false
+
+      - name: Prepare version
+        shell: bash
+        run: |
+          VERSION=$(grep 'set(ADBC_VERSION' arrow-adbc/c/cmake_modules/AdbcVersion.cmake | \
+                      grep -E -o '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: source
+          path: ${{ github.workspace }}/apache-arrow-adbc-${{ env.VERSION }}-rc0/
+
+      - name: Setup directory structure
+        shell: bash
+        run: |
+          mv apache-arrow-adbc-${{ env.VERSION }}-rc0/KEYS .
+
+      - uses: conda-incubator/setup-miniconda@v2
+        # The Unix script will set up conda itself
+        if: matrix.os == 'windows-latest'
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+
+      - name: Verify
+        if: matrix.os != 'windows-latest'
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TEST_DEFAULT: "0"
+          TEST_SOURCE: "1"
+          USE_CONDA: "1"
+          VERBOSE: "1"
+          VERIFICATION_MOCK_DIST_DIR: ${{ github.workspace }}
+        run: |
+          ./arrow-adbc/dev/release/verify-release-candidate.sh $VERSION 0
+
+      - name: Verify
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TEST_DEFAULT: "0"
+          TEST_SOURCE: "1"
+          USE_CONDA: "1"
+          VERBOSE: "1"
+          VERIFICATION_MOCK_DIST_DIR: ${{ github.workspace }}\apache-arrow-adbc-${{ env.VERSION }}-rc0
+        run: |
+          .\arrow-adbc\dev\release\verify-release-candidate.ps1 $env:VERSION 0

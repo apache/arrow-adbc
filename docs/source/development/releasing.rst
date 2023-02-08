@@ -78,6 +78,14 @@ Before creating a Release Candidate
    # Activate conda environment
    mamba activate adbc
 
+Check Nightly Verification Job
+------------------------------
+
+Ensure that the `verification job
+<https://github.com/apache/arrow-adbc/actions/workflows/nightly-verify.yml>`_
+is passing.  This simulates part of the release verification workflow
+to detect issues ahead of time.
+
 Creating a Release Candidate
 ============================
 
