@@ -45,8 +45,8 @@ Packages can currently be built and installed from source.
 
 ## Documentation
 
-Documentation is forthcoming.
 The core API definitions can be read in `adbc.h`.
+User documentation can be found at https://arrow.apache.org/adbc
 
 ## Building
 
