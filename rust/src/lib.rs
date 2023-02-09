@@ -65,9 +65,16 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! ## Implementing ADBC drivers
+//!
+//! To implement an ADBC driver, use the [implement] module. The macro
+//! [adbc_init_func] will generate adapters from the safe Rust traits you implement
+//! to the FFI interface recognized by ADBC.
 pub mod driver_manager;
 pub mod error;
 pub mod ffi;
+pub mod implement;
 pub mod interface;
 
 pub const ADBC_VERSION_1_0_0: i32 = 1000000;

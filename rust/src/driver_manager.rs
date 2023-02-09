@@ -158,6 +158,7 @@ fn check_status(status: AdbcStatusCode, error: &FFI_AdbcError) -> Result<()> {
 ///
 /// If applicable, keeps the loaded dynamic library in scope as long as the
 /// FFI_AdbcDriver so that all it's function pointers remain valid.
+#[derive(Debug)]
 struct AdbcDriverInner {
     driver: FFI_AdbcDriver,
     _library: Option<libloading::Library>,
@@ -183,7 +184,7 @@ pub type AdbcDriverInitFunc = unsafe extern "C" fn(
 /// A handle to an ADBC driver.
 ///
 /// The internal data is held behind a [std::sync::Arc], so it is cheaply-copyable.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AdbcDriver {
     inner: Arc<AdbcDriverInner>,
 }
@@ -277,6 +278,7 @@ fn str_to_cstring(value: &str) -> Result<CString> {
 ///
 /// Use this to set options on a database. While some databases may allow setting
 /// options after initialization, many do not.
+#[derive(Debug)]
 pub struct AdbcDatabaseBuilder {
     inner: FFI_AdbcDatabase,
     driver: Arc<AdbcDriverInner>,
@@ -314,7 +316,7 @@ unsafe impl Sync for AdbcDatabaseBuilder {}
 /// An ADBC database handle.
 ///
 /// See [crate::interface::DatabaseApi] for more details.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AdbcDatabase {
     // In general, ADBC objects allow serialized access from multiple threads,
     // but not concurrent access. Specific implementations may permit
@@ -330,7 +332,7 @@ impl AdbcDatabase {
     /// Some drivers may not support setting options after initialization and
     /// instead return an error. So when possible prefer setting options on the
     /// builder.
-    pub fn set_option(self, key: &str, value: &str) -> Result<()> {
+    pub fn set_option(&self, key: &str, value: &str) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
         let key = str_to_cstring(key)?;
         let value = str_to_cstring(value)?;
@@ -382,6 +384,7 @@ unsafe impl Send for AdbcDatabase {}
 unsafe impl Sync for AdbcDatabase {}
 
 /// Builder for an [AdbcConnection].
+#[derive(Debug)]
 pub struct AdbcConnectionBuilder {
     inner: FFI_AdbcConnection,
     database: Arc<RwLock<FFI_AdbcDatabase>>,
@@ -444,6 +447,7 @@ unsafe impl Sync for AdbcConnectionBuilder {}
 /// threads, create a connection for each thread.
 ///
 /// See [ConnectionApi] for details of the methods.
+#[derive(Debug)]
 pub struct AdbcConnection {
     inner: Rc<RefCell<FFI_AdbcConnection>>,
     driver: Arc<AdbcDriverInner>,
@@ -710,6 +714,7 @@ impl AdbcConnection {
 /// A handle to an ADBC statement.
 ///
 /// See [StatementApi] for details.
+#[derive(Debug)]
 pub struct AdbcStatement {
     inner: FFI_AdbcStatement,
     // We hold onto the connection to make sure it is kept alive (and keep
