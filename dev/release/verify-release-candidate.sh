@@ -651,18 +651,16 @@ test_linux_wheels() {
   fi
 
   local python_versions="${TEST_PYTHON_VERSIONS:-3.9 3.10 3.11}"
-  local platform_tags="manylinux_2_17_${arch}.manylinux2014_${arch}"
 
   for python in ${python_versions}; do
     local pyver=${python/m}
-    for platform in ${platform_tags}; do
-      show_header "Testing Python ${pyver} wheel for platform ${platform}"
-      CONDA_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
-      VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
-      pip install --force-reinstall adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-${platform}.whl
-      pip install --force-reinstall adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-${platform}.whl
-      INSTALL_PYARROW=OFF ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
-    done
+    show_header "Testing Python ${pyver} wheel for platform manylinux"
+    CONDA_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
+    VENV_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
+    pip install --force-reinstall \
+        adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-manylinux*${arch}*.whl \
+        adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-manylinux*${arch}*.whl
+    ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
   done
 }
 
@@ -684,9 +682,10 @@ test_macos_wheels() {
       CONDA_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
       VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
 
-      pip install --force-reinstall adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl
-      pip install --force-reinstall adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-macosx_*_${platform}.whl
-      INSTALL_PYARROW=OFF ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
+      pip install --force-reinstall \
+          adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl \
+          adbc_*-${TEST_PYARROW_VERSION:-${VERSION}}-py3-none-macosx_*_${platform}.whl
+      ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
     done
   done
 }
