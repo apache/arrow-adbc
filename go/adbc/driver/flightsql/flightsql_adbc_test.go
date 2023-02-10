@@ -929,35 +929,3 @@ func (suite *TLSTests) TestInvalidOptions() {
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
 	suite.Contains(err.Error(), "Unavailable")
 }
-
-func TestDuckDBFlightSQL(t *testing.T) {
-	db, err := (driver.Driver{}).NewDatabase(map[string]string{
-		adbc.OptionKeyURI: "grpc+tls://localhost:31337",
-		"adbc.flight.sql.client_option.tls_skip_verify": "true",
-		adbc.OptionKeyUsername:                          "flight_username",
-		adbc.OptionKeyPassword:                          "flight_password",
-	})
-	require.NoError(t, err)
-
-	ctx := context.Background()
-	cnxn, err := db.Open(ctx)
-	require.NoError(t, err)
-	defer cnxn.Close()
-
-	stmt, err := cnxn.NewStatement()
-	require.NoError(t, err)
-	defer stmt.Close()
-
-	require.NoError(t, stmt.SetSqlQuery("SELECT * FROM lineitem LIMIT 11"))
-	rdr, n, err := stmt.ExecuteQuery(ctx)
-	require.NoError(t, err)
-	fmt.Println(n)
-	defer rdr.Release()
-
-	for rdr.Next() {
-		rec := rdr.Record()
-		fmt.Println(rec)
-	}
-
-	fmt.Println(rdr.Err())
-}
