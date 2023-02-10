@@ -26,19 +26,36 @@ import adbc_driver_manager
 
 @pytest.fixture
 def dremio_uri():
-    dremio_uri = os.environ.get("ADBC_DREMIO_TEST_URI")
+    dremio_uri = os.environ.get("ADBC_DREMIO_FLIGHTSQL_URI")
     if not dremio_uri:
-        pytest.skip("Set ADBC_DREMIO_TEST_URI to run tests")
+        pytest.skip("Set ADBC_DREMIO_FLIGHTSQL_URI to run tests")
+    yield dremio_uri
 
 
 @pytest.fixture
 def dremio(dremio_uri):
-    with adbc_driver_flightsql.connect(dremio_uri) as db:
+    username = os.environ.get("ADBC_DREMIO_FLIGHTSQL_USER")
+    password = os.environ.get("ADBC_DREMIO_FLIGHTSQL_PASS")
+    with adbc_driver_flightsql.connect(
+        dremio_uri,
+        db_kwargs={
+            "username": username,
+            "password": password,
+        },
+    ) as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
             yield conn
 
 
 @pytest.fixture
 def dremio_dbapi(dremio_uri):
-    with adbc_driver_flightsql.dbapi.connect(dremio_uri) as conn:
+    username = os.environ.get("ADBC_DREMIO_FLIGHTSQL_USER")
+    password = os.environ.get("ADBC_DREMIO_FLIGHTSQL_PASS")
+    with adbc_driver_flightsql.dbapi.connect(
+        dremio_uri,
+        db_kwargs={
+            "username": username,
+            "password": password,
+        },
+    ) as conn:
         yield conn

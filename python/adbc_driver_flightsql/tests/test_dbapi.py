@@ -15,8 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pyarrow
+
 
 def test_query_trivial(dremio_dbapi):
     with dremio_dbapi.cursor() as cur:
         cur.execute("SELECT 1")
+        assert cur.fetchone() == (1,)
+
+
+def test_query_partitioned(dremio_dbapi):
+    with dremio_dbapi.cursor() as cur:
+        partitions, schema = cur.adbc_execute_partitions("SELECT 1")
+        assert len(partitions) == 1
+        assert schema.equals(pyarrow.schema([("EXPR$0", "int32")]))
+
+        cur.adbc_read_partition(partitions[0])
         assert cur.fetchone() == (1,)

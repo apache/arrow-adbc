@@ -766,7 +766,7 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         self._results = None
-        handle = self.conn._conn.read_partition(partition)
+        handle = self._conn._conn.read_partition(partition)
         self._rowcount = -1
         self._results = _RowIterator(
             pyarrow.RecordBatchReader._import_from_c(handle.address)

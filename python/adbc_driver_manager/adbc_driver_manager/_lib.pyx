@@ -502,6 +502,10 @@ cdef class AdbcDatabase(_AdbcHandle):
             if key == "init_func":
                 status = AdbcDriverManagerDatabaseSetInitFunc(
                     &self.database, <CAdbcDriverInitFunc> (<uintptr_t> value), &c_error)
+            elif key is None:
+                raise ValueError("key cannot be None")
+            elif value is None:
+                raise ValueError(f"value for key '{key}' cannot be None")
             else:
                 key = key.encode("utf-8")
                 value = value.encode("utf-8")
