@@ -88,7 +88,7 @@ func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cl *flightsql.Client
 
 func (s *sqlOrSubstrait) prepare(ctx context.Context, cl *flightsql.Client, alloc memory.Allocator, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
 	if s.sqlQuery != "" {
-		return cl.Prepare(ctx, alloc, s.sqlQuery, opts...)
+		return cl.Prepare(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
 		// TODO: Substrait not supported upstream
 		return nil, adbc.Error{

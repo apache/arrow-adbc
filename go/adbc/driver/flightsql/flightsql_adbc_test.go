@@ -25,6 +25,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -70,6 +71,7 @@ type FlightSQLQuirks struct {
 	s      flight.Server
 	middle HeaderServerMiddleware
 	opts   []grpc.ServerOption
+	db     *sql.DB
 
 	done chan bool
 	mem  *memory.CheckedAllocator
@@ -78,11 +80,13 @@ type FlightSQLQuirks struct {
 func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 	s.middle.recordedHeaders = make(metadata.MD)
 
-	s.done = make(chan bool)
 	var err error
+	s.done = make(chan bool)
 	s.mem = memory.NewCheckedAllocator(memory.DefaultAllocator)
 	s.s = flight.NewServerWithMiddleware([]flight.ServerMiddleware{flight.CreateServerMiddleware(&s.middle)}, s.opts...)
-	s.srv, err = example.NewSQLiteFlightSQLServer()
+	s.db, err = example.CreateDB()
+	require.NoError(t, err)
+	s.srv, err = example.NewSQLiteFlightSQLServer(s.db)
 	require.NoError(t, err)
 	s.srv.Alloc = s.mem
 
@@ -100,6 +104,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 func (s *FlightSQLQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 	s.s.Shutdown()
 	<-s.done
+	s.db.Close()
 	s.srv = nil
 	s.mem.AssertSize(t, 0)
 }
@@ -128,6 +133,8 @@ func (s *FlightSQLQuirks) getSqlTypeFromArrowType(dt arrow.DataType) string {
 type srvQuery string
 
 func (s srvQuery) GetQuery() string { return string(s) }
+
+func (s srvQuery) GetTransactionId() []byte { return nil }
 
 func writeTo(arr arrow.Array, idx int, w io.Writer) {
 	switch arr := arr.(type) {
