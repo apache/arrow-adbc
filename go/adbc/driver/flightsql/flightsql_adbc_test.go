@@ -25,6 +25,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -70,6 +71,7 @@ type FlightSQLQuirks struct {
 	s      flight.Server
 	middle HeaderServerMiddleware
 	opts   []grpc.ServerOption
+	db     *sql.DB
 
 	done chan bool
 	mem  *memory.CheckedAllocator
@@ -78,11 +80,13 @@ type FlightSQLQuirks struct {
 func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 	s.middle.recordedHeaders = make(metadata.MD)
 
-	s.done = make(chan bool)
 	var err error
+	s.done = make(chan bool)
 	s.mem = memory.NewCheckedAllocator(memory.DefaultAllocator)
 	s.s = flight.NewServerWithMiddleware([]flight.ServerMiddleware{flight.CreateServerMiddleware(&s.middle)}, s.opts...)
-	s.srv, err = example.NewSQLiteFlightSQLServer()
+	s.db, err = example.CreateDB()
+	require.NoError(t, err)
+	s.srv, err = example.NewSQLiteFlightSQLServer(s.db)
 	require.NoError(t, err)
 	s.srv.Alloc = s.mem
 
@@ -100,6 +104,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 func (s *FlightSQLQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 	s.s.Shutdown()
 	<-s.done
+	s.db.Close()
 	s.srv = nil
 	s.mem.AssertSize(t, 0)
 }
@@ -128,6 +133,8 @@ func (s *FlightSQLQuirks) getSqlTypeFromArrowType(dt arrow.DataType) string {
 type srvQuery string
 
 func (s srvQuery) GetQuery() string { return string(s) }
+
+func (s srvQuery) GetTransactionId() []byte { return nil }
 
 func writeTo(arr arrow.Array, idx int, w io.Writer) {
 	switch arr := arr.(type) {
@@ -921,4 +928,36 @@ func (suite *TLSTests) TestInvalidOptions() {
 	suite.NoError(stmt.SetSqlQuery("SELECT 1"))
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
 	suite.Contains(err.Error(), "Unavailable")
+}
+
+func TestDuckDBFlightSQL(t *testing.T) {
+	db, err := (driver.Driver{}).NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "grpc+tls://localhost:31337",
+		"adbc.flight.sql.client_option.tls_skip_verify": "true",
+		adbc.OptionKeyUsername:                          "flight_username",
+		adbc.OptionKeyPassword:                          "flight_password",
+	})
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	cnxn, err := db.Open(ctx)
+	require.NoError(t, err)
+	defer cnxn.Close()
+
+	stmt, err := cnxn.NewStatement()
+	require.NoError(t, err)
+	defer stmt.Close()
+
+	require.NoError(t, stmt.SetSqlQuery("SELECT * FROM lineitem LIMIT 11"))
+	rdr, n, err := stmt.ExecuteQuery(ctx)
+	require.NoError(t, err)
+	fmt.Println(n)
+	defer rdr.Release()
+
+	for rdr.Next() {
+		rec := rdr.Record()
+		fmt.Println(rec)
+	}
+
+	fmt.Println(rdr.Err())
 }
