@@ -44,7 +44,7 @@
 
 use std::{
     cell::RefCell,
-    ffi::{c_void, CStr, CString},
+    ffi::{c_void, CString},
     ops::{Deref, DerefMut},
     ptr::{null, null_mut},
     rc::Rc,
@@ -137,13 +137,13 @@ impl From<libloading::Error> for AdbcDriverManagerError {
 }
 
 /// Convert ADBC-style status & error into our Result type.
-fn check_status(status: AdbcStatusCode, error: &FFI_AdbcError) -> Result<()> {
+///
+/// This function consumes the error and calls its release callback before dropping.
+fn check_status(status: AdbcStatusCode, error: FFI_AdbcError) -> Result<()> {
     if status == AdbcStatusCode::Ok {
         Ok(())
     } else {
-        let message = unsafe { CStr::from_ptr(error.message) }
-            .to_string_lossy()
-            .to_string();
+        let message = unsafe { error.get_message() }.unwrap_or_default();
 
         Err(AdbcDriverManagerError {
             message,
@@ -237,7 +237,7 @@ impl AdbcDriver {
                 &mut error,
             )
         };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(driver)
     }
@@ -250,7 +250,7 @@ impl AdbcDriver {
         let database_new = driver_method!(self.inner, database_new);
         let status = unsafe { database_new(&mut inner, &mut error) };
 
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(AdbcDatabaseBuilder {
             inner,
@@ -293,7 +293,7 @@ impl AdbcDatabaseBuilder {
         let status =
             unsafe { set_option(&mut self.inner, key.as_ptr(), value.as_ptr(), &mut error) };
 
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(self)
     }
@@ -351,7 +351,7 @@ impl AdbcDatabase {
             )
         };
 
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(())
     }
@@ -366,7 +366,7 @@ impl AdbcDatabase {
             connection_new(&mut inner, &mut error)
         };
 
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(AdbcConnectionBuilder {
             inner,
@@ -402,7 +402,7 @@ impl AdbcConnectionBuilder {
             set_option(&mut self.inner, key.as_ptr(), value.as_ptr(), &mut error)
         };
 
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(self)
     }
@@ -423,7 +423,7 @@ impl AdbcConnectionBuilder {
         let status =
             unsafe { connection_init(&mut self.inner, database_mut.deref_mut(), &mut error) };
 
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(AdbcConnection {
             inner: Rc::new(RefCell::new(self.inner)),
@@ -471,7 +471,7 @@ impl ConnectionApi for AdbcConnection {
             )
         };
 
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(())
     }
@@ -490,7 +490,7 @@ impl ConnectionApi for AdbcConnection {
         let status = unsafe {
             get_table_types(self.inner.borrow_mut().deref_mut(), &mut reader, &mut error)
         };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         let reader = unsafe { ArrowArrayStreamReader::from_raw(&mut reader)? };
 
@@ -545,7 +545,7 @@ impl ConnectionApi for AdbcConnection {
                 &mut error,
             )
         };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         let reader = unsafe { ArrowArrayStreamReader::from_raw(&mut reader)? };
 
@@ -607,7 +607,7 @@ impl ConnectionApi for AdbcConnection {
                 &mut error,
             )
         };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         let reader = unsafe { ArrowArrayStreamReader::from_raw(&mut reader)? };
 
@@ -643,7 +643,7 @@ impl ConnectionApi for AdbcConnection {
                 &mut error,
             )
         };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(Schema::try_from(&schema)?)
     }
@@ -666,7 +666,7 @@ impl ConnectionApi for AdbcConnection {
                 &mut error,
             )
         };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         let reader = unsafe { ArrowArrayStreamReader::from_raw(&mut reader)? };
 
@@ -678,7 +678,7 @@ impl ConnectionApi for AdbcConnection {
 
         let commit = driver_method!(self.driver, connection_commit);
         let status = unsafe { commit(self.inner.borrow_mut().deref_mut(), &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
         Ok(())
     }
 
@@ -687,7 +687,7 @@ impl ConnectionApi for AdbcConnection {
 
         let rollback = driver_method!(self.driver, connection_rollback);
         let status = unsafe { rollback(self.inner.borrow_mut().deref_mut(), &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
         Ok(())
     }
 }
@@ -701,7 +701,7 @@ impl AdbcConnection {
         let statement_new = driver_method!(self.driver, statement_new);
         let status =
             unsafe { statement_new(self.inner.borrow_mut().deref_mut(), &mut inner, &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(AdbcStatement {
             inner,
@@ -731,7 +731,7 @@ impl StatementApi for AdbcStatement {
 
         let statement_prepare = driver_method!(self.driver, statement_prepare);
         let status = unsafe { statement_prepare(&mut self.inner, &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
         Ok(())
     }
 
@@ -744,7 +744,7 @@ impl StatementApi for AdbcStatement {
         let set_option = driver_method!(self.driver, statement_set_option);
         let status =
             unsafe { set_option(&mut self.inner, key.as_ptr(), value.as_ptr(), &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
         Ok(())
     }
 
@@ -755,7 +755,7 @@ impl StatementApi for AdbcStatement {
 
         let set_sql_query = driver_method!(self.driver, statement_set_sql_query);
         let status = unsafe { set_sql_query(&mut self.inner, query.as_ptr(), &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
         Ok(())
     }
 
@@ -765,7 +765,7 @@ impl StatementApi for AdbcStatement {
         let set_substrait_plan = driver_method!(self.driver, statement_set_substrait_plan);
         let status =
             unsafe { set_substrait_plan(&mut self.inner, plan.as_ptr(), plan.len(), &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
         Ok(())
     }
 
@@ -776,7 +776,7 @@ impl StatementApi for AdbcStatement {
 
         let get_parameter_schema = driver_method!(self.driver, statement_get_parameter_schema);
         let status = unsafe { get_parameter_schema(&mut self.inner, &mut schema, &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(Schema::try_from(&schema)?)
     }
@@ -794,7 +794,7 @@ impl StatementApi for AdbcStatement {
         let statement_bind = driver_method!(self.driver, statement_bind);
         let status =
             unsafe { statement_bind(&mut self.inner, &mut array, &mut schema, &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(())
     }
@@ -811,7 +811,7 @@ impl StatementApi for AdbcStatement {
 
         let statement_bind_stream = driver_method!(self.driver, statement_bind_stream);
         let status = unsafe { statement_bind_stream(&mut self.inner, &mut stream, &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(())
     }
@@ -825,7 +825,7 @@ impl StatementApi for AdbcStatement {
         let execute_query = driver_method!(self.driver, statement_execute_query);
         let status =
             unsafe { execute_query(&mut self.inner, &mut stream, &mut rows_affected, &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         let result: Option<Box<dyn RecordBatchReader>> = if stream.release.is_none() {
             // There was no result
@@ -849,7 +849,7 @@ impl StatementApi for AdbcStatement {
         let execute_query = driver_method!(self.driver, statement_execute_query);
         let status =
             unsafe { execute_query(&mut self.inner, stream, &mut rows_affected, &mut error) };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         Ok(rows_affected)
     }
@@ -873,7 +873,7 @@ impl StatementApi for AdbcStatement {
                 &mut error,
             )
         };
-        check_status(status, &error)?;
+        check_status(status, error)?;
 
         let schema = Schema::try_from(&schema)?;
 

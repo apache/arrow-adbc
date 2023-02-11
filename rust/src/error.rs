@@ -80,7 +80,7 @@
 //!
 
 use std::{
-    ffi::{c_char, CString},
+    ffi::{c_char, CStr, CString},
     ptr::null_mut,
 };
 
@@ -183,7 +183,7 @@ impl std::fmt::Display for AdbcStatusCode {
 
 /// A detailed error message for an operation.
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct FFI_AdbcError {
     /// The error message.
     pub message: *mut c_char,
@@ -198,6 +198,14 @@ pub struct FFI_AdbcError {
     /// Unlike other structures, this is an embedded callback to make it
     /// easier for the driver manager and driver to cooperate.
     pub release: Option<unsafe extern "C" fn(error: *mut Self)>,
+}
+
+impl Drop for FFI_AdbcError {
+    fn drop(&mut self) {
+        if let Some(release) = self.release {
+            unsafe { release(self) };
+        }
+    }
 }
 
 impl FFI_AdbcError {
@@ -233,6 +241,23 @@ impl FFI_AdbcError {
         if !dest.is_null() {
             let error = Self::new(message, None, None);
             unsafe { std::ptr::write_unaligned(dest, error) }
+        }
+    }
+
+    /// Get message as a String.
+    /// 
+    /// # Safety
+    /// 
+    /// Underlying message null-terminated string must have a valid terminator
+    /// and the buffer up to that terminator must be valid for reads.
+    pub unsafe fn get_message(&self) -> Option<String> {
+        if self.message.is_null() {
+            None
+        } else {
+            let message = unsafe { CStr::from_ptr(self.message) }
+                .to_string_lossy()
+                .to_string();
+            Some(message)
         }
     }
 }
