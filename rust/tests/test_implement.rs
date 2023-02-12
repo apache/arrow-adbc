@@ -22,7 +22,7 @@ use std::{
 };
 
 use arrow::{
-    datatypes::Schema,
+    datatypes::{DataType, Field, Schema},
     error::ArrowError,
     record_batch::{RecordBatch, RecordBatchReader},
 };
@@ -37,6 +37,7 @@ use arrow_adbc::{
     },
     ADBC_VERSION_1_0_0,
 };
+use itertools::iproduct;
 
 enum TestError {
     General(String),
@@ -62,35 +63,69 @@ impl AdbcError for TestError {
 
 type Result<T> = std::result::Result<T, TestError>;
 
-thread_local! {
-    static PATCH_HANDOFF: RefCell<Option<Arc<Mutex<PatchableDriver>>>> = RefCell::new(None);
-}
+type ConnectionGetObjects = dyn Fn(
+        AdbcObjectDepth,
+        Option<&str>,
+        Option<&str>,
+        Option<&str>,
+        Option<&[&str]>,
+        Option<&str>,
+    ) -> Result<Box<dyn RecordBatchReader>>
+    + Send
+    + Sync;
 
-/// Contains closures for every ADBC method
+/// Contains closures for every ADBC method.
+///
+/// These methods are all set to return a "Not implemented" error by default.
+/// Tests will dynamically set these functions to create implementations to test.
 #[allow(clippy::type_complexity)]
 struct PatchableDriver {
     database_set_option: Box<dyn Fn(&str, &str) -> Result<()> + Send + Sync>,
     connection_set_option: Box<dyn Fn(&str, &str) -> Result<()> + Send + Sync>,
+    connection_get_info: Box<dyn Fn(&[u32]) -> Result<Box<dyn RecordBatchReader>> + Send + Sync>,
+    connection_get_objects: Box<ConnectionGetObjects>,
+    connection_get_table_schema:
+        Box<dyn Fn(Option<&str>, Option<&str>, &str) -> Result<Schema> + Send + Sync>,
+    connection_get_table_types: Box<dyn Fn() -> Result<Vec<String>> + Send + Sync>,
+    connection_read_partition:
+        Box<dyn Fn(&[u8]) -> Result<Box<dyn RecordBatchReader>> + Send + Sync>,
+    connection_rollback: Box<dyn Fn() -> Result<()> + Send + Sync>,
+    connection_commit: Box<dyn Fn() -> Result<()> + Send + Sync>,
+}
+
+macro_rules! patch_stub {
+    ($($arg:tt),*) => {
+        Box::new(|$($arg),*| Err(TestError::General("Not implemented".to_string())))
+    };
 }
 
 impl Default for PatchableDriver {
     fn default() -> Self {
         Self {
-            database_set_option: Box::new(|_, _| {
-                Err(TestError::General("Not implemented".to_string()))
-            }),
-            connection_set_option: Box::new(|_, _| {
-                Err(TestError::General("Not implemented".to_string()))
-            }),
+            database_set_option: patch_stub!(_, _),
+            connection_set_option: patch_stub!(_, _),
+            connection_get_info: patch_stub!(_),
+            connection_get_objects: patch_stub!(_, _, _, _, _, _),
+            connection_get_table_schema: patch_stub!(_, _, _),
+            connection_get_table_types: patch_stub!(),
+            connection_read_partition: patch_stub!(_),
+            connection_rollback: patch_stub!(),
+            connection_commit: patch_stub!(),
         }
     }
 }
 
-// For testing, defines an ADBC database, connection, and statement. Methods
-// that mutate return an error that includes the arguments passed, to verify
-// they have been passed down correctly.
+/// A database whose implementation is backed by a [PatchableDriver].
+///
+/// When created, a reference to the inner [PatchableDriver] is copied into the
+/// thread local [PATCH_HANDOFF]. The caller should retrieve that handle for use
+/// in the tests.
 struct TestDatabase {
     driver: Arc<Mutex<PatchableDriver>>,
+}
+
+thread_local! {
+    static PATCH_HANDOFF: RefCell<Option<Arc<Mutex<PatchableDriver>>>> = RefCell::new(None);
 }
 
 impl Default for TestDatabase {
@@ -122,6 +157,16 @@ struct TestConnection {
     database: RefCell<Option<Arc<TestDatabase>>>,
 }
 
+impl TestConnection {
+    fn get_driver_impl(&self) -> Result<Arc<Mutex<PatchableDriver>>> {
+        if let Some(database) = self.database.borrow_mut().as_mut() {
+            Ok(database.driver.clone())
+        } else {
+            Err(TestError::new("Connection not initialized"))
+        }
+    }
+}
+
 impl Default for TestConnection {
     fn default() -> Self {
         Self {
@@ -145,21 +190,23 @@ impl AdbcConnectionImpl for TestConnection {
     }
 }
 
+macro_rules! conn_method {
+    ($self:expr, $func_name:ident, $($arg:expr),*) => {
+        ($self.get_driver_impl()?.lock().unwrap().$func_name)($($arg),*)
+    };
+    ($self:expr, $func_name:ident) => {
+        ($self.get_driver_impl()?.lock().unwrap().$func_name)()
+    };
+}
+
 impl ConnectionApi for TestConnection {
     type Error = TestError;
-
     fn set_option(&self, key: &str, value: &str) -> Result<()> {
-        if let Some(database) = self.database.borrow_mut().as_mut() {
-            (database.driver.lock().unwrap().connection_set_option)(key, value)
-        } else {
-            Err(TestError::new("cannot set before init"))
-        }
+        conn_method!(self, connection_set_option, key, value)
     }
 
     fn get_info(&self, info_codes: &[u32]) -> Result<Box<dyn RecordBatchReader>> {
-        Err(TestError::General(format!(
-            "Not implemented: requesting info for codes: '{info_codes:?}'."
-        )))
+        conn_method!(self, connection_get_info, info_codes)
     }
 
     fn get_objects(
@@ -171,9 +218,16 @@ impl ConnectionApi for TestConnection {
         table_type: Option<&[&str]>,
         column_name: Option<&str>,
     ) -> Result<Box<dyn RecordBatchReader>> {
-        Err(TestError::General(
-                    format!("Not implemented: getting objects with depth {depth:?}, catalog {catalog:?}, db_schema {db_schema:?}, table_name {table_name:?}, table_type {table_type:?}, column_name {column_name:?}.")
-                ))
+        conn_method!(
+            self,
+            connection_get_objects,
+            depth,
+            catalog,
+            db_schema,
+            table_name,
+            table_type,
+            column_name
+        )
     }
 
     fn get_table_schema(
@@ -182,27 +236,29 @@ impl ConnectionApi for TestConnection {
         db_schema: Option<&str>,
         table_name: &str,
     ) -> Result<Schema> {
-        Err(TestError::General(
-                    format!("Not implemented: getting schema for catalog {catalog:?}, db_schema {db_schema:?}, table_name {table_name:?}.")
-                ))
+        conn_method!(
+            self,
+            connection_get_table_schema,
+            catalog,
+            db_schema,
+            table_name
+        )
     }
 
     fn get_table_types(&self) -> Result<Vec<String>> {
-        todo!()
+        conn_method!(self, connection_get_table_types)
     }
 
     fn read_partition(&self, partition: &[u8]) -> Result<Box<dyn RecordBatchReader>> {
-        Err(TestError::General(format!(
-            "Not implemented: reading partition {partition:?}."
-        )))
+        conn_method!(self, connection_read_partition, partition)
     }
 
     fn rollback(&self) -> Result<()> {
-        todo!()
+        conn_method!(self, connection_rollback)
     }
 
     fn commit(&self) -> Result<()> {
-        todo!()
+        conn_method!(self, connection_commit)
     }
 }
 
@@ -356,6 +412,96 @@ fn test_connection_set_option() {
     });
 
     let res = conn.set_option("key", "value");
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().message, "hello world");
+}
+
+#[test]
+fn test_connection_get_info() {
+    todo!()
+}
+
+#[test]
+fn test_connection_get_objects() {
+    todo!()
+}
+
+#[test]
+fn test_connection_get_table_schema() {
+    let (builder, mock_driver) = get_database_builder();
+    let conn = builder
+        .init()
+        .unwrap()
+        .new_connection()
+        .unwrap()
+        .init()
+        .unwrap();
+
+    // let catalogs = vec![None, Some("my_catalog"), Some("")];
+    let catalogs = vec![Some("my_catalog")];
+    // let db_schemas = vec![None, Some("my_schema"), Some("")];
+    let db_schemas = vec![Some("my_schema")];
+    let table_names = vec!["my_table", ""];
+
+    let test_schema = Schema::new(vec![Field::new("x", DataType::Int64, true)]);
+
+    for (catalog, db_schema, table_name) in iproduct!(catalogs, db_schemas, table_names) {
+        let expected_catalog = catalog;
+        let expected_db_schema = db_schema;
+        let expected_table = table_name;
+        let out_schema = test_schema.clone();
+
+        set_driver_method!(
+            mock_driver,
+            connection_get_table_schema,
+            move |catalog, db_schema, table_name| {
+                assert_eq!(catalog, expected_catalog);
+                assert_eq!(db_schema, expected_db_schema);
+                assert_eq!(table_name, expected_table);
+                Ok(out_schema.clone())
+            }
+        );
+        let table_schema = conn
+            .get_table_schema(catalog, db_schema, table_name)
+            .unwrap();
+        assert_eq!(table_schema, test_schema);
+    }
+
+    set_driver_method!(mock_driver, connection_get_table_schema, move |_, _, _| {
+        Err(TestError::new("hello world"))
+    });
+    let res = conn.get_table_schema(None, None, "");
+    assert!(res.is_err());
+    assert_eq!(res.unwrap_err().message, "hello world");
+}
+
+#[test]
+fn test_connection_get_table_types() {
+    let (builder, mock_driver) = get_database_builder();
+    let conn = builder
+        .init()
+        .unwrap()
+        .new_connection()
+        .unwrap()
+        .init()
+        .unwrap();
+
+    let cases = vec![vec![], vec!["one"], vec!["hello", "你好"]];
+
+    for expected in cases {
+        let to_return = expected.clone();
+        set_driver_method!(mock_driver, connection_get_table_types, move || {
+            Ok(to_return.iter().map(|s| s.to_string()).collect())
+        });
+
+        let table_types = conn.get_table_types().unwrap();
+        assert_eq!(table_types, expected);
+    }
+
+    set_driver_method!(mock_driver, connection_get_table_types, move || {
+        Err(TestError::new("hello world"))
+    });
+    let res = conn.get_table_types();
     assert!(res.is_err());
     assert_eq!(res.unwrap_err().message, "hello world");
 }

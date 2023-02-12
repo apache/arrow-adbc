@@ -33,4 +33,7 @@ keywords = ["arrow", "database", "sql"]
 arrow = { version = "32.0.0", features = ["ffi"], default_features = false}
 libloading = "0.7"
 
+[dev-dependencies]
+itertools = "0.10"
+
 # TODO: support arrow2 with a non-default feature.

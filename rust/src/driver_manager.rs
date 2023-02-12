@@ -44,7 +44,7 @@
 
 use std::{
     cell::RefCell,
-    ffi::{c_void, CString},
+    ffi::{c_char, c_void, CString, NulError},
     ops::{Deref, DerefMut},
     ptr::{null, null_mut},
     rc::Rc,
@@ -68,6 +68,36 @@ use crate::{
     },
     interface::{ConnectionApi, PartitionedStatementResult, StatementApi, StatementResult},
 };
+
+use self::util::NullableCString;
+
+pub(crate) mod util {
+    use std::ffi::NulError;
+
+    use super::*;
+
+    /// Nullable CString wrapper type to avoid to avoid safety issues.
+    ///
+    /// This struct makes it obvious how to get a pointer to the data without
+    /// *consuming* the struct. This is easily to accidentally do with methods
+    /// directly on Option, such as map.
+    pub(crate) struct NullableCString(Option<CString>);
+
+    impl TryFrom<Option<&str>> for NullableCString {
+        type Error = NulError;
+
+        fn try_from(value: Option<&str>) -> std::result::Result<Self, Self::Error> {
+            Ok(Self(value.map(CString::new).transpose()?))
+        }
+    }
+
+    impl NullableCString {
+        pub fn as_ptr(&self) -> *const c_char {
+            // Note we are calling .as_ref() to make sure we aren't consuming the option.
+            self.0.as_ref().map_or(null(), |s| s.as_ptr())
+        }
+    }
+}
 
 /// An error from an ADBC driver.
 #[derive(Debug, Clone)]
@@ -259,21 +289,6 @@ impl AdbcDriver {
     }
 }
 
-fn str_to_cstring(value: &str) -> Result<CString> {
-    match CString::new(value) {
-        Ok(out) => Ok(out),
-        Err(err) => Err(AdbcDriverManagerError {
-            message: format!(
-                "Null character in string at position {}",
-                err.nul_position()
-            ),
-            vendor_code: -1,
-            sqlstate: [0; 5],
-            status_code: AdbcStatusCode::InvalidArguments,
-        }),
-    }
-}
-
 /// Builder for an [AdbcDatabase].
 ///
 /// Use this to set options on a database. While some databases may allow setting
@@ -287,8 +302,8 @@ pub struct AdbcDatabaseBuilder {
 impl AdbcDatabaseBuilder {
     pub fn set_option(mut self, key: &str, value: &str) -> Result<Self> {
         let mut error = FFI_AdbcError::empty();
-        let key = str_to_cstring(key)?;
-        let value = str_to_cstring(value)?;
+        let key = CString::new(key)?;
+        let value = CString::new(value)?;
         let set_option = driver_method!(self.driver, database_set_option);
         let status =
             unsafe { set_option(&mut self.inner, key.as_ptr(), value.as_ptr(), &mut error) };
@@ -334,8 +349,8 @@ impl AdbcDatabase {
     /// builder.
     pub fn set_option(&self, key: &str, value: &str) -> Result<()> {
         let mut error = FFI_AdbcError::empty();
-        let key = str_to_cstring(key)?;
-        let value = str_to_cstring(value)?;
+        let key = CString::new(key)?;
+        let value = CString::new(value)?;
 
         let mut inner_mut = self
             .inner
@@ -395,8 +410,8 @@ impl AdbcConnectionBuilder {
     /// Set an option on a connection.
     pub fn set_option(mut self, key: &str, value: &str) -> Result<Self> {
         let mut error = FFI_AdbcError::empty();
-        let key = str_to_cstring(key)?;
-        let value = str_to_cstring(value)?;
+        let key = CString::new(key)?;
+        let value = CString::new(value)?;
         let status = unsafe {
             let set_option = driver_method!(self.driver, connection_set_option);
             set_option(&mut self.inner, key.as_ptr(), value.as_ptr(), &mut error)
@@ -458,8 +473,8 @@ impl ConnectionApi for AdbcConnection {
 
     fn set_option(&self, key: &str, value: &str) -> std::result::Result<(), Self::Error> {
         let mut error = FFI_AdbcError::empty();
-        let key = str_to_cstring(key)?;
-        let value = str_to_cstring(value)?;
+        let key = CString::new(key)?;
+        let value = CString::new(value)?;
 
         let set_option = driver_method!(self.driver, connection_set_option);
         let status = unsafe {
@@ -565,23 +580,16 @@ impl ConnectionApi for AdbcConnection {
 
         let mut reader = FFI_ArrowArrayStream::empty();
 
-        let catalog = catalog.map(str_to_cstring).transpose()?;
-        let catalog_ptr = catalog.map(|s| s.as_ptr()).unwrap_or(null());
-
-        let db_schema = db_schema.map(str_to_cstring).transpose()?;
-        let db_schema_ptr = db_schema.map(|s| s.as_ptr()).unwrap_or(null());
-
-        let table_name = table_name.map(str_to_cstring).transpose()?;
-        let table_name_ptr = table_name.map(|s| s.as_ptr()).unwrap_or(null());
-
-        let column_name = column_name.map(str_to_cstring).transpose()?;
-        let column_name_ptr = column_name.map(|s| s.as_ptr()).unwrap_or(null());
+        let catalog = NullableCString::try_from(catalog)?;
+        let db_schema = NullableCString::try_from(db_schema)?;
+        let table_name = NullableCString::try_from(table_name)?;
+        let column_name = NullableCString::try_from(column_name)?;
 
         let table_type: Vec<CString> = match table_type {
             Some(table_type) => table_type
                 .iter()
-                .map(|&s| str_to_cstring(s))
-                .collect::<Result<_>>()?,
+                .map(|&s| CString::new(s))
+                .collect::<std::result::Result<_, NulError>>()?,
             None => Vec::new(),
         };
         let mut table_type_ptrs: Vec<_> = table_type.iter().map(|s| s.as_ptr()).collect();
@@ -593,16 +601,16 @@ impl ConnectionApi for AdbcConnection {
             get_objects(
                 self.inner.borrow_mut().deref_mut(),
                 depth,
-                catalog_ptr,
-                db_schema_ptr,
-                table_name_ptr,
+                catalog.as_ptr(),
+                db_schema.as_ptr(),
+                table_name.as_ptr(),
                 if table_type_ptrs.len() == 1 {
                     // Just null
                     null()
                 } else {
                     table_type_ptrs.as_ptr()
                 },
-                column_name_ptr,
+                column_name.as_ptr(),
                 &mut reader,
                 &mut error,
             )
@@ -622,13 +630,9 @@ impl ConnectionApi for AdbcConnection {
     ) -> std::result::Result<arrow::datatypes::Schema, Self::Error> {
         let mut error = FFI_AdbcError::empty();
 
-        let catalog = catalog.map(str_to_cstring).transpose()?;
-        let catalog_ptr = catalog.map(|s| s.as_ptr()).unwrap_or(null());
-
-        let db_schema = db_schema.map(str_to_cstring).transpose()?;
-        let db_schema_ptr = db_schema.map(|s| s.as_ptr()).unwrap_or(null());
-
-        let table_name = str_to_cstring(table_name)?;
+        let catalog = NullableCString::try_from(catalog)?;
+        let db_schema = NullableCString::try_from(db_schema)?;
+        let table_name = CString::new(table_name)?;
 
         let mut schema = FFI_ArrowSchema::empty();
 
@@ -636,8 +640,8 @@ impl ConnectionApi for AdbcConnection {
         let status = unsafe {
             get_table_schema(
                 self.inner.borrow_mut().deref_mut(),
-                catalog_ptr,
-                db_schema_ptr,
+                catalog.as_ptr(),
+                db_schema.as_ptr(),
                 table_name.as_ptr(),
                 &mut schema,
                 &mut error,
@@ -738,8 +742,8 @@ impl StatementApi for AdbcStatement {
     fn set_option(&mut self, key: &str, value: &str) -> std::result::Result<(), Self::Error> {
         let mut error = FFI_AdbcError::empty();
 
-        let key = str_to_cstring(key)?;
-        let value = str_to_cstring(value)?;
+        let key = CString::new(key)?;
+        let value = CString::new(value)?;
 
         let set_option = driver_method!(self.driver, statement_set_option);
         let status =
@@ -751,7 +755,7 @@ impl StatementApi for AdbcStatement {
     fn set_sql_query(&mut self, query: &str) -> std::result::Result<(), Self::Error> {
         let mut error = FFI_AdbcError::empty();
 
-        let query = str_to_cstring(query)?;
+        let query = CString::new(query)?;
 
         let set_sql_query = driver_method!(self.driver, statement_set_sql_query);
         let status = unsafe { set_sql_query(&mut self.inner, query.as_ptr(), &mut error) };

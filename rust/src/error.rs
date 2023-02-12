@@ -245,9 +245,9 @@ impl FFI_AdbcError {
     }
 
     /// Get message as a String.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// Underlying message null-terminated string must have a valid terminator
     /// and the buffer up to that terminator must be valid for reads.
     pub unsafe fn get_message(&self) -> Option<String> {
@@ -306,6 +306,24 @@ impl AdbcError for std::str::Utf8Error {
     fn sqlstate(&self) -> [i8; 5] {
         // A character is not in the coded character set or the conversion is not supported.
         [2, 2, 0, 2, 1]
+    }
+
+    fn status_code(&self) -> AdbcStatusCode {
+        AdbcStatusCode::InvalidArguments
+    }
+
+    fn vendor_code(&self) -> i32 {
+        -1
+    }
+}
+
+impl AdbcError for std::ffi::NulError {
+    fn message(&self) -> &str {
+        "An input string contained an interior nul"
+    }
+
+    fn sqlstate(&self) -> [i8; 5] {
+        [0; 5]
     }
 
     fn status_code(&self) -> AdbcStatusCode {
