@@ -676,8 +676,7 @@ struct ADBC_EXPORT AdbcDriver {
 
 /// \brief Allocate a new (but uninitialized) database.
 ///
-/// Callers pass in AdbcDatabase with private_data set to NULL and the
-/// private_driver possibly set.
+/// Callers pass in a zero-initialized AdbcDatabase.
 ///
 /// Drivers should allocate their internal data structure and set the private_data
 /// field to point to the newly allocated struct. This struct should be released
@@ -717,8 +716,7 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
 
 /// \brief Allocate a new (but uninitialized) connection.
 ///
-/// Callers pass in AdbcConnection with private_data set to NULL and the
-/// private_driver possibly set.
+/// Callers pass in a zero-initialized AdbcConnection.
 ///
 /// Drivers should allocate their internal data structure and set the private_data
 /// field to point to the newly allocated struct. This struct should be released
@@ -1025,11 +1023,7 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
 
 /// \brief Create a new statement for a given connection.
 ///
-/// Set options on the statement, then call AdbcStatementExecuteQuery
-/// or AdbcStatementPrepare.
-///
-/// Callers pass in AdbcStatement with private_data set to NULL and the
-/// private_driver possibly set.
+/// Callers pass in a zero-initialized AdbcStatement.
 ///
 /// Drivers should allocate their internal data structure and set the private_data
 /// field to point to the newly allocated struct. This struct should be released
@@ -1204,11 +1198,7 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
 ///   driver.
 ///
 /// Although drivers may choose any name for this function, the
-/// recommended name is "AdbcDriverInit". If you use the recommended
-/// name, then driver managers will be able to automatically find
-/// the entrypoint function. Drivers may also expose the same function
-/// under a unique symbol so that multiple drivers can be statically
-/// linked into a single binary without any conflicts.
+/// recommended name is "AdbcDriverInit".
 ///
 /// \param[in] version The ADBC revision to attempt to initialize (see
 ///   ADBC_VERSION_1_0_0).
