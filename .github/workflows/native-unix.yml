@@ -247,7 +247,8 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
-            --file ci/conda_env_cpp.txt
+            --file ci/conda_env_cpp.txt \
+            --file ci/conda_env_python.txt
       - uses: actions/setup-go@v3
         with:
           go-version: 1.18.6
@@ -308,6 +309,24 @@ jobs:
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+      - name: Build Python Flight SQL driver
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_FLIGHTSQL: "1"
+          BUILD_DRIVER_MANAGER: "1"
+        run: |
+          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test Python Flight SQL driver against Dremio
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_FLIGHTSQL: "1"
+          ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
+          ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
+          ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
+        run: |
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
       - name: Stop SQLite server
         shell: bash -l {0}
         run: |
@@ -539,11 +558,11 @@ jobs:
       - name: Build Python Driver Flight SQL
         shell: bash -l {0}
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQLGO=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQL=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test Python Driver Flight SQL
         shell: bash -l {0}
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQLGO=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+          env BUILD_ALL=0 BUILD_DRIVER_FLIGHTSQL=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Python Driver PostgreSQL
         shell: bash -l {0}
         run: |
