@@ -40,6 +40,7 @@ use crate::{
         AdbcObjectDepth, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcPartitions,
         FFI_AdbcStatement,
     },
+    info::export_info_data,
     interface::{ConnectionApi, DatabaseApi, StatementApi},
 };
 
@@ -387,8 +388,13 @@ where
 {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
 
-    let info_codes = std::slice::from_raw_parts(info_codes, info_codes_length);
-    let reader = check_err!(inner.get_info(info_codes), error);
+    let info_codes = if info_codes.is_null() {
+        None
+    } else {
+        Some(std::slice::from_raw_parts(info_codes, info_codes_length))
+    };
+    let info_iter = check_err!(inner.get_info(info_codes), error);
+    let reader = export_info_data(info_iter);
     export_reader_into_raw(reader, out);
 
     AdbcStatusCode::Ok

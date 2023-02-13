@@ -16,7 +16,9 @@
 // under the License.
 
 use std::{
+    borrow::Cow,
     cell::RefCell,
+    collections::HashSet,
     rc::Rc,
     sync::{Arc, Mutex},
 };
@@ -28,10 +30,11 @@ use arrow::{
 };
 use arrow_adbc::{
     adbc_init_func,
-    driver_manager::{AdbcDatabaseBuilder, AdbcDriver, AdbcDriverInitFunc},
+    driver_manager::{AdbcConnection, AdbcDatabaseBuilder, AdbcDriver, AdbcDriverInitFunc},
     error::{AdbcError, AdbcStatusCode},
     ffi::AdbcObjectDepth,
     implement::{AdbcConnectionImpl, AdbcDatabaseImpl, AdbcStatementImpl},
+    info::InfoData,
     interface::{
         ConnectionApi, DatabaseApi, PartitionedStatementResult, StatementApi, StatementResult,
     },
@@ -82,7 +85,7 @@ type ConnectionGetObjects = dyn Fn(
 struct PatchableDriver {
     database_set_option: Box<dyn Fn(&str, &str) -> Result<()> + Send + Sync>,
     connection_set_option: Box<dyn Fn(&str, &str) -> Result<()> + Send + Sync>,
-    connection_get_info: Box<dyn Fn(&[u32]) -> Result<Box<dyn RecordBatchReader>> + Send + Sync>,
+    connection_get_info: Box<dyn Fn(Option<&[u32]>) -> Result<Vec<(u32, InfoData)>> + Send + Sync>,
     connection_get_objects: Box<ConnectionGetObjects>,
     connection_get_table_schema:
         Box<dyn Fn(Option<&str>, Option<&str>, &str) -> Result<Schema> + Send + Sync>,
@@ -205,7 +208,7 @@ impl ConnectionApi for TestConnection {
         conn_method!(self, connection_set_option, key, value)
     }
 
-    fn get_info(&self, info_codes: &[u32]) -> Result<Box<dyn RecordBatchReader>> {
+    fn get_info(&self, info_codes: Option<&[u32]>) -> Result<Vec<(u32, InfoData)>> {
         conn_method!(self, connection_get_info, info_codes)
     }
 
@@ -363,6 +366,18 @@ macro_rules! set_driver_method {
     };
 }
 
+fn get_connection() -> (AdbcConnection, Arc<Mutex<PatchableDriver>>) {
+    let (builder, mock_driver) = get_database_builder();
+    let conn = builder
+        .init()
+        .unwrap()
+        .new_connection()
+        .unwrap()
+        .init()
+        .unwrap();
+    (conn, mock_driver)
+}
+
 #[test]
 fn test_database_set_option() {
     let (builder, mock_driver) = get_database_builder();
@@ -418,7 +433,67 @@ fn test_connection_set_option() {
 
 #[test]
 fn test_connection_get_info() {
-    todo!()
+    let (conn, mock_driver) = get_connection();
+
+    let code_cases = &[
+        None,
+        Some(vec![0u32, 100u32, 101u32]),
+        Some(vec![u32::MAX]),
+        Some(vec![]),
+    ];
+    let output_cases = &[
+        vec!["x", "y", "z", "2"],
+        vec!["x", "y", "z"],
+        vec!["2"],
+        vec![],
+    ];
+
+    for (codes, expected_output) in code_cases.iter().zip(output_cases.iter()) {
+        let expected_codes = codes.clone();
+        let output = expected_output.clone();
+        set_driver_method!(
+            mock_driver,
+            connection_get_info,
+            move |info_codes: Option<&[u32]>| {
+                if let Some(info_codes) = info_codes {
+                    assert_eq!(info_codes, expected_codes.as_ref().unwrap().as_slice());
+                }
+                let data = output
+                    .iter()
+                    .copied()
+                    .into_iter()
+                    .map(|val| InfoData::StringValue(Cow::Borrowed(val)));
+                Ok(std::iter::repeat(1u32).zip(data).collect())
+            }
+        );
+
+        let res: HashSet<String> = conn
+            .get_info(codes.as_ref().map(|codes| codes.as_slice()))
+            .unwrap()
+            .into_iter()
+            .map(|(_, info)| match info {
+                InfoData::StringValue(val) => val.into_owned(),
+                _ => unreachable!(),
+            })
+            .collect();
+
+        assert_eq!(
+            res,
+            expected_output
+                .iter()
+                .cloned()
+                .map(|x| x.to_owned())
+                .collect()
+        );
+
+        set_driver_method!(mock_driver, connection_get_info, |_: Option<&[u32]>| {
+            Err(TestError::new("hello world"))
+        });
+
+        let res = conn.get_info(None);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err().message, "hello world");
+    }
 }
 
 #[test]
@@ -428,19 +503,10 @@ fn test_connection_get_objects() {
 
 #[test]
 fn test_connection_get_table_schema() {
-    let (builder, mock_driver) = get_database_builder();
-    let conn = builder
-        .init()
-        .unwrap()
-        .new_connection()
-        .unwrap()
-        .init()
-        .unwrap();
+    let (conn, mock_driver) = get_connection();
 
-    // let catalogs = vec![None, Some("my_catalog"), Some("")];
-    let catalogs = vec![Some("my_catalog")];
-    // let db_schemas = vec![None, Some("my_schema"), Some("")];
-    let db_schemas = vec![Some("my_schema")];
+    let catalogs = vec![None, Some("my_catalog"), Some("")];
+    let db_schemas = vec![None, Some("my_schema"), Some("")];
     let table_names = vec!["my_table", ""];
 
     let test_schema = Schema::new(vec![Field::new("x", DataType::Int64, true)]);
@@ -477,14 +543,7 @@ fn test_connection_get_table_schema() {
 
 #[test]
 fn test_connection_get_table_types() {
-    let (builder, mock_driver) = get_database_builder();
-    let conn = builder
-        .init()
-        .unwrap()
-        .new_connection()
-        .unwrap()
-        .init()
-        .unwrap();
+    let (conn, mock_driver) = get_connection();
 
     let cases = vec![vec![], vec!["one"], vec!["hello", "你好"]];
 

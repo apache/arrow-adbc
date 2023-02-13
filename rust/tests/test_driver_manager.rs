@@ -18,20 +18,18 @@
 //! Test driver manager against SQLite implementations.
 
 use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
 use std::sync::Arc;
 
 use arrow::array::{
-    as_list_array, as_primitive_array, as_string_array, as_struct_array, as_union_array, Array,
-    Int64Array, StringArray,
+    as_list_array, as_string_array, as_struct_array, Array, Int64Array, StringArray,
 };
 use arrow::compute::concat_batches;
-use arrow::datatypes::{DataType, Field, Schema, UInt32Type};
+use arrow::datatypes::{DataType, Field, Schema};
 use arrow::error::ArrowError;
 use arrow::record_batch::RecordBatch;
 use arrow_adbc::driver_manager::{AdbcDatabase, AdbcDriver, AdbcStatement, Result};
 use arrow_adbc::ffi::AdbcObjectDepth;
-use arrow_adbc::info::{codes, info_schema};
+use arrow_adbc::info::{codes, InfoData};
 use arrow_adbc::interface::{ConnectionApi, StatementApi};
 use arrow_adbc::ADBC_VERSION_1_0_0;
 
@@ -70,21 +68,14 @@ fn test_connection_info() {
     assert_eq!(table_types, vec!["table", "view"]);
 
     let info = connection
-        .get_info(&[codes::DRIVER_NAME, codes::VENDOR_NAME])
+        .get_info(Some(&[codes::DRIVER_NAME, codes::VENDOR_NAME]))
         .unwrap();
-    assert_eq!(info.schema().deref(), &info_schema());
+
     let info: HashMap<u32, String> = info
-        .flat_map(|maybe_batch| {
-            let batch = maybe_batch.unwrap();
-            let id = as_primitive_array::<UInt32Type>(batch.column(0));
-            let values = as_union_array(batch.column(1));
-            let string_values = as_string_array(values.child(0));
-            let mut out = vec![];
-            for i in 0..batch.num_rows() {
-                assert_eq!(values.type_id(i), 0);
-                out.push((id.value(i), string_values.value(i).to_string()));
-            }
-            out
+        .into_iter()
+        .map(|(code, info)| match info {
+            InfoData::StringValue(val) => (code, val.into_owned()),
+            _ => unreachable!(),
         })
         .collect();
     assert_eq!(info.len(), 2);

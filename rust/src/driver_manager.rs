@@ -66,6 +66,7 @@ use crate::{
         driver_function_stubs, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver,
         FFI_AdbcPartitions, FFI_AdbcStatement,
     },
+    info::{import_info_data, InfoData},
     interface::{ConnectionApi, PartitionedStatementResult, StatementApi, StatementResult},
 };
 
@@ -541,21 +542,22 @@ impl ConnectionApi for AdbcConnection {
         Ok(out)
     }
 
-    fn get_info(
-        &self,
-        info_codes: &[u32],
-    ) -> std::result::Result<Box<dyn arrow::record_batch::RecordBatchReader>, Self::Error> {
-        // TODO: Get this to return a more usable type
+    fn get_info(&self, info_codes: Option<&[u32]>) -> Result<Vec<(u32, InfoData)>> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
+
+        let (info_codes_ptr, info_codes_len) = match &info_codes {
+            Some(info) => (info.as_ptr(), info.len()),
+            None => (null(), 0),
+        };
 
         let get_info = driver_method!(self.driver, connection_get_info);
         let status = unsafe {
             get_info(
                 self.inner.borrow_mut().deref_mut(),
-                info_codes.as_ptr(),
-                info_codes.len(),
+                info_codes_ptr,
+                info_codes_len,
                 &mut reader,
                 &mut error,
             )
@@ -564,7 +566,7 @@ impl ConnectionApi for AdbcConnection {
 
         let reader = unsafe { ArrowArrayStreamReader::from_raw(&mut reader)? };
 
-        Ok(Box::new(reader))
+        Ok(import_info_data(Box::new(reader))?)
     }
 
     fn get_objects(

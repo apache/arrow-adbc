@@ -21,7 +21,7 @@
 //! developers. They are implemented by the structs in [crate::driver_manager].
 use arrow::{datatypes::Schema, record_batch::RecordBatch, record_batch::RecordBatchReader};
 
-use crate::ffi::AdbcObjectDepth;
+use crate::{ffi::AdbcObjectDepth, info::InfoData};
 
 /// Databases hold state shared by multiple connections. This typically means
 /// configuration and caches. For in-memory databases, it provides a place to
@@ -55,6 +55,10 @@ pub trait ConnectionApi {
 
     /// Get metadata about the database/driver.
     ///
+    /// If None is passed for `info_codes`, the method will return all info.
+    /// Otherwise will return the specified info, in any order. If an unrecognized
+    /// code is passed, it will return an error.
+    ///
     /// The result is an Arrow dataset with the following schema:
     ///
     /// Field Name                  | Field Type
@@ -79,7 +83,7 @@ pub trait ConnectionApi {
     /// unrecognized codes (the row will be omitted from the result).
     ///
     /// For definitions of known ADBC codes, see <https://github.com/apache/arrow-adbc/blob/main/adbc.h>
-    fn get_info(&self, info_codes: &[u32]) -> Result<Box<dyn RecordBatchReader>, Self::Error>;
+    fn get_info(&self, info_codes: Option<&[u32]>) -> Result<Vec<(u32, InfoData)>, Self::Error>;
 
     /// Get a hierarchical view of all catalogs, database schemas, tables, and columns.
     ///

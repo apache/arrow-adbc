@@ -159,7 +159,19 @@ pub mod options {
 ///
 /// For use with [crate::interface::ConnectionApi::get_info].
 pub mod info {
-    use arrow::datatypes::{DataType, Field, Schema, UnionMode};
+    use arrow::{
+        array::{
+            as_primitive_array, as_string_array, as_union_array, Array, ArrayBuilder, ArrayRef,
+            BooleanBuilder, Int32Builder, Int64Builder, ListBuilder, MapBuilder, StringBuilder,
+            UInt32BufferBuilder, UInt32Builder, UInt8BufferBuilder, UnionArray,
+        },
+        datatypes::{DataType, Field, Schema, UInt32Type, UnionMode},
+        error::ArrowError,
+        record_batch::{RecordBatch, RecordBatchReader},
+    };
+    use std::{borrow::Cow, collections::HashMap, sync::Arc};
+
+    use crate::util::SingleBatchReader;
 
     /// Contains known info codes defined by ADBC.
     pub mod codes {
@@ -176,6 +188,7 @@ pub mod info {
         /// The driver Arrow library version (type: utf8).
         pub const DRIVER_ARROW_VERSION: u32 = 102;
     }
+
     pub fn info_schema() -> Schema {
         Schema::new(vec![
             Field::new("info_name", DataType::UInt32, false),
@@ -198,9 +211,9 @@ pub mod info {
                                 Box::new(Field::new(
                                     "entries",
                                     DataType::Struct(vec![
-                                        Field::new("key", DataType::Int32, false),
+                                        Field::new("keys", DataType::Int32, false),
                                         Field::new(
-                                            "value",
+                                            "values",
                                             DataType::List(Box::new(Field::new(
                                                 "item",
                                                 DataType::Int32,
@@ -209,7 +222,7 @@ pub mod info {
                                             true,
                                         ),
                                     ]),
-                                    true,
+                                    false,
                                 )),
                                 false,
                             ),
@@ -222,5 +235,243 @@ pub mod info {
                 true,
             ),
         ])
+    }
+
+    /// Rust representations of database/drier metadata
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum InfoData {
+        StringValue(Cow<'static, str>),
+        BoolValue(bool),
+        Int64Value(i64),
+        Int32Bitmask(i32),
+        StringList(Vec<String>),
+        Int32ToInt32ListMap(HashMap<i32, Vec<i32>>),
+    }
+
+    pub fn export_info_data(
+        info_iter: impl IntoIterator<Item = (u32, InfoData)>,
+    ) -> Box<dyn RecordBatchReader> {
+        let info_iter = info_iter.into_iter();
+
+        let mut codes = UInt32Builder::with_capacity(info_iter.size_hint().0);
+
+        // Type id tells which array the value is in
+        let mut type_id = UInt8BufferBuilder::new(info_iter.size_hint().0);
+        // Value offset tells the offset of the value in the respective array
+        let mut value_offsets = UInt32BufferBuilder::new(info_iter.size_hint().0);
+
+        // Make one builder per child of union array. Will combine after.
+        let mut string_values = StringBuilder::new();
+        let mut bool_values = BooleanBuilder::new();
+        let mut int64_values = Int64Builder::new();
+        let mut int32_bitmasks = Int32Builder::new();
+        let mut string_lists = ListBuilder::new(StringBuilder::new());
+        let mut int32_to_int32_list_maps = MapBuilder::new(
+            None,
+            Int32Builder::new(),
+            ListBuilder::new(Int32Builder::new()),
+        );
+
+        for (code, info) in info_iter {
+            codes.append_value(code);
+
+            match info {
+                InfoData::StringValue(val) => {
+                    string_values.append_value(val);
+                    type_id.append(0);
+                    let value_offset = string_values.len() - 1;
+                    value_offsets.append(
+                        value_offset
+                            .try_into()
+                            .expect("Array has more values than can be indexed by u32"),
+                    );
+                }
+                _ => {
+                    todo!("support other types in info_data")
+                }
+            };
+        }
+
+        let arrays: Vec<ArrayRef> = vec![
+            Arc::new(string_values.finish()),
+            Arc::new(bool_values.finish()),
+            Arc::new(int64_values.finish()),
+            Arc::new(int32_bitmasks.finish()),
+            Arc::new(string_lists.finish()),
+            Arc::new(int32_to_int32_list_maps.finish()),
+        ];
+        let info_schema = info_schema();
+        let union_fields = {
+            match info_schema.field(1).data_type() {
+                DataType::Union(fields, _, _) => fields,
+                _ => unreachable!(),
+            }
+        };
+        let children = union_fields
+            .iter()
+            .map(|f| f.to_owned())
+            .zip(arrays.into_iter())
+            .collect();
+        let info_value = UnionArray::try_new(
+            &[0, 1, 2, 3, 4, 5],
+            type_id.finish(),
+            Some(value_offsets.finish()),
+            children,
+        )
+        .expect("Info value array is always valid.");
+
+        // Make a record batch
+        let batch: RecordBatch = RecordBatch::try_new(
+            Arc::new(info_schema),
+            vec![Arc::new(codes.finish()), Arc::new(info_value)],
+        )
+        .expect("Info data batch is always valid.");
+
+        // Wrap record batch into a reader with std::iter::once
+        Box::new(SingleBatchReader::new(batch))
+    }
+
+    pub fn import_info_data(
+        reader: Box<dyn RecordBatchReader>,
+    ) -> Result<Vec<(u32, InfoData)>, ArrowError> {
+        let batches = reader.collect::<Result<Vec<RecordBatch>, ArrowError>>()?;
+
+        Ok(batches
+            .iter()
+            .flat_map(|batch| {
+                let codes = as_primitive_array::<UInt32Type>(batch.column(0));
+                let codes = codes.into_iter().map(|code| code.unwrap());
+
+                let info_data = as_union_array(batch.column(1));
+                let info_data = (0..info_data.len()).map(|i| -> InfoData {
+                    let type_id = info_data.type_id(i);
+                    match type_id {
+                        0 => InfoData::StringValue(Cow::Owned(
+                            as_string_array(&info_data.value(i)).value(0).to_string(),
+                        )),
+                        _ => todo!("Support other types"),
+                    }
+                });
+
+                std::iter::zip(codes, info_data)
+            })
+            .collect())
+    }
+
+    #[cfg(test)]
+    mod test {
+        use std::ops::Deref;
+
+        use arrow::{
+            array::{as_primitive_array, as_string_array, as_union_array},
+            datatypes::UInt32Type,
+        };
+
+        use super::*;
+
+        #[test]
+        fn test_export_info_data() {
+            let example_info = vec![
+                (
+                    codes::VENDOR_NAME,
+                    InfoData::StringValue(Cow::Borrowed("test vendor")),
+                ),
+                (
+                    codes::DRIVER_NAME,
+                    InfoData::StringValue(Cow::Borrowed("test driver")),
+                ),
+            ];
+
+            let info = export_info_data(example_info.clone());
+
+            assert_eq!(info.schema().deref(), &info_schema());
+            let info: HashMap<u32, String> = info
+                .flat_map(|maybe_batch| {
+                    let batch = maybe_batch.unwrap();
+                    let id = as_primitive_array::<UInt32Type>(batch.column(0));
+                    let values = as_union_array(batch.column(1));
+                    let string_values = as_string_array(values.child(0));
+                    let mut out = vec![];
+                    for i in 0..batch.num_rows() {
+                        assert_eq!(values.type_id(i), 0);
+                        out.push((id.value(i), string_values.value(i).to_string()));
+                    }
+                    out
+                })
+                .collect();
+
+            assert_eq!(
+                info.get(&codes::VENDOR_NAME),
+                Some(&"test vendor".to_string())
+            );
+            assert_eq!(
+                info.get(&codes::DRIVER_NAME),
+                Some(&"test driver".to_string())
+            );
+
+            let info = export_info_data(example_info);
+
+            let info: HashMap<u32, InfoData> =
+                import_info_data(info).unwrap().into_iter().collect();
+            dbg!(&info);
+
+            assert_eq!(
+                info.get(&codes::VENDOR_NAME),
+                Some(&InfoData::StringValue(Cow::Owned(
+                    "test vendor".to_string()
+                )))
+            );
+            assert_eq!(
+                info.get(&codes::DRIVER_NAME),
+                Some(&InfoData::StringValue(Cow::Owned(
+                    "test driver".to_string()
+                )))
+            );
+        }
+    }
+}
+
+pub(crate) mod util {
+    use std::sync::Arc;
+
+    use arrow::{
+        datatypes::Schema,
+        error::ArrowError,
+        record_batch::{RecordBatch, RecordBatchReader},
+    };
+
+    /// [RecordBatchReader] for a single record batch.
+    pub(crate) struct SingleBatchReader {
+        batch: Option<RecordBatch>,
+        schema: Arc<Schema>,
+    }
+
+    impl SingleBatchReader {
+        pub fn new(batch: RecordBatch) -> Self {
+            let schema = batch.schema();
+            Self {
+                batch: Some(batch),
+                schema,
+            }
+        }
+    }
+
+    impl Iterator for SingleBatchReader {
+        type Item = Result<RecordBatch, ArrowError>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            Ok(self.batch.take()).transpose()
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            let left = if self.batch.is_some() { 1 } else { 0 };
+            (left, Some(left))
+        }
+    }
+
+    impl RecordBatchReader for SingleBatchReader {
+        fn schema(&self) -> arrow::datatypes::SchemaRef {
+            self.schema.clone()
+        }
     }
 }
