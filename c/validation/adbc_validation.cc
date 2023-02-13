@@ -272,6 +272,25 @@ void ConnectionTest::TestMetadataGetInfo() {
                         {"string_list", NANOARROW_TYPE_LIST, NULLABLE},
                         {"int32_to_int32_list_map", NANOARROW_TYPE_MAP, NULLABLE},
                     }));
+  ASSERT_NO_FATAL_FAILURE(CompareSchema(reader.schema->children[1]->children[4],
+                                        {
+                                            {"item", NANOARROW_TYPE_STRING, NULLABLE},
+                                        }));
+  ASSERT_NO_FATAL_FAILURE(CompareSchema(reader.schema->children[1]->children[5],
+                                        {
+                                            {"entries", NANOARROW_TYPE_STRUCT, NOT_NULL},
+                                        }));
+  ASSERT_NO_FATAL_FAILURE(
+      CompareSchema(reader.schema->children[1]->children[5]->children[0],
+                    {
+                        {"key", NANOARROW_TYPE_INT32, NOT_NULL},
+                        {"value", NANOARROW_TYPE_LIST, NULLABLE},
+                    }));
+  ASSERT_NO_FATAL_FAILURE(
+      CompareSchema(reader.schema->children[1]->children[5]->children[0]->children[1],
+                    {
+                        {"item", NANOARROW_TYPE_INT32, NULLABLE},
+                    }));
 
   std::vector<uint32_t> seen;
   while (true) {
@@ -586,7 +605,8 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
-            if (std::string_view(table_name.data, table_name.n_bytes) == "bulk_ingest") {
+            if (std::string_view(table_name.data, table_name.size_bytes) ==
+                "bulk_ingest") {
               found_expected_table = true;
             }
 
@@ -659,7 +679,8 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
-            if (std::string_view(table_name.data, table_name.n_bytes) == "bulk_ingest") {
+            if (std::string_view(table_name.data, table_name.size_bytes) ==
+                "bulk_ingest") {
               found_expected_table = true;
             }
 
@@ -762,7 +783,8 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
             ASSERT_FALSE(ArrowArrayViewIsNull(table_constraints_list, tables_index))
                 << "Row " << row << " should have non-null table_constraints";
 
-            if (std::string_view(table_name.data, table_name.n_bytes) == "bulk_ingest") {
+            if (std::string_view(table_name.data, table_name.size_bytes) ==
+                "bulk_ingest") {
               found_expected_table = true;
 
               for (int64_t columns_index =
@@ -772,7 +794,7 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
                    columns_index++) {
                 ArrowStringView name = ArrowArrayViewGetStringUnsafe(
                     table_columns->children[0], columns_index);
-                column_names.push_back(std::string(name.data, name.n_bytes));
+                column_names.push_back(std::string(name.data, name.size_bytes));
                 ordinal_positions.push_back(
                     static_cast<int32_t>(ArrowArrayViewGetIntUnsafe(
                         table_columns->children[1], columns_index)));
@@ -1171,7 +1193,7 @@ void StatementTest::TestSqlPartitionedInts() {
   ASSERT_EQ(1, reader.array->length);
   ASSERT_EQ(1, reader.array->n_children);
 
-  switch (reader.fields[0].data_type) {
+  switch (reader.fields[0].type) {
     case NANOARROW_TYPE_INT32:
       ASSERT_NO_FATAL_FAILURE(
           CompareArray<int32_t>(reader.array_view->children[0], {42}));
@@ -1181,7 +1203,7 @@ void StatementTest::TestSqlPartitionedInts() {
           CompareArray<int64_t>(reader.array_view->children[0], {42}));
       break;
     default:
-      FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
+      FAIL() << "Unexpected data type: " << reader.fields[0].type;
   }
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -1235,7 +1257,7 @@ void StatementTest::TestSqlPrepareSelectNoParams() {
   ASSERT_EQ(1, reader.array->length);
   ASSERT_EQ(1, reader.array->n_children);
 
-  switch (reader.fields[0].data_type) {
+  switch (reader.fields[0].type) {
     case NANOARROW_TYPE_INT32:
       ASSERT_NO_FATAL_FAILURE(CompareArray<int32_t>(reader.array_view->children[0], {1}));
       break;
@@ -1243,7 +1265,7 @@ void StatementTest::TestSqlPrepareSelectNoParams() {
       ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[0], {1}));
       break;
     default:
-      FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
+      FAIL() << "Unexpected data type: " << reader.fields[0].type;
   }
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -1300,7 +1322,7 @@ void StatementTest::TestSqlPrepareSelectParams() {
     auto start = nrows;
     auto end = nrows + reader.array->length;
 
-    switch (reader.fields[0].data_type) {
+    switch (reader.fields[0].type) {
       case NANOARROW_TYPE_INT32:
         ASSERT_NO_FATAL_FAILURE(CompareArray<int32_t>(
             reader.array_view->children[0],
@@ -1312,7 +1334,7 @@ void StatementTest::TestSqlPrepareSelectParams() {
             {expected_int64.begin() + start, expected_int64.begin() + end}));
         break;
       default:
-        FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
+        FAIL() << "Unexpected data type: " << reader.fields[0].type;
     }
     ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(
         reader.array_view->children[1],
@@ -1559,7 +1581,7 @@ void StatementTest::TestSqlQueryInts() {
     ASSERT_EQ(1, reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    switch (reader.fields[0].data_type) {
+    switch (reader.fields[0].type) {
       case NANOARROW_TYPE_INT32:
         ASSERT_NO_FATAL_FAILURE(
             CompareArray<int32_t>(reader.array_view->children[0], {42}));
@@ -1569,7 +1591,7 @@ void StatementTest::TestSqlQueryInts() {
             CompareArray<int64_t>(reader.array_view->children[0], {42}));
         break;
       default:
-        FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
+        FAIL() << "Unexpected data type: " << reader.fields[0].type;
     }
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -1602,7 +1624,7 @@ void StatementTest::TestSqlQueryFloats() {
 
     ASSERT_FALSE(ArrowArrayViewIsNull(&reader.array_view.value, 0));
     ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], 0));
-    switch (reader.fields[0].data_type) {
+    switch (reader.fields[0].type) {
       case NANOARROW_TYPE_FLOAT:
         ASSERT_NO_FATAL_FAILURE(
             CompareArray<float>(reader.array_view->children[0], {1.0f}));
@@ -1612,7 +1634,7 @@ void StatementTest::TestSqlQueryFloats() {
             CompareArray<double>(reader.array_view->children[0], {1.0}));
         break;
       default:
-        FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
+        FAIL() << "Unexpected data type: " << reader.fields[0].type;
     }
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -1645,14 +1667,14 @@ void StatementTest::TestSqlQueryStrings() {
 
     ASSERT_FALSE(ArrowArrayViewIsNull(&reader.array_view.value, 0));
     ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], 0));
-    switch (reader.fields[0].data_type) {
+    switch (reader.fields[0].type) {
       case NANOARROW_TYPE_STRING: {
         ASSERT_NO_FATAL_FAILURE(
             CompareArray<std::string>(reader.array_view->children[0], {"SaShiSuSeSo"}));
         break;
       }
       default:
-        FAIL() << "Unexpected data type: " << reader.fields[0].data_type;
+        FAIL() << "Unexpected data type: " << reader.fields[0].type;
     }
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());

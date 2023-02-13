@@ -236,8 +236,9 @@ void CompareSchema(
   struct ArrowSchemaView view;
 
   ASSERT_THAT(ArrowSchemaViewInit(&view, schema, &na_error), IsOkErrno(&na_error));
-  ASSERT_THAT(view.data_type, ::testing::AnyOf(NANOARROW_TYPE_LIST, NANOARROW_TYPE_STRUCT,
-                                               NANOARROW_TYPE_DENSE_UNION));
+  ASSERT_THAT(view.type,
+              ::testing::AnyOf(NANOARROW_TYPE_LIST, NANOARROW_TYPE_MAP,
+                               NANOARROW_TYPE_STRUCT, NANOARROW_TYPE_DENSE_UNION));
   ASSERT_EQ(fields.size(), schema->n_children);
 
   for (int64_t i = 0; i < schema->n_children; i++) {
@@ -245,7 +246,7 @@ void CompareSchema(
     struct ArrowSchemaView field_view;
     ASSERT_THAT(ArrowSchemaViewInit(&field_view, schema->children[i], &na_error),
                 IsOkErrno(&na_error));
-    ASSERT_EQ(std::get<1>(fields[i]), field_view.data_type);
+    ASSERT_EQ(std::get<1>(fields[i]), field_view.type);
     ASSERT_EQ(std::get<2>(fields[i]),
               (schema->children[i]->flags & ARROW_FLAG_NULLABLE) != 0)
         << "Nullability mismatch";

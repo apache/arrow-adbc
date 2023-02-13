@@ -63,11 +63,11 @@ AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    if (view.data_type == NANOARROW_TYPE_UNINITIALIZED) {
+    if (view.type == NANOARROW_TYPE_UNINITIALIZED) {
       SetError(error, "Column %d has UNINITIALIZED type", i);
       return ADBC_STATUS_INTERNAL;
     }
-    binder->types[i] = view.data_type;
+    binder->types[i] = view.type;
   }
 
   return ADBC_STATUS_OK;
@@ -151,7 +151,7 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
         case NANOARROW_TYPE_LARGE_BINARY: {
           struct ArrowBufferView value =
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
-          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.n_bytes,
+          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
                                      SQLITE_STATIC);
           break;
         }
@@ -191,7 +191,7 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
         case NANOARROW_TYPE_LARGE_STRING: {
           struct ArrowBufferView value =
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
-          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.n_bytes,
+          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
                                      SQLITE_STATIC);
           break;
         }
@@ -334,7 +334,7 @@ int StatementReaderGetOneValue(struct StatementReader* reader, int col,
           // Let SQLite convert
           struct ArrowStringView value = {
               .data = (const char*)sqlite3_column_text(reader->stmt, col),
-              .n_bytes = sqlite3_column_bytes(reader->stmt, col),
+              .size_bytes = sqlite3_column_bytes(reader->stmt, col),
           };
           return ArrowArrayAppendString(out, value);
         }

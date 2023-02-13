@@ -159,7 +159,7 @@ class SqliteReaderTest : public ::testing::Test {
 TEST_F(SqliteReaderTest, IntsNulls) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(ExecSelect("(NULL), (1), (NULL), (-1)", kInferRows, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[0],
@@ -170,7 +170,7 @@ TEST_F(SqliteReaderTest, FloatsNulls) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect("(NULL), (1.0), (NULL), (-1.0), (0.0)", kInferRows, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(CompareArray<double>(
@@ -181,7 +181,7 @@ TEST_F(SqliteReaderTest, IntsFloatsNulls) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect("(NULL), (1), (NULL), (-1.0), (0)", kInferRows, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(CompareArray<double>(
@@ -192,7 +192,7 @@ TEST_F(SqliteReaderTest, IntsNullsStrsNullsInts) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(ExecSelect(
       R"((NULL), (1), (NULL), (-1), ("foo"), (NULL), (""), (24))", kInferRows, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(
@@ -205,7 +205,7 @@ TEST_F(SqliteReaderTest, IntExtremes) {
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect(R"((NULL), (9223372036854775807), (NULL), (-9223372036854775808))",
                  kInferRows, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
@@ -219,7 +219,7 @@ TEST_F(SqliteReaderTest, IntExtremesStrs) {
   ASSERT_NO_FATAL_FAILURE(ExecSelect(
       R"((NULL), (9223372036854775807), (-9223372036854775808), (""), (9223372036854775807), (-9223372036854775808))",
       kInferRows, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[0],
@@ -237,7 +237,7 @@ TEST_F(SqliteReaderTest, FloatExtremes) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect(R"((NULL), (9e999), (NULL), (-9e999))", kInferRows, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(CompareArray<double>(
@@ -253,7 +253,7 @@ TEST_F(SqliteReaderTest, IntsFloatsStrs) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect(R"((1), (1.0), (""), (9e999), (-9e999))", kInferRows, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
@@ -265,7 +265,7 @@ TEST_F(SqliteReaderTest, InferIntReadInt) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect(R"((1), (NULL), (2), (NULL))", /*infer_rows=*/2, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<int64_t>(reader.array_view->children[0], {1, std::nullopt}));
@@ -280,7 +280,7 @@ TEST_F(SqliteReaderTest, InferIntRejectFloat) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect(R"((1), (NULL), (2E0), (NULL))", /*infer_rows=*/2, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<int64_t>(reader.array_view->children[0], {1, std::nullopt}));
@@ -295,7 +295,7 @@ TEST_F(SqliteReaderTest, InferIntRejectStr) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect(R"((1), (NULL), (""), (NULL))", /*infer_rows=*/2, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<int64_t>(reader.array_view->children[0], {1, std::nullopt}));
@@ -311,7 +311,7 @@ TEST_F(SqliteReaderTest, InferFloatReadIntFloat) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect(R"((1E0), (NULL), (2E0), (3), (NULL))", /*infer_rows=*/2, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<double>(reader.array_view->children[0], {1.0, std::nullopt}));
@@ -329,7 +329,7 @@ TEST_F(SqliteReaderTest, InferFloatRejectStr) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((1E0), (NULL), (2E0), (3), (""), (NULL))",
                                      /*infer_rows=*/2, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<double>(reader.array_view->children[0], {1.0, std::nullopt}));
@@ -348,7 +348,7 @@ TEST_F(SqliteReaderTest, InferStrReadAll) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((""), (NULL), (2), (3E0), ("foo"), (NULL))",
                                      /*infer_rows=*/2, &reader));
-  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<std::string>(reader.array_view->children[0], {"", std::nullopt}));
@@ -378,7 +378,7 @@ TEST_F(SqliteReaderTest, InferOneParam) {
   ASSERT_NO_FATAL_FAILURE(Exec("SELECT ?", /*infer_rows=*/2, &reader));
 
   ASSERT_EQ(1, reader.schema->n_children);
-  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<int64_t>(reader.array_view->children[0], {std::nullopt, 2}));
@@ -411,7 +411,7 @@ TEST_F(SqliteReaderTest, InferOneParamStream) {
   ASSERT_NO_FATAL_FAILURE(Exec("SELECT ?", /*infer_rows=*/3, &reader));
 
   ASSERT_EQ(1, reader.schema->n_children);
-  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
       CompareArray<int64_t>(reader.array_view->children[0], {std::nullopt, 1, 2}));
@@ -441,7 +441,7 @@ TEST_F(SqliteReaderTest, InferTypedParams) {
   ASSERT_NO_FATAL_FAILURE(
       Exec("SELECT value FROM foo WHERE idx = ?", /*infer_rows=*/2, &reader));
   ASSERT_EQ(1, reader.schema->n_children);
-  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].data_type);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_NO_FATAL_FAILURE(
@@ -472,7 +472,7 @@ class SqliteNumericParamTest : public SqliteReaderTest,
     ASSERT_NO_FATAL_FAILURE(Exec("SELECT ?", /*infer_rows=*/2, &reader));
 
     ASSERT_EQ(1, reader.schema->n_children);
-    ASSERT_EQ(expected_type, reader.fields[0].data_type);
+    ASSERT_EQ(expected_type, reader.fields[0].type);
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NO_FATAL_FAILURE(
         CompareArray<CType>(reader.array_view->children[0], {std::nullopt, 0}));
