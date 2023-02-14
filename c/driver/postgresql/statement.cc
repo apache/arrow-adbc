@@ -191,7 +191,7 @@ struct BindStream {
         ArrowSchemaViewInit(&bind_schema_view, &bind_schema.value, /*error*/ nullptr),
         error);
 
-    if (bind_schema_view.data_type != ArrowType::NANOARROW_TYPE_STRUCT) {
+    if (bind_schema_view.type != ArrowType::NANOARROW_TYPE_STRUCT) {
       SetError(error, "Bind parameters must have type STRUCT");
       return ADBC_STATUS_INVALID_STATE;
     }
@@ -215,7 +215,7 @@ struct BindStream {
 
     for (size_t i = 0; i < bind_schema_fields.size(); i++) {
       PgType pg_type;
-      switch (bind_schema_fields[i].data_type) {
+      switch (bind_schema_fields[i].type) {
         case ArrowType::NANOARROW_TYPE_INT16:
           pg_type = PgType::kInt2;
           param_lengths[i] = 2;
@@ -235,7 +235,7 @@ struct BindStream {
         default:
           // TODO: data type to string
           SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
-                   "') has unsupported parameter type ", bind_schema_fields[i].data_type);
+                   "') has unsupported parameter type ", bind_schema_fields[i].type);
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
 
@@ -244,7 +244,7 @@ struct BindStream {
         // TODO: data type to string
         SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
                  "') has type with no corresponding PostgreSQL type ",
-                 bind_schema_fields[i].data_type);
+                 bind_schema_fields[i].type);
         return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
@@ -303,7 +303,7 @@ struct BindStream {
           } else {
             param_values[col] = param_values_buffer.data() + param_values_offsets[col];
           }
-          switch (bind_schema_fields[col].data_type) {
+          switch (bind_schema_fields[col].type) {
             case ArrowType::NANOARROW_TYPE_INT64: {
               const int64_t value = ToNetworkInt64(
                   array_view->children[col]->buffer_views[1].data.as_int64[row]);
@@ -314,7 +314,7 @@ struct BindStream {
               const ArrowBufferView view =
                   ArrowArrayViewGetBytesUnsafe(array_view->children[col], row);
               // TODO: overflow check?
-              param_lengths[col] = static_cast<int>(view.n_bytes);
+              param_lengths[col] = static_cast<int>(view.size_bytes);
               param_values[col] = const_cast<char*>(view.data.as_char);
               break;
             }
@@ -322,7 +322,7 @@ struct BindStream {
               // TODO: data type to string
               SetError(error, "Field #", col + 1, " ('", bind_schema->children[col]->name,
                        "') has unsupported type for ingestion ",
-                       bind_schema_fields[col].data_type);
+                       bind_schema_fields[col].type);
               return ADBC_STATUS_NOT_IMPLEMENTED;
           }
         }
@@ -519,7 +519,7 @@ int TupleReader::AppendNext(struct ArrowSchemaView* fields, const char* buf, int
     // TODO: set error message here
     CHECK_NA(ArrowBitmapAppend(bitmap, field_length >= 0, 1));
 
-    switch (fields[col].data_type) {
+    switch (fields[col].type) {
       case NANOARROW_TYPE_BOOL: {
         // DCHECK_EQ(field_length, 1);
         struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
@@ -612,7 +612,7 @@ int TupleReader::AppendNext(struct ArrowSchemaView* fields, const char* buf, int
       default:
         last_error_ = StringBuilder("[libpq] Column #", col + 1, " (\"",
                                     schema_.children[col]->name,
-                                    "\") has unsupported type ", fields[col].data_type);
+                                    "\") has unsupported type ", fields[col].type);
         return ENOTSUP;
     }
   }
@@ -712,7 +712,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
   for (size_t i = 0; i < source_schema_fields.size(); i++) {
     if (i > 0) create += ", ";
     create += source_schema.children[i]->name;
-    switch (source_schema_fields[i].data_type) {
+    switch (source_schema_fields[i].type) {
       case ArrowType::NANOARROW_TYPE_INT16:
         create += " SMALLINT";
         break;
@@ -728,8 +728,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       default:
         // TODO: data type to string
         SetError(error, "Field #", i + 1, " ('", source_schema.children[i]->name,
-                 "') has unsupported type for ingestion ",
-                 source_schema_fields[i].data_type);
+                 "') has unsupported type for ingestion ", source_schema_fields[i].type);
         return ADBC_STATUS_NOT_IMPLEMENTED;
     }
   }

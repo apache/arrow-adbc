@@ -333,7 +333,7 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(const uint32_t* info_codes,
         break;
       case ADBC_INFO_DRIVER_ARROW_VERSION:
         RAISE_ADBC(SqliteConnectionGetInfoAppendStringImpl(array, info_codes[i],
-                                                           NANOARROW_BUILD_ID, error));
+                                                           NANOARROW_VERSION, error));
         break;
       default:
         // Ignore
@@ -620,7 +620,7 @@ AdbcStatusCode SqliteConnectionGetColumnsImpl(
   while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
     const char* col_name = (const char*)sqlite3_column_text(stmt, 1);
     struct ArrowStringView str = {.data = col_name,
-                                  .n_bytes = sqlite3_column_bytes(stmt, 1)};
+                                  .size_bytes = sqlite3_column_bytes(stmt, 1)};
     CHECK_NA(INTERNAL, ArrowArrayAppendString(column_name_col, str), error);
 
     const int32_t col_cid = sqlite3_column_int(stmt, 0);
@@ -632,7 +632,7 @@ AdbcStatusCode SqliteConnectionGetColumnsImpl(
     const char* col_type = (const char*)sqlite3_column_text(stmt, 2);
     if (col_type) {
       str.data = col_type;
-      str.n_bytes = sqlite3_column_bytes(stmt, 2);
+      str.size_bytes = sqlite3_column_bytes(stmt, 2);
       CHECK_NA(INTERNAL, ArrowArrayAppendString(xdbc_type_name_col, str), error);
     } else {
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_type_name_col, 1), error);
@@ -654,7 +654,7 @@ AdbcStatusCode SqliteConnectionGetColumnsImpl(
     const char* col_def = (const char*)sqlite3_column_text(stmt, 4);
     if (col_def) {
       str.data = col_def;
-      str.n_bytes = sqlite3_column_bytes(stmt, 4);
+      str.size_bytes = sqlite3_column_bytes(stmt, 4);
       CHECK_NA(INTERNAL, ArrowArrayAppendString(xdbc_column_def_col, str), error);
     } else {
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(xdbc_column_def_col, 1), error);
@@ -666,10 +666,10 @@ AdbcStatusCode SqliteConnectionGetColumnsImpl(
 
     if (col_notnull == 0) {
       str.data = "YES";
-      str.n_bytes = 3;
+      str.size_bytes = 3;
     } else {
       str.data = "NO";
-      str.n_bytes = 2;
+      str.size_bytes = 2;
     }
     CHECK_NA(INTERNAL, ArrowArrayAppendString(xdbc_is_nullable_col, str), error);
 
@@ -727,7 +727,7 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
         ArrowArrayAppendString(
             constraint_column_names_items,
             (struct ArrowStringView){.data = (const char*)sqlite3_column_text(pk_stmt, 0),
-                                     .n_bytes = sqlite3_column_bytes(pk_stmt, 0)}),
+                                     .size_bytes = sqlite3_column_bytes(pk_stmt, 0)}),
         error);
   }
   if (has_primary_key) {
@@ -767,8 +767,8 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
       CHECK_NA(INTERNAL,
                ArrowArrayAppendString(
                    constraint_column_names_items,
-                   (struct ArrowStringView){.data = from_col,
-                                            .n_bytes = sqlite3_column_bytes(pk_stmt, 3)}),
+                   (struct ArrowStringView){
+                       .data = from_col, .size_bytes = sqlite3_column_bytes(pk_stmt, 3)}),
                error);
       CHECK_NA(INTERNAL, ArrowArrayAppendString(fk_catalog_col, ArrowCharView("main")),
                error);
@@ -776,14 +776,14 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
       CHECK_NA(INTERNAL,
                ArrowArrayAppendString(
                    fk_table_col,
-                   (struct ArrowStringView){.data = to_table,
-                                            .n_bytes = sqlite3_column_bytes(pk_stmt, 2)}),
+                   (struct ArrowStringView){
+                       .data = to_table, .size_bytes = sqlite3_column_bytes(pk_stmt, 2)}),
                error);
       CHECK_NA(INTERNAL,
                ArrowArrayAppendString(
                    fk_column_name_col,
-                   (struct ArrowStringView){.data = to_col,
-                                            .n_bytes = sqlite3_column_bytes(pk_stmt, 4)}),
+                   (struct ArrowStringView){
+                       .data = to_col, .size_bytes = sqlite3_column_bytes(pk_stmt, 4)}),
                error);
     }
   }
@@ -825,12 +825,12 @@ AdbcStatusCode SqliteConnectionGetTablesInner(
     }
 
     struct ArrowStringView str = {.data = cur_table_type,
-                                  .n_bytes = sqlite3_column_bytes(tables_stmt, 1)};
+                                  .size_bytes = sqlite3_column_bytes(tables_stmt, 1)};
     CHECK_NA(INTERNAL, ArrowArrayAppendString(table_type_col, str), error);
 
     const char* cur_table = (const char*)sqlite3_column_text(tables_stmt, 0);
     str.data = cur_table;
-    str.n_bytes = sqlite3_column_bytes(tables_stmt, 0);
+    str.size_bytes = sqlite3_column_bytes(tables_stmt, 0);
     CHECK_NA(INTERNAL, ArrowArrayAppendString(table_name_col, str), error);
 
     if (columns_stmt == NULL) {

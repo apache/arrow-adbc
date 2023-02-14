@@ -228,7 +228,7 @@ TEST_P(PostgresTypeTest, SelectValue) {
         } else if constexpr (std::is_same_v<T, std::string>) {
           ArrowStringView view =
               ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
-          ASSERT_EQ(arg.size(), view.n_bytes);
+          ASSERT_EQ(arg.size(), view.size_bytes);
           ASSERT_EQ(0, std::strncmp(arg.c_str(), view.data, arg.size()));
         } else {
           FAIL() << "Unimplemented case";

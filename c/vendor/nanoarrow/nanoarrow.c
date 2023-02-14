@@ -24,8 +24,6 @@
 
 #include "nanoarrow.h"
 
-const char* ArrowNanoarrowBuildId(void) { return NANOARROW_BUILD_ID; }
-
 const char* ArrowNanoarrowVersion() { return NANOARROW_VERSION; }
 
 int ArrowNanoarrowVersionInt() { return NANOARROW_VERSION_INT; }
@@ -267,8 +265,8 @@ static void ArrowSchemaRelease(struct ArrowSchema* schema) {
   schema->release = NULL;
 }
 
-static const char* ArrowSchemaFormatTemplate(enum ArrowType data_type) {
-  switch (data_type) {
+static const char* ArrowSchemaFormatTemplate(enum ArrowType type) {
+  switch (type) {
     case NANOARROW_TYPE_UNINITIALIZED:
       return NULL;
     case NANOARROW_TYPE_NA:
@@ -335,8 +333,8 @@ static const char* ArrowSchemaFormatTemplate(enum ArrowType data_type) {
 }
 
 static int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
-                                           enum ArrowType data_type) {
-  switch (data_type) {
+                                           enum ArrowType type) {
+  switch (type) {
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
@@ -349,11 +347,13 @@ static int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_STRUCT));
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "entries"));
+      schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema->children[0], 2));
       ArrowSchemaInit(schema->children[0]->children[0]);
       ArrowSchemaInit(schema->children[0]->children[1]);
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaSetName(schema->children[0]->children[0], "key"));
+      schema->children[0]->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaSetName(schema->children[0]->children[1], "value"));
       break;
@@ -376,22 +376,22 @@ void ArrowSchemaInit(struct ArrowSchema* schema) {
   schema->release = &ArrowSchemaRelease;
 }
 
-ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType data_type) {
+ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType type) {
   // We don't allocate the dictionary because it has to be nullptr
   // for non-dictionary-encoded arrays.
 
-  // Set the format to a valid format string for data_type
-  const char* template_format = ArrowSchemaFormatTemplate(data_type);
+  // Set the format to a valid format string for type
+  const char* template_format = ArrowSchemaFormatTemplate(type);
 
-  // If data_type isn't recognized and not explicitly unset
-  if (template_format == NULL && data_type != NANOARROW_TYPE_UNINITIALIZED) {
+  // If type isn't recognized and not explicitly unset
+  if (template_format == NULL && type != NANOARROW_TYPE_UNINITIALIZED) {
     return EINVAL;
   }
 
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, template_format));
 
   // For types with an umabiguous child structure, allocate children
-  return ArrowSchemaInitChildrenIfNeeded(schema, data_type);
+  return ArrowSchemaInitChildrenIfNeeded(schema, type);
 }
 
 ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchema* schema, int64_t n_children) {
@@ -404,11 +404,10 @@ ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchema* schema, int64_t n_ch
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema,
-                                       enum ArrowType data_type) {
+ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema, enum ArrowType type) {
   ArrowSchemaInit(schema);
 
-  int result = ArrowSchemaSetType(schema, data_type);
+  int result = ArrowSchemaSetType(schema, type);
   if (result != NANOARROW_OK) {
     schema->release(schema);
     return result;
@@ -418,14 +417,14 @@ ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema,
 }
 
 ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
-                                           enum ArrowType data_type, int32_t fixed_size) {
+                                           enum ArrowType type, int32_t fixed_size) {
   if (fixed_size <= 0) {
     return EINVAL;
   }
 
   char buffer[64];
   int n_chars;
-  switch (data_type) {
+  switch (type) {
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       n_chars = snprintf(buffer, sizeof(buffer), "w:%d", (int)fixed_size);
       break;
@@ -439,15 +438,14 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
   buffer[n_chars] = '\0';
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, buffer));
 
-  if (data_type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
-    NANOARROW_RETURN_NOT_OK(ArrowSchemaInitChildrenIfNeeded(schema, data_type));
+  if (type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaInitChildrenIfNeeded(schema, type));
   }
 
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
-                                         enum ArrowType data_type,
+ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowType type,
                                          int32_t decimal_precision,
                                          int32_t decimal_scale) {
   if (decimal_precision <= 0) {
@@ -456,7 +454,7 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
 
   char buffer[64];
   int n_chars;
-  switch (data_type) {
+  switch (type) {
     case NANOARROW_TYPE_DECIMAL128:
       n_chars =
           snprintf(buffer, sizeof(buffer), "d:%d,%d", decimal_precision, decimal_scale);
@@ -488,8 +486,7 @@ static const char* ArrowTimeUnitFormatString(enum ArrowTimeUnit time_unit) {
   }
 }
 
-ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
-                                          enum ArrowType data_type,
+ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum ArrowType type,
                                           enum ArrowTimeUnit time_unit,
                                           const char* timezone) {
   const char* time_unit_str = ArrowTimeUnitFormatString(time_unit);
@@ -499,7 +496,7 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
 
   char buffer[128];
   int n_chars;
-  switch (data_type) {
+  switch (type) {
     case NANOARROW_TYPE_TIME32:
     case NANOARROW_TYPE_TIME64:
       if (timezone != NULL) {
@@ -532,8 +529,8 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
   return ArrowSchemaSetFormat(schema, buffer);
 }
 
-ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
-                                       enum ArrowType data_type, int64_t n_children) {
+ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowType type,
+                                       int64_t n_children) {
   if (n_children < 0 || n_children > 127) {
     return EINVAL;
   }
@@ -545,7 +542,7 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
   int n_chars;
   char* format_cursor = format_out;
 
-  switch (data_type) {
+  switch (type) {
     case NANOARROW_TYPE_SPARSE_UNION:
       n_chars = snprintf(format_cursor, format_out_size, "+us:");
       format_cursor += n_chars;
@@ -744,9 +741,9 @@ ArrowErrorCode ArrowSchemaDeepCopy(struct ArrowSchema* schema,
 }
 
 static void ArrowSchemaViewSetPrimitive(struct ArrowSchemaView* schema_view,
-                                        enum ArrowType data_type) {
-  schema_view->data_type = data_type;
-  schema_view->storage_data_type = data_type;
+                                        enum ArrowType type) {
+  schema_view->type = type;
+  schema_view->storage_type = type;
 }
 
 static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
@@ -761,8 +758,8 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
 
   switch (format[0]) {
     case 'n':
-      schema_view->data_type = NANOARROW_TYPE_NA;
-      schema_view->storage_data_type = NANOARROW_TYPE_NA;
+      schema_view->type = NANOARROW_TYPE_NA;
+      schema_view->storage_type = NANOARROW_TYPE_NA;
       *format_end_out = format + 1;
       return NANOARROW_OK;
     case 'b':
@@ -862,8 +859,8 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
 
     // validity + data
     case 'w':
-      schema_view->data_type = NANOARROW_TYPE_FIXED_SIZE_BINARY;
-      schema_view->storage_data_type = NANOARROW_TYPE_FIXED_SIZE_BINARY;
+      schema_view->type = NANOARROW_TYPE_FIXED_SIZE_BINARY;
+      schema_view->storage_type = NANOARROW_TYPE_FIXED_SIZE_BINARY;
       if (format[1] != ':' || format[2] == '\0') {
         ArrowErrorSet(error, "Expected ':<width>' following 'w'");
         return EINVAL;
@@ -874,25 +871,25 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
 
     // validity + offset + data
     case 'z':
-      schema_view->data_type = NANOARROW_TYPE_BINARY;
-      schema_view->storage_data_type = NANOARROW_TYPE_BINARY;
+      schema_view->type = NANOARROW_TYPE_BINARY;
+      schema_view->storage_type = NANOARROW_TYPE_BINARY;
       *format_end_out = format + 1;
       return NANOARROW_OK;
     case 'u':
-      schema_view->data_type = NANOARROW_TYPE_STRING;
-      schema_view->storage_data_type = NANOARROW_TYPE_STRING;
+      schema_view->type = NANOARROW_TYPE_STRING;
+      schema_view->storage_type = NANOARROW_TYPE_STRING;
       *format_end_out = format + 1;
       return NANOARROW_OK;
 
     // validity + large_offset + data
     case 'Z':
-      schema_view->data_type = NANOARROW_TYPE_LARGE_BINARY;
-      schema_view->storage_data_type = NANOARROW_TYPE_LARGE_BINARY;
+      schema_view->type = NANOARROW_TYPE_LARGE_BINARY;
+      schema_view->storage_type = NANOARROW_TYPE_LARGE_BINARY;
       *format_end_out = format + 1;
       return NANOARROW_OK;
     case 'U':
-      schema_view->data_type = NANOARROW_TYPE_LARGE_STRING;
-      schema_view->storage_data_type = NANOARROW_TYPE_LARGE_STRING;
+      schema_view->type = NANOARROW_TYPE_LARGE_STRING;
+      schema_view->storage_type = NANOARROW_TYPE_LARGE_STRING;
       *format_end_out = format + 1;
       return NANOARROW_OK;
 
@@ -901,15 +898,15 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
       switch (format[1]) {
         // list has validity + offset or offset
         case 'l':
-          schema_view->storage_data_type = NANOARROW_TYPE_LIST;
-          schema_view->data_type = NANOARROW_TYPE_LIST;
+          schema_view->storage_type = NANOARROW_TYPE_LIST;
+          schema_view->type = NANOARROW_TYPE_LIST;
           *format_end_out = format + 2;
           return NANOARROW_OK;
 
         // large list has validity + large_offset or large_offset
         case 'L':
-          schema_view->storage_data_type = NANOARROW_TYPE_LARGE_LIST;
-          schema_view->data_type = NANOARROW_TYPE_LARGE_LIST;
+          schema_view->storage_type = NANOARROW_TYPE_LARGE_LIST;
+          schema_view->type = NANOARROW_TYPE_LARGE_LIST;
           *format_end_out = format + 2;
           return NANOARROW_OK;
 
@@ -920,19 +917,19 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
             return EINVAL;
           }
 
-          schema_view->storage_data_type = NANOARROW_TYPE_FIXED_SIZE_LIST;
-          schema_view->data_type = NANOARROW_TYPE_FIXED_SIZE_LIST;
+          schema_view->storage_type = NANOARROW_TYPE_FIXED_SIZE_LIST;
+          schema_view->type = NANOARROW_TYPE_FIXED_SIZE_LIST;
           schema_view->fixed_size =
               (int32_t)strtol(format + 3, (char**)format_end_out, 10);
           return NANOARROW_OK;
         case 's':
-          schema_view->storage_data_type = NANOARROW_TYPE_STRUCT;
-          schema_view->data_type = NANOARROW_TYPE_STRUCT;
+          schema_view->storage_type = NANOARROW_TYPE_STRUCT;
+          schema_view->type = NANOARROW_TYPE_STRUCT;
           *format_end_out = format + 2;
           return NANOARROW_OK;
         case 'm':
-          schema_view->storage_data_type = NANOARROW_TYPE_MAP;
-          schema_view->data_type = NANOARROW_TYPE_MAP;
+          schema_view->storage_type = NANOARROW_TYPE_MAP;
+          schema_view->type = NANOARROW_TYPE_MAP;
           *format_end_out = format + 2;
           return NANOARROW_OK;
 
@@ -940,12 +937,12 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
         case 'u':
           switch (format[2]) {
             case 'd':
-              schema_view->storage_data_type = NANOARROW_TYPE_DENSE_UNION;
-              schema_view->data_type = NANOARROW_TYPE_DENSE_UNION;
+              schema_view->storage_type = NANOARROW_TYPE_DENSE_UNION;
+              schema_view->type = NANOARROW_TYPE_DENSE_UNION;
               break;
             case 's':
-              schema_view->storage_data_type = NANOARROW_TYPE_SPARSE_UNION;
-              schema_view->data_type = NANOARROW_TYPE_SPARSE_UNION;
+              schema_view->storage_type = NANOARROW_TYPE_SPARSE_UNION;
+              schema_view->type = NANOARROW_TYPE_SPARSE_UNION;
               break;
             default:
               ArrowErrorSet(error,
@@ -991,12 +988,12 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           switch (format[2]) {
             case 'D':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
-              schema_view->data_type = NANOARROW_TYPE_DATE32;
+              schema_view->type = NANOARROW_TYPE_DATE32;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             case 'm':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
-              schema_view->data_type = NANOARROW_TYPE_DATE64;
+              schema_view->type = NANOARROW_TYPE_DATE64;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             default:
@@ -1010,25 +1007,25 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           switch (format[2]) {
             case 's':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
-              schema_view->data_type = NANOARROW_TYPE_TIME32;
+              schema_view->type = NANOARROW_TYPE_TIME32;
               schema_view->time_unit = NANOARROW_TIME_UNIT_SECOND;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             case 'm':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
-              schema_view->data_type = NANOARROW_TYPE_TIME32;
+              schema_view->type = NANOARROW_TYPE_TIME32;
               schema_view->time_unit = NANOARROW_TIME_UNIT_MILLI;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             case 'u':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
-              schema_view->data_type = NANOARROW_TYPE_TIME64;
+              schema_view->type = NANOARROW_TYPE_TIME64;
               schema_view->time_unit = NANOARROW_TIME_UNIT_MICRO;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             case 'n':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
-              schema_view->data_type = NANOARROW_TYPE_TIME64;
+              schema_view->type = NANOARROW_TYPE_TIME64;
               schema_view->time_unit = NANOARROW_TIME_UNIT_NANO;
               *format_end_out = format + 3;
               return NANOARROW_OK;
@@ -1044,22 +1041,22 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           switch (format[2]) {
             case 's':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
-              schema_view->data_type = NANOARROW_TYPE_TIMESTAMP;
+              schema_view->type = NANOARROW_TYPE_TIMESTAMP;
               schema_view->time_unit = NANOARROW_TIME_UNIT_SECOND;
               break;
             case 'm':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
-              schema_view->data_type = NANOARROW_TYPE_TIMESTAMP;
+              schema_view->type = NANOARROW_TYPE_TIMESTAMP;
               schema_view->time_unit = NANOARROW_TIME_UNIT_MILLI;
               break;
             case 'u':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
-              schema_view->data_type = NANOARROW_TYPE_TIMESTAMP;
+              schema_view->type = NANOARROW_TYPE_TIMESTAMP;
               schema_view->time_unit = NANOARROW_TIME_UNIT_MICRO;
               break;
             case 'n':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
-              schema_view->data_type = NANOARROW_TYPE_TIMESTAMP;
+              schema_view->type = NANOARROW_TYPE_TIMESTAMP;
               schema_view->time_unit = NANOARROW_TIME_UNIT_NANO;
               break;
             default:
@@ -1075,8 +1072,7 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
             return EINVAL;
           }
 
-          schema_view->timezone.data = format + 4;
-          schema_view->timezone.n_bytes = strlen(format + 4);
+          schema_view->timezone = format + 4;
           *format_end_out = format + strlen(format);
           return NANOARROW_OK;
 
@@ -1085,25 +1081,25 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           switch (format[2]) {
             case 's':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
-              schema_view->data_type = NANOARROW_TYPE_DURATION;
+              schema_view->type = NANOARROW_TYPE_DURATION;
               schema_view->time_unit = NANOARROW_TIME_UNIT_SECOND;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             case 'm':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
-              schema_view->data_type = NANOARROW_TYPE_DURATION;
+              schema_view->type = NANOARROW_TYPE_DURATION;
               schema_view->time_unit = NANOARROW_TIME_UNIT_MILLI;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             case 'u':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
-              schema_view->data_type = NANOARROW_TYPE_DURATION;
+              schema_view->type = NANOARROW_TYPE_DURATION;
               schema_view->time_unit = NANOARROW_TIME_UNIT_MICRO;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             case 'n':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
-              schema_view->data_type = NANOARROW_TYPE_DURATION;
+              schema_view->type = NANOARROW_TYPE_DURATION;
               schema_view->time_unit = NANOARROW_TIME_UNIT_NANO;
               *format_end_out = format + 3;
               return NANOARROW_OK;
@@ -1199,13 +1195,24 @@ static ArrowErrorCode ArrowSchemaViewValidateMap(struct ArrowSchemaView* schema_
     return EINVAL;
   }
 
+  if (schema_view->schema->children[0]->flags & ARROW_FLAG_NULLABLE) {
+    ArrowErrorSet(error,
+                  "Expected child of map type to be non-nullable but was nullable");
+    return EINVAL;
+  }
+
+  if (schema_view->schema->children[0]->children[0]->flags & ARROW_FLAG_NULLABLE) {
+    ArrowErrorSet(error, "Expected key of map type to be non-nullable but was nullable");
+    return EINVAL;
+  }
+
   return NANOARROW_OK;
 }
 
 static ArrowErrorCode ArrowSchemaViewValidateDictionary(
     struct ArrowSchemaView* schema_view, struct ArrowError* error) {
   // check for valid index type
-  switch (schema_view->storage_data_type) {
+  switch (schema_view->storage_type) {
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_UINT16:
@@ -1229,9 +1236,9 @@ static ArrowErrorCode ArrowSchemaViewValidateDictionary(
 }
 
 static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_view,
-                                              enum ArrowType data_type,
+                                              enum ArrowType type,
                                               struct ArrowError* error) {
-  switch (data_type) {
+  switch (type) {
     case NANOARROW_TYPE_NA:
     case NANOARROW_TYPE_BOOL:
     case NANOARROW_TYPE_UINT8:
@@ -1290,7 +1297,7 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
 
     default:
       ArrowErrorSet(error, "Expected a valid enum ArrowType value but found %d",
-                    (int)schema_view->data_type);
+                    (int)schema_view->type);
       return EINVAL;
   }
 
@@ -1335,7 +1342,7 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
       memcpy(child_error, ArrowErrorMessage(error), 1024);
       ArrowErrorSet(error, "Error parsing schema->format: %s", child_error);
     }
-    
+
     return result;
   }
 
@@ -1346,25 +1353,25 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
   }
 
   if (schema->dictionary != NULL) {
-    schema_view->data_type = NANOARROW_TYPE_DICTIONARY;
+    schema_view->type = NANOARROW_TYPE_DICTIONARY;
   }
 
-  result = ArrowSchemaViewValidate(schema_view, schema_view->storage_data_type, error);
+  result = ArrowSchemaViewValidate(schema_view, schema_view->storage_type, error);
   if (result != NANOARROW_OK) {
     return result;
   }
 
-  if (schema_view->storage_data_type != schema_view->data_type) {
-    result = ArrowSchemaViewValidate(schema_view, schema_view->data_type, error);
+  if (schema_view->storage_type != schema_view->type) {
+    result = ArrowSchemaViewValidate(schema_view, schema_view->type, error);
     if (result != NANOARROW_OK) {
       return result;
     }
   }
 
-  ArrowLayoutInit(&schema_view->layout, schema_view->storage_data_type);
-  if (schema_view->storage_data_type == NANOARROW_TYPE_FIXED_SIZE_BINARY) {
+  ArrowLayoutInit(&schema_view->layout, schema_view->storage_type);
+  if (schema_view->storage_type == NANOARROW_TYPE_FIXED_SIZE_BINARY) {
     schema_view->layout.element_size_bits[1] = schema_view->fixed_size * 8;
-  } else if (schema_view->storage_data_type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
+  } else if (schema_view->storage_type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
     schema_view->layout.child_size_elements = schema_view->fixed_size;
   }
 
@@ -1380,17 +1387,16 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
 
 static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_view,
                                                char* out, int64_t n) {
-  const char* type_string = ArrowTypeString(schema_view->data_type);
-  switch (schema_view->data_type) {
+  const char* type_string = ArrowTypeString(schema_view->type);
+  switch (schema_view->type) {
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:
       return snprintf(out, n, "%s(%d, %d)", type_string,
                       (int)schema_view->decimal_precision,
                       (int)schema_view->decimal_scale);
     case NANOARROW_TYPE_TIMESTAMP:
-      return snprintf(out, n, "%s('%s', '%.*s')", type_string,
-                      ArrowTimeUnitString(schema_view->time_unit),
-                      (int)schema_view->timezone.n_bytes, schema_view->timezone.data);
+      return snprintf(out, n, "%s('%s', '%s')", type_string,
+                      ArrowTimeUnitString(schema_view->time_unit), schema_view->timezone);
     case NANOARROW_TYPE_TIME32:
     case NANOARROW_TYPE_TIME64:
     case NANOARROW_TYPE_DURATION:
@@ -1426,23 +1432,24 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
 
   // Extension type and dictionary should include both the top-level type
   // and the storage type.
-  int is_extension = schema_view.extension_name.n_bytes > 0;
+  int is_extension = schema_view.extension_name.size_bytes > 0;
   int is_dictionary = schema->dictionary != NULL;
   int64_t n_chars = 0;
   int64_t n_chars_last = 0;
 
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
-    n_chars_last = snprintf(
-        out + n_chars, n, "%.*s{dictionary(%s)<", (int)schema_view.extension_name.n_bytes,
-        schema_view.extension_name.data, ArrowTypeString(schema_view.storage_data_type));
+    n_chars_last = snprintf(out + n_chars, n, "%.*s{dictionary(%s)<",
+                            (int)schema_view.extension_name.size_bytes,
+                            schema_view.extension_name.data,
+                            ArrowTypeString(schema_view.storage_type));
   } else if (is_extension) {
     n_chars_last =
-        snprintf(out + n_chars, n, "%.*s{", (int)schema_view.extension_name.n_bytes,
+        snprintf(out + n_chars, n, "%.*s{", (int)schema_view.extension_name.size_bytes,
                  schema_view.extension_name.data);
   } else if (is_dictionary) {
     n_chars_last = snprintf(out + n_chars, n, "dictionary(%s)<",
-                            ArrowTypeString(schema_view.storage_data_type));
+                            ArrowTypeString(schema_view.storage_type));
   }
 
   n_chars += n_chars_last;
@@ -1550,7 +1557,7 @@ ArrowErrorCode ArrowMetadataReaderRead(struct ArrowMetadataReader* reader,
   pos += sizeof(int32_t);
 
   key_out->data = reader->metadata + reader->offset + pos;
-  key_out->n_bytes = key_size;
+  key_out->size_bytes = key_size;
   pos += key_size;
 
   int32_t value_size;
@@ -1558,7 +1565,7 @@ ArrowErrorCode ArrowMetadataReaderRead(struct ArrowMetadataReader* reader,
   pos += sizeof(int32_t);
 
   value_out->data = reader->metadata + reader->offset + pos;
-  value_out->n_bytes = value_size;
+  value_out->size_bytes = value_size;
   pos += value_size;
 
   reader->offset += pos;
@@ -1578,7 +1585,7 @@ int64_t ArrowMetadataSizeOf(const char* metadata) {
 
   int64_t size = sizeof(int32_t);
   while (ArrowMetadataReaderRead(&reader, &key, &value) == NANOARROW_OK) {
-    size += sizeof(int32_t) + key.n_bytes + sizeof(int32_t) + value.n_bytes;
+    size += sizeof(int32_t) + key.size_bytes + sizeof(int32_t) + value.size_bytes;
   }
 
   return size;
@@ -1594,11 +1601,11 @@ static ArrowErrorCode ArrowMetadataGetValueInternal(const char* metadata,
 
   while (ArrowMetadataReaderRead(&reader, &existing_key, &existing_value) ==
          NANOARROW_OK) {
-    int key_equal = key->n_bytes == existing_key.n_bytes &&
-                    strncmp(key->data, existing_key.data, existing_key.n_bytes) == 0;
+    int key_equal = key->size_bytes == existing_key.size_bytes &&
+                    strncmp(key->data, existing_key.data, existing_key.size_bytes) == 0;
     if (key_equal) {
       value_out->data = existing_value.data;
-      value_out->n_bytes = existing_value.n_bytes;
+      value_out->size_bytes = existing_value.size_bytes;
       break;
     }
   }
@@ -1645,8 +1652,8 @@ static ArrowErrorCode ArrowMetadataBuilderAppendInternal(struct ArrowBuffer* buf
   int32_t n_keys;
   memcpy(&n_keys, buffer->data, sizeof(int32_t));
 
-  int32_t key_size = (int32_t)key->n_bytes;
-  int32_t value_size = (int32_t)value->n_bytes;
+  int32_t key_size = (int32_t)key->size_bytes;
+  int32_t value_size = (int32_t)value->size_bytes;
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(
       buffer, sizeof(int32_t) + key_size + sizeof(int32_t) + value_size));
 
@@ -1694,9 +1701,9 @@ static ArrowErrorCode ArrowMetadataBuilderSetInternal(struct ArrowBuffer* buffer
       return result;
     }
 
-    if (key->n_bytes == existing_key.n_bytes &&
+    if (key->size_bytes == existing_key.size_bytes &&
         strncmp((const char*)key->data, (const char*)existing_key.data,
-                existing_key.n_bytes) == 0) {
+                existing_key.size_bytes) == 0) {
       result = ArrowMetadataBuilderAppendInternal(&new_buffer, key, value);
       value = NULL;
     } else {
@@ -2060,7 +2067,7 @@ static ArrowErrorCode ArrowArrayReserveInternal(struct ArrowArray* array,
     }
 
     int64_t additional_size_bytes =
-        array_view->buffer_views[i].n_bytes - ArrowArrayBuffer(array, i)->size_bytes;
+        array_view->buffer_views[i].size_bytes - ArrowArrayBuffer(array, i)->size_bytes;
 
     if (additional_size_bytes > 0) {
       NANOARROW_RETURN_NOT_OK(
@@ -2147,7 +2154,7 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
       continue;
     }
 
-    int64_t expected_size = array_view->buffer_views[i].n_bytes;
+    int64_t expected_size = array_view->buffer_views[i].size_bytes;
     int64_t actual_size = ArrowArrayBuffer(array, i)->size_bytes;
 
     if (actual_size < expected_size) {
@@ -2248,7 +2255,7 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
     return result;
   }
 
-  ArrowArrayViewInitFromType(array_view, schema_view.storage_data_type);
+  ArrowArrayViewInitFromType(array_view, schema_view.storage_type);
   array_view->layout = schema_view.layout;
 
   result = ArrowArrayViewAllocateChildren(array_view, schema->n_children);
@@ -2311,25 +2318,25 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
 
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_VALIDITY:
-        array_view->buffer_views[i].n_bytes = _ArrowBytesForBits(length);
+        array_view->buffer_views[i].size_bytes = _ArrowBytesForBits(length);
         continue;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         // Probably don't want/need to rely on the producer to have allocated an
         // offsets buffer of length 1 for a zero-size array
-        array_view->buffer_views[i].n_bytes =
+        array_view->buffer_views[i].size_bytes =
             (length != 0) * element_size_bytes * (length + 1);
         continue;
       case NANOARROW_BUFFER_TYPE_DATA:
-        array_view->buffer_views[i].n_bytes =
+        array_view->buffer_views[i].size_bytes =
             _ArrowRoundUpToMultipleOf8(array_view->layout.element_size_bits[i] * length) /
             8;
         continue;
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
-        array_view->buffer_views[i].n_bytes = element_size_bytes * length;
+        array_view->buffer_views[i].size_bytes = element_size_bytes * length;
         continue;
       case NANOARROW_BUFFER_TYPE_NONE:
-        array_view->buffer_views[i].n_bytes = 0;
+        array_view->buffer_views[i].size_bytes = 0;
         continue;
     }
   }
@@ -2368,7 +2375,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
     // If the null_count is 0, the validity buffer can be NULL
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
         array->null_count == 0 && array->buffers[i] == NULL) {
-      array_view->buffer_views[i].n_bytes = 0;
+      array_view->buffer_views[i].size_bytes = 0;
     }
 
     array_view->buffer_views[i].data.data = array->buffers[i];
@@ -2389,18 +2396,18 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
-      if (array_view->buffer_views[1].n_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int32[array->offset + array->length];
-        array_view->buffer_views[2].n_bytes = last_offset;
+        array_view->buffer_views[2].size_bytes = last_offset;
       }
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      if (array_view->buffer_views[1].n_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int64[array->offset + array->length];
-        array_view->buffer_views[2].n_bytes = last_offset;
+        array_view->buffer_views[2].size_bytes = last_offset;
       }
       break;
     case NANOARROW_TYPE_STRUCT:
@@ -2426,7 +2433,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         return EINVAL;
       }
 
-      if (array_view->buffer_views[1].n_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int32[array->offset + array->length];
         if (array->children[0]->length < last_offset) {
@@ -2448,7 +2455,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         return EINVAL;
       }
 
-      if (array_view->buffer_views[1].n_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int64[array->offset + array->length];
         if (array->children[0]->length < last_offset) {

@@ -235,7 +235,7 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
       } else if constexpr (std::is_same<T, std::string>::value) {
         struct ArrowStringView view;
         view.data = v->c_str();
-        view.n_bytes = v->size();
+        view.size_bytes = v->size();
         if (int errno_res = ArrowArrayAppendString(array, view); errno_res != 0) {
           return errno_res;
         }
@@ -327,7 +327,7 @@ void CompareArray(struct ArrowArrayView* array,
         ASSERT_EQ(*v, array->buffer_views[1].data.as_int64[i]);
       } else if constexpr (std::is_same<T, std::string>::value) {
         struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
-        std::string str(view.data, view.n_bytes);
+        std::string str(view.data, view.size_bytes);
         ASSERT_EQ(*v, str);
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
