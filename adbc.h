@@ -438,8 +438,8 @@ struct ADBC_EXPORT AdbcError {
 /// executing a statement.  Instead of setting a SQL query or Substrait
 /// plan, bind the source data via AdbcStatementBind, and set the name
 /// of the table to be created via AdbcStatementSetOption and the
-/// options below.  Then, call AdbcStatementExecute with
-/// ADBC_OUTPUT_TYPE_UPDATE.
+/// options below.  Then, call AdbcStatementExecute with a NULL for
+/// the out parameter (to indicate you do not expect a result set).
 ///
 /// @{
 
@@ -675,6 +675,12 @@ struct ADBC_EXPORT AdbcDriver {
 /// @{
 
 /// \brief Allocate a new (but uninitialized) database.
+///
+/// Callers pass in a zero-initialized AdbcDatabase.
+///
+/// Drivers should allocate their internal data structure and set the private_data
+/// field to point to the newly allocated struct. This struct should be released
+/// when AdbcDatabaseRelease is called.
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error);
 
@@ -709,6 +715,12 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
 /// @{
 
 /// \brief Allocate a new (but uninitialized) connection.
+///
+/// Callers pass in a zero-initialized AdbcConnection.
+///
+/// Drivers should allocate their internal data structure and set the private_data
+/// field to point to the newly allocated struct. This struct should be released
+/// when AdbcConnectionRelease is called.
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
                                  struct AdbcError* error);
@@ -1011,8 +1023,11 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
 
 /// \brief Create a new statement for a given connection.
 ///
-/// Set options on the statement, then call AdbcStatementExecuteQuery
-/// or AdbcStatementPrepare.
+/// Callers pass in a zero-initialized AdbcStatement.
+///
+/// Drivers should allocate their internal data structure and set the private_data
+/// field to point to the newly allocated struct. This struct should be released
+/// when AdbcStatementRelease is called.
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement, struct AdbcError* error);
