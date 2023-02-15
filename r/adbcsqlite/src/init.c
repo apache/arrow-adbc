@@ -19,12 +19,26 @@
 #include <R.h>
 #include <Rinternals.h>
 
-SEXP dummy_func(void) { return R_NilValue; }
+#include <adbc.h>
 
-static const R_CallMethodDef CallEntries[] = {{"dummy_func", (DL_FUNC)&dummy_func, 0},
-                                              {NULL, NULL, 0}};
+AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError* error);
+
+static SEXP init_func_xptr = 0;
+
+SEXP adbcsqlite_c_sqlite(void) {
+  return init_func_xptr;
+}
+
+static const R_CallMethodDef CallEntries[] = {
+  {"adbcsqlite_c_sqlite", (DL_FUNC)&adbcsqlite_c_sqlite, 0},
+  {NULL, NULL, 0}};
 
 void R_init_adbcsqlite(DllInfo* dll) {
   R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
+
+  init_func_xptr = PROTECT(R_MakeExternalPtrFn((DL_FUNC)SqliteDriverInit, R_NilValue, R_NilValue));
+  Rf_setAttrib(init_func_xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
+  R_PreserveObject(init_func_xptr);
+  UNPROTECT(1);
 }

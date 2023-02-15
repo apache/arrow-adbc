@@ -1,4 +1,4 @@
-Package: abcdsqlite
+Package: adbcsqlite
 Title: Arrow Database Connectivity (ADBC) SQLite Driver
 Version: 0.0.0.9000
 Authors@R: c(
