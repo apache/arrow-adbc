@@ -597,6 +597,7 @@ jobs:
           - {os: macOS-latest,   r: 'release', pkg: 'adbcdrivermanager'}
           - {os: windows-latest, r: 'release', pkg: 'adbcdrivermanager'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcdrivermanager'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsqlite'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -615,7 +616,12 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Copy ADBC components into the package
+      - name: Install driver manager
+        if: ${{ matrix.config.pkg }} != 'adbcdrivermanager'
+        run: |
+          R CMD INSTALL r/adbcdrivermanager
+
+      - name: Prepare sources
         run: |
           cd r/${{ matrix.config.pkg }}
           bash configure
