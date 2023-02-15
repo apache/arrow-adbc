@@ -19,13 +19,10 @@
 #include <R.h>
 #include <Rinternals.h>
 
-SEXP dummy_func(void) {
-  return R_NilValue;
-}
+SEXP dummy_func(void) { return R_NilValue; }
 
-static const R_CallMethodDef CallEntries[] = {
-  {"dummy_func", (DL_FUNC)&dummy_func, 0},
-  {NULL, NULL, 0}};
+static const R_CallMethodDef CallEntries[] = {{"dummy_func", (DL_FUNC)&dummy_func, 0},
+                                              {NULL, NULL, 0}};
 
 void R_init_adbcsqlite(DllInfo* dll) {
   R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
