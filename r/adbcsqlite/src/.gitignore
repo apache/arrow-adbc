@@ -1,0 +1,12 @@
+*.o
+*.so
+*.dll
+adbc.h
+sqlite.c
+statement_reader.c
+statement_reader.h
+types.h
+utils.c
+utils.h
+nanoarrow.h
+nanoarrow.c
