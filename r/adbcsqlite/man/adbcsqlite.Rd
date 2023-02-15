@@ -9,14 +9,11 @@
 \usage{
 adbcsqlite()
 
-adbc_database_init.adbcsqlite_driver_sqlite(driver, uri = ":memory:")
+\method{adbc_database_init}{adbcsqlite_driver_sqlite}(driver, uri = ":memory:")
 
-adbc_connection_init.adbcsqlite_database(
-  database,
-  adbc.connection.autocommit = NULL
-)
+\method{adbc_connection_init}{adbcsqlite_database}(database, adbc.connection.autocommit = NULL)
 
-adbc_statement_init.adbcsqlite_connection(
+\method{adbc_statement_init}{adbcsqlite_connection}(
   connection,
   adbc.ingest.target_table = NULL,
   adbc.ingest.mode = NULL,

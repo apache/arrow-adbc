@@ -50,6 +50,7 @@ adbcsqlite <- function() {
 }
 
 #' @rdname adbcsqlite
+#' @importFrom adbcdrivermanager adbc_database_init
 #' @export
 adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, uri = ":memory:") {
   adbcdrivermanager::adbc_database_init_default(
@@ -60,6 +61,7 @@ adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, uri = ":memory:"
 }
 
 #' @rdname adbcsqlite
+#' @importFrom adbcdrivermanager adbc_connection_init
 #' @export
 adbc_connection_init.adbcsqlite_database <- function(database,
                                                      adbc.connection.autocommit = NULL) {
@@ -72,6 +74,7 @@ adbc_connection_init.adbcsqlite_database <- function(database,
 }
 
 #' @rdname adbcsqlite
+#' @importFrom adbcdrivermanager adbc_statement_init
 #' @export
 adbc_statement_init.adbcsqlite_connection <- function(connection,
                                                       adbc.ingest.target_table = NULL,

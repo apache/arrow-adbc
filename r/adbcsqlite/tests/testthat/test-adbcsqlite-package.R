@@ -21,9 +21,14 @@ test_that("adbcsqlite() works", {
 
 test_that("default options can open a database and execute a query", {
   db <- adbcdrivermanager::adbc_database_init(adbcsqlite())
+  expect_s3_class(db, "adbcsqlite_database")
+
   con <- adbcdrivermanager::adbc_connection_init(db)
+  expect_s3_class(con, "adbcsqlite_connection")
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
+  expect_s3_class(stmt, "adbcsqlite_statement")
+
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
     "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"
