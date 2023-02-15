@@ -15,13 +15,5 @@
 # specific language governing permissions and limitations
 # under the License.
 
-*.o
-*.so
-*.dll
-adbc.h
-sqlite.c
-statement_reader.c
-statement_reader.h
-types.h
-utils.c
-utils.h
+nanoarrow.c
+nanoarrow.h
