@@ -20,8 +20,6 @@ Config/build/bootstrap: TRUE
 URL: https://github.com/apache/arrow-adbc
 BugReports: https://github.com/apache/arrow-adbc/issues
 Imports:
-    adbcdrivermanager,
-    nanoarrow
+    adbcdrivermanager
 Remotes:
     adbcdrivermanager=apache/arrow-adbc/r/adbcdrivermanager
-    nanoarrow=apache/arrow-nanoarrow/r

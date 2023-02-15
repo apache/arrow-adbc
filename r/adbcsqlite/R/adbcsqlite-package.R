@@ -16,6 +16,7 @@
 # under the License.
 
 #' @keywords internal
+#' @aliases NULL
 "_PACKAGE"
 
 ## usethis namespace: start
@@ -24,6 +25,16 @@
 NULL
 
 #' ADBC SQLite3 Driver
+#'
+#' @inheritParams adbcdrivermanager::adbc_database_init
+#' @inheritParams adbcdrivermanager::adbc_connection_init
+#' @inheritParams adbcdrivermanager::adbc_statement_init
+#' @param uri A URI to a database path or ":memory:" for an in-memory database.
+#' @param adbc.connection.autocommit Use FALSE to disable the default
+#'   autocommit behaviour.
+#' @param adbc.ingest.target_table The name of the target table for a bulk insert.
+#' @param adbc.ingest.mode Whether to create (the default) or append.
+#' @param adbc.sqlite.query.batch_rows The number of rows per batch to return.
 #'
 #' @return An [adbcdrivermanager::adbc_driver()]
 #' @export
@@ -38,6 +49,7 @@ adbcsqlite <- function() {
   )
 }
 
+#' @rdname adbcsqlite
 #' @export
 adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, uri = ":memory:") {
   adbcdrivermanager::adbc_database_init_default(
@@ -47,6 +59,7 @@ adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, uri = ":memory:"
   )
 }
 
+#' @rdname adbcsqlite
 #' @export
 adbc_connection_init.adbcsqlite_database <- function(database,
                                                      adbc.connection.autocommit = NULL) {
@@ -58,8 +71,9 @@ adbc_connection_init.adbcsqlite_database <- function(database,
   )
 }
 
+#' @rdname adbcsqlite
 #' @export
-adbc_statement_init.adbcsqlite_connection <- function(connection, stream,
+adbc_statement_init.adbcsqlite_connection <- function(connection,
                                                       adbc.ingest.target_table = NULL,
                                                       adbc.ingest.mode = NULL,
                                                       adbc.sqlite.query.batch_rows = NULL) {
