@@ -43,10 +43,46 @@ This is a basic example which shows you how to solve a common problem:
 library(adbcdrivermanager)
 
 # Use the driver manager to connect to a database
-adbc_database_init(adbcsqlite::adbcsqlite(), uri = ":memory:")
-#> <adbcsqlite_database> <pointer: 0x12c7a1340> List of 2
-#>  $ driver :<adbcsqlite_driver_sqlite> List of 1
-#>   ..$ driver_init_func:Class 'adbc_driver_init_func' <externalptr>
-#>  $ options:List of 1
-#>   ..$ uri: chr ":memory:"
+db <- adbc_database_init(adbcsqlite::adbcsqlite(), uri = ":memory:")
+con <- adbc_connection_init(db)
+
+# Write a table
+flights <- nycflights13::flights
+# (timestamp not supported yet)
+flights$time_hour <- NULL
+
+stmt <- adbc_statement_init(con, adbc.ingest.target_table = "flights")
+adbc_statement_bind(stmt, flights)
+adbc_statement_execute_query(stmt)
+#> <nanoarrow_array_stream[invalid pointer]>
+adbc_statement_release(stmt)
+
+# Query it
+stmt <- adbc_statement_init(con)
+adbc_statement_set_sql_query(stmt, "SELECT * from flights")
+result <- tibble::as_tibble(adbc_statement_execute_query(stmt))
+adbc_statement_release(stmt)
+
+result
+#> # A tibble: 336,776 × 18
+#>     year month   day dep_time sched_de…¹ dep_d…² arr_t…³ sched…⁴ arr_d…⁵ carrier
+#>    <dbl> <dbl> <dbl>    <dbl>      <dbl>   <dbl>   <dbl>   <dbl>   <dbl> <chr>
+#>  1  2013     1     1      517        515       2     830     819      11 UA
+#>  2  2013     1     1      533        529       4     850     830      20 UA
+#>  3  2013     1     1      542        540       2     923     850      33 AA
+#>  4  2013     1     1      544        545      -1    1004    1022     -18 B6
+#>  5  2013     1     1      554        600      -6     812     837     -25 DL
+#>  6  2013     1     1      554        558      -4     740     728      12 UA
+#>  7  2013     1     1      555        600      -5     913     854      19 B6
+#>  8  2013     1     1      557        600      -3     709     723     -14 EV
+#>  9  2013     1     1      557        600      -3     838     846      -8 B6
+#> 10  2013     1     1      558        600      -2     753     745       8 AA
+#> # … with 336,766 more rows, 8 more variables: flight <dbl>, tailnum <chr>,
+#> #   origin <chr>, dest <chr>, air_time <dbl>, distance <dbl>, hour <dbl>,
+#> #   minute <dbl>, and abbreviated variable names ¹​sched_dep_time, ²​dep_delay,
+#> #   ³​arr_time, ⁴​sched_arr_time, ⁵​arr_delay
+
+# Clean up
+adbc_connection_release(con)
+adbc_database_release(db)
 ```
