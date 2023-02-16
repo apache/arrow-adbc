@@ -150,7 +150,7 @@ AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
 
   if (connection_count > 0) {
     SetError(error, "AdbcDatabaseRelease: %ld open connections when released",
-             connection_count);
+             (long)connection_count);
     return ADBC_STATUS_INVALID_STATE;
   }
   return ADBC_STATUS_OK;
