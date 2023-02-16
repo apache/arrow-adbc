@@ -26,6 +26,9 @@ if [ -f bootstrap.R ]; then
 fi
 
 # Include and library flags
+PKG_LIBS="$PKG_LIBS"
+OBJECTS=""
+
 echo "Checking for --configure-vars INCLUDE_DIR or LIB_DIR"
 if [ "$INCLUDE_DIR" ] || [ "$LIB_DIR" ]; then
   echo "Found --configure-vars INCLUDE_DIR and/or LIB_DIR"
@@ -33,11 +36,8 @@ if [ "$INCLUDE_DIR" ] || [ "$LIB_DIR" ]; then
   PKG_LIBS="-L$LIB_DIR $PKG_LIBS"
 fi
 
-PKG_LIBS="$PKG_LIBS -lsqlite3"
-OBJECTS=""
-
-echo "Testing R CMD SHLIB with $PKG_CPPFLAGS $PKG_LIBS"
-PKG_CPPFLAGS=$PKG_CPPFLAGS PKG_LIBS=$PKG_LIBS \
+echo "Testing R CMD SHLIB with $PKG_CPPFLAGS $PKG_LIBS -lsqlite3"
+PKG_CPPFLAGS="$PKG_CPPFLAGS" PKG_LIBS="$PKG_LIBS -lsqlite3" \
   $R_HOME/bin/R CMD SHLIB tools/test.c -o sqlite_test >sqlite_test.log 2>&1
 
 if [ $? -ne 0 ] || [ ! -z "$FORCE_VENDORED_SQLITE3"]; then
@@ -47,6 +47,9 @@ if [ $? -ne 0 ] || [ ! -z "$FORCE_VENDORED_SQLITE3"]; then
   echo "Falling back to vendored SQLite at tools/sqlite3.h"
   cp tools/sqlite3.h tools/sqlite3.c src
   OBJECTS="sqlite3.o"
+else
+  echo "Success!"
+  PKG_LIBS="$PKG_LIBS -lsqlite3"
 fi
 
 rm -f tools/test.o sqlite_test sqlite_test.log || true
