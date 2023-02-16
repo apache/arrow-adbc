@@ -81,10 +81,8 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 	s.middle.recordedHeaders = make(metadata.MD)
 
 	var err error
-	s.done = make(chan bool)
 	s.mem = memory.NewCheckedAllocator(memory.DefaultAllocator)
 	s.s = flight.NewServerWithMiddleware([]flight.ServerMiddleware{flight.CreateServerMiddleware(&s.middle)}, s.opts...)
-	s.db, err = example.CreateDB()
 	require.NoError(t, err)
 	s.srv, err = example.NewSQLiteFlightSQLServer(s.db)
 	require.NoError(t, err)
@@ -93,6 +91,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 	s.s.RegisterFlightService(flightsql.NewFlightServer(s.srv))
 	require.NoError(t, s.s.Init("localhost:0"))
 	s.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
+	s.done = make(chan bool)
 	go func() {
 		defer close(s.done)
 		_ = s.s.Serve()
@@ -102,11 +101,15 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 }
 
 func (s *FlightSQLQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
+	if s.done == nil {
+		return
+	}
+
 	s.s.Shutdown()
 	<-s.done
-	s.db.Close()
 	s.srv = nil
 	s.mem.AssertSize(t, 0)
+	s.done = nil
 }
 
 func (s *FlightSQLQuirks) DatabaseOptions() map[string]string {
@@ -212,7 +215,7 @@ func (s *FlightSQLQuirks) Alloc() memory.Allocator               { return s.mem 
 func (s *FlightSQLQuirks) BindParameter(_ int) string            { return "?" }
 func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool    { return true }
 func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
-func (s *FlightSQLQuirks) SupportsTransactions() bool            { return false }
+func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
 func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
@@ -237,7 +240,11 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 }
 
 func TestADBCFlightSQL(t *testing.T) {
-	q := &FlightSQLQuirks{}
+	db, err := example.CreateDB()
+	require.NoError(t, err)
+	defer db.Close()
+
+	q := &FlightSQLQuirks{db: db}
 	suite.Run(t, &validation.DatabaseTests{Quirks: q})
 	suite.Run(t, &validation.ConnectionTests{Quirks: q})
 	suite.Run(t, &validation.StatementTests{Quirks: q})
@@ -248,7 +255,7 @@ func TestADBCFlightSQL(t *testing.T) {
 	suite.Run(t, &PartitionTests{Quirks: q})
 	suite.Run(t, &StatementTests{Quirks: q})
 	suite.Run(t, &TimeoutTestSuite{})
-	suite.Run(t, &TLSTests{Quirks: &FlightSQLQuirks{}})
+	suite.Run(t, &TLSTests{Quirks: &FlightSQLQuirks{db: db}})
 }
 
 // Driver-specific tests
@@ -523,7 +530,7 @@ func (suite *StatementTests) TestSubstrait() {
 	suite.Require().NoError(err)
 
 	_, _, err = suite.Stmt.ExecuteQuery(context.Background())
-	suite.Require().ErrorContains(err, "Substrait is not yet implemented")
+	suite.Require().ErrorContains(err, "not implemented")
 	var adbcError adbc.Error
 	suite.ErrorAs(err, &adbcError)
 	suite.Equal(adbc.StatusNotImplemented, adbcError.Code)

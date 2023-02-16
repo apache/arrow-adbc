@@ -37,11 +37,17 @@ import (
 
 const (
 	OptionStatementQueueSize = "adbc.flight.sql.rpc.queue_size"
+	// Explicitly set substrait version for Flight SQL
+	// substrait *does* include the version in the serialized plan
+	// so this is not entirely necessary depending on the version
+	// of substrait and the capabilities of the server.
+	OptionStatementSubstraitVersion = "adbc.flight.sql.substrait.version"
 )
 
 type sqlOrSubstrait struct {
-	sqlQuery      string
-	substraitPlan []byte
+	sqlQuery         string
+	substraitPlan    []byte
+	substraitVersion string
 }
 
 func (s *sqlOrSubstrait) setSqlQuery(query string) {
@@ -54,48 +60,39 @@ func (s *sqlOrSubstrait) setSubstraitPlan(plan []byte) {
 	s.substraitPlan = plan
 }
 
-func (s *sqlOrSubstrait) execute(ctx context.Context, cl *flightsql.Client, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
+func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
 	if s.sqlQuery != "" {
-		return cl.Execute(ctx, s.sqlQuery, opts...)
+		return cnxn.execute(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
-		// TODO(apache/arrow#33935): Substrait not supported upstream
-		return nil, adbc.Error{
-			Code: adbc.StatusNotImplemented,
-			Msg:  "Substrait is not yet implemented",
-		}
+		return cnxn.executeSubstrait(ctx, flightsql.SubstraitPlan{Plan: s.substraitPlan, Version: s.substraitVersion}, opts...)
 	}
+
 	return nil, adbc.Error{
 		Code: adbc.StatusInvalidState,
 		Msg:  "[Flight SQL Statement] cannot call ExecuteQuery without a query or prepared statement",
 	}
 }
 
-func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cl *flightsql.Client, opts ...grpc.CallOption) (int64, error) {
+func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (int64, error) {
 	if s.sqlQuery != "" {
-		return cl.ExecuteUpdate(ctx, s.sqlQuery, opts...)
+		return cnxn.executeUpdate(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
-		// TODO: Substrait not supported upstream
-		return -1, adbc.Error{
-			Code: adbc.StatusNotImplemented,
-			Msg:  "Substrait is not yet implemented",
-		}
+		return cnxn.executeSubstraitUpdate(ctx, flightsql.SubstraitPlan{Plan: s.substraitPlan, Version: s.substraitVersion}, opts...)
 	}
+
 	return -1, adbc.Error{
 		Code: adbc.StatusInvalidState,
 		Msg:  "[Flight SQL Statement] cannot call ExecuteUpdate without a query or prepared statement",
 	}
 }
 
-func (s *sqlOrSubstrait) prepare(ctx context.Context, cl *flightsql.Client, alloc memory.Allocator, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
+func (s *sqlOrSubstrait) prepare(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
 	if s.sqlQuery != "" {
-		return cl.Prepare(ctx, s.sqlQuery, opts...)
+		return cnxn.prepare(ctx, s.sqlQuery, opts...)
 	} else if s.substraitPlan != nil {
-		// TODO: Substrait not supported upstream
-		return nil, adbc.Error{
-			Code: adbc.StatusNotImplemented,
-			Msg:  "Substrait is not yet implemented",
-		}
+		return cnxn.prepareSubstrait(ctx, flightsql.SubstraitPlan{Plan: s.substraitPlan, Version: s.substraitVersion}, opts...)
 	}
+
 	return nil, adbc.Error{
 		Code: adbc.StatusInvalidState,
 		Msg:  "[FlightSQL Statement] must call SetSqlQuery before Prepare",
@@ -104,7 +101,7 @@ func (s *sqlOrSubstrait) prepare(ctx context.Context, cl *flightsql.Client, allo
 
 type statement struct {
 	alloc       memory.Allocator
-	cl          *flightsql.Client
+	cnxn        *cnxn
 	clientCache gcache.Cache
 
 	hdrs      metadata.MD
@@ -128,15 +125,15 @@ func (s *statement) Close() (err error) {
 		s.prepared = nil
 	}
 
-	if s.cl == nil {
+	if s.cnxn == nil {
 		return adbc.Error{
 			Msg:  "[Flight SQL Statement] cannot close already closed statement",
 			Code: adbc.StatusInvalidState,
 		}
 	}
 
-	s.cl = nil
 	s.clientCache = nil
+	s.cnxn = nil
 
 	return err
 }
@@ -199,7 +196,8 @@ func (s *statement) SetOption(key string, val string) error {
 			}
 		}
 		s.queueSize = size
-		return nil
+	case OptionStatementSubstraitVersion:
+		s.query.substraitVersion = val
 	default:
 		return adbc.Error{
 			Msg:  "[Flight SQL] Unknown statement option '" + key + "'",
@@ -237,7 +235,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	if s.prepared != nil {
 		info, err = s.prepared.Execute(ctx, s.timeouts)
 	} else {
-		info, err = s.query.execute(ctx, s.cl, s.timeouts)
+		info, err = s.query.execute(ctx, s.cnxn, s.timeouts)
 	}
 
 	if err != nil {
@@ -245,7 +243,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}
 
 	nrec = info.TotalRecords
-	rdr, err = newRecordReader(ctx, s.alloc, s.cl, info, s.clientCache, s.queueSize, s.timeouts)
+	rdr, err = newRecordReader(ctx, s.alloc, s.cnxn.cl, info, s.clientCache, s.queueSize, s.timeouts)
 	return
 }
 
@@ -257,14 +255,14 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 		return s.prepared.ExecuteUpdate(ctx, s.timeouts)
 	}
 
-	return s.query.executeUpdate(ctx, s.cl, s.timeouts)
+	return s.query.executeUpdate(ctx, s.cnxn, s.timeouts)
 }
 
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) error {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
-	prep, err := s.query.prepare(ctx, s.cl, s.alloc, s.timeouts)
+	prep, err := s.query.prepare(ctx, s.cnxn, s.timeouts)
 	if err != nil {
 		return adbcFromFlightStatus(err)
 	}
@@ -383,7 +381,7 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 	if s.prepared != nil {
 		info, err = s.prepared.Execute(ctx, s.timeouts)
 	} else {
-		info, err = s.query.execute(ctx, s.cl, s.timeouts)
+		info, err = s.query.execute(ctx, s.cnxn, s.timeouts)
 	}
 
 	if err != nil {

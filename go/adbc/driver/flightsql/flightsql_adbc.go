@@ -465,7 +465,7 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 			conn := client.(*flightsql.Client)
 			conn.Close()
 		}).Build()
-	return &cnxn{cl: cl, db: d, clientCache: cache,
+	return &cnxn{cl: cl, db: d, clientCache: cache, autocommit: true,
 		hdrs: make(metadata.MD), timeouts: d.timeout}, nil
 }
 
@@ -476,6 +476,8 @@ type cnxn struct {
 	clientCache gcache.Cache
 	hdrs        metadata.MD
 	timeouts    timeoutOption
+	autocommit  bool
+	txn         *flightsql.Txn
 }
 
 var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
@@ -554,10 +556,44 @@ func (c *cnxn) SetOption(key, value string) error {
 		}
 		c.timeouts.updateTimeout = timeout
 	case adbc.OptionKeyAutoCommit:
-		return adbc.Error{
-			Msg:  "[Flight SQL] transactions not yet supported",
-			Code: adbc.StatusNotImplemented,
+		autocommit := true
+		switch value {
+		case adbc.OptionValueEnabled:
+		case adbc.OptionValueDisabled:
+			autocommit = false
+		default:
+			return adbc.Error{
+				Msg:  "[Flight SQL] invalid value for option " + key + ": " + value,
+				Code: adbc.StatusInvalidArgument,
+			}
 		}
+
+		if autocommit != c.autocommit {
+			// if we're *enabling* autocommit, then commit any existing
+			// transaction. If we're *disabling* auto commit, start a
+			// transaction and store it.
+			ctx := metadata.NewOutgoingContext(context.Background(), c.hdrs)
+			var err error
+			if autocommit && c.txn != nil {
+				if err = c.txn.Commit(ctx, c.timeouts); err != nil {
+					return adbc.Error{
+						Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
+						Code: adbc.StatusIO,
+					}
+				}
+				c.txn = nil
+			} else if !autocommit {
+				if c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts); err != nil {
+					return adbc.Error{
+						Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
+						Code: adbc.StatusIO,
+					}
+				}
+			}
+
+			c.autocommit = autocommit
+		}
+
 	default:
 		return adbc.Error{
 			Msg:  "[Flight SQL] unknown connection option",
@@ -1263,10 +1299,32 @@ func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 // Behavior is undefined if this is mixed with SQL transaction statements.
 // When not supported, the convention is that it should act as if autocommit
 // is enabled and return INVALID_STATE errors.
-func (c *cnxn) Commit(_ context.Context) error {
-	return adbc.Error{
-		Msg:  "[Flight SQL] Transaction methods are not implemented yet",
-		Code: adbc.StatusInvalidState}
+func (c *cnxn) Commit(ctx context.Context) error {
+	if c.autocommit {
+		return adbc.Error{
+			Msg:  "[Flight SQL] Cannot commit when autocommit is enabled",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	if c.txn == nil {
+		return adbc.Error{
+			Msg:  "[Flight SQL] No existing transaction to commit",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
+	err := c.txn.Commit(ctx, c.timeouts)
+	if err != nil {
+		return adbcFromFlightStatus(err)
+	}
+
+	c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts)
+	if err != nil {
+		return adbcFromFlightStatus(err)
+	}
+	return nil
 }
 
 // Rollback rolls back any pending transactions. Only used if autocommit
@@ -1275,22 +1333,92 @@ func (c *cnxn) Commit(_ context.Context) error {
 // Behavior is undefined if this is mixed with SQL transaction statements.
 // When not supported, the convention is that it should act as if autocommit
 // is enabled and return INVALID_STATE errors.
-func (c *cnxn) Rollback(_ context.Context) error {
-	return adbc.Error{
-		Msg:  "[Flight SQL] Transaction methods are not implemented yet",
-		Code: adbc.StatusInvalidState}
+func (c *cnxn) Rollback(ctx context.Context) error {
+	if c.autocommit {
+		return adbc.Error{
+			Msg:  "[Flight SQL] Cannot rollback when autocommit is enabled",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	if c.txn == nil {
+		return adbc.Error{
+			Msg:  "[Flight SQL] No existing transaction to rollback",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
+	err := c.txn.Rollback(ctx, c.timeouts)
+	if err != nil {
+		return adbcFromFlightStatus(err)
+	}
+
+	c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts)
+	if err != nil {
+		return adbcFromFlightStatus(err)
+	}
+	return nil
 }
 
 // NewStatement initializes a new statement object tied to this connection
 func (c *cnxn) NewStatement() (adbc.Statement, error) {
 	return &statement{
 		alloc:       c.db.alloc,
-		cl:          c.cl,
 		clientCache: c.clientCache,
 		hdrs:        c.hdrs.Copy(),
 		queueSize:   5,
 		timeouts:    c.timeouts,
+		cnxn:        c,
 	}, nil
+}
+
+func (c *cnxn) execute(ctx context.Context, query string, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
+	if c.txn != nil {
+		return c.txn.Execute(ctx, query, opts...)
+	}
+
+	return c.cl.Execute(ctx, query, opts...)
+}
+
+func (c *cnxn) executeSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
+	if c.txn != nil {
+		return c.txn.ExecuteSubstrait(ctx, plan, opts...)
+	}
+
+	return c.cl.ExecuteSubstrait(ctx, plan, opts...)
+}
+
+func (c *cnxn) executeUpdate(ctx context.Context, query string, opts ...grpc.CallOption) (n int64, err error) {
+	if c.txn != nil {
+		return c.txn.ExecuteUpdate(ctx, query, opts...)
+	}
+
+	return c.cl.ExecuteUpdate(ctx, query, opts...)
+}
+
+func (c *cnxn) executeSubstraitUpdate(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (n int64, err error) {
+	if c.txn != nil {
+		return c.txn.ExecuteSubstraitUpdate(ctx, plan, opts...)
+	}
+
+	return c.cl.ExecuteSubstraitUpdate(ctx, plan, opts...)
+}
+
+func (c *cnxn) prepare(ctx context.Context, query string, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
+	if c.txn != nil {
+		return c.txn.Prepare(ctx, query, opts...)
+	}
+
+	return c.cl.Prepare(ctx, query, opts...)
+}
+
+func (c *cnxn) prepareSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
+	if c.txn != nil {
+		return c.txn.PrepareSubstrait(ctx, plan, opts...)
+	}
+
+	return c.cl.PrepareSubstrait(ctx, plan, opts...)
 }
 
 // Close closes this connection and releases any associated resources.
