@@ -623,6 +623,7 @@ jobs:
         run: |
           R -e 'install.packages("remotes"); remotes::install_github("apache/arrow-nanoarrow/r")'
           R CMD INSTALL r/${{ matrix.config.pkg }}
+        shell: bash
 
       - name: Prepare sources
         if: matrix.config.pkg != 'adbcdrivermanager'
@@ -630,6 +631,7 @@ jobs:
           R -e 'install.packages("remotes"); remotes::install_github("apache/arrow-nanoarrow/r")'
           R CMD INSTALL r/adbcdrivermanager
           R CMD INSTALL r/${{ matrix.config.pkg }}
+        shell: bash
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
