@@ -691,7 +691,7 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
     sqlite3_stmt* fk_stmt, struct AdbcError* error) {
   struct ArrowArray* table_constraints_items = table_constraints_col->children[0];
   struct ArrowArray* constraint_name_col = table_constraints_items->children[0];
-  struct ArrowArray* constraint_type_col = table_constraints_items->children[1];
+  // Constraints type column would be table_constraints_items->children[1];
   struct ArrowArray* constraint_column_names_col = table_constraints_items->children[2];
   struct ArrowArray* constraint_column_names_items =
       constraint_column_names_col->children[0];
@@ -746,7 +746,7 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
   int prev_fk_id = -1;
   while ((rc = sqlite3_step(fk_stmt)) == SQLITE_ROW) {
     const int fk_id = sqlite3_column_int(fk_stmt, 0);
-    const int fk_seq = sqlite3_column_int(fk_stmt, 1);
+    // Foreign key seq is sqlite3_column_int(fk_stmt, 1);
     const char* to_table = (const char*)sqlite3_column_text(fk_stmt, 2);
     const char* from_col = (const char*)sqlite3_column_text(fk_stmt, 3);
     const char* to_col = (const char*)sqlite3_column_text(fk_stmt, 4);
@@ -1079,7 +1079,6 @@ AdbcStatusCode SqliteConnectionGetTableTypes(struct AdbcConnection* connection,
                                              struct ArrowArrayStream* out,
                                              struct AdbcError* error) {
   CHECK_CONN_INIT(connection, error);
-  struct SqliteConnection* conn = (struct SqliteConnection*)connection->private_data;
 
   struct ArrowSchema schema = {0};
   struct ArrowArray array = {0};
@@ -1099,7 +1098,6 @@ AdbcStatusCode SqliteConnectionReadPartition(struct AdbcConnection* connection,
                                              struct ArrowArrayStream* out,
                                              struct AdbcError* error) {
   CHECK_CONN_INIT(connection, error);
-  struct SqliteConnection* conn = (struct SqliteConnection*)connection->private_data;
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
