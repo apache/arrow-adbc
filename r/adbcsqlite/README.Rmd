@@ -61,7 +61,7 @@ con <- adbc_connection_init(db)
 # Write a table
 flights <- nycflights13::flights
 # (timestamp not supported yet)
-flights$time_hour <- NULL 
+flights$time_hour <- NULL
 
 stmt <- adbc_statement_init(con, adbc.ingest.target_table = "flights")
 adbc_statement_bind(stmt, flights)
