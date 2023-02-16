@@ -597,6 +597,8 @@ jobs:
           - {os: macOS-latest,   r: 'release', pkg: 'adbcdrivermanager'}
           - {os: windows-latest, r: 'release', pkg: 'adbcdrivermanager'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcdrivermanager'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcsqlite'}
+          - {os: windows-latest,   r: 'release', pkg: 'adbcsqlite'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsqlite'}
 
     env:
