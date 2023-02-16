@@ -618,14 +618,17 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Install driver manager
+      - name: Prepare sources (driver manager)
+        if: matrix.config.pkg == 'adbcdrivermanager'
+        run: |
+          R -e 'install.packages("remotes"); remotes::install_github("apache/arrow-nanoarrow/r")'
+          R CMD INSTALL r/${{ matrix.config.pkg }}
+
+      - name: Prepare sources
         if: matrix.config.pkg != 'adbcdrivermanager'
         run: |
           R -e 'install.packages("remotes"); remotes::install_github("apache/arrow-nanoarrow/r")'
           R CMD INSTALL r/adbcdrivermanager
-
-      - name: Prepare sources
-        run: |
           R CMD INSTALL r/${{ matrix.config.pkg }}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
