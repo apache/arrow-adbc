@@ -17,3 +17,5 @@
 
 PKG_CPPFLAGS=-I../src
 PKG_LIBS=-lsqlite3
+
+OBJECTS = init.o nanoarrow/nanoarrow.o sqlite.o statement_reader.o utils.o
