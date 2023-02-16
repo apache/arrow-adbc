@@ -15,10 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# If we are building within the repo, copy the latest adbc.h and driver manager
-# implementation from the repo. We also run this from configure, so do nothing
-# if we aren't sitting within the repo (e.g., installing a source package from a
-# tarball).
+# If we are building within the repo, copy the latest adbc.h and driver source
+# into src/
 files_to_vendor <- c(
   "../../adbc.h",
   "../../c/driver/sqlite/sqlite.c",
