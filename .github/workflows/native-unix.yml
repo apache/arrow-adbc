@@ -626,8 +626,7 @@ jobs:
 
       - name: Prepare sources
         run: |
-          cd r/${{ matrix.config.pkg }}
-          bash configure
+          R CMD INSTALL r/${{ matrix.config.pkg }}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
