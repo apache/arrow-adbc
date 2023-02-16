@@ -18,5 +18,7 @@ r/adbcdrivermanager/.Rbuildignore
 r/adbcsqlite/DESCRIPTION
 r/adbcsqlite/NAMESPACE
 r/adbcsqlite/.Rbuildignore
+r/adbcsqlite/tools/sqlite3.h
+r/adbcsqlite/tools/sqlite3.c
 *.Rproj
 *.Rd

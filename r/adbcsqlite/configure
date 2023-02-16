@@ -25,6 +25,39 @@ if [ -f bootstrap.R ]; then
   $R_HOME/bin/Rscript bootstrap.R
 fi
 
+# Include and library flags
+echo "Checking for --configure-vars INCLUDE_DIR or LIB_DIR"
+if [ "$INCLUDE_DIR" ] || [ "$LIB_DIR" ]; then
+  echo "Found --configure-vars INCLUDE_DIR and/or LIB_DIR"
+  PKG_CPPFLAGS="-I$INCLUDE_DIR $PKG_CPPFLAGS"
+  PKG_LIBS="-L$LIB_DIR $PKG_LIBS"
+fi
+
+PKG_LIBS="$PKG_LIBS -lsqlite3"
+OBJECTS=""
+
+echo "Testing R CMD SHLIB with $PKG_CPPFLAGS $PKG_LIBS"
+PKG_CPPFLAGS=$PKG_CPPFLAGS PKG_LIBS=$PKG_LIBS \
+  $R_HOME/bin/R CMD SHLIB tools/test.c -o sqlite_test >sqlite_test.log 2>&1
+
+if [ $? -ne 0 ] || [ ! -z "$FORCE_VENDORED_SQLITE3"]; then
+  echo "Forcing vendored sqlite3 or #include <sqlite3.h>/-lsqlite3 failed:"
+  cat sqlite_test.log
+
+  echo "Falling back to vendored SQLite at tools/sqlite3.h"
+  cp tools/sqlite3.h tools/sqlite3.c src
+  OBJECTS="sqlite3.o"
+fi
+
+rm -f tools/test.o sqlite_test sqlite_test.log || true
+
+sed \
+  -e "s|@cppflags@|$PKG_CPPFLAGS|" \
+  -e "s|@libs@|$PKG_LIBS|" \
+  -e "s|@objects@|$OBJECTS|" \
+  src/Makevars.in > src/Makevars
+
+
 if [ -f "src/adbc.h" ]; then
   echo "Found vendored ADBC"
   exit 0
