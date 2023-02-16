@@ -46,7 +46,7 @@ library(adbcdrivermanager)
 adbc_database_init(adbcsqlite::adbcsqlite(), uri = ":memory:")
 #> <adbcsqlite_database> <pointer: 0x12c7a1340> List of 2
 #>  $ driver :<adbcsqlite_driver_sqlite> List of 1
-#>   ..$ driver_init_func:Class 'adbc_driver_init_func' <externalptr> 
+#>   ..$ driver_init_func:Class 'adbc_driver_init_func' <externalptr>
 #>  $ options:List of 1
 #>   ..$ uri: chr ":memory:"
 ```
