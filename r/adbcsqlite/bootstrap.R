@@ -26,7 +26,9 @@ files_to_vendor <- c(
   "../../c/driver/sqlite/utils.c",
   "../../c/driver/sqlite/utils.h",
   "../../c/vendor/nanoarrow/nanoarrow.h",
-  "../../c/vendor/nanoarrow/nanoarrow.c"
+  "../../c/vendor/nanoarrow/nanoarrow.c",
+  "../../c/vendor/sqlite3/sqlite3.h",
+  "../../c/vendor/sqlite3/sqlite3.c"
 )
 
 if (all(file.exists(files_to_vendor))) {
@@ -46,8 +48,10 @@ if (all(file.exists(files_to_vendor))) {
 
   if (all(file.copy(files_to_vendor, "src"))) {
     file.rename(
-      c("src/nanoarrow.c", "src/nanoarrow.h"),
-      c("src/nanoarrow/nanoarrow.c", "src/nanoarrow/nanoarrow.h")
+      c("src/nanoarrow.c", "src/nanoarrow.h",
+        "src/sqlite3.c", "src/sqlite3.h"),
+      c("src/nanoarrow/nanoarrow.c", "src/nanoarrow/nanoarrow.h",
+        "tools/sqlite3.c", "tools/sqlite3.h")
     )
     cat("All files successfully copied to src/\n")
   } else {
