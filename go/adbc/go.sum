@@ -3,6 +3,8 @@ github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY
 github.com/andybalholm/brotli v1.0.4/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/apache/arrow/go/v12 v12.0.0-20230217185730-ae1f98f57f4b h1:hH2AUVUNqmQbRlbFOyolqFVhpnl3iZ9xie9OAhQYnyE=
 github.com/apache/arrow/go/v12 v12.0.0-20230217185730-ae1f98f57f4b/go.mod h1:qwJWRMGOu/SUTlFiQBgCjtOoxYqdG2KqXiDB3+e7BNA=
+github.com/apache/arrow/go/v12 v12.0.0-20230217202445-03463dec5f92 h1:KIxA6iY3SPKpNxJMO/a8gTcvEvoNyxAtYBLGYZzloSU=
+github.com/apache/arrow/go/v12 v12.0.0-20230217202445-03463dec5f92/go.mod h1:qwJWRMGOu/SUTlFiQBgCjtOoxYqdG2KqXiDB3+e7BNA=
 github.com/apache/thrift v0.17.0 h1:cMd2aj52n+8VoAtvSvLn4kDC3aZ6IAkBuqWQ2IDu7wo=
 github.com/apache/thrift v0.17.0/go.mod h1:OLxhMRJxomX+1I/KUw03qoV3mMz16BwaKI+d4fPBx7Q=
 github.com/bluele/gcache v0.0.2 h1:WcbfdXICg7G/DGBh1PFfcirkWOQV+v077yF1pSy3DGw=
