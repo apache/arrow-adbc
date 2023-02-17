@@ -85,6 +85,11 @@ var (
 	infoDriverArrowVersion string
 )
 
+var errNoTransactionSupport = adbc.Error{
+	Msg:  "[Flight SQL] server does not report transaction support",
+	Code: adbc.StatusNotImplemented,
+}
+
 func init() {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, dep := range info.Deps {
@@ -439,6 +444,10 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 	return cl, nil
 }
 
+type support struct {
+	transactions bool
+}
+
 func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 	cl, err := getFlightClient(ctx, d.uri.String(), d)
 	if err != nil {
@@ -465,8 +474,52 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 			conn := client.(*flightsql.Client)
 			conn.Close()
 		}).Build()
-	return &cnxn{cl: cl, db: d, clientCache: cache, autocommit: true,
-		hdrs: make(metadata.MD), timeouts: d.timeout}, nil
+
+	var cnxnSupport support
+
+	info, err := cl.GetSqlInfo(ctx, []flightsql.SqlInfo{flightsql.SqlInfoFlightSqlServerTransaction}, d.timeout)
+	// ignore this if it fails
+	if err == nil {
+		const int32code = 3
+
+		for _, endpoint := range info.Endpoint {
+			rdr, err := doGet(ctx, cl, endpoint, cache, d.timeout)
+			if err != nil {
+				continue
+			}
+			defer rdr.Release()
+
+			for rdr.Next() {
+				rec := rdr.Record()
+				codes := rec.Column(0).(*array.Uint32)
+				values := rec.Column(1).(*array.DenseUnion)
+				int32Value := values.Field(int32code).(*array.Int32)
+
+				for i := 0; i < int(rec.NumRows()); i++ {
+					switch codes.Value(i) {
+					case uint32(flightsql.SqlInfoFlightSqlServerTransaction):
+						if values.TypeCode(i) != int32code {
+							continue
+						}
+
+						idx := values.ValueOffset(i)
+						if !int32Value.IsValid(int(idx)) {
+							continue
+						}
+
+						value := int32Value.Value(int(idx))
+						cnxnSupport.transactions =
+							value == int32(flightsql.SqlTransactionTransaction) ||
+								value == int32(flightsql.SqlTransactionSavepoint)
+					}
+				}
+			}
+		}
+	}
+
+	return &cnxn{cl: cl, db: d, clientCache: cache,
+		hdrs: make(metadata.MD), timeouts: d.timeout,
+		supportInfo: cnxnSupport}, nil
 }
 
 type cnxn struct {
@@ -476,8 +529,8 @@ type cnxn struct {
 	clientCache gcache.Cache
 	hdrs        metadata.MD
 	timeouts    timeoutOption
-	autocommit  bool
 	txn         *flightsql.Txn
+	supportInfo support
 }
 
 var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
@@ -568,31 +621,38 @@ func (c *cnxn) SetOption(key, value string) error {
 			}
 		}
 
-		if autocommit != c.autocommit {
-			// if we're *enabling* autocommit, then commit any existing
-			// transaction. If we're *disabling* auto commit, start a
-			// transaction and store it.
-			ctx := metadata.NewOutgoingContext(context.Background(), c.hdrs)
-			var err error
-			if autocommit && c.txn != nil {
-				if err = c.txn.Commit(ctx, c.timeouts); err != nil {
-					return adbc.Error{
-						Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
-						Code: adbc.StatusIO,
-					}
-				}
-				c.txn = nil
-			} else if !autocommit {
-				if c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts); err != nil {
-					return adbc.Error{
-						Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
-						Code: adbc.StatusIO,
-					}
+		if autocommit && c.txn == nil {
+			// no-op don't even error if the server didn't support transactions
+			return nil
+		}
+
+		if !c.supportInfo.transactions {
+			return errNoTransactionSupport
+		}
+
+		ctx := metadata.NewOutgoingContext(context.Background(), c.hdrs)
+		var err error
+		if c.txn != nil {
+			if err = c.txn.Commit(ctx, c.timeouts); err != nil {
+				return adbc.Error{
+					Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
+					Code: adbc.StatusIO,
 				}
 			}
-
-			c.autocommit = autocommit
 		}
+
+		if autocommit {
+			c.txn = nil
+			return nil
+		}
+
+		if c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts); err != nil {
+			return adbc.Error{
+				Msg:  "[Flight SQL] failed to update autocommit: " + err.Error(),
+				Code: adbc.StatusIO,
+			}
+		}
+		return nil
 
 	default:
 		return adbc.Error{
@@ -1300,18 +1360,15 @@ func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 // When not supported, the convention is that it should act as if autocommit
 // is enabled and return INVALID_STATE errors.
 func (c *cnxn) Commit(ctx context.Context) error {
-	if c.autocommit {
+	if c.txn == nil {
 		return adbc.Error{
 			Msg:  "[Flight SQL] Cannot commit when autocommit is enabled",
 			Code: adbc.StatusInvalidState,
 		}
 	}
 
-	if c.txn == nil {
-		return adbc.Error{
-			Msg:  "[Flight SQL] No existing transaction to commit",
-			Code: adbc.StatusInvalidState,
-		}
+	if !c.supportInfo.transactions {
+		return errNoTransactionSupport
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
@@ -1334,18 +1391,15 @@ func (c *cnxn) Commit(ctx context.Context) error {
 // When not supported, the convention is that it should act as if autocommit
 // is enabled and return INVALID_STATE errors.
 func (c *cnxn) Rollback(ctx context.Context) error {
-	if c.autocommit {
+	if c.txn == nil {
 		return adbc.Error{
 			Msg:  "[Flight SQL] Cannot rollback when autocommit is enabled",
 			Code: adbc.StatusInvalidState,
 		}
 	}
 
-	if c.txn == nil {
-		return adbc.Error{
-			Msg:  "[Flight SQL] No existing transaction to rollback",
-			Code: adbc.StatusInvalidState,
-		}
+	if !c.supportInfo.transactions {
+		return errNoTransactionSupport
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
