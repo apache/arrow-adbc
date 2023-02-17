@@ -344,7 +344,8 @@ func (suite *RecordReaderTests) TestOrdering() {
 		for batchIdx := int8(0); batchIdx < 4; batchIdx++ {
 			suite.True(reader.Next())
 			rec := reader.Record()
-			defer rec.Release()
+			// don't need to manually release this record because we never
+			// call retain. Each call to Next releases the previous record
 
 			suite.True(rec.Schema().Equal(orderingSchema()))
 			suite.Equal(int64(1), rec.NumRows())
