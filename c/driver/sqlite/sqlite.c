@@ -149,13 +149,13 @@ AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
   database->private_data = NULL;
 
   if (connection_count > 0) {
+    // -Wpedantic gives a warning if we use size_t in a printf() context
     SetError(error, "AdbcDatabaseRelease: %ld open connections when released",
-             (long)connection_count);
+             (long)connection_count);  // NOLINT(runtime/int)
     return ADBC_STATUS_INVALID_STATE;
   }
   return ADBC_STATUS_OK;
-}  // NOLINT(runtime/int)
-// -Wpedantic gives a warning if we use size_t in a printf() context
+}
 
 AdbcStatusCode SqliteConnectionNew(struct AdbcConnection* connection,
                                    struct AdbcError* error) {
