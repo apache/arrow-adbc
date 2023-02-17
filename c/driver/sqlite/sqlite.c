@@ -154,7 +154,8 @@ AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
     return ADBC_STATUS_INVALID_STATE;
   }
   return ADBC_STATUS_OK;
-}
+}  // NOLINT(runtime/int)
+// -Wpedantic gives a warning if we use size_t in a printf() context
 
 AdbcStatusCode SqliteConnectionNew(struct AdbcConnection* connection,
                                    struct AdbcError* error) {
