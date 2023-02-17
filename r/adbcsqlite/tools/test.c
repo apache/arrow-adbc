@@ -18,6 +18,4 @@
 #include <sqlite3.h>
 #include <stdio.h>
 
-void some_function(void) {
-  printf("%s", sqlite3_libversion());
-}
+void some_function(void) { printf("%s", sqlite3_libversion()); }
