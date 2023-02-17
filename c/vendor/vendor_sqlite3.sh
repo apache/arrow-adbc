@@ -1,3 +1,4 @@
+#!/bin/bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,21 +16,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-download.file(
-  "https://www.sqlite.org/2022/sqlite-amalgamation-3400100.zip",
-  "tools/sqlite.zip",
-  mode = "wb"
-)
-
-unzip("tools/sqlite.zip", exdir = "tools")
-src_dir <- list.files("tools", "sqlite-amalgamation-", full.names = TRUE)
-stopifnot(length(src_dir) == 1)
-
-suppressWarnings(file.remove(file.path("tools", c("sqlite3.h", "sqlite3.c"))))
-file.copy(
-  file.path(src_dir, c("sqlite3.h", "sqlite3.c")),
-  "tools"
-)
-
-unlink(src_dir, recursive = TRUE)
-unlink("tools/sqlite.zip")
+# Download and extract sqlite3
+rm -rf sqlite3
+curl -L https://www.sqlite.org/2022/sqlite-amalgamation-3400100.zip -o sqlite3.zip
+unzip sqlite3.zip -d .
+mv sqlite-amalgamation* sqlite3
+rm -f sqlite3/shell.c sqlite3/sqlite3ext.h sqlite3.zip
