@@ -7,6 +7,10 @@ github.com/apache/arrow/go/v12 v12.0.0-20230131200310-5765aa29b5ca h1:rLD16hTZFW
 github.com/apache/arrow/go/v12 v12.0.0-20230131200310-5765aa29b5ca/go.mod h1:qwJWRMGOu/SUTlFiQBgCjtOoxYqdG2KqXiDB3+e7BNA=
 github.com/apache/arrow/go/v12 v12.0.0-20230210052322-717d4fb7701f h1:PiJJEcWLjapfXjCdp8G2QDKANnU/pOYYrxomEfUpWYQ=
 github.com/apache/arrow/go/v12 v12.0.0-20230210052322-717d4fb7701f/go.mod h1:qwJWRMGOu/SUTlFiQBgCjtOoxYqdG2KqXiDB3+e7BNA=
+github.com/apache/arrow/go/v12 v12.0.0-20230217160819-c31fb46544b9 h1:Ir9xJ87oY3fyQk5PdkVE/3pMoBMROkZcOcvP/XGJ+MM=
+github.com/apache/arrow/go/v12 v12.0.0-20230217160819-c31fb46544b9/go.mod h1:qwJWRMGOu/SUTlFiQBgCjtOoxYqdG2KqXiDB3+e7BNA=
+github.com/apache/arrow/go/v12 v12.0.0-20230217182903-277bd3c76fdd h1:LJHHvcZnlmosEKx0fn20VBGQiGOo/Ih4vwlSDNygyTE=
+github.com/apache/arrow/go/v12 v12.0.0-20230217182903-277bd3c76fdd/go.mod h1:qwJWRMGOu/SUTlFiQBgCjtOoxYqdG2KqXiDB3+e7BNA=
 github.com/apache/thrift v0.16.0 h1:qEy6UW60iVOlUy+b9ZR0d5WzUWYGOo4HfopoyBaNmoY=
 github.com/apache/thrift v0.16.0/go.mod h1:PHK3hniurgQaNMZYaCLEqXKsYK8upmhPbmdP2FXSqgU=
 github.com/apache/thrift v0.17.0 h1:cMd2aj52n+8VoAtvSvLn4kDC3aZ6IAkBuqWQ2IDu7wo=
