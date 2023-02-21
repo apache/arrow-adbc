@@ -22,4 +22,4 @@ OBJECTS = init.o \
     sqlite.o \
     statement_reader.o \
     utils.o \
-	  nanoarrow/nanoarrow.o @objects@
+    nanoarrow/nanoarrow.o @objects@
