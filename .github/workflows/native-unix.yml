@@ -597,6 +597,9 @@ jobs:
           - {os: macOS-latest,   r: 'release', pkg: 'adbcdrivermanager'}
           - {os: windows-latest, r: 'release', pkg: 'adbcdrivermanager'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcdrivermanager'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcsqlite'}
+          - {os: windows-latest,   r: 'release', pkg: 'adbcsqlite'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsqlite'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -615,10 +618,20 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Copy ADBC components into the package
+      - name: Prepare sources (driver manager)
+        if: matrix.config.pkg == 'adbcdrivermanager'
         run: |
-          cd r/${{ matrix.config.pkg }}
-          bash configure
+          R -e 'install.packages("remotes", repos = "https://cloud.r-project.org"); remotes::install_github("apache/arrow-nanoarrow/r", build = FALSE)'
+          R CMD INSTALL r/${{ matrix.config.pkg }}
+        shell: bash
+
+      - name: Prepare sources
+        if: matrix.config.pkg != 'adbcdrivermanager'
+        run: |
+          R -e 'install.packages("remotes", repos = "https://cloud.r-project.org"); remotes::install_github("apache/arrow-nanoarrow/r", build = FALSE)'
+          R CMD INSTALL r/adbcdrivermanager
+          R CMD INSTALL r/${{ matrix.config.pkg }}
+        shell: bash
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:

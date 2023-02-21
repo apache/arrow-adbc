@@ -134,7 +134,7 @@ void StringBuilderAppend(struct StringBuilder* builder, const char* value) {
     builder->buffer = realloc(builder->buffer, new_capacity);
     builder->capacity = new_capacity;
   }
-  strncpy(builder->buffer + builder->size, value, length);
+  memcpy(builder->buffer + builder->size, value, length);
   builder->buffer[new_size] = '\0';
   builder->size = new_size;
 }

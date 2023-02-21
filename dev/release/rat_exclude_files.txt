@@ -15,5 +15,10 @@ rat.txt
 r/adbcdrivermanager/DESCRIPTION
 r/adbcdrivermanager/NAMESPACE
 r/adbcdrivermanager/.Rbuildignore
+r/adbcsqlite/DESCRIPTION
+r/adbcsqlite/NAMESPACE
+r/adbcsqlite/.Rbuildignore
+c/vendor/sqlite3/sqlite3.c
+c/vendor/sqlite3/sqlite3.h
 *.Rproj
 *.Rd
