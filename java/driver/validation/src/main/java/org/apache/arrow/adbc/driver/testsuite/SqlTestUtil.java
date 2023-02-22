@@ -69,4 +69,129 @@ public final class SqlTestUtil {
     }
     return schema;
   }
+
+  /** Load a table with composite primary key */
+  public Schema ingestTableWithConstraints(
+          BufferAllocator allocator, AdbcConnection connection, String tableName) throws Exception {
+    tableName = quirks.caseFoldTableName(tableName);
+    final Schema schema =
+            new Schema(
+                    Arrays.asList(
+                            Field.notNullable(
+                                    quirks.caseFoldColumnName("INTS"), new ArrowType.Int(32, /*signed=*/ true)),
+                            Field.nullable(quirks.caseFoldColumnName("INTS2"), new ArrowType.Int(32, true))));
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+      final IntVector ints = (IntVector) root.getVector(0);
+      final IntVector strs = (IntVector) root.getVector(1);
+
+      ints.allocateNew(4);
+      ints.setSafe(0, 0);
+      ints.setSafe(1, 1);
+      ints.setSafe(2, 2);
+      ints.setSafe(3, 3);
+      strs.allocateNew(4);
+      strs.setSafe(0, 10);
+      strs.setSafe(1, 11);
+      strs.setSafe(2, 12);
+      strs.setSafe(3, 13);
+      root.setRowCount(4);
+      try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
+        stmt.bind(root);
+        stmt.executeUpdate();
+      }
+
+      try (final AdbcStatement stmt = connection.createStatement()) {
+        stmt.setSqlQuery("ALTER TABLE " + tableName + " ALTER COLUMN INTS SET NOT NULL");
+        stmt.executeUpdate();
+      }
+
+      try (final AdbcStatement stmt = connection.createStatement()) {
+        stmt.setSqlQuery("ALTER TABLE " + tableName + " ALTER COLUMN INTS2 SET NOT NULL");
+        stmt.executeUpdate();
+      }
+
+      try (final AdbcStatement stmt = connection.createStatement()) {
+        stmt.setSqlQuery("ALTER TABLE " + tableName + " \n" +
+                "  ADD CONSTRAINT TABLE_PK \n" +
+                "  PRIMARY KEY (INTS, INTS2)");
+        stmt.executeUpdate();
+      }
+
+    }
+    return schema;
+  }
+
+  /** Load two tables with foreign key relationship between them */
+  public void ingestTablesWithReferentialConstraint(
+          BufferAllocator allocator, AdbcConnection connection, String mainTable, String dependentTable) throws Exception {
+    mainTable = quirks.caseFoldTableName(mainTable);
+    dependentTable = quirks.caseFoldTableName(dependentTable);
+
+    final Schema mainSchema =
+            new Schema(
+                    Arrays.asList(
+                            Field.notNullable(
+                                    quirks.caseFoldColumnName("PRODUCT_ID"), new ArrowType.Int(32, /*signed=*/ true))));
+
+    final Schema dependentSchema =
+            new Schema(
+                    Arrays.asList(
+                            Field.notNullable(
+                                    quirks.caseFoldColumnName("SALE_ID"), new ArrowType.Int(32,true)
+                            ),
+                            Field.notNullable(
+                                    quirks.caseFoldColumnName("PRODUCT_ID"), new ArrowType.Int(32,true))));
+
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(mainSchema, allocator)) {
+      final IntVector product = (IntVector) root.getVector(0);
+      product.allocateNew(4);
+      product.setSafe(0, 1);
+      product.setSafe(1, 2);
+      product.setSafe(2, 3);
+      product.setSafe(3, 4);
+      root.setRowCount(4);
+      try (final AdbcStatement stmt = connection.bulkIngest(mainTable, BulkIngestMode.CREATE)) {
+        stmt.bind(root);
+        stmt.executeUpdate();
+      }
+    }
+
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(dependentSchema, allocator)) {
+      final IntVector sale = (IntVector) root.getVector(0);
+      final IntVector product = (IntVector) root.getVector(1);
+
+      sale.allocateNew(2);
+      sale.setSafe(0, 1);
+      sale.setSafe(1, 2);
+      product.allocateNew(2);
+      product.setSafe(0, 2);
+      product.setSafe(1, 4);
+      root.setRowCount(2);
+      try (final AdbcStatement stmt = connection.bulkIngest(dependentTable, BulkIngestMode.CREATE)) {
+        stmt.bind(root);
+        stmt.executeUpdate();
+      }
+    }
+
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery("ALTER TABLE " + mainTable + " ALTER COLUMN PRODUCT_ID SET NOT NULL");
+      stmt.executeUpdate();
+    }
+
+
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery("ALTER TABLE " + mainTable + " \n" +
+              "  ADD CONSTRAINT PRODUCT_PK \n" +
+              "  PRIMARY KEY (PRODUCT_ID)");
+      stmt.executeUpdate();
+    }
+
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery("ALTER TABLE " + dependentTable + " \n" +
+              "  ADD CONSTRAINT SALE_PRODUCT_FK \n" +
+              "  FOREIGN KEY (PRODUCT_ID) \n" +
+              "  REFERENCES " + mainTable + " (PRODUCT_ID) ");
+      stmt.executeUpdate();
+    }
+  }
 }
