@@ -19,11 +19,11 @@ package org.apache.arrow.adbc.driver.testsuite;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Map;
-import java.util.List;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.arrow.adbc.core.AdbcConnection;
@@ -121,14 +121,14 @@ public abstract class AbstractConnectionMetadataTest {
 
     boolean tableFound = false;
     try (final ArrowReader reader =
-                 connection.getObjects(AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, null)) {
+        connection.getObjects(AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, null)) {
       assertThat(reader.getVectorSchemaRoot().getSchema())
-              .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
+          .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
       assertThat(reader.loadNextBatch()).isTrue();
 
       final ListVector dbSchemas = (ListVector) reader.getVectorSchemaRoot().getVector(1);
       final ListVector dbSchemaTables =
-              (ListVector) ((StructVector) dbSchemas.getDataVector()).getVectorById(1);
+          (ListVector) ((StructVector) dbSchemas.getDataVector()).getVectorById(1);
       final StructVector tables = (StructVector) dbSchemaTables.getDataVector();
       final VarCharVector tableNames = (VarCharVector) tables.getVectorById(0);
       final ListVector tableConstraints = (ListVector) tables.getVectorById(3);
@@ -140,44 +140,62 @@ public abstract class AbstractConnectionMetadataTest {
         final Text tableName = tableNames.getObject(i);
         if (tableName != null && tableName.toString().equalsIgnoreCase(this.tableName)) {
           tableFound = true;
+
           @SuppressWarnings("unchecked")
-          final List<Map<String, ?>> constraints = (List<Map<String, ?>>) tableConstraints.getObject(i);
+          final List<Map<String, ?>> constraints =
+              (List<Map<String, ?>>) tableConstraints.getObject(i);
 
           assertThat(constraints)
-                  .extracting("constraint_name")
-                  .containsExactlyInAnyOrderElementsOf(Collections.singletonList(new Text(quirks.caseFoldColumnName("table_pk"))));
+              .filteredOn(c -> c.get("constraint_type").equals(new Text("PRIMARY KEY")))
+              .extracting("constraint_name")
+              .containsExactlyInAnyOrderElementsOf(
+                  Collections.singletonList(new Text(quirks.caseFoldColumnName("table_pk"))));
 
           assertThat(constraints)
-                  .flatExtracting("constraint_column_names")
-                  .containsExactlyInAnyOrderElementsOf(
-                          schema.getFields().stream()
-                                  .map(field -> new Text(field.getName()))
-                                  .collect(Collectors.toList())
-                  );
+              .filteredOn(c -> c.get("constraint_type").equals(new Text("PRIMARY KEY")))
+              .flatExtracting("constraint_column_names")
+              .containsExactlyInAnyOrderElementsOf(
+                  schema.getFields().stream()
+                      .map(field -> new Text(field.getName()))
+                      .collect(Collectors.toList()));
+
+          assertThat(constraints)
+              .filteredOn(c -> c.get("constraint_type").equals(new Text("UNIQUE")))
+              .extracting("constraint_name")
+              .hasSize(1);
+
+          assertThat(constraints)
+              .filteredOn(c -> c.get("constraint_type").equals(new Text("UNIQUE")))
+              .flatExtracting("constraint_column_names")
+              .containsExactlyInAnyOrderElementsOf(
+                  schema.getFields().stream()
+                      .map(field -> new Text(field.getName()))
+                      .collect(Collectors.toList()));
         }
 
         if (tableName != null && tableName.toString().equalsIgnoreCase(dependentTable)) {
           @SuppressWarnings("unchecked")
-          final List<Map<String, ?>> constraints = (List<Map<String, ?>>) tableConstraints.getObject(i);
+          final List<Map<String, ?>> constraints =
+              (List<Map<String, ?>>) tableConstraints.getObject(i);
 
           assertThat(constraints)
-                  .extracting("constraint_name")
-                  .containsExactlyInAnyOrderElementsOf(Collections.singletonList(new Text(quirks.caseFoldColumnName("SALE_PRODUCT_FK"))));
+              .extracting("constraint_name")
+              .containsExactlyInAnyOrderElementsOf(
+                  Collections.singletonList(
+                      new Text(quirks.caseFoldColumnName("SALE_PRODUCT_FK"))));
 
           assertThat(constraints)
-                  .flatExtracting("constraint_column_names")
-                  .containsExactlyInAnyOrderElementsOf(
-                          Collections.singletonList(new Text(quirks.caseFoldColumnName("product_id")))
-                  );
+              .flatExtracting("constraint_column_names")
+              .containsExactlyInAnyOrderElementsOf(
+                  Collections.singletonList(new Text(quirks.caseFoldColumnName("product_id"))));
 
           assertThat(constraints)
-                  .flatExtracting("constraint_column_usage")
-                  .asList()
-                  .first()
-                  .extracting("fk_table")
-                  .isEqualTo(new Text(quirks.caseFoldColumnName("product")));
+              .flatExtracting("constraint_column_usage")
+              .asList()
+              .first()
+              .extracting("fk_table")
+              .isEqualTo(new Text(quirks.caseFoldColumnName("product")));
         }
-
       }
       assertThat(tableFound).describedAs("Table FOO exists in metadata").isTrue();
     }

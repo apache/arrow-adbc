@@ -29,6 +29,10 @@ public class FlightSqlConnectionMetadataTest extends AbstractConnectionMetadataT
 
   @Override
   @Disabled("Not yet implemented")
+  public void getObjectsConstraints() throws Exception {}
+
+  @Override
+  @Disabled("Not yet implemented")
   public void getObjectsColumns() throws Exception {}
 
   @Override

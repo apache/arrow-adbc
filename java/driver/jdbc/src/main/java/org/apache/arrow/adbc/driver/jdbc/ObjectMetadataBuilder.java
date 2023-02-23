@@ -21,9 +21,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.memory.ArrowBuf;
@@ -36,9 +34,9 @@ import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.StructVector;
 import org.apache.arrow.vector.complex.impl.UnionListWriter;
-import org.apache.arrow.vector.complex.writer.VarCharWriter;
-import org.apache.arrow.vector.complex.writer.BaseWriter.StructWriter;
 import org.apache.arrow.vector.complex.writer.BaseWriter.ListWriter;
+import org.apache.arrow.vector.complex.writer.BaseWriter.StructWriter;
+import org.apache.arrow.vector.complex.writer.VarCharWriter;
 
 /** Helper class to track state needed to build up the object metadata structure. */
 final class ObjectMetadataBuilder implements AutoCloseable {
@@ -120,10 +118,14 @@ final class ObjectMetadataBuilder implements AutoCloseable {
     this.constraintColumnNamesWriter = this.tableConstraintsWriter.list("constraint_column_names");
     this.constraintColumnUsageWriter = this.tableConstraintsWriter.list("constraint_column_usage");
     this.constraintColumnUsageStructWriter = this.constraintColumnUsageWriter.struct();
-    this.constraintColumnUsageFkCatalogsWriter = this.constraintColumnUsageStructWriter.varChar("fk_catalog");
-    this.constraintColumnUsageFkDbSchemasWriter = this.constraintColumnUsageStructWriter.varChar("fk_db_schema");
-    this.constraintColumnUsageFkTablesWriter = this.constraintColumnUsageStructWriter.varChar("fk_table");
-    this.constraintColumnUsageFkColumnsWriter = this.constraintColumnUsageStructWriter.varChar("fk_column_name");
+    this.constraintColumnUsageFkCatalogsWriter =
+        this.constraintColumnUsageStructWriter.varChar("fk_catalog");
+    this.constraintColumnUsageFkDbSchemasWriter =
+        this.constraintColumnUsageStructWriter.varChar("fk_db_schema");
+    this.constraintColumnUsageFkTablesWriter =
+        this.constraintColumnUsageStructWriter.varChar("fk_table");
+    this.constraintColumnUsageFkColumnsWriter =
+        this.constraintColumnUsageStructWriter.varChar("fk_column_name");
   }
 
   VectorSchemaRoot build() throws SQLException {
@@ -211,10 +213,7 @@ final class ObjectMetadataBuilder implements AutoCloseable {
           }
           if (!constraintColumns.isEmpty()) {
             addConstraint(
-                    constraintName,
-                    "PRIMARY KEY",
-                    constraintColumns,
-                    Collections.emptyList());
+                constraintName, "PRIMARY KEY", constraintColumns, Collections.emptyList());
           }
         }
 
@@ -242,18 +241,42 @@ final class ObjectMetadataBuilder implements AutoCloseable {
           }
 
           for (int i = 0; i < names.size(); i++) {
-            addConstraint(
-                names.get(i),
-                "FOREIGN KEY",
-                columns.get(i),
-                references.get(i));
+            addConstraint(names.get(i), "FOREIGN KEY", columns.get(i), references.get(i));
           }
         }
 
+        // 3. UNIQUE constraints
+        try (final ResultSet uq =
+            dbmd.getIndexInfo(catalogName, dbSchemaName, tableName, true, false)) {
+          Map<String, ArrayList<String>> uniqueConstraints = new HashMap<>();
+          //          System.out.println("------------");
+          //          System.out.println(tableName);
+          while (uq.next()) {
+
+            //            System.out.println(uq.getString(5));
+            //            System.out.println(uq.getString(6));
+            //            System.out.println(uq.getString(9));
+            String constraintName = uq.getString(6);
+            String columnName = uq.getString(9);
+            int columnIndex = uq.getInt(8);
+
+            if (!uniqueConstraints.containsKey(constraintName)) {
+              uniqueConstraints.put(constraintName, new ArrayList<>());
+            }
+            ArrayList<String> uniqueColumns = uniqueConstraints.get(constraintName);
+            while (uniqueColumns.size() < columnIndex) uniqueColumns.add(null);
+            uniqueColumns.set(columnIndex - 1, columnName);
+          }
+
+          uniqueConstraints.forEach(
+              (name, columns) -> {
+                addConstraint(name, "UNIQUE", columns, Collections.emptyList());
+              });
+        }
+
+        // TODO: how to get CHECK constraints?
         tableConstraintsWriter.endList();
 
-        // TODO: UNIQUE constraints are exposed under indices
-        // TODO: how to get CHECK constraints?
         if (depth == AdbcConnection.GetObjectsDepth.TABLES) {
           tableColumns.setNull(rowIndex + tableCount);
         } else {
@@ -294,12 +317,9 @@ final class ObjectMetadataBuilder implements AutoCloseable {
     return columnCount;
   }
 
-  private void writeVarChar(
-          VarCharWriter writer,
-          String value
-  ) {
+  private void writeVarChar(VarCharWriter writer, String value) {
     byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-    try(ArrowBuf tempBuf = allocator.buffer(bytes.length)) {
+    try (ArrowBuf tempBuf = allocator.buffer(bytes.length)) {
       tempBuf.setBytes(0, bytes, 0, bytes.length);
       writer.writeVarChar(0, bytes.length, tempBuf);
     }
