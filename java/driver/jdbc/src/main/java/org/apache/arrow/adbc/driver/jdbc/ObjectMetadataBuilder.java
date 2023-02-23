@@ -249,13 +249,7 @@ final class ObjectMetadataBuilder implements AutoCloseable {
         try (final ResultSet uq =
             dbmd.getIndexInfo(catalogName, dbSchemaName, tableName, true, false)) {
           Map<String, ArrayList<String>> uniqueConstraints = new HashMap<>();
-          //          System.out.println("------------");
-          //          System.out.println(tableName);
           while (uq.next()) {
-
-            //            System.out.println(uq.getString(5));
-            //            System.out.println(uq.getString(6));
-            //            System.out.println(uq.getString(9));
             String constraintName = uq.getString(6);
             String columnName = uq.getString(9);
             int columnIndex = uq.getInt(8);
