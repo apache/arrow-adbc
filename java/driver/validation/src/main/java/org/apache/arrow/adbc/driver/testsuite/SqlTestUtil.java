@@ -19,6 +19,7 @@ package org.apache.arrow.adbc.driver.testsuite;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
@@ -101,22 +102,19 @@ public final class SqlTestUtil {
       }
 
       try (final AdbcStatement stmt = connection.createStatement()) {
-        stmt.setSqlQuery("ALTER TABLE " + tableName + " ALTER COLUMN INTS SET NOT NULL");
+        stmt.setSqlQuery(quirks.generateSetNotNullQuery(tableName, "INTS"));
         stmt.executeUpdate();
       }
 
       try (final AdbcStatement stmt = connection.createStatement()) {
-        stmt.setSqlQuery("ALTER TABLE " + tableName + " ALTER COLUMN INTS2 SET NOT NULL");
+        stmt.setSqlQuery(quirks.generateSetNotNullQuery(tableName, "INTS2"));
         stmt.executeUpdate();
       }
 
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery(
-            "ALTER TABLE "
-                + tableName
-                + " \n"
-                + "  ADD CONSTRAINT TABLE_PK \n"
-                + "  PRIMARY KEY (INTS, INTS2)");
+            quirks.generateAddPrimaryKeyQuery(
+                "TABLE_PK", tableName, Arrays.asList("INTS", "INTS2")));
         stmt.executeUpdate();
       }
     }
@@ -132,7 +130,7 @@ public final class SqlTestUtil {
 
     final Schema mainSchema =
         new Schema(
-            Arrays.asList(
+            Collections.singletonList(
                 Field.notNullable(
                     quirks.caseFoldColumnName("PRODUCT_ID"),
                     new ArrowType.Int(32, /*signed=*/ true))));
@@ -178,30 +176,21 @@ public final class SqlTestUtil {
     }
 
     try (final AdbcStatement stmt = connection.createStatement()) {
-      stmt.setSqlQuery("ALTER TABLE " + mainTable + " ALTER COLUMN PRODUCT_ID SET NOT NULL");
+      stmt.setSqlQuery(quirks.generateSetNotNullQuery(mainTable, "PRODUCT_ID"));
       stmt.executeUpdate();
     }
 
     try (final AdbcStatement stmt = connection.createStatement()) {
       stmt.setSqlQuery(
-          "ALTER TABLE "
-              + mainTable
-              + " \n"
-              + "  ADD CONSTRAINT PRODUCT_PK \n"
-              + "  PRIMARY KEY (PRODUCT_ID)");
+          quirks.generateAddPrimaryKeyQuery(
+              "PRODUCT_PK", mainTable, Collections.singletonList("PRODUCT_ID")));
       stmt.executeUpdate();
     }
 
     try (final AdbcStatement stmt = connection.createStatement()) {
       stmt.setSqlQuery(
-          "ALTER TABLE "
-              + dependentTable
-              + " \n"
-              + "  ADD CONSTRAINT SALE_PRODUCT_FK \n"
-              + "  FOREIGN KEY (PRODUCT_ID) \n"
-              + "  REFERENCES "
-              + mainTable
-              + " (PRODUCT_ID) ");
+          quirks.generateAddForeignKeyQuery(
+              "SALE_PRODUCT_FK", dependentTable, "PRODUCT_ID", mainTable, "PRODUCT_ID"));
       stmt.executeUpdate();
     }
   }
