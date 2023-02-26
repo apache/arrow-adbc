@@ -26,22 +26,23 @@ use std::{
 
 use arrow::{
     array::{as_struct_array, make_array_from_raw, StringArray},
-    datatypes::{DataType, Field, Schema, SchemaRef},
-    error::ArrowError,
+    datatypes::{DataType, Field, Schema},
     ffi::{FFI_ArrowArray, FFI_ArrowSchema},
     ffi_stream::{export_reader_into_raw, ArrowArrayStreamReader, FFI_ArrowArrayStream},
-    record_batch::{RecordBatch, RecordBatchReader},
+    record_batch::RecordBatch,
 };
 
 use crate::{
     check_err,
-    error::{AdbcStatusCode, FFI_AdbcError},
+    error::AdbcStatusCode,
     ffi::{
-        AdbcObjectDepth, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcPartitions,
+        FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError, FFI_AdbcPartitions,
         FFI_AdbcStatement,
     },
     info::export_info_data,
-    interface::objects::DatabaseCatalogCollection,
+    objects::DatabaseCatalogCollection,
+    utils::SingleBatchReader,
+    AdbcObjectDepth,
 };
 
 use super::{AdbcConnectionImpl, AdbcDatabaseImpl, AdbcError, AdbcStatementImpl};
@@ -419,7 +420,7 @@ unsafe extern "C" fn connection_get_objects<ConnectionType: Default + AdbcConnec
         error
     );
 
-    let reader = Box::new(BatchReader::new(objects.as_record_batch()));
+    let reader = Box::new(SingleBatchReader::new(objects.to_record_batch()));
     export_reader_into_raw(reader, out);
 
     AdbcStatusCode::Ok
@@ -463,36 +464,6 @@ unsafe extern "C" fn connection_get_table_schema<ConnectionType: Default + AdbcC
     AdbcStatusCode::Ok
 }
 
-// TODO: consolidate this utility
-struct BatchReader {
-    batch: Option<RecordBatch>,
-    schema: SchemaRef,
-}
-
-impl BatchReader {
-    pub fn new(batch: RecordBatch) -> Self {
-        let schema = batch.schema();
-        Self {
-            batch: Some(batch),
-            schema,
-        }
-    }
-}
-
-impl Iterator for BatchReader {
-    type Item = Result<RecordBatch, ArrowError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.batch.take().map(Ok)
-    }
-}
-
-impl RecordBatchReader for BatchReader {
-    fn schema(&self) -> SchemaRef {
-        self.schema.clone()
-    }
-}
-
 unsafe extern "C" fn connection_get_table_types<ConnectionType: Default + AdbcConnectionImpl>(
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
@@ -513,7 +484,7 @@ unsafe extern "C" fn connection_get_table_types<ConnectionType: Default + AdbcCo
         error
     );
 
-    let reader = Box::new(BatchReader::new(batch));
+    let reader = Box::new(SingleBatchReader::new(batch));
 
     export_reader_into_raw(reader, out);
 

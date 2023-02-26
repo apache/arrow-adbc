@@ -24,18 +24,15 @@
 
 use std::{rc::Rc, sync::Arc};
 
-use crate::{
-    error::AdbcError,
-    interface::{ConnectionApi, DatabaseApi, StatementApi},
-};
+use crate::{error::AdbcError, AdbcConnection, AdbcDatabase, AdbcStatement};
 
 pub mod internal;
 
-/// An implementation of an ADBC database. Must implement [DatabaseApi].
+/// An implementation of an ADBC database. Must implement [AdbcDatabase].
 ///
 /// Because it is shared by multiple connections, the implementation must be
 /// thread safe. Internally, it is held with an [std::sync::Arc] by each connection.
-pub trait AdbcDatabaseImpl: DatabaseApi {
+pub trait AdbcDatabaseImpl: AdbcDatabase {
     /// Initialize the database.
     ///
     /// Some drivers may choose not to support setting options after this has
@@ -43,8 +40,8 @@ pub trait AdbcDatabaseImpl: DatabaseApi {
     fn init(&self) -> Result<(), AdbcError>;
 }
 
-/// An implementation of an ADBC connection. Must implement [ConnectionApi].
-pub trait AdbcConnectionImpl: ConnectionApi {
+/// An implementation of an ADBC connection. Must implement [AdbcConnection].
+pub trait AdbcConnectionImpl: AdbcConnection {
     type DatabaseType: AdbcDatabaseImpl + Default;
 
     /// Initialize the connection.
@@ -56,7 +53,7 @@ pub trait AdbcConnectionImpl: ConnectionApi {
     fn init(&self, database: Arc<Self::DatabaseType>) -> Result<(), AdbcError>;
 }
 
-pub trait AdbcStatementImpl: StatementApi {
+pub trait AdbcStatementImpl: AdbcStatement {
     type ConnectionType: AdbcConnectionImpl + Default;
 
     /// Create a new statement.
@@ -77,11 +74,11 @@ macro_rules! adbc_init_func {
         pub unsafe extern "C" fn $func_name(
             version: ::std::os::raw::c_int,
             driver: *mut ::std::os::raw::c_void,
-            mut error: *mut arrow_adbc::error::FFI_AdbcError,
+            mut error: *mut arrow_adbc::ffi::FFI_AdbcError,
         ) -> arrow_adbc::error::AdbcStatusCode {
             if version != ADBC_VERSION_1_0_0 {
                 unsafe {
-                    arrow_adbc::error::FFI_AdbcError::set_message(
+                    arrow_adbc::ffi::FFI_AdbcError::set_message(
                         error,
                         &format!("Unsupported ADBC version: {}", version),
                     );
@@ -91,7 +88,7 @@ macro_rules! adbc_init_func {
 
             if driver.is_null() {
                 unsafe {
-                    arrow_adbc::error::FFI_AdbcError::set_message(
+                    arrow_adbc::ffi::FFI_AdbcError::set_message(
                         error,
                         "Passed a null pointer to ADBC driver init method.",
                     );

@@ -30,16 +30,13 @@ use arrow::{
 };
 use arrow_adbc::{
     adbc_init_func,
-    driver_manager::{AdbcConnection, AdbcDatabaseBuilder, AdbcDriver, AdbcDriverInitFunc},
+    driver_manager::{AdbcDriver, AdbcDriverInitFunc, DriverConnection, DriverDatabaseBuilder},
     error::{AdbcError, AdbcStatusCode},
-    ffi::AdbcObjectDepth,
     implement::{AdbcConnectionImpl, AdbcDatabaseImpl, AdbcStatementImpl},
     info::InfoData,
-    interface::{
-        objects::SimpleCatalogCollection, ConnectionApi, DatabaseApi, PartitionedStatementResult,
-        StatementApi, StatementResult,
-    },
-    ADBC_VERSION_1_0_0,
+    objects::SimpleCatalogCollection,
+    AdbcConnection, AdbcDatabase, AdbcObjectDepth, AdbcStatement, PartitionedStatementResult,
+    StatementResult, ADBC_VERSION_1_0_0,
 };
 use itertools::iproduct;
 
@@ -150,7 +147,7 @@ impl AdbcDatabaseImpl for TestDatabase {
     }
 }
 
-impl DatabaseApi for TestDatabase {
+impl AdbcDatabase for TestDatabase {
     fn set_option(&self, key: &str, value: &str) -> Result<()> {
         (self.driver.lock().unwrap().database_set_option)(key, value)
     }
@@ -200,7 +197,7 @@ macro_rules! conn_method {
     };
 }
 
-impl ConnectionApi for TestConnection {
+impl AdbcConnection for TestConnection {
     type ObjectCollectionType = SimpleCatalogCollection;
     fn set_option(&self, key: &str, value: &str) -> Result<()> {
         conn_method!(self, connection_set_option, key, value)
@@ -277,7 +274,7 @@ impl AdbcStatementImpl for TestStatement {
     }
 }
 
-impl StatementApi for TestStatement {
+impl AdbcStatement for TestStatement {
     fn set_option(&mut self, key: &str, value: &str) -> Result<()> {
         Err(TestError::General(format!(
             "Not implemented: setting option with key '{key}' and value '{value}'."
@@ -334,7 +331,7 @@ fn get_driver() -> AdbcDriver {
     AdbcDriver::load_from_init(&(TestDriverInit as AdbcDriverInitFunc), ADBC_VERSION_1_0_0).unwrap()
 }
 
-fn get_database_builder() -> (AdbcDatabaseBuilder, Arc<Mutex<PatchableDriver>>) {
+fn get_database_builder() -> (DriverDatabaseBuilder, Arc<Mutex<PatchableDriver>>) {
     let driver = get_driver();
     let builder = driver.new_database().unwrap();
     let mock_driver = PATCH_HANDOFF
@@ -349,7 +346,7 @@ macro_rules! set_driver_method {
     };
 }
 
-fn get_connection() -> (AdbcConnection, Arc<Mutex<PatchableDriver>>) {
+fn get_connection() -> (DriverConnection, Arc<Mutex<PatchableDriver>>) {
     let (builder, mock_driver) = get_database_builder();
     let conn = builder
         .init()

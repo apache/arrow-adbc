@@ -16,12 +16,204 @@
 // under the License.
 
 //! ADBC FFI structs, as defined in [adbc.h](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
-use std::ffi::{c_char, c_void, CStr};
+//!
+//! # Handling errors
+//!
+//! ADBC functions report errors in two ways at the same time: first, they
+//! return a status code, [AdbcStatusCode], and second, they fill in an out pointer
+//! to [FFI_AdbcError]. To easily convert between a Rust error enum and these
+//! two types, implement [std::convert::From] from your error to [AdbcError]. With that trait
+//! defined, you can use the [check_err] macro to handle Rust errors within ADBC functions.
+//!
+//! In simple cases, you can use [FFI_AdbcError::set_message] and return an error
+//! status code early. To handle error enums use [check_err]. For example,
+//!
+//! ```
+//! use std::ffi::CStr;
+//! use std::os::raw::c_char;
+//! use arrow_adbc::ffi::{FFI_AdbcError, check_err}
+//! use arrow_adbc::error::{AdbcStatusCode, AdbcError};
+//!
+//! unsafe fn adbc_str_utf8_len(
+//!     key: *const c_char,
+//!     out: *mut usize,
+//!     error: *mut FFI_AdbcError) -> AdbcStatusCode {
+//!     if key.is_null() {
+//!         FFI_AdbcError::set_message(error, "Passed a null pointer.");
+//!         return AdbcStatusCode::InvalidArguments;
+//!     } else {
+//!         // AdbcError is implemented for Utf8Error
+//!         let key: &str = check_err!(CStr::from_ptr(key).to_str(), error);
+//!         let len: usize = key.chars().count();
+//!         std::ptr::write_unaligned(out, len);
+//!     }
+//!    AdbcStatusCode::Ok
+//! }
+//!
+//!
+//! let msg: &[u8] = &[0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x0]; // "hello"
+//! let mut out: usize = 0;
+//!
+//! let mut error = FFI_AdbcError::empty();
+//!
+//! let status_code = unsafe { adbc_str_utf8_len(
+//!   msg.as_ptr() as *const c_char,
+//!   &mut out as *mut usize,
+//!   &mut error
+//! ) };
+//!
+//! assert_eq!(status_code, AdbcStatusCode::Ok);
+//! assert_eq!(out, 5);
+//!
+//! let mut error = FFI_AdbcError::empty();
+//! let mut msg: &[u8] = &[0xff, 0x0];
+//! let status_code = unsafe { adbc_str_utf8_len(
+//!   msg.as_ptr() as *const c_char,
+//!   &mut out as *mut usize,
+//!   &mut error
+//! ) };
+//!
+//! assert_eq!(status_code, AdbcStatusCode::InvalidArguments);
+//! let error_msg = unsafe { CStr::from_ptr(error.message).to_str().unwrap() };
+//! assert_eq!(error_msg, "Invalid UTF-8 character");
+//! assert_eq!(error.sqlstate, [2, 2, 0, 2, 1]);
+//! ```
+//!
+use std::ffi::{c_char, c_void, CStr, CString};
 use std::ptr::{null, null_mut};
 
-use crate::error::{AdbcStatusCode, FFI_AdbcError};
+use crate::error::{AdbcError, AdbcStatusCode};
+use crate::AdbcObjectDepth;
 use arrow::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
 use arrow::ffi_stream::FFI_ArrowArrayStream;
+
+/// A detailed error message for an operation.
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct FFI_AdbcError {
+    /// The error message.
+    pub message: *mut c_char,
+    /// A vendor-specific error code, if applicable.
+    pub vendor_code: i32,
+    /// A SQLSTATE error code, if provided, as defined by the
+    /// SQL:2003 standard.  If not set, it should be set to
+    /// "\\0\\0\\0\\0\\0".
+    pub sqlstate: [c_char; 5usize],
+    /// Release the contained error.
+    ///
+    /// Unlike other structures, this is an embedded callback to make it
+    /// easier for the driver manager and driver to cooperate.
+    pub release: Option<unsafe extern "C" fn(error: *mut Self)>,
+}
+
+impl Drop for FFI_AdbcError {
+    fn drop(&mut self) {
+        if let Some(release) = self.release {
+            unsafe { release(self) };
+        }
+    }
+}
+
+impl FFI_AdbcError {
+    /// Create an empty error
+    pub fn empty() -> Self {
+        Self {
+            message: null_mut(),
+            vendor_code: -1,
+            sqlstate: ['\0' as c_char; 5],
+            release: None,
+        }
+    }
+
+    /// Create a new FFI_AdbcError.
+    ///
+    /// `vendor_code` defaults to -1 and `sql_state` defaults to zeros.
+    pub fn new(message: &str, vendor_code: Option<i32>, sqlstate: Option<[c_char; 5]>) -> Self {
+        Self {
+            message: CString::new(message).unwrap().into_raw(),
+            vendor_code: vendor_code.unwrap_or(-1),
+            sqlstate: sqlstate.unwrap_or(['\0' as c_char; 5]),
+            release: Some(drop_adbc_error),
+        }
+    }
+
+    /// Set an error message.
+    ///
+    /// # Safety
+    ///
+    /// If `dest` is null, no error is written. If `dest` is non-null, it must
+    /// be valid for writes.
+    pub unsafe fn set_message(dest: *mut Self, message: &str) {
+        if !dest.is_null() {
+            let error = Self::new(message, None, None);
+            unsafe { std::ptr::write_unaligned(dest, error) }
+        }
+    }
+
+    /// Get message as a String.
+    ///
+    /// # Safety
+    ///
+    /// Underlying message null-terminated string must have a valid terminator
+    /// and the buffer up to that terminator must be valid for reads.
+    pub unsafe fn get_message(&self) -> Option<String> {
+        if self.message.is_null() {
+            None
+        } else {
+            let message = unsafe { CStr::from_ptr(self.message) }
+                .to_string_lossy()
+                .to_string();
+            Some(message)
+        }
+    }
+}
+
+impl From<AdbcError> for FFI_AdbcError {
+    fn from(err: AdbcError) -> Self {
+        let message: *mut i8 = CString::new(err.message).unwrap().into_raw();
+        Self {
+            message,
+            vendor_code: err.vendor_code,
+            sqlstate: err.sqlstate,
+            release: Some(drop_adbc_error),
+        }
+    }
+}
+
+unsafe extern "C" fn drop_adbc_error(error: *mut FFI_AdbcError) {
+    if let Some(error) = error.as_mut() {
+        // Retake pointer so it will drop once out of scope.
+        if !error.message.is_null() {
+            let _ = CString::from_raw(error.message);
+        }
+        error.message = null_mut();
+    }
+}
+
+/// Given a Result, either unwrap the value or handle the error in ADBC function.
+///
+/// This macro is for use when implementing ADBC methods that have an out
+/// parameter for [FFI_AdbcError] and return [AdbcStatusCode]. If the result is
+/// `Ok`, the expression resolves to the value. Otherwise, it will return early,
+/// setting the error and status code appropriately. In order for this to work,
+/// the error must be convertible to [AdbcError].
+#[macro_export]
+macro_rules! check_err {
+    ($res:expr, $err_out:expr) => {
+        match $res {
+            Ok(x) => x,
+            Err(err) => {
+                let adbc_error = AdbcError::from(err);
+                let status_code = adbc_error.status_code;
+                let error = FFI_AdbcError::from(adbc_error);
+                unsafe { std::ptr::write_unaligned($err_out, error) };
+                return status_code;
+            }
+        }
+    };
+}
+
+pub use check_err;
 
 /// An instance of a database.
 ///
@@ -549,6 +741,8 @@ unsafe impl Send for FFI_AdbcDriver {}
 unsafe impl Sync for FFI_AdbcDriver {}
 
 pub(crate) mod driver_function_stubs {
+    use crate::AdbcObjectDepth;
+
     use super::*;
 
     pub(crate) unsafe extern "C" fn database_init(
@@ -769,20 +963,6 @@ pub(crate) mod driver_function_stubs {
     ) -> AdbcStatusCode {
         AdbcStatusCode::NotImplemented
     }
-}
-
-/// Depth parameter for GetObjects method.
-#[derive(Debug)]
-#[repr(i32)]
-pub enum AdbcObjectDepth {
-    /// Metadata on catalogs, schemas, tables, and columns.
-    All = 0,
-    /// Metadata on catalogs only.
-    Catalogs = 1,
-    /// Metadata on catalogs and schemas.
-    DBSchemas = 2,
-    /// Metadata on catalogs, schemas, and tables.
-    Tables = 3,
 }
 
 #[cfg(test)]

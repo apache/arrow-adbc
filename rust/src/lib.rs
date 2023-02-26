@@ -15,10 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! Rust structs and utilities for using and building Arrow Database Connectivity (ADBC) drivers.
-//!
-//! ADBC drivers provide an ABI-stable interface for interacting with databases,
-//! that:
+//! Arrow Database Connectivity (ADBC) allows efficient connections to databases
+//! for OLAP workloads:
 //!
 //!  * Uses the Arrow [C Data interface](https://arrow.apache.org/docs/format/CDataInterface.html)
 //!    and [C Stream Interface](https://arrow.apache.org/docs/format/CStreamInterface.html)
@@ -34,9 +32,27 @@
 //!
 //! Read more about ADBC at <https://arrow.apache.org/adbc/>
 //!
-//! ## Using ADBC drivers
+//! There are two flavors of ADBC that this library supports:
 //!
-//! The [driver_manager] mod allows loading drivers, either from an initialization
+//!  * **Native Rust implementations**. These implement the traits at the top level of
+//!    this crate, starting with [AdbcDatabase].
+//!  * **C API ADBC drivers**. These can be implemented in any language (that compiles
+//!    to native code) and can be used by any language.
+//!
+//! # Native Rust drivers
+//!
+//! Native Rust drivers will implement the traits:
+//!
+//!  * [AdbcDatabase]
+//!  * [AdbcConnection]
+//!  * [AdbcStatement]
+//!
+//! For drivers implemented in Rust, using these will be more efficient and safe,
+//! since it avoids the overhead of going through C FFI.
+//!
+//! # Using C API drivers
+//!
+//! The [driver_manager] module allows loading drivers, either from an initialization
 //! function or by dynamically finding such a function in a dynamic library.
 //!
 //! ```
@@ -66,24 +82,269 @@
 //! # }
 //! ```
 //!
-//! ## Implementing ADBC drivers
+//! # Creating C API drivers
 //!
-//! To implement an ADBC driver, use the [implement] module. The macro
+//! To implement an ADBC driver with a C interface, use the [implement] module. The macro
 //! [adbc_init_func] will generate adapters from the safe Rust traits you implement
 //! to the FFI interface recognized by ADBC.
+//!
 pub mod driver_manager;
 pub mod error;
 pub mod ffi;
 pub mod implement;
-pub mod interface;
+pub mod info;
+pub mod objects;
+pub(crate) mod utils;
 
 pub const ADBC_VERSION_1_0_0: i32 = 1000000;
 
+use arrow::datatypes::Schema;
+use arrow::record_batch::{RecordBatch, RecordBatchReader};
+
+use crate::error::AdbcError;
+use crate::info::InfoData;
+
+/// Databases hold state shared by multiple connections. This typically means
+/// configuration and caches. For in-memory databases, it provides a place to
+/// hold ownership of the in-memory database.
+pub trait AdbcDatabase {
+    /// Set an option on the database.
+    ///
+    /// Some databases may not allow setting options after it has been initialized.
+    fn set_option(&self, key: &str, value: &str) -> Result<(), AdbcError>;
+}
+
+/// A connection is a single connection to a database.
+///
+/// It is never accessed concurrently from multiple threads.
+///
+/// # Autocommit
+///
+/// Connections should start in autocommit mode. They can be moved out by
+/// setting `"adbc.connection.autocommit"` to `"false"` (using
+/// [AdbcConnection::set_option]). Turning off autocommit allows customizing
+/// the isolation level. Read more in [adbc.h](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
+pub trait AdbcConnection {
+    type ObjectCollectionType: objects::DatabaseCatalogCollection;
+
+    /// Set an option on the connection.
+    ///
+    /// Some connections may not allow setting options after it has been initialized.
+    fn set_option(&self, key: &str, value: &str) -> Result<(), AdbcError>;
+
+    /// Get metadata about the database/driver.
+    ///
+    /// If None is passed for `info_codes`, the method will return all info.
+    /// Otherwise will return the specified info, in any order. If an unrecognized
+    /// code is passed, it will return an error.
+    ///
+    /// The result is an Arrow dataset with the following schema:
+    ///
+    /// Field Name                  | Field Type
+    /// ----------------------------|------------------------
+    /// `info_name`                 | `uint32 not null`
+    /// `info_value`                | `INFO_SCHEMA`
+    ///
+    /// `INFO_SCHEMA` is a dense union with members:
+    ///
+    /// Field Name (Type Code)        | Field Type
+    /// ------------------------------|------------------------
+    /// `string_value` (0)            | `utf8`
+    /// `bool_value` (1)              | `bool`
+    /// `int64_value` (2)             | `int64`
+    /// `int32_bitmask` (3)           | `int32`
+    /// `string_list` (4)             | `list<utf8>`
+    /// `int32_to_int32_list_map` (5) | `map<int32, list<int32>>`
+    ///
+    /// Each metadatum is identified by an integer code.  The recognized
+    /// codes are defined as constants.  Codes [0, 10_000) are reserved
+    /// for ADBC usage.  Drivers/vendors will ignore requests for
+    /// unrecognized codes (the row will be omitted from the result).
+    ///
+    /// For definitions of known ADBC codes, see <https://github.com/apache/arrow-adbc/blob/main/adbc.h>
+    fn get_info(&self, info_codes: Option<&[u32]>) -> Result<Vec<(u32, InfoData)>, AdbcError>;
+
+    /// Get a hierarchical view of all catalogs, database schemas, tables, and columns.
+    ///
+    /// # Parameters
+    ///
+    /// * **depth**: The level of nesting to display. If [AdbcObjectDepth::All], display
+    ///   all levels. If [AdbcObjectDepth::Catalogs], display only catalogs (i.e.  `catalog_schemas`
+    ///   will be null). If [AdbcObjectDepth::DBSchemas], display only catalogs and schemas
+    ///   (i.e. `db_schema_tables` will be null), and so on.
+    /// * **catalog**: Only show tables in the given catalog. If None,
+    ///   do not filter by catalog. If an empty string, only show tables
+    ///   without a catalog.  May be a search pattern (see next section).
+    /// * **db_schema**: Only show tables in the given database schema. If
+    ///   None, do not filter by database schema. If an empty string, only show
+    ///   tables without a database schema. May be a search pattern (see next section).
+    /// * **table_name**: Only show tables with the given name. If None, do not
+    ///   filter by name. May be a search pattern (see next section).
+    /// * **table_type**: Only show tables matching one of the given table
+    ///   types. If None, show tables of any type. Valid table types should
+    ///   match those returned by [AdbcConnection::get_table_schema].
+    /// * **column_name**: Only show columns with the given name. If
+    ///   None, do not filter by name.  May be a search pattern (see next section).
+    ///
+    /// # Search patterns
+    ///
+    /// Some parameters accept "search patterns", which are
+    /// strings that can contain the special character `"%"` to match zero
+    /// or more characters, or `"_"` to match exactly one character.  (See
+    /// the documentation of DatabaseMetaData in JDBC or "Pattern Value
+    /// Arguments" in the ODBC documentation.)
+    fn get_objects(
+        &self,
+        depth: AdbcObjectDepth,
+        catalog: Option<&str>,
+        db_schema: Option<&str>,
+        table_name: Option<&str>,
+        table_type: Option<&[&str]>,
+        column_name: Option<&str>,
+    ) -> Result<Self::ObjectCollectionType, AdbcError>;
+
+    /// Get the Arrow schema of a table.
+    ///
+    /// `catalog` or `db_schema` may be `None` when not applicable.
+    fn get_table_schema(
+        &self,
+        catalog: Option<&str>,
+        db_schema: Option<&str>,
+        table_name: &str,
+    ) -> Result<Schema, AdbcError>;
+
+    /// Get a list of table types in the database.
+    ///
+    /// The result is an Arrow dataset with the following schema:
+    ///
+    /// Field Name       | Field Type
+    /// -----------------|--------------
+    /// `table_type`     | `utf8 not null`
+    fn get_table_types(&self) -> Result<Vec<String>, AdbcError>;
+
+    /// Read part of a partitioned result set.
+    fn read_partition(&self, partition: &[u8]) -> Result<Box<dyn RecordBatchReader>, AdbcError>;
+
+    /// Commit any pending transactions. Only used if autocommit is disabled.
+    fn commit(&self) -> Result<(), AdbcError>;
+
+    /// Roll back any pending transactions. Only used if autocommit is disabled.
+    fn rollback(&self) -> Result<(), AdbcError>;
+}
+
+/// Depth parameter for GetObjects method.
+#[derive(Debug)]
+#[repr(i32)]
+pub enum AdbcObjectDepth {
+    /// Metadata on catalogs, schemas, tables, and columns.
+    All = 0,
+    /// Metadata on catalogs only.
+    Catalogs = 1,
+    /// Metadata on catalogs and schemas.
+    DBSchemas = 2,
+    /// Metadata on catalogs, schemas, and tables.
+    Tables = 3,
+}
+
+/// A container for all state needed to execute a database query, such as the
+/// query itself, parameters for prepared statements, driver parameters, etc.
+///
+/// Statements may represent queries or prepared statements.
+///
+/// Statements may be used multiple times and can be reconfigured
+/// (e.g. they can be reused to execute multiple different queries).
+/// However, executing a statement (and changing certain other state)
+/// will invalidate result sets obtained prior to that execution.
+///
+/// Multiple statements may be created from a single connection.
+/// However, the driver may block or error if they are used
+/// concurrently (whether from a single thread or multiple threads).
+pub trait AdbcStatement {
+    /// Turn this statement into a prepared statement to be executed multiple time.
+    ///
+    /// This should return an error if called before [AdbcStatement::set_sql_query].
+    fn prepare(&mut self) -> Result<(), AdbcError>;
+
+    /// Set a string option on a statement.
+    fn set_option(&mut self, key: &str, value: &str) -> Result<(), AdbcError>;
+
+    /// Set the SQL query to execute.
+    fn set_sql_query(&mut self, query: &str) -> Result<(), AdbcError>;
+
+    /// Set the Substrait plan to execute.
+    fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<(), AdbcError>;
+
+    /// Get the schema for bound parameters.
+    ///
+    /// This retrieves an Arrow schema describing the number, names, and
+    /// types of the parameters in a parameterized statement.  The fields
+    /// of the schema should be in order of the ordinal position of the
+    /// parameters; named parameters should appear only once.
+    ///
+    /// If the parameter does not have a name, or the name cannot be
+    /// determined, the name of the corresponding field in the schema will
+    /// be an empty string.  If the type cannot be determined, the type of
+    /// the corresponding field will be NA (NullType).
+    ///
+    /// This should return an error if this was called before [AdbcStatement::prepare].
+    fn get_param_schema(&mut self) -> Result<Schema, AdbcError>;
+
+    /// Bind Arrow data, either for bulk inserts or prepared statements.
+    fn bind_data(&mut self, batch: RecordBatch) -> Result<(), AdbcError>;
+
+    /// Bind Arrow data, either for bulk inserts or prepared statements.
+    fn bind_stream(&mut self, stream: Box<dyn RecordBatchReader>) -> Result<(), AdbcError>;
+
+    /// Execute a statement and get the results.
+    ///
+    /// See [StatementResult].
+    fn execute(&mut self) -> Result<StatementResult, AdbcError>;
+
+    /// Execute a query that doesn't have a result set.
+    ///
+    /// Will return the number of rows affected, or -1 if unknown or unsupported.
+    fn execute_update(&mut self) -> Result<i64, AdbcError>;
+
+    /// Execute a statement with a partitioned result set.
+    ///
+    /// This is not required to be implemented, as it only applies to backends
+    /// that internally partition results. These backends can use this method
+    /// to support threaded or distributed clients.
+    ///
+    /// See [PartitionedStatementResult].
+    fn execute_partitioned(&mut self) -> Result<PartitionedStatementResult, AdbcError>;
+}
+
+/// Result of calling [AdbcStatement::execute].
+///
+/// `result` may be None if there is no meaningful result.
+/// `row_affected` may be -1 if not applicable or if it is not supported.
+pub struct StatementResult {
+    pub result: Option<Box<dyn RecordBatchReader>>,
+    pub rows_affected: i64,
+}
+
+/// Partitioned results
+///
+/// [AdbcConnection::read_partition] will be called to get the output stream
+/// for each partition.
+///
+/// These may be used by a multi-threaded or a distributed client. Each partition
+/// will be retrieved by a separate connection. For in-memory databases, these
+/// may be connections on different threads that all reference the same database.
+/// For remote databases, these may be connections in different processes.
+#[derive(Debug, Clone)]
+pub struct PartitionedStatementResult {
+    pub schema: Schema,
+    pub partition_ids: Vec<Vec<u8>>,
+    pub rows_affected: i64,
+}
+
 /// Known options that can be set on databases, connections, and statements.
 ///
-/// For use with [crate::interface::DatabaseApi::set_option],
-/// [crate::interface::ConnectionApi::set_option],
-/// and [crate::interface::StatementApi::set_option].
+/// For use with [crate::AdbcDatabase::set_option],
+/// [crate::AdbcConnection::set_option],
+/// and [crate::AdbcStatement::set_option].
 pub mod options {
     pub const INGEST_OPTION_TARGET_TABLE: &str = "adbc.ingest.target_table";
     pub const ADBC_INGEST_OPTION_MODE: &str = "adbc.ingest.mode";
@@ -153,325 +414,4 @@ pub mod options {
     /// to a single object.
     pub const ADBC_OPTION_ISOLATION_LEVEL_LINEARIZABLE: &str =
         "adbc.connection.transaction.isolation.linearizable";
-}
-
-/// Utilities for driver info
-///
-/// For use with [crate::interface::ConnectionApi::get_info].
-pub mod info {
-    use arrow::{
-        array::{
-            as_primitive_array, as_string_array, as_union_array, Array, ArrayBuilder, ArrayRef,
-            BooleanBuilder, Int32Builder, Int64Builder, ListBuilder, MapBuilder, StringBuilder,
-            UInt32BufferBuilder, UInt32Builder, UInt8BufferBuilder, UnionArray,
-        },
-        datatypes::{DataType, Field, Schema, UInt32Type, UnionMode},
-        error::ArrowError,
-        record_batch::{RecordBatch, RecordBatchReader},
-    };
-    use std::{borrow::Cow, collections::HashMap, sync::Arc};
-
-    use crate::util::SingleBatchReader;
-
-    /// Contains known info codes defined by ADBC.
-    pub mod codes {
-        /// The database vendor/product version (type: utf8).
-        pub const VENDOR_NAME: u32 = 0;
-        /// The database vendor/product version (type: utf8).
-        pub const VENDOR_VERSION: u32 = 1;
-        /// The database vendor/product Arrow library version (type: utf8).
-        pub const VENDOR_ARROW_VERSION: u32 = 2;
-        /// The driver name (type: utf8).
-        pub const DRIVER_NAME: u32 = 100;
-        /// The driver version (type: utf8).
-        pub const DRIVER_VERSION: u32 = 101;
-        /// The driver Arrow library version (type: utf8).
-        pub const DRIVER_ARROW_VERSION: u32 = 102;
-    }
-
-    pub fn info_schema() -> Schema {
-        Schema::new(vec![
-            Field::new("info_name", DataType::UInt32, false),
-            Field::new(
-                "info_value",
-                DataType::Union(
-                    vec![
-                        Field::new("string_value", DataType::Utf8, true),
-                        Field::new("bool_value", DataType::Boolean, true),
-                        Field::new("int64_value", DataType::Int64, true),
-                        Field::new("int32_bitmask", DataType::Int32, true),
-                        Field::new(
-                            "string_list",
-                            DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
-                            true,
-                        ),
-                        Field::new(
-                            "int32_to_int32_list_map",
-                            DataType::Map(
-                                Box::new(Field::new(
-                                    "entries",
-                                    DataType::Struct(vec![
-                                        Field::new("keys", DataType::Int32, false),
-                                        Field::new(
-                                            "values",
-                                            DataType::List(Box::new(Field::new(
-                                                "item",
-                                                DataType::Int32,
-                                                true,
-                                            ))),
-                                            true,
-                                        ),
-                                    ]),
-                                    false,
-                                )),
-                                false,
-                            ),
-                            true,
-                        ),
-                    ],
-                    vec![0, 1, 2, 3, 4, 5],
-                    UnionMode::Dense,
-                ),
-                true,
-            ),
-        ])
-    }
-
-    /// Rust representations of database/drier metadata
-    #[derive(Clone, Debug, PartialEq)]
-    pub enum InfoData {
-        StringValue(Cow<'static, str>),
-        BoolValue(bool),
-        Int64Value(i64),
-        Int32Bitmask(i32),
-        StringList(Vec<String>),
-        Int32ToInt32ListMap(HashMap<i32, Vec<i32>>),
-    }
-
-    pub fn export_info_data(
-        info_iter: impl IntoIterator<Item = (u32, InfoData)>,
-    ) -> Box<dyn RecordBatchReader> {
-        let info_iter = info_iter.into_iter();
-
-        let mut codes = UInt32Builder::with_capacity(info_iter.size_hint().0);
-
-        // Type id tells which array the value is in
-        let mut type_id = UInt8BufferBuilder::new(info_iter.size_hint().0);
-        // Value offset tells the offset of the value in the respective array
-        let mut value_offsets = UInt32BufferBuilder::new(info_iter.size_hint().0);
-
-        // Make one builder per child of union array. Will combine after.
-        let mut string_values = StringBuilder::new();
-        let mut bool_values = BooleanBuilder::new();
-        let mut int64_values = Int64Builder::new();
-        let mut int32_bitmasks = Int32Builder::new();
-        let mut string_lists = ListBuilder::new(StringBuilder::new());
-        let mut int32_to_int32_list_maps = MapBuilder::new(
-            None,
-            Int32Builder::new(),
-            ListBuilder::new(Int32Builder::new()),
-        );
-
-        for (code, info) in info_iter {
-            codes.append_value(code);
-
-            match info {
-                InfoData::StringValue(val) => {
-                    string_values.append_value(val);
-                    type_id.append(0);
-                    let value_offset = string_values.len() - 1;
-                    value_offsets.append(
-                        value_offset
-                            .try_into()
-                            .expect("Array has more values than can be indexed by u32"),
-                    );
-                }
-                _ => {
-                    todo!("support other types in info_data")
-                }
-            };
-        }
-
-        let arrays: Vec<ArrayRef> = vec![
-            Arc::new(string_values.finish()),
-            Arc::new(bool_values.finish()),
-            Arc::new(int64_values.finish()),
-            Arc::new(int32_bitmasks.finish()),
-            Arc::new(string_lists.finish()),
-            Arc::new(int32_to_int32_list_maps.finish()),
-        ];
-        let info_schema = info_schema();
-        let union_fields = {
-            match info_schema.field(1).data_type() {
-                DataType::Union(fields, _, _) => fields,
-                _ => unreachable!(),
-            }
-        };
-        let children = union_fields
-            .iter()
-            .map(|f| f.to_owned())
-            .zip(arrays.into_iter())
-            .collect();
-        let info_value = UnionArray::try_new(
-            &[0, 1, 2, 3, 4, 5],
-            type_id.finish(),
-            Some(value_offsets.finish()),
-            children,
-        )
-        .expect("Info value array is always valid.");
-
-        // Make a record batch
-        let batch: RecordBatch = RecordBatch::try_new(
-            Arc::new(info_schema),
-            vec![Arc::new(codes.finish()), Arc::new(info_value)],
-        )
-        .expect("Info data batch is always valid.");
-
-        // Wrap record batch into a reader with std::iter::once
-        Box::new(SingleBatchReader::new(batch))
-    }
-
-    pub fn import_info_data(
-        reader: Box<dyn RecordBatchReader>,
-    ) -> Result<Vec<(u32, InfoData)>, ArrowError> {
-        let batches = reader.collect::<Result<Vec<RecordBatch>, ArrowError>>()?;
-
-        Ok(batches
-            .iter()
-            .flat_map(|batch| {
-                let codes = as_primitive_array::<UInt32Type>(batch.column(0));
-                let codes = codes.into_iter().map(|code| code.unwrap());
-
-                let info_data = as_union_array(batch.column(1));
-                let info_data = (0..info_data.len()).map(|i| -> InfoData {
-                    let type_id = info_data.type_id(i);
-                    match type_id {
-                        0 => InfoData::StringValue(Cow::Owned(
-                            as_string_array(&info_data.value(i)).value(0).to_string(),
-                        )),
-                        _ => todo!("Support other types"),
-                    }
-                });
-
-                std::iter::zip(codes, info_data)
-            })
-            .collect())
-    }
-
-    #[cfg(test)]
-    mod test {
-        use std::ops::Deref;
-
-        use arrow::{
-            array::{as_primitive_array, as_string_array, as_union_array},
-            datatypes::UInt32Type,
-        };
-
-        use super::*;
-
-        #[test]
-        fn test_export_info_data() {
-            let example_info = vec![
-                (
-                    codes::VENDOR_NAME,
-                    InfoData::StringValue(Cow::Borrowed("test vendor")),
-                ),
-                (
-                    codes::DRIVER_NAME,
-                    InfoData::StringValue(Cow::Borrowed("test driver")),
-                ),
-            ];
-
-            let info = export_info_data(example_info.clone());
-
-            assert_eq!(info.schema().deref(), &info_schema());
-            let info: HashMap<u32, String> = info
-                .flat_map(|maybe_batch| {
-                    let batch = maybe_batch.unwrap();
-                    let id = as_primitive_array::<UInt32Type>(batch.column(0));
-                    let values = as_union_array(batch.column(1));
-                    let string_values = as_string_array(values.child(0));
-                    let mut out = vec![];
-                    for i in 0..batch.num_rows() {
-                        assert_eq!(values.type_id(i), 0);
-                        out.push((id.value(i), string_values.value(i).to_string()));
-                    }
-                    out
-                })
-                .collect();
-
-            assert_eq!(
-                info.get(&codes::VENDOR_NAME),
-                Some(&"test vendor".to_string())
-            );
-            assert_eq!(
-                info.get(&codes::DRIVER_NAME),
-                Some(&"test driver".to_string())
-            );
-
-            let info = export_info_data(example_info);
-
-            let info: HashMap<u32, InfoData> =
-                import_info_data(info).unwrap().into_iter().collect();
-            dbg!(&info);
-
-            assert_eq!(
-                info.get(&codes::VENDOR_NAME),
-                Some(&InfoData::StringValue(Cow::Owned(
-                    "test vendor".to_string()
-                )))
-            );
-            assert_eq!(
-                info.get(&codes::DRIVER_NAME),
-                Some(&InfoData::StringValue(Cow::Owned(
-                    "test driver".to_string()
-                )))
-            );
-        }
-    }
-}
-
-pub(crate) mod util {
-    use std::sync::Arc;
-
-    use arrow::{
-        datatypes::Schema,
-        error::ArrowError,
-        record_batch::{RecordBatch, RecordBatchReader},
-    };
-
-    /// [RecordBatchReader] for a single record batch.
-    pub(crate) struct SingleBatchReader {
-        batch: Option<RecordBatch>,
-        schema: Arc<Schema>,
-    }
-
-    impl SingleBatchReader {
-        pub fn new(batch: RecordBatch) -> Self {
-            let schema = batch.schema();
-            Self {
-                batch: Some(batch),
-                schema,
-            }
-        }
-    }
-
-    impl Iterator for SingleBatchReader {
-        type Item = Result<RecordBatch, ArrowError>;
-
-        fn next(&mut self) -> Option<Self::Item> {
-            Ok(self.batch.take()).transpose()
-        }
-
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            let left = if self.batch.is_some() { 1 } else { 0 };
-            (left, Some(left))
-        }
-    }
-
-    impl RecordBatchReader for SingleBatchReader {
-        fn schema(&self) -> arrow::datatypes::SchemaRef {
-            self.schema.clone()
-        }
-    }
 }

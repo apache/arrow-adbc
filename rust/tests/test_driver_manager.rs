@@ -25,23 +25,20 @@ use arrow::compute::concat_batches;
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::error::ArrowError;
 use arrow::record_batch::RecordBatch;
-use arrow_adbc::driver_manager::{AdbcDatabase, AdbcDriver, AdbcStatement, Result};
-use arrow_adbc::ffi::AdbcObjectDepth;
+use arrow_adbc::driver_manager::{AdbcDriver, DriverDatabase, DriverStatement, Result};
 use arrow_adbc::info::{codes, InfoData};
-use arrow_adbc::interface::{
-    objects::{
-        ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry, DatabaseSchemaEntry,
-        DatabaseTableEntry,
-    },
-    ConnectionApi, StatementApi,
+use arrow_adbc::objects::{
+    ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry, DatabaseSchemaEntry,
+    DatabaseTableEntry,
 };
-use arrow_adbc::ADBC_VERSION_1_0_0;
+use arrow_adbc::AdbcObjectDepth;
+use arrow_adbc::{AdbcConnection, AdbcStatement, ADBC_VERSION_1_0_0};
 
 fn get_driver() -> Result<AdbcDriver> {
     AdbcDriver::load("adbc_driver_sqlite", None, ADBC_VERSION_1_0_0)
 }
 
-fn get_database() -> Result<AdbcDatabase> {
+fn get_database() -> Result<DriverDatabase> {
     let driver = get_driver()?;
     // By passing in "" for uri, we create a distinct temporary database for each
     // test, preventing noisy neighbor issues on tests.
@@ -100,7 +97,7 @@ fn get_example_data() -> RecordBatch {
     RecordBatch::try_new(Arc::new(schema1), vec![ints_arr, str_arr]).unwrap()
 }
 
-fn upload_data(statement: &mut AdbcStatement, data: RecordBatch, name: &str) {
+fn upload_data(statement: &mut DriverStatement, data: RecordBatch, name: &str) {
     statement
         .set_option(arrow_adbc::options::INGEST_OPTION_TARGET_TABLE, name)
         .unwrap();
