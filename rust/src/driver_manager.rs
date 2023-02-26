@@ -110,11 +110,8 @@ pub(crate) mod util {
     }
 
     use arrow::{
-        array::{
-            as_boolean_array, as_primitive_array, as_string_array, Array, ArrayRef, StructArray,
-        },
+        array::{as_boolean_array, as_primitive_array, as_string_array, Array, StructArray},
         datatypes::ArrowPrimitiveType,
-        record_batch::RecordBatch,
     };
 
     /// Represents a slice of a struct array as a reference.
@@ -129,38 +126,23 @@ pub(crate) mod util {
     }
 
     impl<'a> StructArraySlice<'a> {
-        pub fn iter_rows(&self) -> impl Iterator<Item = RowReference<'a, StructArray>> {
+        pub fn iter_rows(&self) -> impl Iterator<Item = RowReference<'a>> {
             let end = self.offset + self.len;
             let inner = self.inner;
             (self.offset..end).map(|pos| RowReference { inner, pos })
         }
     }
 
-    pub(crate) trait ArrowTabular {
-        fn column(&self, pos: usize) -> &ArrayRef;
-    }
-
-    impl ArrowTabular for RecordBatch {
-        fn column(&self, pos: usize) -> &ArrayRef {
-            self.column(pos)
-        }
-    }
-    impl ArrowTabular for StructArray {
-        fn column(&self, pos: usize) -> &ArrayRef {
-            self.column(pos)
-        }
-    }
-
-    /// Represents a row in an [ArrowTabular].
+    /// Represents a row in an [StructArray].
     ///
     /// Provides accessors to extract fields for a row.
     #[derive(Debug, Clone, Copy)]
-    pub(crate) struct RowReference<'a, T: ArrowTabular + 'a> {
-        pub inner: &'a T,
+    pub(crate) struct RowReference<'a> {
+        pub inner: &'a StructArray,
         pub pos: usize,
     }
 
-    impl<'a, T: ArrowTabular + 'a> RowReference<'a, T> {
+    impl<'a> RowReference<'a> {
         pub fn get_primitive<ArrowType: ArrowPrimitiveType>(
             &self,
             col_i: usize,
@@ -1027,7 +1009,7 @@ impl StatementApi for AdbcStatement {
 }
 
 pub struct ImportedCatalogCollection {
-    batches: Vec<RecordBatch>,
+    batches: Vec<StructArray>,
 }
 
 impl ImportedCatalogCollection {
@@ -1043,7 +1025,8 @@ impl ImportedCatalogCollection {
                 status_code: AdbcStatusCode::InvalidState,
             });
         }
-        let batches = reader.collect::<std::result::Result<_, ArrowError>>()?;
+        let batches = reader.collect::<std::result::Result<Vec<RecordBatch>, ArrowError>>()?;
+        let batches = batches.into_iter().map(StructArray::from).collect();
         Ok(Self { batches })
     }
 }
@@ -1053,7 +1036,7 @@ impl DatabaseCatalogCollection for ImportedCatalogCollection {
 
     fn catalogs<'a>(&'a self) -> Box<dyn Iterator<Item = Self::CatalogEntryType<'a>> + 'a> {
         Box::new(self.batches.iter().flat_map(move |batch| {
-            (0..batch.num_rows()).map(move |pos| ImportedCatalogEntry::new(batch, pos))
+            (0..batch.len()).map(move |pos| ImportedCatalogEntry::new(batch, pos))
         }))
     }
 
@@ -1073,13 +1056,13 @@ impl DatabaseCatalogCollection for ImportedCatalogCollection {
 
 pub struct ImportedCatalogEntry<'a> {
     /// The row in the catalog record batch.
-    row: RowReference<'a, RecordBatch>,
+    row: RowReference<'a>,
     /// The schemas in this catalog
     schemas_array: StructArraySlice<'a>,
 }
 
 impl<'a> ImportedCatalogEntry<'a> {
-    fn new(batch: &'a RecordBatch, pos: usize) -> Self {
+    fn new(batch: &'a StructArray, pos: usize) -> Self {
         let row = RowReference { inner: batch, pos };
         let schemas_array = row.get_struct_slice(1);
         Self { row, schemas_array }
@@ -1110,7 +1093,7 @@ impl<'a> DatabaseCatalogEntry<'a> for ImportedCatalogEntry<'a> {
 }
 
 pub struct ImportedSchemaEntry<'a> {
-    row: RowReference<'a, StructArray>,
+    row: RowReference<'a>,
     tables_array: StructArraySlice<'a>,
 }
 
@@ -1149,7 +1132,7 @@ impl<'a> DatabaseSchemaEntry<'a> for ImportedSchemaEntry<'a> {
 }
 
 pub struct ImportedTableEntry<'a> {
-    row: RowReference<'a, StructArray>,
+    row: RowReference<'a>,
     column_array: StructArraySlice<'a>,
     constraint_array: StructArraySlice<'a>,
 }
@@ -1170,7 +1153,7 @@ impl<'a> ImportedTableEntry<'a> {
     }
 }
 
-fn extract_column_schema(row: RowReference<StructArray>) -> ColumnSchemaRef {
+fn extract_column_schema(row: RowReference) -> ColumnSchemaRef {
     ColumnSchemaRef {
         name: row.get_str(0).expect("column name is null"),
         ordinal_position: row.get_primitive::<Int32Type>(1).unwrap(),
@@ -1210,13 +1193,9 @@ impl<'a> DatabaseTableEntry<'a> for ImportedTableEntry<'a> {
     fn get_column(&self, i: i32) -> Option<ColumnSchemaRef<'a>> {
         self.column_array
             .iter_rows()
-            .find_map(|row| {
+            .find(|row| {
                 let position = row.get_primitive::<Int32Type>(1).unwrap();
-                if position == i {
-                    Some(row)
-                } else {
-                    None
-                }
+                position == i
             })
             .map(extract_column_schema)
     }
@@ -1224,13 +1203,9 @@ impl<'a> DatabaseTableEntry<'a> for ImportedTableEntry<'a> {
     fn get_column_by_name(&self, name: &str) -> Option<ColumnSchemaRef<'a>> {
         self.column_array
             .iter_rows()
-            .find_map(|row| {
+            .find(|row| {
                 let column_name = row.get_str(0).expect("column name is null");
-                if column_name == name {
-                    Some(row)
-                } else {
-                    None
-                }
+                column_name == name
             })
             .map(extract_column_schema)
     }
