@@ -41,7 +41,7 @@ use crate::{
         FFI_AdbcStatement,
     },
     info::export_info_data,
-    interface::{objects::DatabaseCatalogCollection, ConnectionApi, DatabaseApi, StatementApi},
+    interface::objects::DatabaseCatalogCollection,
 };
 
 use super::{AdbcConnectionImpl, AdbcDatabaseImpl, AdbcError, AdbcStatementImpl};
@@ -55,10 +55,6 @@ type DBType<StatementType> = <ConnType<StatementType> as AdbcConnectionImpl>::Da
 pub fn init_adbc_driver<StatementType>() -> FFI_AdbcDriver
 where
     StatementType: AdbcStatementImpl,
-    <StatementType as StatementApi>::Error: AdbcError,
-    <StatementType::ConnectionType as ConnectionApi>::Error: AdbcError,
-    <<StatementType::ConnectionType as AdbcConnectionImpl>::DatabaseType as DatabaseApi>::Error:
-        AdbcError,
 {
     FFI_AdbcDriver {
         private_data: null_mut(),
@@ -109,25 +105,21 @@ pub enum AdbcFFIError {
     NotImplemented(&'static str),
 }
 
-impl AdbcError for AdbcFFIError {
-    fn message(&self) -> &str {
-        match self {
-            AdbcFFIError::InvalidState(msg) => msg,
-            AdbcFFIError::NotImplemented(msg) => msg,
-        }
-    }
-
-    fn sqlstate(&self) -> [i8; 5] {
-        match self {
-            AdbcFFIError::InvalidState(_) => [5, 5, 0, 1, 9],
-            AdbcFFIError::NotImplemented(_) => [5, 6, 0, 3, 8],
-        }
-    }
-
-    fn status_code(&self) -> AdbcStatusCode {
-        match self {
-            AdbcFFIError::InvalidState(_) => AdbcStatusCode::InvalidState,
-            AdbcFFIError::NotImplemented(_) => AdbcStatusCode::NotImplemented,
+impl From<AdbcFFIError> for AdbcError {
+    fn from(value: AdbcFFIError) -> Self {
+        match value {
+            AdbcFFIError::InvalidState(msg) => Self {
+                message: msg.to_string(),
+                vendor_code: -1,
+                sqlstate: [5, 5, 0, 1, 9],
+                status_code: AdbcStatusCode::InvalidState,
+            },
+            AdbcFFIError::NotImplemented(msg) => Self {
+                message: msg.to_string(),
+                vendor_code: -1,
+                sqlstate: [5, 6, 0, 3, 8],
+                status_code: AdbcStatusCode::NotImplemented,
+            },
         }
     }
 }
@@ -233,10 +225,7 @@ unsafe fn try_unwrap_mut<'a, Wrapper: PrivateDataWrapper + 'a, OutType>(
 unsafe extern "C" fn database_new<DatabaseType: Default + AdbcDatabaseImpl>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <DatabaseType as DatabaseApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let db = Arc::new(DatabaseType::default());
     let res = database
         .as_mut()
@@ -253,10 +242,7 @@ where
 unsafe extern "C" fn database_init<DatabaseType: Default + AdbcDatabaseImpl>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <DatabaseType as DatabaseApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner = database
         .as_ref()
         .ok_or(AdbcFFIError::InvalidState(
@@ -275,10 +261,7 @@ unsafe extern "C" fn database_set_option<DatabaseType: Default + AdbcDatabaseImp
     key: *const ::std::os::raw::c_char,
     value: *const ::std::os::raw::c_char,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <DatabaseType as DatabaseApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Arc<DatabaseType> = check_err!(try_unwrap(database), error);
 
     // TODO: rewrite with get_maybe_str
@@ -293,10 +276,7 @@ where
 unsafe extern "C" fn database_release<DatabaseType: Default + AdbcDatabaseImpl>(
     database: *mut FFI_AdbcDatabase,
     _error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <DatabaseType as DatabaseApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     if let Some(wrapper) = database.as_mut() {
         wrapper.release_inner::<Arc<DatabaseType>>();
     }
@@ -309,10 +289,7 @@ where
 unsafe extern "C" fn connection_new<ConnectionType: Default + AdbcConnectionImpl>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let conn = Rc::new(ConnectionType::default());
     let res = connection
         .as_mut()
@@ -331,10 +308,7 @@ unsafe extern "C" fn connection_set_option<ConnectionType: Default + AdbcConnect
     key: *const ::std::os::raw::c_char,
     value: *const ::std::os::raw::c_char,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
 
     // TODO: rewrite with get_maybe_str
@@ -350,10 +324,7 @@ unsafe extern "C" fn connection_init<ConnectionType: Default + AdbcConnectionImp
     connection: *mut FFI_AdbcConnection,
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
     let db: &Arc<ConnectionType::DatabaseType> = check_err!(try_unwrap(database), error);
 
@@ -365,10 +336,7 @@ where
 unsafe extern "C" fn connection_release<ConnectionType: Default + AdbcConnectionImpl>(
     connection: *mut FFI_AdbcConnection,
     _error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     if let Some(wrapper) = connection.as_mut() {
         wrapper.release_inner::<Rc<ConnectionType>>();
     }
@@ -382,10 +350,7 @@ unsafe extern "C" fn connection_get_info<ConnectionType: Default + AdbcConnectio
     info_codes_length: usize,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
 
     let info_codes = if info_codes.is_null() {
@@ -420,10 +385,7 @@ unsafe extern "C" fn connection_get_objects<ConnectionType: Default + AdbcConnec
     column_name: *const ::std::os::raw::c_char,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
 
     let catalog = check_err!(get_maybe_str(catalog), error);
@@ -470,10 +432,7 @@ unsafe extern "C" fn connection_get_table_schema<ConnectionType: Default + AdbcC
     table_name: *const ::std::os::raw::c_char,
     out_schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
 
     if out_schema.is_null() {
@@ -504,6 +463,7 @@ where
     AdbcStatusCode::Ok
 }
 
+// TODO: consolidate this utility
 struct BatchReader {
     batch: Option<RecordBatch>,
     schema: SchemaRef,
@@ -537,10 +497,7 @@ unsafe extern "C" fn connection_get_table_types<ConnectionType: Default + AdbcCo
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
 
     let table_types = check_err!(inner.get_table_types(), error);
@@ -569,10 +526,7 @@ unsafe extern "C" fn connection_read_partition<ConnectionType: Default + AdbcCon
     serialized_length: usize,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
 
     let partition = std::slice::from_raw_parts(serialized_partition, serialized_length);
@@ -585,10 +539,7 @@ where
 unsafe extern "C" fn connection_commit<ConnectionType: Default + AdbcConnectionImpl>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
 
     check_err!(inner.commit(), error);
@@ -599,10 +550,7 @@ where
 unsafe extern "C" fn connection_rollback<ConnectionType: Default + AdbcConnectionImpl>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <ConnectionType as ConnectionApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let inner: &Rc<ConnectionType> = check_err!(try_unwrap(connection), error);
 
     check_err!(inner.rollback(), error);
@@ -614,10 +562,7 @@ unsafe extern "C" fn statement_new<StatementType: AdbcStatementImpl>(
     connection_ptr: *mut FFI_AdbcConnection,
     statement_out: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let connection: &Rc<StatementType::ConnectionType> =
         check_err!(try_unwrap(connection_ptr), error);
     let statement = StatementType::new_from_connection(connection.clone());
@@ -636,10 +581,7 @@ where
 unsafe extern "C" fn statement_release<StatementType: AdbcStatementImpl>(
     statement: *mut FFI_AdbcStatement,
     _error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     if let Some(wrapper) = statement.as_mut() {
         wrapper.release_inner::<StatementType>();
     }
@@ -652,10 +594,7 @@ unsafe extern "C" fn statement_execute_query<StatementType: AdbcStatementImpl>(
     out: *mut FFI_ArrowArrayStream,
     rows_affected: *mut i64,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
     let res = check_err!(statement.execute(), error);
@@ -677,10 +616,7 @@ where
 unsafe extern "C" fn statement_prepare<StatementType: AdbcStatementImpl>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
     check_err!(statement.prepare(), error);
@@ -692,10 +628,7 @@ unsafe extern "C" fn statement_set_sql_query<StatementType: AdbcStatementImpl>(
     statement: *mut FFI_AdbcStatement,
     query: *const ::std::os::raw::c_char,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
     let query = check_err!(get_maybe_str(query), error).unwrap_or("");
@@ -709,10 +642,7 @@ unsafe extern "C" fn statement_set_substrait_plan<StatementType: AdbcStatementIm
     plan: *const u8,
     length: usize,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
     let plan = std::slice::from_raw_parts(plan, length);
@@ -726,10 +656,7 @@ unsafe extern "C" fn statement_bind<StatementType: AdbcStatementImpl>(
     values: *mut FFI_ArrowArray,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
     let array = check_err!(make_array_from_raw(values, schema), error);
@@ -750,10 +677,7 @@ unsafe extern "C" fn statement_bind_stream<StatementType: AdbcStatementImpl>(
     statement: *mut FFI_AdbcStatement,
     stream_ptr: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
     if stream_ptr.is_null() {
@@ -772,10 +696,7 @@ unsafe extern "C" fn statement_get_parameter_schema<StatementType: AdbcStatement
     statement: *mut FFI_AdbcStatement,
     out_schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
     if out_schema.is_null() {
@@ -795,10 +716,7 @@ unsafe extern "C" fn statement_set_option<StatementType: AdbcStatementImpl>(
     key: *const ::std::os::raw::c_char,
     value: *const ::std::os::raw::c_char,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
     // TODO: Should we be passing empty string? I assume either way implementations have to handle it.
@@ -816,10 +734,7 @@ unsafe extern "C" fn statement_execute_partitions<StatementType: AdbcStatementIm
     out_partitions: *mut FFI_AdbcPartitions,
     rows_affected: *mut i64,
     error: *mut FFI_AdbcError,
-) -> AdbcStatusCode
-where
-    <StatementType as StatementApi>::Error: AdbcError,
-{
+) -> AdbcStatusCode {
     let statement: &mut StatementType = check_err!(try_unwrap_mut(statement), error);
 
     if out_schema.is_null() {

@@ -266,86 +266,39 @@ impl FFI_AdbcError {
 ///
 /// Can be used in combination with [check_err] when implementing ADBC FFI
 /// functions.
-pub trait AdbcError {
-    /// The status code this error corresponds to.
-    fn status_code(&self) -> AdbcStatusCode;
+#[derive(Debug, Clone)]
+pub struct AdbcError {
+    pub message: String,
+    pub vendor_code: i32,
+    pub sqlstate: [i8; 5usize],
+    pub status_code: AdbcStatusCode,
+}
 
-    /// The message associated with the error.
-    fn message(&self) -> &str;
-
-    /// A vendor-specific error code. Defaults to always returning `-1`.
-    fn vendor_code(&self) -> i32 {
-        -1
-    }
-
-    /// A SQLSTATE error code, if provided, as defined by the
-    /// SQL:2003 standard.  By default, it is set to
-    /// `"\0\0\0\0\0"`.
-    fn sqlstate(&self) -> [i8; 5] {
-        [0, 0, 0, 0, 0]
+impl std::fmt::Display for AdbcError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}: {} (sqlstate: {:?}, vendor_code: {})",
+            self.status_code, self.message, self.sqlstate, self.vendor_code
+        )
     }
 }
 
-impl<T: AdbcError> From<&T> for FFI_AdbcError {
-    fn from(err: &T) -> Self {
-        let message: *mut i8 = CString::new(err.message()).unwrap().into_raw();
+impl std::error::Error for AdbcError {
+    fn description(&self) -> &str {
+        &self.message
+    }
+}
+
+impl From<AdbcError> for FFI_AdbcError {
+    fn from(err: AdbcError) -> Self {
+        let message: *mut i8 = CString::new(err.message).unwrap().into_raw();
         Self {
             message,
-            vendor_code: err.vendor_code(),
-            sqlstate: err.sqlstate(),
+            vendor_code: err.vendor_code,
+            sqlstate: err.sqlstate,
             release: Some(drop_adbc_error),
         }
-    }
-}
-
-impl AdbcError for std::str::Utf8Error {
-    fn message(&self) -> &str {
-        "Invalid UTF-8 character"
-    }
-
-    fn sqlstate(&self) -> [i8; 5] {
-        // A character is not in the coded character set or the conversion is not supported.
-        [2, 2, 0, 2, 1]
-    }
-
-    fn status_code(&self) -> AdbcStatusCode {
-        AdbcStatusCode::InvalidArguments
-    }
-
-    fn vendor_code(&self) -> i32 {
-        -1
-    }
-}
-
-impl AdbcError for std::ffi::NulError {
-    fn message(&self) -> &str {
-        "An input string contained an interior nul"
-    }
-
-    fn sqlstate(&self) -> [i8; 5] {
-        [0; 5]
-    }
-
-    fn status_code(&self) -> AdbcStatusCode {
-        AdbcStatusCode::InvalidArguments
-    }
-
-    fn vendor_code(&self) -> i32 {
-        -1
-    }
-}
-
-impl AdbcError for ArrowError {
-    fn message(&self) -> &str {
-        match self {
-            ArrowError::CDataInterface(msg) => msg,
-            ArrowError::SchemaError(msg) => msg,
-            _ => "Arrow error", // TODO: Fill in remainder
-        }
-    }
-
-    fn status_code(&self) -> AdbcStatusCode {
-        AdbcStatusCode::Internal
     }
 }
 
@@ -356,6 +309,52 @@ unsafe extern "C" fn drop_adbc_error(error: *mut FFI_AdbcError) {
             let _ = CString::from_raw(error.message);
         }
         error.message = null_mut();
+    }
+}
+
+impl From<std::str::Utf8Error> for AdbcError {
+    fn from(value: std::str::Utf8Error) -> Self {
+        Self {
+            message: format!(
+                "Invalid UTF-8 character at position {}",
+                value.valid_up_to()
+            ),
+            vendor_code: -1,
+            // A character is not in the coded character set or the conversion is not supported.
+            sqlstate: [2, 2, 0, 2, 1],
+            status_code: AdbcStatusCode::InvalidArguments,
+        }
+    }
+}
+
+impl From<std::ffi::NulError> for AdbcError {
+    fn from(value: std::ffi::NulError) -> Self {
+        Self {
+            message: format!(
+                "An input string contained an interior nul at position {}",
+                value.nul_position()
+            ),
+            vendor_code: -1,
+            sqlstate: [0; 5],
+            status_code: AdbcStatusCode::InvalidArguments,
+        }
+    }
+}
+
+impl From<ArrowError> for AdbcError {
+    fn from(value: ArrowError) -> Self {
+        let message = match value {
+            ArrowError::CDataInterface(msg) => msg,
+            ArrowError::SchemaError(msg) => msg,
+            _ => "Arrow error".to_string(), // TODO: Fill in remainder
+        };
+
+        Self {
+            message,
+            vendor_code: -1,
+            sqlstate: [0; 5],
+            status_code: AdbcStatusCode::Internal,
+        }
     }
 }
 
@@ -372,9 +371,11 @@ macro_rules! check_err {
         match $res {
             Ok(x) => x,
             Err(err) => {
-                let error = FFI_AdbcError::from(&err);
+                let adbc_error = AdbcError::from(err);
+                let status_code = adbc_error.status_code;
+                let error = FFI_AdbcError::from(adbc_error);
                 unsafe { std::ptr::write_unaligned($err_out, error) };
-                return err.status_code();
+                return status_code;
             }
         }
     };

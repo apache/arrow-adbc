@@ -40,7 +40,7 @@ pub trait AdbcDatabaseImpl: DatabaseApi {
     ///
     /// Some drivers may choose not to support setting options after this has
     /// been called.
-    fn init(&self) -> Result<(), Self::Error>;
+    fn init(&self) -> Result<(), AdbcError>;
 }
 
 /// An implementation of an ADBC connection. Must implement [ConnectionApi].
@@ -53,7 +53,7 @@ pub trait AdbcConnectionImpl: ConnectionApi {
     ///
     /// Some drivers may choose not to support setting options after this has
     /// been called.
-    fn init(&self, database: Arc<Self::DatabaseType>) -> Result<(), Self::Error>;
+    fn init(&self, database: Arc<Self::DatabaseType>) -> Result<(), AdbcError>;
 }
 
 pub trait AdbcStatementImpl: StatementApi {

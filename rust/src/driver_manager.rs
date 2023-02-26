@@ -204,45 +204,9 @@ pub(crate) mod util {
     }
 }
 
-/// An error from an ADBC driver.
-#[derive(Debug, Clone)]
-pub struct AdbcDriverManagerError {
-    pub message: String,
-    pub vendor_code: i32,
-    pub sqlstate: [i8; 5usize],
-    pub status_code: AdbcStatusCode,
-}
+pub type Result<T> = std::result::Result<T, AdbcError>;
 
-impl std::fmt::Display for AdbcDriverManagerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}: {} (sqlstate: {:?}, vendor_code: {})",
-            self.status_code, self.message, self.sqlstate, self.vendor_code
-        )
-    }
-}
-
-impl std::error::Error for AdbcDriverManagerError {
-    fn description(&self) -> &str {
-        &self.message
-    }
-}
-
-pub type Result<T> = std::result::Result<T, AdbcDriverManagerError>;
-
-impl<T: AdbcError> From<T> for AdbcDriverManagerError {
-    fn from(value: T) -> Self {
-        Self {
-            message: value.message().to_string(),
-            vendor_code: value.vendor_code(),
-            sqlstate: value.sqlstate(),
-            status_code: value.status_code(),
-        }
-    }
-}
-
-impl From<libloading::Error> for AdbcDriverManagerError {
+impl From<libloading::Error> for AdbcError {
     fn from(value: libloading::Error) -> Self {
         match value {
             // Error from UNIX
@@ -280,7 +244,7 @@ fn check_status(status: AdbcStatusCode, error: FFI_AdbcError) -> Result<()> {
     } else {
         let message = unsafe { error.get_message() }.unwrap_or_default();
 
-        Err(AdbcDriverManagerError {
+        Err(AdbcError {
             message,
             vendor_code: error.vendor_code,
             sqlstate: error.sqlstate,
@@ -574,10 +538,9 @@ pub struct AdbcConnection {
 }
 
 impl ConnectionApi for AdbcConnection {
-    type Error = AdbcDriverManagerError;
     type ObjectCollectionType = ImportedCatalogCollection;
 
-    fn set_option(&self, key: &str, value: &str) -> std::result::Result<(), Self::Error> {
+    fn set_option(&self, key: &str, value: &str) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
         let key = CString::new(key)?;
         let value = CString::new(value)?;
@@ -602,7 +565,7 @@ impl ConnectionApi for AdbcConnection {
     /// For example, in sqlite the table types are "view" and "table".
     ///
     /// This can error if not implemented by the driver.
-    fn get_table_types(&self) -> std::result::Result<Vec<String>, Self::Error> {
+    fn get_table_types(&self) -> std::result::Result<Vec<String>, AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
@@ -616,7 +579,7 @@ impl ConnectionApi for AdbcConnection {
         let reader = unsafe { ArrowArrayStreamReader::from_raw(&mut reader)? };
 
         let expected_schema = Schema::new(vec![Field::new("table_type", DataType::Utf8, false)]);
-        let schema_mismatch_error = |found_schema| AdbcDriverManagerError {
+        let schema_mismatch_error = |found_schema| AdbcError {
             message: format!("Driver returned unexpected schema: {found_schema:?}"),
             vendor_code: -1,
             sqlstate: [0; 5],
@@ -682,7 +645,7 @@ impl ConnectionApi for AdbcConnection {
         table_name: Option<&str>,
         table_type: Option<&[&str]>,
         column_name: Option<&str>,
-    ) -> std::result::Result<Self::ObjectCollectionType, Self::Error> {
+    ) -> std::result::Result<Self::ObjectCollectionType, AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
@@ -735,7 +698,7 @@ impl ConnectionApi for AdbcConnection {
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: &str,
-    ) -> std::result::Result<arrow::datatypes::Schema, Self::Error> {
+    ) -> std::result::Result<arrow::datatypes::Schema, AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let catalog = NullableCString::try_from(catalog)?;
@@ -763,7 +726,7 @@ impl ConnectionApi for AdbcConnection {
     fn read_partition(
         &self,
         partition: &[u8],
-    ) -> std::result::Result<Box<dyn arrow::record_batch::RecordBatchReader>, Self::Error> {
+    ) -> std::result::Result<Box<dyn arrow::record_batch::RecordBatchReader>, AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
@@ -785,7 +748,7 @@ impl ConnectionApi for AdbcConnection {
         Ok(Box::new(reader))
     }
 
-    fn commit(&self) -> std::result::Result<(), Self::Error> {
+    fn commit(&self) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let commit = driver_method!(self.driver, connection_commit);
@@ -794,7 +757,7 @@ impl ConnectionApi for AdbcConnection {
         Ok(())
     }
 
-    fn rollback(&self) -> std::result::Result<(), Self::Error> {
+    fn rollback(&self) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let rollback = driver_method!(self.driver, connection_rollback);
@@ -836,9 +799,7 @@ pub struct AdbcStatement {
 }
 
 impl StatementApi for AdbcStatement {
-    type Error = AdbcDriverManagerError;
-
-    fn prepare(&mut self) -> std::result::Result<(), Self::Error> {
+    fn prepare(&mut self) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let statement_prepare = driver_method!(self.driver, statement_prepare);
@@ -847,7 +808,7 @@ impl StatementApi for AdbcStatement {
         Ok(())
     }
 
-    fn set_option(&mut self, key: &str, value: &str) -> std::result::Result<(), Self::Error> {
+    fn set_option(&mut self, key: &str, value: &str) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let key = CString::new(key)?;
@@ -860,7 +821,7 @@ impl StatementApi for AdbcStatement {
         Ok(())
     }
 
-    fn set_sql_query(&mut self, query: &str) -> std::result::Result<(), Self::Error> {
+    fn set_sql_query(&mut self, query: &str) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let query = CString::new(query)?;
@@ -871,7 +832,7 @@ impl StatementApi for AdbcStatement {
         Ok(())
     }
 
-    fn set_substrait_plan(&mut self, plan: &[u8]) -> std::result::Result<(), Self::Error> {
+    fn set_substrait_plan(&mut self, plan: &[u8]) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let set_substrait_plan = driver_method!(self.driver, statement_set_substrait_plan);
@@ -881,7 +842,7 @@ impl StatementApi for AdbcStatement {
         Ok(())
     }
 
-    fn get_param_schema(&mut self) -> std::result::Result<arrow::datatypes::Schema, Self::Error> {
+    fn get_param_schema(&mut self) -> std::result::Result<arrow::datatypes::Schema, AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let mut schema = FFI_ArrowSchema::empty();
@@ -893,7 +854,7 @@ impl StatementApi for AdbcStatement {
         Ok(Schema::try_from(&schema)?)
     }
 
-    fn bind_data(&mut self, batch: RecordBatch) -> std::result::Result<(), Self::Error> {
+    fn bind_data(&mut self, batch: RecordBatch) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let struct_arr = Arc::new(StructArray::from(batch));
@@ -914,7 +875,7 @@ impl StatementApi for AdbcStatement {
     fn bind_stream(
         &mut self,
         reader: Box<dyn arrow::record_batch::RecordBatchReader>,
-    ) -> std::result::Result<(), Self::Error> {
+    ) -> std::result::Result<(), AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let mut stream = FFI_ArrowArrayStream::empty();
@@ -928,7 +889,7 @@ impl StatementApi for AdbcStatement {
         Ok(())
     }
 
-    fn execute(&mut self) -> std::result::Result<StatementResult, Self::Error> {
+    fn execute(&mut self) -> std::result::Result<StatementResult, AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let mut stream = FFI_ArrowArrayStream::empty();
@@ -952,7 +913,7 @@ impl StatementApi for AdbcStatement {
         })
     }
 
-    fn execute_update(&mut self) -> std::result::Result<i64, Self::Error> {
+    fn execute_update(&mut self) -> std::result::Result<i64, AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let stream = null_mut();
@@ -968,7 +929,7 @@ impl StatementApi for AdbcStatement {
 
     fn execute_partitioned(
         &mut self,
-    ) -> std::result::Result<PartitionedStatementResult, Self::Error> {
+    ) -> std::result::Result<PartitionedStatementResult, AdbcError> {
         let mut error = FFI_AdbcError::empty();
 
         let mut schema = FFI_ArrowSchema::empty();
@@ -1015,7 +976,7 @@ pub struct ImportedCatalogCollection {
 impl ImportedCatalogCollection {
     pub(crate) fn try_new(reader: impl RecordBatchReader) -> Result<Self> {
         if reader.schema().as_ref() != &Schema::new(CatalogArrayBuilder::schema()) {
-            return Err(AdbcDriverManagerError {
+            return Err(AdbcError {
                 message: format!(
                     "Received incorrect Arrow schema from GetObjects: {:?}",
                     reader.schema()

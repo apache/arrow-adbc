@@ -53,19 +53,20 @@ impl TestError {
     }
 }
 
-impl AdbcError for TestError {
-    fn message(&self) -> &str {
-        match self {
-            Self::General(msg) => msg,
+impl From<TestError> for AdbcError {
+    fn from(value: TestError) -> Self {
+        Self {
+            message: match value {
+                TestError::General(msg) => msg,
+            },
+            vendor_code: -1,
+            sqlstate: [0; 5],
+            status_code: AdbcStatusCode::Internal,
         }
-    }
-
-    fn status_code(&self) -> AdbcStatusCode {
-        AdbcStatusCode::Internal
     }
 }
 
-type Result<T> = std::result::Result<T, TestError>;
+type Result<T> = std::result::Result<T, AdbcError>;
 
 type ConnectionGetObjects = dyn Fn(
         AdbcObjectDepth,
@@ -99,7 +100,7 @@ struct PatchableDriver {
 
 macro_rules! patch_stub {
     ($($arg:tt),*) => {
-        Box::new(|$($arg),*| Err(TestError::General("Not implemented".to_string())))
+        Box::new(|$($arg),*| Err(TestError::General("Not implemented".to_string()).into()))
     };
 }
 
@@ -150,8 +151,6 @@ impl AdbcDatabaseImpl for TestDatabase {
 }
 
 impl DatabaseApi for TestDatabase {
-    type Error = TestError;
-
     fn set_option(&self, key: &str, value: &str) -> Result<()> {
         (self.driver.lock().unwrap().database_set_option)(key, value)
     }
@@ -166,7 +165,7 @@ impl TestConnection {
         if let Some(database) = self.database.borrow_mut().as_mut() {
             Ok(database.driver.clone())
         } else {
-            Err(TestError::new("Connection not initialized"))
+            Err(TestError::new("Connection not initialized").into())
         }
     }
 }
@@ -187,9 +186,7 @@ impl AdbcConnectionImpl for TestConnection {
             self.database.replace(Some(database));
             Ok(())
         } else {
-            Err(TestError::General(
-                "Already called init on the connection.".to_string(),
-            ))
+            Err(TestError::General("Already called init on the connection.".to_string()).into())
         }
     }
 }
@@ -204,7 +201,6 @@ macro_rules! conn_method {
 }
 
 impl ConnectionApi for TestConnection {
-    type Error = TestError;
     type ObjectCollectionType = SimpleCatalogCollection;
     fn set_option(&self, key: &str, value: &str) -> Result<()> {
         conn_method!(self, connection_set_option, key, value)
@@ -282,42 +278,31 @@ impl AdbcStatementImpl for TestStatement {
 }
 
 impl StatementApi for TestStatement {
-    type Error = TestError;
-
     fn set_option(&mut self, key: &str, value: &str) -> Result<()> {
         Err(TestError::General(format!(
             "Not implemented: setting option with key '{key}' and value '{value}'."
-        )))
+        ))
+        .into())
     }
 
     fn set_sql_query(&mut self, query: &str) -> Result<()> {
-        Err(TestError::General(format!(
-            "Not implemented: setting query '{query}'."
-        )))
+        Err(TestError::General(format!("Not implemented: setting query '{query}'.")).into())
     }
 
     fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<()> {
-        Err(TestError::General(format!(
-            "Not implemented: setting plan '{plan:?}'."
-        )))
+        Err(TestError::General(format!("Not implemented: setting plan '{plan:?}'.")).into())
     }
 
     fn prepare(&mut self) -> Result<()> {
-        Err(TestError::General(
-            "Not implemented: preparing statement.".to_string(),
-        ))
+        Err(TestError::General("Not implemented: preparing statement.".to_string()).into())
     }
 
     fn get_param_schema(&mut self) -> Result<Schema> {
-        Err(TestError::General(
-            "Not implemented: get parameter schema.".to_string(),
-        ))
+        Err(TestError::General("Not implemented: get parameter schema.".to_string()).into())
     }
 
     fn bind_data(&mut self, arr: RecordBatch) -> Result<()> {
-        Err(TestError::General(format!(
-            "Not implemented: binding data {arr:?}."
-        )))
+        Err(TestError::General(format!("Not implemented: binding data {arr:?}.")).into())
     }
 
     fn bind_stream(&mut self, stream: Box<dyn RecordBatchReader>) -> Result<()> {
@@ -325,23 +310,19 @@ impl StatementApi for TestStatement {
             .collect::<std::result::Result<_, ArrowError>>()
             .map_err(|_| TestError::General("Error collecting stream.".to_string()))?;
 
-        Err(TestError::General(format!(
-            "Not implemented: binding stream {batches:?}."
-        )))
+        Err(TestError::General(format!("Not implemented: binding stream {batches:?}.")).into())
     }
 
     fn execute(&mut self) -> Result<StatementResult> {
-        Err(TestError::General("Not implemented: execute".to_string()))
+        Err(TestError::General("Not implemented: execute".to_string()).into())
     }
 
     fn execute_update(&mut self) -> Result<i64> {
-        Err(TestError::General("Not implemented: execute".to_string()))
+        Err(TestError::General("Not implemented: execute".to_string()).into())
     }
 
     fn execute_partitioned(&mut self) -> Result<PartitionedStatementResult> {
-        Err(TestError::General(
-            "Not implemented: execute partitioned".to_string(),
-        ))
+        Err(TestError::General("Not implemented: execute partitioned".to_string()).into())
     }
 }
 
@@ -399,7 +380,7 @@ fn test_database_set_option() {
     database.set_option("test_key", "test value 😬").unwrap();
 
     set_driver_method!(mock_driver, database_set_option, |_: &str, _: &str| {
-        Err(TestError::new("hello world"))
+        Err(TestError::new("hello world").into())
     });
 
     let res = database.set_option("key", "value");
@@ -425,7 +406,7 @@ fn test_connection_set_option() {
     conn.set_option("test_key", "test value 😬").unwrap();
 
     set_driver_method!(mock_driver, connection_set_option, |_: &str, _: &str| {
-        Err(TestError::new("hello world"))
+        Err(TestError::new("hello world").into())
     });
 
     let res = conn.set_option("key", "value");
@@ -489,7 +470,7 @@ fn test_connection_get_info() {
         );
 
         set_driver_method!(mock_driver, connection_get_info, |_: Option<&[u32]>| {
-            Err(TestError::new("hello world"))
+            Err(TestError::new("hello world").into())
         });
 
         let res = conn.get_info(None);
@@ -536,7 +517,7 @@ fn test_connection_get_table_schema() {
     }
 
     set_driver_method!(mock_driver, connection_get_table_schema, move |_, _, _| {
-        Err(TestError::new("hello world"))
+        Err(TestError::new("hello world").into())
     });
     let res = conn.get_table_schema(None, None, "");
     assert!(res.is_err());
@@ -560,7 +541,7 @@ fn test_connection_get_table_types() {
     }
 
     set_driver_method!(mock_driver, connection_get_table_types, move || {
-        Err(TestError::new("hello world"))
+        Err(TestError::new("hello world").into())
     });
     let res = conn.get_table_types();
     assert!(res.is_err());
