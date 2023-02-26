@@ -52,8 +52,11 @@ use std::{
 };
 
 use arrow::{
-    array::{export_array_into_raw, StringArray, StructArray},
-    datatypes::{DataType, Field, Schema},
+    array::{
+        as_list_array, as_string_array, as_struct_array, export_array_into_raw, Array, StringArray,
+        StructArray,
+    },
+    datatypes::{DataType, Field, Int16Type, Int32Type, Schema},
     error::ArrowError,
     ffi::{FFI_ArrowArray, FFI_ArrowSchema},
     ffi_stream::{export_reader_into_raw, ArrowArrayStreamReader, FFI_ArrowArrayStream},
@@ -67,10 +70,16 @@ use crate::{
         FFI_AdbcPartitions, FFI_AdbcStatement,
     },
     info::{import_info_data, InfoData},
-    interface::{ConnectionApi, PartitionedStatementResult, StatementApi, StatementResult},
+    interface::{
+        objects::{
+            ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry, DatabaseSchemaEntry,
+            DatabaseTableEntry, ForeignKeyUsageRef, TableConstraintRef,
+        },
+        ConnectionApi, PartitionedStatementResult, StatementApi, StatementResult,
+    },
 };
 
-use self::util::NullableCString;
+use self::util::{NullableCString, RowReference, StructArraySlice};
 
 pub(crate) mod util {
     use std::ffi::NulError;
@@ -96,6 +105,118 @@ pub(crate) mod util {
         pub fn as_ptr(&self) -> *const c_char {
             // Note we are calling .as_ref() to make sure we aren't consuming the option.
             self.0.as_ref().map_or(null(), |s| s.as_ptr())
+        }
+    }
+
+    use arrow::{
+        array::{
+            as_boolean_array, as_primitive_array, as_string_array, Array, ArrayRef, StructArray,
+        },
+        datatypes::ArrowPrimitiveType,
+        record_batch::RecordBatch,
+    };
+
+    /// Represents a slice of a struct array as a reference.
+    ///
+    /// This is different tha the slices produced by [arrow::array::Array::slice] in
+    /// that it is tied to the lifetime of the original array.
+    #[derive(Debug, Clone, Copy)]
+    pub(crate) struct StructArraySlice<'a> {
+        pub inner: &'a StructArray,
+        pub offset: usize,
+        pub len: usize,
+    }
+
+    impl<'a> StructArraySlice<'a> {
+        pub fn iter_rows(&self) -> impl Iterator<Item = RowReference<'a, StructArray>> {
+            let end = self.offset + self.len;
+            let inner = self.inner;
+            (self.offset..end).map(|pos| RowReference { inner, pos })
+        }
+    }
+
+    pub(crate) trait ArrowTabular {
+        fn column(&self, pos: usize) -> &ArrayRef;
+    }
+
+    impl ArrowTabular for RecordBatch {
+        fn column(&self, pos: usize) -> &ArrayRef {
+            self.column(pos)
+        }
+    }
+    impl ArrowTabular for StructArray {
+        fn column(&self, pos: usize) -> &ArrayRef {
+            self.column(pos)
+        }
+    }
+
+    /// Represents a row in an [ArrowTabular].
+    ///
+    /// Provides accessors to extract fields for a row.
+    #[derive(Debug, Clone, Copy)]
+    pub(crate) struct RowReference<'a, T: ArrowTabular + 'a> {
+        pub inner: &'a T,
+        pub pos: usize,
+    }
+
+    impl<'a, T: ArrowTabular + 'a> RowReference<'a, T> {
+        pub fn get_primitive<ArrowType: ArrowPrimitiveType>(
+            &self,
+            col_i: usize,
+        ) -> Option<ArrowType::Native> {
+            let column = as_primitive_array::<ArrowType>(self.inner.column(col_i));
+            if column.is_null(self.pos) {
+                None
+            } else {
+                Some(column.value(self.pos))
+            }
+        }
+
+        pub fn get_str(&self, col_i: usize) -> Option<&'a str> {
+            let column = as_string_array(self.inner.column(col_i));
+            if column.is_null(self.pos) {
+                None
+            } else {
+                Some(column.value(self.pos))
+            }
+        }
+
+        pub fn get_bool(&self, col_i: usize) -> Option<bool> {
+            let column = as_boolean_array(self.inner.column(col_i));
+            if column.is_null(self.pos) {
+                None
+            } else {
+                Some(column.value(self.pos))
+            }
+        }
+
+        pub fn get_str_list(&self, col_i: usize) -> impl Iterator<Item = Option<&'a str>> + 'a {
+            let list_column = as_list_array(self.inner.column(col_i));
+            let start: usize = list_column.value_offsets()[self.pos].try_into().unwrap();
+            let len: usize = list_column.value_length(self.pos).try_into().unwrap();
+            let end = start + len;
+            let values = as_string_array(list_column.values());
+            (start..end).map(|i| {
+                if values.is_null(i) {
+                    None
+                } else {
+                    Some(values.value(i))
+                }
+            })
+        }
+
+        /// For columns of type List<Struct<...>>, get the struct array slice
+        /// corresponding to this row.
+        pub fn get_struct_slice(&self, col_i: usize) -> StructArraySlice<'a> {
+            let column = as_list_array(self.inner.column(col_i));
+            let offset: usize = column.value_offsets()[self.pos].try_into().unwrap();
+            let len: usize = column.value_length(self.pos).try_into().unwrap();
+
+            StructArraySlice {
+                inner: as_struct_array(column.values()),
+                offset,
+                len,
+            }
         }
     }
 }
@@ -471,6 +592,7 @@ pub struct AdbcConnection {
 
 impl ConnectionApi for AdbcConnection {
     type Error = AdbcDriverManagerError;
+    type ObjectCollectionType = ImportedCatalogCollection;
 
     fn set_option(&self, key: &str, value: &str) -> std::result::Result<(), Self::Error> {
         let mut error = FFI_AdbcError::empty();
@@ -577,7 +699,7 @@ impl ConnectionApi for AdbcConnection {
         table_name: Option<&str>,
         table_type: Option<&[&str]>,
         column_name: Option<&str>,
-    ) -> std::result::Result<Box<dyn arrow::record_batch::RecordBatchReader>, Self::Error> {
+    ) -> std::result::Result<Self::ObjectCollectionType, Self::Error> {
         let mut error = FFI_AdbcError::empty();
 
         let mut reader = FFI_ArrowArrayStream::empty();
@@ -621,7 +743,8 @@ impl ConnectionApi for AdbcConnection {
 
         let reader = unsafe { ArrowArrayStreamReader::from_raw(&mut reader)? };
 
-        Ok(Box::new(reader))
+        let collection = ImportedCatalogCollection::try_new(reader)?;
+        Ok(collection)
     }
 
     fn get_table_schema(
@@ -900,4 +1023,332 @@ impl StatementApi for AdbcStatement {
             rows_affected,
         })
     }
+}
+
+pub struct ImportedCatalogCollection {
+    batches: Vec<RecordBatch>,
+}
+
+impl ImportedCatalogCollection {
+    pub(crate) fn try_new(reader: impl RecordBatchReader) -> Result<Self> {
+        if reader.schema().as_ref() != &objects_schema() {
+            return Err(AdbcDriverManagerError {
+                message: format!(
+                    "Received incorrect Arrow schema from GetObjects: {:?}",
+                    reader.schema()
+                ),
+                sqlstate: [0; 5],
+                vendor_code: -1,
+                status_code: AdbcStatusCode::InvalidState,
+            });
+        }
+        let batches = reader.collect::<std::result::Result<_, ArrowError>>()?;
+        Ok(Self { batches })
+    }
+}
+
+impl DatabaseCatalogCollection for ImportedCatalogCollection {
+    type CatalogEntryType<'a> = ImportedCatalogEntry<'a>;
+
+    fn catalogs<'a>(&'a self) -> Box<dyn Iterator<Item = Self::CatalogEntryType<'a>> + 'a> {
+        Box::new(self.batches.iter().flat_map(move |batch| {
+            (0..batch.num_rows()).map(move |pos| ImportedCatalogEntry::new(batch, pos))
+        }))
+    }
+
+    fn get_catalog<'a>(&'a self, name: Option<&str>) -> Option<Self::CatalogEntryType<'a>> {
+        self.batches
+            .iter()
+            .flat_map(|batch| {
+                as_string_array(batch.column(0))
+                    .iter()
+                    .enumerate()
+                    .map(move |(pos, name)| (batch, pos, name))
+            })
+            .find(|(_, _, catalog_name)| catalog_name == &name)
+            .map(|(batch, pos, _)| ImportedCatalogEntry::new(batch, pos))
+    }
+}
+
+pub struct ImportedCatalogEntry<'a> {
+    /// The row in the catalog record batch.
+    row: RowReference<'a, RecordBatch>,
+    /// The schemas in this catalog
+    schemas_array: StructArraySlice<'a>,
+}
+
+impl<'a> ImportedCatalogEntry<'a> {
+    fn new(batch: &'a RecordBatch, pos: usize) -> Self {
+        let row = RowReference { inner: batch, pos };
+        let schemas_array = row.get_struct_slice(1);
+        Self { row, schemas_array }
+    }
+}
+
+impl<'a> DatabaseCatalogEntry<'a> for ImportedCatalogEntry<'a> {
+    type SchemaEntryType = ImportedSchemaEntry<'a>;
+
+    fn name(&self) -> Option<&'a str> {
+        self.row.get_str(0)
+    }
+
+    fn schemas(&self) -> Box<dyn Iterator<Item = Self::SchemaEntryType> + 'a> {
+        Box::new(
+            self.schemas_array
+                .iter_rows()
+                .map(|row| ImportedSchemaEntry::new(row.inner, row.pos)),
+        )
+    }
+
+    fn get_schema(&self, name: Option<&str>) -> Option<Self::SchemaEntryType> {
+        self.schemas_array
+            .iter_rows()
+            .find(|row| row.get_str(0) == name)
+            .map(|row| ImportedSchemaEntry::new(row.inner, row.pos))
+    }
+}
+
+pub struct ImportedSchemaEntry<'a> {
+    row: RowReference<'a, StructArray>,
+    tables_array: StructArraySlice<'a>,
+}
+
+impl<'a> ImportedSchemaEntry<'a> {
+    fn new(struct_arr: &'a StructArray, pos: usize) -> Self {
+        let row = RowReference {
+            inner: struct_arr,
+            pos,
+        };
+        let tables_array = row.get_struct_slice(1);
+        Self { row, tables_array }
+    }
+}
+
+impl<'a> DatabaseSchemaEntry<'a> for ImportedSchemaEntry<'a> {
+    type TableEntryType = ImportedTableEntry<'a>;
+
+    fn name(&self) -> Option<&'a str> {
+        self.row.get_str(0)
+    }
+
+    fn tables(&self) -> Box<dyn Iterator<Item = Self::TableEntryType> + 'a> {
+        Box::new(
+            self.tables_array
+                .iter_rows()
+                .map(|row| ImportedTableEntry::new(row.inner, row.pos)),
+        )
+    }
+
+    fn get_table(&self, name: &str) -> Option<Self::TableEntryType> {
+        self.tables_array
+            .iter_rows()
+            .find(|row| row.get_str(0).expect("table_name was null") == name)
+            .map(|row| ImportedTableEntry::new(row.inner, row.pos))
+    }
+}
+
+pub struct ImportedTableEntry<'a> {
+    row: RowReference<'a, StructArray>,
+    column_array: StructArraySlice<'a>,
+    constraint_array: StructArraySlice<'a>,
+}
+
+impl<'a> ImportedTableEntry<'a> {
+    fn new(struct_arr: &'a StructArray, pos: usize) -> ImportedTableEntry<'a> {
+        let row = RowReference {
+            inner: struct_arr,
+            pos,
+        };
+        let column_array = row.get_struct_slice(2);
+        let constraint_array = row.get_struct_slice(3);
+        Self {
+            row,
+            column_array,
+            constraint_array,
+        }
+    }
+}
+
+fn extract_column_schema(row: RowReference<StructArray>) -> ColumnSchemaRef {
+    ColumnSchemaRef {
+        name: row.get_str(0).expect("column name is null"),
+        ordinal_position: row.get_primitive::<Int32Type>(1).unwrap(),
+        remarks: row.get_str(2),
+        xdbc_data_type: row.get_primitive::<Int16Type>(3),
+        xdbc_type_name: row.get_str(4),
+        xdbc_column_size: row.get_primitive::<Int32Type>(5),
+        xdbc_decimal_digits: row.get_primitive::<Int16Type>(6),
+        xdbc_num_prec_radix: row.get_primitive::<Int16Type>(7),
+        xdbc_nullable: row.get_primitive::<Int16Type>(8),
+        xdbc_column_def: row.get_str(9),
+        xdbc_sql_data_type: row.get_primitive::<Int16Type>(10),
+        xdbc_datetime_sub: row.get_primitive::<Int16Type>(11),
+        xdbc_char_octet_length: row.get_primitive::<Int32Type>(12),
+        xdbc_is_nullable: row.get_str(13),
+        xdbc_scope_catalog: row.get_str(14),
+        xdbc_scope_schema: row.get_str(15),
+        xdbc_scope_table: row.get_str(16),
+        xdbc_is_autoincrement: row.get_bool(17),
+        xdbc_is_generatedcolumn: row.get_bool(18),
+    }
+}
+
+impl<'a> DatabaseTableEntry<'a> for ImportedTableEntry<'a> {
+    fn name(&self) -> &'a str {
+        self.row.get_str(0).expect("table_name was null")
+    }
+
+    fn table_type(&self) -> &'a str {
+        self.row.get_str(1).expect("table_type was null")
+    }
+
+    fn columns(&self) -> Box<dyn Iterator<Item = ColumnSchemaRef<'a>> + 'a> {
+        Box::new(self.column_array.iter_rows().map(extract_column_schema))
+    }
+
+    fn get_column(&self, i: i32) -> Option<ColumnSchemaRef<'a>> {
+        self.column_array
+            .iter_rows()
+            .find_map(|row| {
+                let position = row.get_primitive::<Int32Type>(1).unwrap();
+                if position == i {
+                    Some(row)
+                } else {
+                    None
+                }
+            })
+            .map(extract_column_schema)
+    }
+
+    fn get_column_by_name(&self, name: &str) -> Option<ColumnSchemaRef<'a>> {
+        self.column_array
+            .iter_rows()
+            .find_map(|row| {
+                let column_name = row.get_str(0).expect("column name is null");
+                if column_name == name {
+                    Some(row)
+                } else {
+                    None
+                }
+            })
+            .map(extract_column_schema)
+    }
+
+    fn constraints(&self) -> Box<dyn Iterator<Item = TableConstraintRef<'a>> + 'a> {
+        Box::new(self.constraint_array.iter_rows().map(|row| {
+            let name = row.get_str(0);
+            let constraint_type = row.get_str(1).expect("constraint_type is null");
+            let columns = row
+                .get_str_list(2)
+                .map(|col| col.expect("column in constraint is null"))
+                .collect();
+
+            match constraint_type {
+                "CHECK" => TableConstraintRef::Check { name, columns },
+                "PRIMARY KEY" => TableConstraintRef::PrimaryKey { name, columns },
+                "UNIQUE" => TableConstraintRef::Unique { name, columns },
+                "FOREIGN KEY" => {
+                    let usage_array = row.get_struct_slice(3);
+                    let usage: Vec<ForeignKeyUsageRef> = usage_array
+                        .iter_rows()
+                        .map(|row| ForeignKeyUsageRef {
+                            catalog: row.get_str(0),
+                            db_schema: row.get_str(1),
+                            table: row
+                                .get_str(2)
+                                .expect("table_name is null in foreign key constraint"),
+                            column_name: row
+                                .get_str(3)
+                                .expect("column_name is null in foreign key constraint"),
+                        })
+                        .collect();
+                    TableConstraintRef::ForeignKey {
+                        name,
+                        columns,
+                        usage,
+                    }
+                }
+                _ => panic!("Unknown constraint type: {constraint_type}"),
+            }
+        }))
+    }
+}
+
+fn objects_schema() -> Schema {
+    let usage_schema = DataType::Struct(vec![
+        Field::new("fk_catalog", DataType::Utf8, true),
+        Field::new("fk_db_schema", DataType::Utf8, true),
+        Field::new("fk_table", DataType::Utf8, false),
+        Field::new("fk_column_name", DataType::Utf8, false),
+    ]);
+
+    let constraint_schema = DataType::Struct(vec![
+        Field::new("constraint_name", DataType::Utf8, true),
+        Field::new("constraint_type", DataType::Utf8, false),
+        Field::new(
+            "constraint_column_names",
+            DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
+            false,
+        ),
+        Field::new(
+            "constraint_column_usage",
+            DataType::List(Box::new(Field::new("item", usage_schema, true))),
+            true,
+        ),
+    ]);
+
+    let column_schema = DataType::Struct(vec![
+        Field::new("column_name", DataType::Utf8, false),
+        Field::new("ordinal_position", DataType::Int32, true),
+        Field::new("remarks", DataType::Utf8, true),
+        Field::new("xdbc_data_type", DataType::Int16, true),
+        Field::new("xdbc_type_name", DataType::Utf8, true),
+        Field::new("xdbc_column_size", DataType::Int32, true),
+        Field::new("xdbc_decimal_digits", DataType::Int16, true),
+        Field::new("xdbc_num_prec_radix", DataType::Int16, true),
+        Field::new("xdbc_nullable", DataType::Int16, true),
+        Field::new("xdbc_column_def", DataType::Utf8, true),
+        Field::new("xdbc_sql_data_type", DataType::Int16, true),
+        Field::new("xdbc_datetime_sub", DataType::Int16, true),
+        Field::new("xdbc_char_octet_length", DataType::Int32, true),
+        Field::new("xdbc_is_nullable", DataType::Utf8, true),
+        Field::new("xdbc_scope_catalog", DataType::Utf8, true),
+        Field::new("xdbc_scope_schema", DataType::Utf8, true),
+        Field::new("xdbc_scope_table", DataType::Utf8, true),
+        Field::new("xdbc_is_autoincrement", DataType::Boolean, true),
+        Field::new("xdbc_is_generatedcolumn", DataType::Boolean, true),
+    ]);
+
+    let table_schema = DataType::Struct(vec![
+        Field::new("table_name", DataType::Utf8, false),
+        Field::new("table_type", DataType::Utf8, false),
+        Field::new(
+            "table_columns",
+            DataType::List(Box::new(Field::new("item", column_schema, true))),
+            true,
+        ),
+        Field::new(
+            "table_constraints",
+            DataType::List(Box::new(Field::new("item", constraint_schema, true))),
+            true,
+        ),
+    ]);
+
+    let db_schema_schema = DataType::Struct(vec![
+        Field::new("db_schema_name", DataType::Utf8, true),
+        Field::new(
+            "db_schema_tables",
+            DataType::List(Box::new(Field::new("item", table_schema, true))),
+            true,
+        ),
+    ]);
+
+    Schema::new(vec![
+        Field::new("catalog_name", DataType::Utf8, true),
+        Field::new(
+            "catalog_db_schemas",
+            DataType::List(Box::new(Field::new("item", db_schema_schema, true))),
+            true,
+        ),
+    ])
 }

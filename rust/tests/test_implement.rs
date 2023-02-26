@@ -36,7 +36,8 @@ use arrow_adbc::{
     implement::{AdbcConnectionImpl, AdbcDatabaseImpl, AdbcStatementImpl},
     info::InfoData,
     interface::{
-        ConnectionApi, DatabaseApi, PartitionedStatementResult, StatementApi, StatementResult,
+        objects::SimpleCatalogCollection, ConnectionApi, DatabaseApi, PartitionedStatementResult,
+        StatementApi, StatementResult,
     },
     ADBC_VERSION_1_0_0,
 };
@@ -73,7 +74,7 @@ type ConnectionGetObjects = dyn Fn(
         Option<&str>,
         Option<&[&str]>,
         Option<&str>,
-    ) -> Result<Box<dyn RecordBatchReader>>
+    ) -> Result<SimpleCatalogCollection>
     + Send
     + Sync;
 
@@ -204,6 +205,7 @@ macro_rules! conn_method {
 
 impl ConnectionApi for TestConnection {
     type Error = TestError;
+    type ObjectCollectionType = SimpleCatalogCollection;
     fn set_option(&self, key: &str, value: &str) -> Result<()> {
         conn_method!(self, connection_set_option, key, value)
     }
@@ -220,7 +222,7 @@ impl ConnectionApi for TestConnection {
         table_name: Option<&str>,
         table_type: Option<&[&str]>,
         column_name: Option<&str>,
-    ) -> Result<Box<dyn RecordBatchReader>> {
+    ) -> Result<Self::ObjectCollectionType> {
         conn_method!(
             self,
             connection_get_objects,

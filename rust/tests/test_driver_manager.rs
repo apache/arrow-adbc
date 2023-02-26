@@ -17,12 +17,10 @@
 
 //! Test driver manager against SQLite implementations.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use arrow::array::{
-    as_list_array, as_string_array, as_struct_array, Array, Int64Array, StringArray,
-};
+use arrow::array::{Int64Array, StringArray};
 use arrow::compute::concat_batches;
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::error::ArrowError;
@@ -30,7 +28,13 @@ use arrow::record_batch::RecordBatch;
 use arrow_adbc::driver_manager::{AdbcDatabase, AdbcDriver, AdbcStatement, Result};
 use arrow_adbc::ffi::AdbcObjectDepth;
 use arrow_adbc::info::{codes, InfoData};
-use arrow_adbc::interface::{ConnectionApi, StatementApi};
+use arrow_adbc::interface::{
+    objects::{
+        ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry, DatabaseSchemaEntry,
+        DatabaseTableEntry,
+    },
+    ConnectionApi, StatementApi,
+};
 use arrow_adbc::ADBC_VERSION_1_0_0;
 
 fn get_driver() -> Result<AdbcDriver> {
@@ -113,35 +117,34 @@ fn test_connection_get_objects() {
     let mut statement = connection.new_statement().unwrap();
     upload_data(&mut statement, record_batch, "foo");
 
-    let objects: Vec<RecordBatch> = connection
+    let catalogs = connection
         .get_objects(AdbcObjectDepth::All, None, None, None, None, None)
-        .unwrap()
-        .collect::<std::result::Result<_, ArrowError>>()
         .unwrap();
 
-    assert_eq!(objects.len(), 1);
-    let batch = &objects[0];
-    // There is only 1 database
-    assert_eq!(batch.num_rows(), 1);
+    // There is only 1 catalog
+    assert_eq!(catalogs.catalogs().count(), 1);
+    let catalog = catalogs.catalogs().next().unwrap();
+    assert_eq!(catalog.name(), Some("main"));
 
-    let db_schemas = as_struct_array(as_list_array(batch.column(1)).values());
     // There is only 1 db_schema
-    assert_eq!(db_schemas.len(), 1);
+    assert_eq!(catalog.schemas().count(), 1);
+    let db_schema = catalog.schemas().next().unwrap();
+    assert_eq!(db_schema.name(), None);
 
-    let tables = as_struct_array(as_list_array(db_schemas.column(1)).values());
     // There is only 1 table
-    assert_eq!(tables.len(), 1);
-    let table_names = as_string_array(tables.column(0));
-    assert_eq!(table_names.value(0), "foo");
+    assert_eq!(db_schema.tables().count(), 1);
+    let table = db_schema.tables().next().unwrap();
+    assert_eq!(table.name(), "foo");
+    assert_eq!(table.table_type(), "table");
 
-    let columns = as_struct_array(as_list_array(tables.column(2)).values());
-    // There are two columns
-    assert_eq!(columns.len(), 2);
-    let column_names: HashSet<&str> = as_string_array(columns.column(0))
-        .into_iter()
-        .flatten()
-        .collect();
-    assert_eq!(column_names, HashSet::from_iter(vec!["strs", "ints"]));
+    // There are only 2 columns
+    assert_eq!(table.columns().count(), 2);
+    let columns: HashMap<&str, ColumnSchemaRef> =
+        table.columns().map(|col| (col.name, col)).collect();
+    assert!(columns.contains_key("ints"));
+    assert!(columns.contains_key("strs"));
+    assert_eq!(columns.get("ints").unwrap().ordinal_position, 1);
+    assert_eq!(columns.get("strs").unwrap().ordinal_position, 2);
 }
 
 #[test]

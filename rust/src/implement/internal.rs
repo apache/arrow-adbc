@@ -41,7 +41,7 @@ use crate::{
         FFI_AdbcStatement,
     },
     info::export_info_data,
-    interface::{ConnectionApi, DatabaseApi, StatementApi},
+    interface::{objects::DatabaseCatalogCollection, ConnectionApi, DatabaseApi, StatementApi},
 };
 
 use super::{AdbcConnectionImpl, AdbcDatabaseImpl, AdbcError, AdbcStatementImpl};
@@ -441,7 +441,7 @@ where
         }
     }
 
-    let reader = check_err!(
+    let objects = check_err!(
         inner.get_objects(
             depth,
             catalog,
@@ -456,6 +456,8 @@ where
         ),
         error
     );
+
+    let reader = Box::new(BatchReader::new(objects.as_record_batch()));
     export_reader_into_raw(reader, out);
 
     AdbcStatusCode::Ok
