@@ -72,8 +72,9 @@ use crate::{
     info::{import_info_data, InfoData},
     interface::{
         objects::{
-            ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry, DatabaseSchemaEntry,
-            DatabaseTableEntry, ForeignKeyUsageRef, TableConstraintRef,
+            CatalogArrayBuilder, ColumnSchemaRef, DatabaseCatalogCollection, DatabaseCatalogEntry,
+            DatabaseSchemaEntry, DatabaseTableEntry, ForeignKeyUsageRef, TableConstraintRef,
+            TableConstraintTypeRef,
         },
         ConnectionApi, PartitionedStatementResult, StatementApi, StatementResult,
     },
@@ -1031,7 +1032,7 @@ pub struct ImportedCatalogCollection {
 
 impl ImportedCatalogCollection {
     pub(crate) fn try_new(reader: impl RecordBatchReader) -> Result<Self> {
-        if reader.schema().as_ref() != &objects_schema() {
+        if reader.schema().as_ref() != &Schema::new(CatalogArrayBuilder::schema()) {
             return Err(AdbcDriverManagerError {
                 message: format!(
                     "Received incorrect Arrow schema from GetObjects: {:?}",
@@ -1243,10 +1244,10 @@ impl<'a> DatabaseTableEntry<'a> for ImportedTableEntry<'a> {
                 .map(|col| col.expect("column in constraint is null"))
                 .collect();
 
-            match constraint_type {
-                "CHECK" => TableConstraintRef::Check { name, columns },
-                "PRIMARY KEY" => TableConstraintRef::PrimaryKey { name, columns },
-                "UNIQUE" => TableConstraintRef::Unique { name, columns },
+            let constraint_type = match constraint_type {
+                "CHECK" => TableConstraintTypeRef::Check,
+                "PRIMARY KEY" => TableConstraintTypeRef::PrimaryKey,
+                "UNIQUE" => TableConstraintTypeRef::Unique,
                 "FOREIGN KEY" => {
                     let usage_array = row.get_struct_slice(3);
                     let usage: Vec<ForeignKeyUsageRef> = usage_array
@@ -1262,93 +1263,16 @@ impl<'a> DatabaseTableEntry<'a> for ImportedTableEntry<'a> {
                                 .expect("column_name is null in foreign key constraint"),
                         })
                         .collect();
-                    TableConstraintRef::ForeignKey {
-                        name,
-                        columns,
-                        usage,
-                    }
+                    TableConstraintTypeRef::ForeignKey { usage }
                 }
                 _ => panic!("Unknown constraint type: {constraint_type}"),
+            };
+
+            TableConstraintRef {
+                name,
+                columns,
+                constraint_type,
             }
         }))
     }
-}
-
-fn objects_schema() -> Schema {
-    let usage_schema = DataType::Struct(vec![
-        Field::new("fk_catalog", DataType::Utf8, true),
-        Field::new("fk_db_schema", DataType::Utf8, true),
-        Field::new("fk_table", DataType::Utf8, false),
-        Field::new("fk_column_name", DataType::Utf8, false),
-    ]);
-
-    let constraint_schema = DataType::Struct(vec![
-        Field::new("constraint_name", DataType::Utf8, true),
-        Field::new("constraint_type", DataType::Utf8, false),
-        Field::new(
-            "constraint_column_names",
-            DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
-            false,
-        ),
-        Field::new(
-            "constraint_column_usage",
-            DataType::List(Box::new(Field::new("item", usage_schema, true))),
-            true,
-        ),
-    ]);
-
-    let column_schema = DataType::Struct(vec![
-        Field::new("column_name", DataType::Utf8, false),
-        Field::new("ordinal_position", DataType::Int32, true),
-        Field::new("remarks", DataType::Utf8, true),
-        Field::new("xdbc_data_type", DataType::Int16, true),
-        Field::new("xdbc_type_name", DataType::Utf8, true),
-        Field::new("xdbc_column_size", DataType::Int32, true),
-        Field::new("xdbc_decimal_digits", DataType::Int16, true),
-        Field::new("xdbc_num_prec_radix", DataType::Int16, true),
-        Field::new("xdbc_nullable", DataType::Int16, true),
-        Field::new("xdbc_column_def", DataType::Utf8, true),
-        Field::new("xdbc_sql_data_type", DataType::Int16, true),
-        Field::new("xdbc_datetime_sub", DataType::Int16, true),
-        Field::new("xdbc_char_octet_length", DataType::Int32, true),
-        Field::new("xdbc_is_nullable", DataType::Utf8, true),
-        Field::new("xdbc_scope_catalog", DataType::Utf8, true),
-        Field::new("xdbc_scope_schema", DataType::Utf8, true),
-        Field::new("xdbc_scope_table", DataType::Utf8, true),
-        Field::new("xdbc_is_autoincrement", DataType::Boolean, true),
-        Field::new("xdbc_is_generatedcolumn", DataType::Boolean, true),
-    ]);
-
-    let table_schema = DataType::Struct(vec![
-        Field::new("table_name", DataType::Utf8, false),
-        Field::new("table_type", DataType::Utf8, false),
-        Field::new(
-            "table_columns",
-            DataType::List(Box::new(Field::new("item", column_schema, true))),
-            true,
-        ),
-        Field::new(
-            "table_constraints",
-            DataType::List(Box::new(Field::new("item", constraint_schema, true))),
-            true,
-        ),
-    ]);
-
-    let db_schema_schema = DataType::Struct(vec![
-        Field::new("db_schema_name", DataType::Utf8, true),
-        Field::new(
-            "db_schema_tables",
-            DataType::List(Box::new(Field::new("item", table_schema, true))),
-            true,
-        ),
-    ]);
-
-    Schema::new(vec![
-        Field::new("catalog_name", DataType::Utf8, true),
-        Field::new(
-            "catalog_db_schemas",
-            DataType::List(Box::new(Field::new("item", db_schema_schema, true))),
-            true,
-        ),
-    ])
 }
