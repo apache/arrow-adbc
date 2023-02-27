@@ -15,20 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// Package sqldriver is a wrapper around the ADBC (Arrow Database
-// Connectivity) interfaces to support the standard golang database/sql
-// package.
-//
-// This allows any ADBC driver implementation to also be used as-is
-// with the database/sql package of the standard library rather than
-// having to implement drivers for both separately.
-//
-// Registering the driver can be done by importing this and then running
-//
-// 		sql.Register("drivername", sqldriver.Driver{adbcdriver})
-//
-// EXPERIMENTAL. The ADBC interfaces are subject to change and as such
-// this wrapper is also subject to change based on that.
 package sqldriver
 
 import (
