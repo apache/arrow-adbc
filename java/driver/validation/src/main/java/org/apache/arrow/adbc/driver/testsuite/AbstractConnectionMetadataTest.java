@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -61,6 +62,8 @@ public abstract class AbstractConnectionMetadataTest {
   protected BufferAllocator allocator;
   protected SqlTestUtil util;
   protected String tableName;
+  protected String mainTable;
+  protected String dependentTable;
 
   @BeforeEach
   public void beforeEach() throws Exception {
@@ -70,11 +73,15 @@ public abstract class AbstractConnectionMetadataTest {
     allocator = new RootAllocator();
     util = new SqlTestUtil(quirks);
     tableName = quirks.caseFoldTableName("foo");
+    mainTable = quirks.caseFoldTableName("product");
+    dependentTable = quirks.caseFoldTableName("sale");
   }
 
   @AfterEach
   public void afterEach() throws Exception {
     quirks.cleanupTable(tableName);
+    quirks.cleanupTable(mainTable);
+    quirks.cleanupTable(dependentTable);
     AutoCloseables.close(connection, database, allocator);
   }
 
@@ -104,6 +111,93 @@ public abstract class AbstractConnectionMetadataTest {
                   .getObject(0)
                   .toString())
           .isNotEmpty();
+    }
+  }
+
+  @Test
+  public void getObjectsConstraints() throws Exception {
+    final Schema schema = util.ingestTableWithConstraints(allocator, connection, tableName);
+    util.ingestTablesWithReferentialConstraint(allocator, connection, mainTable, dependentTable);
+
+    boolean tableFound = false;
+    try (final ArrowReader reader =
+        connection.getObjects(AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, null)) {
+      assertThat(reader.getVectorSchemaRoot().getSchema())
+          .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
+      assertThat(reader.loadNextBatch()).isTrue();
+
+      final ListVector dbSchemas = (ListVector) reader.getVectorSchemaRoot().getVector(1);
+      final ListVector dbSchemaTables =
+          (ListVector) ((StructVector) dbSchemas.getDataVector()).getVectorById(1);
+      final StructVector tables = (StructVector) dbSchemaTables.getDataVector();
+      final VarCharVector tableNames = (VarCharVector) tables.getVectorById(0);
+      final ListVector tableConstraints = (ListVector) tables.getVectorById(3);
+
+      for (int i = 0; i < tables.getValueCount(); i++) {
+        if (tables.isNull(i)) {
+          continue;
+        }
+        final Text tableName = tableNames.getObject(i);
+        if (tableName != null && tableName.toString().equalsIgnoreCase(this.tableName)) {
+          tableFound = true;
+
+          @SuppressWarnings("unchecked")
+          final List<Map<String, ?>> constraints =
+              (List<Map<String, ?>>) tableConstraints.getObject(i);
+
+          assertThat(constraints)
+              .filteredOn(c -> c.get("constraint_type").equals(new Text("PRIMARY KEY")))
+              .extracting("constraint_name")
+              .containsExactlyInAnyOrderElementsOf(
+                  Collections.singletonList(new Text(quirks.caseFoldColumnName("table_pk"))));
+
+          assertThat(constraints)
+              .filteredOn(c -> c.get("constraint_type").equals(new Text("PRIMARY KEY")))
+              .flatExtracting("constraint_column_names")
+              .containsExactlyInAnyOrderElementsOf(
+                  schema.getFields().stream()
+                      .map(field -> new Text(field.getName()))
+                      .collect(Collectors.toList()));
+
+          assertThat(constraints)
+              .filteredOn(c -> c.get("constraint_type").equals(new Text("UNIQUE")))
+              .extracting("constraint_name")
+              .hasSize(1);
+
+          assertThat(constraints)
+              .filteredOn(c -> c.get("constraint_type").equals(new Text("UNIQUE")))
+              .flatExtracting("constraint_column_names")
+              .containsExactlyInAnyOrderElementsOf(
+                  schema.getFields().stream()
+                      .map(field -> new Text(field.getName()))
+                      .collect(Collectors.toList()));
+        }
+
+        if (tableName != null && tableName.toString().equalsIgnoreCase(dependentTable)) {
+          @SuppressWarnings("unchecked")
+          final List<Map<String, ?>> constraints =
+              (List<Map<String, ?>>) tableConstraints.getObject(i);
+
+          assertThat(constraints)
+              .extracting("constraint_name")
+              .containsExactlyInAnyOrderElementsOf(
+                  Collections.singletonList(
+                      new Text(quirks.caseFoldColumnName("SALE_PRODUCT_FK"))));
+
+          assertThat(constraints)
+              .flatExtracting("constraint_column_names")
+              .containsExactlyInAnyOrderElementsOf(
+                  Collections.singletonList(new Text(quirks.caseFoldColumnName("product_id"))));
+
+          assertThat(constraints)
+              .flatExtracting("constraint_column_usage")
+              .asList()
+              .first()
+              .extracting("fk_table")
+              .isEqualTo(new Text(quirks.caseFoldColumnName("product")));
+        }
+      }
+      assertThat(tableFound).describedAs("Table FOO exists in metadata").isTrue();
     }
   }
 

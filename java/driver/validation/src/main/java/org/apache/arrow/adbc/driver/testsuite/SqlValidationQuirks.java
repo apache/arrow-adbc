@@ -17,6 +17,8 @@
 
 package org.apache.arrow.adbc.driver.testsuite;
 
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 
@@ -34,5 +36,49 @@ public abstract class SqlValidationQuirks {
   /** Normalize a column name. */
   public String caseFoldColumnName(String name) {
     return name;
+  }
+
+  /** Generates a query to set a column to NOT NULL in a table. */
+  public String generateSetNotNullQuery(String table, String column) {
+    return "ALTER TABLE "
+        + caseFoldTableName(table)
+        + " ALTER COLUMN "
+        + caseFoldColumnName(column)
+        + " SET NOT NULL";
+  }
+
+  public String generateAddPrimaryKeyQuery(
+      String constraintName, String table, List<String> columns) {
+    return "ALTER TABLE "
+        + caseFoldTableName(table)
+        + " \n"
+        + "  ADD CONSTRAINT "
+        + constraintName
+        + " \n"
+        + "  PRIMARY KEY ("
+        + columns.stream().map(this::caseFoldColumnName).collect(Collectors.joining(","))
+        + ")";
+  }
+
+  public String generateAddForeignKeyQuery(
+      String constraintName,
+      String table,
+      String column,
+      String referenceTable,
+      String referenceColumn) {
+    return "ALTER TABLE "
+        + caseFoldTableName(table)
+        + " \n"
+        + "  ADD CONSTRAINT "
+        + constraintName
+        + " \n"
+        + "  FOREIGN KEY ("
+        + caseFoldColumnName(column)
+        + ") \n"
+        + "  REFERENCES "
+        + caseFoldTableName(referenceTable)
+        + " ("
+        + caseFoldColumnName(referenceColumn)
+        + ") ";
   }
 }

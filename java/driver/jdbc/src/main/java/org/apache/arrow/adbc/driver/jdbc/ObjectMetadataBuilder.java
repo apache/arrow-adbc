@@ -23,9 +23,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.StandardSchemas;
+import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.IntVector;
@@ -34,6 +37,10 @@ import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.complex.StructVector;
+import org.apache.arrow.vector.complex.impl.UnionListWriter;
+import org.apache.arrow.vector.complex.writer.BaseWriter.ListWriter;
+import org.apache.arrow.vector.complex.writer.BaseWriter.StructWriter;
+import org.apache.arrow.vector.complex.writer.VarCharWriter;
 
 /** Helper class to track state needed to build up the object metadata structure. */
 final class ObjectMetadataBuilder implements AutoCloseable {
@@ -61,17 +68,18 @@ final class ObjectMetadataBuilder implements AutoCloseable {
   final VarCharVector columnRemarks;
   final SmallIntVector columnXdbcDataTypes;
   final ListVector tableConstraints;
-  final StructVector constraints;
-  final VarCharVector constraintNames;
-  final VarCharVector constraintTypes;
-  final ListVector constraintColumnNames;
-  final VarCharVector constraintColumnNameItems;
-  final ListVector constraintColumnUsage;
-  final StructVector columnUsages;
-  final VarCharVector columnUsageFkCatalogs;
-  final VarCharVector columnUsageFkDbSchemas;
-  final VarCharVector columnUsageFkTables;
-  final VarCharVector columnUsageFkColumns;
+  final UnionListWriter tableConstraintsWriter;
+  final StructWriter tableConstraintsStructWriter;
+  final VarCharWriter constraintNamesWriter;
+  final VarCharWriter constraintTypesWriter;
+  final ListWriter constraintColumnNamesWriter;
+  final ListWriter constraintColumnUsageWriter;
+  final StructWriter constraintColumnUsageStructWriter;
+  final VarCharWriter constraintColumnUsageFkCatalogsWriter;
+  final VarCharWriter constraintColumnUsageFkDbSchemasWriter;
+  final VarCharWriter constraintColumnUsageFkTablesWriter;
+  final VarCharWriter constraintColumnUsageFkColumnsWriter;
+  final BufferAllocator allocator;
 
   ObjectMetadataBuilder(
       BufferAllocator allocator,
@@ -83,6 +91,7 @@ final class ObjectMetadataBuilder implements AutoCloseable {
       final String[] tableTypesFilter,
       final String columnNamePattern)
       throws SQLException {
+    this.allocator = allocator;
     this.depth = depth;
     this.catalogPattern = catalogPattern;
     this.dbSchemaPattern = dbSchemaPattern;
@@ -106,17 +115,21 @@ final class ObjectMetadataBuilder implements AutoCloseable {
     this.columnRemarks = (VarCharVector) columns.getVectorById(2);
     this.columnXdbcDataTypes = (SmallIntVector) columns.getVectorById(3);
     this.tableConstraints = (ListVector) tables.getVectorById(3);
-    this.constraints = (StructVector) tableConstraints.getDataVector();
-    this.constraintNames = (VarCharVector) constraints.getVectorById(0);
-    this.constraintTypes = (VarCharVector) constraints.getVectorById(1);
-    this.constraintColumnNames = (ListVector) constraints.getVectorById(2);
-    this.constraintColumnNameItems = (VarCharVector) constraintColumnNames.getDataVector();
-    this.constraintColumnUsage = (ListVector) constraints.getVectorById(3);
-    this.columnUsages = (StructVector) constraintColumnUsage.getDataVector();
-    this.columnUsageFkCatalogs = (VarCharVector) columnUsages.getVectorById(0);
-    this.columnUsageFkDbSchemas = (VarCharVector) columnUsages.getVectorById(1);
-    this.columnUsageFkTables = (VarCharVector) columnUsages.getVectorById(2);
-    this.columnUsageFkColumns = (VarCharVector) columnUsages.getVectorById(3);
+    this.tableConstraintsWriter = this.tableConstraints.getWriter();
+    this.tableConstraintsStructWriter = this.tableConstraintsWriter.struct();
+    this.constraintNamesWriter = this.tableConstraintsWriter.varChar("constraint_name");
+    this.constraintTypesWriter = this.tableConstraintsWriter.varChar("constraint_type");
+    this.constraintColumnNamesWriter = this.tableConstraintsWriter.list("constraint_column_names");
+    this.constraintColumnUsageWriter = this.tableConstraintsWriter.list("constraint_column_usage");
+    this.constraintColumnUsageStructWriter = this.constraintColumnUsageWriter.struct();
+    this.constraintColumnUsageFkCatalogsWriter =
+        this.constraintColumnUsageStructWriter.varChar("fk_catalog");
+    this.constraintColumnUsageFkDbSchemasWriter =
+        this.constraintColumnUsageStructWriter.varChar("fk_db_schema");
+    this.constraintColumnUsageFkTablesWriter =
+        this.constraintColumnUsageStructWriter.varChar("fk_table");
+    this.constraintColumnUsageFkColumnsWriter =
+        this.constraintColumnUsageStructWriter.varChar("fk_column_name");
   }
 
   VectorSchemaRoot build() throws SQLException {
@@ -180,36 +193,34 @@ final class ObjectMetadataBuilder implements AutoCloseable {
     int tableCount = 0;
     try (final ResultSet rs =
         dbmd.getTables(catalogName, dbSchemaName, tableNamePattern, tableTypesFilter)) {
+
       while (rs.next()) {
         final String tableName = rs.getString(3);
         final String tableType = rs.getString(4);
         tables.setIndexDefined(rowIndex + tableCount);
         tableNames.setSafe(rowIndex + tableCount, tableName.getBytes(StandardCharsets.UTF_8));
         tableTypes.setSafe(rowIndex + tableCount, tableType.getBytes(StandardCharsets.UTF_8));
-        final int constraintOffset = tableConstraints.startNewValue(rowIndex + tableCount);
-        int constraintCount = 0;
+        tableConstraintsWriter.setPosition(rowIndex + tableCount);
+        tableConstraintsWriter.startList();
+
         // JDBC doesn't directly expose constraints. Merge various info methods:
         // 1. Primary keys
         try (final ResultSet pk = dbmd.getPrimaryKeys(catalogName, dbSchemaName, tableName)) {
           String constraintName = null;
           List<String> constraintColumns = new ArrayList<>();
-          if (pk.next()) {
-            while (pk.next()) {
-              constraintName = pk.getString(6);
-              String columnName = pk.getString(4);
-              int columnIndex = pk.getInt(5);
-              while (constraintColumns.size() < columnIndex) constraintColumns.add(null);
-              constraintColumns.set(columnIndex - 1, columnName);
-            }
+          while (pk.next()) {
+            constraintName = pk.getString(6);
+            String columnName = pk.getString(4);
+            int columnIndex = pk.getInt(5);
+            while (constraintColumns.size() < columnIndex) constraintColumns.add(null);
+            constraintColumns.set(columnIndex - 1, columnName);
+          }
+          if (!constraintColumns.isEmpty()) {
             addConstraint(
-                constraintOffset + constraintCount,
-                constraintName,
-                "PRIMARY KEY",
-                constraintColumns,
-                Collections.emptyList());
-            constraintCount++;
+                constraintName, "PRIMARY KEY", constraintColumns, Collections.emptyList());
           }
         }
+
         // 2. Foreign keys ("imported" keys)
         try (final ResultSet fk = dbmd.getImportedKeys(catalogName, dbSchemaName, tableName)) {
           List<String> names = new ArrayList<>();
@@ -234,20 +245,36 @@ final class ObjectMetadataBuilder implements AutoCloseable {
           }
 
           for (int i = 0; i < names.size(); i++) {
-            addConstraint(
-                constraintOffset + constraintCount,
-                names.get(i),
-                "FOREIGN KEY",
-                columns.get(i),
-                references.get(i));
-            constraintCount++;
+            addConstraint(names.get(i), "FOREIGN KEY", columns.get(i), references.get(i));
           }
         }
 
-        // TODO: UNIQUE constraints are exposed under indices
-        // TODO: how to get CHECK constraints?
+        // 3. UNIQUE constraints
+        try (final ResultSet uq =
+            dbmd.getIndexInfo(catalogName, dbSchemaName, tableName, true, false)) {
+          Map<String, ArrayList<String>> uniqueConstraints = new HashMap<>();
+          while (uq.next()) {
+            String constraintName = uq.getString(6);
+            String columnName = uq.getString(9);
+            int columnIndex = uq.getInt(8);
 
-        tableConstraints.endValue(rowIndex + tableCount, constraintCount);
+            if (!uniqueConstraints.containsKey(constraintName)) {
+              uniqueConstraints.put(constraintName, new ArrayList<>());
+            }
+            ArrayList<String> uniqueColumns = uniqueConstraints.get(constraintName);
+            while (uniqueColumns.size() < columnIndex) uniqueColumns.add(null);
+            uniqueColumns.set(columnIndex - 1, columnName);
+          }
+
+          uniqueConstraints.forEach(
+              (name, columns) -> {
+                addConstraint(name, "UNIQUE", columns, Collections.emptyList());
+              });
+        }
+
+        // TODO: how to get CHECK constraints?
+        tableConstraintsWriter.endList();
+
         if (depth == AdbcConnection.GetObjectsDepth.TABLES) {
           tableColumns.setNull(rowIndex + tableCount);
         } else {
@@ -288,43 +315,44 @@ final class ObjectMetadataBuilder implements AutoCloseable {
     return columnCount;
   }
 
+  private void writeVarChar(VarCharWriter writer, String value) {
+    byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+    try (ArrowBuf tempBuf = allocator.buffer(bytes.length)) {
+      tempBuf.setBytes(0, bytes, 0, bytes.length);
+      writer.writeVarChar(0, bytes.length, tempBuf);
+    }
+  }
+
   private void addConstraint(
-      int index,
       String constraintName,
       String constraintType,
       List<String> constraintColumns,
       List<ReferencedColumn> referencedColumns) {
-    if (constraintName == null) {
-      constraintNames.setNull(index);
-    } else {
-      constraintNames.setSafe(index, constraintName.getBytes(StandardCharsets.UTF_8));
-    }
-    constraintTypes.setSafe(index, constraintType.getBytes(StandardCharsets.UTF_8));
+    tableConstraintsStructWriter.start();
 
-    int namesOffset = constraintColumnNames.startNewValue(index);
-    for (final String column : constraintColumns) {
-      constraintColumnNameItems.setSafe(namesOffset++, column.getBytes(StandardCharsets.UTF_8));
+    writeVarChar(this.constraintNamesWriter, constraintName);
+    writeVarChar(this.constraintTypesWriter, constraintType);
+
+    constraintColumnNamesWriter.startList();
+    for (final String constraintColumn : constraintColumns) {
+      writeVarChar(constraintColumnNamesWriter.varChar(), constraintColumn);
     }
-    constraintColumnNames.endValue(index, constraintColumns.size());
-    int usageOffset = constraintColumnUsage.startNewValue(index);
-    for (final ReferencedColumn column : referencedColumns) {
-      columnUsages.setIndexDefined(usageOffset);
-      if (column.catalog == null) {
-        columnUsageFkCatalogs.setNull(usageOffset);
-      } else {
-        columnUsageFkCatalogs.setSafe(usageOffset, column.catalog.getBytes(StandardCharsets.UTF_8));
+    constraintColumnNamesWriter.endList();
+
+    constraintColumnUsageWriter.startList();
+    for (ReferencedColumn referencedColumn : referencedColumns) {
+      constraintColumnUsageStructWriter.start();
+      if (referencedColumn.catalog != null) {
+        writeVarChar(constraintColumnUsageFkCatalogsWriter, referencedColumn.catalog);
       }
-      if (column.dbSchema == null) {
-        columnUsageFkDbSchemas.setNull(usageOffset);
-      } else {
-        columnUsageFkDbSchemas.setSafe(
-            usageOffset, column.dbSchema.getBytes(StandardCharsets.UTF_8));
-      }
-      columnUsageFkTables.setSafe(usageOffset, column.table.getBytes(StandardCharsets.UTF_8));
-      columnUsageFkColumns.setSafe(usageOffset, column.column.getBytes(StandardCharsets.UTF_8));
-      usageOffset++;
+      writeVarChar(constraintColumnUsageFkDbSchemasWriter, referencedColumn.dbSchema);
+      writeVarChar(constraintColumnUsageFkTablesWriter, referencedColumn.table);
+      writeVarChar(constraintColumnUsageFkColumnsWriter, referencedColumn.column);
+      constraintColumnUsageStructWriter.end();
     }
-    constraintColumnUsage.endValue(index, referencedColumns.size());
+    constraintColumnUsageWriter.endList();
+
+    tableConstraintsStructWriter.end();
   }
 
   @Override
