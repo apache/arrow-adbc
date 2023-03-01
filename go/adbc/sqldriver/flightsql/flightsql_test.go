@@ -27,7 +27,6 @@ import (
 	"github.com/apache/arrow/go/v12/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v12/arrow/flight/flightsql/example"
 	"github.com/apache/arrow/go/v12/arrow/memory"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 )
@@ -62,17 +61,17 @@ func (suite *SQLDriverFlightSQLSuite) SetupTest() {
 	var err error
 
 	suite.sqliteDB, err = example.CreateDB()
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	suite.mem = memory.NewCheckedAllocator(memory.DefaultAllocator)
 	suite.s = flight.NewServerWithMiddleware(nil, suite.opts...)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 	suite.srv, err = example.NewSQLiteFlightSQLServer(suite.sqliteDB)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 	suite.srv.Alloc = suite.mem
 
 	suite.s.RegisterFlightService(flightsql.NewFlightServer(suite.srv))
-	require.NoError(suite.T(), suite.s.Init("localhost:0"))
+	suite.Require().NoError(suite.s.Init("localhost:0"))
 	suite.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
 	suite.done = make(chan bool)
 	go func() {
@@ -105,7 +104,6 @@ func (suite *SQLDriverFlightSQLSuite) TestQuery() {
 
 	_, err = db.Exec("CREATE TABLE t (k, v)")
 	suite.Require().NoError(err)
-	defer db.Exec("DROP TABLE IF EXISTS t")
 	result, err := db.Exec("INSERT INTO t (k, v) VALUES ('one', 'alpha'), ('two', 'bravo')")
 	suite.Require().NoError(err)
 
