@@ -21,12 +21,12 @@
 // It can be used to register a driver for database/sql by importing
 // github.com/apache/arrow-adbc/go/adbc/sqldriver and running:
 //
-//     sql.Register("flightsql", sqldriver.Driver{flightsql.Driver{}})
+//	sql.Register("flightsql", sqldriver.Driver{flightsql.Driver{}})
 //
 // You can then open a flightsql connection with the database/sql
 // standard package by using:
 //
-//     db, err := sql.Open("flightsql", "uri=<flight sql db url>")
+//	db, err := sql.Open("flightsql", "uri=<flight sql db url>")
 //
 // The URI passed *must* contain a scheme, most likely "grpc+tcp://"
 package flightsql
@@ -58,9 +58,11 @@ import (
 	"github.com/bluele/gcache"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
+	grpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -83,6 +85,7 @@ const (
 var (
 	infoDriverVersion      string
 	infoDriverArrowVersion string
+	infoSupportedCodes     []adbc.InfoCode
 )
 
 var errNoTransactionSupport = adbc.Error{
@@ -100,6 +103,15 @@ func init() {
 				infoDriverArrowVersion = dep.Version
 			}
 		}
+	}
+
+	infoSupportedCodes = []adbc.InfoCode{
+		adbc.InfoDriverName,
+		adbc.InfoDriverVersion,
+		adbc.InfoDriverArrowVersion,
+		adbc.InfoVendorName,
+		adbc.InfoVendorVersion,
+		adbc.InfoVendorArrowVersion,
 	}
 }
 
@@ -668,21 +680,21 @@ func (c *cnxn) SetOption(key, value string) error {
 //
 // The result is an Arrow dataset with the following schema:
 //
-//    Field Name									| Field Type
-//    ----------------------------|-----------------------------
-//    info_name					   				| uint32 not null
-//    info_value									| INFO_SCHEMA
+//	Field Name									| Field Type
+//	----------------------------|-----------------------------
+//	info_name					   				| uint32 not null
+//	info_value									| INFO_SCHEMA
 //
 // INFO_SCHEMA is a dense union with members:
 //
-// 		Field Name (Type Code)			| Field Type
-//		----------------------------|-----------------------------
-//		string_value (0)						| utf8
-//		bool_value (1)							| bool
-//		int64_value (2)							| int64
-//		int32_bitmask (3)						| int32
-//		string_list (4)							| list<utf8>
-//		int32_to_int32_list_map (5)	| map<int32, list<int32>>
+//	Field Name (Type Code)			| Field Type
+//	----------------------------|-----------------------------
+//	string_value (0)						| utf8
+//	bool_value (1)							| bool
+//	int64_value (2)							| int64
+//	int32_bitmask (3)						| int32
+//	string_list (4)							| list<utf8>
+//	int32_to_int32_list_map (5)	| map<int32, list<int32>>
 //
 // Each metadatum is identified by an integer code. The recognized
 // codes are defined as constants. Codes [0, 10_000) are reserved
@@ -692,7 +704,7 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 	const strValTypeID arrow.UnionTypeCode = 0
 
 	if len(infoCodes) == 0 {
-		infoCodes = maps.Keys(adbcToFlightSQLInfo)
+		infoCodes = infoSupportedCodes
 	}
 
 	bldr := array.NewRecordBuilder(c.cl.Alloc, adbc.GetInfoSchema)
@@ -728,42 +740,42 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	info, err := c.cl.GetSqlInfo(ctx, translated, c.timeouts)
-	if err != nil {
-		return nil, adbcFromFlightStatus(err)
-	}
+	if err == nil {
+		for _, endpoint := range info.Endpoint {
+			rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache, c.timeouts)
+			if err != nil {
+				return nil, adbcFromFlightStatus(err)
+			}
 
-	for _, endpoint := range info.Endpoint {
-		rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache, c.timeouts)
-		if err != nil {
-			return nil, adbcFromFlightStatus(err)
-		}
+			for rdr.Next() {
+				rec := rdr.Record()
+				field := rec.Column(0).(*array.Uint32)
+				info := rec.Column(1).(*array.DenseUnion)
 
-		for rdr.Next() {
-			rec := rdr.Record()
-			field := rec.Column(0).(*array.Uint32)
-			info := rec.Column(1).(*array.DenseUnion)
+				for i := 0; i < int(rec.NumRows()); i++ {
+					switch flightsql.SqlInfo(field.Value(i)) {
+					case flightsql.SqlInfoFlightSqlServerName:
+						infoNameBldr.Append(uint32(adbc.InfoVendorName))
+					case flightsql.SqlInfoFlightSqlServerVersion:
+						infoNameBldr.Append(uint32(adbc.InfoVendorVersion))
+					case flightsql.SqlInfoFlightSqlServerArrowVersion:
+						infoNameBldr.Append(uint32(adbc.InfoVendorArrowVersion))
+					}
 
-			for i := 0; i < int(rec.NumRows()); i++ {
-				switch flightsql.SqlInfo(field.Value(i)) {
-				case flightsql.SqlInfoFlightSqlServerName:
-					infoNameBldr.Append(uint32(adbc.InfoVendorName))
-				case flightsql.SqlInfoFlightSqlServerVersion:
-					infoNameBldr.Append(uint32(adbc.InfoVendorVersion))
-				case flightsql.SqlInfoFlightSqlServerArrowVersion:
-					infoNameBldr.Append(uint32(adbc.InfoVendorArrowVersion))
+					infoValueBldr.Append(info.TypeCode(i))
+					// we know we're only doing string fields here right now
+					v := info.Field(info.ChildID(i)).(*array.String).
+						Value(int(info.ValueOffset(i)))
+					strInfoBldr.Append(v)
 				}
+			}
 
-				infoValueBldr.Append(info.TypeCode(i))
-				// we know we're only doing string fields here right now
-				v := info.Field(info.ChildID(i)).(*array.String).
-					Value(int(info.ValueOffset(i)))
-				strInfoBldr.Append(v)
+			if rdr.Err() != nil {
+				return nil, adbcFromFlightStatus(rdr.Err())
 			}
 		}
-
-		if rdr.Err() != nil {
-			return nil, adbcFromFlightStatus(rdr.Err())
-		}
+	} else if grpcstatus.Code(err) != grpccodes.Unimplemented {
+		return nil, adbcFromFlightStatus(err)
 	}
 
 	final := bldr.NewRecord()
@@ -776,26 +788,26 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 //
 // The result is an Arrow Dataset with the following schema:
 //
-//		Field Name									| Field Type
-//		----------------------------|----------------------------
-//		catalog_name								| utf8
-//		catalog_db_schemas					| list<DB_SCHEMA_SCHEMA>
+//	Field Name									| Field Type
+//	----------------------------|----------------------------
+//	catalog_name								| utf8
+//	catalog_db_schemas					| list<DB_SCHEMA_SCHEMA>
 //
 // DB_SCHEMA_SCHEMA is a Struct with the fields:
 //
-//		Field Name									| Field Type
-//		----------------------------|----------------------------
-//		db_schema_name							| utf8
-//		db_schema_tables						|	list<TABLE_SCHEMA>
+//	Field Name									| Field Type
+//	----------------------------|----------------------------
+//	db_schema_name							| utf8
+//	db_schema_tables						|	list<TABLE_SCHEMA>
 //
 // TABLE_SCHEMA is a Struct with the fields:
 //
-//		Field Name									| Field Type
-//		----------------------------|----------------------------
-//		table_name									| utf8 not null
-//		table_type									|	utf8 not null
-//		table_columns								| list<COLUMN_SCHEMA>
-//		table_constraints						| list<CONSTRAINT_SCHEMA>
+//	Field Name									| Field Type
+//	----------------------------|----------------------------
+//	table_name									| utf8 not null
+//	table_type									|	utf8 not null
+//	table_columns								| list<COLUMN_SCHEMA>
+//	table_constraints						| list<CONSTRAINT_SCHEMA>
 //
 // COLUMN_SCHEMA is a Struct with the fields:
 //
@@ -821,20 +833,20 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 //		xdbc_is_autoincrement				| bool								| (3)
 //		xdbc_is_generatedcolumn			| bool								| (3)
 //
-// 1. The column's ordinal position in the table (starting from 1).
-// 2. Database-specific description of the column.
-// 3. Optional Value. Should be null if not supported by the driver.
-//	  xdbc_values are meant to provide JDBC/ODBC-compatible metadata
-//		in an agnostic manner.
+//	 1. The column's ordinal position in the table (starting from 1).
+//	 2. Database-specific description of the column.
+//	 3. Optional Value. Should be null if not supported by the driver.
+//	    xdbc_values are meant to provide JDBC/ODBC-compatible metadata
+//	    in an agnostic manner.
 //
 // CONSTRAINT_SCHEMA is a Struct with the fields:
 //
-//		Field Name									| Field Type					| Comments
-//		----------------------------|---------------------|---------
-//		constraint_name							| utf8								|
-//		constraint_type							| utf8 not null				| (1)
-//		constraint_column_names			| list<utf8> not null | (2)
-//		constraint_column_usage			| list<USAGE_SCHEMA>	| (3)
+//	Field Name									| Field Type					| Comments
+//	----------------------------|---------------------|---------
+//	constraint_name							| utf8								|
+//	constraint_type							| utf8 not null				| (1)
+//	constraint_column_names			| list<utf8> not null | (2)
+//	constraint_column_usage			| list<USAGE_SCHEMA>	| (3)
 //
 // 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
 // 2. The columns on the current table that are constrained, in order.
@@ -842,12 +854,12 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 //
 // USAGE_SCHEMA is a Struct with fields:
 //
-//		Field Name									|	Field Type
-//		----------------------------|----------------------------
-//		fk_catalog									| utf8
-//		fk_db_schema								| utf8
-//		fk_table										| utf8 not null
-//		fk_column_name							| utf8 not null
+//	Field Name									|	Field Type
+//	----------------------------|----------------------------
+//	fk_catalog									| utf8
+//	fk_db_schema								| utf8
+//	fk_table										| utf8 not null
+//	fk_column_name							| utf8 not null
 //
 // For the parameters: If nil is passed, then that parameter will not
 // be filtered by at all. If an empty string, then only objects without
@@ -1339,10 +1351,9 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //
 // The result is an arrow dataset with the following schema:
 //
-//		Field Name			| Field Type
-//		----------------|--------------
-//		table_type			| utf8 not null
-//
+//	Field Name			| Field Type
+//	----------------|--------------
+//	table_type			| utf8 not null
 func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	info, err := c.cl.GetTableTypes(ctx, c.timeouts)
