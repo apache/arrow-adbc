@@ -253,6 +253,11 @@ func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, e
 		return nil, err
 	}
 
+	if err := s.Prepare(ctx); err != nil {
+		s.Close()
+		return nil, err
+	}
+
 	paramSchema, err := s.GetParameterSchema()
 	var adbcErr adbc.Error
 	if errors.As(err, &adbcErr) {

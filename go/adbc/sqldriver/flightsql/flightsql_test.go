@@ -18,19 +18,18 @@
 package flightsql_test
 
 import (
-	"context"
 	"database/sql"
+	"os"
+	"testing"
+
 	_ "github.com/apache/arrow-adbc/go/adbc/sqldriver/flightsql"
 	"github.com/apache/arrow/go/v12/arrow/flight"
 	"github.com/apache/arrow/go/v12/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v12/arrow/flight/flightsql/example"
 	"github.com/apache/arrow/go/v12/arrow/memory"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
-	"os"
-	"testing"
 )
 
 func Example() {
@@ -99,40 +98,27 @@ func (suite *SQLDriverFlightSQLSuite) dsn() string {
 	return "uri=grpc+tcp://" + suite.s.Addr().String()
 }
 
-type srvQuery string
-
-func (s srvQuery) GetQuery() string { return string(s) }
-
-func (s srvQuery) GetTransactionId() []byte { return nil }
-
 func (suite *SQLDriverFlightSQLSuite) TestQuery() {
 	db, err := sql.Open("flightsql", suite.dsn())
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 	defer db.Close()
 
-	_, err = suite.srv.DoPutCommandStatementUpdate(
-		context.Background(), srvQuery("CREATE TABLE t (k, v)"))
-	require.NoError(suite.T(), err)
-	_, err = suite.srv.DoPutCommandStatementUpdate(
-		context.Background(), srvQuery("INSERT INTO t (k, v) VALUES ('one', 'alpha'), ('two', 'bravo')"))
-	require.NoError(suite.T(), err)
+	_, err = db.Exec("CREATE TABLE t (k, v)")
+	suite.Require().NoError(err)
+	defer db.Exec("DROP TABLE IF EXISTS t")
+	result, err := db.Exec("INSERT INTO t (k, v) VALUES ('one', 'alpha'), ('two', 'bravo')")
+	suite.Require().NoError(err)
 
-	// TODO db.Exec() fails:
-	// Received unexpected error:
-	// Invalid State: SqlState: , msg: [Flight SQL Statement] must call Prepare before GetParameterSchema
-	//
-	//_, err = db.Exec("CREATE TABLE t (k, v)")
-	//require.NoError(suite.T(), err)
-	//defer db.Exec("DROP TABLE IF EXISTS t")
-	//_, err = db.Exec("INSERT INTO t (k, v) VALUES ('one', 'alpha'), ('two', 'bravo')")
-	//require.NoError(suite.T(), err)
+	n, err := result.RowsAffected()
+	suite.Require().NoError(err)
+	suite.EqualValues(2, n)
 
 	var expected int = 2
 	var actual int
 	row := db.QueryRow("SELECT count(*) FROM t")
 	err = row.Scan(&actual)
-	if assert.NoError(suite.T(), err) {
-		assert.Equal(suite.T(), expected, actual)
+	if suite.NoError(err) {
+		suite.Equal(expected, actual)
 	}
 }
 
