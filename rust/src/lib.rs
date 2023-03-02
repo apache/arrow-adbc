@@ -62,8 +62,6 @@ pub mod error;
 pub mod info;
 pub mod objects;
 
-pub const ADBC_VERSION_1_0_0: i32 = 1000000;
-
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 
@@ -74,10 +72,24 @@ use crate::info::InfoData;
 /// configuration and caches. For in-memory databases, it provides a place to
 /// hold ownership of the in-memory database.
 pub trait AdbcDatabase {
+    type ConnectionType: AdbcConnection;
+
     /// Set an option on the database.
     ///
     /// Some databases may not allow setting options after it has been initialized.
     fn set_option(&self, key: &str, value: &str) -> Result<(), AdbcError>;
+
+    /// Initialize a connection to the database.
+    ///
+    /// `options` provided will configure the connection, including the isolation
+    /// level. See standard options in [options].
+    fn connect<K, V>(
+        &self,
+        options: impl IntoIterator<Item = (K, V)>,
+    ) -> Result<Self::ConnectionType, AdbcError>
+    where
+        K: AsRef<str>,
+        V: AsRef<str>;
 }
 
 /// A connection is a single connection to a database.
@@ -91,6 +103,7 @@ pub trait AdbcDatabase {
 /// [AdbcConnection::set_option]). Turning off autocommit allows customizing
 /// the isolation level. Read more in [adbc.h](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
 pub trait AdbcConnection {
+    type StatementType: AdbcStatement;
     type ObjectCollectionType: objects::DatabaseCatalogCollection;
 
     /// Set an option on the connection.
@@ -98,36 +111,20 @@ pub trait AdbcConnection {
     /// Some connections may not allow setting options after it has been initialized.
     fn set_option(&self, key: &str, value: &str) -> Result<(), AdbcError>;
 
+    /// Create a new [AdbcStatement].
+    fn new_statement(&self) -> Result<Self::StatementType, AdbcError>;
+
     /// Get metadata about the database/driver.
     ///
     /// If None is passed for `info_codes`, the method will return all info.
     /// Otherwise will return the specified info, in any order. If an unrecognized
     /// code is passed, it will return an error.
     ///
-    /// The result is an Arrow dataset with the following schema:
-    ///
-    /// Field Name                  | Field Type
-    /// ----------------------------|------------------------
-    /// `info_name`                 | `uint32 not null`
-    /// `info_value`                | `INFO_SCHEMA`
-    ///
-    /// `INFO_SCHEMA` is a dense union with members:
-    ///
-    /// Field Name (Type Code)        | Field Type
-    /// ------------------------------|------------------------
-    /// `string_value` (0)            | `utf8`
-    /// `bool_value` (1)              | `bool`
-    /// `int64_value` (2)             | `int64`
-    /// `int32_bitmask` (3)           | `int32`
-    /// `string_list` (4)             | `list<utf8>`
-    /// `int32_to_int32_list_map` (5) | `map<int32, list<int32>>`
-    ///
     /// Each metadatum is identified by an integer code.  The recognized
     /// codes are defined as constants.  Codes [0, 10_000) are reserved
     /// for ADBC usage.  Drivers/vendors will ignore requests for
     /// unrecognized codes (the row will be omitted from the result).
-    ///
-    /// For definitions of known ADBC codes, see <https://github.com/apache/arrow-adbc/blob/main/adbc.h>
+    /// Known codes are provided in [info::codes].
     fn get_info(&self, info_codes: Option<&[u32]>) -> Result<Vec<(u32, InfoData)>, AdbcError>;
 
     /// Get a hierarchical view of all catalogs, database schemas, tables, and columns.
