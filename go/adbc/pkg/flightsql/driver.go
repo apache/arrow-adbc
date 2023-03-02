@@ -21,6 +21,7 @@
 
 package main
 
+// #cgo CXXFLAGS: -std=c++11
 // #include "../../drivermgr/adbc.h"
 // #include "utils.h"
 // #include <stdint.h>
