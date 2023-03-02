@@ -17,7 +17,7 @@
 
 //! ADBC error enums and structs
 
-use arrow::error::ArrowError;
+use arrow_schema::ArrowError;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 #[repr(u8)]

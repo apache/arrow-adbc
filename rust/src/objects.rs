@@ -53,15 +53,13 @@
 //! | [ForeignKeyUsage] | [ForeignKeyUsageRef] |
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array, ArrayBuilder, ArrayDataBuilder, ArrayRef, BooleanBufferBuilder, BooleanBuilder,
-        Int16Builder, Int32BufferBuilder, Int32Builder, ListArray, ListBuilder, StringBuilder,
-        StructArray,
-    },
-    datatypes::{DataType, Field},
-    record_batch::RecordBatch,
+use arrow_array::builder::{
+    ArrayBuilder, BooleanBufferBuilder, BooleanBuilder, Int16Builder, Int32BufferBuilder,
+    Int32Builder, ListBuilder, StringBuilder,
 };
+use arrow_array::{Array, ArrayRef, ListArray, RecordBatch, StructArray};
+use arrow_data::ArrayDataBuilder;
+use arrow_schema::{DataType, Field};
 
 pub(crate) struct UsageArrayBuilder {
     fk_catalog: StringBuilder,
@@ -907,9 +905,17 @@ pub struct SimpleTableEntry {
 }
 
 impl SimpleTableEntry {
-    pub fn new(name: String, table_type: String, columns: Vec<ColumnSchema>, constraints: Vec<TableConstraint>) -> Self {
+    pub fn new(
+        name: String,
+        table_type: String,
+        columns: Vec<ColumnSchema>,
+        constraints: Vec<TableConstraint>,
+    ) -> Self {
         Self {
-            name, table_type, columns, constraints
+            name,
+            table_type,
+            columns,
+            constraints,
         }
     }
 }
@@ -1165,8 +1171,6 @@ impl ForeignKeyUsage {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     #[test]
     fn simple_objects_iteration() {
         // let columns1 = vec![ColumnSchema {

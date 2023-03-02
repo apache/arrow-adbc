@@ -61,12 +61,11 @@
 pub mod error;
 pub mod info;
 pub mod objects;
-pub(crate) mod utils;
 
 pub const ADBC_VERSION_1_0_0: i32 = 1000000;
 
-use arrow::datatypes::Schema;
-use arrow::record_batch::{RecordBatch, RecordBatchReader};
+use arrow_array::{RecordBatch, RecordBatchReader};
+use arrow_schema::Schema;
 
 use crate::error::AdbcError;
 use crate::info::InfoData;

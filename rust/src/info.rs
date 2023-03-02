@@ -18,19 +18,17 @@
 //! Utilities for driver info
 //!
 //! For use with [crate::AdbcConnection::get_info].
-use arrow::{
-    array::{
-        as_primitive_array, as_string_array, as_union_array, Array, ArrayBuilder, ArrayRef,
-        BooleanBuilder, Int32Builder, Int64Builder, ListBuilder, MapBuilder, StringBuilder,
-        UInt32BufferBuilder, UInt32Builder, UInt8BufferBuilder, UnionArray,
-    },
-    datatypes::{DataType, Field, Schema, UInt32Type, UnionMode},
-    error::ArrowError,
-    record_batch::{RecordBatch, RecordBatchReader},
-};
-use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-use crate::utils::SingleBatchReader;
+use arrow_array::builder::{
+    ArrayBuilder, BooleanBuilder, Int32Builder, Int64Builder, ListBuilder, MapBuilder,
+    StringBuilder, UInt32BufferBuilder, UInt32Builder, UInt8BufferBuilder,
+};
+use arrow_array::cast::{as_primitive_array, as_string_array, as_union_array};
+use arrow_array::types::UInt32Type;
+use arrow_array::{Array, ArrayRef, UnionArray};
+use arrow_array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
+use arrow_schema::{ArrowError, DataType, Field, Schema, UnionMode};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 /// Contains known info codes defined by ADBC.
 pub mod codes {
@@ -179,15 +177,17 @@ pub fn export_info_data(
     )
     .expect("Info value array is always valid.");
 
-    // Make a record batch
     let batch: RecordBatch = RecordBatch::try_new(
         Arc::new(info_schema),
         vec![Arc::new(codes.finish()), Arc::new(info_value)],
     )
     .expect("Info data batch is always valid.");
 
-    // Wrap record batch into a reader with std::iter::once
-    Box::new(SingleBatchReader::new(batch))
+    let schema = batch.schema();
+    Box::new(RecordBatchIterator::new(
+        std::iter::once(batch).map(Ok),
+        schema,
+    ))
 }
 
 pub fn import_info_data(
@@ -221,10 +221,8 @@ pub fn import_info_data(
 mod test {
     use std::ops::Deref;
 
-    use arrow::{
-        array::{as_primitive_array, as_string_array, as_union_array},
-        datatypes::UInt32Type,
-    };
+    use arrow_array::cast::{as_primitive_array, as_string_array, as_union_array};
+    use arrow_array::types::UInt32Type;
 
     use super::*;
 
