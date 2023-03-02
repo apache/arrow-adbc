@@ -256,6 +256,7 @@ func TestADBCFlightSQL(t *testing.T) {
 	suite.Run(t, &StatementTests{Quirks: q})
 	suite.Run(t, &TimeoutTestSuite{})
 	suite.Run(t, &TLSTests{Quirks: &FlightSQLQuirks{db: db}})
+	suite.Run(t, &ConnectionTests{})
 }
 
 // Driver-specific tests
@@ -935,4 +936,86 @@ func (suite *TLSTests) TestInvalidOptions() {
 	suite.NoError(stmt.SetSqlQuery("SELECT 1"))
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
 	suite.Contains(err.Error(), "Unavailable")
+}
+
+type ConnectionTests struct {
+	suite.Suite
+
+	alloc   *memory.CheckedAllocator
+	server  flight.Server
+	service *flight.BaseFlightServer
+
+	Driver adbc.Driver
+	DB     adbc.Database
+	Cnxn   adbc.Connection
+	ctx    context.Context
+}
+
+func (suite *ConnectionTests) SetupSuite() {
+	suite.alloc = memory.NewCheckedAllocator(memory.DefaultAllocator)
+
+	suite.server = flight.NewServerWithMiddleware(nil)
+	suite.NoError(suite.server.Init("localhost:0"))
+	suite.service = &flight.BaseFlightServer{}
+	suite.server.RegisterFlightService(suite.service)
+
+	go func() {
+		// Explicitly ignore error
+		_ = suite.server.Serve()
+	}()
+
+	var err error
+	suite.ctx = context.Background()
+	suite.Driver = driver.Driver{Alloc: suite.alloc}
+	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "grpc+tcp://" + suite.server.Addr().String(),
+	})
+	suite.Require().NoError(err)
+	suite.Cnxn, err = suite.DB.Open(suite.ctx)
+	suite.Require().NoError(err)
+}
+
+func (suite *ConnectionTests) TearDownSuite() {
+	suite.server.Shutdown()
+	suite.alloc.AssertSize(suite.T(), 0)
+}
+
+func (suite *ConnectionTests) TestGetInfo() {
+	reader, err := suite.Cnxn.GetInfo(suite.ctx, []adbc.InfoCode{})
+	// Should not error, even though server does not implement GetInfo
+	suite.Require().NoError(err)
+	defer reader.Release()
+
+	driverName := false
+	driverVersion := false
+	driverArrowVersion := false
+	for reader.Next() {
+		code := reader.Record().Column(0).(*array.Uint32)
+		values := reader.Record().Column(1).(*array.DenseUnion)
+		stringValues := values.Field(0).(*array.String)
+		for i := 0; i < int(reader.Record().NumRows()); i++ {
+			switch adbc.InfoCode(code.Value(i)) {
+			case adbc.InfoDriverName:
+				{
+					driverName = true
+					suite.Require().Equal("ADBC Flight SQL Driver - Go", stringValues.Value(int(values.ValueOffset(i))))
+				}
+			case adbc.InfoDriverVersion:
+				{
+					driverVersion = true
+					// Can't assert on value here since test won't have debug.ReadBuildInfo
+				}
+			case adbc.InfoDriverArrowVersion:
+				{
+					driverArrowVersion = true
+					// Can't assert on value here since test won't have debug.ReadBuildInfo
+				}
+			}
+		}
+	}
+	suite.Require().NoError(reader.Err())
+
+	suite.Require().True(driverName)
+	suite.Require().True(driverVersion)
+	suite.Require().True(driverArrowVersion)
 }
