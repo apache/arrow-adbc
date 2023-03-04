@@ -254,6 +254,7 @@ public class JdbcConnection implements AdbcConnection {
   @Override
   public void close() throws Exception {
     connection.close();
+    allocator.close();
   }
 
   private void checkAutoCommit() throws AdbcException, SQLException {
