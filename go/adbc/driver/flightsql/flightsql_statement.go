@@ -112,7 +112,7 @@ type statement struct {
 }
 
 func (s *statement) closePreparedStatement() error {
-	return s.prepared.Close(context.Background(), s.timeouts)
+	return s.prepared.Close(metadata.NewOutgoingContext(context.Background(), s.hdrs), s.timeouts)
 }
 
 // Close releases any relevant resources associated with this statement
