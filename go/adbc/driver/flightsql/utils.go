@@ -32,7 +32,7 @@ func adbcFromFlightStatus(err error) error {
 	switch status.Code(err) {
 	case codes.OK:
 		return nil
-	case codes.Canceled:
+	case codes.Canceled, codes.DeadlineExceeded:
 		adbcCode = adbc.StatusCancelled
 	case codes.Unknown:
 		adbcCode = adbc.StatusUnknown

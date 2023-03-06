@@ -738,6 +738,11 @@ func (ts *TimeoutTestServer) GetFlightInfoStatement(ctx context.Context, cmd fli
 	return nil, arrow.ErrNotImplemented
 }
 
+func (ts *TimeoutTestServer) CreatePreparedStatement(ctx context.Context, req flightsql.ActionCreatePreparedStatementRequest) (result flightsql.ActionCreatePreparedStatementResult, err error) {
+	<-ctx.Done()
+	return result, arrow.ErrNotImplemented
+}
+
 type TimeoutTestSuite struct {
 	suite.Suite
 
