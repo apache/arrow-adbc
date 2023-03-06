@@ -52,6 +52,8 @@ func adbcFromFlightStatus(err error) error {
 		adbcCode = adbc.StatusNotImplemented
 	case codes.PermissionDenied:
 		adbcCode = adbc.StatusUnauthorized
+	case codes.DeadlineExceeded:
+		adbcCode = adbc.StatusTimeout
 	default:
 		adbcCode = adbc.StatusUnknown
 	}
