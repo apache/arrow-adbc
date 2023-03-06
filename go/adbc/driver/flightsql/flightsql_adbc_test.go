@@ -674,7 +674,27 @@ type TimeoutTestServer struct {
 	flightsql.BaseServer
 }
 
-func (ts *TimeoutTestServer) DoGetStatement(ctx context.Context, _ flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+func (ts *TimeoutTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	if string(tkt.GetStatementHandle()) == "sleep and succeed" {
+		time.Sleep(1 * time.Second)
+		sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+		rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		ch := make(chan flight.StreamChunk)
+		go func() {
+			defer close(ch)
+			ch <- flight.StreamChunk{
+				Data: rec,
+				Desc: nil,
+				Err:  nil,
+			}
+		}()
+		return sc, ch, nil
+	}
+
 	// wait till the context is cancelled
 	<-ctx.Done()
 	return nil, nil, arrow.ErrNotImplemented
@@ -693,6 +713,18 @@ func (ts *TimeoutTestServer) GetFlightInfoStatement(ctx context.Context, cmd fli
 		<-ctx.Done()
 	case "fetch":
 		tkt, _ := flightsql.CreateStatementQueryTicket([]byte("fetch"))
+		info := &flight.FlightInfo{
+			FlightDescriptor: desc,
+			Endpoint: []*flight.FlightEndpoint{
+				{Ticket: &flight.Ticket{Ticket: tkt}},
+			},
+			TotalRecords: -1,
+			TotalBytes:   -1,
+		}
+		return info, nil
+	case "notimeout":
+		time.Sleep(1 * time.Second)
+		tkt, _ := flightsql.CreateStatementQueryTicket([]byte("sleep and succeed"))
 		info := &flight.FlightInfo{
 			FlightDescriptor: desc,
 			Endpoint: []*flight.FlightEndpoint{
@@ -836,6 +868,34 @@ func (ts *TimeoutTestSuite) TestGetFlightInfoTimeout() {
 	_, _, err = stmt.ExecuteQuery(context.Background())
 	ts.ErrorAs(err, &adbcErr)
 	ts.NotEqual(adbc.StatusNotImplemented, adbcErr.Code)
+}
+
+func (ts *TimeoutTestSuite) TestDontTimeout() {
+	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.timeout_seconds.fetch", "2.0"))
+	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.timeout_seconds.query", "2.0"))
+
+	stmt, err := ts.cnxn.NewStatement()
+	ts.Require().NoError(err)
+	defer stmt.Close()
+
+	ts.Require().NoError(stmt.SetSqlQuery("notimeout"))
+	// GetFlightInfo will sleep for one second and DoGet will also
+	// sleep for one second. But our timeout is 2 seconds, which is
+	// per-operation. So we shouldn't time out and all should succeed.
+	rr, _, err := stmt.ExecuteQuery(context.Background())
+	ts.Require().NoError(err)
+	defer rr.Release()
+
+	ts.True(rr.Next())
+	rec := rr.Record()
+
+	sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+	expected, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
+	ts.Require().NoError(err)
+	defer expected.Release()
+	ts.Truef(array.RecordEqual(rec, expected), "expected: %s\nactual: %s", expected, rec)
 }
 
 type TLSTests struct {
