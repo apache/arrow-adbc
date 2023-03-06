@@ -59,6 +59,22 @@ def test_database_init():
 
 
 @pytest.mark.sqlite
+def test_database_set_options(sqlite):
+    db, _ = sqlite
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match="Unknown database option foo=bar",
+    ):
+        db.set_options(foo="bar")
+
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match=r"Unknown database option foo=\(NULL\)",
+    ):
+        db.set_options(foo=None)
+
+
+@pytest.mark.sqlite
 def test_connection_get_info(sqlite):
     _, conn = sqlite
     codes = [
@@ -139,7 +155,30 @@ def test_connection_get_table_types(sqlite):
 
 
 @pytest.mark.sqlite
-def test_query(sqlite):
+def test_connection_read_partition(sqlite):
+    _, conn = sqlite
+    with pytest.raises(adbc_driver_manager.NotSupportedError):
+        conn.read_partition(b"")
+
+
+@pytest.mark.sqlite
+def test_connection_set_options(sqlite):
+    _, conn = sqlite
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match="Unknown connection option foo=bar",
+    ):
+        conn.set_options(foo="bar")
+
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match=r"Unknown connection option foo=\(NULL\)",
+    ):
+        conn.set_options(foo=None)
+
+
+@pytest.mark.sqlite
+def test_statement_query(sqlite):
     _, conn = sqlite
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_sql_query("SELECT 1")
@@ -149,7 +188,7 @@ def test_query(sqlite):
 
 
 @pytest.mark.sqlite
-def test_prepared(sqlite):
+def test_statement_prepared(sqlite):
     _, conn = sqlite
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_sql_query("SELECT ?")
@@ -162,7 +201,7 @@ def test_prepared(sqlite):
 
 
 @pytest.mark.sqlite
-def test_ingest(sqlite):
+def test_statement_ingest(sqlite):
     _, conn = sqlite
     data = pyarrow.record_batch(
         [
@@ -183,7 +222,7 @@ def test_ingest(sqlite):
 
 
 @pytest.mark.sqlite
-def test_autocommit(sqlite):
+def test_statement_autocommit(sqlite):
     _, conn = sqlite
 
     # Autocommit enabled by default
@@ -254,6 +293,24 @@ def test_autocommit(sqlite):
         handle, _ = stmt.execute_query()
         table = _import(handle).read_all()
         assert table == pyarrow.Table.from_batches([data])
+
+
+@pytest.mark.sqlite
+def test_statement_set_options(sqlite):
+    _, conn = sqlite
+
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        with pytest.raises(
+            adbc_driver_manager.NotSupportedError,
+            match="Unknown statement option foo=bar",
+        ):
+            stmt.set_options(foo="bar")
+
+        with pytest.raises(
+            adbc_driver_manager.NotSupportedError,
+            match=r"Unknown statement option foo=\(NULL\)",
+        ):
+            stmt.set_options(foo=None)
 
 
 @pytest.mark.sqlite
