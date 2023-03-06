@@ -249,13 +249,20 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
-func (s *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
+func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
+
 	if s.prepared != nil {
-		return s.prepared.ExecuteUpdate(ctx, s.timeouts)
+		n, err = s.prepared.ExecuteUpdate(ctx, s.timeouts)
+	} else {
+		n, err = s.query.executeUpdate(ctx, s.cnxn, s.timeouts)
 	}
 
-	return s.query.executeUpdate(ctx, s.cnxn, s.timeouts)
+	if err != nil {
+		err = adbcFromFlightStatus(err)
+	}
+
+	return
 }
 
 // Prepare turns this statement into a prepared statement to be executed

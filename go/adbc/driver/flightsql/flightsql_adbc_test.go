@@ -829,7 +829,7 @@ func (ts *TimeoutTestSuite) TestDoActionTimeout() {
 	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
 	var adbcErr adbc.Error
 	ts.ErrorAs(stmt.Prepare(context.Background()), &adbcErr)
-	ts.Equal(adbc.StatusCancelled, adbcErr.Code)
+	ts.Equal(adbc.StatusTimeout, adbcErr.Code)
 }
 
 func (ts *TimeoutTestSuite) TestDoGetTimeout() {
@@ -844,20 +844,22 @@ func (ts *TimeoutTestSuite) TestDoGetTimeout() {
 	var adbcErr adbc.Error
 	_, _, err = stmt.ExecuteQuery(context.Background())
 	ts.ErrorAs(err, &adbcErr)
-	ts.Equal(adbc.StatusCancelled, adbcErr.Code)
+	ts.Equal(adbc.StatusTimeout, adbcErr.Code)
 }
 
 func (ts *TimeoutTestSuite) TestDoPutTimeout() {
 	ts.NoError(ts.cnxn.(adbc.PostInitOptions).
-		SetOption("adbc.flight.sql.rpc.timeout_seconds.update", "0.1"))
+		SetOption("adbc.flight.sql.rpc.timeout_seconds.update", "5.1"))
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
 	defer stmt.Close()
 
 	ts.Require().NoError(stmt.SetSqlQuery("timeout"))
+	var adbcErr adbc.Error
 	_, err = stmt.ExecuteUpdate(context.Background())
-	ts.Error(err)
+	ts.ErrorAs(err, &adbcErr)
+	ts.Equal(adbc.StatusTimeout, adbcErr.Code)
 }
 
 func (ts *TimeoutTestSuite) TestGetFlightInfoTimeout() {
