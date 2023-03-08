@@ -45,7 +45,7 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git tag \
+          git tag -f \
             -a apache-arrow-adbc-${VERSION}-rc0 \
             -m "ADBC Libraries ${VERSION} RC 0"
           ci/scripts/source_build.sh \
