@@ -1,0 +1,112 @@
+.. Licensed to the Apache Software Foundation (ASF) under one
+.. or more contributor license agreements.  See the NOTICE file
+.. distributed with this work for additional information
+.. regarding copyright ownership.  The ASF licenses this file
+.. to you under the Apache License, Version 2.0 (the
+.. "License"); you may not use this file except in compliance
+.. with the License.  You may obtain a copy of the License at
+..
+..   http://www.apache.org/licenses/LICENSE-2.0
+..
+.. Unless required by applicable law or agreed to in writing,
+.. software distributed under the License is distributed on an
+.. "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+.. KIND, either express or implied.  See the License for the
+.. specific language governing permissions and limitations
+.. under the License.
+
+================================
+Frequently Asked Questions (FAQ)
+================================
+
+What exactly is ADBC?
+=====================
+
+ADBC is:
+
+- A set of abstract APIs in different languages (C/C++, Go, and Java)
+  for working with databases and Arrow data.
+
+  For example, result sets of queries in ADBC are all returned as
+  streams of Arrow data, not row-by-row.
+- A set of implementations of that API in different languages (C/C++,
+  Go, Java, Python, and Ruby) that target different databases
+  (e.g. PostgreSQL, SQLite, any database supporting Flight SQL).
+
+Why not just use JDBC/ODBC?
+===========================
+
+JDBC uses row-based interfaces like `ResultSet`_.  When working with
+columnar data, like Arrow data, this means that we have to convert the
+data at least once and possibly twice:
+
+- Once (possibly) in the driver or database, to take columnar data and
+  convert it into a row-based format so it can be returned through the
+  JDBC APIs.
+- Once (always) when a client application pulls data from the JDBC
+  API, to convert the rows into columns.
+
+In keeping with Arrow's "zero-copy" or "minimal-copy" ethos, we would
+like to avoid these unnecessary conversions.
+
+ODBC is in a similar situation.  Although ODBC does support
+`"column-wise binding"`_, not all ODBC drivers support it, and it is
+more complex to use.  Additionally, ODBC uses caller-allocated buffers
+(which often means forcing a data copy), and ODBC specifies data
+layouts that are not quite Arrow-compatible (requiring a data
+conversion anyways).
+
+.. _ResultSet: https://docs.oracle.com/javase/8/docs/api/java/sql/ResultSet.html
+.. _"column-wise binding": https://learn.microsoft.com/en-us/sql/odbc/reference/develop-app/column-wise-binding?view=sql-server-ver16
+
+How do ADBC and Arrow Flight SQL differ?
+========================================
+
+ADBC is an *API abstraction*.  It doesn't specify how to talk to the
+database, just the API calls that you make as an application
+developer.  Under the hood, a driver must take those API calls and
+talk to the actual database.  Another perspective is that ADBC is all
+about the client-side, and specifies nothing about the network
+protocol or server-side implementation.
+
+Flight SQL is a *wire protocol*.  It specifies the exact commands to
+send to a database to perform various actions like authenticating with
+the database, creating prepared statements, or executing queries.
+Flight SQL specifies the network protocol that the client and the
+server must implement.
+
+One more way of looking at it: an ADBC driver can be written for a
+database purely as a client library.  (That's how the PostgreSQL
+driver in this repository is implemented, for instance—as a wrapper
+around libpq.)  But adding Flight SQL support to a database means
+either modifying the database to run a Flight SQL service, or putting
+the database behind a proxy that translates between Flight SQL and the
+database.
+
+Why not just use Arrow Flight SQL?
+==================================
+
+Continuing on from the previous question:
+
+Because ADBC is client-side, ADBC can support databases that either
+don't support returning Arrow data, or support Arrow data through a
+protocol besides Flight SQL.
+
+Then do we even need Arrow Flight SQL?
+======================================
+
+Continuing on from the previous two questions:
+
+Flight SQL is a concrete protocol that database vendors can implement,
+instead of designing their own protocol.  And Flight SQL also has JDBC
+and ODBC drivers for maximal compatibility.
+
+As an analogy: many databases implement the PostgreSQL wire protocol,
+so that they can gain access to all the PostgreSQL clients, including
+JDBC and ODBC drivers.  (And JDBC/ODBC users can still use other
+drivers to work with other databases.)
+
+For the Arrow ecosystem, we hope databases will implement the Flight
+SQL wire protocol, giving them access to all the Flight SQL clients,
+including ADBC, JDBC, and ODBC drivers.  (And ADBC users can still use
+other drivers to work with other databases.)
