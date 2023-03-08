@@ -26,6 +26,7 @@ main() {
     local -r rc_number="$2"
     local -r tag="apache-arrow-adbc-${version}-rc${rc_number}"
 
+    : ${WORKFLOW_REF:="main"}
     : ${REPOSITORY:="apache/arrow-adbc"}
 
     export SOURCE_DIR="${source_dir}"
@@ -35,7 +36,7 @@ main() {
 
     gh workflow run \
        --repo "${REPOSITORY}" \
-       --ref "${tag}" \
+       --ref "${WORKFLOW_REF}" \
        verify.yml \
        --raw-field version="${version}" \
        --raw-field rc="${rc_number}"
@@ -48,7 +49,7 @@ main() {
                     --repo "${REPOSITORY}" \
                     --workflow=verify.yml \
                     --json 'databaseId,event,headBranch,status' \
-                    --jq ".[] | select(.event == \"workflow_dispatch\" and .headBranch == \"${tag}\" and .status != \"completed\") | .databaseId")
+                    --jq ".[] | select(.event == \"workflow_dispatch\" and .headBranch == \"${WORKFLOW_REF}\" and .status != \"completed\") | .databaseId")
         sleep 1
     done
 
@@ -62,6 +63,8 @@ main() {
     echo ""
     echo "---------------------------------------------------------"
 
+    local -r commit=$(git rev-list -n 1 "${tag}")
+
     cat <<MAIL
 To: dev@arrow.apache.org
 Subject: [VOTE] Release Apache Arrow ADBC ${version} - RC${rc_number}
@@ -70,7 +73,7 @@ Hello,
 
 I would like to propose the following release candidate (RC${rc_number}) of Apache Arrow ADBC version ${version}. This is a release consisting of ${RESOLVED_ISSUES} resolved GitHub issues [1].
 
-This release candidate is based on commit: [2]
+This release candidate is based on commit: ${commit} [2]
 
 The source release rc${rc_number} is hosted at [3].
 The binary artifacts are hosted at [4][5][6][7][8].
@@ -88,8 +91,8 @@ The vote will be open for at least 72 hours.
 
 Note: to verify APT/YUM packages on macOS/AArch64, you must \`export DOCKER_DEFAULT_ARCHITECTURE=linux/amd64\`. (Or skip this step by \`export TEST_APT=0 TEST_YUM=0\`.)
 
-[1]: https://github.com/apache/arrow-adbc/issues?q=is%3Aissue+milestone%3A${version}+is%3Aclosed
-[2]: https://github.com/apache/arrow-adbc/releases/tag/${tag}
+[1]: https://github.com/apache/arrow-adbc/issues?q=is%3Aissue+milestone%3A%22ADBC+Libraries+${version}%22+is%3Aclosed
+[2]: https://github.com/apache/arrow-adbc/commit/${commit}
 [3]: https://dist.apache.org/repos/dist/dev/arrow/${tag}/
 [4]: https://apache.jfrog.io/artifactory/arrow/almalinux-rc/
 [5]: https://apache.jfrog.io/artifactory/arrow/debian-rc/
