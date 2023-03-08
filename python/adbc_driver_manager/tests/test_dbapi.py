@@ -292,3 +292,20 @@ def test_executemany(sqlite):
         assert next(cur) == (3, 4)
         assert cur.rownumber == 2
         assert next(cur) == (5, 6)
+
+
+@pytest.mark.sqlite
+def test_close_warning(sqlite):
+    with pytest.warns(
+        ResourceWarning,
+        match=r"A adbc_driver_manager.dbapi.Cursor was not explicitly close\(\)d",
+    ):
+        cur = sqlite.cursor()
+        del cur
+
+    with pytest.warns(
+        ResourceWarning,
+        match=r"A adbc_driver_manager.dbapi.Connection was not explicitly close\(\)d",
+    ):
+        conn = dbapi.connect(driver="adbc_driver_sqlite")
+        del conn

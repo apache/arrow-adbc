@@ -15,11 +15,22 @@
 # specific language governing permissions and limitations
 # under the License.
 
-"""
-PEP 249 (DB-API 2.0) API wrapper for the ADBC Driver Manager.
+"""PEP 249 (DB-API 2.0) API wrapper for the ADBC Driver Manager.
+
+Resource Management
+===================
+
+You must ``close()`` Connection and Cursor objects, or else driver
+resources may be leaked.  A ``__del__`` is implemented as a fallback,
+but Python does not guarantee the timing of when this is called.  For
+development, ``__del__`` will raise a ResourceWarning when running
+under pytest, or when the environment variable
+``_ADBC_DRIVER_MANAGER_WARN_UNCLOSED_RESOURCE`` is set to ``1``.
+
 """
 
 import datetime
+import os
 import threading
 import time
 import typing
@@ -257,6 +268,7 @@ class Connection(_Closeable):
         conn: _lib.AdbcConnection,
         conn_kwargs: Optional[Dict[str, str]] = None,
     ) -> None:
+        self._closed = False
         if isinstance(db, _SharedDatabase):
             self._db = db.clone()
         else:
@@ -284,8 +296,12 @@ class Connection(_Closeable):
         Failure to close a connection may leak memory or database
         connections.
         """
+        if self._closed:
+            return
+
         self._conn.close()
         self._db.close()
+        self._closed = True
 
     def commit(self) -> None:
         """Explicitly commit."""
@@ -300,6 +316,11 @@ class Connection(_Closeable):
         """Explicitly rollback."""
         if self._commit_supported:
             self._conn.rollback()
+
+    def __del__(self) -> None:
+        if not self._closed:
+            self.close()
+            _warn_unclosed("adbc_driver_manager.dbapi.Connection")
 
     # ------------------------------------------------------------
     # API Extensions
@@ -466,6 +487,7 @@ class Cursor(_Closeable):
         self._results: Optional["_RowIterator"] = None
         self._arraysize = 1
         self._rowcount = -1
+        self._closed = False
 
     @property
     def arraysize(self) -> int:
@@ -512,9 +534,14 @@ class Cursor(_Closeable):
 
     def close(self):
         """Close the cursor and free resources."""
+        if self._closed:
+            return
+
         if self._results is not None:
             self._results.close()
+            self._results = None
         self._stmt.close()
+        self._closed = True
 
     def _bind(self, parameters) -> None:
         if isinstance(parameters, pyarrow.RecordBatch):
@@ -665,6 +692,11 @@ class Cursor(_Closeable):
     def setoutputsize(self, size, column=None):
         """Preallocate memory for the result set (no-op)."""
         pass
+
+    def __del__(self) -> None:
+        if not self._closed:
+            self.close()
+            _warn_unclosed("adbc_driver_manager.dbapi.Cursor")
 
     def __iter__(self):
         return self
@@ -830,6 +862,10 @@ class Cursor(_Closeable):
         return self._results.fetch_df()
 
 
+# ----------------------------------------------------------
+# Utilities
+
+
 class _RowIterator(_Closeable):
     """Track state needed to iterate over the result set."""
 
@@ -892,3 +928,18 @@ class _RowIterator(_Closeable):
 
     def fetch_df(self):
         return self._reader.read_pandas()
+
+
+_PYTEST_ENV_VAR = "PYTEST_CURRENT_TEST"
+_ADBC_ENV_VAR = "_ADBC_DRIVER_MANAGER_WARN_UNCLOSED_RESOURCE"
+
+
+def _warn_unclosed(name):
+    if _PYTEST_ENV_VAR in os.environ or os.environ.get(_ADBC_ENV_VAR) == "1":
+        warnings.warn(
+            f"A {name} was not explicitly close()d, which may leak "
+            f"driver resources. (This warning is only emitted if "
+            f"{_PYTEST_ENV_VAR} or {_ADBC_ENV_VAR} are set.)",
+            category=ResourceWarning,
+            stacklevel=2,
+        )
