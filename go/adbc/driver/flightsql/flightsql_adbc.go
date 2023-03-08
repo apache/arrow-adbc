@@ -104,6 +104,14 @@ func init() {
 			}
 		}
 	}
+	// XXX: Deps not populated in tests
+	// https://github.com/golang/go/issues/33976
+	if infoDriverVersion == "" {
+		infoDriverVersion = "(unknown or development build)"
+	}
+	if infoDriverArrowVersion == "" {
+		infoDriverArrowVersion = "(unknown or development build)"
+	}
 
 	infoSupportedCodes = []adbc.InfoCode{
 		adbc.InfoDriverName,
@@ -167,6 +175,7 @@ func (d *dbDialOpts) rebuild() {
 	d.opts = []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(d.maxMsgSize),
 			grpc.MaxCallSendMsgSize(d.maxMsgSize)),
+		grpc.WithUserAgent("ADBC Flight SQL Driver " + infoDriverVersion),
 	}
 	if d.block {
 		d.opts = append(d.opts, grpc.WithBlock())

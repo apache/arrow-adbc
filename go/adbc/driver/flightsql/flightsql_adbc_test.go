@@ -225,9 +225,9 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	// runtime/debug.ReadBuildInfo doesn't currently work for tests
 	// github.com/golang/go/issues/33976
 	case adbc.InfoDriverVersion:
-		return ""
+		return "(unknown or development build)"
 	case adbc.InfoDriverArrowVersion:
-		return ""
+		return "(unknown or development build)"
 	case adbc.InfoVendorName:
 		return "db_name"
 	case adbc.InfoVendorVersion:
@@ -585,6 +585,25 @@ func (suite *HeaderTests) TestDatabaseOptAuthorization() {
 	suite.Error(err)
 
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("authorization"), "auth-header-token")
+}
+
+func (suite *HeaderTests) TestUserAgent() {
+	stmt, err := suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer func() {
+		suite.Require().NoError(stmt.Close())
+	}()
+
+	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+	_, _, err = stmt.ExecuteQuery(suite.ctx)
+	suite.Error(err)
+
+	userAgents := suite.Quirks.middle.recordedHeaders.Get("user-agent")
+	suite.NotEmpty(userAgents)
+	for _, agent := range userAgents {
+		suite.Contains(agent, "ADBC Flight SQL Driver")
+		suite.Contains(agent, "grpc-go")
+	}
 }
 
 func (suite *HeaderTests) TestConnection() {
