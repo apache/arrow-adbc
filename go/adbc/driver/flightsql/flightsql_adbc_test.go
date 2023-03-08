@@ -689,6 +689,23 @@ func (suite *HeaderTests) TestCombined() {
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-three"), "value 3")
 }
 
+func (suite *HeaderTests) TestPrepared() {
+	stmt, err := suite.Cnxn.NewStatement()
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+
+	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
+		SetOption("adbc.flight.sql.rpc.call_header.x-header-one", "value 1"))
+	suite.Require().NoError(stmt.Prepare(suite.ctx))
+
+	suite.Require().NoError(stmt.SetOption("adbc.flight.sql.rpc.call_header.x-header-two", "value 2"))
+	suite.Require().NoError(stmt.Close())
+
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-one"), "value 1")
+	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-two"), "value 2")
+}
+
 type TimeoutTestServer struct {
 	flightsql.BaseServer
 }
