@@ -354,6 +354,15 @@ Be sure to go through on the following checklist:
       # dev/release/post-06-ruby.sh 1.0.0
       dev/release/post-06-ruby.sh <version>
 
+.. dropdown:: Update conda-forge packages
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   File a PR that bumps the version to the feedstock:
+   https://github.com/conda-forge/arrow-adbc-split-feedstock
+
+   A conda-forge or feedstock maintainer can review and merge.
+
 .. dropdown:: Announce the new release
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
