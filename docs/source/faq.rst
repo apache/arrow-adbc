@@ -62,12 +62,12 @@ conversion anyways).
 How do ADBC and Arrow Flight SQL differ?
 ========================================
 
-ADBC is an *API abstraction*.  It doesn't specify how to talk to the
-database, just the API calls that you make as an application
-developer.  Under the hood, a driver must take those API calls and
-talk to the actual database.  Another perspective is that ADBC is all
-about the client-side, and specifies nothing about the network
-protocol or server-side implementation.
+ADBC is an *API abstraction*.  It doesn't specify what goes on between
+your client and the database, just the API calls that you make as an
+application developer.  Under the hood, a driver must take those API
+calls and talk to the actual database.  Another perspective is that
+ADBC is all about the client-side, and specifies nothing about the
+network protocol or server-side implementation.
 
 Flight SQL is a *wire protocol*.  It specifies the exact commands to
 send to a database to perform various actions like authenticating with
@@ -110,3 +110,39 @@ For the Arrow ecosystem, we hope databases will implement the Flight
 SQL wire protocol, giving them access to all the Flight SQL clients,
 including ADBC, JDBC, and ODBC drivers.  (And ADBC users can still use
 other drivers to work with other databases.)
+
+So what is the "ADBC Flight SQL driver" then?
+=============================================
+
+The ADBC Flight SQL driver implements the ADBC API standard (which an
+application interacts with) using the Flight SQL wire protocol (which
+a database server exposes).  So it's a generic driver that can talk to
+many databases, and it also implements a generic API (ADBC) designed
+to abstract over multiple databases.
+
+This is a little unusual, in that most database drivers and database
+protocols you'll find were meant for a specific database.  But Flight
+SQL was designed to be agnostic to the database from the start, and so
+was ADBC.  It sounds like they overlap, but they complement each other
+because they operate at different levels of abstraction.  Flight SQL
+targets database server developers, and gives them one protocol they
+can implement in order to reach ADBC, JDBC, and ODBC users.  ADBC
+targets database users, and gives them one Arrow-native API they can
+use to work with both Arrow-native and non-Arrow-native databases.
+
+And then what is the "ADBC JDBC driver"?
+========================================
+
+The ADBC JDBC driver, or a hypothetical ADBC ODBC driver, adapts the
+JDBC API to the ADBC API, so that an ADBC user can interact with
+databases that have JDBC APIs available.  While this doesn't give you
+the best possible performance (you're paying for tranposing the data
+back and forth!), it does save you the hassle of writing those
+conversions yourself.
+
+Similar libraries already exist; for instance, Turbodbc_ wraps any
+ODBC driver in Python's DBAPI (PEP 249), and arrow-jdbc_ wraps any
+JDBC driver in a bespoke Arrow-based API.
+
+.. _arrow-jdbc: https://central.sonatype.com/artifact/org.apache.arrow/arrow-jdbc/11.0.0
+.. _Turbodbc: https://turbodbc.readthedocs.io/en/latest/
