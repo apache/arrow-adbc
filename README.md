@@ -25,13 +25,11 @@ ADBC is an API standard (version 1.0.0) for database access libraries ("drivers"
 Instead of writing code to extract Arrow data out of each individual database, applications can build against the ADBC APIs, and link against drivers that implement the standard.
 Additionally, a JDBC/ODBC-style driver manager is provided. This also implements the ADBC APIs, but dynamically loads drivers and dispatches calls to them.
 
-Like JDBC/ODBC, the goal is to provide a generic API for multiple databases.
-ADBC, however, focuses on Arrow-based data access for analytics use cases - primarily bulk data retrieval and ingestion, and not the full spectrum of use cases that JDBC/ODBC support.
+Like JDBC/ODBC, the goal is to provide a generic API for multiple databases. ADBC, however, is focused on bulk columnar data retrieval and ingestion through an Arrow-based API rather than attempting to replace JDBC/ODBC in all use cases.
 Hence, ADBC is complementary to those existing standards.
 
 Like [Arrow Flight SQL][flight-sql], ADBC is an Arrow-based way to work with databases.
-But Flight SQL is a database access _protocol_ that also defines the wire format and network transport, so it's only useful if a database specifically implements support for it.
-ADBC lets drivers wrap existing database protocols, whether Arrow-native or not.
+However, Flight SQL is a _protocol_ defining a wire format and network transport as opposed to an _API specification_. Flight SQL requires a database to specifically implement support for it, while ADBC is a client API specification for wrapping existing database protocols which could be Arrow-native or not.
 Together, ADBC and Flight SQL offer a fully Arrow-native solution for clients and database vendors.
 
 For more about ADBC, see the [introductory blog post][arrow-blog].
