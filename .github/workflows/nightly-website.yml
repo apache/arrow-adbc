@@ -23,6 +23,7 @@ on:
       - main
     tags:
       - 'apache-arrow-adbc-*'
+      - '!apache-arrow-adbc-*-rc*'
   workflow_dispatch: {}
 
 # Ensure concurrent builds don't stomp on each other
