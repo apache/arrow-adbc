@@ -58,6 +58,44 @@ def test_database_init():
             pass
 
 
+def test_error_mapping():
+    import adbc_driver_manager._lib as _lib
+    from adbc_driver_manager import AdbcStatusCode
+
+    cases = [
+        (adbc_driver_manager.OperationalError, AdbcStatusCode.UNKNOWN),
+        (adbc_driver_manager.NotSupportedError, AdbcStatusCode.NOT_IMPLEMENTED),
+        (adbc_driver_manager.ProgrammingError, AdbcStatusCode.NOT_FOUND),
+        (adbc_driver_manager.ProgrammingError, AdbcStatusCode.ALREADY_EXISTS),
+        (adbc_driver_manager.ProgrammingError, AdbcStatusCode.INVALID_ARGUMENT),
+        (adbc_driver_manager.ProgrammingError, AdbcStatusCode.INVALID_STATE),
+        (adbc_driver_manager.DataError, AdbcStatusCode.INVALID_DATA),
+        (adbc_driver_manager.IntegrityError, AdbcStatusCode.INTEGRITY),
+        (adbc_driver_manager.InternalError, AdbcStatusCode.INTERNAL),
+        (adbc_driver_manager.OperationalError, AdbcStatusCode.IO),
+        (adbc_driver_manager.OperationalError, AdbcStatusCode.CANCELLED),
+        (adbc_driver_manager.OperationalError, AdbcStatusCode.TIMEOUT),
+        (adbc_driver_manager.ProgrammingError, AdbcStatusCode.UNAUTHENTICATED),
+        (adbc_driver_manager.ProgrammingError, AdbcStatusCode.UNAUTHORIZED),
+    ]
+
+    message = "Message"
+    for (klass, code) in cases:
+        with pytest.raises(klass) as exc_info:
+            _lib._test_error(code, message, vendor_code=None, sqlstate=None)
+        assert message in exc_info.value.args[0]
+        assert exc_info.value.status_code == code
+        assert exc_info.value.vendor_code is None
+        assert exc_info.value.sqlstate is None
+
+        with pytest.raises(klass) as exc_info:
+            _lib._test_error(code, message, vendor_code=42, sqlstate="X0000")
+        assert message in exc_info.value.args[0]
+        assert exc_info.value.status_code == code
+        assert exc_info.value.vendor_code == 42
+        assert exc_info.value.sqlstate == "X0000"
+
+
 @pytest.mark.sqlite
 def test_connection_get_info(sqlite):
     _, conn = sqlite

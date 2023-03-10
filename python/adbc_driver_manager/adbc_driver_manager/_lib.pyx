@@ -283,8 +283,8 @@ class Error(Exception):
     def __init__(self, message, *, status_code, vendor_code=None, sqlstate=None):
         super().__init__(message)
         self.status_code = AdbcStatusCode(status_code)
-        self.vendor_code = None
-        self.sqlstate = None
+        self.vendor_code = vendor_code
+        self.sqlstate = sqlstate
 
 
 class InterfaceError(Error):
@@ -347,15 +347,23 @@ cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
             message += error.message.decode("utf-8")
         if error.vendor_code:
             vendor_code = error.vendor_code
+            message += f". Vendor code: {vendor_code}"
         if error.sqlstate[0] != 0:
-            sqlstate = error.sqlstate.decode("ascii")
+            sqlstate = bytes(error.sqlstate[i] for i in range(5))
+            sqlstate = sqlstate.decode("ascii")
+            message += f". SQLSTATE: {sqlstate}"
         if error.release:
             error.release(error)
 
     klass = Error
     if status in (ADBC_STATUS_INVALID_DATA,):
         klass = DataError
-    elif status in (ADBC_STATUS_IO, ADBC_STATUS_CANCELLED, ADBC_STATUS_TIMEOUT):
+    elif status in (
+        ADBC_STATUS_IO,
+        ADBC_STATUS_CANCELLED,
+        ADBC_STATUS_TIMEOUT,
+        ADBC_STATUS_UNKNOWN,
+    ):
         klass = OperationalError
     elif status in (ADBC_STATUS_INTEGRITY,):
         klass = IntegrityError
@@ -364,12 +372,13 @@ cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
     elif status in (ADBC_STATUS_ALREADY_EXISTS,
                     ADBC_STATUS_INVALID_ARGUMENT,
                     ADBC_STATUS_INVALID_STATE,
+                    ADBC_STATUS_NOT_FOUND,
                     ADBC_STATUS_UNAUTHENTICATED,
                     ADBC_STATUS_UNAUTHORIZED):
         klass = ProgrammingError
     elif status == ADBC_STATUS_NOT_IMPLEMENTED:
-        raise NotSupportedError(message)
-    raise klass(message, status_code=status)
+        raise NotSupportedError(message, vendor_code=vendor_code, sqlstate=sqlstate)
+    raise klass(message, status_code=status, vendor_code=vendor_code, sqlstate=sqlstate)
 
 
 cdef CAdbcError empty_error():
@@ -384,6 +393,28 @@ cdef bytes _to_bytes(obj, str name):
     elif isinstance(obj, str):
         return obj.encode("utf-8")
     raise ValueError(f"{name} must be str or bytes")
+
+
+def _test_error(status_code, message, vendor_code, sqlstate) -> Error:
+    cdef CAdbcError error
+    error.release = NULL
+
+    message = _to_bytes(message, "message")
+    error.message = message
+
+    if vendor_code:
+        error.vendor_code = vendor_code
+    else:
+        error.vendor_code = 0
+
+    if sqlstate:
+        sqlstate = sqlstate.encode("ascii")
+    else:
+        sqlstate = b"\0\0\0\0\0"
+    for i in range(5):
+        error.sqlstate[i] = sqlstate[i]
+
+    return check_error(AdbcStatusCode(status_code), &error)
 
 
 cdef class _AdbcHandle:

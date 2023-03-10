@@ -829,7 +829,7 @@ func (ts *TimeoutTestSuite) TestDoActionTimeout() {
 	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
 	var adbcErr adbc.Error
 	ts.ErrorAs(stmt.Prepare(context.Background()), &adbcErr)
-	ts.Equal(adbc.StatusTimeout, adbcErr.Code)
+	ts.Equal(adbc.StatusTimeout, adbcErr.Code, adbcErr.Error())
 }
 
 func (ts *TimeoutTestSuite) TestDoGetTimeout() {
@@ -844,7 +844,7 @@ func (ts *TimeoutTestSuite) TestDoGetTimeout() {
 	var adbcErr adbc.Error
 	_, _, err = stmt.ExecuteQuery(context.Background())
 	ts.ErrorAs(err, &adbcErr)
-	ts.Equal(adbc.StatusTimeout, adbcErr.Code)
+	ts.Equal(adbc.StatusTimeout, adbcErr.Code, adbcErr.Error())
 }
 
 func (ts *TimeoutTestSuite) TestDoPutTimeout() {
@@ -859,7 +859,7 @@ func (ts *TimeoutTestSuite) TestDoPutTimeout() {
 	var adbcErr adbc.Error
 	_, err = stmt.ExecuteUpdate(context.Background())
 	ts.ErrorAs(err, &adbcErr)
-	ts.Equal(adbc.StatusTimeout, adbcErr.Code)
+	ts.Equal(adbc.StatusTimeout, adbcErr.Code, adbcErr.Error())
 }
 
 func (ts *TimeoutTestSuite) TestGetFlightInfoTimeout() {
@@ -874,7 +874,7 @@ func (ts *TimeoutTestSuite) TestGetFlightInfoTimeout() {
 	var adbcErr adbc.Error
 	_, _, err = stmt.ExecuteQuery(context.Background())
 	ts.ErrorAs(err, &adbcErr)
-	ts.NotEqual(adbc.StatusNotImplemented, adbcErr.Code)
+	ts.NotEqual(adbc.StatusNotImplemented, adbcErr.Code, adbcErr.Error())
 }
 
 func (ts *TimeoutTestSuite) TestDontTimeout() {
