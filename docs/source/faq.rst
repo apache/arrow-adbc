@@ -113,8 +113,7 @@ So what is the "ADBC Flight SQL driver" then?
 The ADBC Flight SQL driver implements the ADBC API standard (which an
 application interacts with) using the Flight SQL wire protocol (which
 a database server exposes).  So it's a generic driver that can talk to
-many databases, and it also implements a generic API (ADBC) designed
-to abstract over multiple databases.
+many databases, as long as those implement Flight SQL.
 
 This is a little unusual, in that most database drivers and database
 protocols you'll find were meant for a specific database.  But Flight
