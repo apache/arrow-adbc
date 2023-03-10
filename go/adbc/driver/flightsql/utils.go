@@ -36,24 +36,34 @@ func adbcFromFlightStatus(err error) error {
 		adbcCode = adbc.StatusCancelled
 	case codes.Unknown:
 		adbcCode = adbc.StatusUnknown
-	case codes.Internal:
-		adbcCode = adbc.StatusInternal
 	case codes.InvalidArgument:
 		adbcCode = adbc.StatusInvalidArgument
-	case codes.AlreadyExists:
-		adbcCode = adbc.StatusAlreadyExists
-	case codes.NotFound:
-		adbcCode = adbc.StatusNotFound
-	case codes.Unauthenticated:
-		adbcCode = adbc.StatusUnauthenticated
-	case codes.Unavailable:
-		adbcCode = adbc.StatusIO
-	case codes.Unimplemented:
-		adbcCode = adbc.StatusNotImplemented
-	case codes.PermissionDenied:
-		adbcCode = adbc.StatusUnauthorized
 	case codes.DeadlineExceeded:
 		adbcCode = adbc.StatusTimeout
+	case codes.NotFound:
+		adbcCode = adbc.StatusNotFound
+	case codes.AlreadyExists:
+		adbcCode = adbc.StatusAlreadyExists
+	case codes.PermissionDenied:
+		adbcCode = adbc.StatusUnauthorized
+	case codes.ResourceExhausted:
+		adbcCode = adbc.StatusInternal
+	case codes.FailedPrecondition:
+		adbcCode = adbc.StatusUnknown
+	case codes.Aborted:
+		adbcCode = adbc.StatusUnknown
+	case codes.OutOfRange:
+		adbcCode = adbc.StatusUnknown
+	case codes.Unimplemented:
+		adbcCode = adbc.StatusNotImplemented
+	case codes.Internal:
+		adbcCode = adbc.StatusInternal
+	case codes.Unavailable:
+		adbcCode = adbc.StatusIO
+	case codes.DataLoss:
+		adbcCode = adbc.StatusIO
+	case codes.Unauthenticated:
+		adbcCode = adbc.StatusUnauthenticated
 	default:
 		adbcCode = adbc.StatusUnknown
 	}
