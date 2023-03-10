@@ -25,4 +25,3 @@ URL: https://github.com/apache/arrow-adbc
 BugReports: https://github.com/apache/arrow-adbc/issues
 Imports:
     nanoarrow
-Remotes: nanoarrow=apache/arrow-nanoarrow/r
