@@ -81,7 +81,7 @@ AdbcStatusCode SqliteDatabaseSetOption(struct AdbcDatabase* database, const char
     strncpy(db->uri, value, len);
     return ADBC_STATUS_OK;
   }
-  SetError(error, "Unknown database option %s=%s", key, value);
+  SetError(error, "Unknown database option %s=%s", key, value ? value : "(NULL)");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -198,7 +198,7 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
     }
     return ADBC_STATUS_OK;
   }
-  SetError(error, "Unknown connection option %s=%s", key, value);
+  SetError(error, "Unknown connection option %s=%s", key, value ? value : "(NULL)");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -1506,7 +1506,7 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
     stmt->batch_size = (int)batch_size;
     return ADBC_STATUS_OK;
   }
-  SetError(error, "Unknown statement option %s=%s", key, value);
+  SetError(error, "Unknown statement option %s=%s", key, value ? value : "(NULL)");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 

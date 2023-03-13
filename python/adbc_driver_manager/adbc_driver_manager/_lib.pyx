@@ -532,6 +532,28 @@ cdef class AdbcDatabase(_AdbcHandle):
                 status = AdbcDatabaseRelease(&self.database, &c_error)
             check_error(status, &c_error)
 
+    def set_options(self, **kwargs) -> None:
+        """Set arbitrary key-value options.
+
+        Note, not all drivers support setting options after creation.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef char* c_key = NULL
+        cdef char* c_value = NULL
+        for key, value in kwargs.items():
+            key = key.encode("utf-8")
+            c_key = key
+
+            if value is None:
+                c_value = NULL
+            else:
+                value = value.encode("utf-8")
+                c_value = value
+
+            status = AdbcDatabaseSetOption(
+                &self.database, c_key, c_value, &c_error)
+            check_error(status, &c_error)
+
 
 cdef class AdbcConnection(_AdbcHandle):
     """
@@ -760,6 +782,28 @@ cdef class AdbcConnection(_AdbcHandle):
                 &c_error)
         check_error(status, &c_error)
 
+    def set_options(self, **kwargs) -> None:
+        """Set arbitrary key-value options.
+
+        Note, not all drivers support setting options after creation.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef char* c_key = NULL
+        cdef char* c_value = NULL
+        for key, value in kwargs.items():
+            key = key.encode("utf-8")
+            c_key = key
+
+            if value is None:
+                c_value = NULL
+            else:
+                value = value.encode("utf-8")
+                c_value = value
+
+            status = AdbcConnectionSetOption(
+                &self.connection, c_key, c_value, &c_error)
+            check_error(status, &c_error)
+
     def close(self) -> None:
         """Release the handle to the connection."""
         cdef CAdbcError c_error = empty_error()
@@ -972,11 +1016,18 @@ cdef class AdbcStatement(_AdbcHandle):
     def set_options(self, **kwargs) -> None:
         """Set arbitrary key-value options."""
         cdef CAdbcError c_error = empty_error()
+        cdef char* c_key = NULL
+        cdef char* c_value = NULL
         for key, value in kwargs.items():
             key = key.encode("utf-8")
-            value = value.encode("utf-8")
             c_key = key
-            c_value = value
+
+            if value is None:
+                c_value = NULL
+            else:
+                value = value.encode("utf-8")
+                c_value = value
+
             status = AdbcStatementSetOption(
                 &self.statement, c_key, c_value, &c_error)
             check_error(status, &c_error)
