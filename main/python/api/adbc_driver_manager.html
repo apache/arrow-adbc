@@ -501,6 +501,9 @@ serialize accesses to a connection.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_autocommit" title="adbc_driver_manager.AdbcConnection.set_autocommit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_autocommit</span></code></a></p></td>
 <td><p>Toggle whether autocommit is enabled.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_options" title="adbc_driver_manager.AdbcConnection.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
+<td><p>Set arbitrary key-value options.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -566,6 +569,13 @@ serialize accesses to a connection.</p>
 <dd><p>Toggle whether autocommit is enabled.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.set_options">
+<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.set_options" title="Permalink to this definition">#</a></dt>
+<dd><p>Set arbitrary key-value options.</p>
+<p>Note, not all drivers support setting options after creation.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -590,6 +600,9 @@ database driver to load.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.close" title="adbc_driver_manager.AdbcDatabase.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a></p></td>
 <td><p>Release the handle to the database.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.set_options" title="adbc_driver_manager.AdbcDatabase.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
+<td><p>Set arbitrary key-value options.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -597,6 +610,13 @@ database driver to load.</p>
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcDatabase.close">
 <span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcDatabase.close" title="Permalink to this definition">#</a></dt>
 <dd><p>Release the handle to the database.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.AdbcDatabase.set_options">
+<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcDatabase.set_options" title="Permalink to this definition">#</a></dt>
+<dd><p>Set arbitrary key-value options.</p>
+<p>Note, not all drivers support setting options after creation.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1582,10 +1602,12 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.read_partition"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.read_partition()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.rollback"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.rollback()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_autocommit"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.set_autocommit()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_options"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.set_options()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase"><code class="docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.close"><code class="docutils literal notranslate"><span class="pre">AdbcDatabase.close()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.set_options"><code class="docutils literal notranslate"><span class="pre">AdbcDatabase.set_options()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement"><code class="docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a><ul>
