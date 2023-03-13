@@ -20,7 +20,7 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @useDynLib adbcsqlite, .registration = TRUE
+#' @useDynLib adbcpostgresql, .registration = TRUE
 ## usethis namespace: end
 NULL
 
@@ -40,43 +40,43 @@ NULL
 #' @export
 #'
 #' @examples
-#' adbcsqlite()
+#' adbcpostgresql()
 #'
-adbcsqlite <- function() {
+adbcpostgresql <- function() {
   adbcdrivermanager::adbc_driver(
-    .Call(adbcsqlite_c_sqlite),
-    subclass = "adbcsqlite_driver_sqlite"
+    .Call(adbcpostgresql_c_sqlite),
+    subclass = "adbcpostgresql_driver_sqlite"
   )
 }
 
-#' @rdname adbcsqlite
+#' @rdname adbcpostgresql
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, uri = ":memory:") {
+adbc_database_init.adbcpostgresql_driver_sqlite <- function(driver, uri = ":memory:") {
   adbcdrivermanager::adbc_database_init_default(
     driver,
     list(uri = uri),
-    subclass = "adbcsqlite_database"
+    subclass = "adbcpostgresql_database"
   )
 }
 
-#' @rdname adbcsqlite
+#' @rdname adbcpostgresql
 #' @importFrom adbcdrivermanager adbc_connection_init
 #' @export
-adbc_connection_init.adbcsqlite_database <- function(database,
+adbc_connection_init.adbcpostgresql_database <- function(database,
                                                      adbc.connection.autocommit = NULL) {
   options <- list(adbc.connection.autocommit = adbc.connection.autocommit)
   adbcdrivermanager::adbc_connection_init_default(
     database,
     options[!vapply(options, is.null, logical(1))],
-    subclass = "adbcsqlite_connection"
+    subclass = "adbcpostgresql_connection"
   )
 }
 
-#' @rdname adbcsqlite
+#' @rdname adbcpostgresql
 #' @importFrom adbcdrivermanager adbc_statement_init
 #' @export
-adbc_statement_init.adbcsqlite_connection <- function(connection,
+adbc_statement_init.adbcpostgresql_connection <- function(connection,
                                                       adbc.ingest.target_table = NULL,
                                                       adbc.ingest.mode = NULL,
                                                       adbc.sqlite.query.batch_rows = NULL) {
@@ -89,6 +89,6 @@ adbc_statement_init.adbcsqlite_connection <- function(connection,
   adbcdrivermanager::adbc_statement_init_default(
     connection,
     options[!vapply(options, is.null, logical(1))],
-    subclass = "adbcsqlite_statement"
+    subclass = "adbcpostgresql_statement"
   )
 }
