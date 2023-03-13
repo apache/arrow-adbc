@@ -28,7 +28,8 @@ static SEXP init_func_xptr = 0;
 SEXP adbcpostgresql_c_postgresql(void) { return init_func_xptr; }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"adbcpostgresql_c_postgresql", (DL_FUNC)&adbcpostgresql_c_postgresql, 0}, {NULL, NULL, 0}};
+    {"adbcpostgresql_c_postgresql", (DL_FUNC)&adbcpostgresql_c_postgresql, 0},
+    {NULL, NULL, 0}};
 
 void R_init_adbcpostgresql(DllInfo* dll) {
   R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
