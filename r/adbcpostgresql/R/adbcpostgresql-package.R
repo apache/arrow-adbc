@@ -44,15 +44,15 @@ NULL
 #'
 adbcpostgresql <- function() {
   adbcdrivermanager::adbc_driver(
-    .Call(adbcpostgresql_c_sqlite),
-    subclass = "adbcpostgresql_driver_sqlite"
+    .Call(adbcpostgresql_c_postgresql),
+    subclass = "adbcpostgresql_driver_postgresql"
   )
 }
 
 #' @rdname adbcpostgresql
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcpostgresql_driver_sqlite <- function(driver, uri = ":memory:") {
+adbc_database_init.adbcpostgresql_driver_postgresql <- function(driver, uri) {
   adbcdrivermanager::adbc_database_init_default(
     driver,
     list(uri = uri),
@@ -91,4 +91,52 @@ adbc_statement_init.adbcpostgresql_connection <- function(connection,
     options[!vapply(options, is.null, logical(1))],
     subclass = "adbcpostgresql_statement"
   )
+}
+
+test_server_start <- function() {
+  existing_test_uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI", "")
+  if (!identical(existing_test_uri, "")) {
+    return(list(uri = existing_test_uri, process = NULL))
+  }
+
+  process <- processx::process$new(
+    "docker",
+    c(
+      "run", "--rm", "-i",
+      "-e", "POSTGRES_PASSWORD=password",
+      "-e", "POSTGRES_DB=tempdb",
+      "-p", "5432:5432",
+      "postgres"
+    ),
+    stdout = "|",
+    stderr = "|",
+    cleanup = TRUE,
+    cleanup_tree = TRUE
+  )
+
+  list(
+    uri = "postgresql://localhost:5432/postgres?user=postgres&password=password",
+    process = process
+  )
+}
+
+test_server_print_stdout <- function(x) {
+  if (!is.null(x$process)) {
+    cat(x$process$read_output())
+    cat("\n")
+  }
+}
+
+test_server_print_stderr <- function(x) {
+  if (!is.null(x$process)) {
+    cat(x$process$read_error())
+    cat("\n")
+  }
+}
+
+test_server_stop <- function(x, timeout = 1) {
+  if (!is.null(x$process)) {
+    x$process$interrupt()
+    x$process$wait(timeout)
+  }
 }

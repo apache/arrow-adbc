@@ -2,14 +2,14 @@
 % Please edit documentation in R/adbcpostgresql-package.R
 \name{adbcpostgresql}
 \alias{adbcpostgresql}
-\alias{adbc_database_init.adbcpostgresql_driver_sqlite}
+\alias{adbc_database_init.adbcpostgresql_driver_postgresql}
 \alias{adbc_connection_init.adbcpostgresql_database}
 \alias{adbc_statement_init.adbcpostgresql_connection}
 \title{ADBC SQLite3 Driver}
 \usage{
 adbcpostgresql()
 
-\method{adbc_database_init}{adbcpostgresql_driver_sqlite}(driver, uri = ":memory:")
+\method{adbc_database_init}{adbcpostgresql_driver_postgresql}(driver, uri)
 
 \method{adbc_connection_init}{adbcpostgresql_database}(database, adbc.connection.autocommit = NULL)
 

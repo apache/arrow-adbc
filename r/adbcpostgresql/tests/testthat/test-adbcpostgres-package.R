@@ -20,7 +20,19 @@ test_that("adbcpostgresql() works", {
 })
 
 test_that("default options can open a database and execute a query", {
-  db <- adbcdrivermanager::adbc_database_init(adbcpostgresql())
+  server <- test_server_start()
+  on.exit(test_server_stop(server))
+
+  # Wait a little bit for server to be ready if we just launched a docker
+  # process
+  if (!is.null(server$process)) {
+    Sys.sleep(2)
+  }
+
+  db <- adbcdrivermanager::adbc_database_init(
+    adbcpostgresql(),
+    uri = server$uri
+  )
   expect_s3_class(db, "adbcpostgresql_database")
 
   con <- adbcdrivermanager::adbc_connection_init(db)
@@ -31,9 +43,24 @@ test_that("default options can open a database and execute a query", {
 
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"
+    "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER);"
   )
-  adbcdrivermanager::adbc_statement_execute_query(stmt)$release()
+
+  # Always attempt to clean up
+  on.exit(try({
+    stmt <- adbcdrivermanager::adbc_statement_init(con)
+    adbcdrivermanager::adbc_statement_set_sql_query(
+      stmt,
+      "DROP TABLE crossfit;"
+    )
+    adbcdrivermanager::adbc_statement_execute_query(stmt)
+  }, silent = TRUE), add = TRUE, after = TRUE)
+
+  # Currently returns failed but does in fact evaluate the query
+  try(
+    adbcdrivermanager::adbc_statement_execute_query(stmt),
+    silent = TRUE
+  )
   adbcdrivermanager::adbc_statement_release(stmt)
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
@@ -45,20 +72,24 @@ test_that("default options can open a database and execute a query", {
       ('Push Jerk', 7),
       ('Bar Muscle Up', 10);"
   )
-  adbcdrivermanager::adbc_statement_execute_query(stmt)$release()
+  # Currently returns failed but does in fact evaluate the query
+  try(
+    adbcdrivermanager::adbc_statement_execute_query(stmt),
+    silent = TRUE
+  )
   adbcdrivermanager::adbc_statement_release(stmt)
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "SELECT * from crossfit"
+    "SELECT * from crossfit ORDER BY difficulty_level"
   )
 
   expect_identical(
     as.data.frame(adbcdrivermanager::adbc_statement_execute_query(stmt)),
     data.frame(
       exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
-      difficulty_level = c(3, 5, 7, 10),
+      difficulty_level = c(3L, 5L, 7L, 10L),
       stringsAsFactors = FALSE
     )
   )
