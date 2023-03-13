@@ -4,10 +4,12 @@
 <html class="no-js" lang="en">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" />
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Installation" href="driver/installation.html" /><link rel="prev" title="Comparison with Other APIs" href="format/comparison.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 --><title>Python Module Index - ADBC 0.3.0 (dev) documentation</title>
-<link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
+        <title>Frequently Asked Questions (FAQ) - ADBC 0.3.0 (dev) documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
     <link rel="stylesheet" type="text/css" href="_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
@@ -192,7 +194,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -217,11 +219,11 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Specifications</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="format/specification.html">ADBC API Standard</a></li>
 <li class="toctree-l1"><a class="reference internal" href="format/versioning.html">Versioning and Compatibility</a></li>
 <li class="toctree-l1"><a class="reference internal" href="format/comparison.html">Comparison with Other APIs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Frequently Asked Questions (FAQ)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
 <ul>
@@ -300,7 +302,16 @@
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          <div class="theme-toggle-container theme-toggle-content">
+          <div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/faq.rst" title="Edit this page">
+    <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
+      <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
+    </svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle">
               <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
               <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
@@ -308,72 +319,148 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          
-<section class="domainindex-section">
-  <h1>Python Module Index</h1>
-  <div class="domainindex-jumpbox"><a href="#cap-a"><strong>a</strong></a></div>
+          <section id="frequently-asked-questions-faq">
+<h1>Frequently Asked Questions (FAQ)<a class="headerlink" href="#frequently-asked-questions-faq" title="Permalink to this heading">#</a></h1>
+<section id="what-exactly-is-adbc">
+<h2>What exactly is ADBC?<a class="headerlink" href="#what-exactly-is-adbc" title="Permalink to this heading">#</a></h2>
+<p>ADBC is:</p>
+<ul>
+<li><p>A set of abstract APIs in different languages (C/C++, Go, and Java,
+with more on the way) for working with databases and Arrow data.</p>
+<p>For example, result sets of queries in ADBC are all returned as
+streams of Arrow data, not row-by-row.</p>
+</li>
+<li><p>A set of implementations of that API in different languages (C/C++,
+Go, Java, Python, and Ruby) that target different databases
+(e.g. PostgreSQL, SQLite, any database supporting Flight SQL).</p></li>
+</ul>
 </section>
-<table class="domainindex-table">
-  <tr class="pcap">
-    <td></td><td>&#160;</td><td></td>
-  </tr>
-  <tr class="cap" id="cap-a">
-    <td></td><td><strong>a</strong></td><td></td>
-  </tr>
-  <tr>
-    <td><img src="_static/minus.png" class="toggler"
-              id="toggle-1" style="display: none" alt="-" /></td>
-    <td>
-        <a href="python/api/adbc_driver_manager.html#module-adbc_driver_manager"><code class="xref">adbc_driver_manager</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-1">
-    <td></td>
-    <td>&#160;&#160;&#160;
-        <a href="python/api/adbc_driver_manager.html#module-adbc_driver_manager.dbapi"><code class="xref">adbc_driver_manager.dbapi</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr>
-    <td><img src="_static/minus.png" class="toggler"
-              id="toggle-2" style="display: none" alt="-" /></td>
-    <td>
-        <a href="python/api/adbc_driver_postgresql.html#module-adbc_driver_postgresql"><code class="xref">adbc_driver_postgresql</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-2">
-    <td></td>
-    <td>&#160;&#160;&#160;
-        <a href="python/api/adbc_driver_postgresql.html#module-adbc_driver_postgresql.dbapi"><code class="xref">adbc_driver_postgresql.dbapi</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr>
-    <td><img src="_static/minus.png" class="toggler"
-              id="toggle-3" style="display: none" alt="-" /></td>
-    <td>
-        <a href="python/api/adbc_driver_sqlite.html#module-adbc_driver_sqlite"><code class="xref">adbc_driver_sqlite</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-3">
-    <td></td>
-    <td>&#160;&#160;&#160;
-        <a href="python/api/adbc_driver_sqlite.html#module-adbc_driver_sqlite.dbapi"><code class="xref">adbc_driver_sqlite.dbapi</code></a></td><td>
-    <em></em></td>
-  </tr>
-</table>
+<section id="why-not-just-use-jdbc-odbc">
+<h2>Why not just use JDBC/ODBC?<a class="headerlink" href="#why-not-just-use-jdbc-odbc" title="Permalink to this heading">#</a></h2>
+<p>JDBC uses row-based interfaces like <a class="reference external" href="https://docs.oracle.com/javase/8/docs/api/java/sql/ResultSet.html">ResultSet</a>.  When working with
+columnar data, like Arrow data, this means that we have to convert the
+data at least once and possibly twice:</p>
+<ul class="simple">
+<li><p>Once (possibly) in the driver or database, to take columnar data and
+convert it into a row-based format so it can be returned through the
+JDBC APIs.</p></li>
+<li><p>Once (always) when a client application pulls data from the JDBC
+API, to convert the rows into columns.</p></li>
+</ul>
+<p>In keeping with Arrow’s “zero-copy” or “minimal-copy” ethos, we would
+like to avoid these unnecessary conversions.</p>
+<p>ODBC is in a similar situation.  Although ODBC does support
+<a class="reference external" href="https://learn.microsoft.com/en-us/sql/odbc/reference/develop-app/column-wise-binding?view=sql-server-ver16">“column-wise binding”</a>, not all ODBC drivers support it, and it is
+more complex to use.  Additionally, ODBC uses caller-allocated buffers
+(which often means forcing a data copy), and ODBC specifies data
+layouts that are not quite Arrow-compatible (requiring a data
+conversion anyways).</p>
+</section>
+<section id="how-do-adbc-and-arrow-flight-sql-differ">
+<h2>How do ADBC and Arrow Flight SQL differ?<a class="headerlink" href="#how-do-adbc-and-arrow-flight-sql-differ" title="Permalink to this heading">#</a></h2>
+<p>ADBC is a <em>client API specification</em>.  It doesn’t define what goes on
+between your client and the database, just the API calls that you make
+as an application developer.  Under the hood, a driver must take those
+API calls and talk to the actual database.  Another perspective is
+that ADBC is all about the client-side, and specifies nothing about
+the network protocol or server-side implementation.</p>
+<p>Flight SQL is a <em>wire protocol</em>.  It specifies the exact commands to
+send to a database to perform various actions like authenticating with
+the database, creating prepared statements, or executing queries.
+Flight SQL specifies the network protocol that the client and the
+server must implement.</p>
+<p>One more way of looking at it: an ADBC driver can be written for a
+database purely as a client library.  (That’s how the PostgreSQL
+driver in this repository is implemented, for instance—as a wrapper
+around libpq.)  But adding Flight SQL support to a database means
+either modifying the database to run a Flight SQL service, or putting
+the database behind a proxy that translates between Flight SQL and the
+database.</p>
+</section>
+<section id="why-not-just-use-arrow-flight-sql">
+<h2>Why not just use Arrow Flight SQL?<a class="headerlink" href="#why-not-just-use-arrow-flight-sql" title="Permalink to this heading">#</a></h2>
+<p>Because ADBC is client-side, ADBC can support databases that either
+don’t support returning Arrow data, or support Arrow data through a
+protocol besides Flight SQL.</p>
+</section>
+<section id="then-do-we-even-need-arrow-flight-sql">
+<h2>Then do we even need Arrow Flight SQL?<a class="headerlink" href="#then-do-we-even-need-arrow-flight-sql" title="Permalink to this heading">#</a></h2>
+<p>Flight SQL is a concrete protocol that database vendors can implement,
+instead of designing their own protocol.  And Flight SQL also has JDBC
+and ODBC drivers for maximal compatibility.</p>
+<p>As an analogy: many databases implement the PostgreSQL wire protocol,
+so that they can gain access to all the PostgreSQL clients, including
+JDBC and ODBC drivers.  (And JDBC/ODBC users can still use other
+drivers to work with other databases.)</p>
+<p>For the Arrow ecosystem, we hope databases will implement the Flight
+SQL wire protocol, giving them access to all the Flight SQL clients,
+including ADBC, JDBC, and ODBC drivers.  (And ADBC users can still use
+other drivers to work with other databases.)</p>
+</section>
+<section id="so-what-is-the-adbc-flight-sql-driver-then">
+<h2>So what is the “ADBC Flight SQL driver” then?<a class="headerlink" href="#so-what-is-the-adbc-flight-sql-driver-then" title="Permalink to this heading">#</a></h2>
+<p>The ADBC Flight SQL driver implements the ADBC API standard (which an
+application interacts with) using the Flight SQL wire protocol (which
+a database server exposes).  So it’s a generic driver that can talk to
+many databases, as long as those implement Flight SQL.</p>
+<p>This is a little unusual, in that most database drivers and database
+protocols you’ll find were meant for a specific database.  But Flight
+SQL was designed to be agnostic to the database from the start, and so
+was ADBC.</p>
+<p>It sounds like they overlap, but they complement each other because
+they operate at different levels of abstraction.  Database developers
+can just provide a Flight SQL service, which will give them ADBC,
+JDBC, and ODBC drivers for free, without having to build and maintain
+those drivers on their own.  Database users can just use ADBC as the
+one Arrow-native API to work with both Arrow-native and
+non-Arrow-native databases, whether those databases support Flight
+SQL, a custom Arrow-native protocol, or no Arrow-native protocol.</p>
+</section>
+<section id="and-then-what-is-the-adbc-jdbc-driver">
+<h2>And then what is the “ADBC JDBC driver”?<a class="headerlink" href="#and-then-what-is-the-adbc-jdbc-driver" title="Permalink to this heading">#</a></h2>
+<p>The ADBC JDBC driver, or a hypothetical ADBC ODBC driver, adapts the
+JDBC API to the ADBC API, so that an ADBC user can interact with
+databases that have JDBC APIs available.  While this doesn’t give you
+the best possible performance (you’re paying for tranposing the data
+back and forth!), it does save you the hassle of writing those
+conversions yourself.</p>
+<p>Similar libraries already exist; for instance, <a class="reference external" href="https://turbodbc.readthedocs.io/en/latest/">Turbodbc</a> wraps any
+ODBC driver in Python’s DBAPI (PEP 249), and <a class="reference external" href="https://central.sonatype.com/artifact/org.apache.arrow/arrow-jdbc/11.0.0">arrow-jdbc</a> wraps any
+JDBC driver in a bespoke Arrow-based API.</p>
+</section>
+</section>
 
         </article>
       </div>
       <footer>
         
         <div class="related-pages">
-          
-          
+          <a class="next-page" href="driver/installation.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Installation</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="format/comparison.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Comparison with Other APIs</div>
+                
+              </div>
+            </a>
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -392,8 +479,33 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Frequently Asked Questions (FAQ)</a><ul>
+<li><a class="reference internal" href="#what-exactly-is-adbc">What exactly is ADBC?</a></li>
+<li><a class="reference internal" href="#why-not-just-use-jdbc-odbc">Why not just use JDBC/ODBC?</a></li>
+<li><a class="reference internal" href="#how-do-adbc-and-arrow-flight-sql-differ">How do ADBC and Arrow Flight SQL differ?</a></li>
+<li><a class="reference internal" href="#why-not-just-use-arrow-flight-sql">Why not just use Arrow Flight SQL?</a></li>
+<li><a class="reference internal" href="#then-do-we-even-need-arrow-flight-sql">Then do we even need Arrow Flight SQL?</a></li>
+<li><a class="reference internal" href="#so-what-is-the-adbc-flight-sql-driver-then">So what is the “ADBC Flight SQL driver” then?</a></li>
+<li><a class="reference internal" href="#and-then-what-is-the-adbc-jdbc-driver">And then what is the “ADBC JDBC driver”?</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

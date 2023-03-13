@@ -33,6 +33,9 @@ Application code should not need to juggle conversions from
 non-Arrow-native datasources alongside bindings for multiple
 Arrow-native database protocols.
 
+To learn more about ADBC, see the `introductory blog post
+<https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/>`_.
+
 .. toctree::
    :maxdepth: 1
    :caption: Specifications
@@ -40,6 +43,8 @@ Arrow-native database protocols.
    format/specification
    format/versioning
    format/comparison
+
+   faq
 
 .. toctree::
    :maxdepth: 2
