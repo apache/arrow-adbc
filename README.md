@@ -22,32 +22,39 @@
 [![License](http://img.shields.io/:license-Apache%202-blue.svg)](https://github.com/apache/arrow-adbc/blob/master/LICENSE.txt)
 
 ADBC is an API standard (version 1.0.0) for database access libraries ("drivers") in C, Go, and Java that uses Arrow for result sets and query parameters.
-Instead of writing code for each individual database, applications can build against the ADBC APIs, and link against drivers that implement the standard.
+Instead of writing code to convert to and from Arrow data for each individual database, applications can build against the ADBC APIs, and link against drivers that implement the standard.
 Additionally, a JDBC/ODBC-style driver manager is provided. This also implements the ADBC APIs, but dynamically loads drivers and dispatches calls to them.
 
-Like JDBC/ODBC, the goal is to provide a generic API for multiple databases, but ADBC is focused on Arrow-based data access for analytics use cases (bulk data retrieval/ingestion), and not the full spectrum of use cases that JDBC/ODBC drivers handle.
+Like JDBC/ODBC, the goal is to provide a generic API for multiple databases. ADBC, however, is focused on bulk columnar data retrieval and ingestion through an Arrow-based API rather than attempting to replace JDBC/ODBC in all use cases.
 Hence, ADBC is complementary to those existing standards.
 
-Like [Arrow Flight SQL][flight-sql], ADBC is an Arrow-based database access API.
-But Flight SQL also specifies the wire format and network transport (Flight RPC), while ADBC lets drivers make their own decisions.
+Like [Arrow Flight SQL][flight-sql], ADBC is an Arrow-based way to work with databases.
+However, Flight SQL is a _protocol_ defining a wire format and network transport as opposed to an _API specification_. Flight SQL requires a database to specifically implement support for it, while ADBC is a client API specification for wrapping existing database protocols which could be Arrow-native or not.
 Together, ADBC and Flight SQL offer a fully Arrow-native solution for clients and database vendors.
-For context, see the [mailing list discussion][ml-discussion] and the original [proposal][proposal].
 
+For more about ADBC, see the [introductory blog post][arrow-blog].
+
+[arrow-blog]: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
 [flight-sql]: https://arrow.apache.org/docs/format/FlightSql.html
-[ml-discussion]: https://lists.apache.org/thread/gnz1kz2rj3rb8rh8qz7l0mv8lvzq254w
-[proposal]: https://docs.google.com/document/d/1t7NrC76SyxL_OffATmjzZs2xcj1owdUsIF2WKL_Zw1U/edit#heading=h.r6o6j2navi4c
+
+## Status
+
+ADBC versions the API standard and the implementing libraries separately.
+
+The API standard (version 1.0.0) is considered stable, but enhancements may be made.
+
+Libraries are under development.
+For more details, see the [documentation](https://arrow.apache.org/adbc/main/driver/status.html).
 
 ## Installation
 
-A release has not yet been made.
-(The standard is version 1.0.0, but packages themselves are still under development.)
-Packages can currently be built and installed from source.
+Please see the [documentation](https://arrow.apache.org/adbc/main/driver/installation.html).
 
 ## Documentation
 
 The core API definitions can be read in `adbc.h`.
 User documentation can be found at https://arrow.apache.org/adbc
 
-## Building
+## Development and Contributing
 
-For detailed instructions, see CONTRIBUTING.md.
+For detailed instructions on how to build the various ADBC libraries, see CONTRIBUTING.md.

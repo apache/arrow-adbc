@@ -16,6 +16,8 @@
 # under the License.
 
 github:
+  description: "Database connectivity API standard and libraries for Apache Arrow"
+  homepage: https://arrow.apache.org/adbc/
   enabled_merge_buttons:
     merge: false
     rebase: false
