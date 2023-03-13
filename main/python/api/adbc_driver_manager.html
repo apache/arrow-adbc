@@ -849,6 +849,15 @@ serialize accesses to a connection.</p>
 <section id="module-adbc_driver_manager.dbapi">
 <span id="dbapi-2-0-api"></span><h2>DBAPI 2.0 API<a class="headerlink" href="#module-adbc_driver_manager.dbapi" title="Permalink to this heading">#</a></h2>
 <p>PEP 249 (DB-API 2.0) API wrapper for the ADBC Driver Manager.</p>
+<section id="resource-management">
+<h3>Resource Management<a class="headerlink" href="#resource-management" title="Permalink to this heading">#</a></h3>
+<p>You must <code class="docutils literal notranslate"><span class="pre">close()</span></code> Connection and Cursor objects, or else driver
+resources may be leaked.  A <code class="docutils literal notranslate"><span class="pre">__del__</span></code> is implemented as a fallback,
+but Python does not guarantee the timing of when this is called.  For
+development, <code class="docutils literal notranslate"><span class="pre">__del__</span></code> will raise a ResourceWarning when running
+under pytest, or when the environment variable
+<code class="docutils literal notranslate"><span class="pre">_ADBC_DRIVER_MANAGER_WARN_UNCLOSED_RESOURCE</span></code> is set to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
+</section>
 <section id="id1">
 <h3>Constants &amp; Enums<a class="headerlink" href="#id1" title="Permalink to this heading">#</a></h3>
 <dl class="py data">
@@ -1639,6 +1648,7 @@ be executed once per row.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-adbc_driver_manager.dbapi">DBAPI 2.0 API</a><ul>
+<li><a class="reference internal" href="#resource-management">Resource Management</a></li>
 <li><a class="reference internal" href="#id1">Constants &amp; Enums</a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.apilevel"><code class="docutils literal notranslate"><span class="pre">apilevel</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.paramstyle"><code class="docutils literal notranslate"><span class="pre">paramstyle</span></code></a></li>
