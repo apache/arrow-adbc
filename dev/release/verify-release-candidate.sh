@@ -466,6 +466,12 @@ test_python() {
   "${ADBC_SOURCE_DIR}/ci/scripts/python_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${install_prefix}"
 }
 
+test_r() {
+  show_header "Build and test R libraries"
+
+  echo "Nothing to see here, folks!"
+}
+
 test_glib() {
   show_header "Build and test C GLib libraries"
 
@@ -608,6 +614,9 @@ test_source_distribution() {
   fi
   if [ ${TEST_PYTHON} -gt 0 ]; then
     test_python
+  fi
+  if [ ${TEST_R} -gt 0 ]; then
+    test_r
   fi
 
   popd
@@ -759,9 +768,10 @@ test_jars() {
 : ${TEST_PYTHON:=${TEST_SOURCE}}
 : ${TEST_JS:=${TEST_SOURCE}}
 : ${TEST_GO:=${TEST_SOURCE}}
+: ${TEST_R:=${TEST_SOURCE}}
 
 # Automatically test if its activated by a dependent
-TEST_CPP=$((${TEST_CPP} + ${TEST_GO} + ${TEST_GLIB} + ${TEST_PYTHON}))
+TEST_CPP=$((${TEST_CPP} + ${TEST_GO} + ${TEST_GLIB} + ${TEST_PYTHON} + ${TEST_R}))
 
 # Execute tests in a conda enviroment
 : ${USE_CONDA:=0}
