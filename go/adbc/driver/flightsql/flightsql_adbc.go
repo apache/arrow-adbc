@@ -535,12 +535,17 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 		return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
 	}
 	creds := d.creds
+
+	target := uri.Host
 	if uri.Scheme == "grpc" || uri.Scheme == "grpc+tcp" {
 		creds = insecure.NewCredentials()
+	} else if uri.Scheme == "grpc+unix" {
+		creds = insecure.NewCredentials()
+		target = "unix:" + uri.Path
 	}
 	dialOpts := append(d.dialOpts.opts, grpc.WithTransportCredentials(creds))
 
-	cl, err := flightsql.NewClient(uri.Host, nil, middleware, dialOpts...)
+	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)
 	if err != nil {
 		return nil, adbc.Error{
 			Msg:  err.Error(),
