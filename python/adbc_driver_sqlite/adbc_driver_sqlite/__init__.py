@@ -15,14 +15,24 @@
 # specific language governing permissions and limitations
 # under the License.
 
+"""Low-level ADBC bindings for the SQLite driver."""
+
+import enum
 import functools
 import typing
 
 import adbc_driver_manager
 
-from ._version import __version__
+from ._version import __version__  # noqa:F401
 
-__all__ = ["connect", "__version__"]
+__all__ = ["StatementOptions", "connect"]
+
+
+class StatementOptions(enum.Enum):
+    """Statement options specific to the SQLite driver."""
+
+    #: The number of rows per batch. Defaults to 1024.
+    BATCH_ROWS = "adbc.sqlite.query.batch_rows"
 
 
 def connect(uri: typing.Optional[str] = None) -> adbc_driver_manager.AdbcDatabase:

@@ -29,5 +29,19 @@ def test_query_trivial(dremio):
         assert reader.read_all()
 
 
+def test_options(dremio):
+    with adbc_driver_manager.AdbcStatement(dremio) as stmt:
+        stmt.set_options(
+            **{
+                adbc_driver_flightsql.StatementOptions.QUEUE_SIZE.value: "2",
+                adbc_driver_flightsql.StatementOptions.TIMEOUT_FETCH.value: "10",
+            }
+        )
+        stmt.set_sql_query("SELECT 1")
+        stream, _ = stmt.execute_query()
+        reader = pyarrow.RecordBatchReader._import_from_c(stream.address)
+        assert reader.read_all()
+
+
 def test_version():
     assert adbc_driver_flightsql.__version__

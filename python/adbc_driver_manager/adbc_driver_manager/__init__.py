@@ -22,6 +22,8 @@ definitions in Python.  For a higher-level interface, use
 :mod:`adbc_driver_manager.dbapi`.  (This requires PyArrow.)
 """
 
+import enum
+
 from ._lib import (
     INGEST_OPTION_MODE,
     INGEST_OPTION_MODE_APPEND,
@@ -47,10 +49,9 @@ from ._lib import (
     ProgrammingError,
     Warning,
 )
-from ._version import __version__
+from ._version import __version__  # noqa:F401
 
 __all__ = [
-    "__version__",
     "INGEST_OPTION_MODE",
     "INGEST_OPTION_MODE_APPEND",
     "INGEST_OPTION_MODE_CREATE",
@@ -63,7 +64,9 @@ __all__ = [
     "ArrowArrayHandle",
     "ArrowArrayStreamHandle",
     "ArrowSchemaHandle",
+    "ConnectionOptions",
     "DatabaseError",
+    "DatabaseOptions",
     "DataError",
     "Error",
     "GetObjectsDepth",
@@ -73,5 +76,41 @@ __all__ = [
     "NotSupportedError",
     "OperationalError",
     "ProgrammingError",
+    "StatementOptions",
     "Warning",
 ]
+
+
+class DatabaseOptions(enum.Enum):
+    """
+    Database options that are standardized between drivers.
+
+    Not all drivers support all options.
+    """
+
+    #: Set the password to use for username-password authentication.
+    PASSWORD = "password"
+    #: Set the username to use for username-password authentication.
+    USERNAME = "username"
+
+
+class ConnectionOptions(enum.Enum):
+    """Connection options that are standardized between drivers.
+
+    Not all drivers support all options.
+    """
+
+    #: Set the transaction isolation level.
+    ISOLATION_LEVEL = "adbc.connection.transaction.isolation_level"
+
+
+class StatementOptions(enum.Enum):
+    """Statement options that are standardized between drivers.
+
+    Not all drivers support all options.
+    """
+
+    #: For bulk ingestion, whether to create or append to the table.
+    INGEST_MODE = INGEST_OPTION_MODE
+    #: For bulk ingestion, the table to ingest into.
+    INGEST_TARGET_TABLE = INGEST_OPTION_TARGET_TABLE
