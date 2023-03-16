@@ -735,7 +735,7 @@ func (ts *TimeoutTestServer) DoGetStatement(ctx context.Context, tkt flightsql.S
 
 	// wait till the context is cancelled
 	<-ctx.Done()
-	return nil, nil, arrow.ErrNotImplemented
+	return nil, nil, ctx.Err()
 }
 
 func (ts *TimeoutTestServer) DoPutCommandStatementUpdate(ctx context.Context, cmd flightsql.StatementUpdate) (int64, error) {
@@ -774,12 +774,12 @@ func (ts *TimeoutTestServer) GetFlightInfoStatement(ctx context.Context, cmd fli
 		}
 		return info, nil
 	}
-	return nil, arrow.ErrNotImplemented
+	return nil, ctx.Err()
 }
 
 func (ts *TimeoutTestServer) CreatePreparedStatement(ctx context.Context, req flightsql.ActionCreatePreparedStatementRequest) (result flightsql.ActionCreatePreparedStatementResult, err error) {
 	<-ctx.Done()
-	return result, arrow.ErrNotImplemented
+	return result, ctx.Err()
 }
 
 type TimeoutTestSuite struct {

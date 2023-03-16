@@ -522,7 +522,10 @@ test_go() {
   show_header "Build and test Go libraries"
 
   maybe_setup_go || exit 1
-  maybe_setup_conda compilers go=1.18 || exit 1
+  # apache/arrow-adbc#517: `go build` calls git. Don't assume system
+  # has git; even if it's there, go_build.sh sets DYLD_LIBRARY_PATH
+  # which can interfere with system git.
+  maybe_setup_conda compilers git go=1.18 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     # The CMake setup forces RPATH to be the Conda prefix
@@ -530,7 +533,6 @@ test_go() {
   else
     local -r install_prefix="${ARROW_TMPDIR}/local"
   fi
-
 
   export CGO_ENABLED=1
   "${ADBC_SOURCE_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
