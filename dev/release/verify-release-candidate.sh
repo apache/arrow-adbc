@@ -469,6 +469,11 @@ test_python() {
 test_r() {
   show_header "Build and test R libraries"
 
+  maybe_setup_conda --file "${ADBC_SOURCE_DIR}/ci/conda_env_r.txt" || exit 1
+
+  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcdrivermanager"
+  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsqlite"
+
   echo "Nothing to see here, folks!"
 }
 
