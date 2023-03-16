@@ -22,7 +22,7 @@
 # ADBC repo into this package. If the file doesn't exist, we're installing
 # from a pre-built tarball.
 if [ -f bootstrap.R ]; then
-  $R_HOME/bin/Rscript bootstrap.R
+  $R_HOME/bin/Rscript bootstrap.R --vanilla
 fi
 
 if [ -f "src/adbc.h" ] && [ -f "src/adbc_driver_manager.h" ] && [ -f "src/adbc_driver_manager.cc" ]; then

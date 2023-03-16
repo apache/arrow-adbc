@@ -17,7 +17,6 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
 SystemRequirements: C++11
 Suggests:
-    arrow,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE

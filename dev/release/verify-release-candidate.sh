@@ -466,6 +466,31 @@ test_python() {
   "${ADBC_SOURCE_DIR}/ci/scripts/python_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${install_prefix}"
 }
 
+test_r() {
+  show_header "Build and test R libraries"
+
+  maybe_setup_conda --file "${ADBC_SOURCE_DIR}/ci/conda_env_r.txt" || exit 1
+
+  rm -rf "${ARROW_TMPDIR}/r"
+  mkdir "${ARROW_TMPDIR}/r"
+  mkdir "${ARROW_TMPDIR}/r/tmplib"
+
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R -e 'install.packages("nanoarrow", repos = "https://cloud.r-project.org/")' --vanilla
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R -e 'if (!requireNamespace("testthat", quietly = TRUE)) install.packages("testthat", repos = "https://cloud.r-project.org/")' --vanilla
+  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcdrivermanager" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
+  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsqlite" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
+
+  pushd "${ARROW_TMPDIR}/r"
+  R CMD build "${ADBC_SOURCE_DIR}/r/adbcdrivermanager"
+  R CMD build "${ADBC_SOURCE_DIR}/r/adbcsqlite"
+  local -r adbcdrivermanager_tar_gz="$(ls adbcdrivermanager_*.tar.gz)"
+  local -r adbcsqlite_tar_gz="$(ls adbcsqlite_*.tar.gz)"
+
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcdrivermanager_tar_gz}" --no-manual
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcsqlite_tar_gz}" --no-manual
+  popd
+}
+
 test_glib() {
   show_header "Build and test C GLib libraries"
 
@@ -608,6 +633,9 @@ test_source_distribution() {
   fi
   if [ ${TEST_PYTHON} -gt 0 ]; then
     test_python
+  fi
+  if [ ${TEST_R} -gt 0 ]; then
+    test_r
   fi
 
   popd
@@ -759,6 +787,7 @@ test_jars() {
 : ${TEST_PYTHON:=${TEST_SOURCE}}
 : ${TEST_JS:=${TEST_SOURCE}}
 : ${TEST_GO:=${TEST_SOURCE}}
+: ${TEST_R:=${TEST_SOURCE}}
 
 # Automatically test if its activated by a dependent
 TEST_CPP=$((${TEST_CPP} + ${TEST_GO} + ${TEST_GLIB} + ${TEST_PYTHON}))

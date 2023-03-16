@@ -6,3 +6,4 @@
 ^src/Makevars$
 ^src/sqlite3\.c$
 ^src/sqlite3\.h$
+^\.vscode$
