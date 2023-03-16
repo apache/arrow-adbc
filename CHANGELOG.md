@@ -92,3 +92,30 @@
 - **c/driver/postgresql**: expand type support (#352)
 - **c/driver/postgresql**: add VARCHAR type support
 - **go/adbc/driver/flightsql**: Native Golang ADBC Flight SQL driver (#322)
+
+## ADBC Libraries 0.3.0 (2023-03-16)
+
+### Fix
+
+- **ci**: use conda git in verification (#518)
+- **python/adbc_driver_manager**: properly map error codes (#510)
+- **go/adbc/driver/flightsql**: properly map error codes (#509)
+- **python/adbc_driver_manager**: expose set_options (#495)
+- **go/adbc/driver/flightsql**: send headers in statement close (#494)
+- **go/adbc/driver/flightsql**: fix stream timeout interceptor (#490)
+- **go/adbc/driver/flightsql**: don't require GetSqlInfo support (#485)
+- **c/driver/sqlite**: fix nullability of GetInfo schema (#457)
+- **python/adbc_driver_manager**: fix Cursor.adbc_read_partition (#452)
+- **r/adbcdrivermanager**: Check that bootstrap.R exists before trying to run it (#437)
+
+### Feat
+
+- **python**: add enums for common options (#513)
+- **go/adbc/driver/flightsql**: support domain sockets (#516)
+- **python/adbc_driver_manager**: add __del__ for resources (#498)
+- **go/adbc/driver/flightsql**: add user-agent for driver (#497)
+- **go/adbc/sqldriver**: add simple FlightSQL database/sql driver wrapper (#480)
+- **java/driver/jdbc**: expose constraints in GetObjects (#474)
+- **r/adbcsqlite**: Package SQLite driver for R (#463)
+- **go/adbc/driver/flightsql**: add transaction and substrait support (#467)
+- **r**: Add R Driver Manager (#365)
