@@ -39,8 +39,8 @@ def dremio(dremio_uri):
     with adbc_driver_flightsql.connect(
         dremio_uri,
         db_kwargs={
-            "username": username,
-            "password": password,
+            adbc_driver_manager.DatabaseOptions.USERNAME.value: username,
+            adbc_driver_manager.DatabaseOptions.PASSWORD.value: password,
         },
     ) as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
@@ -54,8 +54,8 @@ def dremio_dbapi(dremio_uri):
     with adbc_driver_flightsql.dbapi.connect(
         dremio_uri,
         db_kwargs={
-            "username": username,
-            "password": password,
+            adbc_driver_manager.DatabaseOptions.USERNAME.value: username,
+            adbc_driver_manager.DatabaseOptions.PASSWORD.value: password,
         },
     ) as conn:
         yield conn

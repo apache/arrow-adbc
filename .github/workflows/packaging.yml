@@ -400,7 +400,8 @@ jobs:
     name: "Python ${{ matrix.arch }} Conda"
     runs-on: macos-latest
     # No need for Conda packages during release
-    if: "!startsWith(github.ref, 'refs/tags/')"
+    # TODO(apache/arrow-adbc#468): re-enable
+    if: false
     needs:
       - source
     strategy:
@@ -872,7 +873,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
     needs:
       - python-conda-linux
-      - python-conda-macos
+      # TODO(apache/arrow-adbc#468): re-enable
+      # - python-conda-macos
     steps:
       - uses: actions/checkout@v3
         with:

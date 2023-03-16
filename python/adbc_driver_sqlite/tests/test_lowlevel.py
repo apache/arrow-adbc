@@ -37,5 +37,18 @@ def test_query_trivial(sqlite):
         assert reader.read_all()
 
 
+def test_options(sqlite):
+    with adbc_driver_manager.AdbcStatement(sqlite) as stmt:
+        stmt.set_options(
+            **{
+                adbc_driver_sqlite.StatementOptions.BATCH_ROWS.value: "1",
+            }
+        )
+        stmt.set_sql_query("SELECT 1")
+        stream, _ = stmt.execute_query()
+        reader = pyarrow.RecordBatchReader._import_from_c(stream.address)
+        assert reader.read_all()
+
+
 def test_version():
     assert adbc_driver_sqlite.__version__

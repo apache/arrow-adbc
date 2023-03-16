@@ -567,6 +567,11 @@ cdef class AdbcDatabase(_AdbcHandle):
         """Set arbitrary key-value options.
 
         Note, not all drivers support setting options after creation.
+
+        See Also
+        --------
+        adbc_driver_manager.DatabaseOptions : Standard option names.
+
         """
         cdef CAdbcError c_error = empty_error()
         cdef char* c_key = NULL
@@ -817,6 +822,10 @@ cdef class AdbcConnection(_AdbcHandle):
         """Set arbitrary key-value options.
 
         Note, not all drivers support setting options after creation.
+
+        See Also
+        --------
+        adbc_driver_manager.ConnectionOptions : Standard option names.
         """
         cdef CAdbcError c_error = empty_error()
         cdef char* c_key = NULL
@@ -1045,7 +1054,12 @@ cdef class AdbcStatement(_AdbcHandle):
         check_error(status, &c_error)
 
     def set_options(self, **kwargs) -> None:
-        """Set arbitrary key-value options."""
+        """Set arbitrary key-value options.
+
+        See Also
+        --------
+        adbc_driver_manager.StatementOptions : Standard option names.
+        """
         cdef CAdbcError c_error = empty_error()
         cdef char* c_key = NULL
         cdef char* c_value = NULL
