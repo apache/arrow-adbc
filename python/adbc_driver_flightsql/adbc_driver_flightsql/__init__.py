@@ -48,12 +48,6 @@ class DatabaseOptions(enum.Enum):
     #: (i.e. it should be used like
     #: ``f"{DatabaseOptions.RpcCallHeaderPrefix}.x-my-header"``).
     RPC_CALL_HEADER_PREFIX = "adbc.flight.sql.rpc.call_header."
-    #: Override the hostname used for TLS.
-    SSL_OVERRIDE_HOSTNAME = "adbc.flight.sql.client_option.tls_override_hostname"
-    #: Use these PEM-encoded root certificates for TLS.
-    SSL_ROOT_CERTS = "adbc.flight.sql.client_option.tls_root_certs"
-    #: Do not verify the server's TLS certificate.
-    SSL_SKIP_VERIFY = "adbc.flight.sql.client_option.tls_skip_verify"
     #: Set a timeout on calls that fetch data (in floating-point seconds).
     #:
     #: This corresponds to Flight RPC DoGet calls.
@@ -66,6 +60,12 @@ class DatabaseOptions(enum.Enum):
     #: Set a timeout on calls that upload or update data (in
     #: floating-point seconds).
     TIMEOUT_UPDATE = "adbc.flight.sql.rpc.timeout_seconds.update"
+    #: Override the hostname used for TLS.
+    TLS_OVERRIDE_HOSTNAME = "adbc.flight.sql.client_option.tls_override_hostname"
+    #: Use these PEM-encoded root certificates for TLS.
+    TLS_ROOT_CERTS = "adbc.flight.sql.client_option.tls_root_certs"
+    #: Do not verify the server's TLS certificate.
+    TLS_SKIP_VERIFY = "adbc.flight.sql.client_option.tls_skip_verify"
     #: Block and wait for the connection to be established.
     WITH_BLOCK = "adbc.flight.sql.client_option.with_block"
     #: Set the maximum gRPC message size (in bytes). The default is 16 MiB.
