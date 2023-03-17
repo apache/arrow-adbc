@@ -49,6 +49,12 @@ override_dh_auto_configure:
 	  --buildsystem=cmake+ninja			\
 	  --						\
 	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	dh_auto_configure				\
+	  --sourcedirectory=c/driver/flightsql		\
+	  --builddirectory=c/driver/flightsql.build	\
+	  --buildsystem=cmake+ninja			\
+	  --						\
+	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 override_dh_auto_build:
 	dh_auto_build					\
@@ -60,6 +66,9 @@ override_dh_auto_build:
 	dh_auto_build					\
 	  --sourcedirectory=c/driver/sqlite		\
 	  --builddirectory=c/driver/sqlite.build
+	dh_auto_build					\
+	  --sourcedirectory=c/driver/flightsql		\
+	  --builddirectory=c/driver/flightsql.build
 	dh_auto_configure				\
 	  --sourcedirectory=glib			\
 	  --builddirectory=glib.build			\
@@ -84,9 +93,17 @@ override_dh_auto_install:
 	dh_auto_install					\
 	  --sourcedirectory=c/driver/sqlite		\
 	  --builddirectory=c/driver/sqlite.build
+	dh_auto_install					\
+	  --sourcedirectory=c/driver/flightsql		\
+	  --builddirectory=c/driver/flightsql.build
 	dh_auto_install				\
 	   --sourcedirectory=glib		\
 	   --builddirectory=glib.build		\
 	   --buildsystem=meson+ninja
 
 override_dh_auto_test:
+
+override_dh_dwz:
+	# libadbc_driver_flightsql.so.* has compressed DWARF.
+	# We can't use dwz for compressed DWARF.
+	dh_dwz --exclude=libadbc_driver_flightsql

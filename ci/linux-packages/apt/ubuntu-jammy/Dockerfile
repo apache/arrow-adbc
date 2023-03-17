@@ -46,16 +46,14 @@ RUN \
     debhelper \
     devscripts \
     gobject-introspection \
+    golang \
     libarrow-glib-dev \
     libgirepository1.0-dev \
     libpq-dev \
     libsqlite3-dev \
+    meson \
     ninja-build \
     pkg-config \
-    python3-dev \
-    python3-pip \
     tzdata \
     valac && \
-  pip3 install --upgrade meson && \
-  ln -s /usr/local/bin/meson /usr/bin/ && \
   apt clean

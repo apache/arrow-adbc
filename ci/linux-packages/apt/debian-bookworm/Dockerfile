@@ -48,6 +48,7 @@ RUN \
     debhelper \
     devscripts \
     gobject-introspection \
+    golang \
     libarrow-glib-dev \
     libgirepository1.0-dev \
     libpq-dev \
@@ -55,8 +56,6 @@ RUN \
     meson \
     ninja-build \
     pkg-config \
-    python3-dev \
-    python3-pip \
     tzdata \
     valac && \
   apt clean

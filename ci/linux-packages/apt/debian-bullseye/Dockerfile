@@ -40,6 +40,9 @@ RUN \
   apt install -y -V ${quiet} \
     ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb && \
   rm apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb && \
+  grep " $(lsb_release --codename --short) " /etc/apt/sources.list | \
+    sed -e "s/$(lsb_release --codename --short)/$(lsb_release --codename --short)-backports/g" > \
+    /etc/apt/sources.list.d/backports.list && \
   apt update && \
   apt install -y -V ${quiet} \
     build-essential \
@@ -54,10 +57,9 @@ RUN \
     libsqlite3-dev \
     ninja-build \
     pkg-config \
-    python3-dev \
-    python3-pip \
     tzdata \
     valac && \
-  pip3 install --upgrade meson && \
-  ln -s /usr/local/bin/meson /usr/bin/ && \
+  apt install -y -V -t $(lsb_release --codename --short)-backports ${quiet} \
+    golang \
+    meson && \
   apt clean
