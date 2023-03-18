@@ -149,6 +149,10 @@ echo "::group::Test ADBC SQLite Driver"
 ${install_command} --enablerepo=epel adbc-driver-sqlite-devel-${package_version}
 echo "::endgroup::"
 
+echo "::group::Test ADBC Flight SQL Driver"
+${install_command} --enablerepo=epel adbc-driver-flightsql-devel-${package_version}
+echo "::endgroup::"
+
 echo "::group::Test Apache Arrow GLib"
 export G_DEBUG=fatal-warnings
 

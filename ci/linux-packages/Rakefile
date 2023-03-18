@@ -94,6 +94,13 @@ class ADBCPackageTask < PackageTask
          "HEAD",
          "--output", @full_archive_name,
          "--prefix", "#{@archive_base_name}/")
+      rm_rf(@archive_base_name)
+      sh("tar", "xf", @full_archive_name)
+      mv(@archive_base_name, "#{@archive_base_name}.tmp")
+      sh("cp", "-R", "-L", "#{@archive_base_name}.tmp", @archive_base_name)
+      rm_rf("#{@archive_base_name}.tmp")
+      sh("tar", "czf", @full_archive_name, @archive_base_name)
+      rm_rf(@archive_base_name)
     end
   end
 
