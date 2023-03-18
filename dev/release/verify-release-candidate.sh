@@ -427,12 +427,12 @@ test_cpp() {
   export ADBC_CMAKE_ARGS="-DADBC_INSTALL_NAME_RPATH=OFF"
   export ADBC_USE_ASAN=OFF
   export ADBC_USE_UBSAN=OFF
-  "${ADBC_SOURCE_DIR}/ci/scripts/cpp_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/cpp_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
   # FlightSQL driver requires running database for testing
   export BUILD_DRIVER_FLIGHTSQL=0
   # PostgreSQL driver requires running database for testing
   export BUILD_DRIVER_POSTGRESQL=0
-  "${ADBC_SOURCE_DIR}/ci/scripts/cpp_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/cpp_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
   export BUILD_DRIVER_FLIGHTSQL=1
   export BUILD_DRIVER_POSTGRESQL=1
 }
@@ -443,8 +443,8 @@ test_java() {
   # Build and test Java (Requires newer Maven -- I used 3.3.9)
   maybe_setup_conda maven || exit 1
 
-  "${ADBC_SOURCE_DIR}/ci/scripts/java_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/java"
-  "${ADBC_SOURCE_DIR}/ci/scripts/java_test.sh" "${ADBC_SOURCE_DIR}"
+  "${ADBC_DIR}/ci/scripts/java_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/java"
+  "${ADBC_DIR}/ci/scripts/java_test.sh" "${ADBC_SOURCE_DIR}"
 }
 
 test_python() {
@@ -452,7 +452,7 @@ test_python() {
 
   # Build and test Python
   maybe_setup_virtualenv cython pandas pyarrow pytest setuptools_scm setuptools || exit 1
-  maybe_setup_conda --file "${ADBC_SOURCE_DIR}/ci/conda_env_python.txt" || exit 1
+  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
@@ -462,14 +462,14 @@ test_python() {
     local -r install_prefix="${ARROW_TMPDIR}/local"
   fi
 
-  "${ADBC_SOURCE_DIR}/ci/scripts/python_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${install_prefix}"
-  "${ADBC_SOURCE_DIR}/ci/scripts/python_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/python_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/python_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/python-build" "${install_prefix}"
 }
 
 test_r() {
   show_header "Build and test R libraries"
 
-  maybe_setup_conda --file "${ADBC_SOURCE_DIR}/ci/conda_env_r.txt" || exit 1
+  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_r.txt" || exit 1
 
   rm -rf "${ARROW_TMPDIR}/r"
   mkdir "${ARROW_TMPDIR}/r"
@@ -500,7 +500,7 @@ test_glib() {
   fi
 
   # Build and test C GLib
-  maybe_setup_conda --file "${ADBC_SOURCE_DIR}/ci/conda_env_glib.txt" || exit 1
+  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_glib.txt" || exit 1
   maybe_setup_virtualenv meson || exit 1
 
   # Install bundler if doesn't exist
@@ -518,8 +518,8 @@ test_glib() {
     local -r install_prefix="${ARROW_TMPDIR}/local"
   fi
 
-  "${ADBC_SOURCE_DIR}/ci/scripts/glib_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
-  "${ADBC_SOURCE_DIR}/ci/scripts/glib_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/glib_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/glib_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
 }
 
 test_csharp() {
@@ -560,8 +560,8 @@ test_go() {
   fi
 
   export CGO_ENABLED=1
-  "${ADBC_SOURCE_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
-  "${ADBC_SOURCE_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/go_build.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/go_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/go-build" "${install_prefix}"
 }
 
 ensure_source_directory() {
