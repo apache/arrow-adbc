@@ -23,6 +23,24 @@
 
 G_BEGIN_DECLS
 
+/**
+ * GADBCIngestMode:
+ * @GADBC_INGEST_MODE_CRAETE: Create the table and insert data;
+ *   error if the table exists.
+ * @GADBC_INGEST_MODE_APPEND: Do not create the table, and insert
+ *   data; error if the table does not exist (%GADBC_ERROR_NOT_FOUND)
+ *   or does not match the schema of the data to append
+ *   (%GADBC_ERROR_ALREADY_EXISTS).
+ *
+ * Whether to create (the default) or append on bulk insert.
+ *
+ * Since: 0.4.0
+ */
+typedef enum {
+  GADBC_INGEST_MODE_CREATE,
+  GADBC_INGEST_MODE_APPEND,
+} GADBCIngestMode;
+
 #define GADBC_TYPE_STATEMENT (gadbc_statement_get_type())
 G_DECLARE_DERIVABLE_TYPE(GADBCStatement, gadbc_statement, GADBC, STATEMENT, GObject)
 struct _GADBCStatementClass {
@@ -36,8 +54,23 @@ gboolean gadbc_statement_release(GADBCStatement* statement, GError** error);
 GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_statement_set_sql_query(GADBCStatement* statement, const gchar* query,
                                        GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_statement_set_option(GADBCStatement* statement, const gchar* key,
+                                    const gchar* value, GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_statement_set_ingest_target_table(GADBCStatement* statement,
+                                                 const gchar* table, GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_statement_set_ingest_mode(GADBCStatement* statement, GADBCIngestMode mode,
+                                         GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_statement_prepare(GADBCStatement* statement, GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_statement_bind(GADBCStatement* statement, gpointer c_abi_array,
+                              gpointer c_abi_schema, GError** error);
 GADBC_AVAILABLE_IN_0_1
-gboolean gadbc_statement_execute(GADBCStatement* statement, gpointer* c_abi_array_stream,
-                                 gint64* n_rows_affected, GError** error);
+gboolean gadbc_statement_execute(GADBCStatement* statement, gboolean need_result,
+                                 gpointer* c_abi_array_stream, gint64* n_rows_affected,
+                                 GError** error);
 
 G_END_DECLS

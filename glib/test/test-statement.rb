@@ -23,25 +23,63 @@ class StatementTest < Test::Unit::TestCase
     @database.init
     @connection = ADBC::Connection.new
     @connection.init(@database)
+    @statement = ADBC::Statement.new(@connection)
   end
 
-  def test_release
-    statement = ADBC::Statement.new(@connection)
-    assert do
-      statement.release
+  def teardown
+    @statement.release
+  end
+
+  def execute_statement(need_result: true)
+    _, c_abi_array_stream, n_rows_affected = @statement.execute(need_result)
+    begin
+      if need_result
+        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+        table = reader.read_all
+        yield(table, n_rows_affected) if block_given?
+      else
+        yield(n_rows_affected) if block_given?
+      end
+    ensure
+      GLib.free(c_abi_array_stream) if need_result
     end
   end
 
   def test_execute
-    statement = ADBC::Statement.new(@connection)
-    statement.set_sql_query("SELECT 1")
-    success, c_abi_array_stream, n_rows_affected = statement.execute
-    begin
-      reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+    @statement.set_sql_query("SELECT 1")
+    execute_statement do |table, _n_rows_affected|
       assert_equal(Arrow::Table.new("1" => Arrow::Int64Array.new([1])),
-                   reader.read_all)
+                   table)
+    end
+  end
+
+  def test_bind
+    @statement.set_sql_query("CREATE TABLE data (number int)")
+    execute_statement
+
+    record_batch =
+      Arrow::RecordBatch.new(number: Arrow::Int64Array.new([10, 20, 30]))
+    @statement.set_sql_query("INSERT INTO data VALUES (?)")
+    @statement.ingest_target_table = "data"
+    @statement.ingest_mode = :append
+    _, c_abi_array, c_abi_schema = record_batch.export
+    begin
+      @statement.bind(c_abi_array, c_abi_schema)
+      execute_statement(need_result: false) do |n_rows_affected|
+        assert_equal(3, n_rows_affected)
+      end
     ensure
-      GLib.free(c_abi_array_stream)
+      begin
+        GLib.free(c_abi_array)
+      ensure
+        GLib.free(c_abi_schema)
+      end
+    end
+
+    @statement.set_sql_query("SELECT * FROM data")
+    execute_statement do |table, _n_rows_affected|
+      assert_equal(record_batch.to_table,
+                   table)
     end
   end
 end
