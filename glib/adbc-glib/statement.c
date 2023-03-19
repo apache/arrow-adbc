@@ -140,7 +140,7 @@ gboolean gadbc_statement_release(GADBCStatement* statement, GError** error) {
  * queries expected to be executed repeatedly,
  * gadbc_statement_prepare() the statement first.
  *
- * Returns: %TRUE if option is set successfully, %FALSE otherwise.
+ * Returns: %TRUE if query is set successfully, %FALSE otherwise.
  *
  * Since: 0.1.0
  */
@@ -158,9 +158,149 @@ gboolean gadbc_statement_set_sql_query(GADBCStatement* statement, const gchar* q
   return gadbc_error_check(error, status_code, &adbc_error, context);
 }
 
+static gboolean gadbc_statement_set_option_internal(GADBCStatement* statement,
+                                                    const gchar* key, const gchar* value,
+                                                    const gchar* context,
+                                                    GError** error) {
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcStatementSetOption(adbc_statement, key, value, &adbc_error);
+  return gadbc_error_check(error, status_code, &adbc_error, context);
+}
+
+/**
+ * gadbc_statement_set_option:
+ * @statement: A #GADBCStatement.
+ * @key: A option key.
+ * @value: A option value.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Set a string option on a statement.
+ *
+ * Returns: %TRUE if option is set successfully, %FALSE otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_statement_set_option(GADBCStatement* statement, const gchar* key,
+                                    const char* value, GError** error) {
+  const gchar* context = "[adbc][statement][set-option]";
+  return gadbc_statement_set_option_internal(statement, key, value, context, error);
+}
+
+/**
+ * gadbc_statement_set_ingest_target_table:
+ * @statement: A #GADBCStatement.
+ * @table: A table name to be ingested.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Set an ingest target table name on a statement.
+ *
+ * Returns: %TRUE if table is set successfully, %FALSE otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_statement_set_ingest_target_table(GADBCStatement* statement,
+                                                 const gchar* table, GError** error) {
+  const gchar* context = "[adbc][statement][set-ingest-target-table]";
+  return gadbc_statement_set_option_internal(statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                             table, context, error);
+}
+
+/**
+ * gadbc_statement_set_ingest_mode:
+ * @statement: A #GADBCStatement.
+ * @mode: A #GADBCIngestMode.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Set an ingest mode on a statement.
+ *
+ * Returns: %TRUE if mode is set successfully, %FALSE otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_statement_set_ingest_mode(GADBCStatement* statement, GADBCIngestMode mode,
+                                         GError** error) {
+  const gchar* context = "[adbc][statement][set-ingest-mode]";
+  const gchar* mode_value = ADBC_INGEST_OPTION_MODE_CREATE;
+  switch (mode) {
+    case GADBC_INGEST_MODE_APPEND:
+      mode_value = ADBC_INGEST_OPTION_MODE_APPEND;
+      break;
+    default:
+      break;
+  }
+  return gadbc_statement_set_option_internal(statement, ADBC_INGEST_OPTION_MODE,
+                                             mode_value, context, error);
+}
+
+/**
+ * gadbc_statement_prepare:
+ * @statement: A #GADBCStatement.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Turn this statement into a prepared statement to be
+ * executed multiple times.
+ *
+ * This invalidates any prior result sets.
+ *
+ * Returns: %TRUE if preparation is done successfully, %FALSE
+ *   otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_statement_prepare(GADBCStatement* statement, GError** error) {
+  const gchar* context = "[adbc][statement][prepare]";
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcStatementPrepare(adbc_statement, &adbc_error);
+  return gadbc_error_check(error, status_code, &adbc_error, context);
+}
+
+/**
+ * gadbc_statement_bind:
+ * @statement: A #GADBCStatement.
+ * @c_abi_array: A `struct ArrowArray *` of a record batch to
+ *   bind. The driver will call the release callback itself, although
+ *   it may not do this until the statement is released.
+ * @c_abi_schema: A `struct ArrowSchema *` of @c_abi_array.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Bind Arrow data. This can be used for bulk inserts or prepared
+ * statements.
+ *
+ * Returns: %TRUE if binding is done successfully, %FALSE
+ *   otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_statement_bind(GADBCStatement* statement, gpointer c_abi_array,
+                              gpointer c_abi_schema, GError** error) {
+  const gchar* context = "[adbc][statement][bind]";
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcStatementBind(adbc_statement, c_abi_array, c_abi_schema, &adbc_error);
+  return gadbc_error_check(error, status_code, &adbc_error, context);
+}
+
 /**
  * gadbc_statement_execute:
  * @statement: A #GADBCStatement.
+ * @need_result: Whether the results are received by @c_abi_arrray_stream or
+ *   not.
  * @c_abi_array_stream: (out) (optional): Return location for the execution as
  *   `struct ArrowArrayStream *`. It should be freed with the
  *   `ArrowArrayStream::release` callback then g_free() when no longer needed.
@@ -172,30 +312,34 @@ gboolean gadbc_statement_set_sql_query(GADBCStatement* statement, const gchar* q
  *
  * This invalidates any prior result sets.
  *
- * Returns: %TRUE if option is set successfully, %FALSE otherwise.
+ * Returns: %TRUE if execution is done successfully, %FALSE otherwise.
  *
  * Since: 0.1.0
  */
-gboolean gadbc_statement_execute(GADBCStatement* statement, gpointer* c_abi_array_stream,
-                                 gint64* n_rows_affected, GError** error) {
+gboolean gadbc_statement_execute(GADBCStatement* statement, gboolean need_result,
+                                 gpointer* c_abi_array_stream, gint64* n_rows_affected,
+                                 GError** error) {
   const gchar* context = "[adbc][statement][execute]";
+  if (c_abi_array_stream) {
+    *c_abi_array_stream = NULL;
+  }
   struct AdbcStatement* adbc_statement =
       gadbc_statement_get_raw(statement, context, error);
   if (!adbc_statement) {
     return FALSE;
   }
   struct ArrowArrayStream* array_stream = NULL;
-  if (c_abi_array_stream) {
+  if (need_result && c_abi_array_stream) {
     array_stream = g_new0(struct ArrowArrayStream, 1);
   }
   struct AdbcError adbc_error = {};
   AdbcStatusCode status_code = AdbcStatementExecuteQuery(adbc_statement, array_stream,
                                                          n_rows_affected, &adbc_error);
   gboolean success = gadbc_error_check(error, status_code, &adbc_error, context);
-  if (success) {
-    *c_abi_array_stream = array_stream;
-  } else {
-    if (array_stream) {
+  if (array_stream) {
+    if (success) {
+      *c_abi_array_stream = array_stream;
+    } else {
       g_free(array_stream);
     }
   }

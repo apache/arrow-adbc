@@ -31,6 +31,7 @@ module ADBC
     def require_libraries
       require_relative "connection"
       require_relative "database"
+      require_relative "statement"
     end
   end
 end

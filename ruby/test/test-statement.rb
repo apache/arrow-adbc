@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-class ConnectionTest < Test::Unit::TestCase
+class StatementTest < Test::Unit::TestCase
   def setup
     options = {
       driver: "adbc_driver_sqlite",
@@ -24,32 +24,26 @@ class ConnectionTest < Test::Unit::TestCase
     ADBC::Database.open(**options) do |database|
       connect_options = {}
       database.connect(**connect_options) do |connection|
-        @connection = connection
-        yield
+        connection.open_statement do |statement|
+          @statement = statement
+          yield
+        end
       end
     end
   end
 
-  sub_test_case("#query") do
-    def test_block
-      @connection.query("SELECT 1") do |reader, n_rows_affected|
-        assert_equal([
-                       Arrow::Table.new("1" => Arrow::Int64Array.new([1])),
-                       -1,
-                     ],
-                     [
-                       reader.read_all,
-                       n_rows_affected,
-                     ])
-      end
-    end
-
-    def test_no_block
-      assert_equal([
-                     Arrow::Table.new("1" => Arrow::Int64Array.new([1])),
-                     -1,
-                   ],
-                   @connection.query("SELECT 1"))
-    end
+  def test_ingest
+    numbers = Arrow::Int64Array.new([10, 20, 30])
+    record_batch = Arrow::RecordBatch.new(number: numbers)
+    @statement.ingest("data", record_batch)
+    table, n_rows_affected = @statement.query("SELECT * FROM data")
+    assert_equal([
+                   Arrow::Table.new(number: numbers),
+                   -1,
+                 ],
+                 [
+                   table,
+                   n_rows_affected,
+                 ])
   end
 end

@@ -101,6 +101,15 @@
 #endif
 
 /**
+ * GADBC_VERSION_0_4:
+ *
+ * You can use this macro value for compile time API version check.
+ *
+ * Since: 0.4.0
+ */
+#define GADBC_VERSION_0_4 G_ENCODE_VERSION(0, 4)
+
+/**
  * GADBC_VERSION_0_1:
  *
  * You can use this macro value for compile time API version check.
@@ -156,12 +165,26 @@
 
 #define GADBC_AVAILABLE_IN_ALL
 
-#if GADBC_VERSION_MIN_REQUIRED >= GADBC_VERSION_0_1
-#  define GADBC_DEPRECATED_IN_1_0                GADBC_DEPRECATED
-#  define GADBC_DEPRECATED_IN_1_0_FOR(function)  GADBC_DEPRECATED_FOR(function)
+#if GADBC_VERSION_MIN_REQUIRED >= GADBC_VERSION_0_4
+#  define GADBC_DEPRECATED_IN_0_4                GADBC_DEPRECATED
+#  define GADBC_DEPRECATED_IN_0_4_FOR(function)  GADBC_DEPRECATED_FOR(function)
 #else
-#  define GADBC_DEPRECATED_IN_1_0
-#  define GADBC_DEPRECATED_IN_1_0_FOR(function)
+#  define GADBC_DEPRECATED_IN_0_4
+#  define GADBC_DEPRECATED_IN_0_4_FOR(function)
+#endif
+
+#if GADBC_VERSION_MAX_ALLOWED < GADBC_VERSION_0_4
+#  define GADBC_AVAILABLE_IN_0_4 GADBC_UNAVAILABLE(0, 4)
+#else
+#  define GADBC_AVAILABLE_IN_0_4
+#endif
+
+#if GADBC_VERSION_MIN_REQUIRED >= GADBC_VERSION_0_1
+#  define GADBC_DEPRECATED_IN_0_1                GADBC_DEPRECATED
+#  define GADBC_DEPRECATED_IN_0_1_FOR(function)  GADBC_DEPRECATED_FOR(function)
+#else
+#  define GADBC_DEPRECATED_IN_0_1
+#  define GADBC_DEPRECATED_IN_0_1_FOR(function)
 #endif
 
 #if GADBC_VERSION_MAX_ALLOWED < GADBC_VERSION_0_1

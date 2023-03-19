@@ -17,23 +17,19 @@
 
 module ADBC
   class Connection
-    def query(sql)
-      statement = Statement.new(self)
-      begin
-        statement.set_sql_query(sql)
-        _, c_abi_array_stream, n_rows_affected = statement.execute
-        begin
-          reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
-          if block_given?
-            yield(reader, n_rows_affected)
-          else
-            reader.read_all
-          end
-        ensure
-          GLib.free(c_abi_array_stream)
-        end
-      ensure
-        statement.release
+    def open_statement(&block)
+      Statement.open(self, &block)
+    end
+
+    def query(sql, &block)
+      open_statement do |statement|
+        statement.query(sql, &block)
+      end
+    end
+
+    def ingest(table_name, values, mode: :create)
+      open_statment do |statement|
+        statement.ingest(table_name, values, mode: mode)
       end
     end
   end
