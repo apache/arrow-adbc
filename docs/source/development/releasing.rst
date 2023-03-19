@@ -225,7 +225,7 @@ How to Verify Release Candidates
 
 #. Run the verification script::
 
-     $ cd apache-arrow-adbc
+     $ cd arrow-adbc
      # Pass the version and the RC number
      $ ./dev/release/verify-release-candidate.sh 0.1.0 6
 
