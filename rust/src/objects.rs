@@ -57,15 +57,18 @@ pub trait DatabaseCatalogCollection {
     type CatalogEntryType<'a>: DatabaseCatalogEntry<'a>
     where
         Self: 'a;
+    type CatalogIterator<'a>: Iterator<Item = Self::CatalogEntryType<'a>> + 'a
+    where
+        Self: 'a;
 
     /// List all catalogs in the result set.
-    fn catalogs<'a>(&'a self) -> Box<dyn Iterator<Item = Self::CatalogEntryType<'a>> + 'a>;
+    fn catalogs(&self) -> Self::CatalogIterator<'_>;
 
     /// Get a particular catalog by name.
     ///
     /// Databases that have no notion of catalogs will have one with None for a name.
     /// This is case sensitive.
-    fn get_catalog<'a>(&'a self, name: Option<&str>) -> Option<Self::CatalogEntryType<'a>> {
+    fn catalog(&self, name: Option<&str>) -> Option<Self::CatalogEntryType<'_>> {
         self.catalogs().find(|catalog| catalog.name() == name)
     }
 }
@@ -73,18 +76,19 @@ pub trait DatabaseCatalogCollection {
 /// An entry in a [DatabaseCatalogCollection] representing a single catalog.
 pub trait DatabaseCatalogEntry<'a> {
     type SchemaEntryType: DatabaseSchemaEntry<'a> + 'a;
+    type SchemaIterator: Iterator<Item = Self::SchemaEntryType> + 'a;
 
     /// Get the name of the catalog.
     fn name(&self) -> Option<&'a str>;
 
     /// List all schemas in this catalog that are in the result set.
-    fn schemas(&self) -> Box<dyn Iterator<Item = Self::SchemaEntryType> + 'a>;
+    fn schemas(&self) -> Self::SchemaIterator;
 
     /// Get a particular schema by name.
     ///
     /// Databases that have no notion of schemas will have one with None for a name.
     /// This is case sensitive.
-    fn get_schema(&self, name: Option<&str>) -> Option<Self::SchemaEntryType> {
+    fn schema(&self, name: Option<&str>) -> Option<Self::SchemaEntryType> {
         self.schemas().find(|schema| schema.name() == name)
     }
 }
@@ -92,23 +96,27 @@ pub trait DatabaseCatalogEntry<'a> {
 /// An entry in [DatabaseCatalogCollection] representing a single schema.
 pub trait DatabaseSchemaEntry<'a> {
     type TableEntryType: DatabaseTableEntry<'a>;
+    type TableIterator: Iterator<Item = Self::TableEntryType> + 'a;
 
     /// Get the name of the schema.
     fn name(&self) -> Option<&'a str>;
 
     /// List all the tables in this schema that are in the result set.
-    fn tables(&self) -> Box<dyn Iterator<Item = Self::TableEntryType> + 'a>;
+    fn tables(&self) -> Self::TableIterator;
 
     /// Get a particular table by name.
     ///
     /// This is case sensitive.
-    fn get_table(&self, name: &str) -> Option<Self::TableEntryType> {
+    fn table(&self, name: &str) -> Option<Self::TableEntryType> {
         self.tables().find(|table| table.name() == name)
     }
 }
 
 /// An entry in the [DatabaseCatalogCollection] representing a single table.
 pub trait DatabaseTableEntry<'a> {
+    type ColumnIterator: Iterator<Item = ColumnSchemaRef<'a>> + 'a;
+    type ConstraintIterator: Iterator<Item = TableConstraintRef<'a>> + 'a;
+
     /// The name of the table.
     fn name(&self) -> &'a str;
 
@@ -119,24 +127,24 @@ pub trait DatabaseTableEntry<'a> {
     fn table_type(&self) -> &'a str;
 
     /// List all the columns in the table.
-    fn columns(&self) -> Box<dyn Iterator<Item = ColumnSchemaRef<'a>> + 'a>;
+    fn columns(&self) -> Self::ColumnIterator;
 
     /// Get a column for a particular ordinal position.
     ///
     /// Will return None if the column is not found.
-    fn get_column(&self, i: i32) -> Option<ColumnSchemaRef<'a>> {
+    fn column(&self, i: i32) -> Option<ColumnSchemaRef<'a>> {
         self.columns().find(|col| col.ordinal_position == i)
     }
 
     /// Get a column by name.
     ///
     /// This is case sensitive. Will return None if the column is not found.
-    fn get_column_by_name(&self, name: &str) -> Option<ColumnSchemaRef<'a>> {
+    fn column_by_name(&self, name: &str) -> Option<ColumnSchemaRef<'a>> {
         self.columns().find(|col| col.name == name)
     }
 
     /// List all the constraints on the table.
-    fn constraints(&self) -> Box<dyn Iterator<Item = TableConstraintRef<'a>> + 'a>;
+    fn constraints(&self) -> Self::ConstraintIterator;
 }
 
 /// An entry in the [DatabaseCatalogCollection] representing a column.
@@ -249,6 +257,7 @@ pub struct TableConstraintRef<'a> {
     pub constraint_type: TableConstraintTypeRef<'a>,
 }
 
+/// The type of table constraint. Used in [TableConstraintRef].
 pub enum TableConstraintTypeRef<'a> {
     Check,
     PrimaryKey,
@@ -380,8 +389,9 @@ impl SimpleCatalogCollection {
 
 impl DatabaseCatalogCollection for SimpleCatalogCollection {
     type CatalogEntryType<'a> = &'a SimpleCatalogEntry;
-    fn catalogs<'a>(&'a self) -> Box<dyn Iterator<Item = Self::CatalogEntryType<'a>> + 'a> {
-        Box::new(self.catalogs.iter())
+    type CatalogIterator<'a> = std::slice::Iter<'a, SimpleCatalogEntry>;
+    fn catalogs(&self) -> Self::CatalogIterator<'_> {
+        self.catalogs.iter()
     }
 }
 
@@ -400,13 +410,14 @@ impl SimpleCatalogEntry {
 
 impl<'a> DatabaseCatalogEntry<'a> for &'a SimpleCatalogEntry {
     type SchemaEntryType = &'a SimpleSchemaEntry;
+    type SchemaIterator = std::slice::Iter<'a, SimpleSchemaEntry>;
 
     fn name(&self) -> Option<&'a str> {
         self.name.as_deref()
     }
 
-    fn schemas(&self) -> Box<dyn Iterator<Item = Self::SchemaEntryType> + 'a> {
-        Box::new(self.db_schemas.iter())
+    fn schemas(&self) -> Self::SchemaIterator {
+        self.db_schemas.iter()
     }
 }
 
@@ -425,13 +436,14 @@ impl SimpleSchemaEntry {
 
 impl<'a> DatabaseSchemaEntry<'a> for &'a SimpleSchemaEntry {
     type TableEntryType = &'a SimpleTableEntry;
+    type TableIterator = std::slice::Iter<'a, SimpleTableEntry>;
 
     fn name(&self) -> Option<&'a str> {
         self.name.as_deref()
     }
 
-    fn tables(&self) -> Box<dyn Iterator<Item = Self::TableEntryType> + 'a> {
-        Box::new(self.tables.iter())
+    fn tables(&self) -> Self::TableIterator {
+        self.tables.iter()
     }
 }
 
@@ -461,6 +473,15 @@ impl SimpleTableEntry {
 }
 
 impl<'a> DatabaseTableEntry<'a> for &'a SimpleTableEntry {
+    type ColumnIterator = std::iter::Map<
+        std::slice::Iter<'a, ColumnSchema>,
+        fn(&ColumnSchema) -> ColumnSchemaRef<'_>,
+    >;
+    type ConstraintIterator = std::iter::Map<
+        std::slice::Iter<'a, TableConstraint>,
+        fn(&TableConstraint) -> TableConstraintRef<'_>,
+    >;
+
     fn name(&self) -> &'a str {
         &self.name
     }
@@ -469,15 +490,13 @@ impl<'a> DatabaseTableEntry<'a> for &'a SimpleTableEntry {
         &self.table_type
     }
 
-    fn columns(&self) -> Box<dyn Iterator<Item = ColumnSchemaRef<'a>> + 'a> {
-        Box::new(self.columns.iter().map(|col| col.borrow()))
+    fn columns(&self) -> Self::ColumnIterator {
+        self.columns.iter().map(|col| col.borrow())
     }
 
-    fn constraints(&self) -> Box<dyn Iterator<Item = TableConstraintRef<'a>> + 'a> {
-        Box::new(
-            self.constraints
-                .iter()
-                .map(|constraint| constraint.borrow()),
-        )
+    fn constraints(&self) -> Self::ConstraintIterator {
+        self.constraints
+            .iter()
+            .map(|constraint| constraint.borrow())
     }
 }

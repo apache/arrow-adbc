@@ -33,7 +33,9 @@ keywords = ["arrow", "database", "sql"]
 arrow-array = { version = "34.0.0", default-features = false}
 arrow-schema = { version = "34.0.0", features = ["ffi"], default-features = false}
 arrow-data = { version = "34.0.0", features = ["ffi"], default-features = false}
+async-trait = "^0.1"
 libloading = "0.7"
+substrait = "0.5"
 
 [dev-dependencies]
 itertools = "0.10"
