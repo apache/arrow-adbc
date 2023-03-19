@@ -158,27 +158,43 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                                                             "${_lib_install_name}")
     endif()
 
-    install(IMPORTED_RUNTIME_ARTIFACTS
-            ${GO_LIBNAME}_shared
-            ${INSTALL_IS_OPTIONAL}
-            RUNTIME
-            DESTINATION
-            ${RUNTIME_INSTALL_DIR}
-            LIBRARY
-            DESTINATION
-            ${CMAKE_INSTALL_LIBDIR})
-    install(FILES "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE LIB)
+    if(CMAKE_VERSION VERSION_LESS "3.21")
+      if(WIN32)
+        install(PROGRAMS $<TARGET_FILE:${GO_LIBNAME}_shared> ${INSTALL_IS_OPTIONAL}
+                DESTINATION ${RUNTIME_INSTALL_DIR})
+      else()
+        install(PROGRAMS $<TARGET_FILE:${GO_LIBNAME}_shared> ${INSTALL_IS_OPTIONAL}
+                TYPE LIB)
+      endif()
+    else()
+      install(IMPORTED_RUNTIME_ARTIFACTS
+              ${GO_LIBNAME}_shared
+              ${INSTALL_IS_OPTIONAL}
+              RUNTIME
+              DESTINATION
+              ${RUNTIME_INSTALL_DIR}
+              LIBRARY
+              DESTINATION
+              ${CMAKE_INSTALL_LIBDIR})
+    endif()
+    if(NOT WIN32)
+      install(FILES "${LIBOUT_SHARED}" "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE LIB)
+    endif()
   endif()
 
   if(BUILD_STATIC)
     set(LIBNAME_STATIC
         "${CMAKE_STATIC_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
     set(LIBOUT_STATIC "${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME_STATIC}")
-    cmake_path(REPLACE_EXTENSION
-               LIBOUT_STATIC
-               ".h"
-               OUTPUT_VARIABLE
-               LIBOUT_HEADER)
+    if(CMAKE_VERSION VERSION_LESS "3.20")
+      string(REGEX REPLACE "\\..+$" ".h" LIBOUT_HEADER "${LIBOUT_STATIC}")
+    else()
+      cmake_path(REPLACE_EXTENSION
+                 LIBOUT_STATIC
+                 ".h"
+                 OUTPUT_VARIABLE
+                 LIBOUT_HEADER)
+    endif()
     add_custom_command(OUTPUT "${LIBOUT_STATIC}"
                        WORKING_DIRECTORY ${GO_MOD_DIR}
                        DEPENDS ${ARG_SOURCES}
