@@ -67,6 +67,7 @@ use std::collections::HashMap;
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 use async_trait::async_trait;
+use info::InfoCode;
 
 use crate::error::AdbcError;
 use crate::info::InfoData;
@@ -129,16 +130,16 @@ pub trait AdbcConnection {
     /// codes are defined as constants.  Codes [0, 10_000) are reserved
     /// for ADBC usage.  Drivers/vendors will ignore requests for
     /// unrecognized codes (the row will be omitted from the result).
-    /// Known codes are provided in [info::codes].
+    /// Known codes are provided in [info::InfoCode].
     async fn get_info(
         &self,
-        info_codes: Option<&[u32]>,
+        info_codes: Option<&[InfoCode]>,
     ) -> Result<HashMap<u32, InfoData>, AdbcError>;
 
     /// Get a single data base metadata. See [AdbcConnection::get_info()].
     ///
     /// Will return `None` if the code is not recognized.
-    async fn get_single_info(&self, info_code: u32) -> Result<Option<InfoData>, AdbcError> {
+    async fn get_single_info(&self, info_code: InfoCode) -> Result<Option<InfoData>, AdbcError> {
         let info_codes = &[info_code];
         Ok(self
             .get_info(Some(info_codes.as_slice()))
@@ -261,7 +262,7 @@ pub trait AdbcStatement {
     fn set_sql_query(&mut self, query: &str) -> Result<(), AdbcError>;
 
     /// Set the Substrait plan to execute.
-    fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<(), AdbcError>;
+    fn set_substrait_plan(&mut self, plan: substrait::proto::Plan) -> Result<(), AdbcError>;
 
     /// Get the schema for bound parameters.
     ///

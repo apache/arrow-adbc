@@ -28,26 +28,33 @@ use arrow_array::types::UInt32Type;
 use arrow_array::{Array, ArrayRef, UnionArray};
 use arrow_array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow_schema::{ArrowError, DataType, Field, Schema, UnionMode};
+use num_enum::{FromPrimitive, IntoPrimitive};
+use once_cell::sync::Lazy;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 /// Contains known info codes defined by ADBC.
-pub mod codes {
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, FromPrimitive, IntoPrimitive, Hash)]
+pub enum InfoCode {
     /// The database vendor/product version (type: utf8).
-    pub const VENDOR_NAME: u32 = 0;
+    VendorName = 0,
     /// The database vendor/product version (type: utf8).
-    pub const VENDOR_VERSION: u32 = 1;
+    VendorVersion = 1,
     /// The database vendor/product Arrow library version (type: utf8).
-    pub const VENDOR_ARROW_VERSION: u32 = 2;
+    VendorArrowVersion = 2,
     /// The driver name (type: utf8).
-    pub const DRIVER_NAME: u32 = 100;
+    DriverName = 100,
     /// The driver version (type: utf8).
-    pub const DRIVER_VERSION: u32 = 101;
+    DriverVersion = 101,
     /// The driver Arrow library version (type: utf8).
-    pub const DRIVER_ARROW_VERSION: u32 = 102;
+    DriverArrowVersion = 102,
+    /// Some other info code.
+    #[num_enum(catch_all)]
+    Other(u32),
 }
 
-pub fn info_schema() -> Schema {
-    Schema::new(vec![
+static INFO_SCHEMA: Lazy<Arc<Schema>> = Lazy::new(|| {
+    Arc::new(Schema::new(vec![
         Field::new("info_name", DataType::UInt32, false),
         Field::new(
             "info_value",
@@ -91,8 +98,8 @@ pub fn info_schema() -> Schema {
             ),
             true,
         ),
-    ])
-}
+    ]))
+});
 
 /// Rust representations of database/drier metadata
 #[derive(Clone, Debug, PartialEq)]
@@ -106,8 +113,8 @@ pub enum InfoData {
 }
 
 pub fn export_info_data(
-    info_iter: impl IntoIterator<Item = (u32, InfoData)>,
-) -> Box<dyn RecordBatchReader> {
+    info_iter: impl IntoIterator<Item = (InfoCode, InfoData)>,
+) -> impl RecordBatchReader {
     let info_iter = info_iter.into_iter();
 
     let mut codes = UInt32Builder::with_capacity(info_iter.size_hint().0);
@@ -130,7 +137,7 @@ pub fn export_info_data(
     );
 
     for (code, info) in info_iter {
-        codes.append_value(code);
+        codes.append_value(code.into());
 
         match info {
             InfoData::StringValue(val) => {
@@ -157,7 +164,7 @@ pub fn export_info_data(
         Arc::new(string_lists.finish()),
         Arc::new(int32_to_int32_list_maps.finish()),
     ];
-    let info_schema = info_schema();
+    let info_schema = INFO_SCHEMA.clone();
     let union_fields = {
         match info_schema.field(1).data_type() {
             DataType::Union(fields, _, _) => fields,
@@ -178,28 +185,25 @@ pub fn export_info_data(
     .expect("Info value array is always valid.");
 
     let batch: RecordBatch = RecordBatch::try_new(
-        Arc::new(info_schema),
+        info_schema,
         vec![Arc::new(codes.finish()), Arc::new(info_value)],
     )
     .expect("Info data batch is always valid.");
 
     let schema = batch.schema();
-    Box::new(RecordBatchIterator::new(
-        std::iter::once(batch).map(Ok),
-        schema,
-    ))
+    RecordBatchIterator::new(std::iter::once(batch).map(Ok), schema)
 }
 
 pub fn import_info_data(
-    reader: Box<dyn RecordBatchReader>,
-) -> Result<Vec<(u32, InfoData)>, ArrowError> {
+    reader: impl RecordBatchReader,
+) -> Result<Vec<(InfoCode, InfoData)>, ArrowError> {
     let batches = reader.collect::<Result<Vec<RecordBatch>, ArrowError>>()?;
 
     Ok(batches
         .iter()
         .flat_map(|batch| {
             let codes = as_primitive_array::<UInt32Type>(batch.column(0));
-            let codes = codes.into_iter().map(|code| code.unwrap());
+            let codes = codes.into_iter().map(|code| code.unwrap().into());
 
             let info_data = as_union_array(batch.column(1));
             let info_data = (0..info_data.len()).map(|i| -> InfoData {
@@ -219,8 +223,6 @@ pub fn import_info_data(
 
 #[cfg(test)]
 mod test {
-    use std::ops::Deref;
-
     use arrow_array::cast::{as_primitive_array, as_string_array, as_union_array};
     use arrow_array::types::UInt32Type;
 
@@ -230,19 +232,19 @@ mod test {
     fn test_export_info_data() {
         let example_info = vec![
             (
-                codes::VENDOR_NAME,
+                InfoCode::VendorName,
                 InfoData::StringValue(Cow::Borrowed("test vendor")),
             ),
             (
-                codes::DRIVER_NAME,
+                InfoCode::DriverName,
                 InfoData::StringValue(Cow::Borrowed("test driver")),
             ),
         ];
 
         let info = export_info_data(example_info.clone());
 
-        assert_eq!(info.schema().deref(), &info_schema());
-        let info: HashMap<u32, String> = info
+        assert_eq!(info.schema(), *INFO_SCHEMA);
+        let info: HashMap<InfoCode, String> = info
             .flat_map(|maybe_batch| {
                 let batch = maybe_batch.unwrap();
                 let id = as_primitive_array::<UInt32Type>(batch.column(0));
@@ -251,33 +253,35 @@ mod test {
                 let mut out = vec![];
                 for i in 0..batch.num_rows() {
                     assert_eq!(values.type_id(i), 0);
-                    out.push((id.value(i), string_values.value(i).to_string()));
+                    let code = InfoCode::from(id.value(i));
+                    out.push((code, string_values.value(i).to_string()));
                 }
                 out
             })
             .collect();
 
         assert_eq!(
-            info.get(&codes::VENDOR_NAME),
+            info.get(&InfoCode::VendorName),
             Some(&"test vendor".to_string())
         );
         assert_eq!(
-            info.get(&codes::DRIVER_NAME),
+            info.get(&InfoCode::DriverName),
             Some(&"test driver".to_string())
         );
 
         let info = export_info_data(example_info);
 
-        let info: HashMap<u32, InfoData> = import_info_data(info).unwrap().into_iter().collect();
+        let info: HashMap<InfoCode, InfoData> =
+            import_info_data(info).unwrap().into_iter().collect();
 
         assert_eq!(
-            info.get(&codes::VENDOR_NAME),
+            info.get(&InfoCode::VendorName),
             Some(&InfoData::StringValue(Cow::Owned(
                 "test vendor".to_string()
             )))
         );
         assert_eq!(
-            info.get(&codes::DRIVER_NAME),
+            info.get(&InfoCode::DriverName),
             Some(&InfoData::StringValue(Cow::Owned(
                 "test driver".to_string()
             )))
