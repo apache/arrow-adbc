@@ -99,7 +99,7 @@ pub trait AdbcDatabase {
 /// # Autocommit
 ///
 /// Connections should start in autocommit mode. They can be moved out by
-/// setting `"adbc.connection.autocommit"` to `"false"` (using
+/// setting [options::ADBC_CONNECTION_OPTION_AUTOCOMMIT] to `"false"` (using
 /// [AdbcConnection::set_option]). Turning off autocommit allows customizing
 /// the isolation level. Read more in [adbc.h](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
 pub trait AdbcConnection {
@@ -196,7 +196,7 @@ pub trait AdbcConnection {
 }
 
 /// Depth parameter for GetObjects method.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[repr(i32)]
 pub enum AdbcObjectDepth {
     /// Metadata on catalogs, schemas, tables, and columns.
@@ -265,7 +265,8 @@ pub trait AdbcStatement {
 
     /// Execute a query that doesn't have a result set.
     ///
-    /// Will return the number of rows affected, or -1 if unknown or unsupported.
+    /// Will return the number of rows affected. If the affected row count is 
+    /// unknown or unsupported by the database, will return `Ok(-1)`.
     fn execute_update(&mut self) -> Result<i64, AdbcError>;
 
     /// Execute a statement with a partitioned result set.

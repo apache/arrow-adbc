@@ -30,9 +30,9 @@ keywords = ["arrow", "database", "sql"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arrow-array = { version = "34.0.0", default_features = false}
-arrow-schema = { version = "34.0.0", features = ["ffi"], default_features = false}
-arrow-data = { version = "34.0.0", features = ["ffi"], default_features = false}
+arrow-array = { version = "34.0.0", default-features = false}
+arrow-schema = { version = "34.0.0", features = ["ffi"], default-features = false}
+arrow-data = { version = "34.0.0", features = ["ffi"], default-features = false}
 libloading = "0.7"
 
 [dev-dependencies]

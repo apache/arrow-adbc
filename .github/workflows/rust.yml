@@ -53,11 +53,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: default
-          toolchain: stable
-          override: true
+          components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: Check format
         run: cargo fmt -- --check

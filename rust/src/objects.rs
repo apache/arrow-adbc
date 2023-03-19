@@ -101,7 +101,7 @@ pub trait DatabaseSchemaEntry<'a> {
 
     /// Get a particular table by name.
     ///
-    /// This is case sensitive
+    /// This is case sensitive.
     fn get_table(&self, name: &str) -> Option<Self::TableEntryType> {
         self.tables().find(|table| table.name() == name)
     }

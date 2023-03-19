@@ -269,7 +269,6 @@ mod test {
         let info = export_info_data(example_info);
 
         let info: HashMap<u32, InfoData> = import_info_data(info).unwrap().into_iter().collect();
-        dbg!(&info);
 
         assert_eq!(
             info.get(&codes::VENDOR_NAME),
