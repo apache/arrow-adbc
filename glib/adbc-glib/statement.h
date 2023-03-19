@@ -25,7 +25,7 @@ G_BEGIN_DECLS
 
 /**
  * GADBCIngestMode:
- * @GADBC_INGEST_MODE_CRAETE: Create the table and insert data;
+ * @GADBC_INGEST_MODE_CREATE: Create the table and insert data;
  *   error if the table exists.
  * @GADBC_INGEST_MODE_APPEND: Do not create the table, and insert
  *   data; error if the table does not exist (%GADBC_ERROR_NOT_FOUND)
