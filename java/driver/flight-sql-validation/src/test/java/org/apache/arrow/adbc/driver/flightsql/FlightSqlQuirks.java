@@ -43,7 +43,7 @@ public class FlightSqlQuirks extends SqlValidationQuirks {
   }
 
   @Override
-  public AdbcDatabase initDatabase() throws AdbcException {
+  public AdbcDatabase initDatabase(BufferAllocator allocator) throws AdbcException {
     String url = getFlightLocation();
 
     final Map<String, Object> parameters = new HashMap<>();

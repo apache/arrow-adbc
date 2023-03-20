@@ -78,11 +78,13 @@ public class JdbcArrowReader extends ArrowReader {
   @Override
   public boolean loadNextBatch() {
     if (!delegate.hasNext()) return false;
-    final VectorSchemaRoot root = delegate.next();
-    final VectorUnloader unloader = new VectorUnloader(root);
-    final ArrowRecordBatch recordBatch = unloader.getRecordBatch();
-    bytesRead += recordBatch.computeBodyLength();
-    loadRecordBatch(recordBatch);
+    try (final VectorSchemaRoot root = delegate.next()) {
+      final VectorUnloader unloader = new VectorUnloader(root);
+      try (final ArrowRecordBatch recordBatch = unloader.getRecordBatch()) {
+        bytesRead += recordBatch.computeBodyLength();
+        loadRecordBatch(recordBatch);
+      }
+    }
     return true;
   }
 

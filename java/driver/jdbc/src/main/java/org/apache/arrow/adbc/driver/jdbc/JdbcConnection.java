@@ -32,6 +32,7 @@ import org.apache.arrow.adbc.core.IsolationLevel;
 import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.ArrowType;
@@ -44,6 +45,13 @@ public class JdbcConnection implements AdbcConnection {
   private final Connection connection;
   private final SqlQuirks quirks;
 
+  /**
+   * Create a new connection.
+   *
+   * @param allocator The allocator to use. The connection will close the allocator when done.
+   * @param connection The JDBC connection.
+   * @param quirks Backend-specific quirks to account for.
+   */
   JdbcConnection(BufferAllocator allocator, Connection connection, SqlQuirks quirks) {
     this.allocator = allocator;
     this.connection = connection;
@@ -253,7 +261,7 @@ public class JdbcConnection implements AdbcConnection {
 
   @Override
   public void close() throws Exception {
-    connection.close();
+    AutoCloseables.close(connection, allocator);
   }
 
   private void checkAutoCommit() throws AdbcException, SQLException {

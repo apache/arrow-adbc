@@ -68,9 +68,9 @@ public abstract class AbstractConnectionMetadataTest {
   @BeforeEach
   public void beforeEach() throws Exception {
     Preconditions.checkNotNull(quirks, "Must initialize quirks in subclass with @BeforeAll");
-    database = quirks.initDatabase();
-    connection = database.connect();
     allocator = new RootAllocator();
+    database = quirks.initDatabase(allocator);
+    connection = database.connect();
     util = new SqlTestUtil(quirks);
     tableName = quirks.caseFoldTableName("foo");
     mainTable = quirks.caseFoldTableName("product");

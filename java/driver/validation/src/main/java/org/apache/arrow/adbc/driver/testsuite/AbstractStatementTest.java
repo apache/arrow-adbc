@@ -59,9 +59,9 @@ public abstract class AbstractStatementTest {
   @BeforeEach
   public void beforeEach() throws Exception {
     Preconditions.checkNotNull(quirks, "Must initialize quirks in subclass with @BeforeAll");
-    database = quirks.initDatabase();
-    connection = database.connect();
     allocator = new RootAllocator();
+    database = quirks.initDatabase(allocator);
+    connection = database.connect();
     util = new SqlTestUtil(quirks);
     tableName = quirks.caseFoldTableName("bulktable");
     schema =
@@ -200,6 +200,25 @@ public abstract class AbstractStatementTest {
           assertThat(queryResult.getReader().getVectorSchemaRoot().getRowCount()).isEqualTo(0);
         }
       }
+    }
+  }
+
+  @Test
+  public void prepareQueryWithParametersNoOp() throws Exception {
+    final Schema expectedSchema = util.ingestTableIntsStrs(allocator, connection, tableName);
+    final Schema paramsSchema =
+        new Schema(Collections.singletonList(expectedSchema.getFields().get(0)));
+    try (final AdbcStatement stmt = connection.createStatement();
+        final VectorSchemaRoot params = VectorSchemaRoot.create(paramsSchema, allocator)) {
+      stmt.setSqlQuery(String.format("SELECT * FROM %s WHERE INTS = ?", tableName));
+      stmt.prepare();
+      stmt.bind(params);
+      IntVector param0 = (IntVector) params.getVector(0);
+      param0.setSafe(0, 1);
+      param0.setSafe(1, 2);
+      params.setRowCount(2);
+      // Ensure things still close properly if we never actually drain the result
+      stmt.executeQuery().close();
     }
   }
 

@@ -17,6 +17,7 @@
 package org.apache.arrow.adbc.driver.jdbc;
 
 import java.util.Map;
+import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
@@ -27,14 +28,21 @@ import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.Preconditions;
 
 /** An ADBC driver wrapping the JDBC API. */
-public enum JdbcDriver implements AdbcDriver {
-  INSTANCE;
+public class JdbcDriver implements AdbcDriver {
+  public static final JdbcDriver INSTANCE = new JdbcDriver();
+
+  static {
+    AdbcDriverManager.getInstance().registerDriver("org.apache.arrow.adbc.driver.jdbc", INSTANCE);
+  }
 
   private final BufferAllocator allocator;
 
-  JdbcDriver() {
-    allocator = new RootAllocator();
-    AdbcDriverManager.getInstance().registerDriver("org.apache.arrow.adbc.driver.jdbc", this);
+  public JdbcDriver() {
+    this(new RootAllocator());
+  }
+
+  public JdbcDriver(BufferAllocator allocator) {
+    this.allocator = Objects.requireNonNull(allocator);
   }
 
   @Override

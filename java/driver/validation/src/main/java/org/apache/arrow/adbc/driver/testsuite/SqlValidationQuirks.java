@@ -21,10 +21,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
+import org.apache.arrow.memory.BufferAllocator;
 
 /** Account for driver/vendor-specific quirks in implementing validation tests. */
 public abstract class SqlValidationQuirks {
-  public abstract AdbcDatabase initDatabase() throws AdbcException;
+  public abstract AdbcDatabase initDatabase(BufferAllocator allocator) throws AdbcException;
 
   public void cleanupTable(String name) throws Exception {}
 

@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,18 +32,20 @@ public abstract class AbstractConnectionTest {
   /** Must be initialized by the subclass. */
   protected static SqlValidationQuirks quirks;
 
+  protected BufferAllocator allocator;
   protected AdbcDatabase database;
   protected AdbcConnection connection;
 
   @BeforeEach
   public void beforeEach() throws Exception {
-    database = quirks.initDatabase();
+    allocator = new RootAllocator();
+    database = quirks.initDatabase(allocator);
     connection = database.connect();
   }
 
   @AfterEach
   public void afterEach() throws Exception {
-    AutoCloseables.close(connection, database);
+    AutoCloseables.close(connection, database, allocator);
   }
 
   @Test
