@@ -43,6 +43,7 @@ Source0:	https://www.apache.org/dyn/closer.lua?action=download&path=/arrow/arrow
 BuildRequires:	cmake
 BuildRequires:	gcc-c++
 BuildRequires:	gobject-introspection-devel
+BuildRequires:	golang
 BuildRequires:	libpq-devel
 BuildRequires:	ninja-build
 BuildRequires:	pkgconfig
@@ -79,6 +80,13 @@ cd c/driver/sqlite
 %adbc_cmake_build
 cd -
 
+cd c/driver/flightsql
+%adbc_cmake \
+  -DCMAKE_BUILD_TYPE=${cmake_build_type} \
+  -G"Unix Makefiles"
+%adbc_cmake_build
+cd -
+
 cd glib
 pip3 install meson
 meson setup build \
@@ -102,6 +110,10 @@ cd c/driver/postgresql
 cd -
 
 cd c/driver/sqlite
+%adbc_cmake_install
+cd -
+
+cd c/driver/flightsql
 %adbc_cmake_install
 cd -
 
@@ -202,6 +214,35 @@ Libraries and header files for ADBC SQLite driver.
 %{_libdir}/libadbc_driver_sqlite.a
 %{_libdir}/libadbc_driver_sqlite.so
 %{_libdir}/pkgconfig/adbc-driver-sqlite.pc
+
+%package driver-flightsql%{major_version}-libs
+Summary:	ADBC Flight SQL driver
+License:	Apache-2.0
+
+%description driver-flightsql%{major_version}-libs
+This package provides an ADBC driver for Flight SQL.
+
+%files driver-flightsql%{major_version}-libs
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/libadbc_driver_flightsql.so.*
+
+%package driver-flightsql-devel
+Summary:	Libraries and header files for ADBC Flight SQL driver
+License:	Apache-2.0
+Requires:	%{name}-driver-flightsql%{major_version}-libs = %{version}-%{release}
+
+%description driver-flightsql-devel
+Libraries and header files for ADBC Flight SQL driver.
+
+%files driver-flightsql-devel
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/libadbc_driver_flightsql.a
+%{_libdir}/libadbc_driver_flightsql.so
+%{_libdir}/pkgconfig/adbc-driver-flightsql.pc
 
 %package glib%{major_version}-libs
 Summary:	Runtime libraries for ADBC GLib
