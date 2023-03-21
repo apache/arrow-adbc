@@ -46,10 +46,3 @@ window.addEventListener("DOMContentLoaded", () => {
             root.appendChild(li);
         });
 });
-
-const versions = `
-0.1.0;0.1.0
-0.2.0;0.2.0
-0.3.0;0.3.0
-main;0.3.0 (dev)
-`;
