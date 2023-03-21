@@ -21,7 +21,7 @@
 project = "ADBC"
 copyright = "2022, Apache Arrow Developers"
 author = "the Apache Arrow Developers"
-release = "0.3.0 (dev)"
+release = "0.4.0 (dev)"
 # Needed to generate version switcher
 version = release
 

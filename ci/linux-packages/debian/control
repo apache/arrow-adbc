@@ -33,7 +33,7 @@ Build-Depends:
 Standards-Version: 4.5.0
 Homepage: https://arrow.apache.org/adbc/
 
-Package: libadbc-driver-manager003
+Package: libadbc-driver-manager004
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -51,12 +51,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-manager003 (= ${binary:Version})
+  libadbc-driver-manager004 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) driver manager
  .
  This package provides C++ header files.
 
-Package: libadbc-driver-postgresql003
+Package: libadbc-driver-postgresql004
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -74,12 +74,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-postgresql003 (= ${binary:Version})
+  libadbc-driver-postgresql004 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) PostgreSQL driver
  .
  This package provides CMake package, pkg-config package and so on.
 
-Package: libadbc-driver-sqlite003
+Package: libadbc-driver-sqlite004
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -97,12 +97,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-sqlite003 (= ${binary:Version})
+  libadbc-driver-sqlite004 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) SQLite driver
  .
  This package provides CMake package, pkg-config package and so on.
 
-Package: libadbc-driver-flightsql003
+Package: libadbc-driver-flightsql004
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -120,7 +120,7 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-flightsql003 (= ${binary:Version})
+  libadbc-driver-flightsql004 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) Flight SQL driver
  .
  This package provides CMake package, pkg-config package and so on.
@@ -133,7 +133,7 @@ Pre-Depends: ${misc:Pre-Depends}
 Depends:
   ${misc:Depends},
   ${shlibs:Depends},
-  libadbc-driver-manager003 (= ${binary:Version})
+  libadbc-driver-manager004 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) driver manager
  .
  This package provides GLib based library files.
