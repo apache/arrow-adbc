@@ -82,4 +82,31 @@ class StatementTest < Test::Unit::TestCase
                    table)
     end
   end
+
+  def test_bind_stream
+    @statement.set_sql_query("CREATE TABLE data (number int)")
+    execute_statement
+
+    record_batch =
+      Arrow::RecordBatch.new(number: Arrow::Int64Array.new([10, 20, 30]))
+    @statement.set_sql_query("INSERT INTO data VALUES (?)")
+    @statement.ingest_target_table = "data"
+    @statement.ingest_mode = :append
+    reader = Arrow::RecordBatchReader.new([record_batch])
+    c_abi_array_stream = reader.export
+    begin
+      @statement.bind_stream(c_abi_array_stream)
+      execute_statement(need_result: false) do |n_rows_affected|
+        assert_equal(3, n_rows_affected)
+      end
+    ensure
+      GLib.free(c_abi_array_stream)
+    end
+
+    @statement.set_sql_query("SELECT * FROM data")
+    execute_statement do |table, _n_rows_affected|
+      assert_equal(record_batch.to_table,
+                   table)
+    end
+  end
 end

@@ -55,6 +55,39 @@ module ADBC
       end
     end
 
+    alias_method :bind_raw, :bind
+    def bind(*args)
+      n_args = args.size
+      if block_given?
+        message = "wrong number of arguments (given #{n_args}, expected 1 with block)"
+        raise ArgumentError, message unless n_args == 1
+        values = args[0]
+        if values.is_a?(Arrow::RecordBatchReader)
+          c_abi_array_stream = values.export
+          begin
+            bind_stream(c_abi_array_stream)
+            yield
+          ensure
+            GLib.free(c_abi_array_stream)
+          end
+        else
+          _, c_abi_array, c_abi_schema = values.export
+          begin
+            bind_raw(c_abi_array, c_abi_schema)
+            yield
+          ensure
+            begin
+              GLib.free(c_abi_array)
+            ensure
+              GLib.free(c_abi_schema)
+            end
+          end
+        end
+      else
+        bind_raw(*args)
+      end
+    end
+
     def ingest(table_name, values, mode: :create)
       insert = "INSERT INTO #{table_name} (" # TODO escape
       fields = values.schema.fields
@@ -65,16 +98,8 @@ module ADBC
       self.sql_query = insert
       self.ingest_target_table = table_name
       self.ingest_mode = mode
-      _, c_abi_array, c_abi_schema = values.export
-      begin
-        bind(c_abi_array, c_abi_schema)
+      bind(values) do
         execute(need_result: false)
-      ensure
-        begin
-          GLib.free(c_abi_array)
-        ensure
-          GLib.free(c_abi_schema)
-        end
       end
     end
 
