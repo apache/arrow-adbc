@@ -297,6 +297,36 @@ gboolean gadbc_statement_bind(GADBCStatement* statement, gpointer c_abi_array,
 }
 
 /**
+ * gadbc_statement_bind_stream:
+ * @statement: A #GADBCStatement.
+ * @c_abi_array_stream: A `struct ArrowArrayStream *` of record batches stream
+ *   to bind. The driver will call the release callback itself, although
+ *   it may not do this until the statement is released.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Bind Arrow data stream. This can be used for bulk inserts or prepared
+ * statements.
+ *
+ * Returns: %TRUE if binding is done successfully, %FALSE
+ *   otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_statement_bind_stream(GADBCStatement* statement,
+                                     gpointer c_abi_array_stream, GError** error) {
+  const gchar* context = "[adbc][statement][bind-stream]";
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcStatementBindStream(adbc_statement, c_abi_array_stream, &adbc_error);
+  return gadbc_error_check(error, status_code, &adbc_error, context);
+}
+
+/**
  * gadbc_statement_execute:
  * @statement: A #GADBCStatement.
  * @need_result: Whether the results are received by @c_abi_arrray_stream or

@@ -46,4 +46,19 @@ class StatementTest < Test::Unit::TestCase
                    n_rows_affected,
                  ])
   end
+
+  def test_ingest_stream
+    numbers = Arrow::Int64Array.new([10, 20, 30])
+    record_batch = Arrow::RecordBatch.new(number: numbers)
+    @statement.ingest("data", Arrow::RecordBatchReader.new([record_batch]))
+    table, n_rows_affected = @statement.query("SELECT * FROM data")
+    assert_equal([
+                   Arrow::Table.new(number: numbers),
+                   -1,
+                 ],
+                 [
+                   table,
+                   n_rows_affected,
+                 ])
+  end
 end

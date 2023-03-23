@@ -68,6 +68,9 @@ gboolean gadbc_statement_prepare(GADBCStatement* statement, GError** error);
 GADBC_AVAILABLE_IN_0_4
 gboolean gadbc_statement_bind(GADBCStatement* statement, gpointer c_abi_array,
                               gpointer c_abi_schema, GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_statement_bind_stream(GADBCStatement* statement,
+                                     gpointer c_abi_array_stream, GError** error);
 GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_statement_execute(GADBCStatement* statement, gboolean need_result,
                                  gpointer* c_abi_array_stream, gint64* n_rows_affected,
