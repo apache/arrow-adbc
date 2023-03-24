@@ -35,5 +35,5 @@ FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adb
     echo "=== Testing %%c ==="
     python -c "import %%c" || exit /B 1
     python -c "import %%c.dbapi" || exit /B 1
-    python -m pytest -vvx --import-mode append -k "not sqlite" %source_dir%\python\%%c\tests || exit /B 1
+    python -m pytest -vvx --import-mode append -k "not sqlite and not polars" %source_dir%\python\%%c\tests || exit /B 1
 )

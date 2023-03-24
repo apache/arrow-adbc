@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import os
-
 import pyarrow
 import pytest
 
@@ -25,10 +23,7 @@ import adbc_driver_postgresql
 
 
 @pytest.fixture
-def postgres():
-    postgres_uri = os.environ.get("ADBC_POSTGRESQL_TEST_URI")
-    if not postgres_uri:
-        pytest.skip("Set ADBC_POSTGRESQL_TEST_URI to run tests")
+def postgres(postgres_uri: str) -> adbc_driver_manager.AdbcConnection:
     with adbc_driver_postgresql.connect(postgres_uri) as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
             yield conn

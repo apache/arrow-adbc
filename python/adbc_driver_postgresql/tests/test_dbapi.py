@@ -15,23 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import os
-
 import pytest
 
 from adbc_driver_postgresql import dbapi
 
 
 @pytest.fixture
-def postgres():
-    postgres_uri = os.environ.get("ADBC_POSTGRESQL_TEST_URI")
-    if not postgres_uri:
-        pytest.skip("Set ADBC_POSTGRESQL_TEST_URI to run tests")
+def postgres(postgres_uri: str) -> dbapi.Connection:
     with dbapi.connect(postgres_uri) as conn:
         yield conn
 
 
-def test_query_trivial(postgres):
+def test_query_trivial(postgres: dbapi.Connection):
     with postgres.cursor() as cur:
         cur.execute("SELECT 1")
         assert cur.fetchone() == (1,)
