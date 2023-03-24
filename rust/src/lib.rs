@@ -104,7 +104,7 @@ pub trait AdbcDatabase {
 /// # Autocommit
 ///
 /// Connections should start in autocommit mode. They can be moved out by
-/// setting [options::ADBC_CONNECTION_OPTION_AUTOCOMMIT] to `"false"` (using
+/// setting [options::AdbcOptionKey::AutoCommit] to `"false"` (using
 /// [AdbcConnection::set_option]). Turning off autocommit allows customizing
 /// the isolation level. Read more in [adbc.h](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
 #[async_trait]
@@ -338,72 +338,116 @@ pub struct PartitionedStatementResult {
 /// [crate::AdbcConnection::set_option],
 /// and [crate::AdbcStatement::set_option].
 pub mod options {
-    pub const INGEST_OPTION_TARGET_TABLE: &str = "adbc.ingest.target_table";
-    pub const ADBC_INGEST_OPTION_MODE: &str = "adbc.ingest.mode";
-    pub const ADBC_INGEST_OPTION_MODE_CREATE: &str = "adbc.ingest.mode.create";
-    pub const ADBC_INGEST_OPTION_MODE_APPEND: &str = "adbc.ingest.mode.append";
+    /// Various known options for ADBC connections.
+    /// 
+    /// These convert to canonical option strings as defined in the C API.
+    pub enum AdbcOptionKey {
+        /// When ingesting a data stream, table name to write to.
+        IngestTargetTable,
+        /// How to ingest a table. See [IngestMode] for canonical possible values.
+        IngestMode,
+        /// Whether autocommit is enabled.
+        AutoCommit,
+        /// Whether the current connection should be restricted to being read-only.
+        ReadOnly,
+        /// The name of the canonical option for setting the isolation level of a
+        /// transaction.
+        ///
+        /// Should only be used in conjunction with autocommit disabled and
+        /// AdbcConnectionCommit / AdbcConnectionRollback. If the desired
+        /// isolation level is not supported by a driver, it should return an
+        /// appropriate error.
+        ///
+        /// See [IsolationLevel] for possible values.
+        IsolationLevel,
+    }
 
-    /// The name of the canonical option for whether autocommit is enabled.
-    pub const ADBC_CONNECTION_OPTION_AUTOCOMMIT: &str = "adbc.connection.autocommit";
-    /// The name of the canonical option for whether the current connection should
-    /// be restricted to being read-only.
-    pub const ADBC_CONNECTION_OPTION_READ_ONLY: &str = "adbc.connection.readonly";
-    /// The name of the canonical option for setting the isolation level of a
-    /// transaction.
-    ///
-    /// Should only be used in conjunction with autocommit disabled and
-    /// AdbcConnectionCommit / AdbcConnectionRollback. If the desired
-    /// isolation level is not supported by a driver, it should return an
-    /// appropriate error.
-    pub const ADBC_CONNECTION_OPTION_ISOLATION_LEVEL: &str =
-        "adbc.connection.transaction.isolation_level";
-    /// Use database or driver default isolation level
-    pub const ADBC_OPTION_ISOLATION_LEVEL_DEFAULT: &str =
-        "adbc.connection.transaction.isolation.default";
-    /// The lowest isolation level. Dirty reads are allowed, so one transaction
-    /// may see not-yet-committed changes made by others.
-    pub const ADBC_OPTION_ISOLATION_LEVEL_READ_UNCOMMITTED: &str =
-        "adbc.connection.transaction.isolation.read_uncommitted";
-    /// Lock-based concurrency control keeps write locks until the
-    /// end of the transaction, but read locks are released as soon as a
-    /// SELECT is performed. Non-repeatable reads can occur in this
-    /// isolation level.
-    ///
-    /// More simply put, Read Committed is an isolation level that guarantees
-    /// that any data read is committed at the moment it is read. It simply
-    /// restricts the reader from seeing any intermediate, uncommitted,
-    /// 'dirty' reads. It makes no promise whatsoever that if the transaction
-    /// re-issues the read, it will find the same data; data is free to change
-    /// after it is read.
-    pub const ADBC_OPTION_ISOLATION_LEVEL_READ_COMMITTED: &str =
-        "adbc.connection.transaction.isolation.read_committed";
-    /// Lock-based concurrency control keeps read AND write locks
-    /// (acquired on selection data) until the end of the transaction.
-    ///
-    /// However, range-locks are not managed, so phantom reads can occur.
-    /// Write skew is possible at this isolation level in some systems.
-    pub const ADBC_OPTION_ISOLATION_LEVEL_REPEATABLE_READ: &str =
-        "adbc.connection.transaction.isolation.repeatable_read";
-    /// This isolation guarantees that all reads in the transaction
-    /// will see a consistent snapshot of the database and the transaction
-    /// should only successfully commit if no updates conflict with any
-    /// concurrent updates made since that snapshot.
-    pub const ADBC_OPTION_ISOLATION_LEVEL_SNAPSHOT: &str =
-        "adbc.connection.transaction.isolation.snapshot";
-    /// Serializability requires read and write locks to be released
-    /// only at the end of the transaction. This includes acquiring range-
-    /// locks when a select query uses a ranged WHERE clause to avoid
-    /// phantom reads.
-    pub const ADBC_OPTION_ISOLATION_LEVEL_SERIALIZABLE: &str =
-        "adbc.connection.transaction.isolation.serializable";
-    /// The central distinction between serializability and linearizability
-    /// is that serializability is a global property; a property of an entire
-    /// history of operations and transactions. Linearizability is a local
-    /// property; a property of a single operation/transaction.
-    ///
-    /// Linearizability can be viewed as a special case of strict serializability
-    /// where transactions are restricted to consist of a single operation applied
-    /// to a single object.
-    pub const ADBC_OPTION_ISOLATION_LEVEL_LINEARIZABLE: &str =
-        "adbc.connection.transaction.isolation.linearizable";
+    impl AsRef<str> for AdbcOptionKey {
+        fn as_ref(&self) -> &str {
+            match self {
+                Self::IngestTargetTable => "adbc.ingest.target_table",
+                Self::IngestMode => "adbc.ingest.mode",
+                Self::AutoCommit => "adbc.connection.autocommit",
+                Self::ReadOnly => "adbc.connection.readonly",
+                Self::IsolationLevel => "adbc.connection.transaction.isolation_level",
+            }
+        }
+    }
+
+    /// Possible ingest mode for use with option [AdbcOptionKey::IngestMode].
+    /// 
+    /// These convert to canonical option strings as defined in the C API.
+    pub enum IngestMode {
+        Create,
+        Append,
+    }
+
+    impl AsRef<str> for IngestMode {
+        fn as_ref(&self) -> &str {
+            match self {
+                Self::Create => "adbc.ingest.mode.create",
+                Self::Append => "adbc.ingest.mode.append",
+            }
+        }
+    }
+
+    /// Possible isolation level values for use with option [AdbcOptionKey::IsolationLevel].
+    pub enum IsolationLevel {
+        /// Use database or driver default isolation level
+        Default,
+        /// The lowest isolation level. Dirty reads are allowed, so one transaction
+        /// may see not-yet-committed changes made by others.
+        ReadUncommitted,
+        /// Lock-based concurrency control keeps write locks until the
+        /// end of the transaction, but read locks are released as soon as a
+        /// SELECT is performed. Non-repeatable reads can occur in this
+        /// isolation level.
+        ///
+        /// More simply put, Read Committed is an isolation level that guarantees
+        /// that any data read is committed at the moment it is read. It simply
+        /// restricts the reader from seeing any intermediate, uncommitted,
+        /// 'dirty' reads. It makes no promise whatsoever that if the transaction
+        /// re-issues the read, it will find the same data; data is free to change
+        /// after it is read.
+        ReadCommitted,
+        /// Lock-based concurrency control keeps read AND write locks
+        /// (acquired on selection data) until the end of the transaction.
+        ///
+        /// However, range-locks are not managed, so phantom reads can occur.
+        /// Write skew is possible at this isolation level in some systems.
+        RepeatableRead,
+        /// This isolation guarantees that all reads in the transaction
+        /// will see a consistent snapshot of the database and the transaction
+        /// should only successfully commit if no updates conflict with any
+        /// concurrent updates made since that snapshot.
+        Snapshot,
+        /// Serializability requires read and write locks to be released
+        /// only at the end of the transaction. This includes acquiring range-
+        /// locks when a select query uses a ranged WHERE clause to avoid
+        /// phantom reads.
+        Serializable,
+        /// The central distinction between serializability and linearizability
+        /// is that serializability is a global property; a property of an entire
+        /// history of operations and transactions. Linearizability is a local
+        /// property; a property of a single operation/transaction.
+        ///
+        /// Linearizability can be viewed as a special case of strict serializability
+        /// where transactions are restricted to consist of a single operation applied
+        /// to a single object.
+        Linearizable,
+    }
+
+    impl AsRef<str> for IsolationLevel {
+        fn as_ref(&self) -> &str {
+            match self {
+                Self::Default => "adbc.connection.transaction.isolation.default",
+                Self::ReadUncommitted => "adbc.connection.transaction.isolation.read_uncommitted",
+                Self::ReadCommitted => "adbc.connection.transaction.isolation.read_committed",
+                Self::RepeatableRead => "adbc.connection.transaction.isolation.repeatable_read",
+                Self::Snapshot => "adbc.connection.transaction.isolation.snapshot",
+                Self::Serializable => "adbc.connection.transaction.isolation.serializable",
+                Self::Linearizable => "adbc.connection.transaction.isolation.linearizable",
+            }
+        }
+    }
 }
