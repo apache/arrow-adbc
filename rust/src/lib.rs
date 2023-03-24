@@ -205,7 +205,7 @@ pub trait AdbcConnection {
     /// Field Name       | Field Type
     /// -----------------|--------------
     /// `table_type`     | `utf8 not null`
-    fn get_table_types(&self) -> Result<Vec<String>, AdbcError>;
+    async fn get_table_types(&self) -> Result<Vec<String>, AdbcError>;
 
     /// Read part of a partitioned result set.
     async fn read_partition(
@@ -261,6 +261,7 @@ pub trait AdbcStatement {
     /// Set the SQL query to execute.
     fn set_sql_query(&mut self, query: &str) -> Result<(), AdbcError>;
 
+    #[cfg(substrait)]
     /// Set the Substrait plan to execute.
     fn set_substrait_plan(&mut self, plan: substrait::proto::Plan) -> Result<(), AdbcError>;
 
@@ -277,7 +278,7 @@ pub trait AdbcStatement {
     /// the corresponding field will be NA (NullType).
     ///
     /// This should return an error if this was called before [AdbcStatement::prepare].
-    fn get_param_schema(&mut self) -> Result<Schema, AdbcError>;
+    async fn get_param_schema(&self) -> Result<Schema, AdbcError>;
 
     /// Bind Arrow data, either for bulk inserts or prepared statements.
     fn bind_data(&mut self, batch: RecordBatch) -> Result<(), AdbcError>;
