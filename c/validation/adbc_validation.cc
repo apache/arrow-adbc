@@ -19,7 +19,7 @@
 
 #include <cerrno>
 #include <cstring>
-#include <iostream>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -867,7 +867,9 @@ void StatementTest::TestRelease() {
   ASSERT_EQ(NULL, statement.private_data);
 }
 
-void StatementTest::TestSqlIngestInts() {
+template <typename CType>
+void StatementTest::TestSqlIngestType(ArrowType type,
+                                      const std::vector<std::optional<CType>>& values) {
   if (!quirks()->supports_bulk_ingest()) {
     GTEST_SKIP();
   }
@@ -878,10 +880,9 @@ void StatementTest::TestSqlIngestInts() {
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
-  ASSERT_THAT(
-      MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {42, -42, std::nullopt}),
-      IsOkErrno());
+  ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<CType>(&schema.value, &array.value, &na_error, values),
+              IsOkErrno());
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
@@ -893,7 +894,8 @@ void StatementTest::TestSqlIngestInts() {
   int64_t rows_affected = 0;
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
               IsOkStatus(&error));
-  ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
+  ASSERT_THAT(rows_affected,
+              ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
               IsOkStatus(&error));
@@ -903,23 +905,96 @@ void StatementTest::TestSqlIngestInts() {
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
     ASSERT_THAT(reader.rows_affected,
-                ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
+                ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-    ASSERT_NO_FATAL_FAILURE(CompareSchema(&reader.schema.value,
-                                          {{"int64s", NANOARROW_TYPE_INT64, NULLABLE}}));
+    ArrowType round_trip_type = quirks()->IngestSelectRoundTripType(type);
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(&reader.schema.value, {{"col", round_trip_type, NULLABLE}}));
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_EQ(3, reader.array->length);
+    ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    ASSERT_NO_FATAL_FAILURE(
-        CompareArray<int64_t>(reader.array_view->children[0], {42, -42, std::nullopt}));
+    if (round_trip_type == type) {
+      // XXX: for now we can't compare values; we would need casting
+      ASSERT_NO_FATAL_FAILURE(
+          CompareArray<CType>(reader.array_view->children[0], values));
+    }
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
   }
+}
+
+template <typename CType>
+void StatementTest::TestSqlIngestNumericType(ArrowType type) {
+  std::vector<std::optional<CType>> values = {
+      std::nullopt,
+  };
+
+  if constexpr (std::is_floating_point_v<CType>) {
+    // XXX: sqlite and others seem to have trouble with extreme
+    // values. Likely a bug on our side, but for now, avoid them.
+    values.push_back(-1.0);
+    values.push_back(1.0);
+  } else {
+    values.push_back(std::numeric_limits<CType>::lowest());
+    values.push_back(std::numeric_limits<CType>::max());
+  }
+
+  return TestSqlIngestType(type, values);
+}
+
+void StatementTest::TestSqlIngestUInt8() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<uint8_t>(NANOARROW_TYPE_UINT8));
+}
+
+void StatementTest::TestSqlIngestUInt16() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<uint16_t>(NANOARROW_TYPE_UINT16));
+}
+
+void StatementTest::TestSqlIngestUInt32() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<uint32_t>(NANOARROW_TYPE_UINT32));
+}
+
+void StatementTest::TestSqlIngestUInt64() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<uint64_t>(NANOARROW_TYPE_UINT64));
+}
+
+void StatementTest::TestSqlIngestInt8() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<int8_t>(NANOARROW_TYPE_INT8));
+}
+
+void StatementTest::TestSqlIngestInt16() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<int16_t>(NANOARROW_TYPE_INT16));
+}
+
+void StatementTest::TestSqlIngestInt32() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<int32_t>(NANOARROW_TYPE_INT32));
+}
+
+void StatementTest::TestSqlIngestInt64() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<int64_t>(NANOARROW_TYPE_INT64));
+}
+
+void StatementTest::TestSqlIngestFloat32() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<float>(NANOARROW_TYPE_FLOAT));
+}
+
+void StatementTest::TestSqlIngestFloat64() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<double>(NANOARROW_TYPE_DOUBLE));
+}
+
+void StatementTest::TestSqlIngestString() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
+      NANOARROW_TYPE_STRING, {std::nullopt, "", "1234", "", "例"}));
+}
+
+void StatementTest::TestSqlIngestBinary() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
+      NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x00\x01\x02\x04", "", "\xFE\xFF"}));
 }
 
 void StatementTest::TestSqlIngestAppend() {

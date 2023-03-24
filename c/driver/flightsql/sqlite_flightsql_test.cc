@@ -38,6 +38,10 @@ class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
     const char* uri = std::getenv("ADBC_SQLITE_FLIGHTSQL_URI");
+    if (!uri || std::strlen(uri) == 0) {
+      ADD_FAILURE() << "Must set ADBC_SQLITE_FLIGHTSQL_URI";
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
     EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri, error), IsOkStatus(error));
     return ADBC_STATUS_OK;
   }

@@ -224,11 +224,22 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
               const std::vector<std::optional<T>>& values) {
   for (const auto& v : values) {
     if (v.has_value()) {
-      if constexpr (std::is_same<T, int64_t>::value) {
+      if constexpr (std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
+                    std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value) {
         if (int errno_res = ArrowArrayAppendInt(array, *v); errno_res != 0) {
           return errno_res;
         }
-      } else if constexpr (std::is_same<T, double>::value) {
+        // XXX: cpplint gets weird here and thinks this is an unbraced if
+      } else if constexpr (std::is_same<T,  // NOLINT(readability/braces)
+                                        uint8_t>::value ||
+                           std::is_same<T, uint16_t>::value ||
+                           std::is_same<T, uint32_t>::value ||
+                           std::is_same<T, uint64_t>::value) {
+        if (int errno_res = ArrowArrayAppendUInt(array, *v); errno_res != 0) {
+          return errno_res;
+        }
+      } else if constexpr (std::is_same<T, float>::value ||  // NOLINT(readability/braces)
+                           std::is_same<T, double>::value) {
         if (int errno_res = ArrowArrayAppendDouble(array, *v); errno_res != 0) {
           return errno_res;
         }
@@ -313,18 +324,39 @@ void CompareArray(struct ArrowArrayView* array,
     SCOPED_TRACE("Array index " + std::to_string(i));
     if (v.has_value()) {
       ASSERT_FALSE(ArrowArrayViewIsNull(array, i));
-      if constexpr (std::is_same<T, double>::value) {
+      if constexpr (std::is_same<T, float>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
+      } else if constexpr (std::is_same<T, double>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_double[i]);
       } else if constexpr (std::is_same<T, float>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
+      } else if constexpr (std::is_same<T, int8_t>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, array->buffer_views[1].data.as_int8[i]);
+      } else if constexpr (std::is_same<T, int16_t>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, array->buffer_views[1].data.as_int16[i]);
       } else if constexpr (std::is_same<T, int32_t>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_int32[i]);
       } else if constexpr (std::is_same<T, int64_t>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_int64[i]);
+      } else if constexpr (std::is_same<T, uint8_t>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint8[i]);
+      } else if constexpr (std::is_same<T, uint16_t>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint16[i]);
+      } else if constexpr (std::is_same<T, uint32_t>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint32[i]);
+      } else if constexpr (std::is_same<T, uint64_t>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, array->buffer_views[1].data.as_uint64[i]);
       } else if constexpr (std::is_same<T, std::string>::value) {
         struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
         std::string str(view.data, view.size_bytes);

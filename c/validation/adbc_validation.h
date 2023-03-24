@@ -18,10 +18,13 @@
 #ifndef ADBC_VALIDATION_H
 #define ADBC_VALIDATION_H
 
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <adbc.h>
 #include <gtest/gtest.h>
+#include <nanoarrow/nanoarrow.h>
 
 namespace adbc_validation {
 
@@ -59,6 +62,12 @@ class DriverQuirks {
 
   /// \brief Return the SQL to reference the bind parameter of the given index
   virtual std::string BindParameter(int index) const { return "?"; }
+
+  /// \brief For a given Arrow type of ingested data, what Arrow type
+  ///   will the database return when that column is selected?
+  virtual ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const {
+    return ingest_type;
+  }
 
   /// \brief Whether two statements can be used at the same time on a
   ///   single connection
@@ -168,8 +177,28 @@ class StatementTest {
   void TestNewInit();
   void TestRelease();
 
-  // TODO: these should be parameterized tests
-  void TestSqlIngestInts();
+  // ---- Type-specific tests --------------------
+
+  // Integers
+  void TestSqlIngestInt8();
+  void TestSqlIngestInt16();
+  void TestSqlIngestInt32();
+  void TestSqlIngestInt64();
+  void TestSqlIngestUInt8();
+  void TestSqlIngestUInt16();
+  void TestSqlIngestUInt32();
+  void TestSqlIngestUInt64();
+
+  // Floats
+  void TestSqlIngestFloat32();
+  void TestSqlIngestFloat64();
+
+  // Strings
+  void TestSqlIngestString();
+  void TestSqlIngestBinary();
+
+  // ---- End Type-specific tests ----------------
+
   void TestSqlIngestAppend();
   void TestSqlIngestErrors();
   void TestSqlIngestMultipleConnections();
@@ -201,6 +230,12 @@ class StatementTest {
   struct AdbcDatabase database;
   struct AdbcConnection connection;
   struct AdbcStatement statement;
+
+  template <typename CType>
+  void TestSqlIngestType(ArrowType type, const std::vector<std::optional<CType>>& values);
+
+  template <typename CType>
+  void TestSqlIngestNumericType(ArrowType type);
 };
 
 #define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
@@ -208,7 +243,18 @@ class StatementTest {
                 ADBCV_STRINGIFY(FIXTURE) " must inherit from StatementTest");           \
   TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                           \
   TEST_F(FIXTURE, Release) { TestRelease(); }                                           \
-  TEST_F(FIXTURE, SqlIngestInts) { TestSqlIngestInts(); }                               \
+  TEST_F(FIXTURE, SqlIngestInt8) { TestSqlIngestInt8(); }                               \
+  TEST_F(FIXTURE, SqlIngestInt16) { TestSqlIngestInt16(); }                             \
+  TEST_F(FIXTURE, SqlIngestInt32) { TestSqlIngestInt32(); }                             \
+  TEST_F(FIXTURE, SqlIngestInt64) { TestSqlIngestInt64(); }                             \
+  TEST_F(FIXTURE, SqlIngestUInt8) { TestSqlIngestUInt8(); }                             \
+  TEST_F(FIXTURE, SqlIngestUInt16) { TestSqlIngestUInt16(); }                           \
+  TEST_F(FIXTURE, SqlIngestUInt32) { TestSqlIngestUInt32(); }                           \
+  TEST_F(FIXTURE, SqlIngestUInt64) { TestSqlIngestUInt64(); }                           \
+  TEST_F(FIXTURE, SqlIngestFloat32) { TestSqlIngestFloat32(); }                         \
+  TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                         \
+  TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
+  TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
