@@ -261,10 +261,6 @@ pub trait AdbcStatement {
     /// Set the SQL query to execute.
     fn set_sql_query(&mut self, query: &str) -> Result<(), AdbcError>;
 
-    #[cfg(substrait)]
-    /// Set the Substrait plan to execute.
-    fn set_substrait_plan(&mut self, plan: substrait::proto::Plan) -> Result<(), AdbcError>;
-
     /// Get the schema for bound parameters.
     ///
     /// This retrieves an Arrow schema describing the number, names, and
@@ -307,6 +303,12 @@ pub trait AdbcStatement {
     async fn execute_partitioned(&mut self) -> Result<PartitionedStatementResult, AdbcError>;
 }
 
+#[cfg(substrait)]
+pub trait AdbcStatementSubstrait: AdbcStatement {
+    /// Set the Substrait plan to execute.
+    fn set_substrait_plan(&mut self, plan: substrait::proto::Plan) -> Result<(), AdbcError>;
+}
+
 /// Result of calling [AdbcStatement::execute].
 ///
 /// `result` may be None if there is no meaningful result.
@@ -339,7 +341,7 @@ pub struct PartitionedStatementResult {
 /// and [crate::AdbcStatement::set_option].
 pub mod options {
     /// Various known options for ADBC connections.
-    /// 
+    ///
     /// These convert to canonical option strings as defined in the C API.
     pub enum AdbcOptionKey {
         /// When ingesting a data stream, table name to write to.
@@ -375,7 +377,7 @@ pub mod options {
     }
 
     /// Possible ingest mode for use with option [AdbcOptionKey::IngestMode].
-    /// 
+    ///
     /// These convert to canonical option strings as defined in the C API.
     pub enum IngestMode {
         Create,
