@@ -481,13 +481,16 @@ class Cursor(_Closeable):
     """
 
     def __init__(self, conn: Connection) -> None:
+        # Must be at top in case __init__ is interrupted and then __del__ is called
+        self._closed = True
         self._conn = conn
         self._stmt = _lib.AdbcStatement(conn._conn)
+        self._closed = False
+
         self._last_query: Optional[Union[str, bytes]] = None
         self._results: Optional["_RowIterator"] = None
         self._arraysize = 1
         self._rowcount = -1
-        self._closed = False
 
     @property
     def arraysize(self) -> int:
