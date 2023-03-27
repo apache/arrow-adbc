@@ -295,6 +295,19 @@ def test_executemany(sqlite):
 
 
 @pytest.mark.sqlite
+def test_prepare(sqlite):
+    with sqlite.cursor() as cur:
+        schema = cur.adbc_prepare("SELECT 1")
+        assert schema == pyarrow.schema([])
+
+        schema = cur.adbc_prepare("SELECT 1 + ?")
+        assert schema == pyarrow.schema([("0", "null")])
+
+        cur.execute("SELECT 1 + ?", (1,))
+        assert cur.fetchone() == (2,)
+
+
+@pytest.mark.sqlite
 def test_close_warning(sqlite):
     with pytest.warns(
         ResourceWarning,

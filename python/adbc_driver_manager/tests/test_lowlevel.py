@@ -260,6 +260,26 @@ def test_statement_ingest(sqlite):
 
 
 @pytest.mark.sqlite
+def test_statement_adbc_prepare(sqlite):
+    _, conn = sqlite
+    with adbc_driver_manager.AdbcStatement(conn) as stmt:
+        stmt.set_sql_query("SELECT 1")
+        stmt.prepare()
+        handle = stmt.get_parameter_schema()
+        assert _import(handle) == pyarrow.schema([])
+
+        stmt.set_sql_query("SELECT 1 + ?")
+        stmt.prepare()
+        handle = stmt.get_parameter_schema()
+        assert _import(handle) == pyarrow.schema([("0", "null")])
+
+        _bind(stmt, pyarrow.record_batch([[41]], names=["0"]))
+        handle, _ = stmt.execute_query()
+        table = _import(handle).read_all()
+        assert table == pyarrow.table([[42]], names=["1 + ?"])
+
+
+@pytest.mark.sqlite
 def test_statement_autocommit(sqlite):
     _, conn = sqlite
 
