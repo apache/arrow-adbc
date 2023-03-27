@@ -184,6 +184,45 @@ gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* datab
 }
 
 /**
+ * gadbc_connection_get_table_types:
+ * @connection: A #GADBCConnection.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Get a list of table types in the database.
+ *
+ * The result is an Arrow dataset with the following schema:
+ *
+ * Field Name     | Field Type
+ * ---------------|--------------
+ * table_type     | utf8 not null
+ *
+ *
+ * Returns: The result set as `struct ArrowArrayStream *`. It should
+ *   be freed with the `ArrowArrayStream::release` callback then
+ *   g_free() when no longer needed.
+ *
+ * Since: 0.4.0
+ */
+gpointer gadbc_connection_get_table_types(GADBCConnection* connection, GError** error) {
+  const gchar* context = "[adbc][connection][get-table-types]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  if (!adbc_connection) {
+    return NULL;
+  }
+  struct ArrowArrayStream* array_stream = g_new0(struct ArrowArrayStream, 1);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcConnectionGetTableTypes(adbc_connection, array_stream, &adbc_error);
+  if (gadbc_error_check(error, status_code, &adbc_error, context)) {
+    return array_stream;
+  } else {
+    g_free(array_stream);
+    return NULL;
+  }
+}
+
+/**
  * gadbc_connection_get_raw:
  * @connection: A #GADBCConnection.
  * @context: (nullable): A context where this is called from. This is used in

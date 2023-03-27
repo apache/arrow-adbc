@@ -40,4 +40,7 @@ GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* database,
                                GError** error);
 
+GADBC_AVAILABLE_IN_0_4
+gpointer gadbc_connection_get_table_types(GADBCConnection* connection, GError** error);
+
 G_END_DECLS
