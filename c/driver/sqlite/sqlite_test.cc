@@ -45,6 +45,25 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
 
   std::string BindParameter(int index) const override { return "?"; }
 
+  ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const override {
+    switch (ingest_type) {
+      case NANOARROW_TYPE_INT8:
+      case NANOARROW_TYPE_INT16:
+      case NANOARROW_TYPE_INT32:
+      case NANOARROW_TYPE_INT64:
+      case NANOARROW_TYPE_UINT8:
+      case NANOARROW_TYPE_UINT16:
+      case NANOARROW_TYPE_UINT32:
+      case NANOARROW_TYPE_UINT64:
+        return NANOARROW_TYPE_INT64;
+      case NANOARROW_TYPE_FLOAT:
+      case NANOARROW_TYPE_DOUBLE:
+        return NANOARROW_TYPE_DOUBLE;
+      default:
+        return ingest_type;
+    }
+  }
+
   bool supports_concurrent_statements() const override { return true; }
 };
 
@@ -77,6 +96,9 @@ class SqliteStatementTest : public ::testing::Test,
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
+
+  void TestSqlIngestUInt64() { GTEST_SKIP() << "Cannot ingest UINT64 (out of range)"; }
+  void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
 
  protected:
   SqliteQuirks quirks_;

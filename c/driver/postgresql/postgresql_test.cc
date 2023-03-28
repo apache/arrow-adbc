@@ -107,6 +107,18 @@ class PostgresStatementTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
+  void TestSqlIngestInt8() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestInt16() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestInt32() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestUInt8() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestUInt16() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestUInt32() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestUInt64() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestFloat32() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestFloat64() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestString() { GTEST_SKIP() << "TODO(apache/arrow-adbc#557)"; }
+  void TestSqlIngestBinary() { GTEST_SKIP() << "Not implemented"; }
+
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareGetParameterSchema() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareSelectParams() { GTEST_SKIP() << "Not yet implemented"; }
