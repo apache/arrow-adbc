@@ -199,6 +199,10 @@ cdef extern from "adbc.h" nogil:
         CAdbcStatement* statement,
         CArrowArrayStream* out, int64_t* rows_affected,
         CAdbcError* error)
+    CAdbcStatusCode AdbcStatementGetParameterSchema(
+        CAdbcStatement* statement,
+        CArrowSchema* schema,
+        CAdbcError* error);
     CAdbcStatusCode AdbcStatementNew(
         CAdbcConnection* connection,
         CAdbcStatement* statement,
@@ -1045,6 +1049,38 @@ cdef class AdbcStatement(_AdbcHandle):
                 &c_error)
         check_error(status, &c_error)
         return rows_affected
+
+    def get_parameter_schema(self) -> ArrowSchemaHandle:
+        """Get the Arrow schema for bound parameters.
+
+        This retrieves an Arrow schema describing the number, names,
+        and types of the parameters in a parameterized statement.  The
+        fields of the schema should be in order of the ordinal
+        position of the parameters; named parameters should appear
+        only once.
+
+        If the parameter does not have a name, or the name cannot be
+        determined, the name of the corresponding field in the schema
+        will be an empty string.  If the type cannot be determined,
+        the type of the corresponding field will be NA (NullType).
+
+        This should be called after :meth:`prepare`.
+
+        Raises
+        ------
+        NotSupportedError
+            If the schema could not be determined.
+
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        cdef ArrowSchemaHandle handle = ArrowSchemaHandle()
+
+        with nogil:
+            status = AdbcStatementGetParameterSchema(
+                &self.statement, &handle.schema, &c_error)
+        check_error(status, &c_error)
+        return handle
 
     def prepare(self) -> None:
         """Turn this statement into a prepared statement."""

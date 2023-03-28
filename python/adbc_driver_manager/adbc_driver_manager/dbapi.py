@@ -789,6 +789,32 @@ class Cursor(_Closeable):
         partitions, schema, self._rowcount = self._stmt.execute_partitions()
         return partitions, pyarrow.Schema._import_from_c(schema.address)
 
+    def adbc_prepare(self, operation: Union[bytes, str]) -> Optional[pyarrow.Schema]:
+        """
+        Prepare a query without executing it.
+
+        To execute the query afterwards, call :meth:`execute` or
+        :meth:`executemany` with the same query.  This will not
+        prepare the query a second time.
+
+        Returns
+        -------
+        pyarrow.Schema or None
+            The schema of the bind parameters, or None if the schema
+            could not be determined.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        self._prepare_execute(operation)
+
+        try:
+            handle = self._stmt.get_parameter_schema()
+        except NotSupportedError:
+            return None
+        return pyarrow.Schema._import_from_c(handle.address)
+
     def adbc_read_partition(self, partition: bytes) -> None:
         """
         Read a partition of a distributed result set.
