@@ -7,7 +7,7 @@
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 <link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="adbc_driver_flightsql" href="adbc_driver_flightsql.html" /><link rel="prev" title="Python API Reference" href="index.html" />
 
-    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.23 -->
+    <!-- Generated with Sphinx 5.3.0 and Furo 2023.03.27 -->
         <title>adbc_driver_manager - ADBC 0.4.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
@@ -724,16 +724,19 @@ serialize accesses to a connection.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_update" title="adbc_driver_manager.AdbcStatement.execute_update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_update</span></code></a></p></td>
 <td><p>Execute the query without a result set.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare" title="adbc_driver_manager.AdbcStatement.prepare"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema" title="adbc_driver_manager.AdbcStatement.get_parameter_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter_schema</span></code></a></p></td>
+<td><p>Get the Arrow schema for bound parameters.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare" title="adbc_driver_manager.AdbcStatement.prepare"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare</span></code></a></p></td>
 <td><p>Turn this statement into a prepared statement.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_options" title="adbc_driver_manager.AdbcStatement.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_options" title="adbc_driver_manager.AdbcStatement.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
 <td><p>Set arbitrary key-value options.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_sql_query" title="adbc_driver_manager.AdbcStatement.set_sql_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_sql_query</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_sql_query" title="adbc_driver_manager.AdbcStatement.set_sql_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_sql_query</span></code></a></p></td>
 <td><p>Set a SQL query to be executed.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_substrait_plan" title="adbc_driver_manager.AdbcStatement.set_substrait_plan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_substrait_plan</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_substrait_plan" title="adbc_driver_manager.AdbcStatement.set_substrait_plan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_substrait_plan</span></code></a></p></td>
 <td><p>Set a Substrait plan to be executed.</p></td>
 </tr>
 </tbody>
@@ -818,6 +821,30 @@ serialize accesses to a connection.</p>
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt>int</dt><dd><p>The number of affected rows if known, else -1.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.get_parameter_schema">
+<span class="sig-name descname"><span class="pre">get_parameter_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema" title="Permalink to this definition">#</a></dt>
+<dd><p>Get the Arrow schema for bound parameters.</p>
+<p>This retrieves an Arrow schema describing the number, names,
+and types of the parameters in a parameterized statement.  The
+fields of the schema should be in order of the ordinal
+position of the parameters; named parameters should appear
+only once.</p>
+<p>If the parameter does not have a name, or the name cannot be
+determined, the name of the corresponding field in the schema
+will be an empty string.  If the type cannot be determined,
+the type of the corresponding field will be NA (NullType).</p>
+<p>This should be called after <a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare" title="adbc_driver_manager.AdbcStatement.prepare"><code class="xref py py-meth docutils literal notranslate"><span class="pre">prepare()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>NotSupportedError</dt><dd><p>If the schema could not be determined.</p>
 </dd>
 </dl>
 </dd>
@@ -1254,49 +1281,52 @@ connections.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest" title="adbc_driver_manager.dbapi.Cursor.adbc_ingest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_ingest</span></code></a>(table_name, data[, mode])</p></td>
 <td><p>Ingest Arrow data into a database table.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_read_partition" title="adbc_driver_manager.dbapi.Cursor.adbc_read_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_read_partition</span></code></a>(partition)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_prepare" title="adbc_driver_manager.dbapi.Cursor.adbc_prepare"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_prepare</span></code></a>(operation)</p></td>
+<td><p>Prepare a query without executing it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_read_partition" title="adbc_driver_manager.dbapi.Cursor.adbc_read_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_read_partition</span></code></a>(partition)</p></td>
 <td><p>Read a partition of a distributed result set.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.callproc" title="adbc_driver_manager.dbapi.Cursor.callproc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">callproc</span></code></a>(procname, parameters)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.callproc" title="adbc_driver_manager.dbapi.Cursor.callproc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">callproc</span></code></a>(procname, parameters)</p></td>
 <td><p>Call a stored procedure (not supported).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.close" title="adbc_driver_manager.dbapi.Cursor.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.close" title="adbc_driver_manager.dbapi.Cursor.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
 <td><p>Close the cursor and free resources.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.execute" title="adbc_driver_manager.dbapi.Cursor.execute"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute</span></code></a>(operation[, parameters])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.execute" title="adbc_driver_manager.dbapi.Cursor.execute"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute</span></code></a>(operation[, parameters])</p></td>
 <td><p>Execute a query.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executemany" title="adbc_driver_manager.dbapi.Cursor.executemany"><code class="xref py py-obj docutils literal notranslate"><span class="pre">executemany</span></code></a>(operation, seq_of_parameters)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executemany" title="adbc_driver_manager.dbapi.Cursor.executemany"><code class="xref py py-obj docutils literal notranslate"><span class="pre">executemany</span></code></a>(operation, seq_of_parameters)</p></td>
 <td><p>Execute a query with multiple parameter sets.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table" title="adbc_driver_manager.dbapi.Cursor.fetch_arrow_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_arrow_table</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table" title="adbc_driver_manager.dbapi.Cursor.fetch_arrow_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_arrow_table</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result as a PyArrow Table.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_df" title="adbc_driver_manager.dbapi.Cursor.fetch_df"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_df</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_df" title="adbc_driver_manager.dbapi.Cursor.fetch_df"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_df</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result as a Pandas DataFrame.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchall" title="adbc_driver_manager.dbapi.Cursor.fetchall"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchall</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchall" title="adbc_driver_manager.dbapi.Cursor.fetchall"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchall</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchallarrow" title="adbc_driver_manager.dbapi.Cursor.fetchallarrow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchallarrow</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchallarrow" title="adbc_driver_manager.dbapi.Cursor.fetchallarrow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchallarrow</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result as a PyArrow Table.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchmany" title="adbc_driver_manager.dbapi.Cursor.fetchmany"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchmany</span></code></a>([size])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchmany" title="adbc_driver_manager.dbapi.Cursor.fetchmany"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchmany</span></code></a>([size])</p></td>
 <td><p>Fetch some rows of the result.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchone" title="adbc_driver_manager.dbapi.Cursor.fetchone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchone</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchone" title="adbc_driver_manager.dbapi.Cursor.fetchone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchone</span></code></a>()</p></td>
 <td><p>Fetch one row of the result.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.next" title="adbc_driver_manager.dbapi.Cursor.next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">next</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.next" title="adbc_driver_manager.dbapi.Cursor.next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">next</span></code></a>()</p></td>
 <td><p>Fetch the next row, or raise StopIteration.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.nextset" title="adbc_driver_manager.dbapi.Cursor.nextset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nextset</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.nextset" title="adbc_driver_manager.dbapi.Cursor.nextset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nextset</span></code></a>()</p></td>
 <td><p>Move to the next available result set (not supported).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.setinputsizes" title="adbc_driver_manager.dbapi.Cursor.setinputsizes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setinputsizes</span></code></a>(sizes)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.setinputsizes" title="adbc_driver_manager.dbapi.Cursor.setinputsizes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setinputsizes</span></code></a>(sizes)</p></td>
 <td><p>Preallocate memory for the parameters (no-op).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.setoutputsize" title="adbc_driver_manager.dbapi.Cursor.setoutputsize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setoutputsize</span></code></a>(size[, column])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.setoutputsize" title="adbc_driver_manager.dbapi.Cursor.setoutputsize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setoutputsize</span></code></a>(size[, column])</p></td>
 <td><p>Preallocate memory for the result set (no-op).</p></td>
 </tr>
 </tbody>
@@ -1342,6 +1372,26 @@ would result from a typical prepare-bind-insert loop.</p>
 <dd class="field-even"><dl class="simple">
 <dt>int</dt><dd><p>The number of rows inserted, or -1 if the driver cannot
 provide this information.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.adbc_prepare">
+<span class="sig-name descname"><span class="pre">adbc_prepare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Schema.html#pyarrow.Schema" title="(in Apache Arrow v11.0.0)"><span class="pre">Schema</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.adbc_prepare" title="Permalink to this definition">#</a></dt>
+<dd><p>Prepare a query without executing it.</p>
+<p>To execute the query afterwards, call <a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.execute" title="adbc_driver_manager.dbapi.Cursor.execute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">execute()</span></code></a> or
+<a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executemany" title="adbc_driver_manager.dbapi.Cursor.executemany"><code class="xref py py-meth docutils literal notranslate"><span class="pre">executemany()</span></code></a> with the same query.  This will not
+prepare the query a second time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>pyarrow.Schema or None</dt><dd><p>The schema of the bind parameters, or None if the schema
+could not be determined.</p>
 </dd>
 </dl>
 </dd>
@@ -1715,6 +1765,7 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_partitions"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.execute_partitions()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_query"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.execute_query()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_update"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.execute_update()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.get_parameter_schema()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.prepare()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_options"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.set_options()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_sql_query"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.set_sql_query()</span></code></a></li>
@@ -1778,6 +1829,7 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor"><code class="docutils literal notranslate"><span class="pre">Cursor</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_execute_partitions"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_execute_partitions()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_ingest()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_prepare"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_prepare()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_read_partition"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_read_partition()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_statement"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_statement</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.arraysize"><code class="docutils literal notranslate"><span class="pre">Cursor.arraysize</span></code></a></li>
