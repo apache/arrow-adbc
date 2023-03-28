@@ -26,7 +26,23 @@ Installation
 C/C++
 =====
 
-At this time, separate packages for C/C++-based drivers are not available.
+Install the appropriate driver package.  These are currently only available from conda-forge_:
+
+- ``mamba install libadbc-driver-flightsql``
+- ``mamba install libadbc-driver-postgresql``
+- ``mamba install libadbc-driver-sqlite``
+
+Then they can be used via CMake, e.g.:
+
+.. code-block:: cmake
+
+   find_package(AdbcDriverPostgreSQL)
+
+   # ...
+
+   target_link_libraries(myapp PRIVATE AdbcDriverPostgreSQL::adbc_driver_postgresql_shared)
+
+.. _conda-forge: https://conda-forge.org/
 
 Go
 ==
@@ -47,7 +63,16 @@ Add a dependency on the driver package, for example:
 Python
 ======
 
-Install the appropriate driver package from PyPI, for example:
+Install the appropriate driver package.
 
-- ``pip install adbc_driver_postgresql``
-- ``pip install adbc_driver_sqlite``
+For example, from PyPI:
+
+- ``pip install adbc-driver-flightsql``
+- ``pip install adbc-driver-postgresql``
+- ``pip install adbc-driver-sqlite``
+
+From conda-forge_:
+
+- ``mamba install adbc-driver-flightsql``
+- ``mamba install adbc-driver-postgresql``
+- ``mamba install adbc-driver-sqlite``
