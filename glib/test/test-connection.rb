@@ -21,19 +21,29 @@ class ConnectionTest < Test::Unit::TestCase
     @database.set_option("driver", "adbc_driver_sqlite")
     @database.set_option("uri", ":memory:")
     @database.init
-  end
-
-  def test_init
-    connection = ADBC::Connection.new
-    assert do
-      connection.init(@database)
+    @connection = ADBC::Connection.new
+    begin
+      @connection.init(@database)
+      yield
+    ensure
+      @connection.release
     end
   end
 
-  def test_release
-    connection = ADBC::Connection.new
-    assert do
-      connection.release
+  def test_table_types
+    c_abi_array_stream = @connection.table_types
+    begin
+      reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+      table = reader.read_all
+      fields = [
+        Arrow::Field.new("table_type", :string, false),
+      ]
+      schema = Arrow::Schema.new(fields)
+      table_types = Arrow::StringArray.new(["table", "view"])
+      assert_equal(Arrow::Table.new(schema, [table_types]),
+                   table)
+    ensure
+      GLib.free(c_abi_array_stream)
     end
   end
 end
