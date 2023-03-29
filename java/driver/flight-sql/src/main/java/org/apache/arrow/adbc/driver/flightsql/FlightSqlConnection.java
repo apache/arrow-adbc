@@ -36,6 +36,7 @@ import org.apache.arrow.flight.Ticket;
 import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 
@@ -133,7 +134,7 @@ public class FlightSqlConnection implements AdbcConnection {
 
   @Override
   public void close() throws Exception {
-    client.close();
+    AutoCloseables.close(client, allocator);
   }
 
   @Override
