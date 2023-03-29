@@ -776,8 +776,8 @@ class Cursor(_Closeable):
         """
         Execute a query and get the partitions of a distributed result set.
 
-        Parameters
-        ----------
+        Returns
+        -------
         partitions : list of byte
             A list of partition descriptors, which can be read with
             read_partition.
