@@ -54,9 +54,10 @@ final class JdbcBindReader extends ArrowReader {
       }
     }
 
-    final VectorSchemaRoot root = currentSource.next();
-    try (final ArrowRecordBatch batch = new VectorUnloader(root).getRecordBatch()) {
-      loadRecordBatch(batch);
+    try (final VectorSchemaRoot root = currentSource.next()) {
+      try (final ArrowRecordBatch batch = new VectorUnloader(root).getRecordBatch()) {
+        loadRecordBatch(batch);
+      }
     }
     return true;
   }
@@ -68,11 +69,13 @@ final class JdbcBindReader extends ArrowReader {
 
   @Override
   protected void closeReadSource() throws IOException {
-    try {
-      // Do not close PreparedStatement so we can reuse it
-      currentResultSet.close();
-    } catch (SQLException e) {
-      throw new IOException(e);
+    if (currentResultSet != null) {
+      try {
+        // Do not close PreparedStatement so we can reuse it
+        currentResultSet.close();
+      } catch (SQLException e) {
+        throw new IOException(e);
+      }
     }
   }
 

@@ -29,6 +29,7 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
 import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.junit.jupiter.api.Assumptions;
 
@@ -49,7 +50,7 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
   }
 
   @Override
-  public AdbcDatabase initDatabase() throws AdbcException {
+  public AdbcDatabase initDatabase(BufferAllocator allocator) throws AdbcException {
     String url = makeJdbcUrl();
 
     final Map<String, Object> parameters = new HashMap<>();
@@ -65,7 +66,7 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
                   return SqlQuirks.DEFAULT_ARROW_TYPE_TO_SQL_TYPE_NAME_MAPPING.apply(arrowType);
                 }))
             .build());
-    return JdbcDriver.INSTANCE.open(parameters);
+    return new JdbcDriver(allocator).open(parameters);
   }
 
   @Override

@@ -29,6 +29,7 @@ import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
+import org.apache.arrow.memory.BufferAllocator;
 
 public class DerbyQuirks extends SqlValidationQuirks {
   private final String jdbcUrl;
@@ -38,10 +39,10 @@ public class DerbyQuirks extends SqlValidationQuirks {
   }
 
   @Override
-  public AdbcDatabase initDatabase() throws AdbcException {
+  public AdbcDatabase initDatabase(BufferAllocator allocator) throws AdbcException {
     final Map<String, Object> parameters = new HashMap<>();
     parameters.put(AdbcDriver.PARAM_URL, jdbcUrl);
-    return JdbcDriver.INSTANCE.open(parameters);
+    return new JdbcDriver(allocator).open(parameters);
   }
 
   @Override
