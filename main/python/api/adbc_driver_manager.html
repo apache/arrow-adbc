@@ -1337,7 +1337,7 @@ connections.</p>
 <span class="sig-name descname"><span class="pre">adbc_execute_partitions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Schema.html#pyarrow.Schema" title="(in Apache Arrow v11.0.0)"><span class="pre">Schema</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.adbc_execute_partitions" title="Permalink to this definition">#</a></dt>
 <dd><p>Execute a query and get the partitions of a distributed result set.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>partitions</strong><span class="classifier">list of byte</span></dt><dd><p>A list of partition descriptors, which can be read with
 read_partition.</p>

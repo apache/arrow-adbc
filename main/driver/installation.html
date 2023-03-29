@@ -334,7 +334,20 @@
 </div>
 <section id="c-c">
 <h2>C/C++<a class="headerlink" href="#c-c" title="Permalink to this heading">#</a></h2>
-<p>At this time, separate packages for C/C++-based drivers are not available.</p>
+<p>Install the appropriate driver package.  These are currently only available from <a class="reference external" href="https://conda-forge.org/">conda-forge</a>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">libadbc-driver-flightsql</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">libadbc-driver-postgresql</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">libadbc-driver-sqlite</span></code></p></li>
+</ul>
+<p>Then they can be used via CMake, e.g.:</p>
+<div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="nb">find_package</span><span class="p">(</span><span class="s">AdbcDriverPostgreSQL</span><span class="p">)</span>
+
+<span class="c"># ...</span>
+
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">myapp</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">AdbcDriverPostgreSQL::adbc_driver_postgresql_shared</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="go">
 <h2>Go<a class="headerlink" href="#go" title="Permalink to this heading">#</a></h2>
@@ -354,10 +367,18 @@
 </section>
 <section id="python">
 <h2>Python<a class="headerlink" href="#python" title="Permalink to this heading">#</a></h2>
-<p>Install the appropriate driver package from PyPI, for example:</p>
+<p>Install the appropriate driver package.</p>
+<p>For example, from PyPI:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc_driver_postgresql</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc_driver_sqlite</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-flightsql</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-postgresql</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-sqlite</span></code></p></li>
+</ul>
+<p>From <a class="reference external" href="https://conda-forge.org/">conda-forge</a>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-flightsql</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-postgresql</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-sqlite</span></code></p></li>
 </ul>
 </section>
 </section>
