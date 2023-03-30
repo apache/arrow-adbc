@@ -171,9 +171,10 @@ import $component.dbapi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
         if [[ "${component}" = "adbc_driver_manager" ]]; then
-            python -m pytest -vvx --import-mode append -k "not sqlite" ${source_dir}/python/$component/tests
-        else
-            python -m pytest -vvx --import-mode append ${source_dir}/python/$component/tests
+            export PYTEST_ADDOPTS="-k 'not sqlite'"
+        elif [[ "${component}" = "adbc_driver_postgresql" ]]; then
+            export PYTEST_ADDOPTS="-k 'not polars'"
         fi
+        python -m pytest -vvx --import-mode append ${source_dir}/python/$component/tests
     done
 }

@@ -20,3 +20,6 @@ pandas
 pyarrow>=8.0.0
 pytest
 setuptools
+
+# For integration testing
+polars

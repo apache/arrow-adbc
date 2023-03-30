@@ -28,7 +28,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dbapi = ["pandas", "pyarrow>=8.0.0"]
-test = ["pandas", "pyarrow>=8.0.0", "pytest"]
+test = ["pandas", "polars", "pyarrow>=8.0.0", "pytest"]
 
 [project.urls]
 homepage = "https://arrow.apache.org"
@@ -37,6 +37,11 @@ repository = "https://github.com/apache/arrow-adbc"
 [build-system]
 requires = ["setuptools >= 61.0.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+markers = [
+    "polars: integration tests with polars",
+]
 
 [tool.setuptools]
 include-package-data = true
