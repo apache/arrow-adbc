@@ -27,6 +27,7 @@ import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.IsolationLevel;
 import org.apache.arrow.adbc.core.StandardSchemas;
@@ -121,6 +122,21 @@ public class JdbcConnection implements AdbcConnection {
   @Override
   public Schema getTableSchema(String catalog, String dbSchema, String tableName)
       throws AdbcException {
+    // Check for existence
+    try (final ResultSet rs =
+        connection.getMetaData().getTables(catalog, dbSchema, tableName, /*tableTypes*/ null)) {
+      if (!rs.next()) {
+        throw new AdbcException(
+            JdbcDriverUtil.prefixExceptionMessage("Table not found: " + tableName), /*cause*/
+            null,
+            AdbcStatusCode.NOT_FOUND, /*sqlState*/
+            null, /*vendorCode*/
+            0);
+      }
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException(e);
+    }
+
     // Reconstruct the schema from the metadata
     // XXX: this may be inconsistent with reading the table
     final List<Field> fields = new ArrayList<>();
