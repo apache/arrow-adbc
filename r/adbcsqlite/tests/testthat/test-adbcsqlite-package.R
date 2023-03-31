@@ -33,7 +33,7 @@ test_that("default options can open a database and execute a query", {
     stmt,
     "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"
   )
-  adbcdrivermanager::adbc_statement_execute_query(stmt)$release()
+  adbcdrivermanager::adbc_statement_execute_query(stmt)
   adbcdrivermanager::adbc_statement_release(stmt)
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
@@ -45,7 +45,7 @@ test_that("default options can open a database and execute a query", {
       ('Push Jerk', 7),
       ('Bar Muscle Up', 10);"
   )
-  adbcdrivermanager::adbc_statement_execute_query(stmt)$release()
+  adbcdrivermanager::adbc_statement_execute_query(stmt)
   adbcdrivermanager::adbc_statement_release(stmt)
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
@@ -54,8 +54,11 @@ test_that("default options can open a database and execute a query", {
     "SELECT * from crossfit"
   )
 
+  stream <- nanoarrow::nanoarrow_allocate_array_stream()
+  adbcdrivermanager::adbc_statement_execute_query(stmt, stream)
+
   expect_identical(
-    as.data.frame(adbcdrivermanager::adbc_statement_execute_query(stmt)),
+    as.data.frame(stream),
     data.frame(
       exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
       difficulty_level = c(3, 5, 7, 10),
