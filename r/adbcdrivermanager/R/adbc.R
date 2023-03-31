@@ -431,10 +431,9 @@ adbc_statement_bind_stream <- function(statement, stream, schema = NULL) {
 
 #' @rdname adbc_statement_set_sql_query
 #' @export
-adbc_statement_execute_query <- function(statement) {
+adbc_statement_execute_query <- function(statement, out_stream = NULL) {
   error <- adbc_allocate_error()
-  out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
   result <- .Call(RAdbcStatementExecuteQuery, statement, out_stream, error)
   stop_for_error(result$status, error)
-  out_stream
+  result$rows_affected
 }

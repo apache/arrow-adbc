@@ -26,7 +26,8 @@
 #' db <- adbc_database_init(adbc_driver_monkey())
 #' con <- adbc_connection_init(db)
 #' stmt <- adbc_statement_init(con, mtcars)
-#' result <- adbc_statement_execute_query(stmt)
+#' stream <- nanoarrow::nanoarrow_allocate_array_stream()
+#' result <- adbc_statement_execute_query(stmt, stream)
 #' as.data.frame(result$get_next())
 #'
 adbc_driver_monkey <- function() {

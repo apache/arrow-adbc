@@ -76,7 +76,8 @@ adbc_statement_set_sql_query(stmt, "SELECT * FROM flights")
 # which can be materialized using as.data.frame(), as_tibble(),
 # or converted to an arrow::RecordBatchReader using
 # arrow::as_record_batch_reader()
-(stream <- adbc_statement_execute_query(stmt))
+stream <- nanoarrow::nanoarrow_allocate_array_stream()
+adbc_statement_execute_query(stmt, stream)
 
 # Materialize the whole query as a tibble
 tibble::as_tibble(stream)
