@@ -20,18 +20,12 @@ test_that("adbcpostgresql() works", {
 })
 
 test_that("default options can open a database and execute a query", {
-  server <- test_server_start()
-  on.exit(test_server_stop(server))
-
-  # Wait a little bit for server to be ready if we just launched a docker
-  # process
-  if (!is.null(server$process)) {
-    Sys.sleep(2)
-  }
+  test_db_uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI", "")
+  skip_if(identical(test_db_uri, ""))
 
   db <- adbcdrivermanager::adbc_database_init(
     adbcpostgresql(),
-    uri = server$uri
+    uri = test_db_uri
   )
   expect_s3_class(db, "adbcpostgresql_database")
 
@@ -45,23 +39,22 @@ test_that("default options can open a database and execute a query", {
     stmt,
     "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER);"
   )
+  adbcdrivermanager::adbc_statement_execute_query(stmt)
+  adbcdrivermanager::adbc_statement_release(stmt)
 
-  # Always attempt to clean up
-  on.exit(try({
+  # If we get this far, remove the table and disconnect when the test is done
+  on.exit({
     stmt <- adbcdrivermanager::adbc_statement_init(con)
     adbcdrivermanager::adbc_statement_set_sql_query(
       stmt,
-      "DROP TABLE crossfit;"
+      "DROP TABLE IF EXISTS crossfit;"
     )
     adbcdrivermanager::adbc_statement_execute_query(stmt)
-  }, silent = TRUE), add = TRUE, after = TRUE)
+    adbcdrivermanager::adbc_statement_release(stmt)
 
-  # Currently returns failed but does in fact evaluate the query
-  try(
-    adbcdrivermanager::adbc_statement_execute_query(stmt),
-    silent = TRUE
-  )
-  adbcdrivermanager::adbc_statement_release(stmt)
+    adbcdrivermanager::adbc_connection_release(con)
+    adbcdrivermanager::adbc_database_release(db)
+  })
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
   adbcdrivermanager::adbc_statement_set_sql_query(
@@ -72,11 +65,7 @@ test_that("default options can open a database and execute a query", {
       ('Push Jerk', 7),
       ('Bar Muscle Up', 10);"
   )
-  # Currently returns failed but does in fact evaluate the query
-  try(
-    adbcdrivermanager::adbc_statement_execute_query(stmt),
-    silent = TRUE
-  )
+  adbcdrivermanager::adbc_statement_execute_query(stmt)
   adbcdrivermanager::adbc_statement_release(stmt)
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
@@ -85,8 +74,10 @@ test_that("default options can open a database and execute a query", {
     "SELECT * from crossfit ORDER BY difficulty_level"
   )
 
+  stream <- nanoarrow::nanoarrow_allocate_array_stream()
+  adbcdrivermanager::adbc_statement_execute_query(stmt, stream)
   expect_identical(
-    as.data.frame(adbcdrivermanager::adbc_statement_execute_query(stmt)),
+    as.data.frame(stream),
     data.frame(
       exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
       difficulty_level = c(3L, 5L, 7L, 10L),
@@ -95,6 +86,4 @@ test_that("default options can open a database and execute a query", {
   )
 
   adbcdrivermanager::adbc_statement_release(stmt)
-  adbcdrivermanager::adbc_connection_release(con)
-  adbcdrivermanager::adbc_database_release(db)
 })
