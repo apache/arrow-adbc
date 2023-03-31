@@ -86,6 +86,54 @@ TEST_F(DriverManager, DatabaseCustomInitFunc) {
   ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
 }
 
+TEST_F(DriverManager, UninitializedError) {
+  struct AdbcDatabase database;
+  struct AdbcError invalid_err;
+  std::memset(&database, 0, sizeof(database));
+
+  // Force junk into AdbcError going into calls to
+  // simulate API calls using uninitialized AdbcError structs
+  std::memset(&invalid_err, 0xff, sizeof(invalid_err));
+  ASSERT_THAT(AdbcDatabaseInit(&database, &invalid_err),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &invalid_err));
+  if (invalid_err.release) invalid_err.release(&invalid_err);
+
+  std::memset(&invalid_err, 0xff, sizeof(invalid_err));
+  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&invalid_err));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &invalid_err),
+      IsOkStatus(&invalid_err));
+
+  ASSERT_THAT(AdbcDatabaseInit(&database, &invalid_err), IsOkStatus(&invalid_err));
+  std::memset(&invalid_err, 0xff, sizeof(invalid_err));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database, "notavalidkey", "notavalidvalue", &invalid_err),
+      IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &invalid_err));
+  if (invalid_err.release) invalid_err.release(&invalid_err);
+
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+
+}
+
+TEST_F(DriverManager, NoAdbcError) {
+  struct AdbcDatabase database;
+  std::memset(&database, 0, sizeof(database));
+
+  // Make API calls with AdbcError=nullptr and ensure that
+  // nothing bad happens if the optional param is not passed in
+  EXPECT_EQ(AdbcDatabaseInit(&database, nullptr), ADBC_STATUS_INVALID_STATE);
+
+  EXPECT_EQ(AdbcDatabaseNew(&database, nullptr), ADBC_STATUS_OK);
+  EXPECT_EQ(AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", nullptr),
+            ADBC_STATUS_OK);
+
+  EXPECT_EQ(AdbcDatabaseInit(&database, nullptr), ADBC_STATUS_OK);
+  EXPECT_EQ(AdbcDatabaseSetOption(&database, "notavalidkey", "notavalidvalue", nullptr),
+            ADBC_STATUS_NOT_IMPLEMENTED);
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+
+}
+
 TEST_F(DriverManager, ConnectionOptions) {
   struct AdbcDatabase database;
   struct AdbcConnection connection;
