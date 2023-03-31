@@ -55,7 +55,8 @@ This is a basic example which shows you how to solve a common problem:
 library(adbcdrivermanager)
 
 # Use the driver manager to connect to a database
-db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = ":memory:")
+uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI")
+db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
 con <- adbc_connection_init(db)
 
 # Write a table
@@ -75,7 +76,16 @@ result <- tibble::as_tibble(adbc_statement_execute_query(stmt))
 adbc_statement_release(stmt)
 
 result
+```
 
+```{r example-clean-up, include=FALSE}
+stmt <- adbc_statement_init(con)
+adbc_statement_set_sql_query(stmt, "DROP TABLE flights")
+adbc_statement_execute_query()
+adbc_statement_release(stmt)
+```
+
+```{r example-clean-up2, include=FALSE}
 # Clean up
 adbc_connection_release(con)
 adbc_database_release(db)
