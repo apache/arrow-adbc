@@ -41,12 +41,18 @@ namespace adbcpq {
 #define MAKE_NAME(x, y) CONCAT(x, y)
 
 #if defined(_WIN32)
+static inline uint32_t SwapNetworkToHost(uint32_t x) { return ntohl(x); }
+static inline uint32_t SwapHostToNetwork(uint32_t x) { return htonl(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) { return ntohll(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return htonll(x); }
 #elif defined(__APPLE__)
+static inline uint32_t SwapNetworkToHost(uint32_t x) { return OSSwapBigToHostInt32(x); }
+static inline uint32_t SwapHostToNetwork(uint32_t x) { return OSSwapHostToBigInt32(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) { return OSSwapBigToHostInt64(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return OSSwapHostToBigInt64(x); }
 #else
+static inline uint32_t SwapNetworkToHost(uint32_t x) { return be32toh(x); }
+static inline uint32_t SwapHostToNetwork(uint32_t x) { return htobe32(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) { return be64toh(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return htobe64(x); }
 #endif
@@ -156,7 +162,26 @@ static inline int64_t LoadNetworkInt64(const char* buf) {
   return static_cast<int64_t>(LoadNetworkUInt64(buf));
 }
 
+static inline double LoadNetworkFloat8(const char* buf) {
+  uint64_t vint;
+  memcpy(&vint, &buf, sizeof(uint64_t));
+  vint = SwapHostToNetwork(vint);
+  double out;
+  memcpy(&out, &vint, sizeof(double));
+  return out;
+}
+
+static inline uint32_t ToNetworkInt32(int64_t v) {
+  return SwapHostToNetwork(static_cast<uint64_t>(v));
+}
+
 static inline uint64_t ToNetworkInt64(int64_t v) {
+  return SwapHostToNetwork(static_cast<uint64_t>(v));
+}
+
+static inline uint64_t ToNetworkFloat8(double v) {
+  uint64_t vint;
+  memcpy(&vint, &v, sizeof(uint64_t));
   return SwapHostToNetwork(static_cast<uint64_t>(v));
 }
 
