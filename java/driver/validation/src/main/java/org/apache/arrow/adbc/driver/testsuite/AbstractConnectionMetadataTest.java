@@ -18,6 +18,7 @@
 package org.apache.arrow.adbc.driver.testsuite;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,8 +29,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
+import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcInfoCode;
 import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.memory.BufferAllocator;
@@ -304,6 +307,15 @@ public abstract class AbstractConnectionMetadataTest {
     }
     assertThat(connection.getTableSchema(/*catalog*/ null, /*dbSchema*/ null, tableName))
         .isEqualTo(schema);
+  }
+
+  @Test
+  public void getTableSchemaDoesNotExist() throws Exception {
+    final AdbcException thrown =
+        assertThrows(
+            AdbcException.class,
+            () -> connection.getTableSchema(/*catalog*/ null, /*dbSchema*/ null, "DOESNOTEXIST"));
+    assertThat(thrown.getStatus()).isEqualTo(AdbcStatusCode.NOT_FOUND);
   }
 
   @Test
