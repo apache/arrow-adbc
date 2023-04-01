@@ -36,7 +36,7 @@ knitr::opts_chunk$set(
 <!-- badges: end -->
 
 The goal of adbcdrivermanager is to provide a low-level developer-facing interface
-to the Arrow Database Connectivity (ADBC) SQLite driver.
+to the Arrow Database Connectivity (ADBC) PostgreSQL driver.
 
 ## Installation
 
