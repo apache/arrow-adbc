@@ -477,6 +477,11 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+      - name: Install libpq on MacOS
+        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'macOS'
+        run: |
+          brew install libpq
+
       - name: Prepare sources (driver manager)
         if: matrix.config.pkg == 'adbcdrivermanager'
         run: |
@@ -498,11 +503,6 @@ jobs:
           extra-packages: any::rcmdcheck, local::../adbcdrivermanager
           needs: check
           working-directory: r/${{ matrix.config.pkg }}
-
-      - name: Install libpq on MacOS
-        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'macOS'
-        run: |
-          brew install libpq
 
       - name: Start postgres test database
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
