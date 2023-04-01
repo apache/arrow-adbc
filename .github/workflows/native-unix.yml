@@ -477,10 +477,10 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Install libpq on MacOS
+      - name: Install pkg-config on MacOS
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'macOS'
         run: |
-          brew install libpq
+          brew install pkg-config
 
       - name: Prepare sources (driver manager)
         if: matrix.config.pkg == 'adbcdrivermanager'
