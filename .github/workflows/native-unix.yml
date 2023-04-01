@@ -457,6 +457,7 @@ jobs:
           - {os: macOS-latest,   r: 'release', pkg: 'adbcsqlite'}
           - {os: windows-latest,   r: 'release', pkg: 'adbcsqlite'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsqlite'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcpostgresql'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -497,7 +498,19 @@ jobs:
           needs: check
           working-directory: r/${{ matrix.config.pkg }}
 
+      - name: Start PosgreSQL test database
+        if: matrix.config.pkg == 'adbcpostgresql'
+        run: |
+          cd r/adbcpostgresql
+          docker compose up --detach
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
           working-directory: r/${{ matrix.config.pkg }}
+
+      - name: Stop test database
+        if: always()
+        run: |
+          cd r/adbcpostgresql
+          docker compose down
