@@ -29,7 +29,8 @@ NULL
 #' @inheritParams adbcdrivermanager::adbc_database_init
 #' @inheritParams adbcdrivermanager::adbc_connection_init
 #' @inheritParams adbcdrivermanager::adbc_statement_init
-#' @param uri A URI to a database path or ":memory:" for an in-memory database.
+#' @param uri A URI to a database path (e.g.,
+#'   `postgresql://localhost:1234/postgres?user=user&password=password`)
 #' @param adbc.connection.autocommit Use FALSE to disable the default
 #'   autocommit behaviour.
 #' @param adbc.ingest.target_table The name of the target table for a bulk insert.

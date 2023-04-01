@@ -23,7 +23,8 @@ adbcpostgresql()
 \arguments{
 \item{driver}{An \code{\link[adbcdrivermanager:adbc_driver]{adbc_driver()}}.}
 
-\item{uri}{A URI to a database path or ":memory:" for an in-memory database.}
+\item{uri}{A URI to a database path (e.g.,
+\verb{postgresql://localhost:1234/postgres?user=user&password=password})}
 
 \item{database}{An \link[adbcdrivermanager:adbc_database_init]{adbc_database}.}
 

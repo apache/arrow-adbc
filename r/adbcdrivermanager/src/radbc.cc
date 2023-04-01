@@ -414,7 +414,6 @@ extern "C" SEXP RAdbcStatementExecuteQuery(SEXP statement_xptr, SEXP out_stream_
     out_stream = nullptr;
   } else {
     out_stream = adbc_from_xptr<ArrowArrayStream>(out_stream_xptr);
-    ;
   }
 
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
