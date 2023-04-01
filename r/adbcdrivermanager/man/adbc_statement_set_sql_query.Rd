@@ -22,7 +22,7 @@ adbc_statement_bind(statement, values, schema = NULL)
 
 adbc_statement_bind_stream(statement, stream, schema = NULL)
 
-adbc_statement_execute_query(statement)
+adbc_statement_execute_query(statement, stream = NULL)
 }
 \arguments{
 \item{statement}{An \link[=adbc_statement_init]{adbc_statement}}

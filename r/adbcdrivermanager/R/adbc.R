@@ -431,9 +431,9 @@ adbc_statement_bind_stream <- function(statement, stream, schema = NULL) {
 
 #' @rdname adbc_statement_set_sql_query
 #' @export
-adbc_statement_execute_query <- function(statement, out_stream = NULL) {
+adbc_statement_execute_query <- function(statement, stream = NULL) {
   error <- adbc_allocate_error()
-  result <- .Call(RAdbcStatementExecuteQuery, statement, out_stream, error)
+  result <- .Call(RAdbcStatementExecuteQuery, statement, stream, error)
   stop_for_error(result$status, error)
   result$rows_affected
 }
