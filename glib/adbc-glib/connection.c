@@ -184,6 +184,64 @@ gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* datab
 }
 
 /**
+ * gadbc_connection_get_info:
+ * @connection: A #GADBCConnection.
+ * @info_codes: (nullable) (array length=n_info_codes): A list of
+ *   metadata codes to fetch, or %NULL to fetch all.
+ * @n_info_codes: The length of the info_codes parameter. Ignored if
+ *   info_codes is %NULL.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * The result is an Arrow dataset with the following schema:
+ *
+ * Field Name                  | Field Type
+ * ----------------------------|------------------------
+ * info_name                   | uint32 not null
+ * info_value                  | INFO_SCHEMA
+ *
+ * INFO_SCHEMA is a dense union with members:
+ *
+ * Field Name (Type Code)      | Field Type
+ * ----------------------------|------------------------
+ * string_value (0)            | utf8
+ * bool_value (1)              | bool
+ * int64_value (2)             | int64
+ * int32_bitmask (3)           | int32
+ * string_list (4)             | list<utf8>
+ * int32_to_int32_list_map (5) | map<int32, list<int32>>
+ *
+ * Each metadatum is identified by an integer code.  The recognized
+ * codes are defined as constants.  Codes [0, 10_000) are reserved
+ * for ADBC usage.  Drivers/vendors will ignore requests for
+ * unrecognized codes (the row will be omitted from the result).
+ *
+ * Returns: The result set as `struct ArrowArrayStream *`. It should
+ *   be freed with the `ArrowArrayStream::release` callback then
+ *   g_free() when no longer needed.
+ *
+ * Since: 0.4.0
+ */
+gpointer gadbc_connection_get_info(GADBCConnection* connection, guint32* info_codes,
+                                   gsize n_info_codes, GError** error) {
+  const gchar* context = "[adbc][connection][get-info]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  if (!adbc_connection) {
+    return NULL;
+  }
+  struct ArrowArrayStream* array_stream = g_new0(struct ArrowArrayStream, 1);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcConnectionGetInfo(
+      adbc_connection, info_codes, n_info_codes, array_stream, &adbc_error);
+  if (gadbc_error_check(error, status_code, &adbc_error, context)) {
+    return array_stream;
+  } else {
+    g_free(array_stream);
+    return NULL;
+  }
+}
+
+/**
  * gadbc_connection_get_table_types:
  * @connection: A #GADBCConnection.
  * @error: (nullable): Return location for a #GError or %NULL.
