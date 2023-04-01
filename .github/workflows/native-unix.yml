@@ -457,6 +457,7 @@ jobs:
           - {os: macOS-latest,   r: 'release', pkg: 'adbcsqlite'}
           - {os: windows-latest,   r: 'release', pkg: 'adbcsqlite'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsqlite'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcpostgresql'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcpostgresql'}
 
     env:
@@ -499,10 +500,12 @@ jobs:
           working-directory: r/${{ matrix.config.pkg }}
 
       - name: Start postgres test database
-        if: matrix.config.pkg == 'adbcpostgresql'
+        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
         run: |
           cd r/adbcpostgresql
           docker compose up --detach
+          ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
+          echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
 
       - uses: r-lib/actions/check-r-package@v2
         with:
@@ -510,7 +513,7 @@ jobs:
           working-directory: r/${{ matrix.config.pkg }}
 
       - name: Stop postgres test database
-        if: matrix.config.pkg == 'adbcpostgresql'
+        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
         run: |
           cd r/adbcpostgresql
           docker compose down
