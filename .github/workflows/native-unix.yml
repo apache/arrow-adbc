@@ -499,6 +499,11 @@ jobs:
           needs: check
           working-directory: r/${{ matrix.config.pkg }}
 
+      - name: Install libpq on MacOS
+        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'macOS'
+        run: |
+          brew install libpq
+
       - name: Start postgres test database
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
         run: |
