@@ -493,7 +493,7 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           pak-version: devel
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, local::r/adbcdrivermanager
           needs: check
           working-directory: r/${{ matrix.config.pkg }}
 
