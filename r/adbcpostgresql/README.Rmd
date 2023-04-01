@@ -60,7 +60,7 @@ db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
 con <- adbc_connection_init(db)
 
 # Write a table
-flights <- nycflights13::flights
+flights <- head(nycflights13::flights, 100)
 # (timestamp not supported yet)
 flights$time_hour <- NULL
 
@@ -71,8 +71,11 @@ adbc_statement_release(stmt)
 
 # Query it
 stmt <- adbc_statement_init(con)
+stream <- nanoarrow::nanoarrow_allocate_array_stream()
+
 adbc_statement_set_sql_query(stmt, "SELECT * from flights")
-result <- tibble::as_tibble(adbc_statement_execute_query(stmt))
+adbc_statement_execute_query(stmt, stream)
+result <- tibble::as_tibble(stream)
 adbc_statement_release(stmt)
 
 result
@@ -81,7 +84,7 @@ result
 ```{r example-clean-up, include=FALSE}
 stmt <- adbc_statement_init(con)
 adbc_statement_set_sql_query(stmt, "DROP TABLE flights")
-adbc_statement_execute_query()
+adbc_statement_execute_query(stmt)
 adbc_statement_release(stmt)
 ```
 

@@ -43,30 +43,35 @@ This is a basic example which shows you how to solve a common problem:
 library(adbcdrivermanager)
 
 # Use the driver manager to connect to a database
-db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = ":memory:")
+uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI")
+db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
 con <- adbc_connection_init(db)
 
 # Write a table
-flights <- nycflights13::flights
+flights <- head(nycflights13::flights, 100)
 # (timestamp not supported yet)
 flights$time_hour <- NULL
 
 stmt <- adbc_statement_init(con, adbc.ingest.target_table = "flights")
 adbc_statement_bind(stmt, flights)
 adbc_statement_execute_query(stmt)
-#> <nanoarrow_array_stream[invalid pointer]>
+#> [1] 100
 adbc_statement_release(stmt)
 
 # Query it
 stmt <- adbc_statement_init(con)
+stream <- nanoarrow::nanoarrow_allocate_array_stream()
+
 adbc_statement_set_sql_query(stmt, "SELECT * from flights")
-result <- tibble::as_tibble(adbc_statement_execute_query(stmt))
+adbc_statement_execute_query(stmt, stream)
+#> [1] -1
+result <- tibble::as_tibble(stream)
 adbc_statement_release(stmt)
 
 result
-#> # A tibble: 336,776 × 18
+#> # A tibble: 100 × 18
 #>     year month   day dep_time sched_de…¹ dep_d…² arr_t…³ sched…⁴ arr_d…⁵ carrier
-#>    <dbl> <dbl> <dbl>    <dbl>      <dbl>   <dbl>   <dbl>   <dbl>   <dbl> <chr>
+#>    <int> <int> <int>    <int>      <int>   <dbl>   <int>   <int>   <dbl> <chr>
 #>  1  2013     1     1      517        515       2     830     819      11 UA
 #>  2  2013     1     1      533        529       4     850     830      20 UA
 #>  3  2013     1     1      542        540       2     923     850      33 AA
@@ -77,12 +82,8 @@ result
 #>  8  2013     1     1      557        600      -3     709     723     -14 EV
 #>  9  2013     1     1      557        600      -3     838     846      -8 B6
 #> 10  2013     1     1      558        600      -2     753     745       8 AA
-#> # … with 336,766 more rows, 8 more variables: flight <dbl>, tailnum <chr>,
+#> # … with 90 more rows, 8 more variables: flight <int>, tailnum <chr>,
 #> #   origin <chr>, dest <chr>, air_time <dbl>, distance <dbl>, hour <dbl>,
 #> #   minute <dbl>, and abbreviated variable names ¹​sched_dep_time, ²​dep_delay,
 #> #   ³​arr_time, ⁴​sched_arr_time, ⁵​arr_delay
-
-# Clean up
-adbc_connection_release(con)
-adbc_database_release(db)
 ```
