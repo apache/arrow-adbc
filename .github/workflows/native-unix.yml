@@ -498,7 +498,7 @@ jobs:
           needs: check
           working-directory: r/${{ matrix.config.pkg }}
 
-      - name: Start PosgreSQL test database
+      - name: Start postgres test database
         if: matrix.config.pkg == 'adbcpostgresql'
         run: |
           cd r/adbcpostgresql
@@ -509,8 +509,8 @@ jobs:
           upload-snapshots: true
           working-directory: r/${{ matrix.config.pkg }}
 
-      - name: Stop test database
-        if: always()
+      - name: Stop postgres test database
+        if: matrix.config.pkg == 'adbcpostgresql'
         run: |
           cd r/adbcpostgresql
           docker compose down
