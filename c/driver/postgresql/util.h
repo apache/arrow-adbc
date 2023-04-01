@@ -164,15 +164,15 @@ static inline int64_t LoadNetworkInt64(const char* buf) {
 
 static inline double LoadNetworkFloat8(const char* buf) {
   uint64_t vint;
-  memcpy(&vint, &buf, sizeof(uint64_t));
+  memcpy(&vint, buf, sizeof(uint64_t));
   vint = SwapHostToNetwork(vint);
   double out;
   memcpy(&out, &vint, sizeof(double));
   return out;
 }
 
-static inline uint32_t ToNetworkInt32(int64_t v) {
-  return SwapHostToNetwork(static_cast<uint64_t>(v));
+static inline uint32_t ToNetworkInt32(int32_t v) {
+  return SwapHostToNetwork(static_cast<uint32_t>(v));
 }
 
 static inline uint64_t ToNetworkInt64(int64_t v) {
@@ -182,7 +182,7 @@ static inline uint64_t ToNetworkInt64(int64_t v) {
 static inline uint64_t ToNetworkFloat8(double v) {
   uint64_t vint;
   memcpy(&vint, &v, sizeof(uint64_t));
-  return SwapHostToNetwork(static_cast<uint64_t>(v));
+  return SwapHostToNetwork(vint);
 }
 
 }  // namespace adbcpq
