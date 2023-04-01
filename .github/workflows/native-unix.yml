@@ -481,6 +481,8 @@ jobs:
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'macOS'
         run: |
           brew install pkg-config
+          brew ls libpq
+          brew ls openssl
 
       - name: Prepare sources (driver manager)
         if: matrix.config.pkg == 'adbcdrivermanager'
