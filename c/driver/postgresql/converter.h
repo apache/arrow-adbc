@@ -56,7 +56,7 @@ class ArrowConverter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode InitArray(ArrowArray* array, ArrowSchema* schema) {
+  virtual ArrowErrorCode InitArray(ArrowArray* array, ArrowSchema* schema) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array, schema, nullptr));
     NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
 
@@ -92,6 +92,72 @@ class ArrowConverter {
   ArrowBuffer* offsets_;
   ArrowBuffer* large_offsets_;
   ArrowBuffer* data_;
+};
+
+// Converter for Pg->Arrow conversions whose representations are identical (minus
+// the bswap from network endian). This includes all integral and float types.
+class NumericArrowConverter : public ArrowConverter {
+ public:
+  NumericArrowConverter(ArrowType type, PgType pg_type)
+      : ArrowConverter(type, pg_type), data_(nullptr) {}
+
+  ArrowErrorCode InitSchema(ArrowSchema* schema) override {
+    NANOARROW_RETURN_NOT_OK(ArrowConverter::InitSchema(schema));
+    bitwidth_ = schema_view_.layout.element_size_bits[1];
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode InitArray(ArrowArray* array, ArrowSchema* schema) override {
+    NANOARROW_RETURN_NOT_OK(ArrowConverter::InitArray(array, schema));
+    data_ = ArrowArrayBuffer(array, 1);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+                      ArrowError* error) override {
+    return ArrowBufferAppendBufferView(data_, data);
+  }
+
+  ArrowErrorCode FinishArray(ArrowArray* array, ArrowError* error) override {
+    BSwapArray(data_->data, data_->size_bytes, bitwidth_);
+    return NANOARROW_OK;
+  }
+
+ private:
+  ArrowBuffer* data_;
+  int32_t bitwidth_;
+};
+
+// Converter for Pg->Arrow conversions whose Arrow representation is simply the
+// bytes of the field representation. This can be used with binary and string
+// Arrow types and any postgres type.
+class BinaryArrowConverter : public ArrowConverter {
+ public:
+  BinaryArrowConverter(ArrowType type, PgType pg_type)
+      : ArrowConverter(type, pg_type), data_(nullptr) {}
+
+  ArrowErrorCode InitArray(ArrowArray* array, ArrowSchema* schema) override {
+    NANOARROW_RETURN_NOT_OK(ArrowConverter::InitArray(array, schema));
+    offsets_ = ArrowArrayBuffer(array, 1);
+    data_ = ArrowArrayBuffer(array, 2);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+                      ArrowError* error) override {
+    if ((data_->size_bytes + data.size_bytes) > std::numeric_limits<int32_t>::max()) {
+      return EOVERFLOW;
+    }
+
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(data_, data));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, (int32_t)data_->size_bytes));
+    return NANOARROW_OK;
+  }
+
+ private:
+  ArrowBuffer* offsets_;
+  ArrowBuffer* data_;
+  int32_t bitwidth_;
 };
 
 }  // namespace adbcpq
