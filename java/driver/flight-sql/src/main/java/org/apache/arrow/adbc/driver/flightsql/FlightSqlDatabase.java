@@ -22,8 +22,6 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.sql.SqlQuirks;
-import org.apache.arrow.flight.FlightClient;
-import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
 
@@ -32,41 +30,38 @@ public final class FlightSqlDatabase implements AdbcDatabase {
   private final BufferAllocator allocator;
   private final Location location;
   private final SqlQuirks quirks;
-  private final FlightClient client;
   private final AtomicInteger counter;
+  private final String username;
+  private final String password;
 
-  FlightSqlDatabase(BufferAllocator allocator, Location location, SqlQuirks quirks)
+  FlightSqlDatabase(
+      BufferAllocator allocator,
+      Location location,
+      SqlQuirks quirks,
+      String username,
+      String password)
       throws AdbcException {
     this.allocator = allocator;
     this.location = location;
     this.quirks = quirks;
-    try {
-      this.client = FlightClient.builder(allocator, location).build();
-    } catch (FlightRuntimeException e) {
-      throw FlightSqlDriverUtil.fromFlightException(e);
-    }
     this.counter = new AtomicInteger();
+    this.username = username;
+    this.password = password;
   }
 
   @Override
   public AdbcConnection connect() throws AdbcException {
-    final FlightClient client;
-    try {
-      client = FlightClient.builder(allocator, location).build();
-    } catch (FlightRuntimeException e) {
-      throw FlightSqlDriverUtil.fromFlightException(e);
-    }
     final int count = counter.getAndIncrement();
     return new FlightSqlConnection(
         allocator.newChildAllocator("adbc-jdbc-connection-" + count, 0, allocator.getLimit()),
-        client,
-        quirks);
+        quirks,
+        location,
+        username,
+        password);
   }
 
   @Override
-  public void close() throws Exception {
-    client.close();
-  }
+  public void close() throws Exception {}
 
   @Override
   public String toString() {

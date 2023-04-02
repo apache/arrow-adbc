@@ -23,16 +23,24 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.apache.arrow.flight.CallHeaders;
+import org.apache.arrow.flight.CallInfo;
+import org.apache.arrow.flight.CallStatus;
 import org.apache.arrow.flight.FlightClient;
+import org.apache.arrow.flight.FlightClientMiddleware;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.Ticket;
+import org.apache.arrow.flight.auth2.Auth2Constants;
+import org.apache.arrow.flight.auth2.BasicAuthCredentialWriter;
+import org.apache.arrow.flight.grpc.CredentialCallOption;
 import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
@@ -46,9 +54,13 @@ public class FlightSqlConnection implements AdbcConnection {
   private final SqlQuirks quirks;
   private final LoadingCache<Location, FlightClient> clientCache;
 
-  FlightSqlConnection(BufferAllocator allocator, FlightClient client, SqlQuirks quirks) {
+  FlightSqlConnection(
+      BufferAllocator allocator,
+      SqlQuirks quirks,
+      Location location,
+      String username,
+      String password) {
     this.allocator = allocator;
-    this.client = new FlightSqlClient(client);
     this.quirks = quirks;
     this.clientCache =
         Caffeine.newBuilder()
@@ -63,7 +75,51 @@ public class FlightSqlConnection implements AdbcConnection {
                     throw new RuntimeException(e);
                   }
                 })
-            .build(location -> FlightClient.builder(allocator, location).build());
+            .build(
+                loc -> {
+                  FlightClient flightClient =
+                      FlightClient.builder(allocator, loc)
+                          .intercept(
+                              new FlightClientMiddleware.Factory() {
+                                final String[] bearerValue = {null};
+
+                                @Override
+                                public FlightClientMiddleware onCallStarted(CallInfo info) {
+                                  return new FlightClientMiddleware() {
+                                    @Override
+                                    public void onBeforeSendingHeaders(
+                                        CallHeaders outgoingHeaders) {
+                                      if (bearerValue[0] != null) {
+                                        outgoingHeaders.insert(
+                                            Auth2Constants.AUTHORIZATION_HEADER, bearerValue[0]);
+                                      }
+                                    }
+
+                                    @Override
+                                    public void onHeadersReceived(CallHeaders incomingHeaders) {
+                                      if (bearerValue[0] == null) {
+                                        bearerValue[0] =
+                                            incomingHeaders.get(
+                                                Auth2Constants.AUTHORIZATION_HEADER);
+                                      }
+                                    }
+
+                                    @Override
+                                    public void onCallCompleted(CallStatus status) {}
+                                  };
+                                }
+                              })
+                          .build();
+
+                  if (username != null) {
+                    flightClient.handshake(
+                        new CredentialCallOption(
+                            new BasicAuthCredentialWriter(username, password)));
+                  }
+                  return flightClient;
+                });
+
+    this.client = new FlightSqlClient(Objects.requireNonNull(clientCache.get(location)));
   }
 
   @Override
