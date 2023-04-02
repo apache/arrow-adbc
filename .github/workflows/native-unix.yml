@@ -477,12 +477,11 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Install pkg-config on MacOS
+      - name: Set PKG_CONFIG_PATH on MacOS
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'macOS'
         run: |
-          brew install pkg-config
-          brew ls libpq
-          brew ls openssl
+          PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
 
       - name: Prepare sources (driver manager)
         if: matrix.config.pkg == 'adbcdrivermanager'
