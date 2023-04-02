@@ -33,6 +33,8 @@ import org.junit.jupiter.api.Assumptions;
 
 public class FlightSqlQuirks extends SqlValidationQuirks {
   static final String FLIGHT_SQL_LOCATION_ENV_VAR = "ADBC_FLIGHT_SQL_LOCATION";
+  static final String FLIGHT_SQL_USER_ENV_VAR = "ADBC_FLIGHT_SQL_USER";
+  static final String FLIGHT_SQL_PASSWORD_ENV_VAR = "ADBC_FLIGHT_SQL_PASSWORD";
 
   static String getFlightLocation() {
     final String location = System.getenv(FLIGHT_SQL_LOCATION_ENV_VAR);
@@ -48,6 +50,8 @@ public class FlightSqlQuirks extends SqlValidationQuirks {
 
     final Map<String, Object> parameters = new HashMap<>();
     parameters.put(AdbcDriver.PARAM_URL, url);
+    parameters.put("adbc.username", System.getenv(FLIGHT_SQL_USER_ENV_VAR));
+    parameters.put("adbc.password", System.getenv(FLIGHT_SQL_PASSWORD_ENV_VAR));
     return FlightSqlDriver.INSTANCE.open(parameters);
   }
 

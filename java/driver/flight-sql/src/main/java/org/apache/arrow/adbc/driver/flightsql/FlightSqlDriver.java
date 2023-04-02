@@ -64,6 +64,11 @@ public enum FlightSqlDriver implements AdbcDriver {
     } else {
       quirks = new SqlQuirks();
     }
-    return new FlightSqlDatabase(allocator, location, (SqlQuirks) quirks);
+    return new FlightSqlDatabase(
+        allocator,
+        location,
+        (SqlQuirks) quirks,
+        (String) parameters.get("adbc.username"),
+        (String) parameters.get("adbc.password"));
   }
 }
