@@ -30,6 +30,62 @@ class ConnectionTest < Test::Unit::TestCase
     end
   end
 
+  def normalize_version(version)
+    return nil if version.nil?
+    version.gsub(/\A\d+\.\d+\.\d+(?:-SNAPSHOT)?\z/, "X.Y.Z")
+  end
+
+  def normalize_info(info)
+    info.collect do |code, value|
+      value = value.values[0] if value.is_a?(Hash)
+      case code
+      when ADBC::Info::VENDOR_VERSION,
+           ADBC::Info::DRIVER_ARROW_VERSION
+        value = normalize_version(value)
+      end
+      [code, value]
+    end
+  end
+
+  sub_test_case("#get_info") do
+    def test_all
+      c_abi_array_stream = @connection.get_info
+      begin
+        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+        table = reader.read_all
+        assert_equal([
+                       [ADBC::Info::VENDOR_NAME, "SQLite"],
+                       [ADBC::Info::VENDOR_VERSION, "X.Y.Z"],
+                       [ADBC::Info::DRIVER_NAME, "ADBC SQLite Driver"],
+                       [ADBC::Info::DRIVER_VERSION, "(unknown)"],
+                       [ADBC::Info::DRIVER_ARROW_VERSION, "X.Y.Z"],
+                     ],
+                     normalize_info(table.raw_records))
+        ensure
+        GLib.free(c_abi_array_stream)
+      end
+    end
+
+    def test_multiple
+      codes = [
+        ADBC::Info::VENDOR_NAME,
+        ADBC::Info::DRIVER_NAME,
+      ]
+      c_abi_array_stream = @connection.get_info(codes)
+      begin
+        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+        table = reader.read_all
+        assert_equal([
+                       [ADBC::Info::VENDOR_NAME, "SQLite"],
+                       [ADBC::Info::DRIVER_NAME, "ADBC SQLite Driver"],
+                     ],
+                     normalize_info(table.raw_records))
+      ensure
+        GLib.free(c_abi_array_stream)
+      end
+    end
+  end
+
   def test_table_types
     c_abi_array_stream = @connection.table_types
     begin

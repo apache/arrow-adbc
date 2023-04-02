@@ -23,6 +23,34 @@
 
 G_BEGIN_DECLS
 
+/**
+ * GADBCInfo:
+ * @GADBC_INFO_VENDOR_NAME: The database vendor/product name (e.g. the
+ *   server name). (type: utf8).
+ * @GADBC_INFO_VENDOR_VERSION: The database vendor/product library version
+ *   (type: utf8).
+ * @GADBC_INFO_VENDOR_ARROW_VERSION: The database vendor/product Arrow
+ *   library version (type: utf8).
+ * @GADBC_INFO_DRIVER_NAME: The driver name (type: utf8).
+ * @GADBC_INFO_DRIVER_VERSION: The driver version (type: utf8).
+ * @GADBC_INFO_DRIVER_ARROW_VERSION: The driver Arrow library version
+ *   (type: utf8).
+ *
+ * The information code that is used by gadbc_connection_get_info().
+ *
+ * They are corresponding to `ADBC_INFO_*` values.
+ *
+ * Since: 0.4.0
+ */
+typedef enum {
+  GADBC_INFO_VENDOR_NAME = 0,
+  GADBC_INFO_VENDOR_VERSION = 1,
+  GADBC_INFO_VENDOR_ARROW_VERSION = 2,
+  GADBC_INFO_DRIVER_NAME = 100,
+  GADBC_INFO_DRIVER_VERSION = 101,
+  GADBC_INFO_DRIVER_ARROW_VERSION = 102,
+} GADBCInfo;
+
 #define GADBC_TYPE_CONNECTION (gadbc_connection_get_type())
 G_DECLARE_DERIVABLE_TYPE(GADBCConnection, gadbc_connection, GADBC, CONNECTION, GObject)
 struct _GADBCConnectionClass {
@@ -40,6 +68,9 @@ GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* database,
                                GError** error);
 
+GADBC_AVAILABLE_IN_0_4
+gpointer gadbc_connection_get_info(GADBCConnection* connection, guint32* info_codes,
+                                   gsize n_info_codes, GError** error);
 GADBC_AVAILABLE_IN_0_4
 gpointer gadbc_connection_get_table_types(GADBCConnection* connection, GError** error);
 
