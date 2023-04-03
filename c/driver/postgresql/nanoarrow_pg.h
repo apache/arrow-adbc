@@ -478,6 +478,7 @@ class PostgresType {
 };
 
 class PostgresTypeResolver {
+ public:
   struct Item {
     uint32_t oid;
     const char* typname;
@@ -487,7 +488,6 @@ class PostgresTypeResolver {
     uint32_t class_oid;
   };
 
- public:
   PostgresTypeResolver() : base_(PostgresType::AllBase()) {}
 
   ArrowErrorCode Find(uint32_t oid, PostgresType* type_out, ArrowError* error) {

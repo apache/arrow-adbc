@@ -22,7 +22,6 @@
 
 using namespace adbcpq;
 
-
 TEST(PostgresNanoarrowTest, PostgresTypeBasic) {
   PostgresType type(PostgresType::PG_RECV_BOOL);
   EXPECT_EQ(type.field_name(), "");
@@ -112,7 +111,8 @@ TEST(PostgresNanoarrowTest, PostgresTypeSetSchema) {
   schema.release(&schema);
 
   ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_BOOL).Array().SetSchema(&schema), NANOARROW_OK);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_BOOL).Array().SetSchema(&schema),
+            NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+l");
   EXPECT_STREQ(schema.children[0]->format, "b");
   schema.release(&schema);
@@ -141,4 +141,61 @@ TEST(PostgresNanoarrowTest, PostgresTypeAllBase) {
   EXPECT_EQ(base_types["array_recv"].recv(), PostgresType::PG_RECV_ARRAY);
   EXPECT_EQ(base_types["array_recv"].typname(), "array");
   EXPECT_EQ(base_types.size(), PostgresType::PgRecvAllBase().size());
+}
+
+TEST(PostgresNanoarrowTest, PostgresTypeResolver) {
+  PostgresTypeResolver resolver;
+  ArrowError error;
+  PostgresType type;
+  PostgresTypeResolver::Item item;
+
+  // Check error for type not found
+  EXPECT_EQ(resolver.Find(123, &type, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "Postgres type with oid 123 not found");
+
+  // Check error for unsupported recv name
+  item.oid = 123;
+  item.typname = "invalid";
+  item.typreceive = "invalid_recv";
+  EXPECT_EQ(resolver.Insert(item, &error), ENOTSUP);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Base type not found for type 'invalid' with receive function 'invalid_recv'");
+
+  // Check error for Array with unknown child
+  item.typname = "some_array";
+  item.typreceive = "array_recv";
+  item.child_oid = 1234;
+  EXPECT_EQ(resolver.Insert(item, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "Postgres type with oid 1234 not found");
+
+  // Check error for Range with unknown child
+  item.typname = "some_range";
+  item.typreceive = "range_recv";
+  item.base_oid = 12345;
+  EXPECT_EQ(resolver.Insert(item, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "Postgres type with oid 12345 not found");
+
+  // Check error for Domain with unknown child
+  item.typname = "some_domain";
+  item.typreceive = "domain_recv";
+  item.base_oid = 123456;
+  EXPECT_EQ(resolver.Insert(item, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "Postgres type with oid 123456 not found");
+
+  // Check error for Record with unknown class
+  item.typname = "some_record";
+  item.typreceive = "record_recv";
+  item.class_oid = 123456;
+  EXPECT_EQ(resolver.Insert(item, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "Class definition with oid 123456 not found");
+
+  // Check insert/resolve of regular type
+  item.typname = "some_type_name";
+  item.typreceive = "boolrecv";
+  EXPECT_EQ(resolver.Insert(item, &error), NANOARROW_OK);
+  EXPECT_EQ(resolver.Find(123, &type, &error), NANOARROW_OK);
+  EXPECT_EQ(type.oid(), 123);
+  EXPECT_EQ(type.typname(), "some_type_name");
+  EXPECT_EQ(type.recv(), PostgresType::PG_RECV_BOOL);
 }
