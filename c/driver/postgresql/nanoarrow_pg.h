@@ -26,7 +26,6 @@
 
 #include <nanoarrow/nanoarrow.hpp>
 
-#include "type.h"
 #include "util.h"
 
 namespace adbcpq {
@@ -582,10 +581,19 @@ class PostgresTypeResolver {
 
 class ArrowConverter {
  public:
-  ArrowConverter(ArrowType type, PgType pg_type)
-      : type_(type), pg_type_(pg_type), offsets_(nullptr), data_(nullptr) {
+  enum Kind {
+    ARROW_CONVERTER_BOOL,
+    ARROW_CONVERTER_NUMERIC,
+    ARROW_CONVERTER_BINARY,
+    ARROW_CONVERTER_OTHER
+  };
+
+  ArrowConverter(Kind kind, ArrowType type)
+      : kind_(kind), type_(type), offsets_(nullptr), data_(nullptr) {
     memset(&schema_view_, 0, sizeof(ArrowSchemaView));
   }
+
+  Kind kind() { return kind_; }
 
   virtual ArrowErrorCode InitSchema(ArrowSchema* schema) {
     NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, type_));
@@ -623,7 +631,7 @@ class ArrowConverter {
   }
 
  protected:
-  PgType pg_type_;
+  Kind kind_;
   ArrowType type_;
   ArrowSchemaView schema_view_;
   ArrowBuffer* offsets_;
@@ -635,8 +643,8 @@ class ArrowConverter {
 // the bswap from network endian). This includes all integral and float types.
 class NumericArrowConverter : public ArrowConverter {
  public:
-  NumericArrowConverter(ArrowType type, PgType pg_type)
-      : ArrowConverter(type, pg_type), data_(nullptr) {}
+  NumericArrowConverter(ArrowType type)
+      : ArrowConverter(ARROW_CONVERTER_NUMERIC, type), data_(nullptr) {}
 
   ArrowErrorCode InitSchema(ArrowSchema* schema) override {
     NANOARROW_RETURN_NOT_OK(ArrowConverter::InitSchema(schema));
@@ -664,8 +672,8 @@ class NumericArrowConverter : public ArrowConverter {
 // Arrow types and any postgres type.
 class BinaryArrowConverter : public ArrowConverter {
  public:
-  BinaryArrowConverter(ArrowType type, PgType pg_type)
-      : ArrowConverter(type, pg_type), data_(nullptr) {}
+  BinaryArrowConverter(ArrowType type)
+      : ArrowConverter(ARROW_CONVERTER_BINARY, type), data_(nullptr) {}
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
