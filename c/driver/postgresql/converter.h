@@ -19,29 +19,149 @@
 
 #include <cerrno>
 #include <cstdint>
-#include <cstring>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include <nanoarrow/nanoarrow.h>
 
 #include "type.h"
+#include "util.h"
 
 namespace adbcpq {
 
-void BSwapArray(uint8_t* data, int64_t size_bytes, int32_t bitwidth) {
-  switch (bitwidth) {
-    case 1:
-    case 8:
-      break;
-    case 16:
-      break;
-    case 32:
-      break;
-    case 64:
-      break;
-    default:
-      break;
+class PostgresType {
+ public:
+  // As listed on https://www.postgresql.org/docs/current/datatype.html
+  enum PgTypeId {
+    PG_TYPE_UNINITIALIZED,
+    PG_TYPE_BIGINT,
+    PG_TYPE_BIGSERIAL,
+    PG_TYPE_BIT,
+    PG_TYPE_BIT_VARYING,
+    PG_TYPE_BOOLEAN,
+    PG_TYPE_BOX,
+    PG_TYPE_BYTEA,
+    PG_TYPE_CHARACTER,
+    PG_TYPE_CHARACTER_VARYING,
+    PG_TYPE_CIDR,
+    PG_TYPE_CIRCLE,
+    PG_TYPE_DATE,
+    PG_TYPE_DOUBLE_PRECISION,
+    PG_TYPE_INET,
+    PG_TYPE_INTEGER,
+    PG_TYPE_INTERVAL,
+    PG_TYPE_JSON,
+    PG_TYPE_JSONB,
+    PG_TYPE_LINE,
+    PG_TYPE_LSEG,
+    PG_TYPE_MACADDR,
+    PG_TYPE_MACADDR8,
+    PG_TYPE_MONEY,
+    PG_TYPE_NUMERIC,
+    PG_TYPE_PATH,
+    PG_TYPE_PG_LSN,
+    PG_TYPE_PG_SNAPSHOT,
+    PG_TYPE_POINT,
+    PG_TYPE_POLYGON,
+    PG_TYPE_REAL,
+    PG_TYPE_SMALLINT,
+    PG_TYPE_SMALLSERIAL,
+    PG_TYPE_SERIAL,
+    PG_TYPE_TEXT,
+    PG_TYPE_TIME,
+    PG_TYPE_TIMESTAMP,
+    PG_TYPE_TSQUERY,
+    PG_TYPE_TSVECTOR,
+    PG_TYPE_TXID_SNAPSHOT,
+    PG_TYPE_UUID,
+    PG_TYPE_XML,
+
+    PG_TYPE_ARRAY,
+    PG_TYPE_COMPOSITE,
+    PG_TYPE_RANGE
+  };
+
+  PostgresType(PgTypeId id, PgTypeId storage_id)
+      : id_(id), storage_id_(storage_id), n_(-1), precision_(-1), scale_(-1) {}
+
+  explicit PostgresType(PgTypeId id) : PostgresType(id, id) {}
+
+  PgTypeId id() const { return id_; }
+  PgTypeId storage_id() const { return storage_id_; }
+  const std::string& name() const { return name_; }
+  int32_t n() const { return n_; }
+  int32_t precision() const { return precision_; }
+  int32_t scale() const { return scale_; }
+  const std::string& timezone() const { return timezone_; }
+  int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
+  const PostgresType* child(int64_t i) const { return children_[i].get(); }
+
+ private:
+  PgTypeId id_;
+  PgTypeId storage_id_;
+  std::string name_;
+  int32_t n_;
+  int32_t precision_;
+  int32_t scale_;
+  std::string timezone_;
+  std::vector<std::unique_ptr<PostgresType>> children_;
+
+ public:
+  PostgresType BigInt() { return PostgresType(PG_TYPE_BIGINT); }
+  PostgresType BigSerial() { return PostgresType(PG_TYPE_BIGSERIAL, PG_TYPE_BIGINT); }
+  PostgresType Bit(int32_t n) {
+    PostgresType out(PG_TYPE_BIT, PG_TYPE_TEXT);
+    out.n_ = n;
+    return out;
   }
-}
+  PostgresType BitVarying(int32_t n) {
+    PostgresType out(PG_TYPE_BIT_VARYING, PG_TYPE_TEXT);
+    out.n_ = n;
+    return out;
+  }
+  PostgresType Boolean() { return PostgresType(PG_TYPE_BOOLEAN); }
+  PostgresType Bytea() { return PostgresType(PG_TYPE_BYTEA); }
+  PostgresType Character(int32_t n) {
+    PostgresType out(PG_TYPE_CHARACTER, PG_TYPE_TEXT);
+    out.n_ = n;
+    return out;
+  }
+  PostgresType CharacterVarying(int32_t n) {
+    PostgresType out(PG_TYPE_CHARACTER_VARYING, PG_TYPE_TEXT);
+    out.n_ = n;
+    return out;
+  }
+  PostgresType Date() { return PostgresType(PG_TYPE_DATE, PG_TYPE_INTEGER); }
+  PostgresType DoublePrecision() { return PostgresType(PG_TYPE_DOUBLE_PRECISION); }
+  PostgresType Integer() { return PostgresType(PG_TYPE_INTEGER); }
+  PostgresType Numeric(int32_t precision, int32_t scale) {
+    PostgresType out(PG_TYPE_NUMERIC);
+    out.precision_ = precision;
+    out.scale_ = scale;
+    return out;
+  }
+  PostgresType Real() { return PostgresType(PG_TYPE_REAL); }
+  PostgresType SmallInt() { return PostgresType(PG_TYPE_SMALLINT); }
+  PostgresType SmallSerial() {
+    return PostgresType(PG_TYPE_SMALLSERIAL, PG_TYPE_SMALLINT);
+  }
+  PostgresType Serial() { return PostgresType(PG_TYPE_SERIAL, PG_TYPE_INTEGER); }
+  PostgresType Text() { return PostgresType(PG_TYPE_TEXT); }
+  PostgresType Time(const std::string& timezone = "") {
+    PostgresType out(PG_TYPE_TIME);
+    out.timezone_ = timezone;
+    if (timezone == "") {
+      out.storage_id_ = PG_TYPE_BIGINT;
+    }
+    return out;
+  }
+  PostgresType Timestamp(const std::string& timezone = "") {
+    PostgresType out(PG_TYPE_TIMESTAMP, PG_TYPE_BIGINT);
+    out.timezone_ = timezone;
+    return out;
+  }
+};
 
 class ArrowConverter {
  public:
@@ -119,7 +239,7 @@ class NumericArrowConverter : public ArrowConverter {
   }
 
   ArrowErrorCode FinishArray(ArrowArray* array, ArrowError* error) override {
-    BSwapArray(data_->data, data_->size_bytes, bitwidth_);
+    BufferToHostEndian(data_->data, data_->size_bytes, bitwidth_);
     return NANOARROW_OK;
   }
 
