@@ -124,10 +124,21 @@ TEST(PostgresNanoarrowTest, PostgresTypeSetSchema) {
   EXPECT_STREQ(schema.format, "+s");
   EXPECT_STREQ(schema.children[0]->format, "b");
   schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  PostgresType unknown(PostgresType::PG_RECV_BRIN_MINMAX_MULTI_SUMMARY);
+  EXPECT_EQ(unknown.WithPgTypeInfo(0, "some_name").SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "z");
+
+  ArrowStringView value = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema.metadata, ArrowCharView("ADBC:posgresql:typname"), &value);
+  EXPECT_EQ(std::string(value.data, value.size_bytes), "some_name");
+  schema.release(&schema);
 }
 
 TEST(PostgresNanoarrowTest, PostgresTypeAllBase) {
   auto base_types = PostgresType::AllBase();
-
+  EXPECT_EQ(base_types["array_recv"].recv(), PostgresType::PG_RECV_ARRAY);
+  EXPECT_EQ(base_types["array_recv"].typname(), "array");
   EXPECT_EQ(base_types.size(), PostgresType::PgRecvAllBase().size());
 }

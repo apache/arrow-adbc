@@ -470,7 +470,7 @@ class PostgresType {
     for (PgRecv recv : PgRecvAllBase()) {
       PostgresType type(recv);
       type.typname_ = PgRecvTypname(recv);
-      out.insert({PgRecvName(recv), recv});
+      out.insert({PgRecvName(recv), type});
     }
 
     return out;
