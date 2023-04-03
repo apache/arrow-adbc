@@ -73,9 +73,9 @@ class PostgresField {
     PG_TYPE_TIMESTAMP,
     PG_TYPE_TSQUERY,
     PG_TYPE_TSVECTOR,
-    PG_TYPE_TXID_SNAPSHOT,
     PG_TYPE_UUID,
     PG_TYPE_XML,
+    PG_TYPE_DOMAIN,
 
     PG_TYPE_ARRAY,
     PG_TYPE_COMPOSITE,
@@ -87,9 +87,9 @@ class PostgresField {
 
   explicit PostgresField(PgTypeId id) : PostgresField(id, id) {}
 
+  const std::string& field_name() const { return field_name_; }
   PgTypeId id() const { return id_; }
   PgTypeId storage_id() const { return storage_id_; }
-  const std::string& typ_namename() const { return type_name_; }
   int32_t n() const { return n_; }
   int32_t precision() const { return precision_; }
   int32_t scale() const { return scale_; }
@@ -97,7 +97,107 @@ class PostgresField {
   int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
   const PostgresField* child(int64_t i) const { return children_[i].get(); }
 
+  std::string type_name() const {
+    // e.g., some user-created type
+    if (type_name_ != "") {
+      return type_name_;
+    }
+
+    switch (id_) {
+      case PG_TYPE_BIGINT:
+        return "bigint";
+      case PG_TYPE_BIGSERIAL:
+        return "bigserial";
+      case PG_TYPE_BIT:
+        return "bit";
+      case PG_TYPE_BIT_VARYING:
+        return "bit varying";
+      case PG_TYPE_BOOLEAN:
+        return "boolean";
+      case PG_TYPE_BOX:
+        return "box";
+      case PG_TYPE_BYTEA:
+        return "bytea";
+      case PG_TYPE_CHARACTER:
+        return "character";
+      case PG_TYPE_CHARACTER_VARYING:
+        return "character varying";
+      case PG_TYPE_CIDR:
+        return "cidr";
+      case PG_TYPE_CIRCLE:
+        return "circle";
+      case PG_TYPE_DATE:
+        return "date";
+      case PG_TYPE_DOUBLE_PRECISION:
+        return "double precision";
+      case PG_TYPE_INET:
+        return "inet";
+      case PG_TYPE_INTEGER:
+        return "integer";
+      case PG_TYPE_INTERVAL:
+        return "interval";
+      case PG_TYPE_JSON:
+        return "json";
+      case PG_TYPE_JSONB:
+        return "jsonb";
+      case PG_TYPE_LINE:
+        return "line";
+      case PG_TYPE_LSEG:
+        return "lseg";
+      case PG_TYPE_MACADDR:
+        return "macaddr";
+      case PG_TYPE_MACADDR8:
+        return "macaddr8";
+      case PG_TYPE_MONEY:
+        return "money";
+      case PG_TYPE_NUMERIC:
+        return "numeric";
+      case PG_TYPE_PATH:
+        return "path";
+      case PG_TYPE_PG_LSN:
+        return "pg_lsn";
+      case PG_TYPE_PG_SNAPSHOT:
+        return "pg_snapshot";
+      case PG_TYPE_POINT:
+        return "point";
+      case PG_TYPE_POLYGON:
+        return "polygon";
+      case PG_TYPE_REAL:
+        return "real";
+      case PG_TYPE_SMALLINT:
+        return "smallint";
+      case PG_TYPE_SMALLSERIAL:
+        return "smallserial";
+      case PG_TYPE_SERIAL:
+        return "serial";
+      case PG_TYPE_TEXT:
+        return "text";
+      case PG_TYPE_TIME:
+        return "time";
+      case PG_TYPE_TIMESTAMP:
+        return "timestamp";
+      case PG_TYPE_TSQUERY:
+        return "tsquery";
+      case PG_TYPE_TSVECTOR:
+        return "tsvetor";
+      case PG_TYPE_UUID:
+        return "uuid";
+      case PG_TYPE_XML:
+        return "xml";
+
+      case PG_TYPE_ARRAY:
+        return "array";
+      case PG_TYPE_COMPOSITE:
+        return "composite";
+      case PG_TYPE_RANGE:
+        return "range";
+      default:
+        return "";
+    }
+  }
+
  private:
+  std::string field_name_;
   PgTypeId id_;
   PgTypeId storage_id_;
   std::string type_name_;
@@ -108,47 +208,51 @@ class PostgresField {
   std::vector<std::unique_ptr<PostgresField>> children_;
 
  public:
-  PostgresField BigInt() { return PostgresField(PG_TYPE_BIGINT); }
-  PostgresField BigSerial() { return PostgresField(PG_TYPE_BIGSERIAL, PG_TYPE_BIGINT); }
-  PostgresField Bit(int32_t n) {
+  static PostgresField BigInt() { return PostgresField(PG_TYPE_BIGINT); }
+  static PostgresField BigSerial() {
+    return PostgresField(PG_TYPE_BIGSERIAL, PG_TYPE_BIGINT);
+  }
+  static PostgresField Bit(int32_t n) {
     PostgresField out(PG_TYPE_BIT, PG_TYPE_TEXT);
     out.n_ = n;
     return out;
   }
-  PostgresField BitVarying(int32_t n) {
+  static PostgresField BitVarying(int32_t n) {
     PostgresField out(PG_TYPE_BIT_VARYING, PG_TYPE_TEXT);
     out.n_ = n;
     return out;
   }
-  PostgresField Boolean() { return PostgresField(PG_TYPE_BOOLEAN); }
-  PostgresField Bytea() { return PostgresField(PG_TYPE_BYTEA); }
-  PostgresField Character(int32_t n) {
+  static PostgresField Boolean() { return PostgresField(PG_TYPE_BOOLEAN); }
+  static PostgresField Bytea() { return PostgresField(PG_TYPE_BYTEA); }
+  static PostgresField Character(int32_t n) {
     PostgresField out(PG_TYPE_CHARACTER, PG_TYPE_TEXT);
     out.n_ = n;
     return out;
   }
-  PostgresField CharacterVarying(int32_t n) {
+  static PostgresField CharacterVarying(int32_t n) {
     PostgresField out(PG_TYPE_CHARACTER_VARYING, PG_TYPE_TEXT);
     out.n_ = n;
     return out;
   }
-  PostgresField Date() { return PostgresField(PG_TYPE_DATE, PG_TYPE_INTEGER); }
-  PostgresField DoublePrecision() { return PostgresField(PG_TYPE_DOUBLE_PRECISION); }
-  PostgresField Integer() { return PostgresField(PG_TYPE_INTEGER); }
-  PostgresField Numeric(int32_t precision, int32_t scale) {
+  static PostgresField Date() { return PostgresField(PG_TYPE_DATE, PG_TYPE_INTEGER); }
+  static PostgresField DoublePrecision() {
+    return PostgresField(PG_TYPE_DOUBLE_PRECISION);
+  }
+  static PostgresField Integer() { return PostgresField(PG_TYPE_INTEGER); }
+  static PostgresField Numeric(int32_t precision, int32_t scale) {
     PostgresField out(PG_TYPE_NUMERIC);
     out.precision_ = precision;
     out.scale_ = scale;
     return out;
   }
-  PostgresField Real() { return PostgresField(PG_TYPE_REAL); }
-  PostgresField SmallInt() { return PostgresField(PG_TYPE_SMALLINT); }
-  PostgresField SmallSerial() {
+  static PostgresField Real() { return PostgresField(PG_TYPE_REAL); }
+  static PostgresField SmallInt() { return PostgresField(PG_TYPE_SMALLINT); }
+  static PostgresField SmallSerial() {
     return PostgresField(PG_TYPE_SMALLSERIAL, PG_TYPE_SMALLINT);
   }
-  PostgresField Serial() { return PostgresField(PG_TYPE_SERIAL, PG_TYPE_INTEGER); }
-  PostgresField Text() { return PostgresField(PG_TYPE_TEXT); }
-  PostgresField Time(const std::string& timezone = "") {
+  static PostgresField Serial() { return PostgresField(PG_TYPE_SERIAL, PG_TYPE_INTEGER); }
+  static PostgresField Text() { return PostgresField(PG_TYPE_TEXT); }
+  static PostgresField Time(const std::string& timezone = "") {
     PostgresField out(PG_TYPE_TIME);
     out.timezone_ = timezone;
     if (timezone == "") {
@@ -156,26 +260,26 @@ class PostgresField {
     }
     return out;
   }
-  PostgresField Timestamp(const std::string& timezone = "") {
+  static PostgresField Timestamp(const std::string& timezone = "") {
     PostgresField out(PG_TYPE_TIMESTAMP, PG_TYPE_BIGINT);
     out.timezone_ = timezone;
     return out;
   }
 
-  PostgresField Array(PostgresField& child) {
+  static PostgresField Array(PostgresField& child) {
     PostgresField out(PG_TYPE_ARRAY);
     std::unique_ptr<PostgresField> child_ptr(new PostgresField(std::move(child)));
     out.children_.push_back(std::move(child_ptr));
     return out;
   }
 
-  PostgresField Composite(std::vector<std::unique_ptr<PostgresField>> children) {
+  static PostgresField Composite(std::vector<std::unique_ptr<PostgresField>> children) {
     PostgresField out(PG_TYPE_ARRAY);
     out.children_ = std::move(children);
     return out;
   }
 
-  PostgresField Range(PostgresField& child) {
+  static PostgresField Range(PostgresField& child) {
     PostgresField out(PG_TYPE_RANGE);
     std::unique_ptr<PostgresField> child_ptr(new PostgresField(std::move(child)));
     out.children_.push_back(std::move(child_ptr));
