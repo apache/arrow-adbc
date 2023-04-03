@@ -384,7 +384,7 @@ class PostgresType {
   uint32_t oid() const { return oid_; }
   PgRecv recv() const { return recv_; }
   const std::string& typname() { return typname_; }
-  const std::string& field_name() { return field_name_; }
+  const std::string& field_name() const { return field_name_; }
   const int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
   const PostgresType* child(int64_t i) const { return &children_[i]; }
 

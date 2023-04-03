@@ -59,4 +59,11 @@ TEST(PostgresNanoarrowTest, PostgresTypeBasic) {
   EXPECT_EQ(domain.oid(), 123456);
   EXPECT_EQ(domain.typname(), "domain type name");
   EXPECT_EQ(domain.recv(), type.recv());
+
+  PostgresType record(PostgresType::PG_RECV_RECORD);
+  record.AddRecordChild("col1", type);
+  EXPECT_EQ(record.recv(), PostgresType::PG_RECV_RECORD);
+  EXPECT_EQ(record.n_children(), 1);
+  EXPECT_EQ(record.child(0)->recv(), type.recv());
+  EXPECT_EQ(record.child(0)->field_name(), "col1");
 }
