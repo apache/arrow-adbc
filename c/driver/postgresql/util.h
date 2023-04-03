@@ -41,12 +41,16 @@ namespace adbcpq {
 #define MAKE_NAME(x, y) CONCAT(x, y)
 
 #if defined(_WIN32) && defined(_MSC_VER)
+static inline uint32_t SwapNetworkToHost(uint16_t x) { return ntohs(x); }
+static inline uint32_t SwapHostToNetwork(uint16_t x) { return htons(x); }
 static inline uint32_t SwapNetworkToHost(uint32_t x) { return ntohl(x); }
 static inline uint32_t SwapHostToNetwork(uint32_t x) { return htonl(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) { return ntohll(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return htonll(x); }
 #elif defined(_WIN32)
 // e.g., msys2, where ntohll is not necessarily defined
+static inline uint32_t SwapNetworkToHost(uint16_t x) { return ntohs(x); }
+static inline uint32_t SwapHostToNetwork(uint16_t x) { return htons(x); }
 static inline uint32_t SwapNetworkToHost(uint32_t x) { return ntohl(x); }
 static inline uint32_t SwapHostToNetwork(uint32_t x) { return htonl(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) {
@@ -57,16 +61,52 @@ static inline uint64_t SwapNetworkToHost(uint64_t x) {
 }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return SwapNetworkToHost(x); }
 #elif defined(__APPLE__)
+static inline uint16_t SwapNetworkToHost(uint16_t x) { return OSSwapBigToHostInt16(x); }
+static inline uint16_t SwapHostToNetwork(uint16_t x) { return OSSwapHostToBigInt16(x); }
 static inline uint32_t SwapNetworkToHost(uint32_t x) { return OSSwapBigToHostInt32(x); }
 static inline uint32_t SwapHostToNetwork(uint32_t x) { return OSSwapHostToBigInt32(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) { return OSSwapBigToHostInt64(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return OSSwapHostToBigInt64(x); }
 #else
+static inline uint16_t SwapNetworkToHost(uint16_t x) { return be16toh(x); }
+static inline uint16_t SwapHostToNetwork(uint16_t x) { return htobe16(x); }
 static inline uint32_t SwapNetworkToHost(uint32_t x) { return be32toh(x); }
 static inline uint32_t SwapHostToNetwork(uint32_t x) { return htobe32(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) { return be64toh(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return htobe64(x); }
 #endif
+
+static inline void BufferToHostEndian(uint8_t* data, int64_t size_bytes,
+                                      int32_t bitwidth) {
+  switch (bitwidth) {
+    case 1:
+    case 8:
+      break;
+    case 16: {
+      uint16_t* data_uint = reinterpret_cast<uint16_t*>(data);
+      for (int64_t i = 0; i < size_bytes / 2; i++) {
+        data_uint[i] = SwapNetworkToHost(data_uint[i]);
+      }
+      break;
+    }
+    case 32: {
+      uint32_t* data_uint = reinterpret_cast<uint32_t*>(data);
+      for (int64_t i = 0; i < size_bytes / 4; i++) {
+        data_uint[i] = SwapNetworkToHost(data_uint[i]);
+      }
+      break;
+    }
+    case 64: {
+      uint64_t* data_uint = reinterpret_cast<uint64_t*>(data);
+      for (int64_t i = 0; i < size_bytes / 8; i++) {
+        data_uint[i] = SwapNetworkToHost(data_uint[i]);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
 
 // see arrow/util/string_builder.h
 
