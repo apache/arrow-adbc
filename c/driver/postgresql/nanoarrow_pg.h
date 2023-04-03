@@ -364,6 +364,8 @@ class PostgresType {
   PostgresType Array(uint32_t oid, const std::string& typname) const {
     PostgresType out(PG_RECV_ARRAY);
     out.children_.push_back(WithFieldName("item"));
+    out.oid_ = oid;
+    out.typname_ = typname;
     return out;
   }
 
@@ -374,6 +376,8 @@ class PostgresType {
   PostgresType Range(uint32_t oid, const std::string& typname) const {
     PostgresType out(PG_RECV_RANGE);
     out.children_.push_back(WithFieldName("item"));
+    out.oid_ = oid;
+    out.typname_ = typname;
     return out;
   }
 
