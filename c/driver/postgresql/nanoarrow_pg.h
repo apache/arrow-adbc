@@ -116,14 +116,23 @@ class PostgresType {
     PG_RECV_XML
   };
 
-  static std::vector<PgRecv> PgRecvAllBase() {
-    return {PG_RECV_BIT,         PG_RECV_BOOL,   PG_RECV_BYTEA,    PG_RECV_CASH,
-            PG_RECV_CHAR,        PG_RECV_DATE,   PG_RECV_FLOAT4,   PG_RECV_FLOAT8,
-            PG_RECV_INT4,        PG_RECV_INT8,   PG_RECV_INTERVAL, PG_RECV_NUMERIC,
-            PG_RECV_OID,         PG_RECV_TEXT,   PG_RECV_TIME,     PG_RECV_TIMESTAMP,
-            PG_RECV_TIMESTAMPTZ, PG_RECV_TIMETZ, PG_RECV_UUID,     PG_RECV_VARBIT,
-            PG_RECV_VARCHAR,     PG_RECV_ARRAY,  PG_RECV_RECORD,   PG_RECV_RANGE,
-            PG_RECV_DOMAIN};
+  static std::vector<PgRecv> PgRecvAllBase(bool nested = true) {
+    std::vector<PgRecv> base = {PG_RECV_BIT,       PG_RECV_BOOL,        PG_RECV_BYTEA,
+                                PG_RECV_CASH,      PG_RECV_CHAR,        PG_RECV_DATE,
+                                PG_RECV_FLOAT4,    PG_RECV_FLOAT8,      PG_RECV_INT4,
+                                PG_RECV_INT8,      PG_RECV_INTERVAL,    PG_RECV_NUMERIC,
+                                PG_RECV_OID,       PG_RECV_TEXT,        PG_RECV_TIME,
+                                PG_RECV_TIMESTAMP, PG_RECV_TIMESTAMPTZ, PG_RECV_TIMETZ,
+                                PG_RECV_UUID,      PG_RECV_VARBIT,      PG_RECV_VARCHAR};
+
+    if (nested) {
+      base.push_back(PG_RECV_ARRAY);
+      base.push_back(PG_RECV_RECORD);
+      base.push_back(PG_RECV_RANGE);
+      base.push_back(PG_RECV_DOMAIN);
+    }
+
+    return base;
   }
 
   static std::string PgRecvName(PgRecv recv) {
@@ -532,7 +541,7 @@ class PostgresTypeResolver {
           out.AddRecordChild(child_item.second, child);
         }
 
-        mapping_.insert({item.oid, out});
+        mapping_.insert({item.oid, out.WithPgTypeInfo(item.oid, item.typname)});
         break;
       }
 
