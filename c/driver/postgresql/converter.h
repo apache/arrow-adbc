@@ -30,7 +30,7 @@
 
 namespace adbcpq {
 
-class PostgresType {
+class PostgresField {
  public:
   // As listed on https://www.postgresql.org/docs/current/datatype.html
   enum PgTypeId {
@@ -82,83 +82,103 @@ class PostgresType {
     PG_TYPE_RANGE
   };
 
-  PostgresType(PgTypeId id, PgTypeId storage_id)
+  PostgresField(PgTypeId id, PgTypeId storage_id)
       : id_(id), storage_id_(storage_id), n_(-1), precision_(-1), scale_(-1) {}
 
-  explicit PostgresType(PgTypeId id) : PostgresType(id, id) {}
+  explicit PostgresField(PgTypeId id) : PostgresField(id, id) {}
 
   PgTypeId id() const { return id_; }
   PgTypeId storage_id() const { return storage_id_; }
-  const std::string& name() const { return name_; }
+  const std::string& typ_namename() const { return type_name_; }
   int32_t n() const { return n_; }
   int32_t precision() const { return precision_; }
   int32_t scale() const { return scale_; }
   const std::string& timezone() const { return timezone_; }
   int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
-  const PostgresType* child(int64_t i) const { return children_[i].get(); }
+  const PostgresField* child(int64_t i) const { return children_[i].get(); }
 
  private:
   PgTypeId id_;
   PgTypeId storage_id_;
-  std::string name_;
+  std::string type_name_;
   int32_t n_;
   int32_t precision_;
   int32_t scale_;
   std::string timezone_;
-  std::vector<std::unique_ptr<PostgresType>> children_;
+  std::vector<std::unique_ptr<PostgresField>> children_;
 
  public:
-  PostgresType BigInt() { return PostgresType(PG_TYPE_BIGINT); }
-  PostgresType BigSerial() { return PostgresType(PG_TYPE_BIGSERIAL, PG_TYPE_BIGINT); }
-  PostgresType Bit(int32_t n) {
-    PostgresType out(PG_TYPE_BIT, PG_TYPE_TEXT);
+  PostgresField BigInt() { return PostgresField(PG_TYPE_BIGINT); }
+  PostgresField BigSerial() { return PostgresField(PG_TYPE_BIGSERIAL, PG_TYPE_BIGINT); }
+  PostgresField Bit(int32_t n) {
+    PostgresField out(PG_TYPE_BIT, PG_TYPE_TEXT);
     out.n_ = n;
     return out;
   }
-  PostgresType BitVarying(int32_t n) {
-    PostgresType out(PG_TYPE_BIT_VARYING, PG_TYPE_TEXT);
+  PostgresField BitVarying(int32_t n) {
+    PostgresField out(PG_TYPE_BIT_VARYING, PG_TYPE_TEXT);
     out.n_ = n;
     return out;
   }
-  PostgresType Boolean() { return PostgresType(PG_TYPE_BOOLEAN); }
-  PostgresType Bytea() { return PostgresType(PG_TYPE_BYTEA); }
-  PostgresType Character(int32_t n) {
-    PostgresType out(PG_TYPE_CHARACTER, PG_TYPE_TEXT);
+  PostgresField Boolean() { return PostgresField(PG_TYPE_BOOLEAN); }
+  PostgresField Bytea() { return PostgresField(PG_TYPE_BYTEA); }
+  PostgresField Character(int32_t n) {
+    PostgresField out(PG_TYPE_CHARACTER, PG_TYPE_TEXT);
     out.n_ = n;
     return out;
   }
-  PostgresType CharacterVarying(int32_t n) {
-    PostgresType out(PG_TYPE_CHARACTER_VARYING, PG_TYPE_TEXT);
+  PostgresField CharacterVarying(int32_t n) {
+    PostgresField out(PG_TYPE_CHARACTER_VARYING, PG_TYPE_TEXT);
     out.n_ = n;
     return out;
   }
-  PostgresType Date() { return PostgresType(PG_TYPE_DATE, PG_TYPE_INTEGER); }
-  PostgresType DoublePrecision() { return PostgresType(PG_TYPE_DOUBLE_PRECISION); }
-  PostgresType Integer() { return PostgresType(PG_TYPE_INTEGER); }
-  PostgresType Numeric(int32_t precision, int32_t scale) {
-    PostgresType out(PG_TYPE_NUMERIC);
+  PostgresField Date() { return PostgresField(PG_TYPE_DATE, PG_TYPE_INTEGER); }
+  PostgresField DoublePrecision() { return PostgresField(PG_TYPE_DOUBLE_PRECISION); }
+  PostgresField Integer() { return PostgresField(PG_TYPE_INTEGER); }
+  PostgresField Numeric(int32_t precision, int32_t scale) {
+    PostgresField out(PG_TYPE_NUMERIC);
     out.precision_ = precision;
     out.scale_ = scale;
     return out;
   }
-  PostgresType Real() { return PostgresType(PG_TYPE_REAL); }
-  PostgresType SmallInt() { return PostgresType(PG_TYPE_SMALLINT); }
-  PostgresType SmallSerial() {
-    return PostgresType(PG_TYPE_SMALLSERIAL, PG_TYPE_SMALLINT);
+  PostgresField Real() { return PostgresField(PG_TYPE_REAL); }
+  PostgresField SmallInt() { return PostgresField(PG_TYPE_SMALLINT); }
+  PostgresField SmallSerial() {
+    return PostgresField(PG_TYPE_SMALLSERIAL, PG_TYPE_SMALLINT);
   }
-  PostgresType Serial() { return PostgresType(PG_TYPE_SERIAL, PG_TYPE_INTEGER); }
-  PostgresType Text() { return PostgresType(PG_TYPE_TEXT); }
-  PostgresType Time(const std::string& timezone = "") {
-    PostgresType out(PG_TYPE_TIME);
+  PostgresField Serial() { return PostgresField(PG_TYPE_SERIAL, PG_TYPE_INTEGER); }
+  PostgresField Text() { return PostgresField(PG_TYPE_TEXT); }
+  PostgresField Time(const std::string& timezone = "") {
+    PostgresField out(PG_TYPE_TIME);
     out.timezone_ = timezone;
     if (timezone == "") {
       out.storage_id_ = PG_TYPE_BIGINT;
     }
     return out;
   }
-  PostgresType Timestamp(const std::string& timezone = "") {
-    PostgresType out(PG_TYPE_TIMESTAMP, PG_TYPE_BIGINT);
+  PostgresField Timestamp(const std::string& timezone = "") {
+    PostgresField out(PG_TYPE_TIMESTAMP, PG_TYPE_BIGINT);
     out.timezone_ = timezone;
+    return out;
+  }
+
+  PostgresField Array(PostgresField& child) {
+    PostgresField out(PG_TYPE_ARRAY);
+    std::unique_ptr<PostgresField> child_ptr(new PostgresField(std::move(child)));
+    out.children_.push_back(std::move(child_ptr));
+    return out;
+  }
+
+  PostgresField Composite(std::vector<std::unique_ptr<PostgresField>> children) {
+    PostgresField out(PG_TYPE_ARRAY);
+    out.children_ = std::move(children);
+    return out;
+  }
+
+  PostgresField Range(PostgresField& child) {
+    PostgresField out(PG_TYPE_RANGE);
+    std::unique_ptr<PostgresField> child_ptr(new PostgresField(std::move(child)));
+    out.children_.push_back(std::move(child_ptr));
     return out;
   }
 };
@@ -227,12 +247,6 @@ class NumericArrowConverter : public ArrowConverter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode InitArray(ArrowArray* array, ArrowSchema* schema) override {
-    NANOARROW_RETURN_NOT_OK(ArrowConverter::InitArray(array, schema));
-    data_ = ArrowArrayBuffer(array, 1);
-    return NANOARROW_OK;
-  }
-
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     return ArrowBufferAppendBufferView(data_, data);
@@ -255,13 +269,6 @@ class BinaryArrowConverter : public ArrowConverter {
  public:
   BinaryArrowConverter(ArrowType type, PgType pg_type)
       : ArrowConverter(type, pg_type), data_(nullptr) {}
-
-  ArrowErrorCode InitArray(ArrowArray* array, ArrowSchema* schema) override {
-    NANOARROW_RETURN_NOT_OK(ArrowConverter::InitArray(array, schema));
-    offsets_ = ArrowArrayBuffer(array, 1);
-    data_ = ArrowArrayBuffer(array, 2);
-    return NANOARROW_OK;
-  }
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
