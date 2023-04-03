@@ -193,9 +193,50 @@ TEST(PostgresNanoarrowTest, PostgresTypeResolver) {
   // Check insert/resolve of regular type
   item.typname = "some_type_name";
   item.typreceive = "boolrecv";
+  item.oid = 10;
   EXPECT_EQ(resolver.Insert(item, &error), NANOARROW_OK);
-  EXPECT_EQ(resolver.Find(123, &type, &error), NANOARROW_OK);
-  EXPECT_EQ(type.oid(), 123);
+  EXPECT_EQ(resolver.Find(10, &type, &error), NANOARROW_OK);
+  EXPECT_EQ(type.oid(), 10);
   EXPECT_EQ(type.typname(), "some_type_name");
   EXPECT_EQ(type.recv(), PostgresType::PG_RECV_BOOL);
+
+  // Check insert/resolve of array type
+  item.oid = 11;
+  item.typname = "some_array_type_name";
+  item.typreceive = "array_recv";
+  item.child_oid = 10;
+  EXPECT_EQ(resolver.Insert(item, &error), NANOARROW_OK);
+  EXPECT_EQ(resolver.Find(11, &type, &error), NANOARROW_OK);
+  EXPECT_EQ(type.oid(), 11);
+  EXPECT_EQ(type.typname(), "some_array_type_name");
+  EXPECT_EQ(type.recv(), PostgresType::PG_RECV_ARRAY);
+  EXPECT_EQ(type.child(0)->oid(), 10);
+  EXPECT_EQ(type.child(0)->recv(), PostgresType::PG_RECV_BOOL);
+
+  // Check insert/resolve of range type
+  item.oid = 12;
+  item.typname = "some_range_type_name";
+  item.typreceive = "range_recv";
+  item.base_oid = 10;
+  EXPECT_EQ(resolver.Insert(item, &error), NANOARROW_OK);
+  EXPECT_EQ(resolver.Find(12, &type, &error), NANOARROW_OK);
+  EXPECT_EQ(type.oid(), 12);
+  EXPECT_EQ(type.typname(), "some_range_type_name");
+  EXPECT_EQ(type.recv(), PostgresType::PG_RECV_RANGE);
+  EXPECT_EQ(type.child(0)->oid(), 10);
+  EXPECT_EQ(type.child(0)->recv(), PostgresType::PG_RECV_BOOL);
+
+  // Check insert/resolve of domain type
+  item.oid = 13;
+  item.typname = "some_domain_type_name";
+  item.typreceive = "domain_recv";
+  item.base_oid = 10;
+  EXPECT_EQ(resolver.Insert(item, &error), NANOARROW_OK);
+  EXPECT_EQ(resolver.Find(13, &type, &error), NANOARROW_OK);
+  EXPECT_EQ(type.oid(), 13);
+  EXPECT_EQ(type.typname(), "some_domain_type_name");
+  EXPECT_EQ(type.recv(), PostgresType::PG_RECV_BOOL);
+}
+
+TEST(PostgresNanoarrowTest, PostgresTypeResolveRecord) {
 }
