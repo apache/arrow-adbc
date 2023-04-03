@@ -67,3 +67,67 @@ TEST(PostgresNanoarrowTest, PostgresTypeBasic) {
   EXPECT_EQ(record.child(0)->recv(), type.recv());
   EXPECT_EQ(record.child(0)->field_name(), "col1");
 }
+
+TEST(PostgresNanoarrowTest, PostgresTypeSetSchema) {
+  ArrowSchema schema;
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_BOOL).SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "b");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_INT2).SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "s");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_INT4).SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "i");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_INT8).SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "l");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_FLOAT4).SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "f");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_FLOAT8).SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "g");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_TEXT).SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "u");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_BYTEA).SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "z");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(PostgresType(PostgresType::PG_RECV_BOOL).Array().SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+l");
+  EXPECT_STREQ(schema.children[0]->format, "b");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  PostgresType record(PostgresType::PG_RECV_RECORD);
+  record.AddRecordChild("col1", PostgresType(PostgresType::PG_RECV_BOOL));
+  EXPECT_EQ(record.SetSchema(&schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+s");
+  EXPECT_STREQ(schema.children[0]->format, "b");
+  schema.release(&schema);
+}
+
+TEST(PostgresNanoarrowTest, PostgresTypeAllBase) {
+  auto base_types = PostgresType::AllBase();
+
+  EXPECT_EQ(base_types.size(), PostgresType::PgRecvAllBase().size());
+}

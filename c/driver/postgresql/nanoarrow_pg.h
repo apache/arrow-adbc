@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow.hpp>
 
 #include "type.h"
 #include "util.h"
@@ -122,7 +122,8 @@ class PostgresType {
             PG_RECV_INT4,        PG_RECV_INT8,   PG_RECV_INTERVAL, PG_RECV_NUMERIC,
             PG_RECV_OID,         PG_RECV_TEXT,   PG_RECV_TIME,     PG_RECV_TIMESTAMP,
             PG_RECV_TIMESTAMPTZ, PG_RECV_TIMETZ, PG_RECV_UUID,     PG_RECV_VARBIT,
-            PG_RECV_VARCHAR};
+            PG_RECV_VARCHAR,     PG_RECV_ARRAY,  PG_RECV_RECORD,   PG_RECV_RANGE,
+            PG_RECV_DOMAIN};
   }
 
   static std::string PgRecvName(PgRecv recv) {
@@ -334,6 +335,15 @@ class PostgresType {
         return "varbit";
       case PG_RECV_VARCHAR:
         return "varchar";
+
+      case PG_RECV_ARRAY:
+        return "array";
+      case PG_RECV_RECORD:
+        return "record";
+      case PG_RECV_RANGE:
+        return "range";
+      case PG_RECV_DOMAIN:
+        return "domain";
       default:
         return "";
     }
@@ -361,7 +371,7 @@ class PostgresType {
     return out;
   }
 
-  PostgresType Array(uint32_t oid, const std::string& typname) const {
+  PostgresType Array(uint32_t oid = 0, const std::string& typname = "") const {
     PostgresType out(PG_RECV_ARRAY);
     out.children_.push_back(WithFieldName("item"));
     out.oid_ = oid;
@@ -373,7 +383,7 @@ class PostgresType {
     return WithPgTypeInfo(oid, typname);
   }
 
-  PostgresType Range(uint32_t oid, const std::string& typname) const {
+  PostgresType Range(uint32_t oid = 0, const std::string& typname = "") const {
     PostgresType out(PG_RECV_RANGE);
     out.children_.push_back(WithFieldName("item"));
     out.oid_ = oid;
@@ -390,15 +400,8 @@ class PostgresType {
 
   ArrowErrorCode SetSchema(ArrowSchema* schema) const {
     switch (recv_) {
-      case PG_RECV_RECORD:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
-        for (int64_t i = 0; i < n_children(); i++) {
-          NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
-        }
-        break;
-      case PG_RECV_ARRAY:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
-        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
+      case PG_RECV_BOOL:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
         break;
       case PG_RECV_INT2:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
@@ -418,13 +421,34 @@ class PostgresType {
       case PG_RECV_CHAR:
       case PG_RECV_VARCHAR:
       case PG_RECV_TEXT:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
       case PG_RECV_BYTEA:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         break;
+
+      case PG_RECV_RECORD:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
+        for (int64_t i = 0; i < n_children(); i++) {
+          NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
+        }
+        break;
+
+      case PG_RECV_ARRAY:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
+        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
+        break;
       default: {
+        // For any types we don't explicitly know how to deal with, we can still
+        // return the bytes postgres gives us and attach the type name as metadata
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
+        nanoarrow::UniqueBuffer buffer;
+        ArrowMetadataBuilderInit(buffer.get(), nullptr);
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
+            buffer.get(), ArrowCharView("ADBC:posgresql:typname"),
+            ArrowCharView(typname_.c_str())));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
         break;
       }
     }
