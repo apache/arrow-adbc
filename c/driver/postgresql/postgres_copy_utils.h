@@ -20,6 +20,7 @@
 #include <cerrno>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <nanoarrow/nanoarrow.hpp>
@@ -73,7 +74,8 @@ template <typename T>
 ArrowErrorCode ReadChecked(ArrowBufferView* data, T* out, ArrowError* error) {
   if (data->size_bytes < static_cast<int64_t>(sizeof(T))) {
     ArrowErrorSet(error, "Unexpected end of input (expected %d bytes but found %ld)",
-                  (int)sizeof(T), (long)data->size_bytes);
+                  static_cast<int>(sizeof(T)),
+                  static_cast<long>(data->size_bytes));  // NOLINT(runtime/int)
     return EINVAL;
   }
 
@@ -88,7 +90,9 @@ class PostgresCopyReader {
     memset(&schema_view_, 0, sizeof(ArrowSchemaView));
   }
 
-  void AppendChild(PostgresCopyReader& child) { children_.push_back(std::move(child)); }
+  void AppendChild(const PostgresCopyReader& child) {
+    children_.push_back(std::move(child));
+  }
 
   const PostgresType& InputType() const { return pg_type_; }
 
@@ -242,7 +246,7 @@ class PostgresCopyReaderList : public PostgresCopyReader {
                     "Expected array child value with oid %ld but got array child value "
                     "with oid %ld",
                     static_cast<long>(children_[0].InputType().oid()),
-                    static_cast<long>(element_type_oid));
+                    static_cast<long>(element_type_oid));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
