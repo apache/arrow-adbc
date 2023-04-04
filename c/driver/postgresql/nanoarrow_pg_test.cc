@@ -65,9 +65,8 @@ class MockTypeResolver : public PostgresTypeResolver {
     item.oid++;
     uint32_t class_oid = item.oid;
     std::vector<std::pair<uint32_t, std::string>> record_fields_ = {
-      {oid(PostgresType::PG_RECV_INT4), "int4_col"},
-      {oid(PostgresType::PG_RECV_TEXT), "text_col"}
-    };
+        {oid(PostgresType::PG_RECV_INT4), "int4_col"},
+        {oid(PostgresType::PG_RECV_TEXT), "text_col"}};
     classes_.insert({class_oid, record_fields_});
 
     item.oid++;
@@ -322,7 +321,8 @@ TEST(PostgresNanoarrowTest, PostgresTypeResolveRecord) {
   ASSERT_EQ(resolver.Init(), NANOARROW_OK);
 
   PostgresType type;
-  EXPECT_EQ(resolver.Find(resolver.oid(PostgresType::PG_RECV_RECORD), &type, nullptr), NANOARROW_OK);
+  EXPECT_EQ(resolver.Find(resolver.oid(PostgresType::PG_RECV_RECORD), &type, nullptr),
+            NANOARROW_OK);
   EXPECT_EQ(type.oid(), resolver.oid(PostgresType::PG_RECV_RECORD));
   EXPECT_EQ(type.n_children(), 2);
   EXPECT_EQ(type.child(0)->field_name(), "int4_col");
