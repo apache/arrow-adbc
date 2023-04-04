@@ -71,7 +71,7 @@ inline int64_t ReadUnsafe(ArrowBufferView* data) {
 
 template <typename T>
 ArrowErrorCode ReadChecked(ArrowBufferView* data, T* out, ArrowError* error) {
-  if (data->size_bytes < sizeof(T)) {
+  if (data->size_bytes < static_cast<int64_t>(sizeof(T))) {
     ArrowErrorSet(error, "Unexpected end of input (expected %d bytes but found %ld)",
                   (int)sizeof(T), (long)data->size_bytes);
     return EINVAL;
