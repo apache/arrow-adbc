@@ -90,7 +90,9 @@ class PostgresCopyReader {
     memset(&schema_view_, 0, sizeof(ArrowSchemaView));
   }
 
-  void AppendChild(const PostgresCopyReader& child) {
+  virtual ~PostgresCopyReader() {}
+
+  void AppendChild(std::unique_ptr<PostgresCopyReader> child) {
     children_.push_back(std::move(child));
   }
 
@@ -138,7 +140,7 @@ class PostgresCopyReader {
   ArrowSchemaView schema_view_;
   ArrowBuffer* offsets_;
   ArrowBuffer* data_;
-  std::vector<PostgresCopyReader> children_;
+  std::vector<std::unique_ptr<PostgresCopyReader>> children_;
 };
 
 // Converter for a Postgres boolean (one byte -> bitmap)
@@ -189,15 +191,11 @@ class PostgresCopyReaderNetworkEndian : public PostgresCopyReader {
 
     T value_uint;
     NANOARROW_RETURN_NOT_OK(ReadChecked<T>(&data, &value_uint, error));
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&value_uint, sizeof(T)));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &value_uint, sizeof(T)));
     array->length++;
     return NANOARROW_OK;
   }
 };
-
-using PostgresCopyReaderNetworkEndian16 = PostgresCopyReaderNetworkEndian<uint16_t>;
-using PostgresCopyReaderNetworkEndian32 = PostgresCopyReaderNetworkEndian<uint32_t>;
-using PostgresCopyReaderNetworkEndian64 = PostgresCopyReaderNetworkEndian<uint64_t>;
 
 // Converter for Pg->Arrow conversions whose Arrow representation is simply the
 // bytes of the field representation. This can be used with binary and string
@@ -241,11 +239,11 @@ class PostgresCopyReaderList : public PostgresCopyReader {
     uint32_t element_type_oid;
     NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(&data, &element_type_oid, error));
 
-    if (element_type_oid != children_[0].InputType().oid()) {
+    if (element_type_oid != children_[0]->InputType().oid()) {
       ArrowErrorSet(error,
                     "Expected array child value with oid %ld but got array child value "
                     "with oid %ld",
-                    static_cast<long>(children_[0].InputType().oid()),
+                    static_cast<long>(children_[0]->InputType().oid()),
                     static_cast<long>(element_type_oid));  // NOLINT(runtime/int)
       return EINVAL;
     }
@@ -278,7 +276,7 @@ class PostgresCopyReaderList : public PostgresCopyReader {
       field_data.size_bytes = field_length;
 
       // Note: Read() here is a virtual method call
-      int result = children_[0].Read(field_data, array->children[i], error);
+      int result = children_[0]->Read(field_data, array->children[i], error);
       if (result == EOVERFLOW) {
         for (int16_t j = 0; j < i; j++) {
           array->children[j]->length--;
@@ -323,7 +321,7 @@ class PostgresCopyReaderStruct : public PostgresCopyReader {
       field_data.size_bytes = field_length;
 
       // Note: Read() here is a virtual method call
-      int result = children_[i].Read(field_data, array->children[i], error);
+      int result = children_[i]->Read(field_data, array->children[i], error);
       if (result == EOVERFLOW) {
         for (int16_t j = 0; j < i; i++) {
           array->children[j]->length--;
@@ -341,6 +339,167 @@ class PostgresCopyReaderStruct : public PostgresCopyReader {
     array->length++;
     return NANOARROW_OK;
   }
+};
+
+// Factor for a PostgresCopyReader that checks the logical types. Curently the only
+// way to generate schema is to use PostgresType::SetSchema() and so it's unlikely
+// that these errors will fire.
+ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* schema,
+                                   PostgresCopyReader** out) {
+  ArrowSchemaView schema_view;
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, nullptr));
+
+  switch (schema_view.type) {
+    case NANOARROW_TYPE_BOOL:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_BOOL:
+          *out = new PostgresCopyReaderNetworkEndian<uint16_t>(pg_type);
+          return NANOARROW_OK;
+        default:
+          return ENOTSUP;
+      }
+
+    case NANOARROW_TYPE_INT16:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_INT2:
+          *out = new PostgresCopyReaderNetworkEndian<uint16_t>(pg_type);
+          return NANOARROW_OK;
+        default:
+          return ENOTSUP;
+      }
+
+    case NANOARROW_TYPE_INT32:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_INT4:
+          *out = new PostgresCopyReaderNetworkEndian<uint32_t>(pg_type);
+          return NANOARROW_OK;
+        default:
+          return ENOTSUP;
+      }
+
+    case NANOARROW_TYPE_FLOAT:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_FLOAT4:
+          *out = new PostgresCopyReaderNetworkEndian<uint32_t>(pg_type);
+          return NANOARROW_OK;
+        default:
+          return ENOTSUP;
+      }
+
+    case NANOARROW_TYPE_INT64:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_INT8:
+          *out = new PostgresCopyReaderNetworkEndian<uint64_t>(pg_type);
+          return NANOARROW_OK;
+        default:
+          return ENOTSUP;
+      }
+
+    case NANOARROW_TYPE_DOUBLE:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_FLOAT8:
+          *out = new PostgresCopyReaderNetworkEndian<uint64_t>(pg_type);
+          return NANOARROW_OK;
+        default:
+          return ENOTSUP;
+      }
+
+    case NANOARROW_TYPE_STRING:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_CHAR:
+        case PostgresType::PG_RECV_VARCHAR:
+        case PostgresType::PG_RECV_TEXT:
+          *out = new PostgresCopyReaderList(pg_type);
+          return NANOARROW_OK;
+        default:
+          return ENOTSUP;
+      }
+
+    case NANOARROW_TYPE_BINARY:
+      // No need to check pg_type here: we can return the bytes of any
+      // Postgres type as binary.
+      *out = new PostgresCopyReaderBinary(pg_type);
+      return NANOARROW_OK;
+
+    case NANOARROW_TYPE_LIST:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_ARRAY:
+          *out = new PostgresCopyReaderList(pg_type);
+          return NANOARROW_OK;
+        default:
+          return ENOTSUP;
+      }
+
+    case NANOARROW_TYPE_STRUCT:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_RECORD:
+          *out = new PostgresCopyReaderStruct(pg_type);
+          return NANOARROW_OK;
+        default:
+          return ENOTSUP;
+      }
+    default:
+      return ENOTSUP;
+  }
+}
+
+class PostgresCopyStreamReader {
+ public:
+  PostgresCopyStreamReader(const PostgresType& pg_type) : pg_type_(pg_type) {}
+
+  ArrowErrorCode InferSchema(ArrowError* error) {
+    if (pg_type_.recv() != PostgresType::PG_RECV_RECORD) {
+      return EINVAL;
+    }
+
+    schema_.reset();
+    ArrowSchemaInit(schema_.get());
+    NANOARROW_RETURN_NOT_OK(pg_type_.SetSchema(schema_.get()));
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode InitFieldReaders(ArrowError* error) {
+    if (schema_->release == nullptr) {
+      return EINVAL;
+    }
+
+    if (schema_->n_children != pg_type_.n_children()) {
+      return EINVAL;
+    }
+
+    root_reader_.reset(new PostgresCopyReaderStruct(pg_type_));
+    for (int64_t i = 0; i < pg_type_.n_children(); i++) {
+      PostgresCopyReader* child_reader = nullptr;
+      int result =
+          MakeCopyFieldReader(*pg_type_.child(i), schema_->children[i], &child_reader);
+      if (result != NANOARROW_OK) {
+        ArrowErrorSet(error, "Can't resolve converter for Postgres type '%s'",
+                      pg_type_.child(i)->typname().c_str());
+        return result;
+      }
+
+      root_reader_->AppendChild(std::unique_ptr<PostgresCopyReader>(child_reader));
+    }
+
+    NANOARROW_RETURN_NOT_OK(root_reader_->InitSchema(schema_.get()));
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode GetSchema(ArrowSchema* out) {
+    return ArrowSchemaDeepCopy(schema_.get(), out);
+  }
+
+  ArrowErrorCode ReadHeader(ArrowBufferView data, ArrowError* error) { return ENOTSUP; }
+
+  ArrowErrorCode ReadRecord(ArrowBufferView data, ArrowError* error) { return ENOTSUP; }
+
+  void GetArray(ArrowArray* out) { ArrowArrayMove(array_.get(), out); }
+
+ private:
+  PostgresType pg_type_;
+  std::unique_ptr<PostgresCopyReader> root_reader_;
+  nanoarrow::UniqueSchema schema_;
+  nanoarrow::UniqueArray array_;
 };
 
 }  // namespace adbcpq
