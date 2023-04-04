@@ -20,8 +20,6 @@
 #include <cerrno>
 #include <cstdint>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include <nanoarrow/nanoarrow.hpp>

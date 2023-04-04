@@ -102,7 +102,7 @@ class MockTypeResolver : public PostgresTypeResolver {
   std::unordered_map<uint32_t, std::vector<std::pair<uint32_t, std::string>>> classes_;
 };
 
-TEST(PostgresNanoarrowTest, PostgresTypeBasic) {
+TEST(PostgresTypeTest, PostgresTypeBasic) {
   PostgresType type(PostgresType::PG_RECV_BOOL);
   EXPECT_EQ(type.field_name(), "");
   EXPECT_EQ(type.typname(), "");
@@ -147,7 +147,7 @@ TEST(PostgresNanoarrowTest, PostgresTypeBasic) {
   EXPECT_EQ(record.child(0)->field_name(), "col1");
 }
 
-TEST(PostgresNanoarrowTest, PostgresTypeSetSchema) {
+TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   ArrowSchema schema;
 
   ArrowSchemaInit(&schema);
@@ -216,14 +216,14 @@ TEST(PostgresNanoarrowTest, PostgresTypeSetSchema) {
   schema.release(&schema);
 }
 
-TEST(PostgresNanoarrowTest, PostgresTypeAllBase) {
+TEST(PostgresTypeTest, PostgresTypeAllBase) {
   auto base_types = PostgresType::AllBase();
   EXPECT_EQ(base_types["array_recv"].recv(), PostgresType::PG_RECV_ARRAY);
   EXPECT_EQ(base_types["array_recv"].typname(), "array");
   EXPECT_EQ(base_types.size(), PostgresType::PgRecvAllBase().size());
 }
 
-TEST(PostgresNanoarrowTest, PostgresTypeResolver) {
+TEST(PostgresTypeTest, PostgresTypeResolver) {
   PostgresTypeResolver resolver;
   ArrowError error;
   PostgresType type;
@@ -318,7 +318,7 @@ TEST(PostgresNanoarrowTest, PostgresTypeResolver) {
   EXPECT_EQ(type.recv(), PostgresType::PG_RECV_BOOL);
 }
 
-TEST(PostgresNanoarrowTest, PostgresTypeResolveRecord) {
+TEST(PostgresTypeTest, PostgresTypeResolveRecord) {
   // Use the mock resolver for the record test since it already has one
   MockTypeResolver resolver;
   ASSERT_EQ(resolver.Init(), NANOARROW_OK);
