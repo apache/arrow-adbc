@@ -584,8 +584,10 @@ class ArrowConverter {
  public:
   enum Kind {
     ARROW_CONVERTER_BOOL,
-    ARROW_CONVERTER_NUMERIC,
+    ARROW_CONVERTER_NETWORK_ENDIAN,
     ARROW_CONVERTER_BINARY,
+    ARROW_CONVERTER_LIST,
+    ARROW_CONVERTER_STRUCT,
     ARROW_CONVERTER_OTHER
   };
 
@@ -594,10 +596,16 @@ class ArrowConverter {
     memset(&schema_view_, 0, sizeof(ArrowSchemaView));
   }
 
-  Kind kind() { return kind_; }
+  virtual ~ArrowConverter() {}
+
+  Kind kind() const { return kind_; }
+
+  void AppendChild(ArrowConverter& child) {
+    children_kind_.push_back(child.kind());
+    children_.push_back(std::move(child));
+  }
 
   virtual ArrowErrorCode InitSchema(ArrowSchema* schema) {
-    NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, type_));
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view_, schema, nullptr));
     return NANOARROW_OK;
   }
@@ -606,6 +614,7 @@ class ArrowConverter {
     NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array, schema, nullptr));
     NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
 
+    // Cache some buffer pointers
     for (int32_t i = 0; i < 3; i++) {
       switch (schema_view_.layout.buffer_type[i]) {
         case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
@@ -625,7 +634,7 @@ class ArrowConverter {
   }
 
   virtual ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
-                              ArrowError* error) = 0;
+                              ArrowError* error) {return ENOTSUP; }
 
   virtual ArrowErrorCode FinishArray(ArrowArray* array, ArrowError* error) {
     return NANOARROW_OK;
@@ -638,14 +647,45 @@ class ArrowConverter {
   ArrowBuffer* offsets_;
   ArrowBuffer* large_offsets_;
   ArrowBuffer* data_;
+  std::vector<Kind> children_kind_;
+  std::vector<ArrowConverter> children_;
+};
+
+// Converter for a Postgres boolean (one byte -> bitmap)
+class ArrowConverterBool : public ArrowConverter {
+ public:
+  explicit ArrowConverterBool(ArrowType type)
+      : ArrowConverter(ARROW_CONVERTER_BOOL, type) {}
+
+  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+                      ArrowError* error) override {
+    if (data.size_bytes <= 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
+    int64_t bytes_required = _ArrowBytesForBits(array->length + 1);
+    if (bytes_required > data_->size_bytes) {
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendFill(data_, 0, bytes_required - data_->size_bytes));
+    }
+
+    if (data.data.as_uint8[0]) {
+      ArrowBitSet(data_->data, array->length);
+    } else {
+      ArrowBitClear(data_->data, array->length);
+    }
+
+    array->length++;
+    return NANOARROW_OK;
+  }
 };
 
 // Converter for Pg->Arrow conversions whose representations are identical (minus
 // the bswap from network endian). This includes all integral and float types.
-class NumericArrowConverter : public ArrowConverter {
+class ArrowConverterNetworkEndian : public ArrowConverter {
  public:
-  explicit NumericArrowConverter(ArrowType type)
-      : ArrowConverter(ARROW_CONVERTER_NUMERIC, type), data_(nullptr) {}
+  explicit ArrowConverterNetworkEndian(ArrowType type)
+      : ArrowConverter(ARROW_CONVERTER_NETWORK_ENDIAN, type) {}
 
   ArrowErrorCode InitSchema(ArrowSchema* schema) override {
     NANOARROW_RETURN_NOT_OK(ArrowConverter::InitSchema(schema));
@@ -655,7 +695,13 @@ class NumericArrowConverter : public ArrowConverter {
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
-    return ArrowBufferAppendBufferView(data_, data);
+    if (data.size_bytes <= 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(data_, data));
+    array->length++;
+    return NANOARROW_OK;
   }
 
   ArrowErrorCode FinishArray(ArrowArray* array, ArrowError* error) override {
@@ -664,29 +710,84 @@ class NumericArrowConverter : public ArrowConverter {
   }
 
  private:
-  ArrowBuffer* data_;
   int32_t bitwidth_;
 };
 
 // Converter for Pg->Arrow conversions whose Arrow representation is simply the
 // bytes of the field representation. This can be used with binary and string
 // Arrow types and any postgres type.
-class BinaryArrowConverter : public ArrowConverter {
+class ArrowConverterBinary : public ArrowConverter {
  public:
-  explicit BinaryArrowConverter(ArrowType type)
-      : ArrowConverter(ARROW_CONVERTER_BINARY, type), data_(nullptr) {}
+  explicit ArrowConverterBinary(ArrowType type)
+      : ArrowConverter(ARROW_CONVERTER_BINARY, type) {}
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
+    if (data.size_bytes <= 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(data_, data));
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, (int32_t)data_->size_bytes));
+    int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
+        offsets_, offsets[array->length] + static_cast<int32_t>(data_->size_bytes)));
+
+    array->length++;
     return NANOARROW_OK;
   }
+};
 
- private:
-  ArrowBuffer* offsets_;
-  ArrowBuffer* data_;
-  int32_t bitwidth_;
+class ArrowConverterList : public ArrowConverter {
+ public:
+  explicit ArrowConverterList(ArrowType type)
+      : ArrowConverter(ARROW_CONVERTER_BINARY, type) {}
+
+  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+                      ArrowError* error) override {
+    if (data.size_bytes <= 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+    return ENOTSUP;
+  }
+};
+
+class ArrowConverterStruct : public ArrowConverter {
+ public:
+  explicit ArrowConverterStruct(ArrowType type)
+      : ArrowConverter(ARROW_CONVERTER_BINARY, type) {}
+
+  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+                      ArrowError* error) override {
+    if (data.size_bytes <= 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
+    uint16_t n_fields = LoadNetworkInt16(data.data.as_char);
+    data.data.as_char += sizeof(uint16_t);
+    data.size_bytes -= sizeof(uint16_t);
+
+    struct ArrowBufferView field_data;
+    for (uint16_t i = 0; i < n_fields; i++) {
+      field_data.size_bytes = LoadNetworkInt32(data.data.as_char) - sizeof(int32_t);
+      data.data.as_char += sizeof(int32_t);
+      data.size_bytes -= sizeof(int32_t);
+      field_data.data.as_char = data.data.as_char;
+
+      int result = children_[i].Read(field_data, array->children[i], error);
+      if (result == EOVERFLOW) {
+        for (int16_t j = 0; j < i; i++) {
+          array->children[j]->length--;
+        }
+
+        return result;
+      }
+
+      data.data.as_char += field_data.size_bytes;
+    }
+
+    array->length++;
+    return NANOARROW_OK;
+  }
 };
 
 }  // namespace adbcpq
