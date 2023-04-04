@@ -15,12 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <utility>
+
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
 
 #include "nanoarrow_pg.h"
 
-using namespace adbcpq;
+using adbcpq::PostgresType;
+using adbcpq::PostgresTypeResolver;
 
 class MockTypeResolver : public PostgresTypeResolver {
  public:
