@@ -358,7 +358,7 @@ class PostgresType {
     }
   }
 
-  PostgresType(PgRecv recv) : oid_(0), recv_(recv) {}
+  explicit PostgresType(PgRecv recv) : oid_(0), recv_(recv) {}
 
   PostgresType() : PostgresType(PG_RECV_UNINITIALIZED) {}
 
