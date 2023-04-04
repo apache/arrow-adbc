@@ -359,7 +359,7 @@ class PostgresType {
 
   PostgresType() : PostgresType(PG_RECV_UNINITIALIZED) {}
 
-  void AddRecordChild(const std::string& field_name, const PostgresType& type) {
+  void AppendChild(const std::string& field_name, const PostgresType& type) {
     PostgresType child(type);
     children_.push_back(child.WithFieldName(field_name));
   }
@@ -379,7 +379,7 @@ class PostgresType {
 
   PostgresType Array(uint32_t oid = 0, const std::string& typname = "") const {
     PostgresType out(PG_RECV_ARRAY);
-    out.children_.push_back(WithFieldName("item"));
+    out.AppendChild("item", *this);
     out.oid_ = oid;
     out.typname_ = typname;
     return out;
@@ -391,7 +391,7 @@ class PostgresType {
 
   PostgresType Range(uint32_t oid = 0, const std::string& typname = "") const {
     PostgresType out(PG_RECV_RANGE);
-    out.children_.push_back(WithFieldName("item"));
+    out.AppendChild("item", *this);
     out.oid_ = oid;
     out.typname_ = typname;
     return out;
@@ -535,7 +535,7 @@ class PostgresTypeResolver {
         for (const auto& child_item : child_desc) {
           PostgresType child;
           NANOARROW_RETURN_NOT_OK(Find(child_item.first, &child, error));
-          out.AddRecordChild(child_item.second, child);
+          out.AppendChild(child_item.second, child);
         }
 
         mapping_.insert({item.oid, out.WithPgTypeInfo(item.oid, item.typname)});

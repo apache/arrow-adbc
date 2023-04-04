@@ -140,7 +140,7 @@ TEST(PostgresTypeTest, PostgresTypeBasic) {
   EXPECT_EQ(domain.recv(), type.recv());
 
   PostgresType record(PostgresType::PG_RECV_RECORD);
-  record.AddRecordChild("col1", type);
+  record.AppendChild("col1", type);
   EXPECT_EQ(record.recv(), PostgresType::PG_RECV_RECORD);
   EXPECT_EQ(record.n_children(), 1);
   EXPECT_EQ(record.child(0)->recv(), type.recv());
@@ -199,7 +199,7 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
 
   ArrowSchemaInit(&schema);
   PostgresType record(PostgresType::PG_RECV_RECORD);
-  record.AddRecordChild("col1", PostgresType(PostgresType::PG_RECV_BOOL));
+  record.AppendChild("col1", PostgresType(PostgresType::PG_RECV_BOOL));
   EXPECT_EQ(record.SetSchema(&schema), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+s");
   EXPECT_STREQ(schema.children[0]->format, "b");

@@ -24,6 +24,7 @@
 
 #include <nanoarrow/nanoarrow.hpp>
 
+#include "postgres_type.h"
 #include "util.h"
 
 namespace adbcpq {
@@ -82,11 +83,17 @@ ArrowErrorCode ReadChecked(ArrowBufferView* data, T* out, ArrowError* error) {
 
 class PostgresCopyReader {
  public:
-  PostgresCopyReader() : offsets_(nullptr), data_(nullptr) {
+  PostgresCopyReader(const PostgresType& pg_type)
+      : pg_type_(std::move(pg_type)), offsets_(nullptr), data_(nullptr) {
     memset(&schema_view_, 0, sizeof(ArrowSchemaView));
   }
 
-  void AppendChild(PostgresCopyReader& child) { children_.push_back(std::move(child)); }
+  void AppendChild(PostgresCopyReader& child) {
+    pg_type_.AppendChild(child.pg_type_.field_name(), child.pg_type_);
+    children_.push_back(std::move(child));
+  }
+
+  const PostgresType& InputType() const { return pg_type_; }
 
   ArrowErrorCode InitSchema(ArrowSchema* schema) {
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view_, schema, nullptr));
@@ -126,7 +133,7 @@ class PostgresCopyReader {
   }
 
  protected:
-  ArrowType type_;
+  PostgresType pg_type_;
   ArrowSchemaView schema_view_;
   ArrowBuffer* offsets_;
   ArrowBuffer* data_;
@@ -136,6 +143,8 @@ class PostgresCopyReader {
 // Converter for a Postgres boolean (one byte -> bitmap)
 class PostgresCopyReaderBool : public PostgresCopyReader {
  public:
+  PostgresCopyReaderBool(const PostgresType& pg_type) : PostgresCopyReader(pg_type) {}
+
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
@@ -167,6 +176,9 @@ class PostgresCopyReaderBool : public PostgresCopyReader {
 template <typename T>
 class PostgresCopyReaderNetworkEndian : public PostgresCopyReader {
  public:
+  PostgresCopyReaderNetworkEndian(const PostgresType& pg_type)
+      : PostgresCopyReader(pg_type) {}
+
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
@@ -190,6 +202,8 @@ using PostgresCopyReaderNetworkEndian64 = PostgresCopyReaderNetworkEndian<uint64
 // Arrow types and any postgres type.
 class PostgresCopyReaderBinary : public PostgresCopyReader {
  public:
+  PostgresCopyReaderBinary(const PostgresType& pg_type) : PostgresCopyReader(pg_type) {}
+
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
@@ -208,7 +222,7 @@ class PostgresCopyReaderBinary : public PostgresCopyReader {
 
 class PostgresCopyReaderList : public PostgresCopyReader {
  public:
-  PostgresCopyReaderList(PostgresCopyReader& child) { AppendChild(child); }
+  PostgresCopyReaderList(const PostgresType& pg_type) : PostgresCopyReader(pg_type) {}
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
@@ -222,6 +236,15 @@ class PostgresCopyReaderList : public PostgresCopyReader {
     NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &flags, error));
     uint32_t element_type_oid;
     NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(&data, &element_type_oid, error));
+
+    if (element_type_oid != children_[0].InputType().oid()) {
+      ArrowErrorSet(error,
+                    "Expected array child value with oid %ld but got array child value "
+                    "with oid %ld",
+                    static_cast<long>(children_[0].InputType().oid()),
+                    static_cast<long>(element_type_oid));
+      return EINVAL;
+    }
 
     if (n_dim <= 0) {
       ArrowErrorSet(error, "Expected array n_dim > 0 but got %d",
@@ -237,6 +260,10 @@ class PostgresCopyReaderList : public PostgresCopyReader {
 
       int32_t lower_bound;
       NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &lower_bound, error));
+      if (lower_bound != 0) {
+        ArrowErrorSet(error, "Array value with lower bound != 0 is not supported");
+        return EINVAL;
+      }
     }
 
     ArrowBufferView field_data;
@@ -249,7 +276,7 @@ class PostgresCopyReaderList : public PostgresCopyReader {
       // Note: Read() here is a virtual method call
       int result = children_[0].Read(field_data, array->children[i], error);
       if (result == EOVERFLOW) {
-        for (int16_t j = 0; j < i; i++) {
+        for (int16_t j = 0; j < i; j++) {
           array->children[j]->length--;
         }
 
@@ -261,14 +288,16 @@ class PostgresCopyReaderList : public PostgresCopyReader {
         data.size_bytes -= field_length;
       }
     }
-    // (struct int32_t item_size_bytes, uint8_t[item_size_bytes])[nitems]
 
-    return ENOTSUP;
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFinishElement(array));
+    return NANOARROW_OK;
   }
 };
 
 class PostgresCopyReaderStruct : public PostgresCopyReader {
  public:
+  PostgresCopyReaderStruct(const PostgresType& pg_type) : PostgresCopyReader(pg_type) {}
+
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
