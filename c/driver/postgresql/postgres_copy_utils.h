@@ -83,14 +83,12 @@ ArrowErrorCode ReadChecked(ArrowBufferView* data, T* out, ArrowError* error) {
 
 class PostgresCopyReader {
  public:
-  PostgresCopyReader(const PostgresType& pg_type)
+  explicit PostgresCopyReader(const PostgresType& pg_type)
       : pg_type_(std::move(pg_type)), offsets_(nullptr), data_(nullptr) {
     memset(&schema_view_, 0, sizeof(ArrowSchemaView));
   }
 
-  void AppendChild(PostgresCopyReader& child) {
-    children_.push_back(std::move(child));
-  }
+  void AppendChild(PostgresCopyReader& child) { children_.push_back(std::move(child)); }
 
   const PostgresType& InputType() const { return pg_type_; }
 
@@ -142,7 +140,8 @@ class PostgresCopyReader {
 // Converter for a Postgres boolean (one byte -> bitmap)
 class PostgresCopyReaderBool : public PostgresCopyReader {
  public:
-  PostgresCopyReaderBool(const PostgresType& pg_type) : PostgresCopyReader(pg_type) {}
+  explicit PostgresCopyReaderBool(const PostgresType& pg_type)
+      : PostgresCopyReader(pg_type) {}
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
@@ -175,7 +174,7 @@ class PostgresCopyReaderBool : public PostgresCopyReader {
 template <typename T>
 class PostgresCopyReaderNetworkEndian : public PostgresCopyReader {
  public:
-  PostgresCopyReaderNetworkEndian(const PostgresType& pg_type)
+  explicit PostgresCopyReaderNetworkEndian(const PostgresType& pg_type)
       : PostgresCopyReader(pg_type) {}
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
@@ -201,7 +200,8 @@ using PostgresCopyReaderNetworkEndian64 = PostgresCopyReaderNetworkEndian<uint64
 // Arrow types and any postgres type.
 class PostgresCopyReaderBinary : public PostgresCopyReader {
  public:
-  PostgresCopyReaderBinary(const PostgresType& pg_type) : PostgresCopyReader(pg_type) {}
+  explicit PostgresCopyReaderBinary(const PostgresType& pg_type)
+      : PostgresCopyReader(pg_type) {}
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
@@ -221,7 +221,8 @@ class PostgresCopyReaderBinary : public PostgresCopyReader {
 
 class PostgresCopyReaderList : public PostgresCopyReader {
  public:
-  PostgresCopyReaderList(const PostgresType& pg_type) : PostgresCopyReader(pg_type) {}
+  explicit PostgresCopyReaderList(const PostgresType& pg_type)
+      : PostgresCopyReader(pg_type) {}
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
@@ -295,7 +296,8 @@ class PostgresCopyReaderList : public PostgresCopyReader {
 
 class PostgresCopyReaderStruct : public PostgresCopyReader {
  public:
-  PostgresCopyReaderStruct(const PostgresType& pg_type) : PostgresCopyReader(pg_type) {}
+  explicit PostgresCopyReaderStruct(const PostgresType& pg_type)
+      : PostgresCopyReader(pg_type) {}
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
