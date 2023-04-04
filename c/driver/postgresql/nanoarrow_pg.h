@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <nanoarrow/nanoarrow.hpp>
@@ -502,7 +503,7 @@ class PostgresTypeResolver {
     auto result = mapping_.find(oid);
     if (result == mapping_.end()) {
       ArrowErrorSet(error, "Postgres type with oid %ld not found",
-                    static_cast<long>(oid));
+                    static_cast<long>(oid));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -570,7 +571,7 @@ class PostgresTypeResolver {
                                       std::vector<std::pair<uint32_t, std::string>>* out,
                                       ArrowError* error) {
     ArrowErrorSet(error, "Class definition with oid %ld not found",
-                  static_cast<long>(oid));
+                  static_cast<long>(oid));  // NOLINT(runtime/int)
     return EINVAL;
   }
 
@@ -643,7 +644,7 @@ class ArrowConverter {
 // the bswap from network endian). This includes all integral and float types.
 class NumericArrowConverter : public ArrowConverter {
  public:
-  NumericArrowConverter(ArrowType type)
+  explicit NumericArrowConverter(ArrowType type)
       : ArrowConverter(ARROW_CONVERTER_NUMERIC, type), data_(nullptr) {}
 
   ArrowErrorCode InitSchema(ArrowSchema* schema) override {
@@ -672,7 +673,7 @@ class NumericArrowConverter : public ArrowConverter {
 // Arrow types and any postgres type.
 class BinaryArrowConverter : public ArrowConverter {
  public:
-  BinaryArrowConverter(ArrowType type)
+  explicit BinaryArrowConverter(ArrowType type)
       : ArrowConverter(ARROW_CONVERTER_BINARY, type), data_(nullptr) {}
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
