@@ -77,7 +77,7 @@ if(ADBC_BUILD_TESTS)
                 PREFIX
                 adbc
                 SOURCES
-                nanoarrow_pg_test.cc
+                postgres_type_test.cc
                 postgresql_test.cc
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc

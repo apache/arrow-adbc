@@ -20,7 +20,7 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
 
-#include "nanoarrow_pg.h"
+#include "postgres_type.h"
 
 using adbcpq::PostgresType;
 using adbcpq::PostgresTypeResolver;
