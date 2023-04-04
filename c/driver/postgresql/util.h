@@ -76,38 +76,6 @@ static inline uint64_t SwapNetworkToHost(uint64_t x) { return be64toh(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return htobe64(x); }
 #endif
 
-static inline void BufferToHostEndian(uint8_t* data, int64_t size_bytes,
-                                      int32_t bitwidth) {
-  switch (bitwidth) {
-    case 1:
-    case 8:
-      break;
-    case 16: {
-      uint16_t* data_uint = reinterpret_cast<uint16_t*>(data);
-      for (int64_t i = 0; i < size_bytes / 2; i++) {
-        data_uint[i] = SwapNetworkToHost(data_uint[i]);
-      }
-      break;
-    }
-    case 32: {
-      uint32_t* data_uint = reinterpret_cast<uint32_t*>(data);
-      for (int64_t i = 0; i < size_bytes / 4; i++) {
-        data_uint[i] = SwapNetworkToHost(data_uint[i]);
-      }
-      break;
-    }
-    case 64: {
-      uint64_t* data_uint = reinterpret_cast<uint64_t*>(data);
-      for (int64_t i = 0; i < size_bytes / 8; i++) {
-        data_uint[i] = SwapNetworkToHost(data_uint[i]);
-      }
-      break;
-    }
-    default:
-      break;
-  }
-}
-
 // see arrow/util/string_builder.h
 
 template <typename Head>

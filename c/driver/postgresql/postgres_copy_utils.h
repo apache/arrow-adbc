@@ -28,23 +28,72 @@
 
 namespace adbcpq {
 
-template <typename T>
-T ReadUnsafe(ArrowBufferView* data) {}
+static int8_t kPgCopyBinarySignature[] = {'P',  'G',    'C',  'O',  'P', 'Y',
+                                          '\n', '\377', '\r', '\n', '\0'};
 
-class ArrowConverter {
+// Read a value from the buffer without checking the buffer size. Advances
+// the cursor of data and reduces its size by sizeof(T).
+template <typename T>
+inline T ReadUnsafe(ArrowBufferView* data) {
+  T out;
+  memcpy(&out, data->data.data, sizeof(T));
+  out = SwapNetworkToHost(out);
+  data->data.as_uint8 += sizeof(T);
+  data->size_bytes -= sizeof(T);
+  return out;
+}
+
+// Define some explicit specializations for types that don't have a SwapNetworkToHost
+// overload.
+template <>
+inline int8_t ReadUnsafe(ArrowBufferView* data) {
+  int8_t out = data->data.as_int8[0];
+  data->data.as_uint8 += sizeof(int8_t);
+  data->size_bytes -= sizeof(int8_t);
+  return out;
+}
+
+template <>
+inline int16_t ReadUnsafe(ArrowBufferView* data) {
+  return static_cast<int16_t>(ReadUnsafe<uint16_t>(data));
+}
+
+template <>
+inline int32_t ReadUnsafe(ArrowBufferView* data) {
+  return static_cast<int32_t>(ReadUnsafe<uint32_t>(data));
+}
+
+template <>
+inline int64_t ReadUnsafe(ArrowBufferView* data) {
+  return static_cast<int64_t>(ReadUnsafe<uint64_t>(data));
+}
+
+template <typename T>
+ArrowErrorCode ReadChecked(ArrowBufferView* data, T* out, ArrowError* error) {
+  if (data->size_bytes < sizeof(T)) {
+    ArrowErrorSet(error, "Unexpected end of input (expected %d bytes but found %ld)",
+                  (int)sizeof(T), (long)data->size_bytes);
+    return EINVAL;
+  }
+
+  *out = ReadUnsafe<T>(data);
+  return NANOARROW_OK;
+}
+
+class PostgresCopyReader {
  public:
-  ArrowConverter() : offsets_(nullptr), data_(nullptr) {
+  PostgresCopyReader() : offsets_(nullptr), data_(nullptr) {
     memset(&schema_view_, 0, sizeof(ArrowSchemaView));
   }
 
-  void AppendChild(ArrowConverter& child) { children_.push_back(std::move(child)); }
+  void AppendChild(PostgresCopyReader& child) { children_.push_back(std::move(child)); }
 
-  virtual ArrowErrorCode InitSchema(ArrowSchema* schema) {
+  ArrowErrorCode InitSchema(ArrowSchema* schema) {
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view_, schema, nullptr));
     return NANOARROW_OK;
   }
 
-  virtual ArrowErrorCode InitArray(ArrowArray* array, ArrowSchema* schema) {
+  ArrowErrorCode InitArray(ArrowArray* array, ArrowSchema* schema) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array, schema, nullptr));
     NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
 
@@ -72,7 +121,7 @@ class ArrowConverter {
     return ENOTSUP;
   }
 
-  virtual ArrowErrorCode FinishArray(ArrowArray* array, ArrowError* error) {
+  ArrowErrorCode FinishArray(ArrowArray* array, ArrowError* error) {
     return NANOARROW_OK;
   }
 
@@ -81,11 +130,11 @@ class ArrowConverter {
   ArrowSchemaView schema_view_;
   ArrowBuffer* offsets_;
   ArrowBuffer* data_;
-  std::vector<ArrowConverter> children_;
+  std::vector<PostgresCopyReader> children_;
 };
 
 // Converter for a Postgres boolean (one byte -> bitmap)
-class ArrowConverterBool : public ArrowConverter {
+class PostgresCopyReaderBool : public PostgresCopyReader {
  public:
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
@@ -99,7 +148,10 @@ class ArrowConverterBool : public ArrowConverter {
           ArrowBufferAppendFill(data_, 0, bytes_required - data_->size_bytes));
     }
 
-    if (data.data.as_uint8[0]) {
+    int8_t value;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int8_t>(&data, &value, error));
+
+    if (value) {
       ArrowBitSet(data_->data, array->length);
     } else {
       ArrowBitClear(data_->data, array->length);
@@ -110,10 +162,10 @@ class ArrowConverterBool : public ArrowConverter {
   }
 };
 
-// Converter for Pg->Arrow conversions whose representations are identical (minus
-// the bswap from network endian). This includes all integral and float types.
-template <typename uint_type>
-class ArrowConverterNetworkEndian : public ArrowConverter {
+// Converter for Pg->Arrow conversions whose representations are identical minus
+// the bswap from network endian. This includes all integral and float types.
+template <typename T>
+class PostgresCopyReaderNetworkEndian : public PostgresCopyReader {
  public:
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
@@ -121,20 +173,22 @@ class ArrowConverterNetworkEndian : public ArrowConverter {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    uint_type value_uint;
-    memcpy(&value_uint, data.data.data, sizeof(uint_type));
-    value_uint = SwapNetworkToHost(value_uint);
-
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&value_uint, sizeof(value_uint)));
+    T value_uint;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<T>(&data, &value_uint, error));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&value_uint, sizeof(T)));
     array->length++;
     return NANOARROW_OK;
   }
 };
 
+using PostgresCopyReaderNetworkEndian16 = PostgresCopyReaderNetworkEndian<uint16_t>;
+using PostgresCopyReaderNetworkEndian32 = PostgresCopyReaderNetworkEndian<uint32_t>;
+using PostgresCopyReaderNetworkEndian64 = PostgresCopyReaderNetworkEndian<uint64_t>;
+
 // Converter for Pg->Arrow conversions whose Arrow representation is simply the
 // bytes of the field representation. This can be used with binary and string
 // Arrow types and any postgres type.
-class ArrowConverterBinary : public ArrowConverter {
+class PostgresCopyReaderBinary : public PostgresCopyReader {
  public:
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
@@ -152,9 +206,9 @@ class ArrowConverterBinary : public ArrowConverter {
   }
 };
 
-class ArrowConverterList : public ArrowConverter {
+class PostgresCopyReaderList : public PostgresCopyReader {
  public:
-  ArrowConverterList(ArrowConverter& child) { AppendChild(child); }
+  PostgresCopyReaderList(PostgresCopyReader& child) { AppendChild(child); }
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
@@ -162,17 +216,58 @@ class ArrowConverterList : public ArrowConverter {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    // int32_t ndim
-    // int32_t flags
-    // uint32_t element_type_oid
-    // (struct int32_t dim_size, int32_t dim_lower_bound)[ndim]
+    int32_t n_dim;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &n_dim, error));
+    int32_t flags;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &flags, error));
+    uint32_t element_type_oid;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(&data, &element_type_oid, error));
+
+    if (n_dim <= 0) {
+      ArrowErrorSet(error, "Expected array n_dim > 0 but got %d",
+                    static_cast<int>(n_dim));
+      return EINVAL;
+    }
+
+    int64_t n_items = 1;
+    for (int32_t i = 0; i < n_dim; i++) {
+      int32_t dim_size;
+      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &dim_size, error));
+      n_items *= dim_size;
+
+      int32_t lower_bound;
+      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &lower_bound, error));
+    }
+
+    ArrowBufferView field_data;
+    for (int64_t i = 0; i < n_items; i++) {
+      int32_t field_length;
+      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &field_length, error));
+      field_data.data.as_uint8 = data.data.as_uint8;
+      field_data.size_bytes = field_length;
+
+      // Note: Read() here is a virtual method call
+      int result = children_[0].Read(field_data, array->children[i], error);
+      if (result == EOVERFLOW) {
+        for (int16_t j = 0; j < i; i++) {
+          array->children[j]->length--;
+        }
+
+        return result;
+      }
+
+      if (field_length > 0) {
+        data.data.as_uint8 += field_length;
+        data.size_bytes -= field_length;
+      }
+    }
     // (struct int32_t item_size_bytes, uint8_t[item_size_bytes])[nitems]
 
     return ENOTSUP;
   }
 };
 
-class ArrowConverterStruct : public ArrowConverter {
+class PostgresCopyReaderStruct : public PostgresCopyReader {
  public:
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
@@ -180,17 +275,20 @@ class ArrowConverterStruct : public ArrowConverter {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    uint16_t n_fields = LoadNetworkInt16(data.data.as_char);
-    data.data.as_char += sizeof(uint16_t);
-    data.size_bytes -= sizeof(uint16_t);
+    int16_t n_fields;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int16_t>(&data, &n_fields, error));
+    if (n_fields < 0) {
+      return ENODATA;
+    }
 
     struct ArrowBufferView field_data;
     for (uint16_t i = 0; i < n_fields; i++) {
-      field_data.size_bytes = LoadNetworkInt32(data.data.as_char) - sizeof(int32_t);
-      data.data.as_char += sizeof(int32_t);
-      data.size_bytes -= sizeof(int32_t);
-      field_data.data.as_char = data.data.as_char;
+      int32_t field_length;
+      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &field_length, error));
+      field_data.data.as_uint8 = data.data.as_uint8;
+      field_data.size_bytes = field_length;
 
+      // Note: Read() here is a virtual method call
       int result = children_[i].Read(field_data, array->children[i], error);
       if (result == EOVERFLOW) {
         for (int16_t j = 0; j < i; i++) {
@@ -200,7 +298,10 @@ class ArrowConverterStruct : public ArrowConverter {
         return result;
       }
 
-      data.data.as_char += field_data.size_bytes;
+      if (field_length > 0) {
+        data.data.as_uint8 += field_length;
+        data.size_bytes -= field_length;
+      }
     }
 
     array->length++;
