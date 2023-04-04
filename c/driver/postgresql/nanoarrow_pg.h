@@ -23,6 +23,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <limits>
 
 #include <nanoarrow/nanoarrow.hpp>
 
