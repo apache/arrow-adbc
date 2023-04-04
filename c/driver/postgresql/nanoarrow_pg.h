@@ -23,7 +23,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <limits>
 
 #include <nanoarrow/nanoarrow.hpp>
 
@@ -678,10 +677,6 @@ class BinaryArrowConverter : public ArrowConverter {
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
-    if ((data_->size_bytes + data.size_bytes) > std::numeric_limits<int32_t>::max()) {
-      return EOVERFLOW;
-    }
-
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(data_, data));
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, (int32_t)data_->size_bytes));
     return NANOARROW_OK;
