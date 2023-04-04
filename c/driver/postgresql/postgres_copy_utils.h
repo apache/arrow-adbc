@@ -89,7 +89,6 @@ class PostgresCopyReader {
   }
 
   void AppendChild(PostgresCopyReader& child) {
-    pg_type_.AppendChild(child.pg_type_.field_name(), child.pg_type_);
     children_.push_back(std::move(child));
   }
 
