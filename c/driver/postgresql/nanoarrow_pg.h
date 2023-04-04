@@ -582,28 +582,11 @@ class PostgresTypeResolver {
 
 class ArrowConverter {
  public:
-  enum Kind {
-    ARROW_CONVERTER_BOOL,
-    ARROW_CONVERTER_NETWORK_ENDIAN,
-    ARROW_CONVERTER_BINARY,
-    ARROW_CONVERTER_LIST,
-    ARROW_CONVERTER_STRUCT,
-    ARROW_CONVERTER_OTHER
-  };
-
-  ArrowConverter(Kind kind, ArrowType type)
-      : kind_(kind), type_(type), offsets_(nullptr), data_(nullptr) {
+  ArrowConverter() : offsets_(nullptr), data_(nullptr) {
     memset(&schema_view_, 0, sizeof(ArrowSchemaView));
   }
 
-  virtual ~ArrowConverter() {}
-
-  Kind kind() const { return kind_; }
-
-  void AppendChild(ArrowConverter& child) {
-    children_kind_.push_back(child.kind());
-    children_.push_back(std::move(child));
-  }
+  void AppendChild(ArrowConverter& child) { children_.push_back(std::move(child)); }
 
   virtual ArrowErrorCode InitSchema(ArrowSchema* schema) {
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view_, schema, nullptr));
@@ -634,29 +617,25 @@ class ArrowConverter {
   }
 
   virtual ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
-                              ArrowError* error) {return ENOTSUP; }
+                              ArrowError* error) {
+    return ENOTSUP;
+  }
 
   virtual ArrowErrorCode FinishArray(ArrowArray* array, ArrowError* error) {
     return NANOARROW_OK;
   }
 
  protected:
-  Kind kind_;
   ArrowType type_;
   ArrowSchemaView schema_view_;
   ArrowBuffer* offsets_;
-  ArrowBuffer* large_offsets_;
   ArrowBuffer* data_;
-  std::vector<Kind> children_kind_;
   std::vector<ArrowConverter> children_;
 };
 
 // Converter for a Postgres boolean (one byte -> bitmap)
 class ArrowConverterBool : public ArrowConverter {
  public:
-  explicit ArrowConverterBool(ArrowType type)
-      : ArrowConverter(ARROW_CONVERTER_BOOL, type) {}
-
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
@@ -682,35 +661,23 @@ class ArrowConverterBool : public ArrowConverter {
 
 // Converter for Pg->Arrow conversions whose representations are identical (minus
 // the bswap from network endian). This includes all integral and float types.
+template <typename uint_type>
 class ArrowConverterNetworkEndian : public ArrowConverter {
  public:
-  explicit ArrowConverterNetworkEndian(ArrowType type)
-      : ArrowConverter(ARROW_CONVERTER_NETWORK_ENDIAN, type) {}
-
-  ArrowErrorCode InitSchema(ArrowSchema* schema) override {
-    NANOARROW_RETURN_NOT_OK(ArrowConverter::InitSchema(schema));
-    bitwidth_ = schema_view_.layout.element_size_bits[1];
-    return NANOARROW_OK;
-  }
-
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(data_, data));
+    uint_type value_uint;
+    memcpy(&value_uint, data.data.data, sizeof(uint_type));
+    value_uint = SwapNetworkToHost(value_uint);
+
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&value_uint, sizeof(value_uint)));
     array->length++;
     return NANOARROW_OK;
   }
-
-  ArrowErrorCode FinishArray(ArrowArray* array, ArrowError* error) override {
-    BufferToHostEndian(data_->data, data_->size_bytes, bitwidth_);
-    return NANOARROW_OK;
-  }
-
- private:
-  int32_t bitwidth_;
 };
 
 // Converter for Pg->Arrow conversions whose Arrow representation is simply the
@@ -718,9 +685,6 @@ class ArrowConverterNetworkEndian : public ArrowConverter {
 // Arrow types and any postgres type.
 class ArrowConverterBinary : public ArrowConverter {
  public:
-  explicit ArrowConverterBinary(ArrowType type)
-      : ArrowConverter(ARROW_CONVERTER_BINARY, type) {}
-
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
@@ -739,23 +703,28 @@ class ArrowConverterBinary : public ArrowConverter {
 
 class ArrowConverterList : public ArrowConverter {
  public:
-  explicit ArrowConverterList(ArrowType type)
-      : ArrowConverter(ARROW_CONVERTER_BINARY, type) {}
+  ArrowConverterList(ArrowConverter& child) {
+    AppendChild(child);
+  }
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
       return ArrowArrayAppendNull(array, 1);
     }
+
+    // int32_t ndim
+    // int32_t flags
+    // uint32_t element_type_oid
+    // (struct int32_t dim_size, int32_t dim_lower_bound)[ndim]
+    // (struct int32_t item_size_bytes, uint8_t[item_size_bytes])[nitems]
+
     return ENOTSUP;
   }
 };
 
 class ArrowConverterStruct : public ArrowConverter {
  public:
-  explicit ArrowConverterStruct(ArrowType type)
-      : ArrowConverter(ARROW_CONVERTER_BINARY, type) {}
-
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
