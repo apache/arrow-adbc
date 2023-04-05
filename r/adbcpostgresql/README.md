@@ -22,8 +22,8 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of adbcdrivermanager is to provide a low-level developer-facing
-interface to the Arrow Database Connectivity (ADBC) SQLite driver.
+The goal of adbcpostgresql is to provide a low-level developer-facing
+interface to the Arrow Database Connectivity (ADBC) PostgreSQL driver.
 
 ## Installation
 
