@@ -572,11 +572,45 @@ class PostgresCopyStreamReader {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode ReadHeader(ArrowBufferView data, ArrowError* error) { return ENOTSUP; }
+  ArrowErrorCode ReadHeader(ArrowBufferView data, ArrowError* error) {
+    if (data.size_bytes < sizeof(kPgCopyBinarySignature)) {
+      ArrowErrorSet(error,
+                    "Expected PGCOPY signature of %ld bytes at beginning of stream but "
+                    "found %ld bytes of input",
+                    static_cast<long>(sizeof(kPgCopyBinarySignature)),
+                    static_cast<long>(data.size_bytes));
+      return EINVAL;
+    }
+
+    if (memcmp(data.data.data, kPgCopyBinarySignature, sizeof(kPgCopyBinarySignature)) !=
+        0) {
+      ArrowErrorSet(error, "Invalid PGCOPY signature at beginning of stream");
+      return EINVAL;
+    }
+
+    uint32_t flags;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(&data, &flags, error));
+    uint32_t extension_length;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(&data, &extension_length, error));
+
+    if (data.size_bytes < static_cast<int64_t>(extension_length)) {
+      ArrowErrorSet(error,
+                    "Expected %ld bytes of extension metadata at start of stream but "
+                    "found %ld bytes of input",
+                    static_cast<long>(extension_length),
+                    static_cast<long>(data.size_bytes));
+      return EINVAL;
+    }
+
+    data.data.as_uint8 += extension_length;
+    data.size_bytes -= extension_length;
+    return NANOARROW_OK;
+  }
 
   ArrowErrorCode ReadRecord(ArrowBufferView data, ArrowError* error) {
     if (array_->release == nullptr) {
-      NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array_.get(), schema_.get(), error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayInitFromSchema(array_.get(), schema_.get(), error));
       NANOARROW_RETURN_NOT_OK(root_reader_.InitArray(array_.get()));
     }
 
