@@ -212,6 +212,11 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
 //
 class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
  public:
+  void InitChild(std::unique_ptr<PostgresCopyFieldReader> child) {
+    child_ = std::move(child);
+    child_->Init(*pg_type_.child(0));
+  }
+
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
@@ -225,19 +230,19 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     uint32_t element_type_oid;
     NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(&data, &element_type_oid, error));
 
-    if (element_type_oid != children_[0]->InputType().oid()) {
-      ArrowErrorSet(error,
-                    "Expected array child value with oid %ld but got array child value "
-                    "with oid %ld",
-                    static_cast<long>(children_[0]->InputType().oid()),
-                    static_cast<long>(element_type_oid));  // NOLINT(runtime/int)
-      return EINVAL;
-    }
+    // We could validate the OID here, but this is a poor fit for all cases
+    // (e.g. testing) since the OID can be specific to each database
 
-    if (n_dim <= 0) {
+    if (n_dim < 0) {
       ArrowErrorSet(error, "Expected array n_dim > 0 but got %d",
                     static_cast<int>(n_dim));
       return EINVAL;
+    }
+
+    // This is apparently allowed
+    if (n_dim == 0) {
+      NANOARROW_RETURN_NOT_OK(ArrowArrayFinishElement(array));
+      return NANOARROW_OK;
     }
 
     int64_t n_items = 1;
@@ -262,14 +267,7 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
       field_data.size_bytes = field_length;
 
       // Note: Read() here is a virtual method call
-      int result = children_[0]->Read(field_data, array->children[i], error);
-      if (result == EOVERFLOW) {
-        for (int16_t j = 0; j < i; j++) {
-          array->children[j]->length--;
-        }
-
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(child_->Read(field_data, array->children[0], error));
 
       if (field_length > 0) {
         data.data.as_uint8 += field_length;
@@ -280,10 +278,19 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     NANOARROW_RETURN_NOT_OK(ArrowArrayFinishElement(array));
     return NANOARROW_OK;
   }
+
+ private:
+  std::unique_ptr<PostgresCopyFieldReader> child_;
 };
 
 class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
  public:
+  void AppendChild(std::unique_ptr<PostgresCopyFieldReader> child) {
+    int64_t child_i = static_cast<int64_t>(children_.size());
+    children_.push_back(std::move(child));
+    children_[child_i]->Init(*pg_type_.child(child_i));
+  }
+
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
@@ -305,11 +312,18 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
 
       // Note: Read() here is a virtual method call
       int result = children_[i]->Read(field_data, array->children[i], error);
+
+      // On overflow, pretend all previous children for this struct were never
+      // appended to. This leaves array in a valid state in the specific case
+      // where EOVERFLOW was returned so that a higher level caller can attempt
+      // to try again after creating a new array.
       if (result == EOVERFLOW) {
-        for (int16_t j = 0; j < i; i++) {
+        for (int16_t j = 0; j < i; j++) {
           array->children[j]->length--;
         }
 
+        return result;
+      } else if (result != NANOARROW_OK) {
         return result;
       }
 
@@ -322,6 +336,9 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
     array->length++;
     return NANOARROW_OK;
   }
+
+ private:
+  std::vector<std::unique_ptr<PostgresCopyFieldReader>> children_;
 };
 
 // Factory for a PostgresCopyFieldReader that instantiates the proper subclass
@@ -343,7 +360,7 @@ ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* sch
     case NANOARROW_TYPE_BOOL:
       switch (pg_type.recv()) {
         case PostgresType::PG_RECV_BOOL:
-          *out = new PostgresCopyNetworkEndianFieldReader<uint16_t>();
+          *out = new PostgresCopyBooleanFieldReader();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -413,18 +430,55 @@ ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* sch
 
     case NANOARROW_TYPE_LIST:
       switch (pg_type.recv()) {
-        case PostgresType::PG_RECV_ARRAY:
-          *out = new PostgresCopyArrayFieldReader();
+        case PostgresType::PG_RECV_ARRAY: {
+          if (pg_type.n_children() != 1) {
+            ArrowErrorSet(error,
+                          "Expected Postgres array type to have one child but found %ld",
+                          static_cast<long>(pg_type.n_children()));
+            return EINVAL;
+          }
+
+          auto array_reader = std::unique_ptr<PostgresCopyArrayFieldReader>(
+              new PostgresCopyArrayFieldReader());
+
+          PostgresCopyFieldReader* child_reader;
+          NANOARROW_RETURN_NOT_OK(MakeCopyFieldReader(
+              *pg_type.child(0), schema->children[0], &child_reader, error));
+          array_reader->InitChild(std::unique_ptr<PostgresCopyFieldReader>(child_reader));
+
+          *out = array_reader.release();
           return NANOARROW_OK;
+        }
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
       }
 
     case NANOARROW_TYPE_STRUCT:
       switch (pg_type.recv()) {
-        case PostgresType::PG_RECV_RECORD:
-          *out = new PostgresCopyRecordFieldReader();
+        case PostgresType::PG_RECV_RECORD: {
+          if (pg_type.n_children() != schema->n_children) {
+            ArrowErrorSet(error,
+                          "Can't convert Postgres record type with %ld chlidren to Arrow "
+                          "struct type with %ld children",
+                          static_cast<long>(pg_type.n_children()),
+                          static_cast<long>(schema->n_children));
+            return EINVAL;
+          }
+
+          auto record_reader = std::unique_ptr<PostgresCopyRecordFieldReader>(
+              new PostgresCopyRecordFieldReader());
+
+          for (int64_t i = 0; i < pg_type.n_children(); i++) {
+            PostgresCopyFieldReader* child_reader;
+            NANOARROW_RETURN_NOT_OK(MakeCopyFieldReader(
+                *pg_type.child(i), schema->children[i], &child_reader, error));
+            record_reader->AppendChild(
+                std::unique_ptr<PostgresCopyFieldReader>(child_reader));
+          }
+
+          *out = record_reader.release();
           return NANOARROW_OK;
+        }
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
       }
