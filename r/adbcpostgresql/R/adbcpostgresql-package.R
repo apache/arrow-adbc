@@ -24,7 +24,7 @@
 ## usethis namespace: end
 NULL
 
-#' ADBC SQLite3 Driver
+#' ADBC PostgreSQL Driver
 #'
 #' @inheritParams adbcdrivermanager::adbc_database_init
 #' @inheritParams adbcdrivermanager::adbc_connection_init
@@ -35,7 +35,6 @@ NULL
 #'   autocommit behaviour.
 #' @param adbc.ingest.target_table The name of the target table for a bulk insert.
 #' @param adbc.ingest.mode Whether to create (the default) or append.
-#' @param adbc.sqlite.query.batch_rows The number of rows per batch to return.
 #'
 #' @return An [adbcdrivermanager::adbc_driver()]
 #' @export
@@ -79,12 +78,10 @@ adbc_connection_init.adbcpostgresql_database <- function(database,
 #' @export
 adbc_statement_init.adbcpostgresql_connection <- function(connection,
                                                       adbc.ingest.target_table = NULL,
-                                                      adbc.ingest.mode = NULL,
-                                                      adbc.sqlite.query.batch_rows = NULL) {
+                                                      adbc.ingest.mode = NULL) {
   options <- list(
     adbc.ingest.target_table = adbc.ingest.target_table,
-    adbc.ingest.mode = adbc.ingest.mode,
-    adbc.sqlite.query.batch_rows = adbc.sqlite.query.batch_rows
+    adbc.ingest.mode = adbc.ingest.mode
   )
 
   adbcdrivermanager::adbc_statement_init_default(

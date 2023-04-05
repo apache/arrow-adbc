@@ -5,7 +5,7 @@
 \alias{adbc_database_init.adbcpostgresql_driver_postgresql}
 \alias{adbc_connection_init.adbcpostgresql_database}
 \alias{adbc_statement_init.adbcpostgresql_connection}
-\title{ADBC SQLite3 Driver}
+\title{ADBC PostgreSQL Driver}
 \usage{
 adbcpostgresql()
 
@@ -16,8 +16,7 @@ adbcpostgresql()
 \method{adbc_statement_init}{adbcpostgresql_connection}(
   connection,
   adbc.ingest.target_table = NULL,
-  adbc.ingest.mode = NULL,
-  adbc.sqlite.query.batch_rows = NULL
+  adbc.ingest.mode = NULL
 )
 }
 \arguments{
@@ -36,14 +35,12 @@ autocommit behaviour.}
 \item{adbc.ingest.target_table}{The name of the target table for a bulk insert.}
 
 \item{adbc.ingest.mode}{Whether to create (the default) or append.}
-
-\item{adbc.sqlite.query.batch_rows}{The number of rows per batch to return.}
 }
 \value{
 An \code{\link[adbcdrivermanager:adbc_driver_void]{adbcdrivermanager::adbc_driver()}}
 }
 \description{
-ADBC SQLite3 Driver
+ADBC PostgreSQL Driver
 }
 \examples{
 adbcpostgresql()
