@@ -18,4 +18,4 @@
 #include <libpq-fe.h>
 #include <stdio.h>
 
-void print_sqlite_runtime_version(void) { printf("%s", "123"); }
+void print_libpq_runtime_version(void) { printf("%d", PQlibVersion()); }

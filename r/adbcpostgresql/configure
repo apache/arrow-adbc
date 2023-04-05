@@ -75,6 +75,6 @@ if [ -f "src/adbc.h" ]; then
 fi
 
 
-echo "Vendored ADBC SQLite driver was not found."
+echo "Vendored ADBC PostgreSQL driver was not found."
 echo "This source package was probably built incorrectly and it's probably not your fault"
 exit 1
