@@ -100,10 +100,7 @@ class PostgresCopyFieldReader {
     return NANOARROW_OK;
   }
 
-  virtual ArrowErrorCode InitArray(ArrowArray* array, ArrowSchema* schema) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array, schema, nullptr));
-    NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
-
+  virtual ArrowErrorCode InitArray(ArrowArray* array) {
     // Cache some buffer pointers
     for (int32_t i = 0; i < 3; i++) {
       switch (schema_view_.layout.buffer_type[i]) {
@@ -217,6 +214,18 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     child_->Init(*pg_type_.child(0));
   }
 
+  ArrowErrorCode InitSchema(ArrowSchema* schema) override {
+    NANOARROW_RETURN_NOT_OK(PostgresCopyFieldReader::InitSchema(schema));
+    NANOARROW_RETURN_NOT_OK(child_->InitSchema(schema->children[0]));
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode InitArray(ArrowArray* array) override {
+    NANOARROW_RETURN_NOT_OK(PostgresCopyFieldReader::InitArray(array));
+    NANOARROW_RETURN_NOT_OK(child_->InitArray(array->children[0]));
+    return NANOARROW_OK;
+  }
+
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
                       ArrowError* error) override {
     if (data.size_bytes <= 0) {
@@ -289,6 +298,24 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
     int64_t child_i = static_cast<int64_t>(children_.size());
     children_.push_back(std::move(child));
     children_[child_i]->Init(*pg_type_.child(child_i));
+  }
+
+  ArrowErrorCode InitSchema(ArrowSchema* schema) override {
+    NANOARROW_RETURN_NOT_OK(PostgresCopyFieldReader::InitSchema(schema));
+    for (int64_t i = 0; i < schema->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(children_[i]->InitSchema(schema->children[i]));
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode InitArray(ArrowArray* array) override {
+    NANOARROW_RETURN_NOT_OK(PostgresCopyFieldReader::InitArray(array));
+    for (int64_t i = 0; i < array->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(children_[i]->InitArray(array->children[i]));
+    }
+
+    return NANOARROW_OK;
   }
 
   ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
@@ -499,6 +526,14 @@ class PostgresCopyStreamReader {
   }
 
   ArrowErrorCode SetOutputSchema(ArrowSchema* schema, ArrowError* error) {
+    if (std::string(schema_->format) != "+s") {
+      ArrowErrorSet(
+          error,
+          "Expected output schema of type struct but got output schema with format '%s'",
+          schema_->format);
+      return EINVAL;
+    }
+
     if (schema_->n_children != root_reader_.InputType().n_children()) {
       ArrowErrorSet(error,
                     "Expected output schema with %ld columns to match Postgres input but "
@@ -537,13 +572,21 @@ class PostgresCopyStreamReader {
     return NANOARROW_OK;
   }
 
+  ArrowErrorCode ReadHeader(ArrowBufferView data, ArrowError* error) { return ENOTSUP; }
+
+  ArrowErrorCode ReadRecord(ArrowBufferView data, ArrowError* error) {
+    if (array_->release == nullptr) {
+      NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array_.get(), schema_.get(), error));
+      NANOARROW_RETURN_NOT_OK(root_reader_.InitArray(array_.get()));
+    }
+
+    NANOARROW_RETURN_NOT_OK(root_reader_.Read(data, array_.get(), error));
+    return NANOARROW_OK;
+  }
+
   ArrowErrorCode GetSchema(ArrowSchema* out) {
     return ArrowSchemaDeepCopy(schema_.get(), out);
   }
-
-  ArrowErrorCode ReadHeader(ArrowBufferView data, ArrowError* error) { return ENOTSUP; }
-
-  ArrowErrorCode ReadRecord(ArrowBufferView data, ArrowError* error) { return ENOTSUP; }
 
   void GetArray(ArrowArray* out) { ArrowArrayMove(array_.get(), out); }
 
