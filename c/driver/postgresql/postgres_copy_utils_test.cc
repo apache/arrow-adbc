@@ -20,12 +20,70 @@
 
 #include "postgres_copy_utils.h"
 
+using adbcpq::PostgresCopyStreamReader;
+using adbcpq::PostgresType;
+
 // COPY (SELECT CAST("col" AS BOOLEAN) AS "col" FROM (  VALUES (TRUE), (FALSE), (NULL)) AS
 // drvd("col")) TO STDOUT;
 static uint8_t kTestPgCopyBoolean[] = {
     0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x01,
     0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+TEST(PostgresCopyUtilsTest, PostgresCopyReadStreamBasic) {
+  auto col_type = PostgresType(PostgresType::PG_RECV_BOOL).WithPgTypeInfo(2, "bool");
+  PostgresType input_type(PostgresType::PG_RECV_RECORD);
+  input_type.AppendChild("col", col_type);
+
+  ArrowSchema schema;
+  schema.release = nullptr;
+  ArrowError error;
+
+  PostgresCopyStreamReader reader;
+  ASSERT_EQ(reader.Init(input_type), NANOARROW_OK);
+
+  // Make sure we can guess a schema
+  ASSERT_EQ(reader.InferOutputSchema(&error), NANOARROW_OK);
+  ASSERT_EQ(reader.GetSchema(&schema), NANOARROW_OK);
+  ASSERT_NE(schema.release, nullptr);
+  ASSERT_STREQ(schema.format, "+s");
+  ASSERT_EQ(schema.n_children, 1);
+  ASSERT_STREQ(schema.children[0]->format, "b");
+
+  // Make sure we can initialize the readers
+  ASSERT_EQ(reader.InitFieldReaders(&error), NANOARROW_OK);
+
+  // Make sure we can read!
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyBoolean;
+  data.size_bytes = sizeof(kTestPgCopyBoolean);
+
+  ASSERT_EQ(reader.ReadHeader(&data, &error), NANOARROW_OK);
+  ASSERT_EQ(reader.ReadRecord(&data, &error), NANOARROW_OK);
+  ASSERT_EQ(reader.ReadRecord(&data, &error), NANOARROW_OK);
+  ASSERT_EQ(reader.ReadRecord(&data, &error), NANOARROW_OK);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyBoolean + 2, sizeof(kTestPgCopyBoolean));
+  ASSERT_EQ(data.size_bytes, 2);
+
+  ArrowArray array;
+  ASSERT_EQ(reader.GetArray(&array, &error), NANOARROW_OK);
+
+  ASSERT_EQ(array.length, 3);
+  ASSERT_EQ(array.n_children, 1);
+  const uint8_t* validity =
+      reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
+  const uint8_t* bool_data =
+      reinterpret_cast<const uint8_t*>(array.children[0]->buffers[1]);
+  ASSERT_NE(validity, nullptr);
+  ASSERT_NE(bool_data, nullptr);
+
+  ASSERT_TRUE(ArrowBitGet(bool_data, 0));
+  ASSERT_FALSE(ArrowBitGet(bool_data, 1));
+  ASSERT_FALSE(ArrowBitGet(bool_data, 2));
+
+  array.release(&array);
+  schema.release(&schema);
+}
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadBoolean) {
   EXPECT_EQ(sizeof(kTestPgCopyBoolean), sizeof(kTestPgCopyBoolean));

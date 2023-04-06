@@ -601,6 +601,7 @@ class PostgresCopyStreamReader {
       PostgresCopyFieldReader* child_reader;
       NANOARROW_RETURN_NOT_OK(
           MakeCopyFieldReader(child_type, schema_->children[i], &child_reader, error));
+      root_reader_.AppendChild(std::unique_ptr<PostgresCopyFieldReader>(child_reader));
     }
 
     NANOARROW_RETURN_NOT_OK(root_reader_.InitSchema(schema_.get()));
@@ -622,6 +623,9 @@ class PostgresCopyStreamReader {
       ArrowErrorSet(error, "Invalid PGCOPY signature at beginning of stream");
       return EINVAL;
     }
+
+    data->data.as_uint8 += sizeof(kPgCopyBinarySignature);
+    data->size_bytes -= sizeof(kPgCopyBinarySignature);
 
     uint32_t flags;
     NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(data, &flags, error));
@@ -657,7 +661,15 @@ class PostgresCopyStreamReader {
     return ArrowSchemaDeepCopy(schema_.get(), out);
   }
 
-  void GetArray(ArrowArray* out) { ArrowArrayMove(array_.get(), out); }
+  ArrowErrorCode GetArray(ArrowArray* out, ArrowError* error) {
+    if (array_->release == nullptr) {
+      return EINVAL;
+    }
+
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(array_.get(), error));
+    ArrowArrayMove(array_.get(), out);
+    return NANOARROW_OK;
+  }
 
  private:
   PostgresCopyRecordFieldReader root_reader_;
