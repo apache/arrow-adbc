@@ -249,7 +249,7 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
 
   ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
                       ArrowError* error) override {
-    if (data->size_bytes <= 0) {
+    if (field_size_bytes <= 0) {
       return ArrowArrayAppendNull(array, 1);
     }
 
@@ -287,8 +287,8 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
 
       int32_t lower_bound;
       NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &lower_bound, error));
-      if (lower_bound != 0) {
-        ArrowErrorSet(error, "Array value with lower bound != 0 is not supported");
+      if (lower_bound != 1) {
+        ArrowErrorSet(error, "Array value with lower bound != 1 is not supported");
         return EINVAL;
       }
     }
@@ -504,6 +504,7 @@ ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* sch
 
           auto array_reader = std::unique_ptr<PostgresCopyArrayFieldReader>(
               new PostgresCopyArrayFieldReader());
+          array_reader->Init(pg_type);
 
           PostgresCopyFieldReader* child_reader;
           NANOARROW_RETURN_NOT_OK(MakeCopyFieldReader(
@@ -531,6 +532,7 @@ ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* sch
 
           auto record_reader = std::unique_ptr<PostgresCopyRecordFieldReader>(
               new PostgresCopyRecordFieldReader());
+          record_reader->Init(pg_type);
 
           for (int64_t i = 0; i < pg_type.n_children(); i++) {
             PostgresCopyFieldReader* child_reader;
