@@ -27,7 +27,6 @@
 #include <nanoarrow/nanoarrow.h>
 
 #include "postgres_type.h"
-#include "type.h"
 
 namespace adbcpq {
 class PostgresConnection;

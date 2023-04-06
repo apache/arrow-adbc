@@ -25,7 +25,6 @@
 #include <libpq-fe.h>
 
 #include "postgres_type.h"
-#include "type.h"
 
 namespace adbcpq {
 class PostgresDatabase {

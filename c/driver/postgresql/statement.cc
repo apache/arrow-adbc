@@ -31,7 +31,6 @@
 
 #include "connection.h"
 #include "postgres_type.h"
-#include "type.h"
 #include "util.h"
 
 namespace adbcpq {

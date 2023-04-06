@@ -43,7 +43,6 @@ add_arrow_lib(adbc_driver_postgresql
               database.cc
               postgresql.cc
               statement.cc
-              type.cc
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
