@@ -114,13 +114,13 @@ class PostgresType {
   };
 
   static std::vector<PgRecv> PgRecvAllBase(bool nested = true) {
-    std::vector<PgRecv> base = {PG_RECV_BIT,       PG_RECV_BOOL,        PG_RECV_BYTEA,
-                                PG_RECV_CASH,      PG_RECV_CHAR,        PG_RECV_DATE,
-                                PG_RECV_FLOAT4,    PG_RECV_FLOAT8,      PG_RECV_INT4,
-                                PG_RECV_INT8,      PG_RECV_INTERVAL,    PG_RECV_NUMERIC,
-                                PG_RECV_OID,       PG_RECV_TEXT,        PG_RECV_TIME,
-                                PG_RECV_TIMESTAMP, PG_RECV_TIMESTAMPTZ, PG_RECV_TIMETZ,
-                                PG_RECV_UUID,      PG_RECV_VARBIT,      PG_RECV_VARCHAR};
+    std::vector<PgRecv> base = {
+        PG_RECV_BIT,      PG_RECV_BOOL,      PG_RECV_BYTEA,       PG_RECV_CASH,
+        PG_RECV_CHAR,     PG_RECV_BPCHAR,    PG_RECV_DATE,        PG_RECV_FLOAT4,
+        PG_RECV_FLOAT8,   PG_RECV_INT2,      PG_RECV_INT4,        PG_RECV_INT8,
+        PG_RECV_INTERVAL, PG_RECV_NUMERIC,   PG_RECV_OID,         PG_RECV_TEXT,
+        PG_RECV_TIME,     PG_RECV_TIMESTAMP, PG_RECV_TIMESTAMPTZ, PG_RECV_TIMETZ,
+        PG_RECV_UUID,     PG_RECV_VARBIT,    PG_RECV_VARCHAR};
 
     if (nested) {
       base.push_back(PG_RECV_ARRAY);
@@ -425,6 +425,7 @@ class PostgresType {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
         break;
       case PG_RECV_CHAR:
+      case PG_RECV_BPCHAR:
       case PG_RECV_VARCHAR:
       case PG_RECV_TEXT:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
@@ -496,7 +497,7 @@ class PostgresTypeResolver {
 
   PostgresTypeResolver() : base_(PostgresType::AllBase()) {}
 
-  ArrowErrorCode Find(uint32_t oid, PostgresType* type_out, ArrowError* error) {
+  ArrowErrorCode Find(uint32_t oid, PostgresType* type_out, ArrowError* error) const {
     auto result = mapping_.find(oid);
     if (result == mapping_.end()) {
       ArrowErrorSet(error, "Postgres type with oid %ld not found",

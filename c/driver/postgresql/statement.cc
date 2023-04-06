@@ -30,6 +30,7 @@
 #include <nanoarrow/nanoarrow.h>
 
 #include "connection.h"
+#include "postgres_type.h"
 #include "type.h"
 #include "util.h"
 
@@ -105,57 +106,24 @@ struct Handle {
 };
 
 /// Build an Arrow schema from a PostgreSQL result set
-AdbcStatusCode InferSchema(const TypeMapping& type_mapping, PGresult* result,
+AdbcStatusCode InferSchema(const PostgresTypeResolver& type_resolver, PGresult* result,
                            struct ArrowSchema* out, struct AdbcError* error) {
+  ArrowError na_error;
   const int num_fields = PQnfields(result);
   ArrowSchemaInit(out);
   CHECK_NA_ADBC(ArrowSchemaSetTypeStruct(out, num_fields), error);
   for (int i = 0; i < num_fields; i++) {
     ArrowType field_type = NANOARROW_TYPE_NA;
-    const Oid pg_type = PQftype(result, i);
-
-    auto it = type_mapping.type_mapping.find(pg_type);
-    if (it == type_mapping.type_mapping.end()) {
+    const Oid pg_oid = PQftype(result, i);
+    PostgresType pg_type;
+    if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
       SetError(error, "Column #", i + 1, " (\"", PQfname(result, i),
-               "\") has unknown type code ", pg_type);
+               "\") has unknown type code ", pg_oid);
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
-    switch (it->second) {
-      // TODO: this mapping will eventually have to become dynamic,
-      // because of complex types like arrays/records
-      case PgType::kBool:
-        field_type = NANOARROW_TYPE_BOOL;
-        break;
-      case PgType::kFloat4:
-        field_type = NANOARROW_TYPE_FLOAT;
-        break;
-      case PgType::kFloat8:
-        field_type = NANOARROW_TYPE_DOUBLE;
-        break;
-      case PgType::kInt2:
-        field_type = NANOARROW_TYPE_INT16;
-        break;
-      case PgType::kInt4:
-        field_type = NANOARROW_TYPE_INT32;
-        break;
-      case PgType::kInt8:
-        field_type = NANOARROW_TYPE_INT64;
-        break;
-      case PgType::kVarBinary:
-        field_type = NANOARROW_TYPE_BINARY;
-        break;
-      case PgType::kText:
-      case PgType::kVarChar:
-        field_type = NANOARROW_TYPE_STRING;
-        break;
-      default:
-        SetError(error, "Column #", i + 1, " (\"", PQfname(result, i),
-                 "\") has unimplemented type code ", pg_type);
-        return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
-    CHECK_NA_ADBC(ArrowSchemaSetType(out->children[i], field_type), error);
-    CHECK_NA_ADBC(ArrowSchemaSetName(out->children[i], PQfname(result, i)), error);
+    CHECK_NA_ADBC(pg_type.WithFieldName(PQfname(result, i)).SetSchema(out->children[i]),
+                  error);
   }
   return ADBC_STATUS_OK;
 }
@@ -677,6 +645,7 @@ AdbcStatusCode PostgresStatement::New(struct AdbcConnection* connection,
   connection_ =
       *reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
   type_mapping_ = connection_->type_mapping();
+  type_resolver_ = connection_->type_resolver();
   reader_.conn_ = connection_->conn();
   return ADBC_STATUS_OK;
 }
@@ -836,7 +805,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
       PQclear(result);
       return ADBC_STATUS_IO;
     }
-    AdbcStatusCode status = InferSchema(*type_mapping_, result, &reader_.schema_, error);
+    AdbcStatusCode status = InferSchema(*type_resolver_, result, &reader_.schema_, error);
     PQclear(result);
     if (status != ADBC_STATUS_OK) return status;
   }

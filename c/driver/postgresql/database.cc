@@ -30,6 +30,7 @@ namespace adbcpq {
 
 PostgresDatabase::PostgresDatabase() : open_connections_(0) {
   type_mapping_ = std::make_shared<TypeMapping>();
+  type_resolver_ = std::make_shared<PostgresTypeResolver>();
 }
 PostgresDatabase::~PostgresDatabase() = default;
 
@@ -49,19 +50,30 @@ SELECT
     typreceive
 FROM
     pg_catalog.pg_type
+WHERE
+    typelem = 0 AND typrelid = 0 AND typbasetype = 0
 )";
 
   pg_result* result = PQexec(conn, kTypeQuery.c_str());
   ExecStatusType pq_status = PQresultStatus(result);
   if (pq_status == PGRES_TUPLES_OK) {
     int num_rows = PQntuples(result);
+    PostgresTypeResolver::Item item;
+
     for (int row = 0; row < num_rows; row++) {
       const uint32_t oid = static_cast<uint32_t>(
           std::strtol(PQgetvalue(result, row, 0), /*str_end=*/nullptr, /*base=*/10));
       const char* typname = PQgetvalue(result, row, 1);
       const char* typreceive = PQgetvalue(result, row, 2);
-
       type_mapping_->Insert(oid, typname, typreceive);
+
+      item.oid = oid;
+      item.typname = typname;
+      item.typreceive = typreceive;
+
+      // Intentionally ignoring types we don't know how to deal with. These will error
+      // later if there is a query that actually contains them.
+      type_resolver_->Insert(item, nullptr);
     }
   } else {
     SetError(error, "Failed to build type mapping table: ", PQerrorMessage(conn));

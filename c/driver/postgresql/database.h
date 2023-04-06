@@ -24,6 +24,7 @@
 #include <adbc.h>
 #include <libpq-fe.h>
 
+#include "postgres_type.h"
 #include "type.h"
 
 namespace adbcpq {
@@ -45,9 +46,14 @@ class PostgresDatabase {
 
   const std::shared_ptr<TypeMapping>& type_mapping() const { return type_mapping_; }
 
+  const std::shared_ptr<PostgresTypeResolver>& type_resolver() const {
+    return type_resolver_;
+  }
+
  private:
   int32_t open_connections_;
   std::string uri_;
   std::shared_ptr<TypeMapping> type_mapping_;
+  std::shared_ptr<PostgresTypeResolver> type_resolver_;
 };
 }  // namespace adbcpq
