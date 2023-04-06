@@ -40,36 +40,32 @@ class MockTypeResolver : public PostgresTypeResolver {
       item.typname = typname.c_str();
       item.typreceive = typreceive.c_str();
       NANOARROW_RETURN_NOT_OK(Insert(item, nullptr));
-      oids_[recv] = item.oid;
     }
 
     // Insert one of each nested type
     item.oid++;
     item.typname = "_bool";
     item.typreceive = "array_recv";
-    item.child_oid = oid(PostgresType::PG_RECV_BOOL);
+    item.child_oid = GetOID(PostgresType::PG_RECV_BOOL);
     NANOARROW_RETURN_NOT_OK(Insert(item, nullptr));
-    oids_[PostgresType::PG_RECV_ARRAY] = item.oid;
 
     item.oid++;
     item.typname = "boolrange";
     item.typreceive = "range_recv";
-    item.base_oid = oid(PostgresType::PG_RECV_BOOL);
+    item.base_oid = GetOID(PostgresType::PG_RECV_BOOL);
     NANOARROW_RETURN_NOT_OK(Insert(item, nullptr));
-    oids_[PostgresType::PG_RECV_RANGE] = item.oid;
 
     item.oid++;
     item.typname = "custombool";
     item.typreceive = "domain_recv";
-    item.base_oid = oid(PostgresType::PG_RECV_BOOL);
+    item.base_oid = GetOID(PostgresType::PG_RECV_BOOL);
     NANOARROW_RETURN_NOT_OK(Insert(item, nullptr));
-    oids_[PostgresType::PG_RECV_DOMAIN] = item.oid;
 
     item.oid++;
     uint32_t class_oid = item.oid;
     std::vector<std::pair<uint32_t, std::string>> record_fields_ = {
-        {oid(PostgresType::PG_RECV_INT4), "int4_col"},
-        {oid(PostgresType::PG_RECV_TEXT), "text_col"}};
+        {GetOID(PostgresType::PG_RECV_INT4), "int4_col"},
+        {GetOID(PostgresType::PG_RECV_TEXT), "text_col"}};
     classes_.insert({class_oid, record_fields_});
 
     item.oid++;
@@ -78,12 +74,8 @@ class MockTypeResolver : public PostgresTypeResolver {
     item.class_oid = class_oid;
 
     NANOARROW_RETURN_NOT_OK(Insert(item, nullptr));
-    oids_[PostgresType::PG_RECV_RECORD] = item.oid;
-
     return NANOARROW_OK;
   }
-
-  uint32_t oid(PostgresType::PgRecv recv) { return oids_[recv]; }
 
   ArrowErrorCode ResolveClass(uint32_t oid,
                               std::vector<std::pair<uint32_t, std::string>>* out,
@@ -98,7 +90,6 @@ class MockTypeResolver : public PostgresTypeResolver {
   }
 
  private:
-  std::unordered_map<PostgresType::PgRecv, uint32_t> oids_;
   std::unordered_map<uint32_t, std::vector<std::pair<uint32_t, std::string>>> classes_;
 };
 
@@ -324,9 +315,9 @@ TEST(PostgresTypeTest, PostgresTypeResolveRecord) {
   ASSERT_EQ(resolver.Init(), NANOARROW_OK);
 
   PostgresType type;
-  EXPECT_EQ(resolver.Find(resolver.oid(PostgresType::PG_RECV_RECORD), &type, nullptr),
+  EXPECT_EQ(resolver.Find(resolver.GetOID(PostgresType::PG_RECV_RECORD), &type, nullptr),
             NANOARROW_OK);
-  EXPECT_EQ(type.oid(), resolver.oid(PostgresType::PG_RECV_RECORD));
+  EXPECT_EQ(type.oid(), resolver.GetOID(PostgresType::PG_RECV_RECORD));
   EXPECT_EQ(type.n_children(), 2);
   EXPECT_EQ(type.child(0)->field_name(), "int4_col");
   EXPECT_EQ(type.child(0)->recv(), PostgresType::PG_RECV_INT4);
