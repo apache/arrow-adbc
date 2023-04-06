@@ -174,7 +174,8 @@ struct BindStream {
     return std::move(callback)();
   }
 
-  AdbcStatusCode SetParamTypes(const TypeMapping& type_mapping, struct AdbcError* error) {
+  AdbcStatusCode SetParamTypes(const PostgresTypeResolver& type_resolver,
+                               struct AdbcError* error) {
     param_types.resize(bind_schema->n_children);
     param_values.resize(bind_schema->n_children);
     param_lengths.resize(bind_schema->n_children);
@@ -182,18 +183,18 @@ struct BindStream {
     param_values_offsets.reserve(bind_schema->n_children);
 
     for (size_t i = 0; i < bind_schema_fields.size(); i++) {
-      PgType pg_type;
+      PostgresType::PgRecv recv;
       switch (bind_schema_fields[i].type) {
         case ArrowType::NANOARROW_TYPE_INT16:
-          pg_type = PgType::kInt2;
+          recv = PostgresType::PG_RECV_INT2;
           param_lengths[i] = 2;
           break;
         case ArrowType::NANOARROW_TYPE_INT32:
-          pg_type = PgType::kInt4;
+          recv = PostgresType::PG_RECV_INT4;
           param_lengths[i] = 4;
           break;
         case ArrowType::NANOARROW_TYPE_INT64:
-          pg_type = PgType::kInt8;
+          recv = PostgresType::PG_RECV_INT8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_DOUBLE:
@@ -201,22 +202,21 @@ struct BindStream {
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_STRING:
-          pg_type = PgType::kText;
+          recv = PostgresType::PG_RECV_TEXT;
           param_lengths[i] = 0;
           break;
         default:
-          // TODO: data type to string
           SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
-                   "') has unsupported parameter type ", bind_schema_fields[i].type);
+                   "') has unsupported parameter type ",
+                   ArrowTypeString(bind_schema_fields[i].type));
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
 
-      param_types[i] = type_mapping.GetOid(pg_type);
+      param_types[i] = type_resolver.GetOID(recv);
       if (param_types[i] == 0) {
-        // TODO: data type to string
         SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
                  "') has type with no corresponding PostgreSQL type ",
-                 bind_schema_fields[i].type);
+                 ArrowTypeString(bind_schema_fields[i].type));
         return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
@@ -754,7 +754,7 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
   std::memset(&bind_, 0, sizeof(bind_));
 
   CHECK(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
-  CHECK(bind_stream.SetParamTypes(*type_mapping_, error));
+  CHECK(bind_stream.SetParamTypes(*type_resolver_, error));
   CHECK(bind_stream.Prepare(connection_->conn(), query_, error));
   CHECK(bind_stream.Execute(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
@@ -851,7 +851,7 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
         return ADBC_STATUS_OK;
       },
       error));
-  CHECK(bind_stream.SetParamTypes(*type_mapping_, error));
+  CHECK(bind_stream.SetParamTypes(*type_resolver_, error));
 
   std::string insert = "INSERT INTO ";
   insert += ingest_.target;

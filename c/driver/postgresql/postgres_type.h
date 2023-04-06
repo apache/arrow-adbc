@@ -509,6 +509,15 @@ class PostgresTypeResolver {
     return NANOARROW_OK;
   }
 
+  uint32_t GetOID(PostgresType::PgRecv recv) const {
+    auto result = reverse_mapping_.find(recv);
+    if (result == reverse_mapping_.end()) {
+      return 0;
+    } else {
+      return result->second;
+    }
+  }
+
   ArrowErrorCode Insert(const Item& item, ArrowError* error) {
     auto result = base_.find(item.typreceive);
     if (result == base_.end()) {
@@ -525,6 +534,7 @@ class PostgresTypeResolver {
         PostgresType child;
         NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
         mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
+        reverse_mapping_.insert({base.recv(), item.oid});
         break;
       }
 
@@ -540,6 +550,7 @@ class PostgresTypeResolver {
         }
 
         mapping_.insert({item.oid, out.WithPgTypeInfo(item.oid, item.typname)});
+        reverse_mapping_.insert({base.recv(), item.oid});
         break;
       }
 
@@ -547,6 +558,7 @@ class PostgresTypeResolver {
         PostgresType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Domain(item.oid, item.typname)});
+        reverse_mapping_.insert({base.recv(), item.oid});
         break;
       }
 
@@ -554,11 +566,13 @@ class PostgresTypeResolver {
         PostgresType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Range(item.oid, item.typname)});
+        reverse_mapping_.insert({base.recv(), item.oid});
         break;
       }
 
       default:
         mapping_.insert({item.oid, type});
+        reverse_mapping_.insert({base.recv(), item.oid});
         break;
     }
 
@@ -575,6 +589,7 @@ class PostgresTypeResolver {
 
  private:
   std::unordered_map<uint32_t, PostgresType> mapping_;
+  std::unordered_map<PostgresType::PgRecv, uint32_t> reverse_mapping_;
   std::unordered_map<std::string, PostgresType> base_;
 };
 
