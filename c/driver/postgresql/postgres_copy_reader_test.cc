@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
 
-#include "postgres_copy_utils.h"
+#include "postgres_copy_reader.h"
 
 using adbcpq::PostgresCopyStreamReader;
 using adbcpq::PostgresType;
