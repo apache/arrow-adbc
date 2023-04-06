@@ -149,7 +149,7 @@ class PostgresCopyBooleanFieldReader : public PostgresCopyFieldReader {
 
     if (field_size_bytes != 1) {
       ArrowErrorSet(error, "Expected field with one byte but found field with %d bytes",
-                    static_cast<int>(field_size_bytes));
+                    static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -183,7 +183,8 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
 
     if (field_size_bytes != static_cast<int32_t>(sizeof(T))) {
       ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
-                    static_cast<int>(sizeof(T)), static_cast<int>(field_size_bytes));
+                    static_cast<int>(sizeof(T)),
+                    static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -208,7 +209,7 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
     if (field_size_bytes > data->size_bytes) {
       ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
                     static_cast<int>(field_size_bytes),
-                    static_cast<int>(data->size_bytes));
+                    static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -264,7 +265,7 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
 
     if (n_dim < 0) {
       ArrowErrorSet(error, "Expected array n_dim > 0 but got %d",
-                    static_cast<int>(n_dim));
+                    static_cast<int>(n_dim));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -299,7 +300,8 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     int64_t bytes_read = data->data.as_uint8 - data0;
     if (bytes_read != field_size_bytes) {
       ArrowErrorSet(error, "Expected to read %d bytes from array field but read %d bytes",
-                    static_cast<int>(field_size_bytes), static_cast<int>(bytes_read));
+                    static_cast<int>(field_size_bytes),
+                    static_cast<int>(bytes_read));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -355,7 +357,8 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
       ArrowErrorSet(error,
                     "Expected -1 for end-of-stream or number of fields in output array "
                     "(%ld) but got %d",
-                    static_cast<long>(array->n_children), static_cast<int>(n_fields));
+                    static_cast<long>(array->n_children),
+                    static_cast<int>(n_fields));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -386,7 +389,8 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
     if (field_size_bytes != -1 && bytes_read != field_size_bytes) {
       ArrowErrorSet(error,
                     "Expected to read %d bytes from record field but read %d bytes",
-                    static_cast<int>(field_size_bytes), static_cast<int>(bytes_read));
+                    static_cast<int>(field_size_bytes),
+                    static_cast<int>(bytes_read));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -404,7 +408,8 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
 ArrowErrorCode ErrorCantConvert(ArrowError* error, const PostgresType& pg_type,
                                 const ArrowSchemaView& schema_view) {
   ArrowErrorSet(error, "Can't convert Postgres type '%s' to Arrow type '%s'",
-                pg_type.typname().c_str(), ArrowTypeString(schema_view.type));
+                pg_type.typname().c_str(),
+                ArrowTypeString(schema_view.type));  // NOLINT(runtime/int)
   return EINVAL;
 }
 
@@ -560,7 +565,7 @@ class PostgresCopyStreamReader {
       ArrowErrorSet(
           error,
           "Expected output schema of type struct but got output schema with format '%s'",
-          schema_->format);
+          schema_->format);  // NOLINT(runtime/int)
       return EINVAL;
     }
 
