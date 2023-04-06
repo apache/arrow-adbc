@@ -355,8 +355,8 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
     NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &n_fields, error));
     if (n_fields != array->n_children) {
       ArrowErrorSet(error, "Expected nested record type to have %ld fields but got %d",
-                    static_cast<long>(array->n_children),
-                    static_cast<int>(n_fields));  // NOLINT(runtime/int)
+                    static_cast<long>(array->n_children),  // NOLINT(runtime/int)
+                    static_cast<int>(n_fields));           // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -440,8 +440,8 @@ class PostgresCopyFieldTupleReader : public PostgresCopyFieldReader {
       ArrowErrorSet(error,
                     "Expected -1 for end-of-stream or number of fields in output array "
                     "(%ld) but got %d",
-                    static_cast<long>(array->n_children),
-                    static_cast<int>(n_fields));  // NOLINT(runtime/int)
+                    static_cast<long>(array->n_children),  // NOLINT(runtime/int)
+                    static_cast<int>(n_fields));           // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -595,8 +595,8 @@ ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* sch
             ArrowErrorSet(error,
                           "Can't convert Postgres record type with %ld chlidren to Arrow "
                           "struct type with %ld children",
-                          static_cast<long>(pg_type.n_children()),
-                          static_cast<long>(schema->n_children));  // NOLINT(runtime/int)
+                          static_cast<long>(pg_type.n_children()),  // NOLINT(runtime/int)
+                          static_cast<long>(schema->n_children));   // NOLINT(runtime/int)
             return EINVAL;
           }
 
@@ -647,8 +647,9 @@ class PostgresCopyStreamReader {
       ArrowErrorSet(error,
                     "Expected output schema with %ld columns to match Postgres input but "
                     "got schema with %ld columns",
-                    static_cast<long>(root_reader_.InputType().n_children()),
-                    static_cast<long>(schema->n_children));  // NOLINT(runtime/int)
+                    static_cast<long>(
+                        root_reader_.InputType().n_children()),  // NOLINT(runtime/int)
+                    static_cast<long>(schema->n_children));      // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -684,11 +685,12 @@ class PostgresCopyStreamReader {
 
   ArrowErrorCode ReadHeader(ArrowBufferView* data, ArrowError* error) {
     if (data->size_bytes < static_cast<int64_t>(sizeof(kPgCopyBinarySignature))) {
-      ArrowErrorSet(error,
-                    "Expected PGCOPY signature of %ld bytes at beginning of stream but "
-                    "found %ld bytes of input",
-                    static_cast<long>(sizeof(kPgCopyBinarySignature)),
-                    static_cast<long>(data->size_bytes));  // NOLINT(runtime/int)
+      ArrowErrorSet(
+          error,
+          "Expected PGCOPY signature of %ld bytes at beginning of stream but "
+          "found %ld bytes of input",
+          static_cast<long>(sizeof(kPgCopyBinarySignature)),  // NOLINT(runtime/int)
+          static_cast<long>(data->size_bytes));               // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -710,7 +712,7 @@ class PostgresCopyStreamReader {
       ArrowErrorSet(error,
                     "Expected %ld bytes of extension metadata at start of stream but "
                     "found %ld bytes of input",
-                    static_cast<long>(extension_length),
+                    static_cast<long>(extension_length),   // NOLINT(runtime/int)
                     static_cast<long>(data->size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
