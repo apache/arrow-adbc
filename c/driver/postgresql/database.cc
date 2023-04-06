@@ -29,7 +29,6 @@
 namespace adbcpq {
 
 PostgresDatabase::PostgresDatabase() : open_connections_(0) {
-  type_mapping_ = std::make_shared<TypeMapping>();
   type_resolver_ = std::make_shared<PostgresTypeResolver>();
 }
 PostgresDatabase::~PostgresDatabase() = default;
@@ -65,7 +64,6 @@ WHERE
           std::strtol(PQgetvalue(result, row, 0), /*str_end=*/nullptr, /*base=*/10));
       const char* typname = PQgetvalue(result, row, 1);
       const char* typreceive = PQgetvalue(result, row, 2);
-      type_mapping_->Insert(oid, typname, typreceive);
 
       item.oid = oid;
       item.typname = typname;

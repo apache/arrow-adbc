@@ -42,14 +42,12 @@ class PostgresConnection {
   AdbcStatusCode SetOption(const char* key, const char* value, struct AdbcError* error);
 
   PGconn* conn() const { return conn_; }
-  const std::shared_ptr<TypeMapping>& type_mapping() const { return type_mapping_; }
   const std::shared_ptr<PostgresTypeResolver>& type_resolver() const {
     return type_resolver_;
   }
 
  private:
   std::shared_ptr<PostgresDatabase> database_;
-  std::shared_ptr<TypeMapping> type_mapping_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   PGconn* conn_;
   bool autocommit_;

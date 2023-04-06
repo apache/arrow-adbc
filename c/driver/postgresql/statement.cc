@@ -644,7 +644,6 @@ AdbcStatusCode PostgresStatement::New(struct AdbcConnection* connection,
   }
   connection_ =
       *reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
-  type_mapping_ = connection_->type_mapping();
   type_resolver_ = connection_->type_resolver();
   reader_.conn_ = connection_->conn();
   return ADBC_STATUS_OK;

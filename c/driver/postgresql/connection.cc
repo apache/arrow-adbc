@@ -58,7 +58,6 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
   }
   database_ =
       *reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
-  type_mapping_ = database_->type_mapping();
   type_resolver_ = database_->type_resolver();
   return database_->Connect(&conn_, error);
 }
