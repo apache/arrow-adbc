@@ -188,8 +188,8 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
       return EINVAL;
     }
 
-    T value_uint = ReadUnsafe<T>(data);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &value_uint, sizeof(T)));
+    T value = ReadUnsafe<T>(data);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &value, sizeof(T)));
     array->length++;
     return NANOARROW_OK;
   }
@@ -202,7 +202,8 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
  public:
   ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
                       ArrowError* error) override {
-    if (data->size_bytes <= 0) {
+    // -1 for NULL (0 would be empty string)
+    if (field_size_bytes < 0) {
       return ArrowArrayAppendNull(array, 1);
     }
 
@@ -214,9 +215,12 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
     }
 
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, data->data.data, field_size_bytes));
+    data->data.as_uint8 += field_size_bytes;
+    data->size_bytes -= field_size_bytes;
+
     int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
-        offsets_, offsets[array->length] + static_cast<int32_t>(data_->size_bytes)));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppendInt32(offsets_, offsets[array->length] + field_size_bytes));
 
     array->length++;
     return NANOARROW_OK;
@@ -289,7 +293,6 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
       }
     }
 
-    ArrowBufferView field_data;
     for (int64_t i = 0; i < n_items; i++) {
       int32_t child_field_size_bytes;
       NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &child_field_size_bytes, error));
@@ -362,7 +365,6 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
       return EINVAL;
     }
 
-    struct ArrowBufferView field_data;
     for (uint16_t i = 0; i < n_fields; i++) {
       int32_t child_field_size_bytes;
       NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &child_field_size_bytes, error));
@@ -431,7 +433,7 @@ ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* sch
     case NANOARROW_TYPE_INT16:
       switch (pg_type.recv()) {
         case PostgresType::PG_RECV_INT2:
-          *out = new PostgresCopyNetworkEndianFieldReader<uint16_t>();
+          *out = new PostgresCopyNetworkEndianFieldReader<int16_t>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -440,7 +442,16 @@ ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* sch
     case NANOARROW_TYPE_INT32:
       switch (pg_type.recv()) {
         case PostgresType::PG_RECV_INT4:
-          *out = new PostgresCopyNetworkEndianFieldReader<uint32_t>();
+          *out = new PostgresCopyNetworkEndianFieldReader<int32_t>();
+          return NANOARROW_OK;
+        default:
+          return ErrorCantConvert(error, pg_type, schema_view);
+      }
+
+    case NANOARROW_TYPE_INT64:
+      switch (pg_type.recv()) {
+        case PostgresType::PG_RECV_INT8:
+          *out = new PostgresCopyNetworkEndianFieldReader<int64_t>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -450,15 +461,6 @@ ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* sch
       switch (pg_type.recv()) {
         case PostgresType::PG_RECV_FLOAT4:
           *out = new PostgresCopyNetworkEndianFieldReader<uint32_t>();
-          return NANOARROW_OK;
-        default:
-          return ErrorCantConvert(error, pg_type, schema_view);
-      }
-
-    case NANOARROW_TYPE_INT64:
-      switch (pg_type.recv()) {
-        case PostgresType::PG_RECV_INT8:
-          *out = new PostgresCopyNetworkEndianFieldReader<uint64_t>();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
@@ -650,6 +652,7 @@ class PostgresCopyStreamReader {
     if (array_->release == nullptr) {
       NANOARROW_RETURN_NOT_OK(
           ArrowArrayInitFromSchema(array_.get(), schema_.get(), error));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array_.get()));
       NANOARROW_RETURN_NOT_OK(root_reader_.InitArray(array_.get()));
     }
 
