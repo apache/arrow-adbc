@@ -647,9 +647,9 @@ class PostgresCopyStreamReader {
       ArrowErrorSet(error,
                     "Expected output schema with %ld columns to match Postgres input but "
                     "got schema with %ld columns",
-                    static_cast<long>(
-                        root_reader_.InputType().n_children()),  // NOLINT(runtime/int)
-                    static_cast<long>(schema->n_children));      // NOLINT(runtime/int)
+                    static_cast<long>(  // NOLINT(runtime/int)
+                        root_reader_.InputType().n_children()),
+                    static_cast<long>(schema->n_children));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
