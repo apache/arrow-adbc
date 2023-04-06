@@ -121,8 +121,8 @@ class PostgresCopyFieldReader {
     return NANOARROW_OK;
   }
 
-  virtual ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
-                              ArrowError* error) {
+  virtual ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes,
+                              ArrowArray* array, ArrowError* error) {
     return ENOTSUP;
   }
 
@@ -141,10 +141,16 @@ class PostgresCopyFieldReader {
 // Reader for a Postgres boolean (one byte -> bitmap)
 class PostgresCopyBooleanFieldReader : public PostgresCopyFieldReader {
  public:
-  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
                       ArrowError* error) override {
-    if (data.size_bytes <= 0) {
+    if (field_size_bytes <= 0) {
       return ArrowArrayAppendNull(array, 1);
+    }
+
+    if (field_size_bytes != 1) {
+      ArrowErrorSet(error, "Expected field with one byte but found field with %d bytes",
+                    static_cast<int>(field_size_bytes));
+      return EINVAL;
     }
 
     int64_t bytes_required = _ArrowBytesForBits(array->length + 1);
@@ -153,10 +159,7 @@ class PostgresCopyBooleanFieldReader : public PostgresCopyFieldReader {
           ArrowBufferAppendFill(data_, 0, bytes_required - data_->size_bytes));
     }
 
-    int8_t value;
-    NANOARROW_RETURN_NOT_OK(ReadChecked<int8_t>(&data, &value, error));
-
-    if (value) {
+    if (ReadUnsafe<int8_t>(data)) {
       ArrowBitSet(data_->data, array->length);
     } else {
       ArrowBitClear(data_->data, array->length);
@@ -172,14 +175,19 @@ class PostgresCopyBooleanFieldReader : public PostgresCopyFieldReader {
 template <typename T>
 class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
  public:
-  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
                       ArrowError* error) override {
-    if (data.size_bytes <= 0) {
+    if (field_size_bytes <= 0) {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    T value_uint;
-    NANOARROW_RETURN_NOT_OK(ReadChecked<T>(&data, &value_uint, error));
+    if (field_size_bytes != static_cast<int32_t>(sizeof(T))) {
+      ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
+                    static_cast<int>(sizeof(T)), static_cast<int>(field_size_bytes));
+      return EINVAL;
+    }
+
+    T value_uint = ReadUnsafe<T>(data);
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &value_uint, sizeof(T)));
     array->length++;
     return NANOARROW_OK;
@@ -191,13 +199,20 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
 // Arrow types and any Postgres type.
 class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
  public:
-  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
                       ArrowError* error) override {
-    if (data.size_bytes <= 0) {
+    if (data->size_bytes <= 0) {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(data_, data));
+    if (field_size_bytes > data->size_bytes) {
+      ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
+                    static_cast<int>(field_size_bytes),
+                    static_cast<int>(data->size_bytes));
+      return EINVAL;
+    }
+
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, data->data.data, field_size_bytes));
     int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
         offsets_, offsets[array->length] + static_cast<int32_t>(data_->size_bytes)));
@@ -227,18 +242,22 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
                       ArrowError* error) override {
-    if (data.size_bytes <= 0) {
+    if (data->size_bytes <= 0) {
       return ArrowArrayAppendNull(array, 1);
     }
 
+    // Keep the cursor where we start to parse the array so we can check
+    // the number of bytes read against the field size when finished
+    const uint8_t* data0 = data->data.as_uint8;
+
     int32_t n_dim;
-    NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &n_dim, error));
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &n_dim, error));
     int32_t flags;
-    NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &flags, error));
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &flags, error));
     uint32_t element_type_oid;
-    NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(&data, &element_type_oid, error));
+    NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(data, &element_type_oid, error));
 
     // We could validate the OID here, but this is a poor fit for all cases
     // (e.g. testing) since the OID can be specific to each database
@@ -258,11 +277,11 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     int64_t n_items = 1;
     for (int32_t i = 0; i < n_dim; i++) {
       int32_t dim_size;
-      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &dim_size, error));
+      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &dim_size, error));
       n_items *= dim_size;
 
       int32_t lower_bound;
-      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &lower_bound, error));
+      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &lower_bound, error));
       if (lower_bound != 0) {
         ArrowErrorSet(error, "Array value with lower bound != 0 is not supported");
         return EINVAL;
@@ -271,18 +290,17 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
 
     ArrowBufferView field_data;
     for (int64_t i = 0; i < n_items; i++) {
-      int32_t field_length;
-      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &field_length, error));
-      field_data.data.as_uint8 = data.data.as_uint8;
-      field_data.size_bytes = field_length;
+      int32_t child_field_size_bytes;
+      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &child_field_size_bytes, error));
+      NANOARROW_RETURN_NOT_OK(
+          child_->Read(data, child_field_size_bytes, array->children[0], error));
+    }
 
-      // Note: Read() here is a virtual method call
-      NANOARROW_RETURN_NOT_OK(child_->Read(field_data, array->children[0], error));
-
-      if (field_length > 0) {
-        data.data.as_uint8 += field_length;
-        data.size_bytes -= field_length;
-      }
+    int64_t bytes_read = data->data.as_uint8 - data0;
+    if (bytes_read != field_size_bytes) {
+      ArrowErrorSet(error, "Expected to read %d bytes from array field but read %d bytes",
+                    static_cast<int>(field_size_bytes), static_cast<int>(bytes_read));
+      return EINVAL;
     }
 
     NANOARROW_RETURN_NOT_OK(ArrowArrayFinishElement(array));
@@ -319,27 +337,34 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode Read(ArrowBufferView data, ArrowArray* array,
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
                       ArrowError* error) override {
-    if (data.size_bytes <= 0) {
+    if (data->size_bytes == 0) {
       return ArrowArrayAppendNull(array, 1);
     }
 
+    // Keep the cursor where we start to parse the field so we can check
+    // the number of bytes read against the field size when finished
+    const uint8_t* data0 = data->data.as_uint8;
+
     int16_t n_fields;
-    NANOARROW_RETURN_NOT_OK(ReadChecked<int16_t>(&data, &n_fields, error));
-    if (n_fields < 0) {
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int16_t>(data, &n_fields, error));
+    if (n_fields == -1) {
       return ENODATA;
+    } else if (n_fields != array->n_children) {
+      ArrowErrorSet(error,
+                    "Expected -1 for end-of-stream or number of fields in output array "
+                    "(%ld) but got %d",
+                    static_cast<long>(array->n_children), static_cast<int>(n_fields));
+      return EINVAL;
     }
 
     struct ArrowBufferView field_data;
     for (uint16_t i = 0; i < n_fields; i++) {
-      int32_t field_length;
-      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(&data, &field_length, error));
-      field_data.data.as_uint8 = data.data.as_uint8;
-      field_data.size_bytes = field_length;
-
-      // Note: Read() here is a virtual method call
-      int result = children_[i]->Read(field_data, array->children[i], error);
+      int32_t child_field_size_bytes;
+      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &child_field_size_bytes, error));
+      int result =
+          children_[i]->Read(data, child_field_size_bytes, array->children[i], error);
 
       // On overflow, pretend all previous children for this struct were never
       // appended to. This leaves array in a valid state in the specific case
@@ -349,16 +374,20 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
         for (int16_t j = 0; j < i; j++) {
           array->children[j]->length--;
         }
-
-        return result;
-      } else if (result != NANOARROW_OK) {
-        return result;
       }
 
-      if (field_length > 0) {
-        data.data.as_uint8 += field_length;
-        data.size_bytes -= field_length;
+      if (result != NANOARROW_OK) {
+        return result;
       }
+    }
+
+    // field size == -1 means don't check (e.g., for a top-level row tuple)
+    int64_t bytes_read = data->data.as_uint8 - data0;
+    if (field_size_bytes != -1 && bytes_read != field_size_bytes) {
+      ArrowErrorSet(error,
+                    "Expected to read %d bytes from record field but read %d bytes",
+                    static_cast<int>(field_size_bytes), static_cast<int>(bytes_read));
+      return EINVAL;
     }
 
     array->length++;
@@ -573,49 +602,49 @@ class PostgresCopyStreamReader {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode ReadHeader(ArrowBufferView data, ArrowError* error) {
-    if (data.size_bytes < static_cast<int64_t>(sizeof(kPgCopyBinarySignature))) {
+  ArrowErrorCode ReadHeader(ArrowBufferView* data, ArrowError* error) {
+    if (data->size_bytes < static_cast<int64_t>(sizeof(kPgCopyBinarySignature))) {
       ArrowErrorSet(error,
                     "Expected PGCOPY signature of %ld bytes at beginning of stream but "
                     "found %ld bytes of input",
                     static_cast<long>(sizeof(kPgCopyBinarySignature)),
-                    static_cast<long>(data.size_bytes));  // NOLINT(runtime/int)
+                    static_cast<long>(data->size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
-    if (memcmp(data.data.data, kPgCopyBinarySignature, sizeof(kPgCopyBinarySignature)) !=
+    if (memcmp(data->data.data, kPgCopyBinarySignature, sizeof(kPgCopyBinarySignature)) !=
         0) {
       ArrowErrorSet(error, "Invalid PGCOPY signature at beginning of stream");
       return EINVAL;
     }
 
     uint32_t flags;
-    NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(&data, &flags, error));
+    NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(data, &flags, error));
     uint32_t extension_length;
-    NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(&data, &extension_length, error));
+    NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(data, &extension_length, error));
 
-    if (data.size_bytes < static_cast<int64_t>(extension_length)) {
+    if (data->size_bytes < static_cast<int64_t>(extension_length)) {
       ArrowErrorSet(error,
                     "Expected %ld bytes of extension metadata at start of stream but "
                     "found %ld bytes of input",
                     static_cast<long>(extension_length),
-                    static_cast<long>(data.size_bytes));  // NOLINT(runtime/int)
+                    static_cast<long>(data->size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
-    data.data.as_uint8 += extension_length;
-    data.size_bytes -= extension_length;
+    data->data.as_uint8 += extension_length;
+    data->size_bytes -= extension_length;
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode ReadRecord(ArrowBufferView data, ArrowError* error) {
+  ArrowErrorCode ReadRecord(ArrowBufferView* data, ArrowError* error) {
     if (array_->release == nullptr) {
       NANOARROW_RETURN_NOT_OK(
           ArrowArrayInitFromSchema(array_.get(), schema_.get(), error));
       NANOARROW_RETURN_NOT_OK(root_reader_.InitArray(array_.get()));
     }
 
-    NANOARROW_RETURN_NOT_OK(root_reader_.Read(data, array_.get(), error));
+    NANOARROW_RETURN_NOT_OK(root_reader_.Read(data, -1, array_.get(), error));
     return NANOARROW_OK;
   }
 
