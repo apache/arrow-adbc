@@ -1822,10 +1822,7 @@ void StatementTest::TestTransactions() {
               })(),
               ::testing::Not(IsOkStatus(&error)));
 
-  if (error.release) {
-    std::cerr << "Failure message: " << error.message << std::endl;
-    error.release(&error);
-  }
+  if (error.release) error.release(&error);
 
   // Rollback
   ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
