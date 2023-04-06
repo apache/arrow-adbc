@@ -227,7 +227,6 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
   }
 };
 
-//
 class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
  public:
   void InitChild(std::unique_ptr<PostgresCopyFieldReader> child) {
@@ -344,7 +343,7 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
 
   ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
                       ArrowError* error) override {
-    if (data->size_bytes == 0) {
+    if (field_size_bytes < 0) {
       return ArrowArrayAppendNull(array, 1);
     }
 
@@ -352,20 +351,19 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
     // the number of bytes read against the field size when finished
     const uint8_t* data0 = data->data.as_uint8;
 
-    int16_t n_fields;
-    NANOARROW_RETURN_NOT_OK(ReadChecked<int16_t>(data, &n_fields, error));
-    if (n_fields == -1) {
-      return ENODATA;
-    } else if (n_fields != array->n_children) {
-      ArrowErrorSet(error,
-                    "Expected -1 for end-of-stream or number of fields in output array "
-                    "(%ld) but got %d",
+    int32_t n_fields;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &n_fields, error));
+    if (n_fields != array->n_children) {
+      ArrowErrorSet(error, "Expected nested record type to have %ld fields but got %d",
                     static_cast<long>(array->n_children),
                     static_cast<int>(n_fields));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
-    for (uint16_t i = 0; i < n_fields; i++) {
+    for (int32_t i = 0; i < n_fields; i++) {
+      uint32_t child_oid;
+      NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(data, &child_oid, error));
+
       int32_t child_field_size_bytes;
       NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &child_field_size_bytes, error));
       int result =
@@ -394,6 +392,78 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
                     static_cast<int>(field_size_bytes),
                     static_cast<int>(bytes_read));  // NOLINT(runtime/int)
       return EINVAL;
+    }
+
+    array->length++;
+    return NANOARROW_OK;
+  }
+
+ private:
+  std::vector<std::unique_ptr<PostgresCopyFieldReader>> children_;
+};
+
+// Subtely different from a Record field item: field count is an int16_t
+// instead of an int32_t and each field is not prefixed by its OID.
+class PostgresCopyFieldTupleReader : public PostgresCopyFieldReader {
+ public:
+  void AppendChild(std::unique_ptr<PostgresCopyFieldReader> child) {
+    int64_t child_i = static_cast<int64_t>(children_.size());
+    children_.push_back(std::move(child));
+    children_[child_i]->Init(*pg_type_.child(child_i));
+  }
+
+  ArrowErrorCode InitSchema(ArrowSchema* schema) override {
+    NANOARROW_RETURN_NOT_OK(PostgresCopyFieldReader::InitSchema(schema));
+    for (int64_t i = 0; i < schema->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(children_[i]->InitSchema(schema->children[i]));
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode InitArray(ArrowArray* array) override {
+    NANOARROW_RETURN_NOT_OK(PostgresCopyFieldReader::InitArray(array));
+    for (int64_t i = 0; i < array->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(children_[i]->InitArray(array->children[i]));
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
+                      ArrowError* error) override {
+    int16_t n_fields;
+    NANOARROW_RETURN_NOT_OK(ReadChecked<int16_t>(data, &n_fields, error));
+    if (n_fields == -1) {
+      return ENODATA;
+    } else if (n_fields != array->n_children) {
+      ArrowErrorSet(error,
+                    "Expected -1 for end-of-stream or number of fields in output array "
+                    "(%ld) but got %d",
+                    static_cast<long>(array->n_children),
+                    static_cast<int>(n_fields));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    for (int16_t i = 0; i < n_fields; i++) {
+      int32_t child_field_size_bytes;
+      NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &child_field_size_bytes, error));
+      int result =
+          children_[i]->Read(data, child_field_size_bytes, array->children[i], error);
+
+      // On overflow, pretend all previous children for this struct were never
+      // appended to. This leaves array in a valid state in the specific case
+      // where EOVERFLOW was returned so that a higher level caller can attempt
+      // to try again after creating a new array.
+      if (result == EOVERFLOW) {
+        for (int16_t j = 0; j < i; j++) {
+          array->children[j]->length--;
+        }
+      }
+
+      if (result != NANOARROW_OK) {
+        return result;
+      }
     }
 
     array->length++;
@@ -677,7 +747,7 @@ class PostgresCopyStreamReader {
   }
 
  private:
-  PostgresCopyRecordFieldReader root_reader_;
+  PostgresCopyFieldTupleReader root_reader_;
   nanoarrow::UniqueSchema schema_;
   nanoarrow::UniqueArray array_;
 };

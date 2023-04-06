@@ -472,5 +472,48 @@ static uint8_t kTestPgCopyCustomRecord[] = {
     0x16, 0x87, 0x2b, 0x02, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
-  EXPECT_EQ(sizeof(kTestPgCopyCustomRecord), sizeof(kTestPgCopyCustomRecord));
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyCustomRecord;
+  data.size_bytes = sizeof(kTestPgCopyCustomRecord);
+
+  auto col_type = PostgresType(PostgresType::PG_RECV_RECORD);
+  col_type.AppendChild("nested1", PostgresType(PostgresType::PG_RECV_INT4));
+  col_type.AppendChild("nested2", PostgresType(PostgresType::PG_RECV_FLOAT8));
+  PostgresType input_type(PostgresType::PG_RECV_RECORD);
+  input_type.AppendChild("col", col_type);
+
+  PostgresCopyStreamTester tester;
+  ASSERT_EQ(tester.Init(input_type), NANOARROW_OK);
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyCustomRecord,
+            sizeof(kTestPgCopyCustomRecord));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  struct ArrowArray array;
+  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
+  ASSERT_EQ(array.length, 3);
+  ASSERT_EQ(array.n_children, 1);
+  ASSERT_EQ(array.children[0]->n_children, 2);
+  ASSERT_EQ(array.children[0]->children[0]->length, 3);
+  ASSERT_EQ(array.children[0]->children[1]->length, 3);
+
+  auto validity = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
+  auto data_buffer1 =
+      reinterpret_cast<const int32_t*>(array.children[0]->children[0]->buffers[1]);
+  auto data_buffer2 =
+      reinterpret_cast<const double*>(array.children[0]->children[1]->buffers[1]);
+
+  ASSERT_TRUE(ArrowBitGet(validity, 0));
+  ASSERT_TRUE(ArrowBitGet(validity, 1));
+  ASSERT_FALSE(ArrowBitGet(validity, 2));
+
+  ASSERT_EQ(data_buffer1[0], 123);
+  ASSERT_EQ(data_buffer1[1], 12);
+  ASSERT_EQ(data_buffer1[2], 0);
+
+  ASSERT_DOUBLE_EQ(data_buffer2[0], 456.789);
+  ASSERT_DOUBLE_EQ(data_buffer2[1], 345.678);
+  ASSERT_DOUBLE_EQ(data_buffer2[2], 0);
+
+  array.release(&array);
 }
