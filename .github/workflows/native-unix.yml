@@ -522,4 +522,4 @@ jobs:
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
         run: |
           cd r/adbcpostgresql
-          docker compose down postgres_test
+          docker compose down
