@@ -137,7 +137,11 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   }
   PQclear(result);
 
-  // TODO: Should we disconnect here?
+  // Disconnect since PostgreSQL connections can be heavy.
+  {
+    AdbcStatusCode status = database_->Disconnect(&conn_, error);
+    if (status != ADBC_STATUS_OK) final_status = status;
+  }
   return final_status;
 }
 
