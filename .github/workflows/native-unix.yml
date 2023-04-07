@@ -509,7 +509,7 @@ jobs:
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
         run: |
           cd r/adbcpostgresql
-          docker compose up --detach
+          docker compose up --detach postgres_test
           ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
           echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
 
@@ -522,4 +522,4 @@ jobs:
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
         run: |
           cd r/adbcpostgresql
-          docker compose down
+          docker compose down postgres_test
