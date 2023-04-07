@@ -242,6 +242,43 @@ gpointer gadbc_connection_get_info(GADBCConnection* connection, guint32* info_co
 }
 
 /**
+ * gadbc_connection_get_table_schema:
+ * @connection: A #GADBCConnection.
+ * @catalog: (nullable): A catalog or %NULL if not applicable.
+ * @db_schema: (nullable): A database schema or %NULL if not applicable.
+ * @table_name: A table name.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Get the Apache Arrow schema of a table.
+ *
+ * Returns: The result set as `struct ArrowSchema *`. It should
+ *   be freed with the `ArrowSchema::release` callback then
+ *   g_free() when no longer needed.
+ *
+ * Since: 0.4.0
+ */
+gpointer gadbc_connection_get_table_schema(GADBCConnection* connection,
+                                           const gchar* catalog, const gchar* db_schema,
+                                           const gchar* table_name, GError** error) {
+  const gchar* context = "[adbc][connection][get-table-schema]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  if (!adbc_connection) {
+    return NULL;
+  }
+  struct ArrowSchema* array_schema = g_new0(struct ArrowSchema, 1);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcConnectionGetTableSchema(
+      adbc_connection, catalog, db_schema, table_name, array_schema, &adbc_error);
+  if (gadbc_error_check(error, status_code, &adbc_error, context)) {
+    return array_schema;
+  } else {
+    g_free(array_schema);
+    return NULL;
+  }
+}
+
+/**
  * gadbc_connection_get_table_types:
  * @connection: A #GADBCConnection.
  * @error: (nullable): Return location for a #GError or %NULL.

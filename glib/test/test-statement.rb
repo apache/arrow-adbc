@@ -16,6 +16,8 @@
 # under the License.
 
 class StatementTest < Test::Unit::TestCase
+  include Helper
+
   def setup
     @database = ADBC::Database.new
     @database.set_option("driver", "adbc_driver_sqlite")
@@ -30,24 +32,9 @@ class StatementTest < Test::Unit::TestCase
     @statement.release
   end
 
-  def execute_statement(need_result: true)
-    _, c_abi_array_stream, n_rows_affected = @statement.execute(need_result)
-    begin
-      if need_result
-        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
-        table = reader.read_all
-        yield(table, n_rows_affected) if block_given?
-      else
-        yield(n_rows_affected) if block_given?
-      end
-    ensure
-      GLib.free(c_abi_array_stream) if need_result
-    end
-  end
-
   def test_execute
     @statement.set_sql_query("SELECT 1")
-    execute_statement do |table, _n_rows_affected|
+    execute_statement(@statement) do |table, _n_rows_affected|
       assert_equal(Arrow::Table.new("1" => Arrow::Int64Array.new([1])),
                    table)
     end
@@ -55,7 +42,7 @@ class StatementTest < Test::Unit::TestCase
 
   def test_bind
     @statement.set_sql_query("CREATE TABLE data (number int)")
-    execute_statement
+    execute_statement(@statement, need_result: false)
 
     record_batch =
       Arrow::RecordBatch.new(number: Arrow::Int64Array.new([10, 20, 30]))
@@ -65,7 +52,7 @@ class StatementTest < Test::Unit::TestCase
     _, c_abi_array, c_abi_schema = record_batch.export
     begin
       @statement.bind(c_abi_array, c_abi_schema)
-      execute_statement(need_result: false) do |n_rows_affected|
+      execute_statement(@statement, need_result: false) do |n_rows_affected|
         assert_equal(3, n_rows_affected)
       end
     ensure
@@ -77,7 +64,7 @@ class StatementTest < Test::Unit::TestCase
     end
 
     @statement.set_sql_query("SELECT * FROM data")
-    execute_statement do |table, _n_rows_affected|
+    execute_statement(@statement) do |table, _n_rows_affected|
       assert_equal(record_batch.to_table,
                    table)
     end
@@ -85,7 +72,7 @@ class StatementTest < Test::Unit::TestCase
 
   def test_bind_stream
     @statement.set_sql_query("CREATE TABLE data (number int)")
-    execute_statement
+    execute_statement(@statement, need_result: false)
 
     record_batch =
       Arrow::RecordBatch.new(number: Arrow::Int64Array.new([10, 20, 30]))
@@ -96,7 +83,7 @@ class StatementTest < Test::Unit::TestCase
     c_abi_array_stream = reader.export
     begin
       @statement.bind_stream(c_abi_array_stream)
-      execute_statement(need_result: false) do |n_rows_affected|
+      execute_statement(@statement, need_result: false) do |n_rows_affected|
         assert_equal(3, n_rows_affected)
       end
     ensure
@@ -104,7 +91,7 @@ class StatementTest < Test::Unit::TestCase
     end
 
     @statement.set_sql_query("SELECT * FROM data")
-    execute_statement do |table, _n_rows_affected|
+    execute_statement(@statement) do |table, _n_rows_affected|
       assert_equal(record_batch.to_table,
                    table)
     end
