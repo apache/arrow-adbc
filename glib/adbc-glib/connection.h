@@ -72,6 +72,10 @@ GADBC_AVAILABLE_IN_0_4
 gpointer gadbc_connection_get_info(GADBCConnection* connection, guint32* info_codes,
                                    gsize n_info_codes, GError** error);
 GADBC_AVAILABLE_IN_0_4
+gpointer gadbc_connection_get_table_schema(GADBCConnection* connection,
+                                           const gchar* catalog, const gchar* db_schema,
+                                           const gchar* table_name, GError** error);
+GADBC_AVAILABLE_IN_0_4
 gpointer gadbc_connection_get_table_types(GADBCConnection* connection, GError** error);
 
 G_END_DECLS

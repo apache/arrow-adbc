@@ -1,5 +1,3 @@
-#!/usr/bin/env ruby
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,20 +15,31 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require "pathname"
-require "test-unit"
+require "arrow"
 
-(ENV["ADBC_DLL_PATH"] || "").split(File::PATH_SEPARATOR).each do |path|
-  RubyInstaller::Runtime.add_dll_directory(path)
+module Helper
+  def execute_statement(statement, need_result: true)
+    _, c_abi_array_stream, n_rows_affected = statement.execute(need_result)
+    begin
+      if need_result
+        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+        table = reader.read_all
+        yield(table, n_rows_affected) if block_given?
+      else
+        yield(n_rows_affected) if block_given?
+      end
+    ensure
+      GLib.free(c_abi_array_stream) if need_result
+    end
+  end
+
+  def execute_sql(connection, sql, need_result: true, &block)
+    statement = ADBC::Statement.new(connection)
+    begin
+      statement.set_sql_query(sql)
+      execute_statement(statement, need_result: need_result, &block)
+    ensure
+      statement.release
+    end
+  end
 end
-
-base_dir = Pathname(__dir__).parent
-test_dir = base_dir + "test"
-
-require "gi"
-
-ADBC = GI.load("ADBC")
-
-require_relative "helper"
-
-exit(Test::Unit::AutoRunner.run(true, test_dir.to_s))

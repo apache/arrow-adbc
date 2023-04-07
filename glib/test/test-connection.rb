@@ -16,6 +16,8 @@
 # under the License.
 
 class ConnectionTest < Test::Unit::TestCase
+  include Helper
+
   def setup
     @database = ADBC::Database.new
     @database.set_option("driver", "adbc_driver_sqlite")
@@ -83,6 +85,25 @@ class ConnectionTest < Test::Unit::TestCase
       ensure
         GLib.free(c_abi_array_stream)
       end
+    end
+  end
+
+  def test_table_schema
+    execute_sql(@connection,
+                "CREATE TABLE data (number int, string text)",
+                need_result: false)
+    execute_sql(@connection,
+                "INSERT INTO data VALUES (1, 'hello')",
+                need_result: false)
+
+    c_abi_schema = @connection.get_table_schema(nil, nil, "data")
+    begin
+      schema = Arrow::Schema.import(c_abi_schema)
+      assert_equal(Arrow::Schema.new(number: :int64,
+                                     string: :string),
+                   schema)
+    ensure
+      GLib.free(c_abi_schema)
     end
   end
 
