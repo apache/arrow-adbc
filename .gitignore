@@ -53,10 +53,6 @@ perf.data
 perf.data.old
 
 cpp/.idea/
-.clangd/
-cpp/.clangd/
-.cache/clangd/
-cpp/.cache/clangd/
 c/apidoc/html/
 c/apidoc/latex/
 c/apidoc/xml/
