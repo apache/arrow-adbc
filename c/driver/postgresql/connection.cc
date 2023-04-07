@@ -19,6 +19,7 @@
 
 #include <cstring>
 #include <memory>
+#include <string>
 
 #include <adbc.h>
 
@@ -47,7 +48,97 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   const char* table_name,
                                                   struct ArrowSchema* schema,
                                                   struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  // TODO: sqlite uses a StringBuilder class that seems roughly equivalent
+  // to a similar tool in arrow/util/string_builder.h but wasn't clear on
+  // structure and how to use, so relying on simplistic appends for now
+  AdbcStatusCode final_status;
+
+  std::string query =
+      "SELECT attname, atttypid "
+      "FROM pg_catalog.pg_class AS cls "
+      "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
+      "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
+      "WHERE attr.attnum >= 0 AND cls.oid = '";
+  if (db_schema != nullptr) {
+    query.append(db_schema);
+    query.append(".");
+  }
+  query.append(table_name);
+  query.append("'::regclass::oid");
+
+  // char* stmt = PQescapeLiteral(conn_, query.c_str(), query.length());
+  // if (stmt == nullptr) {
+  //   SetError(error, "Failed to get table schema: ", PQerrorMessage(conn_));
+  //  return ADBC_STATUS_INVALID_ARGUMENT;
+  // }
+
+  pg_result* result = PQexec(conn_, query.c_str());
+  // PQfreemem(stmt);
+
+  ExecStatusType pq_status = PQresultStatus(result);
+  if (pq_status == PGRES_TUPLES_OK) {
+    int num_rows = PQntuples(result);
+    ArrowSchemaInit(schema);
+    CHECK_NA_ADBC(ArrowSchemaSetTypeStruct(schema, num_rows), error);
+
+    // TODO: much of this code is copied from statement.cc InferSchema
+    for (int row = 0; row < num_rows; row++) {
+      ArrowType field_type = NANOARROW_TYPE_NA;
+      const char* colname = PQgetvalue(result, row, 0);
+      const uint32_t oid = static_cast<uint32_t>(
+          std::strtol(PQgetvalue(result, row, 1), /*str_end=*/nullptr, /*base=*/10));
+
+      auto it = type_mapping_->type_mapping.find(oid);
+      if (it == type_mapping_->type_mapping.end()) {
+        SetError(error, "Column #", row + 1, " (\"", colname,
+                 "\") has unknown type code ", oid);
+        return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+
+      switch (it->second) {
+        // TODO: this mapping will eventually have to become dynamic,
+        // because of complex types like arrays/records
+        case PgType::kBool:
+          field_type = NANOARROW_TYPE_BOOL;
+          break;
+        case PgType::kFloat4:
+          field_type = NANOARROW_TYPE_FLOAT;
+          break;
+        case PgType::kFloat8:
+          field_type = NANOARROW_TYPE_DOUBLE;
+          break;
+        case PgType::kInt2:
+          field_type = NANOARROW_TYPE_INT16;
+          break;
+        case PgType::kInt4:
+          field_type = NANOARROW_TYPE_INT32;
+          break;
+        case PgType::kInt8:
+          field_type = NANOARROW_TYPE_INT64;
+          break;
+        case PgType::kVarBinary:
+          field_type = NANOARROW_TYPE_BINARY;
+          break;
+        case PgType::kText:
+        case PgType::kVarChar:
+          field_type = NANOARROW_TYPE_STRING;
+          break;
+        default:
+          SetError(error, "Column #", row + 1, " (\"", colname,
+                   "\") has unimplemented type code ", oid);
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+      CHECK_NA_ADBC(ArrowSchemaSetType(schema->children[row], field_type), error);
+      CHECK_NA_ADBC(ArrowSchemaSetName(schema->children[row], colname), error);
+    }
+  } else {
+    SetError(error, "Failed to get table schema: ", PQerrorMessage(conn_));
+    final_status = ADBC_STATUS_IO;
+  }
+  PQclear(result);
+
+  // TODO: Should we disconnect here?
+  return final_status;
 }
 
 AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
