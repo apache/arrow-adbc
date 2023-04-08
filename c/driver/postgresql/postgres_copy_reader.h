@@ -477,16 +477,19 @@ class PostgresCopyFieldTupleReader : public PostgresCopyFieldReader {
 // Factory for a PostgresCopyFieldReader that instantiates the proper subclass
 // and gives a nice error for Postgres type -> Arrow type conversions that aren't
 // supported.
-ArrowErrorCode ErrorCantConvert(ArrowError* error, const PostgresType& pg_type,
-                                const ArrowSchemaView& schema_view) {
+static inline ArrowErrorCode ErrorCantConvert(ArrowError* error,
+                                              const PostgresType& pg_type,
+                                              const ArrowSchemaView& schema_view) {
   ArrowErrorSet(error, "Can't convert Postgres type '%s' to Arrow type '%s'",
                 pg_type.typname().c_str(),
                 ArrowTypeString(schema_view.type));  // NOLINT(runtime/int)
   return EINVAL;
 }
 
-ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type, ArrowSchema* schema,
-                                   PostgresCopyFieldReader** out, ArrowError* error) {
+static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
+                                                 ArrowSchema* schema,
+                                                 PostgresCopyFieldReader** out,
+                                                 ArrowError* error) {
   ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, nullptr));
 
