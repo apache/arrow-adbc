@@ -76,7 +76,6 @@ if(ADBC_BUILD_TESTS)
                 PREFIX
                 adbc
                 SOURCES
-                postgres_copy_reader_test.cc
                 postgres_type_test.cc
                 postgresql_test.cc
                 ../../validation/adbc_validation.cc
