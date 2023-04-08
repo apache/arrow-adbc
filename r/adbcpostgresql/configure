@@ -1,0 +1,80 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# Run bootstrap.R. This will have already run if we are installing a source
+# package built with pkgbuild::build() with pkgbuild >1.4.0; however, we
+# run it again in case this is R CMD INSTALL on a directory or
+# devtools::load_all(). This will vendor files from elsewhere in the
+# ADBC repo into this package. If the file doesn't exist, we're installing
+# from a pre-built tarball.
+if [ -f bootstrap.R ]; then
+  $R_HOME/bin/Rscript bootstrap.R
+fi
+
+# Include and library flags
+PKG_LIBS="$PKG_LIBS"
+
+# Check for pkg-config
+HAS_PKG_CONFIG=""
+pkg-config libpq --exists
+if [ $? -eq 0 ]; then
+  HAS_PKG_CONFIG=true
+fi
+
+echo "Checking for --configure-vars INCLUDE_DIR or LIB_DIR"
+if [ "$INCLUDE_DIR" ] || [ "$LIB_DIR" ]; then
+  echo "Found --configure-vars INCLUDE_DIR and/or LIB_DIR"
+  PKG_CPPFLAGS="-I$INCLUDE_DIR $PKG_CPPFLAGS"
+  PKG_LIBS="-L$LIB_DIR $PKG_LIBS"
+elif [ ! -z "$HAS_PKG_CONFIG" ]; then
+  echo "Using pkg-config libpq"
+  PKG_CPPFLAGS="`pkg-config libpq --cflags` $PKG_CPPFLAGS"
+  PKG_LIBS="`pkg-config libpq --libs` -lpq $PKG_LIBS"
+else
+  echo "INCLUDE_DIR/LIB_DIR and pkg-config not found; trying PKG_LIBS=-lpq"
+  PKG_LIBS="-lpq"
+fi
+
+echo "Testing R CMD SHLIB with $PKG_CPPFLAGS $PKG_LIBS"
+PKG_CPPFLAGS="$PKG_CPPFLAGS" PKG_LIBS="$PKG_LIBS" \
+  $R_HOME/bin/R CMD SHLIB tools/test.c -o compile_test >compile_test.log 2>&1
+
+if [ $? -ne 0 ]; then
+  echo "Test compile failed"
+  cat compile_test.log
+  exit 1
+else
+  echo "Success!"
+fi
+
+rm -f tools/test.o compile_test compile_test.log || true
+
+sed \
+  -e "s|@cppflags@|$PKG_CPPFLAGS|" \
+  -e "s|@libs@|$PKG_LIBS|" \
+  src/Makevars.in > src/Makevars
+
+
+if [ -f "src/adbc.h" ]; then
+  echo "Found vendored ADBC"
+  exit 0
+fi
+
+
+echo "Vendored ADBC PostgreSQL driver was not found."
+echo "This source package was probably built incorrectly and it's probably not your fault"
+exit 1

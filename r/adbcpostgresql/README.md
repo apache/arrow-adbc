@@ -17,24 +17,22 @@
 -->
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# adbcdrivermanager
+# adbcpostgresql
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of adbcdrivermanager is to provide a low-level developer-facing
-interface to Arrow Database Connectivity (ADBC) for the purposes of
-driver development, testing, and support for user-facing packages that
-rely on ADBC drivers.
+The goal of adbcpostgresql is to provide a low-level developer-facing
+interface to the Arrow Database Connectivity (ADBC) PostgreSQL driver.
 
 ## Installation
 
-You can install the development version of adbcdrivermanager from
+You can install the development version of adbcpostgresql from
 [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager")
+remotes::install_github("apache/arrow-adbc/r/adbcpostgresql")
 ```
 
 ## Example
@@ -44,34 +42,34 @@ This is a basic example which shows you how to solve a common problem:
 ``` r
 library(adbcdrivermanager)
 
-# Get a reference to a database using a driver. The adbcdrivermanager package
-# contains a few drivers useful for illustration and testing.
-db <- adbc_database_init(adbc_driver_monkey())
-
-# Open a new connection to a database
+# Use the driver manager to connect to a database
+uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI")
+db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
 con <- adbc_connection_init(db)
 
-# Initialize a new statement from a connection
+# Write a table
+flights <- head(nycflights13::flights, 100)
+# (timestamp not supported yet)
+flights$time_hour <- NULL
+
+stmt <- adbc_statement_init(con, adbc.ingest.target_table = "flights")
+adbc_statement_bind(stmt, flights)
+adbc_statement_execute_query(stmt)
+#> [1] 100
+adbc_statement_release(stmt)
+
+# Query it
 stmt <- adbc_statement_init(con)
-
-# The monkey driver allows you to specify the data for a query
-# in advance for testing purposes
-adbc_statement_bind_stream(stmt, nycflights13::flights)
-
-# Set the query
-adbc_statement_set_sql_query(stmt, "SELECT * FROM flights")
-
-# Start executing the query. Results in ADBC are ArrowArrayStream objects,
-# which can be materialized using as.data.frame(), as_tibble(),
-# or converted to an arrow::RecordBatchReader using
-# arrow::as_record_batch_reader()
 stream <- nanoarrow::nanoarrow_allocate_array_stream()
+
+adbc_statement_set_sql_query(stmt, "SELECT * from flights")
 adbc_statement_execute_query(stmt, stream)
 #> [1] -1
+result <- tibble::as_tibble(stream)
+adbc_statement_release(stmt)
 
-# Materialize the whole query as a tibble
-tibble::as_tibble(stream)
-#> # A tibble: 336,776 × 19
+result
+#> # A tibble: 100 × 18
 #>     year month   day dep_time sched_de…¹ dep_d…² arr_t…³ sched…⁴ arr_d…⁵ carrier
 #>    <int> <int> <int>    <int>      <int>   <dbl>   <int>   <int>   <dbl> <chr>
 #>  1  2013     1     1      517        515       2     830     819      11 UA
@@ -84,13 +82,8 @@ tibble::as_tibble(stream)
 #>  8  2013     1     1      557        600      -3     709     723     -14 EV
 #>  9  2013     1     1      557        600      -3     838     846      -8 B6
 #> 10  2013     1     1      558        600      -2     753     745       8 AA
-#> # … with 336,766 more rows, 9 more variables: flight <int>, tailnum <chr>,
+#> # … with 90 more rows, 8 more variables: flight <int>, tailnum <chr>,
 #> #   origin <chr>, dest <chr>, air_time <dbl>, distance <dbl>, hour <dbl>,
-#> #   minute <dbl>, time_hour <dttm>, and abbreviated variable names
-#> #   ¹​sched_dep_time, ²​dep_delay, ³​arr_time, ⁴​sched_arr_time, ⁵​arr_delay
-
-# Clean up!
-adbc_statement_release(stmt)
-adbc_connection_release(con)
-adbc_database_release(db)
+#> #   minute <dbl>, and abbreviated variable names ¹​sched_dep_time, ²​dep_delay,
+#> #   ³​arr_time, ⁴​sched_arr_time, ⁵​arr_delay
 ```

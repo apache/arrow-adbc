@@ -15,26 +15,46 @@
 # specific language governing permissions and limitations
 # under the License.
 
-test_that("adbcsqlite() works", {
-  expect_s3_class(adbcsqlite(), "adbc_driver")
+test_that("adbcpostgresql() works", {
+  expect_s3_class(adbcpostgresql(), "adbc_driver")
 })
 
 test_that("default options can open a database and execute a query", {
-  db <- adbcdrivermanager::adbc_database_init(adbcsqlite())
-  expect_s3_class(db, "adbcsqlite_database")
+  test_db_uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI", "")
+  skip_if(identical(test_db_uri, ""))
+
+  db <- adbcdrivermanager::adbc_database_init(
+    adbcpostgresql(),
+    uri = test_db_uri
+  )
+  expect_s3_class(db, "adbcpostgresql_database")
 
   con <- adbcdrivermanager::adbc_connection_init(db)
-  expect_s3_class(con, "adbcsqlite_connection")
+  expect_s3_class(con, "adbcpostgresql_connection")
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
-  expect_s3_class(stmt, "adbcsqlite_statement")
+  expect_s3_class(stmt, "adbcpostgresql_statement")
 
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"
+    "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER);"
   )
   adbcdrivermanager::adbc_statement_execute_query(stmt)
   adbcdrivermanager::adbc_statement_release(stmt)
+
+  # If we get this far, remove the table and disconnect when the test is done
+  on.exit({
+    stmt <- adbcdrivermanager::adbc_statement_init(con)
+    adbcdrivermanager::adbc_statement_set_sql_query(
+      stmt,
+      "DROP TABLE IF EXISTS crossfit;"
+    )
+    adbcdrivermanager::adbc_statement_execute_query(stmt)
+    adbcdrivermanager::adbc_statement_release(stmt)
+
+    adbcdrivermanager::adbc_connection_release(con)
+    adbcdrivermanager::adbc_database_release(db)
+  })
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
   adbcdrivermanager::adbc_statement_set_sql_query(
@@ -51,22 +71,19 @@ test_that("default options can open a database and execute a query", {
   stmt <- adbcdrivermanager::adbc_statement_init(con)
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "SELECT * from crossfit"
+    "SELECT * from crossfit ORDER BY difficulty_level"
   )
 
   stream <- nanoarrow::nanoarrow_allocate_array_stream()
   adbcdrivermanager::adbc_statement_execute_query(stmt, stream)
-
   expect_identical(
     as.data.frame(stream),
     data.frame(
       exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
-      difficulty_level = c(3, 5, 7, 10),
+      difficulty_level = c(3L, 5L, 7L, 10L),
       stringsAsFactors = FALSE
     )
   )
 
   adbcdrivermanager::adbc_statement_release(stmt)
-  adbcdrivermanager::adbc_connection_release(con)
-  adbcdrivermanager::adbc_database_release(db)
 })

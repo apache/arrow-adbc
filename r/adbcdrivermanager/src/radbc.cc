@@ -408,9 +408,16 @@ extern "C" SEXP RAdbcStatementBindStream(SEXP statement_xptr, SEXP stream_xptr,
 extern "C" SEXP RAdbcStatementExecuteQuery(SEXP statement_xptr, SEXP out_stream_xptr,
                                            SEXP error_xptr) {
   auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
-  auto out_stream = adbc_from_xptr<ArrowArrayStream>(out_stream_xptr);
+
+  ArrowArrayStream* out_stream;
+  if (out_stream_xptr == R_NilValue) {
+    out_stream = nullptr;
+  } else {
+    out_stream = adbc_from_xptr<ArrowArrayStream>(out_stream_xptr);
+  }
+
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  int64_t rows_affected = 0;
+  int64_t rows_affected = -1;
   int status = AdbcStatementExecuteQuery(statement, out_stream, &rows_affected, error);
 
   const char* names[] = {"status", "rows_affected", ""};

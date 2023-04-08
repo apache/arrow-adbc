@@ -71,7 +71,9 @@ adbc_statement_release(stmt)
 # Query it
 stmt <- adbc_statement_init(con)
 adbc_statement_set_sql_query(stmt, "SELECT * from flights")
-result <- tibble::as_tibble(adbc_statement_execute_query(stmt))
+stream <- nanoarrow::nanoarrow_allocate_array_stream()
+adbc_statement_execute_query(stmt, stream)
+result <- tibble::as_tibble(stream)
 adbc_statement_release(stmt)
 
 result

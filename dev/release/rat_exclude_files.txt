@@ -18,6 +18,9 @@ r/adbcdrivermanager/.Rbuildignore
 r/adbcsqlite/DESCRIPTION
 r/adbcsqlite/NAMESPACE
 r/adbcsqlite/.Rbuildignore
+r/adbcpostgresql/DESCRIPTION
+r/adbcpostgresql/NAMESPACE
+r/adbcpostgresql/.Rbuildignore
 c/vendor/sqlite3/sqlite3.c
 c/vendor/sqlite3/sqlite3.h
 *.Rproj

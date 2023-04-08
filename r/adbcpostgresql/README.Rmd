@@ -30,22 +30,21 @@ knitr::opts_chunk$set(
 )
 ```
 
-# adbcdrivermanager
+# adbcpostgresql
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of adbcdrivermanager is to provide a low-level developer-facing interface
-to Arrow Database Connectivity (ADBC) for the purposes of driver development, testing,
-and support for user-facing packages that rely on ADBC drivers.
+The goal of adbcpostgresql is to provide a low-level developer-facing interface
+to the Arrow Database Connectivity (ADBC) PostgreSQL driver.
 
 ## Installation
 
-You can install the development version of adbcdrivermanager from [GitHub](https://github.com/) with:
+You can install the development version of adbcpostgresql from [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager")
+remotes::install_github("apache/arrow-adbc/r/adbcpostgresql")
 ```
 
 ## Example
@@ -55,35 +54,42 @@ This is a basic example which shows you how to solve a common problem:
 ```{r example}
 library(adbcdrivermanager)
 
-# Get a reference to a database using a driver. The adbcdrivermanager package
-# contains a few drivers useful for illustration and testing.
-db <- adbc_database_init(adbc_driver_monkey())
-
-# Open a new connection to a database
+# Use the driver manager to connect to a database
+uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI")
+db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
 con <- adbc_connection_init(db)
 
-# Initialize a new statement from a connection
-stmt <- adbc_statement_init(con)
+# Write a table
+flights <- head(nycflights13::flights, 100)
+# (timestamp not supported yet)
+flights$time_hour <- NULL
 
-# The monkey driver allows you to specify the data for a query
-# in advance for testing purposes
-adbc_statement_bind_stream(stmt, nycflights13::flights)
-
-# Set the query
-adbc_statement_set_sql_query(stmt, "SELECT * FROM flights")
-
-# Start executing the query. Results in ADBC are ArrowArrayStream objects,
-# which can be materialized using as.data.frame(), as_tibble(),
-# or converted to an arrow::RecordBatchReader using
-# arrow::as_record_batch_reader()
-stream <- nanoarrow::nanoarrow_allocate_array_stream()
-adbc_statement_execute_query(stmt, stream)
-
-# Materialize the whole query as a tibble
-tibble::as_tibble(stream)
-
-# Clean up!
+stmt <- adbc_statement_init(con, adbc.ingest.target_table = "flights")
+adbc_statement_bind(stmt, flights)
+adbc_statement_execute_query(stmt)
 adbc_statement_release(stmt)
+
+# Query it
+stmt <- adbc_statement_init(con)
+stream <- nanoarrow::nanoarrow_allocate_array_stream()
+
+adbc_statement_set_sql_query(stmt, "SELECT * from flights")
+adbc_statement_execute_query(stmt, stream)
+result <- tibble::as_tibble(stream)
+adbc_statement_release(stmt)
+
+result
+```
+
+```{r example-clean-up, include=FALSE}
+stmt <- adbc_statement_init(con)
+adbc_statement_set_sql_query(stmt, "DROP TABLE flights")
+adbc_statement_execute_query(stmt)
+adbc_statement_release(stmt)
+```
+
+```{r example-clean-up2, include=FALSE}
+# Clean up
 adbc_connection_release(con)
 adbc_database_release(db)
 ```

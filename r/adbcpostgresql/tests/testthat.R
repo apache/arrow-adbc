@@ -15,21 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
-test_that("the monkey driver sees, and the monkey driver does", {
-  db <- adbc_database_init(adbc_driver_monkey())
-  expect_s3_class(db, "adbc_database_monkey")
-  con <- adbc_connection_init(db)
-  expect_s3_class(con, "adbc_connection_monkey")
+# This file is part of the standard setup for testthat.
+# It is recommended that you do not modify it.
+#
+# Where should you do additional test configuration?
+# Learn more about the roles of various files in:
+# * https://r-pkgs.org/tests.html
+# * https://testthat.r-lib.org/reference/test_package.html#special-files
 
-  input <- data.frame(x = 1:10)
-  stmt <- adbc_statement_init(con, input)
-  expect_s3_class(stmt, "adbc_statement_monkey")
-  stream <- nanoarrow::nanoarrow_allocate_array_stream()
-  expect_identical(adbc_statement_execute_query(stmt, stream), -1)
-  expect_identical(as.data.frame(stream$get_next()), input)
-  adbc_statement_release(stmt)
+library(testthat)
+library(adbcpostgresql)
 
-  stmt <- adbc_statement_init(con, input)
-  expect_identical(adbc_statement_execute_query(stmt, NULL), 0)
-  adbc_statement_release(stmt)
-})
+test_check("adbcpostgresql")
