@@ -197,7 +197,7 @@ struct BindStream {
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_DOUBLE:
-          pg_type = PgType::kFloat8;
+          recv = PostgresType::PG_RECV_FLOAT8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_STRING:
