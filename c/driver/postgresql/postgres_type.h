@@ -579,17 +579,29 @@ class PostgresTypeResolver {
     return NANOARROW_OK;
   }
 
-  virtual ArrowErrorCode ResolveClass(uint32_t oid,
-                                      std::vector<std::pair<uint32_t, std::string>>* out,
-                                      ArrowError* error) {
-    ArrowErrorSet(error, "Class definition with oid %ld not found",
-                  static_cast<long>(oid));  // NOLINT(runtime/int)
-    return EINVAL;
+  void InsertClass(uint32_t oid,
+                   const std::vector<std::pair<uint32_t, std::string>>& cls) {
+    classes_.insert({oid, cls});
+  }
+
+  ArrowErrorCode ResolveClass(uint32_t oid,
+                              std::vector<std::pair<uint32_t, std::string>>* out,
+                              ArrowError* error) {
+    auto result = classes_.find(oid);
+    if (result == classes_.end()) {
+      ArrowErrorSet(error, "Class definition with oid %ld not found",
+                    static_cast<long>(oid));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    *out = result->second;
+    return NANOARROW_OK;
   }
 
  private:
   std::unordered_map<uint32_t, PostgresType> mapping_;
   std::unordered_map<PostgresType::PgRecv, uint32_t> reverse_mapping_;
+  std::unordered_map<uint32_t, std::vector<std::pair<uint32_t, std::string>>> classes_;
   std::unordered_map<std::string, PostgresType> base_;
 };
 

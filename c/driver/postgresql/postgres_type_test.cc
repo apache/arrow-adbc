@@ -63,10 +63,10 @@ class MockTypeResolver : public PostgresTypeResolver {
 
     item.oid++;
     uint32_t class_oid = item.oid;
-    std::vector<std::pair<uint32_t, std::string>> record_fields_ = {
+    std::vector<std::pair<uint32_t, std::string>> record_fields = {
         {GetOID(PostgresType::PG_RECV_INT4), "int4_col"},
         {GetOID(PostgresType::PG_RECV_TEXT), "text_col"}};
-    classes_.insert({class_oid, record_fields_});
+    InsertClass(class_oid, std::move(record_fields));
 
     item.oid++;
     item.typname = "customrecord";
@@ -76,21 +76,6 @@ class MockTypeResolver : public PostgresTypeResolver {
     NANOARROW_RETURN_NOT_OK(Insert(item, nullptr));
     return NANOARROW_OK;
   }
-
-  ArrowErrorCode ResolveClass(uint32_t oid,
-                              std::vector<std::pair<uint32_t, std::string>>* out,
-                              ArrowError* error) override {
-    auto result = classes_.find(oid);
-    if (result == classes_.end()) {
-      return PostgresTypeResolver::ResolveClass(oid, out, error);
-    }
-
-    *out = (*result).second;
-    return NANOARROW_OK;
-  }
-
- private:
-  std::unordered_map<uint32_t, std::vector<std::pair<uint32_t, std::string>>> classes_;
 };
 
 TEST(PostgresTypeTest, PostgresTypeBasic) {
