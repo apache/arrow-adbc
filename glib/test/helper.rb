@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+require "tmpdir"
+
 require "arrow"
 
 module Helper
