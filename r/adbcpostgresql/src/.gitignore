@@ -25,7 +25,6 @@ database.h
 postgresql.cc
 statement.h
 statement.cc
-type.cc
-type.h
+postgres_type.h
 util.h
 Makevars
