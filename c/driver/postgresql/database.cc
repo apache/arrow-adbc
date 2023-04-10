@@ -35,56 +35,7 @@ PostgresDatabase::~PostgresDatabase() = default;
 
 AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
   // Connect to validate the parameters.
-  PGconn* conn = nullptr;
-  AdbcStatusCode final_status = Connect(&conn, error);
-  if (final_status != ADBC_STATUS_OK) {
-    return final_status;
-  }
-
-  // Build the type mapping table.
-  const std::string kTypeQuery = R"(
-SELECT
-    oid,
-    typname,
-    typreceive
-FROM
-    pg_catalog.pg_type
-WHERE
-    typelem = 0 AND typrelid = 0 AND typbasetype = 0
-)";
-
-  pg_result* result = PQexec(conn, kTypeQuery.c_str());
-  ExecStatusType pq_status = PQresultStatus(result);
-  if (pq_status == PGRES_TUPLES_OK) {
-    int num_rows = PQntuples(result);
-    PostgresTypeResolver::Item item;
-
-    for (int row = 0; row < num_rows; row++) {
-      const uint32_t oid = static_cast<uint32_t>(
-          std::strtol(PQgetvalue(result, row, 0), /*str_end=*/nullptr, /*base=*/10));
-      const char* typname = PQgetvalue(result, row, 1);
-      const char* typreceive = PQgetvalue(result, row, 2);
-
-      item.oid = oid;
-      item.typname = typname;
-      item.typreceive = typreceive;
-
-      // Intentionally ignoring types we don't know how to deal with. These will error
-      // later if there is a query that actually contains them.
-      type_resolver_->Insert(item, nullptr);
-    }
-  } else {
-    SetError(error, "Failed to build type mapping table: ", PQerrorMessage(conn));
-    final_status = ADBC_STATUS_IO;
-  }
-  PQclear(result);
-
-  // Disconnect since PostgreSQL connections can be heavy.
-  {
-    AdbcStatusCode status = Disconnect(&conn, error);
-    if (status != ADBC_STATUS_OK) final_status = status;
-  }
-  return final_status;
+  return RebuildTypeResolver(error);
 }
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
@@ -131,4 +82,184 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
   }
   return ADBC_STATUS_OK;
 }
+
+// Helpers for building the type resolver from queries
+static inline int32_t InsertPgAttributeResult(
+    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+
+static inline int32_t InsertPgTypeResult(
+    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+
+AdbcStatusCode PostgresDatabase::RebuildTypeResolver(struct AdbcError* error) {
+  PGconn* conn = nullptr;
+  AdbcStatusCode final_status = Connect(&conn, error);
+  if (final_status != ADBC_STATUS_OK) {
+    return final_status;
+  }
+
+  // We need a few queries to build the resolver. The current strategy might
+  // fail for some recursive definitions (e.g., arrays of records of arrays).
+  // First, one on the pg_attribute table to resolve column names/oids for
+  // record types.
+  const std::string kColumnsQuery = R"(
+SELECT
+    attrelid,
+    attname,
+    atttypid
+FROM
+    pg_catalog.pg_attribute
+ORDER BY
+    attrelid, attnum
+)";
+
+  // Second, a query of the pg_type table with the arrays last.
+  // This query may need a few attempts to handle recursive definitions
+  // (e.g., record types with array column). Put the arrays last to minimize
+  // the number of attempts we need. This currently won't handle range types.
+  const std::string kTypeQuery = R"(
+SELECT
+    oid,
+    typname,
+    typreceive,
+    typbasetype,
+    typelem,
+    typrelid
+FROM
+    pg_catalog.pg_type
+WHERE
+    (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r'
+ORDER BY
+    typelem
+)";
+
+  // Create a new type resolver (this instance's type_resolver_ member
+  // will be updated at the end if this succeeds).
+  auto resolver = std::make_shared<PostgresTypeResolver>();
+
+  // Insert record type definitions (this includes table schemas)
+  fprintf(stdout, "CLASS DEFINITIONS-----------\n");
+  pg_result* result = PQexec(conn, kColumnsQuery.c_str());
+  ExecStatusType pq_status = PQresultStatus(result);
+  if (pq_status == PGRES_TUPLES_OK) {
+    InsertPgAttributeResult(result, resolver);
+  } else {
+    SetError(error, "Failed to build type mapping table: ", PQerrorMessage(conn));
+    final_status = ADBC_STATUS_IO;
+  }
+
+  PQclear(result);
+
+  // Attempt filling the resolver a few times to handle recursive definitions.
+  int32_t max_attempts = 3;
+  for (int32_t i = 0; i < max_attempts; i++) {
+    fprintf(stdout, "TYPES [%d]-----------\n", i);
+    result = PQexec(conn, kTypeQuery.c_str());
+    ExecStatusType pq_status = PQresultStatus(result);
+    if (pq_status == PGRES_TUPLES_OK) {
+      InsertPgTypeResult(result, resolver);
+    } else {
+      SetError(error, "Failed to build type mapping table: ", PQerrorMessage(conn));
+      final_status = ADBC_STATUS_IO;
+    }
+
+    PQclear(result);
+    if (final_status != ADBC_STATUS_OK) {
+      break;
+    }
+  }
+
+  // Disconnect since PostgreSQL connections can be heavy.
+  {
+    AdbcStatusCode status = Disconnect(&conn, error);
+    if (status != ADBC_STATUS_OK) final_status = status;
+  }
+
+  if (final_status == ADBC_STATUS_OK) {
+    type_resolver_ = std::move(resolver);
+  }
+
+  return final_status;
+}
+
+static inline int32_t InsertPgAttributeResult(
+    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+  int num_rows = PQntuples(result);
+  std::vector<std::pair<std::string, uint32_t>> columns;
+  uint32_t current_type_oid = 0;
+  int32_t n_added = 0;
+
+  for (int row = 0; row < num_rows; row++) {
+    const uint32_t type_oid = static_cast<uint32_t>(
+        std::strtol(PQgetvalue(result, row, 0), /*str_end=*/nullptr, /*base=*/10));
+    const char* col_name = PQgetvalue(result, row, 1);
+    const uint32_t col_oid = static_cast<uint32_t>(
+        std::strtol(PQgetvalue(result, row, 2), /*str_end=*/nullptr, /*base=*/10));
+
+    if (type_oid != current_type_oid && !columns.empty()) {
+      resolver->InsertClass(current_type_oid, columns);
+      fprintf(stdout, "Inserting class with oid %ld\n",
+              static_cast<long>(current_type_oid));
+      columns.clear();
+      current_type_oid = type_oid;
+      n_added++;
+    }
+
+    columns.push_back({col_name, col_oid});
+  }
+
+  if (!columns.empty()) {
+    resolver->InsertClass(current_type_oid, columns);
+    fprintf(stdout, "Inserting class with oid %ld\n",
+            static_cast<long>(current_type_oid));
+    n_added++;
+  }
+
+  return n_added;
+}
+
+static inline int32_t InsertPgTypeResult(
+    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+  int num_rows = PQntuples(result);
+  PostgresTypeResolver::Item item;
+  int32_t n_added = 0;
+
+  for (int row = 0; row < num_rows; row++) {
+    const uint32_t oid = static_cast<uint32_t>(
+        std::strtol(PQgetvalue(result, row, 0), /*str_end=*/nullptr, /*base=*/10));
+    const char* typname = PQgetvalue(result, row, 1);
+    const char* typreceive = PQgetvalue(result, row, 2);
+    const uint32_t typbasetype = static_cast<uint32_t>(
+        std::strtol(PQgetvalue(result, row, 3), /*str_end=*/nullptr, /*base=*/10));
+    const uint32_t typelem = static_cast<uint32_t>(
+        std::strtol(PQgetvalue(result, row, 4), /*str_end=*/nullptr, /*base=*/10));
+    const uint32_t typrelid = static_cast<uint32_t>(
+        std::strtol(PQgetvalue(result, row, 5), /*str_end=*/nullptr, /*base=*/10));
+
+    // Special case the aclitem because it shows up in a bunch of internal tables
+    if (strcmp(typname, "aclitem") == 0) {
+      typreceive = "aclitem_recv";
+    }
+
+    item.oid = oid;
+    item.typname = typname;
+    item.typreceive = typreceive;
+    item.class_oid = typrelid;
+    if (typbasetype != 0) {
+      item.child_oid = typbasetype;
+    } else {
+      item.child_oid = typelem;
+    }
+
+    ArrowError err;
+    if (resolver->Insert(item, &err) == NANOARROW_OK) {
+      fprintf(stdout, "[v] %s\n", item.typname);
+      n_added++;
+    } else {
+      fprintf(stdout, "[X] %s: %s\n", item.typname, err.message);
+    }
+  }
+
+  return n_added;
+}
+
 }  // namespace adbcpq

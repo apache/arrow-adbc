@@ -31,6 +31,7 @@ namespace adbcpq {
 // An enum of the types available in most Postgres pg_type tables
 enum PostgresTypeId {
   PG_TYPE_UNINITIALIZED,
+  PG_TYPE_ACLITEM,
   PG_TYPE_ANYARRAY,
   PG_TYPE_ANYCOMPATIBLEARRAY,
   PG_TYPE_ARRAY,
@@ -412,6 +413,8 @@ class PostgresTypeResolver {
 
 static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
   switch (type_id) {
+    case PG_TYPE_ACLITEM:
+      return "aclitem_recv";
     case PG_TYPE_ANYARRAY:
       return "anyarray_recv";
     case PG_TYPE_ANYCOMPATIBLEARRAY:
@@ -490,6 +493,20 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
       return "oidvectorrecv";
     case PG_TYPE_PATH:
       return "path_recv";
+    case PG_TYPE_PG_NODE_TREE:
+      return "pg_node_tree_recv";
+    case PG_TYPE_PG_NDISTINCT:
+      return "pg_ndistinct_recv";
+    case PG_TYPE_PG_DEPENDENCIES:
+      return "pg_dependencies_recv";
+    case PG_TYPE_PG_LSN:
+      return "pg_lsn_recv";
+    case PG_TYPE_PG_MCV_LIST:
+      return "pg_mcv_list_recv";
+    case PG_TYPE_PG_DDL_COMMAND:
+      return "pg_ddl_command_recv";
+    case PG_TYPE_PG_SNAPSHOT:
+      return "pg_snapshot_recv";
     case PG_TYPE_POINT:
       return "point_recv";
     case PG_TYPE_POLY:
@@ -561,6 +578,8 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
 
 static inline const char* PostgresTypname(PostgresTypeId type_id) {
   switch (type_id) {
+    case PG_TYPE_ACLITEM:
+      return "aclitem";
     case PG_TYPE_ANYARRAY:
       return "anyarray";
     case PG_TYPE_ANYCOMPATIBLEARRAY:
@@ -639,6 +658,20 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
       return "oidvector";
     case PG_TYPE_PATH:
       return "path";
+    case PG_TYPE_PG_NODE_TREE:
+      return "pg_node_tree";
+    case PG_TYPE_PG_NDISTINCT:
+      return "pg_ndistinct";
+    case PG_TYPE_PG_DEPENDENCIES:
+      return "pg_dependencies";
+    case PG_TYPE_PG_LSN:
+      return "pg_lsn";
+    case PG_TYPE_PG_MCV_LIST:
+      return "pg_mcv_list";
+    case PG_TYPE_PG_DDL_COMMAND:
+      return "pg_ddl_command";
+    case PG_TYPE_PG_SNAPSHOT:
+      return "pg_snapshot";
     case PG_TYPE_POINT:
       return "point";
     case PG_TYPE_POLY:
@@ -709,7 +742,7 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
 }
 
 static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
-  std::vector<PostgresTypeId> base = {PG_TYPE_UNINITIALIZED,
+  std::vector<PostgresTypeId> base = {PG_TYPE_ACLITEM,
                                       PG_TYPE_ANYARRAY,
                                       PG_TYPE_ANYCOMPATIBLEARRAY,
                                       PG_TYPE_BIT,
@@ -747,6 +780,13 @@ static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
                                       PG_TYPE_OID,
                                       PG_TYPE_OIDVECTOR,
                                       PG_TYPE_PATH,
+                                      PG_TYPE_PG_NODE_TREE,
+                                      PG_TYPE_PG_NDISTINCT,
+                                      PG_TYPE_PG_DEPENDENCIES,
+                                      PG_TYPE_PG_LSN,
+                                      PG_TYPE_PG_MCV_LIST,
+                                      PG_TYPE_PG_DDL_COMMAND,
+                                      PG_TYPE_PG_SNAPSHOT,
                                       PG_TYPE_POINT,
                                       PG_TYPE_POLY,
                                       PG_TYPE_REGCLASS,

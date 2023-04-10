@@ -46,6 +46,8 @@ class PostgresDatabase {
     return type_resolver_;
   }
 
+  AdbcStatusCode RebuildTypeResolver(struct AdbcError* error);
+
  private:
   int32_t open_connections_;
   std::string uri_;
