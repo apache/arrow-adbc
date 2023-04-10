@@ -40,7 +40,6 @@ add_arrow_lib(adbc_driver_sqlite
               SOURCES
               sqlite.c
               statement_reader.c
-              utils.c
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
@@ -51,9 +50,11 @@ add_arrow_lib(adbc_driver_sqlite
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
               ${SQLite3_LINK_LIBRARIES}
+              adbc_driver_shared
               nanoarrow
               STATIC_LINK_LIBS
               ${SQLite3_LINK_LIBRARIES}
+              adbc_driver_shared
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
@@ -78,6 +79,7 @@ if(ADBC_BUILD_TESTS)
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
+                adbc_driver_shared
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)

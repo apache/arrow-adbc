@@ -69,6 +69,15 @@ set_target_properties(nanoarrow
                                  "${REPOSITORY_ROOT}/c/vendor/"
                                  POSITION_INDEPENDENT_CODE ON)
 
+# Shared ADBC Driver libraries
+add_library(adbc_driver_shared STATIC EXCLUDE_FROM_ALL
+            ${REPOSITORY_ROOT}/c/driver/shared/utils.c)
+set_target_properties(adbc_driver_shared
+                      PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+                                 "${REPOSITORY_ROOT}/c/driver/shared"
+                                 POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(adbc_driver_shared nanoarrow)
+
 # Set common build options
 macro(adbc_configure_target TARGET)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
