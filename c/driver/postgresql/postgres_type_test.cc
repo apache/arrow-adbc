@@ -195,6 +195,102 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   schema.release(&schema);
 }
 
+TEST(PostgresTypeTest, PostgresTypeFromSchema) {
+  ArrowSchema schema;
+  PostgresType type;
+  MockTypeResolver resolver;
+  ASSERT_EQ(resolver.Init(), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_BOOL), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_BOOL);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT8), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_INT2);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UINT8), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_INT2);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT16), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_INT2);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UINT16), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_INT4);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_INT4);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UINT32), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_INT8);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT64), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_INT8);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_FLOAT4);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_DOUBLE), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_FLOAT8);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_BINARY), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_BYTEA);
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_TEXT);
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetType(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_BOOL), NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_ARRAY);
+  EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::PG_TYPE_BOOL);
+  schema.release(&schema);
+
+  ArrowError error;
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO),
+            NANOARROW_OK);
+  EXPECT_EQ(adbcpq::PostgresTypeFromSchema(resolver, &schema, &type, &error), ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "Can't map Arrow type 'interval_month_day_nano' to Postgres type");
+  schema.release(&schema);
+}
+
 TEST(PostgresTypeTest, PostgresTypeResolver) {
   PostgresTypeResolver resolver;
   ArrowError error;
@@ -264,6 +360,10 @@ TEST(PostgresTypeTest, PostgresTypeResolver) {
   EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_ARRAY);
   EXPECT_EQ(type.child(0).oid(), 10);
   EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::PG_TYPE_BOOL);
+
+  // Check reverse lookup of array type from item type
+  EXPECT_EQ(resolver.FindArray(10, &type, &error), NANOARROW_OK);
+  EXPECT_EQ(type.oid(), 11);
 
   // Check insert/resolve of range type
   item.oid = 12;

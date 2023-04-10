@@ -290,6 +290,18 @@ class PostgresTypeResolver {
     return NANOARROW_OK;
   }
 
+  ArrowErrorCode FindArray(uint32_t child_oid, PostgresType* type_out,
+                           ArrowError* error) const {
+    auto array_oid_lookup = array_mapping_.find(child_oid);
+    if (array_oid_lookup == array_mapping_.end()) {
+      ArrowErrorSet(error, "Postgres array type with child oid %ld not found",
+                    static_cast<long>(child_oid));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    return Find(array_oid_lookup->second, type_out, error);
+  }
+
   // Resolve the oid for a given type_id. Returns 0 if the oid cannot be
   // resolved.
   uint32_t GetOID(PostgresTypeId type_id) const {
@@ -314,7 +326,7 @@ class PostgresTypeResolver {
       return ENOTSUP;
     }
 
-    const PostgresType& base = (*result).second;
+    const PostgresType& base = result->second;
     PostgresType type = base.WithPgTypeInfo(item.oid, item.typname);
 
     switch (base.type_id()) {
@@ -323,6 +335,7 @@ class PostgresTypeResolver {
         NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
         mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
         reverse_mapping_.insert({base.type_id(), item.oid});
+        array_mapping_.insert({child.oid(), item.oid});
         break;
       }
 
@@ -380,6 +393,7 @@ class PostgresTypeResolver {
  private:
   std::unordered_map<uint32_t, PostgresType> mapping_;
   std::unordered_map<PostgresTypeId, uint32_t> reverse_mapping_;
+  std::unordered_map<uint32_t, uint32_t> array_mapping_;
   std::unordered_map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> classes_;
   std::unordered_map<std::string, PostgresType> base_;
 
@@ -410,6 +424,51 @@ class PostgresTypeResolver {
     return out;
   }
 };
+
+static inline ArrowErrorCode PostgresTypeFromSchema(const PostgresTypeResolver& resolver,
+                                                    ArrowSchema* schema,
+                                                    PostgresType* out,
+                                                    ArrowError* error) {
+  ArrowSchemaView schema_view;
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
+
+  switch (schema_view.type) {
+    case NANOARROW_TYPE_BOOL:
+      return resolver.Find(resolver.GetOID(PG_TYPE_BOOL), out, error);
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_INT16:
+      return resolver.Find(resolver.GetOID(PG_TYPE_INT2), out, error);
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT32:
+      return resolver.Find(resolver.GetOID(PG_TYPE_INT4), out, error);
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INT64:
+      return resolver.Find(resolver.GetOID(PG_TYPE_INT8), out, error);
+    case NANOARROW_TYPE_FLOAT:
+      return resolver.Find(resolver.GetOID(PG_TYPE_FLOAT4), out, error);
+    case NANOARROW_TYPE_DOUBLE:
+      return resolver.Find(resolver.GetOID(PG_TYPE_FLOAT8), out, error);
+    case NANOARROW_TYPE_STRING:
+      return resolver.Find(resolver.GetOID(PG_TYPE_TEXT), out, error);
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+      return resolver.Find(resolver.GetOID(PG_TYPE_BYTEA), out, error);
+    case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_LARGE_LIST:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST: {
+      PostgresType child;
+      NANOARROW_RETURN_NOT_OK(
+          PostgresTypeFromSchema(resolver, schema->children[0], &child, error));
+      return resolver.FindArray(child.oid(), out, error);
+    }
+
+    default:
+      ArrowErrorSet(error, "Can't map Arrow type '%s' to Postgres type",
+                    ArrowTypeString(schema_view.type));
+      return ENOTSUP;
+  }
+}
 
 static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
   switch (type_id) {
