@@ -64,9 +64,9 @@ class MockTypeResolver : public PostgresTypeResolver {
 
     item.oid++;
     uint32_t class_oid = item.oid;
-    std::vector<std::pair<uint32_t, std::string>> record_fields = {
-        {GetOID(PostgresTypeId::PG_TYPE_INT4), "int4_col"},
-        {GetOID(PostgresTypeId::PG_TYPE_TEXT), "text_col"}};
+    std::vector<std::pair<std::string, uint32_t>> record_fields = {
+        {"int4_col", GetOID(PostgresTypeId::PG_TYPE_INT4)},
+        {"text_col", GetOID(PostgresTypeId::PG_TYPE_TEXT)}};
     InsertClass(class_oid, std::move(record_fields));
 
     item.oid++;
@@ -193,13 +193,6 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   ArrowMetadataGetValue(schema.metadata, ArrowCharView("ADBC:posgresql:typname"), &value);
   EXPECT_EQ(std::string(value.data, value.size_bytes), "some_name");
   schema.release(&schema);
-}
-
-TEST(PostgresTypeTest, PostgresTypeAllBase) {
-  auto base_types = PostgresType::AllBase();
-  EXPECT_EQ(base_types["array_recv"].type_id(), PostgresTypeId::PG_TYPE_ARRAY);
-  EXPECT_EQ(base_types["array_recv"].typname(), "array");
-  EXPECT_EQ(base_types.size(), adbcpq::PostgresTypeIdAll().size());
 }
 
 TEST(PostgresTypeTest, PostgresTypeResolver) {

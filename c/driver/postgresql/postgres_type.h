@@ -28,6 +28,7 @@
 
 namespace adbcpq {
 
+// An enum of the types available in most Postgres pg_type tables
 enum PostgresTypeId {
   PG_TYPE_UNINITIALIZED,
   PG_TYPE_ANYARRAY,
@@ -110,10 +111,23 @@ enum PostgresTypeId {
   PG_TYPE_XML
 };
 
+// Returns the receive function name as defined in the typrecieve column
+// of the pg_type table. This name is the one that gets used to look up
+// the PostgresTypeId.
 static inline const char* PostgresTyprecv(PostgresTypeId type_id);
+
+// Returns a likely typname value for a given PostgresTypeId. This is useful
+// for testing and error messages but may not be the actual value present
+// in the pg_type typname column.
 static inline const char* PostgresTypname(PostgresTypeId type_id);
+
+// A vector of all type IDs, optionally with the nested types PG_TYPE_ARRAY,
+// PG_TYPE_DOMAIN, PG_TYPE_RECORD, and PG_TYPE_RANGE.
 static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested = true);
 
+// An abstraction of a (potentially nested and/or parameterized) Postgres
+// data type. This class is where default type conversion to/from Arrow
+// is defined. It is intentionally copyable.
 class PostgresType {
  public:
   explicit PostgresType(PostgresTypeId type_id) : oid_(0), type_id_(type_id) {}
@@ -165,6 +179,13 @@ class PostgresType {
   int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
   const PostgresType* child(int64_t i) const { return &children_[i]; }
 
+  // Sets appropriate fields of an ArrowSchema that has been initialized using
+  // ArrowSchemaInit. This is a recursive operation (i.e., nested types will
+  // initialize and set the appropriate number of children). Returns NANOARROW_OK
+  // on success and perhaps ENOMEM if memory cannot be allocated. Types that
+  // do not have a corresponding Arrow type are returned as Binary with field
+  // metadata ADBC:posgresql:typname. These types can be represented as their
+  // binary COPY representation in the output.
   ArrowErrorCode SetSchema(ArrowSchema* schema) const {
     switch (type_id_) {
       case PG_TYPE_BOOL:
@@ -231,20 +252,15 @@ class PostgresType {
   std::string typname_;
   std::string field_name_;
   std::vector<PostgresType> children_;
-
- public:
-  static std::unordered_map<std::string, PostgresType> AllBase() {
-    std::unordered_map<std::string, PostgresType> out;
-    for (PostgresTypeId type_id : PostgresTypeIdAll()) {
-      PostgresType type(type_id);
-      type.typname_ = PostgresTypname(type_id);
-      out.insert({PostgresTyprecv(type_id), type});
-    }
-
-    return out;
-  }
 };
 
+// Because type information is stored in a database's pg_type table, it can't
+// truly be resolved until runtime; however, querying the database's pg_type table
+// for every result is unlikely to be reasonable. This class is a cache of information
+// from the pg_type table with appropriate lookup tables to resolve a PostgresType
+// instance based on a oid (which is the information that libpq provides when
+// inspecting a result object). Types can be added/removed from the pg_type table
+// via SQL, so this cache may need to be periodically refreshed.
 class PostgresTypeResolver {
  public:
   struct Item {
@@ -256,8 +272,11 @@ class PostgresTypeResolver {
     uint32_t class_oid;
   };
 
-  PostgresTypeResolver() : base_(PostgresType::AllBase()) {}
+  PostgresTypeResolver() : base_(AllBase()) {}
 
+  // Place a resolved copy of a PostgresType with the appropriate oid in type_out
+  // if NANOARROW_OK is returned or place a null-terminated error message into error
+  // otherwise.
   ArrowErrorCode Find(uint32_t oid, PostgresType* type_out, ArrowError* error) const {
     auto result = mapping_.find(oid);
     if (result == mapping_.end()) {
@@ -270,6 +289,8 @@ class PostgresTypeResolver {
     return NANOARROW_OK;
   }
 
+  // Resolve the oid for a given type_id. Returns 0 if the oid cannot be
+  // resolved.
   uint32_t GetOID(PostgresTypeId type_id) const {
     auto result = reverse_mapping_.find(type_id);
     if (result == reverse_mapping_.end()) {
@@ -279,6 +300,11 @@ class PostgresTypeResolver {
     }
   }
 
+  // Insert a type into this resolver. Returns NANOARROW_OK on success
+  // or places a null-terminated error message into error otherwise. The order
+  // of Inserts matters: Non-array types must be inserted before the corresponding
+  // array types and class definitions must be inserted before the corresponding
+  // class type using InsertClass().
   ArrowErrorCode Insert(const Item& item, ArrowError* error) {
     auto result = base_.find(item.typreceive);
     if (result == base_.end()) {
@@ -300,14 +326,14 @@ class PostgresTypeResolver {
       }
 
       case PG_TYPE_RECORD: {
-        std::vector<std::pair<uint32_t, std::string>> child_desc;
+        std::vector<std::pair<std::string, uint32_t>> child_desc;
         NANOARROW_RETURN_NOT_OK(ResolveClass(item.class_oid, &child_desc, error));
 
         PostgresType out(PG_TYPE_RECORD);
         for (const auto& child_item : child_desc) {
           PostgresType child;
-          NANOARROW_RETURN_NOT_OK(Find(child_item.first, &child, error));
-          out.AppendChild(child_item.second, child);
+          NANOARROW_RETURN_NOT_OK(Find(child_item.second, &child, error));
+          out.AppendChild(child_item.first, child);
         }
 
         mapping_.insert({item.oid, out.WithPgTypeInfo(item.oid, item.typname)});
@@ -340,13 +366,24 @@ class PostgresTypeResolver {
     return NANOARROW_OK;
   }
 
+  // Insert a class definition. For the purposes of resolving a PostgresType
+  // instance, this is simply a vector of field_name: oid tuples. The specified
+  // OIDs need not have already been inserted into the type resolver. This
+  // information can be found in the pg_attribute table (attname and atttypoid,
+  // respectively).
   void InsertClass(uint32_t oid,
-                   const std::vector<std::pair<uint32_t, std::string>>& cls) {
+                   const std::vector<std::pair<std::string, uint32_t>>& cls) {
     classes_.insert({oid, cls});
   }
 
+ private:
+  std::unordered_map<uint32_t, PostgresType> mapping_;
+  std::unordered_map<PostgresTypeId, uint32_t> reverse_mapping_;
+  std::unordered_map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> classes_;
+  std::unordered_map<std::string, PostgresType> base_;
+
   ArrowErrorCode ResolveClass(uint32_t oid,
-                              std::vector<std::pair<uint32_t, std::string>>* out,
+                              std::vector<std::pair<std::string, uint32_t>>* out,
                               ArrowError* error) {
     auto result = classes_.find(oid);
     if (result == classes_.end()) {
@@ -359,11 +396,18 @@ class PostgresTypeResolver {
     return NANOARROW_OK;
   }
 
- private:
-  std::unordered_map<uint32_t, PostgresType> mapping_;
-  std::unordered_map<PostgresTypeId, uint32_t> reverse_mapping_;
-  std::unordered_map<uint32_t, std::vector<std::pair<uint32_t, std::string>>> classes_;
-  std::unordered_map<std::string, PostgresType> base_;
+  // Returns a sentinel PostgresType instance for each type and builds a lookup
+  // table based on the receive function name.
+  static std::unordered_map<std::string, PostgresType> AllBase() {
+    std::unordered_map<std::string, PostgresType> out;
+    for (PostgresTypeId type_id : PostgresTypeIdAll()) {
+      PostgresType type(type_id);
+      out.insert(
+          {PostgresTyprecv(type_id), type.WithPgTypeInfo(0, PostgresTypname(type_id))});
+    }
+
+    return out;
+  }
 };
 
 static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
