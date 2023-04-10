@@ -446,20 +446,6 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
       return "oidvectorrecv";
     case PG_TYPE_PATH:
       return "path_recv";
-    case PG_TYPE_PG_DDL_COMMAND:
-      return "pg_ddl_command_recv";
-    case PG_TYPE_PG_DEPENDENCIES:
-      return "pg_dependencies_recv";
-    case PG_TYPE_PG_LSN:
-      return "pg_lsn_recv";
-    case PG_TYPE_PG_MCV_LIST:
-      return "pg_mcv_list_recv";
-    case PG_TYPE_PG_NDISTINCT:
-      return "pg_ndistinct_recv";
-    case PG_TYPE_PG_NODE_TREE:
-      return "pg_node_tree_recv";
-    case PG_TYPE_PG_SNAPSHOT:
-      return "pg_snapshot_recv";
     case PG_TYPE_POINT:
       return "point_recv";
     case PG_TYPE_POLY:
@@ -531,36 +517,118 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
 
 static inline const char* PostgresTypname(PostgresTypeId type_id) {
   switch (type_id) {
+    case PG_TYPE_ANYARRAY:
+      return "anyarray";
+    case PG_TYPE_ANYCOMPATIBLEARRAY:
+      return "anycompatiblearray";
+    case PG_TYPE_ARRAY:
+      return "array";
     case PG_TYPE_BIT:
       return "bit";
     case PG_TYPE_BOOL:
       return "bool";
+    case PG_TYPE_BOX:
+      return "box";
+    case PG_TYPE_BPCHAR:
+      return "bpchar";
+    case PG_TYPE_BRIN_BLOOM_SUMMARY:
+      return "brin_bloom_summary";
+    case PG_TYPE_BRIN_MINMAX_MULTI_SUMMARY:
+      return "brin_minmax_multi_summary";
     case PG_TYPE_BYTEA:
       return "bytea";
     case PG_TYPE_CASH:
       return "cash";
     case PG_TYPE_CHAR:
       return "char";
+    case PG_TYPE_CIDR:
+      return "cidr";
+    case PG_TYPE_CID:
+      return "cid";
+    case PG_TYPE_CIRCLE:
+      return "circle";
+    case PG_TYPE_CSTRING:
+      return "cstring";
     case PG_TYPE_DATE:
       return "date";
+    case PG_TYPE_DOMAIN:
+      return "domain";
     case PG_TYPE_FLOAT4:
       return "float4";
     case PG_TYPE_FLOAT8:
       return "float8";
+    case PG_TYPE_INET:
+      return "inet";
     case PG_TYPE_INT2:
       return "int2";
+    case PG_TYPE_INT2VECTOR:
+      return "int2vector";
     case PG_TYPE_INT4:
       return "int4";
     case PG_TYPE_INT8:
       return "int8";
     case PG_TYPE_INTERVAL:
       return "interval";
+    case PG_TYPE_JSON:
+      return "json";
+    case PG_TYPE_JSONB:
+      return "jsonb";
+    case PG_TYPE_JSONPATH:
+      return "jsonpath";
+    case PG_TYPE_LINE:
+      return "line";
+    case PG_TYPE_LSEG:
+      return "lseg";
+    case PG_TYPE_MACADDR:
+      return "macaddr";
+    case PG_TYPE_MACADDR8:
+      return "macaddr8";
+    case PG_TYPE_MULTIRANGE:
+      return "multirange";
+    case PG_TYPE_NAME:
+      return "name";
     case PG_TYPE_NUMERIC:
       return "numeric";
     case PG_TYPE_OID:
       return "oid";
+    case PG_TYPE_OIDVECTOR:
+      return "oidvector";
+    case PG_TYPE_PATH:
+      return "path";
+    case PG_TYPE_POINT:
+      return "point";
+    case PG_TYPE_POLY:
+      return "poly";
+    case PG_TYPE_RANGE:
+      return "range";
+    case PG_TYPE_RECORD:
+      return "record";
+    case PG_TYPE_REGCLASS:
+      return "regclass";
+    case PG_TYPE_REGCOLLATION:
+      return "regcollation";
+    case PG_TYPE_REGCONFIG:
+      return "regconfig";
+    case PG_TYPE_REGDICTIONARY:
+      return "regdictionary";
+    case PG_TYPE_REGNAMESPACE:
+      return "regnamespace";
+    case PG_TYPE_REGOPERATOR:
+      return "regoperator";
+    case PG_TYPE_REGOPER:
+      return "regoper";
+    case PG_TYPE_REGPROCEDURE:
+      return "regprocedure";
+    case PG_TYPE_REGPROC:
+      return "regproc";
+    case PG_TYPE_REGROLE:
+      return "regrole";
+    case PG_TYPE_REGTYPE:
+      return "regtype";
     case PG_TYPE_TEXT:
       return "text";
+    case PG_TYPE_TID:
+      return "tid";
     case PG_TYPE_TIME:
       return "time";
     case PG_TYPE_TIMESTAMP:
@@ -569,21 +637,28 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
       return "timestamptz";
     case PG_TYPE_TIMETZ:
       return "timetz";
+    case PG_TYPE_TSQUERY:
+      return "tsquery";
+    case PG_TYPE_TSVECTOR:
+      return "tsvector";
+    case PG_TYPE_TXID_SNAPSHOT:
+      return "txid_snapshot";
+    case PG_TYPE_UNKNOWN:
+      return "unknown";
     case PG_TYPE_UUID:
       return "uuid";
     case PG_TYPE_VARBIT:
       return "varbit";
     case PG_TYPE_VARCHAR:
       return "varchar";
-
-    case PG_TYPE_ARRAY:
-      return "array";
-    case PG_TYPE_RECORD:
-      return "record";
-    case PG_TYPE_RANGE:
-      return "range";
-    case PG_TYPE_DOMAIN:
-      return "domain";
+    case PG_TYPE_VOID:
+      return "void";
+    case PG_TYPE_XID8:
+      return "xid8";
+    case PG_TYPE_XID:
+      return "xid";
+    case PG_TYPE_XML:
+      return "xml";
     default:
       return "";
   }
