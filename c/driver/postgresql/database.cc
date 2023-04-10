@@ -112,24 +112,24 @@ ORDER BY
     attrelid, attnum
 )";
 
-  // Second, a query of the pg_type table with the arrays last.
-  // This query may need a few attempts to handle recursive definitions
-  // (e.g., record types with array column). Put the arrays last to minimize
-  // the number of attempts we need. This currently won't handle range types.
+  // Second, a query of the pg_type table. This query may need a few attempts to handle
+  // recursive definitions (e.g., record types with array column). This currently won't
+  // handle range types because those rows don't have child OID information. Arrays types
+  // are inserted after a successful insert of the element type.
   const std::string kTypeQuery = R"(
 SELECT
     oid,
     typname,
     typreceive,
     typbasetype,
-    typelem,
+    typarray,
     typrelid
 FROM
     pg_catalog.pg_type
 WHERE
-    (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r'
+    (typreceive != 0 OR typname = 'aclitem') AND typtype != 'r' AND typreceive::TEXT != 'array_recv'
 ORDER BY
-    typelem
+    oid
 )";
 
   // Create a new type resolver (this instance's type_resolver_ member
@@ -230,7 +230,7 @@ static inline int32_t InsertPgTypeResult(
     const char* typreceive = PQgetvalue(result, row, 2);
     const uint32_t typbasetype = static_cast<uint32_t>(
         std::strtol(PQgetvalue(result, row, 3), /*str_end=*/nullptr, /*base=*/10));
-    const uint32_t typelem = static_cast<uint32_t>(
+    const uint32_t typarray = static_cast<uint32_t>(
         std::strtol(PQgetvalue(result, row, 4), /*str_end=*/nullptr, /*base=*/10));
     const uint32_t typrelid = static_cast<uint32_t>(
         std::strtol(PQgetvalue(result, row, 5), /*str_end=*/nullptr, /*base=*/10));
@@ -244,18 +244,19 @@ static inline int32_t InsertPgTypeResult(
     item.typname = typname;
     item.typreceive = typreceive;
     item.class_oid = typrelid;
-    if (typbasetype != 0) {
-      item.child_oid = typbasetype;
-    } else {
-      item.child_oid = typelem;
-    }
+    item.base_oid = typbasetype;
 
-    ArrowError err;
-    if (resolver->Insert(item, &err) == NANOARROW_OK) {
-      fprintf(stdout, "[v] %s\n", item.typname);
-      n_added++;
-    } else {
-      fprintf(stdout, "[X] %s: %s\n", item.typname, err.message);
+    int result = resolver->Insert(item, nullptr);
+
+    // If there's an array type and the insert succeeded, add that now too
+    if (result == NANOARROW_OK && typarray != 0) {
+      std::string array_typname = StringBuilder("_", typname);
+      item.oid = typarray;
+      item.typname = array_typname.c_str();
+      item.typreceive = "array_recv";
+      item.child_oid = oid;
+
+      resolver->Insert(item, nullptr);
     }
   }
 
