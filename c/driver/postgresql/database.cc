@@ -139,7 +139,6 @@ ORDER BY
   auto resolver = std::make_shared<PostgresTypeResolver>();
 
   // Insert record type definitions (this includes table schemas)
-  fprintf(stdout, "CLASS DEFINITIONS-----------\n");
   pg_result* result = PQexec(conn, kColumnsQuery.c_str());
   ExecStatusType pq_status = PQresultStatus(result);
   if (pq_status == PGRES_TUPLES_OK) {
@@ -154,7 +153,6 @@ ORDER BY
   // Attempt filling the resolver a few times to handle recursive definitions.
   int32_t max_attempts = 3;
   for (int32_t i = 0; i < max_attempts; i++) {
-    fprintf(stdout, "TYPES [%d]-----------\n", i);
     result = PQexec(conn, kTypeQuery.c_str());
     ExecStatusType pq_status = PQresultStatus(result);
     if (pq_status == PGRES_TUPLES_OK) {
