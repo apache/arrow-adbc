@@ -19,6 +19,8 @@
 
 #include <cstring>
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include <adbc.h>
 #include <libpq-fe.h>
@@ -197,8 +199,6 @@ static inline int32_t InsertPgAttributeResult(
 
     if (type_oid != current_type_oid && !columns.empty()) {
       resolver->InsertClass(current_type_oid, columns);
-      fprintf(stdout, "Inserting class with oid %ld\n",
-              static_cast<long>(current_type_oid));
       columns.clear();
       current_type_oid = type_oid;
       n_added++;
@@ -209,8 +209,6 @@ static inline int32_t InsertPgAttributeResult(
 
   if (!columns.empty()) {
     resolver->InsertClass(current_type_oid, columns);
-    fprintf(stdout, "Inserting class with oid %ld\n",
-            static_cast<long>(current_type_oid));
     n_added++;
   }
 
