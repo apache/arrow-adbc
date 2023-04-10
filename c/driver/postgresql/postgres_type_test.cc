@@ -29,12 +29,12 @@ using adbcpq::PostgresTypeResolver;
 class MockTypeResolver : public PostgresTypeResolver {
  public:
   ArrowErrorCode Init() {
-    auto recv_base = PostgresType::PgRecvAllBase(false);
+    auto all_types = adbcpq::PostgresTypeIdAll(false);
     PostgresTypeResolver::Item item;
     item.oid = 0;
 
     // Insert all the base types
-    for (auto type_id : recv_base) {
+    for (auto type_id : all_types) {
       std::string typreceive = adbcpq::PostgresTyprecv(type_id);
       std::string typname = adbcpq::PostgresTypname(type_id);
       item.oid++;
@@ -199,7 +199,7 @@ TEST(PostgresTypeTest, PostgresTypeAllBase) {
   auto base_types = PostgresType::AllBase();
   EXPECT_EQ(base_types["array_recv"].type_id(), PostgresTypeId::PG_TYPE_ARRAY);
   EXPECT_EQ(base_types["array_recv"].typname(), "array");
-  EXPECT_EQ(base_types.size(), PostgresType::PgRecvAllBase().size());
+  EXPECT_EQ(base_types.size(), adbcpq::PostgresTypeIdAll().size());
 }
 
 TEST(PostgresTypeTest, PostgresTypeResolver) {

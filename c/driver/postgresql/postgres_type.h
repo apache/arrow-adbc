@@ -110,6 +110,262 @@ enum PostgresTypeId {
   PG_TYPE_XML
 };
 
+static inline const char* PostgresTyprecv(PostgresTypeId type_id);
+static inline const char* PostgresTypname(PostgresTypeId type_id);
+static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested = true);
+
+class PostgresType {
+ public:
+  explicit PostgresType(PostgresTypeId type_id) : oid_(0), type_id_(type_id) {}
+
+  PostgresType() : PostgresType(PG_TYPE_UNINITIALIZED) {}
+
+  void AppendChild(const std::string& field_name, const PostgresType& type) {
+    PostgresType child(type);
+    children_.push_back(child.WithFieldName(field_name));
+  }
+
+  PostgresType WithFieldName(const std::string& field_name) const {
+    PostgresType out(*this);
+    out.field_name_ = field_name;
+    return out;
+  }
+
+  PostgresType WithPgTypeInfo(uint32_t oid, const std::string& typname) const {
+    PostgresType out(*this);
+    out.oid_ = oid;
+    out.typname_ = typname;
+    return out;
+  }
+
+  PostgresType Array(uint32_t oid = 0, const std::string& typname = "") const {
+    PostgresType out(PG_TYPE_ARRAY);
+    out.AppendChild("item", *this);
+    out.oid_ = oid;
+    out.typname_ = typname;
+    return out;
+  }
+
+  PostgresType Domain(uint32_t oid, const std::string& typname) {
+    return WithPgTypeInfo(oid, typname);
+  }
+
+  PostgresType Range(uint32_t oid = 0, const std::string& typname = "") const {
+    PostgresType out(PG_TYPE_RANGE);
+    out.AppendChild("item", *this);
+    out.oid_ = oid;
+    out.typname_ = typname;
+    return out;
+  }
+
+  uint32_t oid() const { return oid_; }
+  PostgresTypeId type_id() const { return type_id_; }
+  const std::string& typname() const { return typname_; }
+  const std::string& field_name() const { return field_name_; }
+  int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
+  const PostgresType* child(int64_t i) const { return &children_[i]; }
+
+  ArrowErrorCode SetSchema(ArrowSchema* schema) const {
+    switch (type_id_) {
+      case PG_TYPE_BOOL:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
+        break;
+      case PG_TYPE_INT2:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
+        break;
+      case PG_TYPE_INT4:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT32));
+        break;
+      case PG_TYPE_INT8:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT64));
+        break;
+      case PG_TYPE_FLOAT4:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_FLOAT));
+        break;
+      case PG_TYPE_FLOAT8:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
+        break;
+      case PG_TYPE_CHAR:
+      case PG_TYPE_BPCHAR:
+      case PG_TYPE_VARCHAR:
+      case PG_TYPE_TEXT:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
+        break;
+      case PG_TYPE_BYTEA:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
+        break;
+
+      case PG_TYPE_RECORD:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
+        for (int64_t i = 0; i < n_children(); i++) {
+          NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
+        }
+        break;
+
+      case PG_TYPE_ARRAY:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
+        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
+        break;
+      default: {
+        // For any types we don't explicitly know how to deal with, we can still
+        // return the bytes postgres gives us and attach the type name as metadata
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
+        nanoarrow::UniqueBuffer buffer;
+        ArrowMetadataBuilderInit(buffer.get(), nullptr);
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
+            buffer.get(), ArrowCharView("ADBC:posgresql:typname"),
+            ArrowCharView(typname_.c_str())));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
+        break;
+      }
+    }
+
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema, field_name_.c_str()));
+    return NANOARROW_OK;
+  }
+
+ private:
+  uint32_t oid_;
+  PostgresTypeId type_id_;
+  std::string typname_;
+  std::string field_name_;
+  std::vector<PostgresType> children_;
+
+ public:
+  static std::unordered_map<std::string, PostgresType> AllBase() {
+    std::unordered_map<std::string, PostgresType> out;
+    for (PostgresTypeId type_id : PostgresTypeIdAll()) {
+      PostgresType type(type_id);
+      type.typname_ = PostgresTypname(type_id);
+      out.insert({PostgresTyprecv(type_id), type});
+    }
+
+    return out;
+  }
+};
+
+class PostgresTypeResolver {
+ public:
+  struct Item {
+    uint32_t oid;
+    const char* typname;
+    const char* typreceive;
+    uint32_t child_oid;
+    uint32_t base_oid;
+    uint32_t class_oid;
+  };
+
+  PostgresTypeResolver() : base_(PostgresType::AllBase()) {}
+
+  ArrowErrorCode Find(uint32_t oid, PostgresType* type_out, ArrowError* error) const {
+    auto result = mapping_.find(oid);
+    if (result == mapping_.end()) {
+      ArrowErrorSet(error, "Postgres type with oid %ld not found",
+                    static_cast<long>(oid));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    *type_out = (*result).second;
+    return NANOARROW_OK;
+  }
+
+  uint32_t GetOID(PostgresTypeId type_id) const {
+    auto result = reverse_mapping_.find(type_id);
+    if (result == reverse_mapping_.end()) {
+      return 0;
+    } else {
+      return result->second;
+    }
+  }
+
+  ArrowErrorCode Insert(const Item& item, ArrowError* error) {
+    auto result = base_.find(item.typreceive);
+    if (result == base_.end()) {
+      ArrowErrorSet(error, "Base type not found for type '%s' with receive function '%s'",
+                    item.typname, item.typreceive);
+      return ENOTSUP;
+    }
+
+    const PostgresType& base = (*result).second;
+    PostgresType type = base.WithPgTypeInfo(item.oid, item.typname);
+
+    switch (base.type_id()) {
+      case PG_TYPE_ARRAY: {
+        PostgresType child;
+        NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
+        mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
+        reverse_mapping_.insert({base.type_id(), item.oid});
+        break;
+      }
+
+      case PG_TYPE_RECORD: {
+        std::vector<std::pair<uint32_t, std::string>> child_desc;
+        NANOARROW_RETURN_NOT_OK(ResolveClass(item.class_oid, &child_desc, error));
+
+        PostgresType out(PG_TYPE_RECORD);
+        for (const auto& child_item : child_desc) {
+          PostgresType child;
+          NANOARROW_RETURN_NOT_OK(Find(child_item.first, &child, error));
+          out.AppendChild(child_item.second, child);
+        }
+
+        mapping_.insert({item.oid, out.WithPgTypeInfo(item.oid, item.typname)});
+        reverse_mapping_.insert({base.type_id(), item.oid});
+        break;
+      }
+
+      case PG_TYPE_DOMAIN: {
+        PostgresType base_type;
+        NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
+        mapping_.insert({item.oid, base_type.Domain(item.oid, item.typname)});
+        reverse_mapping_.insert({base.type_id(), item.oid});
+        break;
+      }
+
+      case PG_TYPE_RANGE: {
+        PostgresType base_type;
+        NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
+        mapping_.insert({item.oid, base_type.Range(item.oid, item.typname)});
+        reverse_mapping_.insert({base.type_id(), item.oid});
+        break;
+      }
+
+      default:
+        mapping_.insert({item.oid, type});
+        reverse_mapping_.insert({base.type_id(), item.oid});
+        break;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  void InsertClass(uint32_t oid,
+                   const std::vector<std::pair<uint32_t, std::string>>& cls) {
+    classes_.insert({oid, cls});
+  }
+
+  ArrowErrorCode ResolveClass(uint32_t oid,
+                              std::vector<std::pair<uint32_t, std::string>>* out,
+                              ArrowError* error) {
+    auto result = classes_.find(oid);
+    if (result == classes_.end()) {
+      ArrowErrorSet(error, "Class definition with oid %ld not found",
+                    static_cast<long>(oid));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    *out = result->second;
+    return NANOARROW_OK;
+  }
+
+ private:
+  std::unordered_map<uint32_t, PostgresType> mapping_;
+  std::unordered_map<PostgresTypeId, uint32_t> reverse_mapping_;
+  std::unordered_map<uint32_t, std::vector<std::pair<uint32_t, std::string>>> classes_;
+  std::unordered_map<std::string, PostgresType> base_;
+};
+
 static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
   switch (type_id) {
     case PG_TYPE_ANYARRAY:
@@ -333,275 +589,84 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
   }
 }
 
-class PostgresType {
- public:
-  static std::vector<PostgresTypeId> PgRecvAllBase(bool nested = true) {
-    std::vector<PostgresTypeId> base = {
-        PG_TYPE_BIT,      PG_TYPE_BOOL,      PG_TYPE_BYTEA,       PG_TYPE_CASH,
-        PG_TYPE_CHAR,     PG_TYPE_BPCHAR,    PG_TYPE_DATE,        PG_TYPE_FLOAT4,
-        PG_TYPE_FLOAT8,   PG_TYPE_INT2,      PG_TYPE_INT4,        PG_TYPE_INT8,
-        PG_TYPE_INTERVAL, PG_TYPE_NUMERIC,   PG_TYPE_OID,         PG_TYPE_TEXT,
-        PG_TYPE_TIME,     PG_TYPE_TIMESTAMP, PG_TYPE_TIMESTAMPTZ, PG_TYPE_TIMETZ,
-        PG_TYPE_UUID,     PG_TYPE_VARBIT,    PG_TYPE_VARCHAR};
+static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
+  std::vector<PostgresTypeId> base = {PG_TYPE_UNINITIALIZED,
+                                      PG_TYPE_ANYARRAY,
+                                      PG_TYPE_ANYCOMPATIBLEARRAY,
+                                      PG_TYPE_BIT,
+                                      PG_TYPE_BOOL,
+                                      PG_TYPE_BOX,
+                                      PG_TYPE_BPCHAR,
+                                      PG_TYPE_BRIN_BLOOM_SUMMARY,
+                                      PG_TYPE_BRIN_MINMAX_MULTI_SUMMARY,
+                                      PG_TYPE_BYTEA,
+                                      PG_TYPE_CASH,
+                                      PG_TYPE_CHAR,
+                                      PG_TYPE_CIDR,
+                                      PG_TYPE_CID,
+                                      PG_TYPE_CIRCLE,
+                                      PG_TYPE_CSTRING,
+                                      PG_TYPE_DATE,
+                                      PG_TYPE_FLOAT4,
+                                      PG_TYPE_FLOAT8,
+                                      PG_TYPE_INET,
+                                      PG_TYPE_INT2,
+                                      PG_TYPE_INT2VECTOR,
+                                      PG_TYPE_INT4,
+                                      PG_TYPE_INT8,
+                                      PG_TYPE_INTERVAL,
+                                      PG_TYPE_JSON,
+                                      PG_TYPE_JSONB,
+                                      PG_TYPE_JSONPATH,
+                                      PG_TYPE_LINE,
+                                      PG_TYPE_LSEG,
+                                      PG_TYPE_MACADDR,
+                                      PG_TYPE_MACADDR8,
+                                      PG_TYPE_MULTIRANGE,
+                                      PG_TYPE_NAME,
+                                      PG_TYPE_NUMERIC,
+                                      PG_TYPE_OID,
+                                      PG_TYPE_OIDVECTOR,
+                                      PG_TYPE_PATH,
+                                      PG_TYPE_POINT,
+                                      PG_TYPE_POLY,
+                                      PG_TYPE_REGCLASS,
+                                      PG_TYPE_REGCOLLATION,
+                                      PG_TYPE_REGCONFIG,
+                                      PG_TYPE_REGDICTIONARY,
+                                      PG_TYPE_REGNAMESPACE,
+                                      PG_TYPE_REGOPERATOR,
+                                      PG_TYPE_REGOPER,
+                                      PG_TYPE_REGPROCEDURE,
+                                      PG_TYPE_REGPROC,
+                                      PG_TYPE_REGROLE,
+                                      PG_TYPE_REGTYPE,
+                                      PG_TYPE_TEXT,
+                                      PG_TYPE_TID,
+                                      PG_TYPE_TIME,
+                                      PG_TYPE_TIMESTAMP,
+                                      PG_TYPE_TIMESTAMPTZ,
+                                      PG_TYPE_TIMETZ,
+                                      PG_TYPE_TSQUERY,
+                                      PG_TYPE_TSVECTOR,
+                                      PG_TYPE_TXID_SNAPSHOT,
+                                      PG_TYPE_UNKNOWN,
+                                      PG_TYPE_UUID,
+                                      PG_TYPE_VARBIT,
+                                      PG_TYPE_VARCHAR,
+                                      PG_TYPE_VOID,
+                                      PG_TYPE_XID8,
+                                      PG_TYPE_XID,
+                                      PG_TYPE_XML};
 
-    if (nested) {
-      base.push_back(PG_TYPE_ARRAY);
-      base.push_back(PG_TYPE_RECORD);
-      base.push_back(PG_TYPE_RANGE);
-      base.push_back(PG_TYPE_DOMAIN);
-    }
-
-    return base;
+  if (nested) {
+    base.push_back(PG_TYPE_ARRAY);
+    base.push_back(PG_TYPE_RECORD);
+    base.push_back(PG_TYPE_RANGE);
+    base.push_back(PG_TYPE_DOMAIN);
   }
 
-  explicit PostgresType(PostgresTypeId type_id) : oid_(0), type_id_(type_id) {}
-
-  PostgresType() : PostgresType(PG_TYPE_UNINITIALIZED) {}
-
-  void AppendChild(const std::string& field_name, const PostgresType& type) {
-    PostgresType child(type);
-    children_.push_back(child.WithFieldName(field_name));
-  }
-
-  PostgresType WithFieldName(const std::string& field_name) const {
-    PostgresType out(*this);
-    out.field_name_ = field_name;
-    return out;
-  }
-
-  PostgresType WithPgTypeInfo(uint32_t oid, const std::string& typname) const {
-    PostgresType out(*this);
-    out.oid_ = oid;
-    out.typname_ = typname;
-    return out;
-  }
-
-  PostgresType Array(uint32_t oid = 0, const std::string& typname = "") const {
-    PostgresType out(PG_TYPE_ARRAY);
-    out.AppendChild("item", *this);
-    out.oid_ = oid;
-    out.typname_ = typname;
-    return out;
-  }
-
-  PostgresType Domain(uint32_t oid, const std::string& typname) {
-    return WithPgTypeInfo(oid, typname);
-  }
-
-  PostgresType Range(uint32_t oid = 0, const std::string& typname = "") const {
-    PostgresType out(PG_TYPE_RANGE);
-    out.AppendChild("item", *this);
-    out.oid_ = oid;
-    out.typname_ = typname;
-    return out;
-  }
-
-  uint32_t oid() const { return oid_; }
-  PostgresTypeId type_id() const { return type_id_; }
-  const std::string& typname() const { return typname_; }
-  const std::string& field_name() const { return field_name_; }
-  int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
-  const PostgresType* child(int64_t i) const { return &children_[i]; }
-
-  ArrowErrorCode SetSchema(ArrowSchema* schema) const {
-    switch (type_id_) {
-      case PG_TYPE_BOOL:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
-        break;
-      case PG_TYPE_INT2:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
-        break;
-      case PG_TYPE_INT4:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT32));
-        break;
-      case PG_TYPE_INT8:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT64));
-        break;
-      case PG_TYPE_FLOAT4:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_FLOAT));
-        break;
-      case PG_TYPE_FLOAT8:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
-        break;
-      case PG_TYPE_CHAR:
-      case PG_TYPE_BPCHAR:
-      case PG_TYPE_VARCHAR:
-      case PG_TYPE_TEXT:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
-        break;
-      case PG_TYPE_BYTEA:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
-        break;
-
-      case PG_TYPE_RECORD:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
-        for (int64_t i = 0; i < n_children(); i++) {
-          NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
-        }
-        break;
-
-      case PG_TYPE_ARRAY:
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
-        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
-        break;
-      default: {
-        // For any types we don't explicitly know how to deal with, we can still
-        // return the bytes postgres gives us and attach the type name as metadata
-        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
-        nanoarrow::UniqueBuffer buffer;
-        ArrowMetadataBuilderInit(buffer.get(), nullptr);
-        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
-            buffer.get(), ArrowCharView("ADBC:posgresql:typname"),
-            ArrowCharView(typname_.c_str())));
-        NANOARROW_RETURN_NOT_OK(
-            ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
-        break;
-      }
-    }
-
-    NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema, field_name_.c_str()));
-    return NANOARROW_OK;
-  }
-
- private:
-  uint32_t oid_;
-  PostgresTypeId type_id_;
-  std::string typname_;
-  std::string field_name_;
-  std::vector<PostgresType> children_;
-
- public:
-  static std::unordered_map<std::string, PostgresType> AllBase() {
-    std::unordered_map<std::string, PostgresType> out;
-    for (PostgresTypeId type_id : PgRecvAllBase()) {
-      PostgresType type(type_id);
-      type.typname_ = PostgresTypname(type_id);
-      out.insert({PostgresTyprecv(type_id), type});
-    }
-
-    return out;
-  }
-};
-
-class PostgresTypeResolver {
- public:
-  struct Item {
-    uint32_t oid;
-    const char* typname;
-    const char* typreceive;
-    uint32_t child_oid;
-    uint32_t base_oid;
-    uint32_t class_oid;
-  };
-
-  PostgresTypeResolver() : base_(PostgresType::AllBase()) {}
-
-  ArrowErrorCode Find(uint32_t oid, PostgresType* type_out, ArrowError* error) const {
-    auto result = mapping_.find(oid);
-    if (result == mapping_.end()) {
-      ArrowErrorSet(error, "Postgres type with oid %ld not found",
-                    static_cast<long>(oid));  // NOLINT(runtime/int)
-      return EINVAL;
-    }
-
-    *type_out = (*result).second;
-    return NANOARROW_OK;
-  }
-
-  uint32_t GetOID(PostgresTypeId type_id) const {
-    auto result = reverse_mapping_.find(type_id);
-    if (result == reverse_mapping_.end()) {
-      return 0;
-    } else {
-      return result->second;
-    }
-  }
-
-  ArrowErrorCode Insert(const Item& item, ArrowError* error) {
-    auto result = base_.find(item.typreceive);
-    if (result == base_.end()) {
-      ArrowErrorSet(error, "Base type not found for type '%s' with receive function '%s'",
-                    item.typname, item.typreceive);
-      return ENOTSUP;
-    }
-
-    const PostgresType& base = (*result).second;
-    PostgresType type = base.WithPgTypeInfo(item.oid, item.typname);
-
-    switch (base.type_id()) {
-      case PG_TYPE_ARRAY: {
-        PostgresType child;
-        NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
-        mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
-        reverse_mapping_.insert({base.type_id(), item.oid});
-        break;
-      }
-
-      case PG_TYPE_RECORD: {
-        std::vector<std::pair<uint32_t, std::string>> child_desc;
-        NANOARROW_RETURN_NOT_OK(ResolveClass(item.class_oid, &child_desc, error));
-
-        PostgresType out(PG_TYPE_RECORD);
-        for (const auto& child_item : child_desc) {
-          PostgresType child;
-          NANOARROW_RETURN_NOT_OK(Find(child_item.first, &child, error));
-          out.AppendChild(child_item.second, child);
-        }
-
-        mapping_.insert({item.oid, out.WithPgTypeInfo(item.oid, item.typname)});
-        reverse_mapping_.insert({base.type_id(), item.oid});
-        break;
-      }
-
-      case PG_TYPE_DOMAIN: {
-        PostgresType base_type;
-        NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
-        mapping_.insert({item.oid, base_type.Domain(item.oid, item.typname)});
-        reverse_mapping_.insert({base.type_id(), item.oid});
-        break;
-      }
-
-      case PG_TYPE_RANGE: {
-        PostgresType base_type;
-        NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
-        mapping_.insert({item.oid, base_type.Range(item.oid, item.typname)});
-        reverse_mapping_.insert({base.type_id(), item.oid});
-        break;
-      }
-
-      default:
-        mapping_.insert({item.oid, type});
-        reverse_mapping_.insert({base.type_id(), item.oid});
-        break;
-    }
-
-    return NANOARROW_OK;
-  }
-
-  void InsertClass(uint32_t oid,
-                   const std::vector<std::pair<uint32_t, std::string>>& cls) {
-    classes_.insert({oid, cls});
-  }
-
-  ArrowErrorCode ResolveClass(uint32_t oid,
-                              std::vector<std::pair<uint32_t, std::string>>* out,
-                              ArrowError* error) {
-    auto result = classes_.find(oid);
-    if (result == classes_.end()) {
-      ArrowErrorSet(error, "Class definition with oid %ld not found",
-                    static_cast<long>(oid));  // NOLINT(runtime/int)
-      return EINVAL;
-    }
-
-    *out = result->second;
-    return NANOARROW_OK;
-  }
-
- private:
-  std::unordered_map<uint32_t, PostgresType> mapping_;
-  std::unordered_map<PostgresTypeId, uint32_t> reverse_mapping_;
-  std::unordered_map<uint32_t, std::vector<std::pair<uint32_t, std::string>>> classes_;
-  std::unordered_map<std::string, PostgresType> base_;
-};
+  return base;
+}
 
 }  // namespace adbcpq
