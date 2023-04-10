@@ -101,15 +101,15 @@ TEST(PostgresTypeTest, PostgresTypeBasic) {
   EXPECT_EQ(array.oid(), 12345);
   EXPECT_EQ(array.typname(), "array type name");
   EXPECT_EQ(array.n_children(), 1);
-  EXPECT_EQ(array.child(0)->oid(), type.oid());
-  EXPECT_EQ(array.child(0)->type_id(), type.type_id());
+  EXPECT_EQ(array.child(0).oid(), type.oid());
+  EXPECT_EQ(array.child(0).type_id(), type.type_id());
 
   PostgresType range = type.Range(12345, "range type name");
   EXPECT_EQ(range.oid(), 12345);
   EXPECT_EQ(range.typname(), "range type name");
   EXPECT_EQ(range.n_children(), 1);
-  EXPECT_EQ(range.child(0)->oid(), type.oid());
-  EXPECT_EQ(range.child(0)->type_id(), type.type_id());
+  EXPECT_EQ(range.child(0).oid(), type.oid());
+  EXPECT_EQ(range.child(0).type_id(), type.type_id());
 
   PostgresType domain = type.Domain(123456, "domain type name");
   EXPECT_EQ(domain.oid(), 123456);
@@ -120,8 +120,8 @@ TEST(PostgresTypeTest, PostgresTypeBasic) {
   record.AppendChild("col1", type);
   EXPECT_EQ(record.type_id(), PostgresTypeId::PG_TYPE_RECORD);
   EXPECT_EQ(record.n_children(), 1);
-  EXPECT_EQ(record.child(0)->type_id(), type.type_id());
-  EXPECT_EQ(record.child(0)->field_name(), "col1");
+  EXPECT_EQ(record.child(0).type_id(), type.type_id());
+  EXPECT_EQ(record.child(0).field_name(), "col1");
 }
 
 TEST(PostgresTypeTest, PostgresTypeSetSchema) {
@@ -262,8 +262,8 @@ TEST(PostgresTypeTest, PostgresTypeResolver) {
   EXPECT_EQ(type.oid(), 11);
   EXPECT_EQ(type.typname(), "some_array_type_name");
   EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_ARRAY);
-  EXPECT_EQ(type.child(0)->oid(), 10);
-  EXPECT_EQ(type.child(0)->type_id(), PostgresTypeId::PG_TYPE_BOOL);
+  EXPECT_EQ(type.child(0).oid(), 10);
+  EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::PG_TYPE_BOOL);
 
   // Check insert/resolve of range type
   item.oid = 12;
@@ -275,8 +275,8 @@ TEST(PostgresTypeTest, PostgresTypeResolver) {
   EXPECT_EQ(type.oid(), 12);
   EXPECT_EQ(type.typname(), "some_range_type_name");
   EXPECT_EQ(type.type_id(), PostgresTypeId::PG_TYPE_RANGE);
-  EXPECT_EQ(type.child(0)->oid(), 10);
-  EXPECT_EQ(type.child(0)->type_id(), PostgresTypeId::PG_TYPE_BOOL);
+  EXPECT_EQ(type.child(0).oid(), 10);
+  EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::PG_TYPE_BOOL);
 
   // Check insert/resolve of domain type
   item.oid = 13;
@@ -301,8 +301,8 @@ TEST(PostgresTypeTest, PostgresTypeResolveRecord) {
       NANOARROW_OK);
   EXPECT_EQ(type.oid(), resolver.GetOID(PostgresTypeId::PG_TYPE_RECORD));
   EXPECT_EQ(type.n_children(), 2);
-  EXPECT_EQ(type.child(0)->field_name(), "int4_col");
-  EXPECT_EQ(type.child(0)->type_id(), PostgresTypeId::PG_TYPE_INT4);
-  EXPECT_EQ(type.child(1)->field_name(), "text_col");
-  EXPECT_EQ(type.child(1)->type_id(), PostgresTypeId::PG_TYPE_TEXT);
+  EXPECT_EQ(type.child(0).field_name(), "int4_col");
+  EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::PG_TYPE_INT4);
+  EXPECT_EQ(type.child(1).field_name(), "text_col");
+  EXPECT_EQ(type.child(1).type_id(), PostgresTypeId::PG_TYPE_TEXT);
 }

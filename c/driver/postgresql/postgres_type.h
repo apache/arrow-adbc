@@ -121,7 +121,7 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id);
 // in the pg_type typname column.
 static inline const char* PostgresTypname(PostgresTypeId type_id);
 
-// A vector of all type IDs, optionally with the nested types PG_TYPE_ARRAY,
+// A vector of all type IDs, optionally including the nested types PG_TYPE_ARRAY,
 // PG_TYPE_DOMAIN, PG_TYPE_RECORD, and PG_TYPE_RANGE.
 static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested = true);
 
@@ -177,7 +177,7 @@ class PostgresType {
   const std::string& typname() const { return typname_; }
   const std::string& field_name() const { return field_name_; }
   int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
-  const PostgresType* child(int64_t i) const { return &children_[i]; }
+  const PostgresType& child(int64_t i) const { return children_[i]; }
 
   // Sets appropriate fields of an ArrowSchema that has been initialized using
   // ArrowSchemaInit. This is a recursive operation (i.e., nested types will
