@@ -28,336 +28,335 @@
 
 namespace adbcpq {
 
+enum PostgresTypeId {
+  PG_TYPE_UNINITIALIZED,
+  PG_TYPE_ANYARRAY,
+  PG_TYPE_ANYCOMPATIBLEARRAY,
+  PG_TYPE_ARRAY,
+  PG_TYPE_BIT,
+  PG_TYPE_BOOL,
+  PG_TYPE_BOX,
+  PG_TYPE_BPCHAR,
+  PG_TYPE_BRIN_BLOOM_SUMMARY,
+  PG_TYPE_BRIN_MINMAX_MULTI_SUMMARY,
+  PG_TYPE_BYTEA,
+  PG_TYPE_CASH,
+  PG_TYPE_CHAR,
+  PG_TYPE_CIDR,
+  PG_TYPE_CID,
+  PG_TYPE_CIRCLE,
+  PG_TYPE_CSTRING,
+  PG_TYPE_DATE,
+  PG_TYPE_DOMAIN,
+  PG_TYPE_FLOAT4,
+  PG_TYPE_FLOAT8,
+  PG_TYPE_INET,
+  PG_TYPE_INT2,
+  PG_TYPE_INT2VECTOR,
+  PG_TYPE_INT4,
+  PG_TYPE_INT8,
+  PG_TYPE_INTERVAL,
+  PG_TYPE_JSON,
+  PG_TYPE_JSONB,
+  PG_TYPE_JSONPATH,
+  PG_TYPE_LINE,
+  PG_TYPE_LSEG,
+  PG_TYPE_MACADDR,
+  PG_TYPE_MACADDR8,
+  PG_TYPE_MULTIRANGE,
+  PG_TYPE_NAME,
+  PG_TYPE_NUMERIC,
+  PG_TYPE_OID,
+  PG_TYPE_OIDVECTOR,
+  PG_TYPE_PATH,
+  PG_TYPE_PG_DDL_COMMAND,
+  PG_TYPE_PG_DEPENDENCIES,
+  PG_TYPE_PG_LSN,
+  PG_TYPE_PG_MCV_LIST,
+  PG_TYPE_PG_NDISTINCT,
+  PG_TYPE_PG_NODE_TREE,
+  PG_TYPE_PG_SNAPSHOT,
+  PG_TYPE_POINT,
+  PG_TYPE_POLY,
+  PG_TYPE_RANGE,
+  PG_TYPE_RECORD,
+  PG_TYPE_REGCLASS,
+  PG_TYPE_REGCOLLATION,
+  PG_TYPE_REGCONFIG,
+  PG_TYPE_REGDICTIONARY,
+  PG_TYPE_REGNAMESPACE,
+  PG_TYPE_REGOPERATOR,
+  PG_TYPE_REGOPER,
+  PG_TYPE_REGPROCEDURE,
+  PG_TYPE_REGPROC,
+  PG_TYPE_REGROLE,
+  PG_TYPE_REGTYPE,
+  PG_TYPE_TEXT,
+  PG_TYPE_TID,
+  PG_TYPE_TIME,
+  PG_TYPE_TIMESTAMP,
+  PG_TYPE_TIMESTAMPTZ,
+  PG_TYPE_TIMETZ,
+  PG_TYPE_TSQUERY,
+  PG_TYPE_TSVECTOR,
+  PG_TYPE_TXID_SNAPSHOT,
+  PG_TYPE_UNKNOWN,
+  PG_TYPE_UUID,
+  PG_TYPE_VARBIT,
+  PG_TYPE_VARCHAR,
+  PG_TYPE_VOID,
+  PG_TYPE_XID8,
+  PG_TYPE_XID,
+  PG_TYPE_XML
+};
+
+static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
+  switch (type_id) {
+    case PG_TYPE_ANYARRAY:
+      return "anyarray_recv";
+    case PG_TYPE_ANYCOMPATIBLEARRAY:
+      return "anycompatiblearray_recv";
+    case PG_TYPE_ARRAY:
+      return "array_recv";
+    case PG_TYPE_BIT:
+      return "bit_recv";
+    case PG_TYPE_BOOL:
+      return "boolrecv";
+    case PG_TYPE_BOX:
+      return "box_recv";
+    case PG_TYPE_BPCHAR:
+      return "bpcharrecv";
+    case PG_TYPE_BRIN_BLOOM_SUMMARY:
+      return "brin_bloom_summary_recv";
+    case PG_TYPE_BRIN_MINMAX_MULTI_SUMMARY:
+      return "brin_minmax_multi_summary_recv";
+    case PG_TYPE_BYTEA:
+      return "bytearecv";
+    case PG_TYPE_CASH:
+      return "cash_recv";
+    case PG_TYPE_CHAR:
+      return "charrecv";
+    case PG_TYPE_CIDR:
+      return "cidr_recv";
+    case PG_TYPE_CID:
+      return "cidrecv";
+    case PG_TYPE_CIRCLE:
+      return "circle_recv";
+    case PG_TYPE_CSTRING:
+      return "cstring_recv";
+    case PG_TYPE_DATE:
+      return "date_recv";
+    case PG_TYPE_DOMAIN:
+      return "domain_recv";
+    case PG_TYPE_FLOAT4:
+      return "float4recv";
+    case PG_TYPE_FLOAT8:
+      return "float8recv";
+    case PG_TYPE_INET:
+      return "inet_recv";
+    case PG_TYPE_INT2:
+      return "int2recv";
+    case PG_TYPE_INT2VECTOR:
+      return "int2vectorrecv";
+    case PG_TYPE_INT4:
+      return "int4recv";
+    case PG_TYPE_INT8:
+      return "int8recv";
+    case PG_TYPE_INTERVAL:
+      return "interval_recv";
+    case PG_TYPE_JSON:
+      return "json_recv";
+    case PG_TYPE_JSONB:
+      return "jsonb_recv";
+    case PG_TYPE_JSONPATH:
+      return "jsonpath_recv";
+    case PG_TYPE_LINE:
+      return "line_recv";
+    case PG_TYPE_LSEG:
+      return "lseg_recv";
+    case PG_TYPE_MACADDR:
+      return "macaddr_recv";
+    case PG_TYPE_MACADDR8:
+      return "macaddr8_recv";
+    case PG_TYPE_MULTIRANGE:
+      return "multirange_recv";
+    case PG_TYPE_NAME:
+      return "namerecv";
+    case PG_TYPE_NUMERIC:
+      return "numeric_recv";
+    case PG_TYPE_OID:
+      return "oidrecv";
+    case PG_TYPE_OIDVECTOR:
+      return "oidvectorrecv";
+    case PG_TYPE_PATH:
+      return "path_recv";
+    case PG_TYPE_PG_DDL_COMMAND:
+      return "pg_ddl_command_recv";
+    case PG_TYPE_PG_DEPENDENCIES:
+      return "pg_dependencies_recv";
+    case PG_TYPE_PG_LSN:
+      return "pg_lsn_recv";
+    case PG_TYPE_PG_MCV_LIST:
+      return "pg_mcv_list_recv";
+    case PG_TYPE_PG_NDISTINCT:
+      return "pg_ndistinct_recv";
+    case PG_TYPE_PG_NODE_TREE:
+      return "pg_node_tree_recv";
+    case PG_TYPE_PG_SNAPSHOT:
+      return "pg_snapshot_recv";
+    case PG_TYPE_POINT:
+      return "point_recv";
+    case PG_TYPE_POLY:
+      return "poly_recv";
+    case PG_TYPE_RANGE:
+      return "range_recv";
+    case PG_TYPE_RECORD:
+      return "record_recv";
+    case PG_TYPE_REGCLASS:
+      return "regclassrecv";
+    case PG_TYPE_REGCOLLATION:
+      return "regcollationrecv";
+    case PG_TYPE_REGCONFIG:
+      return "regconfigrecv";
+    case PG_TYPE_REGDICTIONARY:
+      return "regdictionaryrecv";
+    case PG_TYPE_REGNAMESPACE:
+      return "regnamespacerecv";
+    case PG_TYPE_REGOPERATOR:
+      return "regoperatorrecv";
+    case PG_TYPE_REGOPER:
+      return "regoperrecv";
+    case PG_TYPE_REGPROCEDURE:
+      return "regprocedurerecv";
+    case PG_TYPE_REGPROC:
+      return "regprocrecv";
+    case PG_TYPE_REGROLE:
+      return "regrolerecv";
+    case PG_TYPE_REGTYPE:
+      return "regtyperecv";
+    case PG_TYPE_TEXT:
+      return "textrecv";
+    case PG_TYPE_TID:
+      return "tidrecv";
+    case PG_TYPE_TIME:
+      return "time_recv";
+    case PG_TYPE_TIMESTAMP:
+      return "timestamp_recv";
+    case PG_TYPE_TIMESTAMPTZ:
+      return "timestamptz_recv";
+    case PG_TYPE_TIMETZ:
+      return "timetz_recv";
+    case PG_TYPE_TSQUERY:
+      return "tsqueryrecv";
+    case PG_TYPE_TSVECTOR:
+      return "tsvectorrecv";
+    case PG_TYPE_TXID_SNAPSHOT:
+      return "txid_snapshot_recv";
+    case PG_TYPE_UNKNOWN:
+      return "unknownrecv";
+    case PG_TYPE_UUID:
+      return "uuid_recv";
+    case PG_TYPE_VARBIT:
+      return "varbit_recv";
+    case PG_TYPE_VARCHAR:
+      return "varcharrecv";
+    case PG_TYPE_VOID:
+      return "void_recv";
+    case PG_TYPE_XID8:
+      return "xid8recv";
+    case PG_TYPE_XID:
+      return "xidrecv";
+    case PG_TYPE_XML:
+      return "xml_recv";
+    default:
+      return "";
+  }
+}
+
+static inline const char* PostgresTypname(PostgresTypeId type_id) {
+  switch (type_id) {
+    case PG_TYPE_BIT:
+      return "bit";
+    case PG_TYPE_BOOL:
+      return "bool";
+    case PG_TYPE_BYTEA:
+      return "bytea";
+    case PG_TYPE_CASH:
+      return "cash";
+    case PG_TYPE_CHAR:
+      return "char";
+    case PG_TYPE_DATE:
+      return "date";
+    case PG_TYPE_FLOAT4:
+      return "float4";
+    case PG_TYPE_FLOAT8:
+      return "float8";
+    case PG_TYPE_INT2:
+      return "int2";
+    case PG_TYPE_INT4:
+      return "int4";
+    case PG_TYPE_INT8:
+      return "int8";
+    case PG_TYPE_INTERVAL:
+      return "interval";
+    case PG_TYPE_NUMERIC:
+      return "numeric";
+    case PG_TYPE_OID:
+      return "oid";
+    case PG_TYPE_TEXT:
+      return "text";
+    case PG_TYPE_TIME:
+      return "time";
+    case PG_TYPE_TIMESTAMP:
+      return "timestamp";
+    case PG_TYPE_TIMESTAMPTZ:
+      return "timestamptz";
+    case PG_TYPE_TIMETZ:
+      return "timetz";
+    case PG_TYPE_UUID:
+      return "uuid";
+    case PG_TYPE_VARBIT:
+      return "varbit";
+    case PG_TYPE_VARCHAR:
+      return "varchar";
+
+    case PG_TYPE_ARRAY:
+      return "array";
+    case PG_TYPE_RECORD:
+      return "record";
+    case PG_TYPE_RANGE:
+      return "range";
+    case PG_TYPE_DOMAIN:
+      return "domain";
+    default:
+      return "";
+  }
+}
+
 class PostgresType {
  public:
-  // From SELECT DISTINCT typreceive FROM pg_type;
-  enum PgRecv {
-    PG_RECV_UNINITIALIZED,
-    PG_RECV_ANYARRAY,
-    PG_RECV_ANYCOMPATIBLEARRAY,
-    PG_RECV_ARRAY,
-    PG_RECV_BIT,
-    PG_RECV_BOOL,
-    PG_RECV_BOX,
-    PG_RECV_BPCHAR,
-    PG_RECV_BRIN_BLOOM_SUMMARY,
-    PG_RECV_BRIN_MINMAX_MULTI_SUMMARY,
-    PG_RECV_BYTEA,
-    PG_RECV_CASH,
-    PG_RECV_CHAR,
-    PG_RECV_CIDR,
-    PG_RECV_CID,
-    PG_RECV_CIRCLE,
-    PG_RECV_CSTRING,
-    PG_RECV_DATE,
-    PG_RECV_DOMAIN,
-    PG_RECV_FLOAT4,
-    PG_RECV_FLOAT8,
-    PG_RECV_INET,
-    PG_RECV_INT2,
-    PG_RECV_INT2VECTOR,
-    PG_RECV_INT4,
-    PG_RECV_INT8,
-    PG_RECV_INTERVAL,
-    PG_RECV_JSON,
-    PG_RECV_JSONB,
-    PG_RECV_JSONPATH,
-    PG_RECV_LINE,
-    PG_RECV_LSEG,
-    PG_RECV_MACADDR,
-    PG_RECV_MACADDR8,
-    PG_RECV_MULTIRANGE,
-    PG_RECV_NAME,
-    PG_RECV_NUMERIC,
-    PG_RECV_OID,
-    PG_RECV_OIDVECTOR,
-    PG_RECV_PATH,
-    PG_RECV_PG_DDL_COMMAND,
-    PG_RECV_PG_DEPENDENCIES,
-    PG_RECV_PG_LSN,
-    PG_RECV_PG_MCV_LIST,
-    PG_RECV_PG_NDISTINCT,
-    PG_RECV_PG_NODE_TREE,
-    PG_RECV_PG_SNAPSHOT,
-    PG_RECV_POINT,
-    PG_RECV_POLY,
-    PG_RECV_RANGE,
-    PG_RECV_RECORD,
-    PG_RECV_REGCLASS,
-    PG_RECV_REGCOLLATION,
-    PG_RECV_REGCONFIG,
-    PG_RECV_REGDICTIONARY,
-    PG_RECV_REGNAMESPACE,
-    PG_RECV_REGOPERATOR,
-    PG_RECV_REGOPER,
-    PG_RECV_REGPROCEDURE,
-    PG_RECV_REGPROC,
-    PG_RECV_REGROLE,
-    PG_RECV_REGTYPE,
-    PG_RECV_TEXT,
-    PG_RECV_TID,
-    PG_RECV_TIME,
-    PG_RECV_TIMESTAMP,
-    PG_RECV_TIMESTAMPTZ,
-    PG_RECV_TIMETZ,
-    PG_RECV_TSQUERY,
-    PG_RECV_TSVECTOR,
-    PG_RECV_TXID_SNAPSHOT,
-    PG_RECV_UNKNOWN,
-    PG_RECV_UUID,
-    PG_RECV_VARBIT,
-    PG_RECV_VARCHAR,
-    PG_RECV_VOID,
-    PG_RECV_XID8,
-    PG_RECV_XID,
-    PG_RECV_XML
-  };
-
-  static std::vector<PgRecv> PgRecvAllBase(bool nested = true) {
-    std::vector<PgRecv> base = {
-        PG_RECV_BIT,      PG_RECV_BOOL,      PG_RECV_BYTEA,       PG_RECV_CASH,
-        PG_RECV_CHAR,     PG_RECV_BPCHAR,    PG_RECV_DATE,        PG_RECV_FLOAT4,
-        PG_RECV_FLOAT8,   PG_RECV_INT2,      PG_RECV_INT4,        PG_RECV_INT8,
-        PG_RECV_INTERVAL, PG_RECV_NUMERIC,   PG_RECV_OID,         PG_RECV_TEXT,
-        PG_RECV_TIME,     PG_RECV_TIMESTAMP, PG_RECV_TIMESTAMPTZ, PG_RECV_TIMETZ,
-        PG_RECV_UUID,     PG_RECV_VARBIT,    PG_RECV_VARCHAR};
+  static std::vector<PostgresTypeId> PgRecvAllBase(bool nested = true) {
+    std::vector<PostgresTypeId> base = {
+        PG_TYPE_BIT,      PG_TYPE_BOOL,      PG_TYPE_BYTEA,       PG_TYPE_CASH,
+        PG_TYPE_CHAR,     PG_TYPE_BPCHAR,    PG_TYPE_DATE,        PG_TYPE_FLOAT4,
+        PG_TYPE_FLOAT8,   PG_TYPE_INT2,      PG_TYPE_INT4,        PG_TYPE_INT8,
+        PG_TYPE_INTERVAL, PG_TYPE_NUMERIC,   PG_TYPE_OID,         PG_TYPE_TEXT,
+        PG_TYPE_TIME,     PG_TYPE_TIMESTAMP, PG_TYPE_TIMESTAMPTZ, PG_TYPE_TIMETZ,
+        PG_TYPE_UUID,     PG_TYPE_VARBIT,    PG_TYPE_VARCHAR};
 
     if (nested) {
-      base.push_back(PG_RECV_ARRAY);
-      base.push_back(PG_RECV_RECORD);
-      base.push_back(PG_RECV_RANGE);
-      base.push_back(PG_RECV_DOMAIN);
+      base.push_back(PG_TYPE_ARRAY);
+      base.push_back(PG_TYPE_RECORD);
+      base.push_back(PG_TYPE_RANGE);
+      base.push_back(PG_TYPE_DOMAIN);
     }
 
     return base;
   }
 
-  static std::string PgRecvName(PgRecv recv) {
-    switch (recv) {
-      case PG_RECV_ANYARRAY:
-        return "anyarray_recv";
-      case PG_RECV_ANYCOMPATIBLEARRAY:
-        return "anycompatiblearray_recv";
-      case PG_RECV_ARRAY:
-        return "array_recv";
-      case PG_RECV_BIT:
-        return "bit_recv";
-      case PG_RECV_BOOL:
-        return "boolrecv";
-      case PG_RECV_BOX:
-        return "box_recv";
-      case PG_RECV_BPCHAR:
-        return "bpcharrecv";
-      case PG_RECV_BRIN_BLOOM_SUMMARY:
-        return "brin_bloom_summary_recv";
-      case PG_RECV_BRIN_MINMAX_MULTI_SUMMARY:
-        return "brin_minmax_multi_summary_recv";
-      case PG_RECV_BYTEA:
-        return "bytearecv";
-      case PG_RECV_CASH:
-        return "cash_recv";
-      case PG_RECV_CHAR:
-        return "charrecv";
-      case PG_RECV_CIDR:
-        return "cidr_recv";
-      case PG_RECV_CID:
-        return "cidrecv";
-      case PG_RECV_CIRCLE:
-        return "circle_recv";
-      case PG_RECV_CSTRING:
-        return "cstring_recv";
-      case PG_RECV_DATE:
-        return "date_recv";
-      case PG_RECV_DOMAIN:
-        return "domain_recv";
-      case PG_RECV_FLOAT4:
-        return "float4recv";
-      case PG_RECV_FLOAT8:
-        return "float8recv";
-      case PG_RECV_INET:
-        return "inet_recv";
-      case PG_RECV_INT2:
-        return "int2recv";
-      case PG_RECV_INT2VECTOR:
-        return "int2vectorrecv";
-      case PG_RECV_INT4:
-        return "int4recv";
-      case PG_RECV_INT8:
-        return "int8recv";
-      case PG_RECV_INTERVAL:
-        return "interval_recv";
-      case PG_RECV_JSON:
-        return "json_recv";
-      case PG_RECV_JSONB:
-        return "jsonb_recv";
-      case PG_RECV_JSONPATH:
-        return "jsonpath_recv";
-      case PG_RECV_LINE:
-        return "line_recv";
-      case PG_RECV_LSEG:
-        return "lseg_recv";
-      case PG_RECV_MACADDR:
-        return "macaddr_recv";
-      case PG_RECV_MACADDR8:
-        return "macaddr8_recv";
-      case PG_RECV_MULTIRANGE:
-        return "multirange_recv";
-      case PG_RECV_NAME:
-        return "namerecv";
-      case PG_RECV_NUMERIC:
-        return "numeric_recv";
-      case PG_RECV_OID:
-        return "oidrecv";
-      case PG_RECV_OIDVECTOR:
-        return "oidvectorrecv";
-      case PG_RECV_PATH:
-        return "path_recv";
-      case PG_RECV_PG_DDL_COMMAND:
-        return "pg_ddl_command_recv";
-      case PG_RECV_PG_DEPENDENCIES:
-        return "pg_dependencies_recv";
-      case PG_RECV_PG_LSN:
-        return "pg_lsn_recv";
-      case PG_RECV_PG_MCV_LIST:
-        return "pg_mcv_list_recv";
-      case PG_RECV_PG_NDISTINCT:
-        return "pg_ndistinct_recv";
-      case PG_RECV_PG_NODE_TREE:
-        return "pg_node_tree_recv";
-      case PG_RECV_PG_SNAPSHOT:
-        return "pg_snapshot_recv";
-      case PG_RECV_POINT:
-        return "point_recv";
-      case PG_RECV_POLY:
-        return "poly_recv";
-      case PG_RECV_RANGE:
-        return "range_recv";
-      case PG_RECV_RECORD:
-        return "record_recv";
-      case PG_RECV_REGCLASS:
-        return "regclassrecv";
-      case PG_RECV_REGCOLLATION:
-        return "regcollationrecv";
-      case PG_RECV_REGCONFIG:
-        return "regconfigrecv";
-      case PG_RECV_REGDICTIONARY:
-        return "regdictionaryrecv";
-      case PG_RECV_REGNAMESPACE:
-        return "regnamespacerecv";
-      case PG_RECV_REGOPERATOR:
-        return "regoperatorrecv";
-      case PG_RECV_REGOPER:
-        return "regoperrecv";
-      case PG_RECV_REGPROCEDURE:
-        return "regprocedurerecv";
-      case PG_RECV_REGPROC:
-        return "regprocrecv";
-      case PG_RECV_REGROLE:
-        return "regrolerecv";
-      case PG_RECV_REGTYPE:
-        return "regtyperecv";
-      case PG_RECV_TEXT:
-        return "textrecv";
-      case PG_RECV_TID:
-        return "tidrecv";
-      case PG_RECV_TIME:
-        return "time_recv";
-      case PG_RECV_TIMESTAMP:
-        return "timestamp_recv";
-      case PG_RECV_TIMESTAMPTZ:
-        return "timestamptz_recv";
-      case PG_RECV_TIMETZ:
-        return "timetz_recv";
-      case PG_RECV_TSQUERY:
-        return "tsqueryrecv";
-      case PG_RECV_TSVECTOR:
-        return "tsvectorrecv";
-      case PG_RECV_TXID_SNAPSHOT:
-        return "txid_snapshot_recv";
-      case PG_RECV_UNKNOWN:
-        return "unknownrecv";
-      case PG_RECV_UUID:
-        return "uuid_recv";
-      case PG_RECV_VARBIT:
-        return "varbit_recv";
-      case PG_RECV_VARCHAR:
-        return "varcharrecv";
-      case PG_RECV_VOID:
-        return "void_recv";
-      case PG_RECV_XID8:
-        return "xid8recv";
-      case PG_RECV_XID:
-        return "xidrecv";
-      case PG_RECV_XML:
-        return "xml_recv";
-      default:
-        return "";
-    }
-  }
+  explicit PostgresType(PostgresTypeId type_id) : oid_(0), type_id_(type_id) {}
 
-  static std::string PgRecvTypname(PgRecv recv) {
-    switch (recv) {
-      case PG_RECV_BIT:
-        return "bit";
-      case PG_RECV_BOOL:
-        return "bool";
-      case PG_RECV_BYTEA:
-        return "bytea";
-      case PG_RECV_CASH:
-        return "cash";
-      case PG_RECV_CHAR:
-        return "char";
-      case PG_RECV_DATE:
-        return "date";
-      case PG_RECV_FLOAT4:
-        return "float4";
-      case PG_RECV_FLOAT8:
-        return "float8";
-      case PG_RECV_INT2:
-        return "int2";
-      case PG_RECV_INT4:
-        return "int4";
-      case PG_RECV_INT8:
-        return "int8";
-      case PG_RECV_INTERVAL:
-        return "interval";
-      case PG_RECV_NUMERIC:
-        return "numeric";
-      case PG_RECV_OID:
-        return "oid";
-      case PG_RECV_TEXT:
-        return "text";
-      case PG_RECV_TIME:
-        return "time";
-      case PG_RECV_TIMESTAMP:
-        return "timestamp";
-      case PG_RECV_TIMESTAMPTZ:
-        return "timestamptz";
-      case PG_RECV_TIMETZ:
-        return "timetz";
-      case PG_RECV_UUID:
-        return "uuid";
-      case PG_RECV_VARBIT:
-        return "varbit";
-      case PG_RECV_VARCHAR:
-        return "varchar";
-
-      case PG_RECV_ARRAY:
-        return "array";
-      case PG_RECV_RECORD:
-        return "record";
-      case PG_RECV_RANGE:
-        return "range";
-      case PG_RECV_DOMAIN:
-        return "domain";
-      default:
-        return "";
-    }
-  }
-
-  explicit PostgresType(PgRecv recv) : oid_(0), recv_(recv) {}
-
-  PostgresType() : PostgresType(PG_RECV_UNINITIALIZED) {}
+  PostgresType() : PostgresType(PG_TYPE_UNINITIALIZED) {}
 
   void AppendChild(const std::string& field_name, const PostgresType& type) {
     PostgresType child(type);
@@ -378,7 +377,7 @@ class PostgresType {
   }
 
   PostgresType Array(uint32_t oid = 0, const std::string& typname = "") const {
-    PostgresType out(PG_RECV_ARRAY);
+    PostgresType out(PG_TYPE_ARRAY);
     out.AppendChild("item", *this);
     out.oid_ = oid;
     out.typname_ = typname;
@@ -390,7 +389,7 @@ class PostgresType {
   }
 
   PostgresType Range(uint32_t oid = 0, const std::string& typname = "") const {
-    PostgresType out(PG_RECV_RANGE);
+    PostgresType out(PG_TYPE_RANGE);
     out.AppendChild("item", *this);
     out.oid_ = oid;
     out.typname_ = typname;
@@ -398,50 +397,50 @@ class PostgresType {
   }
 
   uint32_t oid() const { return oid_; }
-  PgRecv recv() const { return recv_; }
+  PostgresTypeId type_id() const { return type_id_; }
   const std::string& typname() const { return typname_; }
   const std::string& field_name() const { return field_name_; }
   int64_t n_children() const { return static_cast<int64_t>(children_.size()); }
   const PostgresType* child(int64_t i) const { return &children_[i]; }
 
   ArrowErrorCode SetSchema(ArrowSchema* schema) const {
-    switch (recv_) {
-      case PG_RECV_BOOL:
+    switch (type_id_) {
+      case PG_TYPE_BOOL:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
         break;
-      case PG_RECV_INT2:
+      case PG_TYPE_INT2:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
         break;
-      case PG_RECV_INT4:
+      case PG_TYPE_INT4:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT32));
         break;
-      case PG_RECV_INT8:
+      case PG_TYPE_INT8:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT64));
         break;
-      case PG_RECV_FLOAT4:
+      case PG_TYPE_FLOAT4:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_FLOAT));
         break;
-      case PG_RECV_FLOAT8:
+      case PG_TYPE_FLOAT8:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
         break;
-      case PG_RECV_CHAR:
-      case PG_RECV_BPCHAR:
-      case PG_RECV_VARCHAR:
-      case PG_RECV_TEXT:
+      case PG_TYPE_CHAR:
+      case PG_TYPE_BPCHAR:
+      case PG_TYPE_VARCHAR:
+      case PG_TYPE_TEXT:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
-      case PG_RECV_BYTEA:
+      case PG_TYPE_BYTEA:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         break;
 
-      case PG_RECV_RECORD:
+      case PG_TYPE_RECORD:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {
           NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
         }
         break;
 
-      case PG_RECV_ARRAY:
+      case PG_TYPE_ARRAY:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
         NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
         break;
@@ -466,7 +465,7 @@ class PostgresType {
 
  private:
   uint32_t oid_;
-  PgRecv recv_;
+  PostgresTypeId type_id_;
   std::string typname_;
   std::string field_name_;
   std::vector<PostgresType> children_;
@@ -474,10 +473,10 @@ class PostgresType {
  public:
   static std::unordered_map<std::string, PostgresType> AllBase() {
     std::unordered_map<std::string, PostgresType> out;
-    for (PgRecv recv : PgRecvAllBase()) {
-      PostgresType type(recv);
-      type.typname_ = PgRecvTypname(recv);
-      out.insert({PgRecvName(recv), type});
+    for (PostgresTypeId type_id : PgRecvAllBase()) {
+      PostgresType type(type_id);
+      type.typname_ = PostgresTypname(type_id);
+      out.insert({PostgresTyprecv(type_id), type});
     }
 
     return out;
@@ -509,8 +508,8 @@ class PostgresTypeResolver {
     return NANOARROW_OK;
   }
 
-  uint32_t GetOID(PostgresType::PgRecv recv) const {
-    auto result = reverse_mapping_.find(recv);
+  uint32_t GetOID(PostgresTypeId type_id) const {
+    auto result = reverse_mapping_.find(type_id);
     if (result == reverse_mapping_.end()) {
       return 0;
     } else {
@@ -529,20 +528,20 @@ class PostgresTypeResolver {
     const PostgresType& base = (*result).second;
     PostgresType type = base.WithPgTypeInfo(item.oid, item.typname);
 
-    switch (base.recv()) {
-      case PostgresType::PG_RECV_ARRAY: {
+    switch (base.type_id()) {
+      case PG_TYPE_ARRAY: {
         PostgresType child;
         NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
         mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
-        reverse_mapping_.insert({base.recv(), item.oid});
+        reverse_mapping_.insert({base.type_id(), item.oid});
         break;
       }
 
-      case PostgresType::PG_RECV_RECORD: {
+      case PG_TYPE_RECORD: {
         std::vector<std::pair<uint32_t, std::string>> child_desc;
         NANOARROW_RETURN_NOT_OK(ResolveClass(item.class_oid, &child_desc, error));
 
-        PostgresType out(PostgresType::PG_RECV_RECORD);
+        PostgresType out(PG_TYPE_RECORD);
         for (const auto& child_item : child_desc) {
           PostgresType child;
           NANOARROW_RETURN_NOT_OK(Find(child_item.first, &child, error));
@@ -550,29 +549,29 @@ class PostgresTypeResolver {
         }
 
         mapping_.insert({item.oid, out.WithPgTypeInfo(item.oid, item.typname)});
-        reverse_mapping_.insert({base.recv(), item.oid});
+        reverse_mapping_.insert({base.type_id(), item.oid});
         break;
       }
 
-      case PostgresType::PG_RECV_DOMAIN: {
+      case PG_TYPE_DOMAIN: {
         PostgresType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Domain(item.oid, item.typname)});
-        reverse_mapping_.insert({base.recv(), item.oid});
+        reverse_mapping_.insert({base.type_id(), item.oid});
         break;
       }
 
-      case PostgresType::PG_RECV_RANGE: {
+      case PG_TYPE_RANGE: {
         PostgresType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Range(item.oid, item.typname)});
-        reverse_mapping_.insert({base.recv(), item.oid});
+        reverse_mapping_.insert({base.type_id(), item.oid});
         break;
       }
 
       default:
         mapping_.insert({item.oid, type});
-        reverse_mapping_.insert({base.recv(), item.oid});
+        reverse_mapping_.insert({base.type_id(), item.oid});
         break;
     }
 
@@ -600,7 +599,7 @@ class PostgresTypeResolver {
 
  private:
   std::unordered_map<uint32_t, PostgresType> mapping_;
-  std::unordered_map<PostgresType::PgRecv, uint32_t> reverse_mapping_;
+  std::unordered_map<PostgresTypeId, uint32_t> reverse_mapping_;
   std::unordered_map<uint32_t, std::vector<std::pair<uint32_t, std::string>>> classes_;
   std::unordered_map<std::string, PostgresType> base_;
 };

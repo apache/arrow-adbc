@@ -182,26 +182,26 @@ struct BindStream {
     param_values_offsets.reserve(bind_schema->n_children);
 
     for (size_t i = 0; i < bind_schema_fields.size(); i++) {
-      PostgresType::PgRecv recv;
+      PostgresTypeId type_id;
       switch (bind_schema_fields[i].type) {
         case ArrowType::NANOARROW_TYPE_INT16:
-          recv = PostgresType::PG_RECV_INT2;
+          type_id = PG_TYPE_INT2;
           param_lengths[i] = 2;
           break;
         case ArrowType::NANOARROW_TYPE_INT32:
-          recv = PostgresType::PG_RECV_INT4;
+          type_id = PG_TYPE_INT4;
           param_lengths[i] = 4;
           break;
         case ArrowType::NANOARROW_TYPE_INT64:
-          recv = PostgresType::PG_RECV_INT8;
+          type_id = PG_TYPE_INT8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_DOUBLE:
-          recv = PostgresType::PG_RECV_FLOAT8;
+          type_id = PG_TYPE_FLOAT8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_STRING:
-          recv = PostgresType::PG_RECV_TEXT;
+          type_id = PG_TYPE_TEXT;
           param_lengths[i] = 0;
           break;
         default:
@@ -211,7 +211,7 @@ struct BindStream {
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
 
-      param_types[i] = type_resolver.GetOID(recv);
+      param_types[i] = type_resolver.GetOID(type_id);
       if (param_types[i] == 0) {
         SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
                  "') has type with no corresponding PostgreSQL type ",
