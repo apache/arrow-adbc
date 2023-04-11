@@ -1,0 +1,15 @@
+VERSION = 13.2.0
+RWINLIB = ../windows/libpq-$(VERSION)
+PKG_CPPFLAGS = -I$(RWINLIB)/include -I../src
+PKG_LIBS = -L$(RWINLIB)/lib${R_ARCH}${CRT} \
+	-lpq -lpgport -lpgcommon -lssl -lcrypto -lwsock32 -lsecur32 -lws2_32 -lgdi32 -lcrypt32 -lwldap32
+
+$(SHLIB):
+
+$(OBJECTS): winlibs
+
+clean:
+	rm -f $(SHLIB) $(OBJECTS)
+
+winlibs:
+	"${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" "../tools/winlibs.R" $(VERSION)
