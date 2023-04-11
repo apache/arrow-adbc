@@ -79,7 +79,7 @@ if(ADBC_BUILD_TESTS)
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
-                adbc_driver_shared
+                adbc_driver_common
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)
