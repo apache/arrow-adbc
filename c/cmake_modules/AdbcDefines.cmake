@@ -69,14 +69,14 @@ set_target_properties(nanoarrow
                                  "${REPOSITORY_ROOT}/c/vendor/"
                                  POSITION_INDEPENDENT_CODE ON)
 
-# Shared ADBC Driver libraries
-add_library(adbc_driver_shared STATIC EXCLUDE_FROM_ALL
-            ${REPOSITORY_ROOT}/c/driver/shared/utils.c)
-set_target_properties(adbc_driver_shared
+# ADBC libraries shared across multiple drivers
+add_library(adbc_driver_common STATIC EXCLUDE_FROM_ALL
+            ${REPOSITORY_ROOT}/c/driver/common/utils.c)
+set_target_properties(adbc_driver_common
                       PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-                                 "${REPOSITORY_ROOT}/c/driver/shared"
+                                 "${REPOSITORY_ROOT}/c/driver/common"
                                  POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(adbc_driver_shared nanoarrow)
+target_link_libraries(adbc_driver_common nanoarrow)
 
 # Set common build options
 macro(adbc_configure_target TARGET)

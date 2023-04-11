@@ -50,11 +50,11 @@ add_arrow_lib(adbc_driver_sqlite
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
               ${SQLite3_LINK_LIBRARIES}
-              adbc_driver_shared
+              adbc_driver_common
               nanoarrow
               STATIC_LINK_LIBS
               ${SQLite3_LINK_LIBRARIES}
-              adbc_driver_shared
+              adbc_driver_common
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
