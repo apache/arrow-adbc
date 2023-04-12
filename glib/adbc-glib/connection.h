@@ -64,6 +64,9 @@ gboolean gadbc_connection_release(GADBCConnection* connection, GError** error);
 GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_connection_set_option(GADBCConnection* connection, const gchar* key,
                                      const gchar* value, GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_connection_set_auto_commit(GADBCConnection* connection,
+                                          gboolean auto_commit, GError** error);
 GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* database,
                                GError** error);
@@ -72,6 +75,14 @@ GADBC_AVAILABLE_IN_0_4
 gpointer gadbc_connection_get_info(GADBCConnection* connection, guint32* info_codes,
                                    gsize n_info_codes, GError** error);
 GADBC_AVAILABLE_IN_0_4
+gpointer gadbc_connection_get_table_schema(GADBCConnection* connection,
+                                           const gchar* catalog, const gchar* db_schema,
+                                           const gchar* table_name, GError** error);
+GADBC_AVAILABLE_IN_0_4
 gpointer gadbc_connection_get_table_types(GADBCConnection* connection, GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_connection_commit(GADBCConnection* connection, GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_connection_rollback(GADBCConnection* connection, GError** error);
 
 G_END_DECLS

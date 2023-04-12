@@ -117,3 +117,14 @@ services:
     volumes:
       - .:/adbc:delegated
     command: /adbc/ci/scripts/python_wheel_unix_test.sh /adbc
+
+  ###################### Test database environments ############################
+
+  postgres_test:
+      container_name: adbc_postgres_test
+      image: postgres:latest
+      environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: password
+      ports:
+        - "5432:5432"

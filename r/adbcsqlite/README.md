@@ -54,13 +54,16 @@ flights$time_hour <- NULL
 stmt <- adbc_statement_init(con, adbc.ingest.target_table = "flights")
 adbc_statement_bind(stmt, flights)
 adbc_statement_execute_query(stmt)
-#> <nanoarrow_array_stream[invalid pointer]>
+#> [1] 336776
 adbc_statement_release(stmt)
 
 # Query it
 stmt <- adbc_statement_init(con)
 adbc_statement_set_sql_query(stmt, "SELECT * from flights")
-result <- tibble::as_tibble(adbc_statement_execute_query(stmt))
+stream <- nanoarrow::nanoarrow_allocate_array_stream()
+adbc_statement_execute_query(stmt, stream)
+#> [1] -1
+result <- tibble::as_tibble(stream)
 adbc_statement_release(stmt)
 
 result

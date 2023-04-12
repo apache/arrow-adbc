@@ -228,6 +228,10 @@ struct BindStream {
           pg_type = PgType::kInt8;
           param_lengths[i] = 8;
           break;
+        case ArrowType::NANOARROW_TYPE_DOUBLE:
+          pg_type = PgType::kFloat8;
+          param_lengths[i] = 8;
+          break;
         case ArrowType::NANOARROW_TYPE_STRING:
           pg_type = PgType::kText;
           param_lengths[i] = 0;
@@ -304,10 +308,22 @@ struct BindStream {
             param_values[col] = param_values_buffer.data() + param_values_offsets[col];
           }
           switch (bind_schema_fields[col].type) {
+            case ArrowType::NANOARROW_TYPE_INT32: {
+              const int64_t value = ToNetworkInt32(
+                  array_view->children[col]->buffer_views[1].data.as_int32[row]);
+              std::memcpy(param_values[col], &value, sizeof(int32_t));
+              break;
+            }
             case ArrowType::NANOARROW_TYPE_INT64: {
               const int64_t value = ToNetworkInt64(
                   array_view->children[col]->buffer_views[1].data.as_int64[row]);
               std::memcpy(param_values[col], &value, sizeof(int64_t));
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_DOUBLE: {
+              const uint64_t value = ToNetworkFloat8(
+                  array_view->children[col]->buffer_views[1].data.as_double[row]);
+              std::memcpy(param_values[col], &value, sizeof(uint64_t));
               break;
             }
             case ArrowType::NANOARROW_TYPE_STRING: {
@@ -721,6 +737,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_INT64:
         create += " BIGINT";
+        break;
+      case ArrowType::NANOARROW_TYPE_DOUBLE:
+        create += " DOUBLE PRECISION";
         break;
       case ArrowType::NANOARROW_TYPE_STRING:
         create += " TEXT";

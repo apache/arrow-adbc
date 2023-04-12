@@ -31,6 +31,6 @@ require "gi"
 
 ADBC = GI.load("ADBC")
 
-require "arrow"
+require_relative "helper"
 
 exit(Test::Unit::AutoRunner.run(true, test_dir.to_s))

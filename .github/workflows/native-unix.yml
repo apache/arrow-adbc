@@ -457,6 +457,8 @@ jobs:
           - {os: macOS-latest,   r: 'release', pkg: 'adbcsqlite'}
           - {os: windows-latest,   r: 'release', pkg: 'adbcsqlite'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsqlite'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcpostgresql'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcpostgresql'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -474,6 +476,12 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
+
+      - name: Set PKG_CONFIG_PATH on MacOS
+        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'macOS'
+        run: |
+          PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
 
       - name: Prepare sources (driver manager)
         if: matrix.config.pkg == 'adbcdrivermanager'
@@ -493,11 +501,25 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           pak-version: devel
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
           needs: check
           working-directory: r/${{ matrix.config.pkg }}
+
+      - name: Start postgres test database
+        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
+        run: |
+          cd r/adbcpostgresql
+          docker compose up --detach postgres_test
+          ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
+          echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
 
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
           working-directory: r/${{ matrix.config.pkg }}
+
+      - name: Stop postgres test database
+        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
+        run: |
+          cd r/adbcpostgresql
+          docker compose down

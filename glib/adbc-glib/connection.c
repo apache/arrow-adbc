@@ -32,6 +32,9 @@
  * #GADBCConnection is a class for connection.
  */
 
+#define BOOLEAN_TO_OPTION_VALUE(boolean) \
+  ((boolean) ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED)
+
 typedef struct {
   gboolean initialized;
   struct AdbcConnection adbc_connection;
@@ -148,6 +151,22 @@ gboolean gadbc_connection_set_option(GADBCConnection* connection, const gchar* k
 }
 
 /**
+ * gadbc_connection_set_auto_commit:
+ * @connection: A #GADBCConnection.
+ * @auto_commit: Whether auto commit is enabled or not.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Returns: %TRUE if this is set successfully, %FALSE otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_connection_set_auto_commit(GADBCConnection* connection,
+                                          gboolean auto_commit, GError** error) {
+  return gadbc_connection_set_option(connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                     BOOLEAN_TO_OPTION_VALUE(auto_commit), error);
+}
+
+/**
  * gadbc_connection_init:
  * @connection: A #GADBCConnection.
  * @database: A #GADBCDatabase.
@@ -242,6 +261,43 @@ gpointer gadbc_connection_get_info(GADBCConnection* connection, guint32* info_co
 }
 
 /**
+ * gadbc_connection_get_table_schema:
+ * @connection: A #GADBCConnection.
+ * @catalog: (nullable): A catalog or %NULL if not applicable.
+ * @db_schema: (nullable): A database schema or %NULL if not applicable.
+ * @table_name: A table name.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Get the Apache Arrow schema of a table.
+ *
+ * Returns: The result set as `struct ArrowSchema *`. It should
+ *   be freed with the `ArrowSchema::release` callback then
+ *   g_free() when no longer needed.
+ *
+ * Since: 0.4.0
+ */
+gpointer gadbc_connection_get_table_schema(GADBCConnection* connection,
+                                           const gchar* catalog, const gchar* db_schema,
+                                           const gchar* table_name, GError** error) {
+  const gchar* context = "[adbc][connection][get-table-schema]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  if (!adbc_connection) {
+    return NULL;
+  }
+  struct ArrowSchema* array_schema = g_new0(struct ArrowSchema, 1);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcConnectionGetTableSchema(
+      adbc_connection, catalog, db_schema, table_name, array_schema, &adbc_error);
+  if (gadbc_error_check(error, status_code, &adbc_error, context)) {
+    return array_schema;
+  } else {
+    g_free(array_schema);
+    return NULL;
+  }
+}
+
+/**
  * gadbc_connection_get_table_types:
  * @connection: A #GADBCConnection.
  * @error: (nullable): Return location for a #GError or %NULL.
@@ -278,6 +334,56 @@ gpointer gadbc_connection_get_table_types(GADBCConnection* connection, GError** 
     g_free(array_stream);
     return NULL;
   }
+}
+
+/**
+ * gadbc_connection_commit:
+ * @connection: A #GADBCConnection.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Commit any pending transactions. Only used if auto commit is
+ * disabled.
+ *
+ * Behavior is undefined if this is mixed with SQL transaction
+ * statements.
+ *
+ * Returns: %TRUE if the commit is done successfully, %FALSE
+ *   otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_connection_commit(GADBCConnection* connection, GError** error) {
+  const gchar* context = "[adbc][connection][commit]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  struct AdbcError adbc_error = {};
+  return gadbc_error_check(error, AdbcConnectionCommit(adbc_connection, &adbc_error),
+                           &adbc_error, context);
+}
+
+/**
+ * gadbc_connection_rollback:
+ * @connection: A #GADBCConnection.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Rollback any pending transactions. Only used if auto commit is
+ * disabled.
+ *
+ * Behavior is undefined if this is mixed with SQL transaction
+ * statements.
+ *
+ * Returns: %TRUE if the rollback is done successfully, %FALSE
+ *   otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_connection_rollback(GADBCConnection* connection, GError** error) {
+  const gchar* context = "[adbc][connection][rollback]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  struct AdbcError adbc_error = {};
+  return gadbc_error_check(error, AdbcConnectionRollback(adbc_connection, &adbc_error),
+                           &adbc_error, context);
 }
 
 /**

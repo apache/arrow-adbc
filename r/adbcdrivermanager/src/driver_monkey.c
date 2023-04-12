@@ -215,8 +215,14 @@ static AdbcStatusCode MonkeyStatementExecuteQuery(struct AdbcStatement* statemen
                                                   struct ArrowArrayStream* out,
                                                   int64_t* rows_affected,
                                                   struct AdbcError* error) {
+  if (out == NULL) {
+    *rows_affected = 0;
+    return ADBC_STATUS_OK;
+  }
+
   struct MonkeyStatementPrivate* statement_private =
       (struct MonkeyStatementPrivate*)statement->private_data;
+
   memcpy(out, &statement_private->stream, sizeof(struct ArrowArrayStream));
   statement_private->stream.release = NULL;
   *rows_affected = -1;
