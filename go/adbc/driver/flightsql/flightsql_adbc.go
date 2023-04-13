@@ -41,7 +41,6 @@ import (
 	"io"
 	"math"
 	"net/url"
-	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -49,6 +48,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow/go/v12/arrow"
 	"github.com/apache/arrow/go/v12/arrow/array"
 	"github.com/apache/arrow/go/v12/arrow/flight"
@@ -1002,11 +1002,11 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 // earlier).
 func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	g := getObjects{ctx: ctx, depth: depth, catalog: catalog, dbSchema: dbSchema, tableName: tableName, columnName: columnName, tableType: tableType}
-	if err := g.init(c); err != nil {
+	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
+	if err := g.Init(c.db.alloc, c.getObjectsDbSchemas, c.getObjectsTables); err != nil {
 		return nil, err
 	}
-	defer g.release()
+	defer g.Release()
 
 	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
 	info, err := c.cl.GetCatalogs(ctx)
@@ -1026,228 +1026,21 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 		for i := 0; i < arr.Len(); i++ {
 			// XXX: force copy since accessor is unsafe
 			catalogName := string([]byte(arr.Value(i)))
-			g.appendCatalog(catalogName)
+			g.AppendCatalog(catalogName)
 			foundCatalog = true
 		}
 	}
 
 	// Implementations like Dremio report no catalogs, but still have schemas
 	if !foundCatalog && depth != adbc.ObjectDepthCatalogs {
-		g.appendCatalog("")
+		g.AppendCatalog("")
 	}
 
 	if err = rdr.Err(); err != nil {
 		return nil, adbcFromFlightStatus(err)
 	}
 
-	return g.finish()
-}
-
-// Helper to store state needed for GetObjects
-type getObjects struct {
-	ctx        context.Context
-	depth      adbc.ObjectDepth
-	catalog    *string
-	dbSchema   *string
-	tableName  *string
-	columnName *string
-	tableType  []string
-
-	builder           *array.RecordBuilder
-	schemaLookup      map[string][]string
-	tableLookup       map[catalogAndSchema][]tableInfo
-	catalogPattern    *regexp.Regexp
-	columnNamePattern *regexp.Regexp
-
-	catalogNameBuilder           *array.StringBuilder
-	catalogDbSchemasBuilder      *array.ListBuilder
-	catalogDbSchemasItems        *array.StructBuilder
-	dbSchemaNameBuilder          *array.StringBuilder
-	dbSchemaTablesBuilder        *array.ListBuilder
-	dbSchemaTablesItems          *array.StructBuilder
-	tableNameBuilder             *array.StringBuilder
-	tableTypeBuilder             *array.StringBuilder
-	tableColumnsBuilder          *array.ListBuilder
-	tableColumnsItems            *array.StructBuilder
-	columnNameBuilder            *array.StringBuilder
-	ordinalPositionBuilder       *array.Int32Builder
-	remarksBuilder               *array.StringBuilder
-	xdbcDataTypeBuilder          *array.Int16Builder
-	xdbcTypeNameBuilder          *array.StringBuilder
-	xdbcColumnSizeBuilder        *array.Int32Builder
-	xdbcDecimalDigitsBuilder     *array.Int16Builder
-	xdbcNumPrecRadixBuilder      *array.Int16Builder
-	xdbcNullableBuilder          *array.Int16Builder
-	xdbcColumnDefBuilder         *array.StringBuilder
-	xdbcSqlDataTypeBuilder       *array.Int16Builder
-	xdbcDatetimeSubBuilder       *array.Int16Builder
-	xdbcCharOctetLengthBuilder   *array.Int32Builder
-	xdbcIsNullableBuilder        *array.StringBuilder
-	xdbcScopeCatalogBuilder      *array.StringBuilder
-	xdbcScopeSchemaBuilder       *array.StringBuilder
-	xdbcScopeTableBuilder        *array.StringBuilder
-	xdbcIsAutoincrementBuilder   *array.BooleanBuilder
-	xdbcIsGeneratedcolumnBuilder *array.BooleanBuilder
-	tableConstraintsBuilder      *array.ListBuilder
-}
-
-func (g *getObjects) init(c *cnxn) error {
-	if catalogToDbSchemas, err := c.getObjectsDbSchemas(g.ctx, g.depth, g.catalog, g.dbSchema); err != nil {
-		return err
-	} else {
-		g.schemaLookup = catalogToDbSchemas
-	}
-
-	if tableLookup, err := c.getObjectsTables(g.ctx, g.depth, g.catalog, g.dbSchema, g.tableName, g.columnName, g.tableType); err != nil {
-		return err
-	} else {
-		g.tableLookup = tableLookup
-	}
-
-	if catalogPattern, err := patternToRegexp(g.catalog); err != nil {
-		return adbc.Error{
-			Msg:  err.Error(),
-			Code: adbc.StatusInvalidArgument,
-		}
-	} else {
-		g.catalogPattern = catalogPattern
-	}
-	if columnNamePattern, err := patternToRegexp(g.columnName); err != nil {
-		return adbc.Error{
-			Msg:  err.Error(),
-			Code: adbc.StatusInvalidArgument,
-		}
-	} else {
-		g.columnNamePattern = columnNamePattern
-	}
-
-	g.builder = array.NewRecordBuilder(c.db.alloc, adbc.GetObjectsSchema)
-	g.catalogNameBuilder = g.builder.Field(0).(*array.StringBuilder)
-	g.catalogDbSchemasBuilder = g.builder.Field(1).(*array.ListBuilder)
-	g.catalogDbSchemasItems = g.catalogDbSchemasBuilder.ValueBuilder().(*array.StructBuilder)
-	g.dbSchemaNameBuilder = g.catalogDbSchemasItems.FieldBuilder(0).(*array.StringBuilder)
-	g.dbSchemaTablesBuilder = g.catalogDbSchemasItems.FieldBuilder(1).(*array.ListBuilder)
-	g.dbSchemaTablesItems = g.dbSchemaTablesBuilder.ValueBuilder().(*array.StructBuilder)
-	g.tableNameBuilder = g.dbSchemaTablesItems.FieldBuilder(0).(*array.StringBuilder)
-	g.tableTypeBuilder = g.dbSchemaTablesItems.FieldBuilder(1).(*array.StringBuilder)
-	g.tableColumnsBuilder = g.dbSchemaTablesItems.FieldBuilder(2).(*array.ListBuilder)
-	g.tableColumnsItems = g.tableColumnsBuilder.ValueBuilder().(*array.StructBuilder)
-	g.columnNameBuilder = g.tableColumnsItems.FieldBuilder(0).(*array.StringBuilder)
-	g.ordinalPositionBuilder = g.tableColumnsItems.FieldBuilder(1).(*array.Int32Builder)
-	g.remarksBuilder = g.tableColumnsItems.FieldBuilder(2).(*array.StringBuilder)
-	g.xdbcDataTypeBuilder = g.tableColumnsItems.FieldBuilder(3).(*array.Int16Builder)
-	g.xdbcTypeNameBuilder = g.tableColumnsItems.FieldBuilder(4).(*array.StringBuilder)
-	g.xdbcColumnSizeBuilder = g.tableColumnsItems.FieldBuilder(5).(*array.Int32Builder)
-	g.xdbcDecimalDigitsBuilder = g.tableColumnsItems.FieldBuilder(6).(*array.Int16Builder)
-	g.xdbcNumPrecRadixBuilder = g.tableColumnsItems.FieldBuilder(7).(*array.Int16Builder)
-	g.xdbcNullableBuilder = g.tableColumnsItems.FieldBuilder(8).(*array.Int16Builder)
-	g.xdbcColumnDefBuilder = g.tableColumnsItems.FieldBuilder(9).(*array.StringBuilder)
-	g.xdbcSqlDataTypeBuilder = g.tableColumnsItems.FieldBuilder(10).(*array.Int16Builder)
-	g.xdbcDatetimeSubBuilder = g.tableColumnsItems.FieldBuilder(11).(*array.Int16Builder)
-	g.xdbcCharOctetLengthBuilder = g.tableColumnsItems.FieldBuilder(12).(*array.Int32Builder)
-	g.xdbcIsNullableBuilder = g.tableColumnsItems.FieldBuilder(13).(*array.StringBuilder)
-	g.xdbcScopeCatalogBuilder = g.tableColumnsItems.FieldBuilder(14).(*array.StringBuilder)
-	g.xdbcScopeSchemaBuilder = g.tableColumnsItems.FieldBuilder(15).(*array.StringBuilder)
-	g.xdbcScopeTableBuilder = g.tableColumnsItems.FieldBuilder(16).(*array.StringBuilder)
-	g.xdbcIsAutoincrementBuilder = g.tableColumnsItems.FieldBuilder(17).(*array.BooleanBuilder)
-	g.xdbcIsGeneratedcolumnBuilder = g.tableColumnsItems.FieldBuilder(18).(*array.BooleanBuilder)
-	g.tableConstraintsBuilder = g.dbSchemaTablesItems.FieldBuilder(3).(*array.ListBuilder)
-
-	return nil
-}
-
-func (g *getObjects) release() {
-	g.builder.Release()
-}
-
-func (g *getObjects) finish() (array.RecordReader, error) {
-	record := g.builder.NewRecord()
-	defer record.Release()
-	result, err := array.NewRecordReader(g.builder.Schema(), []arrow.Record{record})
-	if err != nil {
-		return nil, adbc.Error{
-			Msg:  err.Error(),
-			Code: adbc.StatusInternal,
-		}
-	}
-	return result, nil
-}
-
-func (g *getObjects) appendCatalog(catalogName string) {
-	if g.catalogPattern != nil && !g.catalogPattern.MatchString(catalogName) {
-		return
-	}
-	g.catalogNameBuilder.Append(catalogName)
-
-	if g.depth == adbc.ObjectDepthCatalogs {
-		g.catalogDbSchemasBuilder.AppendNull()
-		return
-	}
-	g.catalogDbSchemasBuilder.Append(true)
-
-	for _, dbSchemaName := range g.schemaLookup[catalogName] {
-		g.appendDbSchema(catalogName, dbSchemaName)
-	}
-}
-
-func (g *getObjects) appendDbSchema(catalogName, dbSchemaName string) {
-	g.dbSchemaNameBuilder.Append(dbSchemaName)
-	g.catalogDbSchemasItems.Append(true)
-
-	if g.depth == adbc.ObjectDepthDBSchemas {
-		g.dbSchemaTablesBuilder.AppendNull()
-		return
-	}
-	g.dbSchemaTablesBuilder.Append(true)
-
-	for _, tableInfo := range g.tableLookup[catalogAndSchema{
-		catalog: catalogName,
-		schema:  dbSchemaName,
-	}] {
-		g.appendTableInfo(tableInfo)
-	}
-}
-
-func (g *getObjects) appendTableInfo(tableInfo tableInfo) {
-	g.tableNameBuilder.Append(tableInfo.name)
-	g.tableTypeBuilder.Append(tableInfo.tableType)
-	g.dbSchemaTablesItems.Append(true)
-
-	if g.depth == adbc.ObjectDepthTables {
-		g.tableColumnsBuilder.AppendNull()
-		g.tableConstraintsBuilder.AppendNull()
-		return
-	}
-	g.tableColumnsBuilder.Append(true)
-	// TODO: unimplemented for now
-	g.tableConstraintsBuilder.Append(true)
-
-	for colIndex, column := range tableInfo.schema.Fields() {
-		if g.columnNamePattern != nil && !g.columnNamePattern.MatchString(column.Name) {
-			continue
-		}
-		g.columnNameBuilder.Append(column.Name)
-		g.ordinalPositionBuilder.Append(int32(colIndex + 1))
-		g.remarksBuilder.AppendNull()
-		g.xdbcDataTypeBuilder.AppendNull()
-		g.xdbcTypeNameBuilder.AppendNull()
-		g.xdbcColumnSizeBuilder.AppendNull()
-		g.xdbcDecimalDigitsBuilder.AppendNull()
-		g.xdbcNumPrecRadixBuilder.AppendNull()
-		g.xdbcNullableBuilder.AppendNull()
-		g.xdbcColumnDefBuilder.AppendNull()
-		g.xdbcSqlDataTypeBuilder.AppendNull()
-		g.xdbcDatetimeSubBuilder.AppendNull()
-		g.xdbcCharOctetLengthBuilder.AppendNull()
-		g.xdbcIsNullableBuilder.AppendNull()
-		g.xdbcScopeCatalogBuilder.AppendNull()
-		g.xdbcScopeSchemaBuilder.AppendNull()
-		g.xdbcScopeTableBuilder.AppendNull()
-		g.xdbcIsAutoincrementBuilder.AppendNull()
-		g.xdbcIsGeneratedcolumnBuilder.AppendNull()
-
-		g.tableColumnsItems.Append(true)
-	}
+	return g.Finish()
 }
 
 // Helper function to read and validate a metadata stream
@@ -1266,38 +1059,6 @@ func (c *cnxn) readInfo(ctx context.Context, expectedSchema *arrow.Schema, info 
 		}
 	}
 	return rdr, nil
-}
-
-// Helper function that compiles a SQL-style pattern (%, _) to a regex
-func patternToRegexp(pattern *string) (*regexp.Regexp, error) {
-	if pattern == nil {
-		return nil, nil
-	}
-
-	var builder strings.Builder
-	if _, err := builder.WriteString("^"); err != nil {
-		return nil, err
-	}
-	for _, c := range *pattern {
-		switch {
-		case c == rune('_'):
-			if _, err := builder.WriteString("."); err != nil {
-				return nil, err
-			}
-		case c == rune('%'):
-			if _, err := builder.WriteString(".*"); err != nil {
-				return nil, err
-			}
-		default:
-			if _, err := builder.WriteString(regexp.QuoteMeta(string([]rune{c}))); err != nil {
-				return nil, err
-			}
-		}
-	}
-	if _, err := builder.WriteString("$"); err != nil {
-		return nil, err
-	}
-	return regexp.Compile(builder.String())
 }
 
 // Helper function to build up a map of catalogs to DB schemas
@@ -1340,20 +1101,11 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 	return
 }
 
-type catalogAndSchema struct {
-	catalog, schema string
-}
-
-type tableInfo struct {
-	name, tableType string
-	schema          *arrow.Schema
-}
-
-func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (result map[catalogAndSchema][]tableInfo, err error) {
+func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (result internal.SchemaToTableInfo, err error) {
 	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return
 	}
-	result = make(map[catalogAndSchema][]tableInfo)
+	result = make(map[internal.CatalogAndSchema][]internal.TableInfo)
 
 	// Pre-populate the map of which schemas are in which catalogs
 	includeSchema := depth == adbc.ObjectDepthAll || depth == adbc.ObjectDepthColumns
@@ -1393,9 +1145,9 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			if !dbSchema.IsNull(i) {
 				dbSchemaName = string([]byte(dbSchema.Value(i)))
 			}
-			key := catalogAndSchema{
-				catalog: catalogName,
-				schema:  dbSchemaName,
+			key := internal.CatalogAndSchema{
+				Catalog: catalogName,
+				Schema:  dbSchemaName,
 			}
 
 			var schema *arrow.Schema
@@ -1411,10 +1163,10 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 				reader.Release()
 			}
 
-			result[key] = append(result[key], tableInfo{
-				name:      string([]byte(tableName.Value(i))),
-				tableType: string([]byte(tableType.Value(i))),
-				schema:    schema,
+			result[key] = append(result[key], internal.TableInfo{
+				Name:      string([]byte(tableName.Value(i))),
+				TableType: string([]byte(tableType.Value(i))),
+				Schema:    schema,
 			})
 		}
 	}
