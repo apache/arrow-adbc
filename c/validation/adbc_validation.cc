@@ -1678,7 +1678,7 @@ void StatementTest::TestSqlQueryInts() {
 
 void StatementTest::TestSqlQueryFloats() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT CAST(1.0 AS FLOAT)", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT CAST(1.5 AS FLOAT)", &error),
               IsOkStatus(&error));
 
   {
@@ -1702,11 +1702,11 @@ void StatementTest::TestSqlQueryFloats() {
     switch (reader.fields[0].type) {
       case NANOARROW_TYPE_FLOAT:
         ASSERT_NO_FATAL_FAILURE(
-            CompareArray<float>(reader.array_view->children[0], {1.0f}));
+            CompareArray<float>(reader.array_view->children[0], {1.5f}));
         break;
       case NANOARROW_TYPE_DOUBLE:
         ASSERT_NO_FATAL_FAILURE(
-            CompareArray<double>(reader.array_view->children[0], {1.0}));
+            CompareArray<double>(reader.array_view->children[0], {1.5}));
         break;
       default:
         FAIL() << "Unexpected data type: " << reader.fields[0].type;
