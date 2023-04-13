@@ -505,13 +505,13 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		`
 
 	const getSchema = `statement := statement ||
-		' SELECT 
+		' SELECT
 				table_catalog, table_schema, table_name, column_name,
 				ordinal_position, is_nullable::boolean, data_type, numeric_precision,
-				numeric_precision_radix, numeric_scale, is_identity::boolean, 
+				numeric_precision_radix, numeric_scale, is_identity::boolean,
 				identity_generation, identity_increment, comment
 		FROM ' || rec.database_name || '.INFORMATION_SCHEMA.COLUMNS';
-	
+
 		  counter := counter + 1;
 		END FOR;
 	  `
