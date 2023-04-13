@@ -50,13 +50,9 @@ static inline uint64_t SwapHostToNetwork(uint64_t x) { return htonll(x); }
 static inline uint32_t SwapNetworkToHost(uint32_t x) { return ntohl(x); }
 static inline uint32_t SwapHostToNetwork(uint32_t x) { return htonl(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) {
-  return (((x & 0xFFULL) << 56) |
-          ((x & 0xFF00ULL) << 40) |
-          ((x & 0xFF0000ULL) << 24) |
-          ((x & 0xFF000000ULL) << 8) |
-          ((x & 0xFF00000000ULL) >> 8) |
-          ((x & 0xFF0000000000ULL) >> 24) |
-          ((x & 0xFF000000000000ULL) >> 40) |
+  return (((x & 0xFFULL) << 56) | ((x & 0xFF00ULL) << 40) | ((x & 0xFF0000ULL) << 24) |
+          ((x & 0xFF000000ULL) << 8) | ((x & 0xFF00000000ULL) >> 8) |
+          ((x & 0xFF0000000000ULL) >> 24) | ((x & 0xFF000000000000ULL) >> 40) |
           ((x & 0xFF00000000000000ULL) >> 56));
 }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return SwapNetworkToHost(x); }
