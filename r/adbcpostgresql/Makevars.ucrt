@@ -1,2 +1,0 @@
-CRT=-ucrt
-include Makevars.win
