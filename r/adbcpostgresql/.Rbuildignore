@@ -8,3 +8,4 @@
 ^src/sqlite3\.h$
 ^docker-compose\.yml$
 ^configure\.win$
+^windows$
