@@ -387,7 +387,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
         kPgCopyBinarySignature.size() + sizeof(uint32_t) + sizeof(uint32_t);
     // https://www.postgresql.org/docs/14/sql-copy.html#id-1.9.3.55.9.4.5
     const int size = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
-    if (size < kPqHeaderLength) {
+    if (size < static_cast<int>(kPqHeaderLength)) {
       return EIO;
     } else if (std::strcmp(pgbuf_, kPgCopyBinarySignature.data()) != 0) {
       return EIO;
