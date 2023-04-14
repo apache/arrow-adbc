@@ -44,7 +44,7 @@ struct StringBuilder {
   size_t capacity;
 };
 void StringBuilderInit(struct StringBuilder* builder, size_t initial_size);
-void StringBuilderAppend(struct StringBuilder* builder, const char* value);
+void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...);
 void StringBuilderReset(struct StringBuilder* builder);
 
 /// Check an NanoArrow status code.

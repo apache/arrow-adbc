@@ -124,19 +124,33 @@ void StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
   builder->size = 0;
   builder->capacity = initial_size;
 }
-void StringBuilderAppend(struct StringBuilder* builder, const char* value) {
-  size_t length = strlen(value);
-  size_t new_size = builder->size + length;
-  if (new_size > builder->capacity) {
-    size_t new_capacity = builder->size + length - builder->capacity;
-    if (builder->size == 0) new_capacity++;
+void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
+  va_list argptr;
+  char* value;
 
-    builder->buffer = realloc(builder->buffer, new_capacity);
-    builder->capacity = new_capacity;
+  va_start(argptr, fmt);
+  while (*fmt) {
+    switch (*fmt++) {
+      case 's':
+        value = va_arg(argptr, char*);
+        size_t length = strlen(value);
+        size_t new_size = builder->size + length;
+        if (new_size > builder->capacity) {
+          size_t new_capacity = builder->size + length - builder->capacity;
+          if (builder->size == 0) new_capacity++;
+
+          builder->buffer = realloc(builder->buffer, new_capacity);
+          builder->capacity = new_capacity;
+        }
+
+        memcpy(builder->buffer + builder->size, value, length);
+        builder->buffer[new_size] = '\0';
+        builder->size = new_size;
+    }
+    // TODO: handle other cases, report error
+    // for unsupported type
   }
-  memcpy(builder->buffer + builder->size, value, length);
-  builder->buffer[new_size] = '\0';
-  builder->size = new_size;
+  va_end(argptr);
 }
 void StringBuilderReset(struct StringBuilder* builder) {
   if (builder->buffer) {

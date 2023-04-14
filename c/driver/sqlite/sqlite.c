@@ -1021,8 +1021,7 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
 
   struct StringBuilder query = {0};
   StringBuilderInit(&query, /*initial_size=*/64);
-  StringBuilderAppend(&query, "SELECT * FROM ");
-  StringBuilderAppend(&query, table_name);
+  StringBuilderAppend(&query, "ss", "SELECT * FROM ", table_name);
 
   sqlite3_stmt* stmt = NULL;
   int rc =
@@ -1223,24 +1222,20 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   StringBuilderInit(&create_query, 256);
   StringBuilderInit(&insert_query, 256);
 
-  StringBuilderAppend(&create_query, "CREATE TABLE ");
-  StringBuilderAppend(&create_query, stmt->target_table);
-  StringBuilderAppend(&create_query, " (");
-
-  StringBuilderAppend(&insert_query, "INSERT INTO ");
-  StringBuilderAppend(&insert_query, stmt->target_table);
-  StringBuilderAppend(&insert_query, " VALUES (");
+  StringBuilderAppend(&create_query, "sss", "CREATE TABLE ", stmt->target_table, " (");
+  StringBuilderAppend(&insert_query, "sss", "INSERT INTO ", stmt->target_table,
+                      " VALUES (");
 
   for (int i = 0; i < stmt->binder.schema.n_children; i++) {
-    if (i > 0) StringBuilderAppend(&create_query, ", ");
+    if (i > 0) StringBuilderAppend(&create_query, "s", ", ");
     // XXX: should escape the column name too
-    StringBuilderAppend(&create_query, stmt->binder.schema.children[i]->name);
+    StringBuilderAppend(&create_query, "s", stmt->binder.schema.children[i]->name);
 
-    if (i > 0) StringBuilderAppend(&insert_query, ", ");
-    StringBuilderAppend(&insert_query, "?");
+    if (i > 0) StringBuilderAppend(&insert_query, "s", ", ");
+    StringBuilderAppend(&insert_query, "s", "?");
   }
-  StringBuilderAppend(&create_query, ")");
-  StringBuilderAppend(&insert_query, ")");
+  StringBuilderAppend(&create_query, "s", ")");
+  StringBuilderAppend(&insert_query, "s", ")");
 
   sqlite3_stmt* create = NULL;
   if (!stmt->append) {
