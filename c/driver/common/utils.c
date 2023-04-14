@@ -138,11 +138,12 @@ void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
     if (builder->buffer == NULL) { /* TODO: handle error */
     }
     builder->capacity += n + 1;
+
+    va_start(argptr);
     vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
+    va_end(argptr);
   }
   builder->size += n;
-
-  va_end(argptr);
 }
 void StringBuilderReset(struct StringBuilder* builder) {
   if (builder->buffer) {
