@@ -112,7 +112,6 @@ AdbcStatusCode InferSchema(const PostgresTypeResolver& type_resolver, PGresult* 
   ArrowSchemaInit(out);
   CHECK_NA_ADBC(ArrowSchemaSetTypeStruct(out, num_fields), error);
   for (int i = 0; i < num_fields; i++) {
-    ArrowType field_type = NANOARROW_TYPE_NA;
     const Oid pg_oid = PQftype(result, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
