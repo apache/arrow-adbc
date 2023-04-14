@@ -139,7 +139,7 @@ void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
     }
     builder->capacity += n + 1;
 
-    va_start(argptr);
+    va_start(argptr, fmt);
     vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
     va_end(argptr);
   }
