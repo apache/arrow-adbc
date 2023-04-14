@@ -15,9 +15,26 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# See configure for a description of this process.
-# This is only for development: this file and bootstrap.R will be removed
-# prior to packaging
-if [ -f bootstrap.R ]; then
-  $R_HOME/bin/Rscript bootstrap.R
-fi
+VERSION = 13.2.0
+RWINLIB = ../windows/libpq-$(VERSION)
+PKG_CPPFLAGS = -I$(RWINLIB)/include -I../src -DADBC_EXPORT=""
+PKG_LIBS = -L$(RWINLIB)/lib${R_ARCH}${CRT} \
+	-lpq -lpgport -lpgcommon -lssl -lcrypto -lwsock32 -lsecur32 -lws2_32 -lgdi32 -lcrypt32 -lwldap32
+
+OBJECTS = init.o \
+    connection.o \
+    database.o \
+    statement.o \
+    type.o \
+    postgresql.o \
+    nanoarrow/nanoarrow.o
+
+$(SHLIB):
+
+$(OBJECTS): winlibs
+
+clean:
+	rm -f $(SHLIB) $(OBJECTS)
+
+winlibs:
+	"${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" "../tools/winlibs.R" $(VERSION)

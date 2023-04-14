@@ -15,9 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# See configure for a description of this process.
-# This is only for development: this file and bootstrap.R will be removed
-# prior to packaging
-if [ -f bootstrap.R ]; then
-  $R_HOME/bin/Rscript bootstrap.R
-fi
+VERSION <- commandArgs(TRUE)
+if(!file.exists(sprintf("../windows/libpq-%s/include/libpq-fe.h", VERSION))){
+  if(getRversion() < "3.3.0") setInternet2()
+  download.file(sprintf("https://github.com/rwinlib/libpq/archive/v%s.zip", VERSION), "lib.zip", quiet = TRUE)
+  dir.create("../windows", showWarnings = FALSE)
+  unzip("lib.zip", exdir = "../windows")
+  unlink("lib.zip")
+}

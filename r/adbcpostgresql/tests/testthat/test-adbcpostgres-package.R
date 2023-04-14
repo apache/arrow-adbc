@@ -35,9 +35,10 @@ test_that("default options can open a database and execute a query", {
   stmt <- adbcdrivermanager::adbc_statement_init(con)
   expect_s3_class(stmt, "adbcpostgresql_statement")
 
+  # Use BIGINT to make sure that endian swapping on Windows works
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER);"
+    "CREATE TABLE crossfit (exercise TEXT, difficulty_level BIGINT);"
   )
   adbcdrivermanager::adbc_statement_execute_query(stmt)
   adbcdrivermanager::adbc_statement_release(stmt)
@@ -80,7 +81,7 @@ test_that("default options can open a database and execute a query", {
     as.data.frame(stream),
     data.frame(
       exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
-      difficulty_level = c(3L, 5L, 7L, 10L),
+      difficulty_level = c(3, 5, 7, 10),
       stringsAsFactors = FALSE
     )
   )
