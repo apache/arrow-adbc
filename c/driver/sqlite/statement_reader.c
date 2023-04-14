@@ -182,8 +182,8 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
         }
         case NANOARROW_TYPE_FLOAT:
         case NANOARROW_TYPE_DOUBLE: {
-          int64_t value = ArrowArrayViewGetDoubleUnsafe(binder->batch.children[col],
-                                                        binder->next_row);
+          double value = ArrowArrayViewGetDoubleUnsafe(binder->batch.children[col],
+                                                       binder->next_row);
           status = sqlite3_bind_double(stmt, col + 1, value);
           break;
         }
