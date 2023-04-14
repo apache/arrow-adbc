@@ -49,6 +49,8 @@ struct TypeMapping {
   std::unordered_map<uint32_t, PgType> type_mapping;
   // Maps standardized type names to the PostgreSQL type OID to use
   // Example: kInt8 == 20
+  // We can't use enum PgType as the key because enums don't have a hash
+  // implementation on gcc 4.8 (i.e., R 3.6 on Windows)
   std::unordered_map<int32_t, uint32_t> canonical_types;
 
   void Insert(uint32_t oid, const char* typname, const char* typreceive);
