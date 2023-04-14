@@ -305,7 +305,7 @@ class PostgresTypeResolver {
   // Resolve the oid for a given type_id. Returns 0 if the oid cannot be
   // resolved.
   uint32_t GetOID(PostgresTypeId type_id) const {
-    auto result = reverse_mapping_.find(type_id);
+    auto result = reverse_mapping_.find(static_cast<int32_t>(type_id));
     if (result == reverse_mapping_.end()) {
       return 0;
     } else {
@@ -334,7 +334,7 @@ class PostgresTypeResolver {
         PostgresType child;
         NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
         mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
-        reverse_mapping_.insert({base.type_id(), item.oid});
+        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
         array_mapping_.insert({child.oid(), item.oid});
         break;
       }
@@ -351,7 +351,7 @@ class PostgresTypeResolver {
         }
 
         mapping_.insert({item.oid, out.WithPgTypeInfo(item.oid, item.typname)});
-        reverse_mapping_.insert({base.type_id(), item.oid});
+        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
         break;
       }
 
@@ -359,7 +359,7 @@ class PostgresTypeResolver {
         PostgresType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Domain(item.oid, item.typname)});
-        reverse_mapping_.insert({base.type_id(), item.oid});
+        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
         break;
       }
 
@@ -367,13 +367,13 @@ class PostgresTypeResolver {
         PostgresType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Range(item.oid, item.typname)});
-        reverse_mapping_.insert({base.type_id(), item.oid});
+        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
         break;
       }
 
       default:
         mapping_.insert({item.oid, type});
-        reverse_mapping_.insert({base.type_id(), item.oid});
+        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
         break;
     }
 
@@ -392,7 +392,9 @@ class PostgresTypeResolver {
 
  private:
   std::unordered_map<uint32_t, PostgresType> mapping_;
-  std::unordered_map<PostgresTypeId, uint32_t> reverse_mapping_;
+  // We can't use PostgresTypeId as an unordered map key because there is no
+  // built-in hasher for an enum on gcc 4.8 (i.e., R 3.6 on Windows).
+  std::unordered_map<int32_t, uint32_t> reverse_mapping_;
   std::unordered_map<uint32_t, uint32_t> array_mapping_;
   std::unordered_map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> classes_;
   std::unordered_map<std::string, PostgresType> base_;
