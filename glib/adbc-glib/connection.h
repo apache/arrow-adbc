@@ -67,6 +67,9 @@ gboolean gadbc_connection_set_option(GADBCConnection* connection, const gchar* k
 GADBC_AVAILABLE_IN_0_4
 gboolean gadbc_connection_set_auto_commit(GADBCConnection* connection,
                                           gboolean auto_commit, GError** error);
+GADBC_AVAILABLE_IN_0_4
+gboolean gadbc_connection_set_read_only(GADBCConnection* connection, gboolean read_only,
+                                        GError** error);
 GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* database,
                                GError** error);

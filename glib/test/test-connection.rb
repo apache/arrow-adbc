@@ -134,6 +134,18 @@ class ConnectionTest < Test::Unit::TestCase
     end
   end
 
+  def test_read_only
+    open_connection do |connection|
+      message =
+        "[adbc][connection][set-option]" +
+        "[ADBC_STATUS_NOT_IMPLEMENTED (2)][0] " +
+        "[SQLite] Unknown connection option adbc.connection.readonly=false"
+      assert_raise(ADBC::Error::NotImplemented.new(message)) do
+        connection.read_only = false
+      end
+    end
+  end
+
   def test_commit
     open_connection do |connection|
       execute_sql(connection,

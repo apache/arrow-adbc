@@ -167,6 +167,22 @@ gboolean gadbc_connection_set_auto_commit(GADBCConnection* connection,
 }
 
 /**
+ * gadbc_connection_set_read_only:
+ * @connection: A #GADBCConnection.
+ * @read_only: Whether read only or not.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Returns: %TRUE if this is set successfully, %FALSE otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_connection_set_read_only(GADBCConnection* connection, gboolean read_only,
+                                        GError** error) {
+  return gadbc_connection_set_option(connection, ADBC_CONNECTION_OPTION_READ_ONLY,
+                                     BOOLEAN_TO_OPTION_VALUE(read_only), error);
+}
+
+/**
  * gadbc_connection_init:
  * @connection: A #GADBCConnection.
  * @database: A #GADBCDatabase.
