@@ -32,7 +32,7 @@ import org.apache.arrow.memory.RootAllocator;
 import org.junit.jupiter.api.Assumptions;
 
 public class FlightSqlQuirks extends SqlValidationQuirks {
-  static final String FLIGHT_SQL_LOCATION_ENV_VAR = "ADBC_FLIGHT_SQL_LOCATION";
+  static final String FLIGHT_SQL_LOCATION_ENV_VAR = "ADBC_SQLITE_FLIGHTSQL_URI";
 
   static String getFlightLocation() {
     final String location = System.getenv(FLIGHT_SQL_LOCATION_ENV_VAR);
@@ -48,7 +48,7 @@ public class FlightSqlQuirks extends SqlValidationQuirks {
 
     final Map<String, Object> parameters = new HashMap<>();
     parameters.put(AdbcDriver.PARAM_URL, url);
-    return FlightSqlDriver.INSTANCE.open(parameters);
+    return new FlightSqlDriver(allocator).open(parameters);
   }
 
   @Override

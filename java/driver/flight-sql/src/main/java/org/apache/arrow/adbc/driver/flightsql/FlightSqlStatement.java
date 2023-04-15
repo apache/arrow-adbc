@@ -22,6 +22,7 @@ import com.google.protobuf.ByteString;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
@@ -169,6 +170,12 @@ public class FlightSqlStatement implements AdbcStatement {
         statement.close();
       }
     } catch (FlightRuntimeException e) {
+      // XXX: FlightSqlClient.executeUpdate does some extra wrapping that we need to undo
+      if (e.getCause() instanceof ExecutionException
+          && e.getCause().getCause() instanceof FlightRuntimeException) {
+        throw FlightSqlDriverUtil.fromFlightException(
+            (FlightRuntimeException) e.getCause().getCause());
+      }
       throw FlightSqlDriverUtil.fromFlightException(e);
     }
     return new UpdateResult(bindRoot.getRowCount());
