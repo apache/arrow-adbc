@@ -20,6 +20,14 @@ require "tmpdir"
 require "arrow"
 
 module Helper
+  def require_gi_bindings(major, minor, micro)
+    return if GLib.check_binding_version?(major, minor, micro)
+    message =
+      "Require gobject-introspection #{major}.#{minor}.#{micro} or later: " +
+      GLib::BINDING_VERSION.join(".")
+    omit(message)
+  end
+
   def execute_statement(statement, need_result: true)
     _, c_abi_array_stream, n_rows_affected = statement.execute(need_result)
     begin
