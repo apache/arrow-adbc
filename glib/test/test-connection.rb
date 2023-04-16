@@ -146,6 +146,20 @@ class ConnectionTest < Test::Unit::TestCase
     end
   end
 
+  def test_isolation_level
+    open_connection do |connection|
+      message =
+        "[adbc][connection][set-option]" +
+        "[ADBC_STATUS_NOT_IMPLEMENTED (2)][0] " +
+        "[SQLite] Unknown connection option " +
+        "adbc.connection.transaction.isolation_level=" +
+        "adbc.connection.transaction.isolation.linearizable"
+      assert_raise(ADBC::Error::NotImplemented.new(message)) do
+        connection.isolation_level = :linearizable
+      end
+    end
+  end
+
   def test_commit
     open_connection do |connection|
       execute_sql(connection,

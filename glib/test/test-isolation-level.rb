@@ -15,18 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require "adbc"
+class IsolationLevelTest < Test::Unit::TestCase
+  include Helper
 
-require "tempfile"
-
-require "test-unit"
-
-module Helper
-  def require_gi_bindings(major, minor, micro)
-    return if GLib.check_binding_version?(major, minor, micro)
-    message =
-      "Require gobject-introspection #{major}.#{minor}.#{micro} or later: " +
-      GLib::BINDING_VERSION.join(".")
-    omit(message)
+  def test_to_string
+    require_gi_bindings(4, 1, 3)
+    assert_equal("adbc.connection.transaction.isolation.default",
+                 ADBC::IsolationLevel.to_string(:default))
   end
 end
