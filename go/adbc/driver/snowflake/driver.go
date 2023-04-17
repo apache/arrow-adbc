@@ -21,7 +21,10 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
+	"fmt"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,6 +76,30 @@ func init() {
 	}
 }
 
+func errToAdbcErr(code adbc.Status, err error) error {
+	var e adbc.Error
+	if errors.As(err, &e) {
+		e.Code = code
+		return e
+	}
+
+	var sferr *gosnowflake.SnowflakeError
+	if errors.As(err, &sferr) {
+		var sqlstate [5]byte
+		copy(sqlstate[:], sferr.SQLState[:5])
+		return adbc.Error{
+			Msg:        sferr.Error(),
+			VendorCode: int32(sferr.Number),
+			SqlState:   sqlstate,
+		}
+	}
+
+	return adbc.Error{
+		Msg:  err.Error(),
+		Code: code,
+	}
+}
+
 type Driver struct {
 	Alloc memory.Allocator
 }
@@ -118,7 +145,7 @@ func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
 
 	cn, err := connector.Connect(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
 
 	return &cnxn{cn: cn.(snowflakeConn), db: d, ctor: connector, sqldb: sql.OpenDB(connector)}, nil
@@ -332,7 +359,7 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 	)
 	for rows.Next() {
 		if err := rows.Scan(&created, &name, &kind, &dbname, &schema); err != nil {
-			return nil, err
+			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
 		}
 
 		// schema for SHOW TERSE DATABASES is:
@@ -387,6 +414,7 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 	var rows *sql.Rows
 	rows, err = c.sqldb.QueryContext(ctx, query)
 	if err != nil {
+		err = errToAdbcErr(adbc.StatusIO, err)
 		return
 	}
 	defer rows.Close()
@@ -394,6 +422,7 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 	var catalogName, schemaName string
 	for rows.Next() {
 		if err = rows.Scan(&catalogName, &schemaName); err != nil {
+			err = errToAdbcErr(adbc.StatusIO, err)
 			return
 		}
 
@@ -535,6 +564,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	query := queryPrefix + noSchema + cond + querySuffix
 	rows, err = c.sqldb.QueryContext(ctx, query)
 	if err != nil {
+		err = errToAdbcErr(adbc.StatusIO, err)
 		return
 	}
 	defer rows.Close()
@@ -542,6 +572,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	var tblCat, tblSchema, tblName, tblType string
 	for rows.Next() {
 		if err = rows.Scan(&tblCat, &tblSchema, &tblName, &tblType); err != nil {
+			err = errToAdbcErr(adbc.StatusIO, err)
 			return
 		}
 
@@ -590,6 +621,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 				&numericPrecRadix, &numericScale, &isIdent, &identGen,
 				&identIncrement, &comment)
 			if err != nil {
+				err = errToAdbcErr(adbc.StatusIO, err)
 				return
 			}
 
@@ -627,8 +659,130 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	return
 }
 
+func descToField(name, typ, isnull, primary string, comment sql.NullString) (field arrow.Field, err error) {
+	field.Name = name
+	if isnull == "Y" {
+		field.Nullable = true
+	}
+	md := make(map[string]string)
+	md["DATA_TYPE"] = typ
+	md["PRIMARY_KEY"] = primary
+	if comment.Valid {
+		md["COMMENT"] = comment.String
+	}
+	field.Metadata = arrow.MetadataFrom(md)
+
+	paren := strings.Index(typ, "(")
+	if paren == -1 {
+		// types without params
+		switch typ {
+		case "FLOAT":
+			fallthrough
+		case "DOUBLE":
+			field.Type = arrow.PrimitiveTypes.Float64
+		case "DATE":
+			field.Type = arrow.FixedWidthTypes.Date32
+		// array, object and variant are all represented as strings by
+		// snowflake's return
+		case "ARRAY":
+			fallthrough
+		case "OBJECT":
+			fallthrough
+		case "VARIANT":
+			field.Type = arrow.BinaryTypes.String
+		case "GEOGRAPHY":
+			fallthrough
+		case "GEOMETRY":
+			field.Type = arrow.BinaryTypes.String
+		case "BOOLEAN":
+			field.Type = arrow.FixedWidthTypes.Boolean
+		default:
+			err = adbc.Error{
+				Msg:  fmt.Sprintf("Snowflake Data Type %s not implemented", typ),
+				Code: adbc.StatusNotImplemented,
+			}
+		}
+		return
+	}
+
+	prefix := typ[:paren]
+	switch prefix {
+	case "VARCHAR", "TEXT":
+		field.Type = arrow.BinaryTypes.String
+	case "BINARY", "VARBINARY":
+		field.Type = arrow.BinaryTypes.Binary
+	case "NUMBER":
+		comma := strings.Index(typ, ",")
+		scale, err := strconv.ParseInt(typ[comma+1:len(typ)-1], 10, 32)
+		if err != nil {
+			return field, adbc.Error{
+				Msg:  "could not parse Scale from type '" + typ + "'",
+				Code: adbc.StatusInvalidData,
+			}
+		}
+		if scale == 0 {
+			field.Type = arrow.PrimitiveTypes.Int64
+		} else {
+			field.Type = arrow.PrimitiveTypes.Float64
+		}
+	case "TIME":
+		field.Type = arrow.FixedWidthTypes.Time64ns
+	case "DATETIME":
+		fallthrough
+	case "TIMESTAMP", "TIMESTAMP_NTZ":
+		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
+	case "TIMESTAMP_LTZ":
+		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+	case "TIMESTAMP_TZ":
+		field.Type = arrow.FixedWidthTypes.Timestamp_ns
+	default:
+		err = adbc.Error{
+			Msg:  fmt.Sprintf("Snowflake Data Type %s not implemented", typ),
+			Code: adbc.StatusNotImplemented,
+		}
+	}
+	return
+}
+
 func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
-	panic("not implemented") // TODO: Implement
+	tblParts := make([]string, 0, 3)
+	if catalog != nil {
+		tblParts = append(tblParts, strconv.Quote(*catalog))
+	}
+	if dbSchema != nil {
+		tblParts = append(tblParts, strconv.Quote(*dbSchema))
+	}
+	tblParts = append(tblParts, strconv.Quote(tableName))
+	fullyQualifiedTable := strings.Join(tblParts, ".")
+
+	rows, err := c.sqldb.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
+
+	var (
+		name, typ, kind, isnull, primary, unique string
+		def, check, expr, comment, policyName    sql.NullString
+		fields                                   = []arrow.Field{}
+	)
+
+	for rows.Next() {
+		err := rows.Scan(&name, &typ, &kind, &isnull, &def, &primary, &unique,
+			&check, &expr, &comment, &policyName)
+		if err != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
+		}
+
+		f, err := descToField(name, typ, isnull, primary, comment)
+		if err != nil {
+			return nil, err
+		}
+		fields = append(fields, f)
+	}
+
+	sc := arrow.NewSchema(fields, nil)
+	return sc, nil
 }
 
 // GetTableTypes returns a list of the table types in the database.
@@ -639,7 +793,13 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //	----------------|--------------
 //	table_type			| utf8 not null
 func (c *cnxn) GetTableTypes(_ context.Context) (array.RecordReader, error) {
-	panic("not implemented") // TODO: Implement
+	bldr := array.NewRecordBuilder(c.db.alloc, adbc.TableTypesSchema)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.StringBuilder).AppendValues([]string{"BASE TABLE", "TEMPORARY TABLE", "VIEW"}, nil)
+	final := bldr.NewRecord()
+	defer final.Release()
+	return array.NewRecordReader(adbc.TableTypesSchema, []arrow.Record{final})
 }
 
 // Commit commits any pending transactions on this connection, it should
