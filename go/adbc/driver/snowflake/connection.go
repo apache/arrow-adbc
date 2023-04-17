@@ -40,6 +40,7 @@ type snowflakeConn interface {
 	driver.ExecerContext
 	driver.QueryerContext
 	driver.Pinger
+	QueryArrowStream(context.Context, string) (gosnowflake.ArrowStreamLoader, error)
 }
 
 type cnxn struct {

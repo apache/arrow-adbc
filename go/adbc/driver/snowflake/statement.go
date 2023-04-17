@@ -26,9 +26,16 @@ import (
 	"github.com/apache/arrow/go/v12/arrow/memory"
 )
 
+const (
+	OptionStatementQueueSize = "adbc.flight.sql.rpc.queue_size"
+)
+
 type statement struct {
-	cnxn  *cnxn
-	alloc memory.Allocator
+	cnxn      *cnxn
+	alloc     memory.Allocator
+	queueSize int
+
+	query string
 }
 
 // Close releases any relevant resources associated with this statement
@@ -54,7 +61,8 @@ func (st *statement) SetOption(key string, val string) error {
 // For queries expected to be executed repeatedly, Prepare should be
 // called before execution.
 func (st *statement) SetSqlQuery(query string) error {
-	panic("not implemented") // TODO: Implement
+	st.query = query
+	return nil
 }
 
 // ExecuteQuery executes the current query or prepared statement
@@ -62,8 +70,15 @@ func (st *statement) SetSqlQuery(query string) error {
 // of rows affected if known, otherwise it will be -1.
 //
 // This invalidates any prior result sets on this statement.
-func (st *statement) ExecuteQuery(_ context.Context) (array.RecordReader, int64, error) {
-	panic("not implemented") // TODO: Implement
+func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	loader, err := st.cnxn.cn.QueryArrowStream(ctx, st.query)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	rdr, err := newRecordReader(ctx, st.alloc, loader, st.queueSize)
+	nrec := loader.TotalRows()
+	return rdr, nrec, err
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
@@ -75,7 +90,8 @@ func (st *statement) ExecuteUpdate(_ context.Context) (int64, error) {
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (st *statement) Prepare(_ context.Context) error {
-	panic("not implemented") // TODO: Implement
+	// snowflake doesn't provide a "Prepare" api, this is a no-op
+	return nil
 }
 
 // SetSubstraitPlan allows setting a serialized Substrait execution
@@ -131,7 +147,10 @@ func (st *statement) BindStream(ctx context.Context, stream array.RecordReader) 
 // This should return an error with StatusNotImplemented if the schema
 // cannot be determined.
 func (st *statement) GetParameterSchema() (*arrow.Schema, error) {
-	panic("not implemented") // TODO: Implement
+	// snowflake's API does not provide any way to determine the schema
+	return nil, adbc.Error{
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 // ExecutePartitions executes the current statement and gets the results
