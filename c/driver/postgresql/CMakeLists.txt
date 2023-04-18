@@ -15,17 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
-
-project(adbc_driver_postgresql
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
-include(CTest)
-
 if(WIN32)
   # XXX: for now, assume vcpkg
   find_package(PostgreSQL REQUIRED)
@@ -54,14 +43,14 @@ add_arrow_lib(adbc_driver_postgresql
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
               ${LIBPQ_LINK_LIBRARIES}
-              nanoarrow
               STATIC_LINK_LIBS
               ${LIBPQ_LINK_LIBRARIES}
-              nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 include_directories(SYSTEM ${LIBPQ_INCLUDE_DIRS})
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
+
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
@@ -81,11 +70,12 @@ if(ADBC_BUILD_TESTS)
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
-                nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
   adbc_configure_target(adbc-driver-postgresql-test)
 endif()
+
+link_libraries(nanoarrow)
 
 validate_config()
 config_summary_message()

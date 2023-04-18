@@ -15,18 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../.." ABSOLUTE)
-message(STATUS "${REPOSITORY_ROOT}")
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
-
-project(adbc_driver_manager
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
-include(CTest)
-
 add_arrow_lib(adbc_driver_manager
               SOURCES
               adbc_driver_manager.cc
