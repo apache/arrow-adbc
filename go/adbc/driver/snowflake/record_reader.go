@@ -89,6 +89,8 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 
 	group.Go(func() error {
 		defer rr.Release()
+		defer r.Close()
+
 		for rr.Next() && ctx.Err() == nil {
 			rec := rr.Record()
 			rec.Retain()

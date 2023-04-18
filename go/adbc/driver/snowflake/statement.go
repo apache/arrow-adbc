@@ -19,11 +19,16 @@ package snowflake
 
 import (
 	"context"
+	"database/sql/driver"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v12/arrow"
 	"github.com/apache/arrow/go/v12/arrow/array"
 	"github.com/apache/arrow/go/v12/arrow/memory"
+	"github.com/snowflakedb/gosnowflake"
 )
 
 const (
@@ -35,7 +40,11 @@ type statement struct {
 	alloc     memory.Allocator
 	queueSize int
 
-	query string
+	query       string
+	targetTable string
+	append      bool
+
+	binder array.RecordReader
 }
 
 // Close releases any relevant resources associated with this statement
@@ -43,16 +52,45 @@ type statement struct {
 //
 // A statement instance should not be used after Close is called.
 func (st *statement) Close() error {
-	// noop
+	if st.cnxn == nil {
+		return adbc.Error{
+			Msg:  "statement already closed",
+			Code: adbc.StatusInvalidState}
+	}
+
+	if st.binder != nil {
+		st.binder.Release()
+		st.binder = nil
+	}
+	st.cnxn = nil
 	return nil
 }
 
 // SetOption sets a string option on this statement
 func (st *statement) SetOption(key string, val string) error {
-	return adbc.Error{
-		Msg:  "SetOption not implemented for Snowflake.Statement",
-		Code: adbc.StatusNotImplemented,
+	switch key {
+	case adbc.OptionKeyIngestTargetTable:
+		st.query = ""
+		st.targetTable = val
+	case adbc.OptionKeyIngestMode:
+		switch val {
+		case adbc.OptionValueIngestModeAppend:
+			st.append = true
+		case adbc.OptionValueIngestModeCreate:
+			st.append = false
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	default:
+		return adbc.Error{
+			Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),
+			Code: adbc.StatusInvalidArgument,
+		}
 	}
+	return nil
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -62,7 +100,245 @@ func (st *statement) SetOption(key string, val string) error {
 // called before execution.
 func (st *statement) SetSqlQuery(query string) error {
 	st.query = query
+	st.targetTable = ""
 	return nil
+}
+
+func toSnowflakeType(dt arrow.DataType) string {
+	switch dt.ID() {
+	case arrow.EXTENSION:
+		return toSnowflakeType(dt.(arrow.ExtensionType).StorageType())
+	case arrow.DICTIONARY:
+		return toSnowflakeType(dt.(*arrow.DictionaryType).ValueType)
+	case arrow.RUN_END_ENCODED:
+		return toSnowflakeType(dt.(*arrow.RunEndEncodedType).Encoded())
+	case arrow.INT8, arrow.INT16, arrow.INT32, arrow.INT64,
+		arrow.UINT8, arrow.UINT16, arrow.UINT32, arrow.UINT64:
+		return "integer"
+	case arrow.FLOAT32, arrow.FLOAT16, arrow.FLOAT64:
+		return "double"
+	case arrow.DECIMAL, arrow.DECIMAL256:
+		dec := dt.(arrow.DecimalType)
+		return fmt.Sprintf("NUMERIC(%d,%d)", dec.GetPrecision(), dec.GetScale())
+	case arrow.STRING, arrow.LARGE_STRING:
+		return "text"
+	case arrow.BINARY, arrow.LARGE_BINARY:
+		return "binary"
+	case arrow.FIXED_SIZE_BINARY:
+		fsb := dt.(*arrow.FixedSizeBinaryType)
+		return fmt.Sprintf("binary(%d)", fsb.ByteWidth)
+	case arrow.BOOL:
+		return "boolean"
+	case arrow.TIME32, arrow.TIME64:
+		t := dt.(arrow.TemporalWithUnit)
+		prec := int(t.TimeUnit()) * 3
+		return fmt.Sprintf("time(%d)", prec)
+	case arrow.DATE32, arrow.DATE64:
+		return "date"
+	case arrow.TIMESTAMP:
+		ts := dt.(*arrow.TimestampType)
+		prec := int(ts.Unit) * 3
+		if ts.TimeZone == "" {
+			return fmt.Sprintf("timestamp_tz(%d)", prec)
+		}
+		return fmt.Sprintf("timestamp_ltz(%d)", prec)
+	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
+		return "variant"
+	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
+		return "array"
+	case arrow.STRUCT, arrow.MAP:
+		return "object"
+	}
+
+	return ""
+}
+
+func (st *statement) initIngest(ctx context.Context) (string, error) {
+	var (
+		createBldr, insertBldr strings.Builder
+	)
+
+	createBldr.WriteString("CREATE TABLE ")
+	createBldr.WriteString(st.targetTable)
+	createBldr.WriteString(" (")
+
+	insertBldr.WriteString("INSERT INTO ")
+	insertBldr.WriteString(st.targetTable)
+	insertBldr.WriteString(" VALUES (")
+
+	for i, f := range st.binder.Schema().Fields() {
+		if i != 0 {
+			insertBldr.WriteString(", ")
+			createBldr.WriteString(", ")
+		}
+
+		createBldr.WriteString(strconv.Quote(f.Name))
+		createBldr.WriteString(" ")
+		ty := toSnowflakeType(f.Type)
+		if ty == "" {
+			return "", adbc.Error{
+				Msg:  fmt.Sprintf("unimplemented type conversion for field %s, arrow type: %s", f.Name, f.Type),
+				Code: adbc.StatusNotImplemented,
+			}
+		}
+
+		createBldr.WriteString(ty)
+		if !f.Nullable {
+			createBldr.WriteString(" NOT NULL")
+		}
+
+		insertBldr.WriteString("?")
+	}
+
+	createBldr.WriteString(")")
+	insertBldr.WriteString(")")
+
+	if !st.append {
+		// create the table!
+		createQuery := createBldr.String()
+		_, err := st.cnxn.cn.ExecContext(ctx, createQuery, nil)
+		if err != nil {
+			return "", errToAdbcErr(adbc.StatusIO, err)
+		}
+	}
+
+	return insertBldr.String(), nil
+}
+
+type nativeArrowArr[T string | []byte] interface {
+	arrow.Array
+	Value(int) T
+}
+
+func convToArr[T string | []byte](arr nativeArrowArr[T]) interface{} {
+	v := make([]interface{}, arr.Len())
+	for i := 0; i < arr.Len(); i++ {
+		if arr.IsNull(i) {
+			continue
+		}
+		v[i] = arr.Value(i)
+	}
+	return gosnowflake.Array(&v)
+}
+
+func convMarshal(arr arrow.Array) interface{} {
+	v := make([]interface{}, arr.Len())
+	for i := 0; i < arr.Len(); i++ {
+		if arr.IsNull(i) {
+			continue
+		}
+		v[i] = arr.ValueStr(i)
+	}
+	return gosnowflake.Array(&v)
+}
+
+func convToSlice[T any](arr arrow.Array, vals []T) interface{} {
+	out := make([]interface{}, arr.Len())
+	for i, v := range vals {
+		if arr.IsNull(i) {
+			continue
+		}
+		out[i] = v
+	}
+	return gosnowflake.Array(&out)
+}
+
+func getQueryArg(arr arrow.Array) interface{} {
+	switch arr := arr.(type) {
+	case *array.Int8:
+		v := arr.Int8Values()
+		return convToSlice(arr, v)
+	case *array.Uint8:
+		v := arr.Uint8Values()
+		return convToSlice(arr, v)
+	case *array.Int16:
+		v := arr.Int16Values()
+		return convToSlice(arr, v)
+	case *array.Uint16:
+		v := arr.Uint16Values()
+		return convToSlice(arr, v)
+	case *array.Int32:
+		v := arr.Int32Values()
+		return convToSlice(arr, v)
+	case *array.Uint32:
+		v := arr.Uint32Values()
+		return convToSlice(arr, v)
+	case *array.Int64:
+		v := arr.Int64Values()
+		return convToSlice(arr, v)
+	case *array.Uint64:
+		v := arr.Uint64Values()
+		return convToSlice(arr, v)
+	case *array.Float32:
+		v := arr.Float32Values()
+		return convToSlice(arr, v)
+	case *array.Float64:
+		v := arr.Float64Values()
+		return convToSlice(arr, v)
+	case *array.LargeBinary:
+		return convToArr[[]byte](arr)
+	case *array.Binary:
+		return convToArr[[]byte](arr)
+	case *array.LargeString:
+		return convToArr[string](arr)
+	case *array.String:
+		return convToArr[string](arr)
+	default:
+		// default convert to array of strings and pass to snowflake driver
+		// not the most efficient, but snowflake doesn't really give a better
+		// route currently short of writing everything out to a Parquet file
+		// and then uploading that (which might be preferable)
+		return convMarshal(arr)
+	}
+}
+
+func (st *statement) executeIngest(ctx context.Context) (int64, error) {
+	if st.binder == nil {
+		return -1, adbc.Error{
+			Msg:  "must call Bind before bulk ingestion",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	insertQuery, err := st.initIngest(ctx)
+	if err != nil {
+		return -1, err
+	}
+
+	// if the ingestion is large enough it might make more sense to
+	// write this out to a temporary file / stage / etc. and use
+	// the snowflake bulk loader that way.
+	//
+	// on the other hand, according to the documentation,
+	// https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-Batch_Inserts_and_Binding_Parameters
+	// snowflake's internal driver work should already be doing this.
+
+	defer func() {
+		st.binder.Release()
+		st.binder = nil
+	}()
+
+	var n int64
+	args := make([]driver.NamedValue, len(st.binder.Schema().Fields()))
+	for st.binder.Next() {
+		rec := st.binder.Record()
+		for i, c := range rec.Columns() {
+			args[i].Name = rec.ColumnName(i)
+			args[i].Value = getQueryArg(c)
+		}
+
+		r, err := st.cnxn.cn.ExecContext(ctx, insertQuery, args)
+		if err != nil {
+			return n, err
+		}
+
+		rows, err := r.RowsAffected()
+		if err == nil {
+			n += rows
+		}
+	}
+
+	return n, nil
 }
 
 // ExecuteQuery executes the current query or prepared statement
@@ -71,6 +347,18 @@ func (st *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	if st.targetTable != "" {
+		n, err := st.executeIngest(ctx)
+		return nil, n, err
+	}
+
+	if st.query == "" {
+		return nil, -1, adbc.Error{
+			Msg:  "cannot execute without a query",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
 	loader, err := st.cnxn.cn.QueryArrowStream(ctx, st.query)
 	if err != nil {
 		return nil, -1, err
@@ -83,8 +371,29 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
-func (st *statement) ExecuteUpdate(_ context.Context) (int64, error) {
-	panic("not implemented") // TODO: Implement
+func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
+	if st.targetTable != "" {
+		return st.executeIngest(ctx)
+	}
+
+	if st.query == "" {
+		return -1, adbc.Error{
+			Msg:  "cannot execute without a query",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)
+	if err != nil {
+		return -1, errToAdbcErr(adbc.StatusIO, err)
+	}
+
+	n, err := r.RowsAffected()
+	if err != nil {
+		n = -1
+	}
+
+	return n, nil
 }
 
 // Prepare turns this statement into a prepared statement to be executed
@@ -116,8 +425,15 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 // The driver will call release on the passed in Record when it is done,
 // but it may not do this until the statement is closed or another
 // record is bound.
-func (st *statement) Bind(ctx context.Context, values arrow.Record) error {
-	panic("not implemented") // TODO: Implement
+func (st *statement) Bind(_ context.Context, values arrow.Record) error {
+	if st.binder != nil {
+		st.binder.Release()
+		st.binder = nil
+	}
+
+	var err error
+	st.binder, err = array.NewRecordReader(values.Schema(), []arrow.Record{values})
+	return err
 }
 
 // BindStream uses a record batch stream to bind parameters for this
@@ -162,6 +478,16 @@ func (st *statement) GetParameterSchema() (*arrow.Schema, error) {
 //
 // If the driver does not support partitioned results, this will return
 // an error with a StatusNotImplemented code.
-func (st *statement) ExecutePartitions(_ context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
-	panic("not implemented") // TODO: Implement
+func (st *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
+	if st.query == "" {
+		return nil, adbc.Partitions{}, -1, adbc.Error{
+			Msg:  "cannot execute without a query",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	return nil, adbc.Partitions{}, -1, adbc.Error{
+		Msg:  "ExecutePartitions not implemented for Snowflake",
+		Code: adbc.StatusNotImplemented,
+	}
 }

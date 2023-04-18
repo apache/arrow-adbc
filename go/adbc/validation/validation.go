@@ -29,7 +29,6 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v12/arrow"
 	"github.com/apache/arrow/go/v12/arrow/array"
-	"github.com/apache/arrow/go/v12/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v12/arrow/memory"
 	"github.com/stretchr/testify/suite"
 )
@@ -58,6 +57,12 @@ type DriverQuirks interface {
 	GetMetadata(adbc.InfoCode) interface{}
 	// Create a sample table from an arrow record
 	CreateSampleTable(tableName string, r arrow.Record) error
+	// Field Metadata for Sample Table for comparison
+	SampleTableSchemaMetadata(tblName string, dt arrow.DataType) arrow.Metadata
+	// Whether the driver supports bulk ingest
+	SupportsBulkIngest() bool
+	// have the driver drop a table with the correct SQL syntax
+	DropTable(adbc.Connection, string) error
 
 	Alloc() memory.Allocator
 }
@@ -213,8 +218,13 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 			code := codeCol.Value(i)
 
 			child := valUnion.Field(valUnion.ChildID(i))
-			// currently we only define utf8 values for metadata
-			c.Equal(c.Quirks.GetMetadata(adbc.InfoCode(code)), child.(*array.String).Value(i), adbc.InfoCode(code).String())
+			if child.IsNull(i) {
+				exp := c.Quirks.GetMetadata(adbc.InfoCode(code))
+				c.Nilf(exp, "got nil for info %s, expected: %s", adbc.InfoCode(code), exp)
+			} else {
+				// currently we only define utf8 values for metadata
+				c.Equal(c.Quirks.GetMetadata(adbc.InfoCode(code)), child.(*array.String).Value(i), adbc.InfoCode(code).String())
+			}
 		}
 	}
 }
@@ -243,13 +253,9 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
 		{Name: "ints", Type: arrow.PrimitiveTypes.Int64, Nullable: true,
-			Metadata: arrow.MetadataFrom(map[string]string{
-				flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
-				flightsql.TableNameKey: "sample_test", flightsql.PrecisionKey: "10"})},
+			Metadata: c.Quirks.SampleTableSchemaMetadata("sample_test", arrow.PrimitiveTypes.Int64)},
 		{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true,
-			Metadata: arrow.MetadataFrom(map[string]string{
-				flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
-				flightsql.TableNameKey: "sample_test"})},
+			Metadata: c.Quirks.SampleTableSchemaMetadata("sample_test", arrow.BinaryTypes.String)},
 	}, nil)
 
 	c.Truef(expectedSchema.Equal(sc), "expected: %s\ngot: %s", expectedSchema, sc)
@@ -500,4 +506,52 @@ func (s *StatementTests) TestSqlPrepareErrorParamCountMismatch() {
 	s.NoError(stmt.Bind(s.ctx, batch))
 	_, _, err = stmt.ExecuteQuery(s.ctx)
 	s.Error(err)
+}
+
+func (s *StatementTests) TestSqlIngestInts() {
+	if !s.Quirks.SupportsBulkIngest() {
+		s.T().SkipNow()
+	}
+
+	s.Require().NoError(s.Quirks.DropTable(s.Cnxn, "bulk_ingest"))
+
+	schema := arrow.NewSchema([]arrow.Field{{
+		Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)
+
+	batchbldr := array.NewRecordBuilder(s.Quirks.Alloc(), schema)
+	defer batchbldr.Release()
+	bldr := batchbldr.Field(0).(*array.Int64Builder)
+	bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
+	batch := batchbldr.NewRecord()
+	defer batch.Release()
+
+	stmt, err := s.Cnxn.NewStatement()
+	s.Require().NoError(err)
+	defer stmt.Close()
+
+	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+	s.Require().NoError(stmt.Bind(s.ctx, batch))
+
+	affected, err := stmt.ExecuteUpdate(s.ctx)
+	s.Require().NoError(err)
+	if affected != -1 && affected != 3 {
+		s.FailNowf("invalid number of affected rows", "should be -1 or 3, got: %d", affected)
+	}
+
+	s.Require().NoError(stmt.SetSqlQuery("SELECT * FROM bulk_ingest"))
+	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
+	s.Require().NoError(err)
+	if rows != -1 && rows != 3 {
+		s.FailNowf("invalid number of returned rows", "should be -1 or 3, got: %d", rows)
+	}
+	defer rdr.Release()
+
+	s.Truef(schema.Equal(rdr.Schema()), "expected: %s\n got: %s", schema, rdr.Schema())
+	s.Require().True(rdr.Next())
+	rec := rdr.Record()
+	s.EqualValues(3, rec.NumRows())
+	s.EqualValues(1, rec.NumCols())
+
+	s.Require().False(rdr.Next())
+	s.Require().NoError(rdr.Err())
 }

@@ -543,7 +543,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 }
 
 func descToField(name, typ, isnull, primary string, comment sql.NullString) (field arrow.Field, err error) {
-	field.Name = name
+	field.Name = strings.ToLower(name)
 	if isnull == "Y" {
 		field.Nullable = true
 	}
@@ -630,12 +630,12 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
-		tblParts = append(tblParts, strconv.Quote(*catalog))
+		tblParts = append(tblParts, strconv.Quote(strings.ToUpper(*catalog)))
 	}
 	if dbSchema != nil {
-		tblParts = append(tblParts, strconv.Quote(*dbSchema))
+		tblParts = append(tblParts, strconv.Quote(strings.ToUpper(*dbSchema)))
 	}
-	tblParts = append(tblParts, strconv.Quote(tableName))
+	tblParts = append(tblParts, strconv.Quote(strings.ToUpper(tableName)))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
 	rows, err := c.sqldb.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable)
@@ -690,7 +690,7 @@ func (c *cnxn) GetTableTypes(_ context.Context) (array.RecordReader, error) {
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
 func (c *cnxn) Commit(_ context.Context) error {
-	panic("not implemented") // TODO: Implement
+	return adbc.Error{Code: adbc.StatusInvalidState}
 }
 
 // Rollback rolls back any pending transactions. Only used if autocommit
@@ -698,7 +698,7 @@ func (c *cnxn) Commit(_ context.Context) error {
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
 func (c *cnxn) Rollback(_ context.Context) error {
-	panic("not implemented") // TODO: Implement
+	return adbc.Error{Code: adbc.StatusInvalidState}
 }
 
 // NewStatement initializes a new statement object tied to this connection
@@ -711,9 +711,18 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 
 // Close closes this connection and releases any associated resources.
 func (c *cnxn) Close() error {
+	if c.sqldb == nil || c.cn == nil {
+		return adbc.Error{Code: adbc.StatusInvalidState}
+	}
+
 	if err := c.sqldb.Close(); err != nil {
 		return err
 	}
+	c.sqldb = nil
+
+	defer func() {
+		c.cn = nil
+	}()
 	return c.cn.Close()
 }
 

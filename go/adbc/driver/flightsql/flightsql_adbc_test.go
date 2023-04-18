@@ -214,6 +214,18 @@ func (s *FlightSQLQuirks) CreateSampleTable(tableName string, r arrow.Record) er
 	return nil
 }
 
+func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) error {
+	stmt, err := cnxn.NewStatement()
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	stmt.SetSqlQuery(`DROP TABLE IF EXISTS` + tblname)
+	_, err = stmt.ExecuteUpdate(context.Background())
+	return err
+}
+
 func (s *FlightSQLQuirks) Alloc() memory.Allocator               { return s.mem }
 func (s *FlightSQLQuirks) BindParameter(_ int) string            { return "?" }
 func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool    { return true }
@@ -221,6 +233,7 @@ func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
 func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
 func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
+func (s *FlightSQLQuirks) SupportsBulkIngest() bool              { return false }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
@@ -240,6 +253,21 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	}
 
 	return nil
+}
+
+func (s *FlightSQLQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.DataType) arrow.Metadata {
+	switch dt.ID() {
+	case arrow.STRING:
+		return arrow.MetadataFrom(map[string]string{
+			flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
+			flightsql.TableNameKey: tblName,
+		})
+	default:
+		return arrow.MetadataFrom(map[string]string{
+			flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
+			flightsql.TableNameKey: tblName, flightsql.PrecisionKey: "10",
+		})
+	}
 }
 
 func TestADBCFlightSQL(t *testing.T) {
