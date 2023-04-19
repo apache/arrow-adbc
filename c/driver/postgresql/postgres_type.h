@@ -235,7 +235,7 @@ class PostgresType {
         nanoarrow::UniqueBuffer buffer;
         ArrowMetadataBuilderInit(buffer.get(), nullptr);
         NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
-            buffer.get(), ArrowCharView("ADBC:posgresql:typname"),
+            buffer.get(), ArrowCharView("ADBC:postgresql:typname"),
             ArrowCharView(typname_.c_str())));
         NANOARROW_RETURN_NOT_OK(
             ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
