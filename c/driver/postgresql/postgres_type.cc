@@ -15,7 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "nanoarrow/nanoarrow.hpp"
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <nanoarrow/nanoarrow.hpp>
 
 #include "postgres_type.h"
 

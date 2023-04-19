@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-#include <nanoarrow/nanoarrow.hpp>
+#include <nanoarrow/nanoarrow.h>
 
 namespace adbcpq {
 
