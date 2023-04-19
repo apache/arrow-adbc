@@ -165,7 +165,10 @@ func (s *SnowflakeQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 	}
 	defer stmt.Close()
 
-	stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + tblname)
+	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + tblname); err != nil {
+		return err
+	}
+
 	_, err = stmt.ExecuteUpdate(context.Background())
 	return err
 }

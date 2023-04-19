@@ -54,7 +54,7 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_snowflake_test
                 PREFIX
                 adbc
-                SOURCES                
+                SOURCES
                 snowflake_test.cc
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc

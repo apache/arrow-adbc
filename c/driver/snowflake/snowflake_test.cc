@@ -37,8 +37,8 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
-    const char* uri = std::getenv("ADBC_SNOWFLAKE_URI");    
-    EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri, error), IsOkStatus(error));    
+    const char* uri = std::getenv("ADBC_SNOWFLAKE_URI");
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri, error), IsOkStatus(error));
     return ADBC_STATUS_OK;
   }
 
@@ -88,7 +88,6 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   bool supports_dynamic_parameter_binding() const override { return false; }
 };
 
-
 class SnowflakeTest : public ::testing::Test, public adbc_validation::DatabaseTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
@@ -101,7 +100,7 @@ class SnowflakeTest : public ::testing::Test, public adbc_validation::DatabaseTe
 ADBCV_TEST_DATABASE(SnowflakeTest)
 
 class SnowflakeConnectionTest : public ::testing::Test,
-                                      public adbc_validation::ConnectionTest {
+                                public adbc_validation::ConnectionTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
@@ -113,7 +112,7 @@ class SnowflakeConnectionTest : public ::testing::Test,
 ADBCV_TEST_CONNECTION(SnowflakeConnectionTest)
 
 class SnowflakeStatementTest : public ::testing::Test,
-                                     public adbc_validation::StatementTest {
+                               public adbc_validation::StatementTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }

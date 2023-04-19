@@ -44,7 +44,7 @@ if ($env:CGO_ENABLED -eq "1") {
       -buildmode=c-shared `
       ./snowflake
     if (-not $?) { exit 1 }
-    Pop-Location    
+    Pop-Location
 }
 
 Pop-Location

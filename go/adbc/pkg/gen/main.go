@@ -130,7 +130,7 @@ func main() {
 }
 
 func mustReadAll(path string) []byte {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
