@@ -29,87 +29,87 @@
 namespace adbcpq {
 
 // An enum of the types available in most Postgres pg_type tables
-enum PostgresTypeId {
-  TYPE_ID_UNINITIALIZED,
-  TYPE_ID_ACLITEM,
-  TYPE_ID_ANYARRAY,
-  TYPE_ID_ANYCOMPATIBLEARRAY,
-  TYPE_ID_ARRAY,
-  TYPE_ID_BIT,
-  TYPE_ID_BOOL,
-  TYPE_ID_BOX,
-  TYPE_ID_BPCHAR,
-  TYPE_ID_BRIN_BLOOM_SUMMARY,
-  TYPE_ID_BRIN_MINMAX_MULTI_SUMMARY,
-  TYPE_ID_BYTEA,
-  TYPE_ID_CASH,
-  TYPE_ID_CHAR,
-  TYPE_ID_CIDR,
-  TYPE_ID_CID,
-  TYPE_ID_CIRCLE,
-  TYPE_ID_CSTRING,
-  TYPE_ID_DATE,
-  TYPE_ID_DOMAIN,
-  TYPE_ID_FLOAT4,
-  TYPE_ID_FLOAT8,
-  TYPE_ID_INET,
-  TYPE_ID_INT2,
-  TYPE_ID_INT2VECTOR,
-  TYPE_ID_INT4,
-  TYPE_ID_INT8,
-  TYPE_ID_INTERVAL,
-  TYPE_ID_JSON,
-  TYPE_ID_JSONB,
-  TYPE_ID_JSONPATH,
-  TYPE_ID_LINE,
-  TYPE_ID_LSEG,
-  TYPE_ID_MACADDR,
-  TYPE_ID_MACADDR8,
-  TYPE_ID_MULTIRANGE,
-  TYPE_ID_NAME,
-  TYPE_ID_NUMERIC,
-  TYPE_ID_OID,
-  TYPE_ID_OIDVECTOR,
-  TYPE_ID_PATH,
-  TYPE_ID_PG_DDL_COMMAND,
-  TYPE_ID_PG_DEPENDENCIES,
-  TYPE_ID_PG_LSN,
-  TYPE_ID_PG_MCV_LIST,
-  TYPE_ID_PG_NDISTINCT,
-  TYPE_ID_PG_NODE_TREE,
-  TYPE_ID_PG_SNAPSHOT,
-  TYPE_ID_POINT,
-  TYPE_ID_POLY,
-  TYPE_ID_RANGE,
-  TYPE_ID_RECORD,
-  TYPE_ID_REGCLASS,
-  TYPE_ID_REGCOLLATION,
-  TYPE_ID_REGCONFIG,
-  TYPE_ID_REGDICTIONARY,
-  TYPE_ID_REGNAMESPACE,
-  TYPE_ID_REGOPERATOR,
-  TYPE_ID_REGOPER,
-  TYPE_ID_REGPROCEDURE,
-  TYPE_ID_REGPROC,
-  TYPE_ID_REGROLE,
-  TYPE_ID_REGTYPE,
-  TYPE_ID_TEXT,
-  TYPE_ID_TID,
-  TYPE_ID_TIME,
-  TYPE_ID_TIMESTAMP,
-  TYPE_ID_TIMESTAMPTZ,
-  TYPE_ID_TIMETZ,
-  TYPE_ID_TSQUERY,
-  TYPE_ID_TSVECTOR,
-  TYPE_ID_TXID_SNAPSHOT,
-  TYPE_ID_UNKNOWN,
-  TYPE_ID_UUID,
-  TYPE_ID_VARBIT,
-  TYPE_ID_VARCHAR,
-  TYPE_ID_VOID,
-  TYPE_ID_XID8,
-  TYPE_ID_XID,
-  TYPE_ID_XML
+enum class PostgresTypeId {
+  UNINITIALIZED,
+  ACLITEM,
+  ANYARRAY,
+  ANYCOMPATIBLEARRAY,
+  ARRAY,
+  BIT,
+  BOOL,
+  BOX,
+  BPCHAR,
+  BRIN_BLOOM_SUMMARY,
+  BRIN_MINMAX_MULTI_SUMMARY,
+  BYTEA,
+  CASH,
+  CHAR,
+  CIDR,
+  CID,
+  CIRCLE,
+  CSTRING,
+  DATE,
+  DOMAIN_,
+  FLOAT4,
+  FLOAT8,
+  INET,
+  INT2,
+  INT2VECTOR,
+  INT4,
+  INT8,
+  INTERVAL,
+  JSON,
+  JSONB,
+  JSONPATH,
+  LINE,
+  LSEG,
+  MACADDR,
+  MACADDR8,
+  MULTIRANGE,
+  NAME,
+  NUMERIC,
+  OID,
+  OIDVECTOR,
+  PATH,
+  PG_DDL_COMMAND,
+  PG_DEPENDENCIES,
+  PG_LSN,
+  PG_MCV_LIST,
+  PG_NDISTINCT,
+  PG_NODE_TREE,
+  PG_SNAPSHOT,
+  POINT,
+  POLY,
+  RANGE,
+  RECORD,
+  REGCLASS,
+  REGCOLLATION,
+  REGCONFIG,
+  REGDICTIONARY,
+  REGNAMESPACE,
+  REGOPERATOR,
+  REGOPER,
+  REGPROCEDURE,
+  REGPROC,
+  REGROLE,
+  REGTYPE,
+  TEXT,
+  TID,
+  TIME,
+  TIMESTAMP,
+  TIMESTAMPTZ,
+  TIMETZ,
+  TSQUERY,
+  TSVECTOR,
+  TXID_SNAPSHOT,
+  UNKNOWN,
+  UUID,
+  VARBIT,
+  VARCHAR,
+  VOID,
+  XID8,
+  XID,
+  XML
 };
 
 // Returns the receive function name as defined in the typrecieve column
@@ -122,8 +122,8 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id);
 // in the pg_type typname column.
 static inline const char* PostgresTypname(PostgresTypeId type_id);
 
-// A vector of all type IDs, optionally including the nested types TYPE_ID_ARRAY,
-// TYPE_ID_DOMAIN, TYPE_ID_RECORD, and TYPE_ID_RANGE.
+// A vector of all type IDs, optionally including the nested types PostgresTypeId::ARRAY,
+// PostgresTypeId::DOMAIN_, PostgresTypeId::RECORD, and PostgresTypeId::RANGE.
 static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested = true);
 
 // An abstraction of a (potentially nested and/or parameterized) Postgres
@@ -133,7 +133,7 @@ class PostgresType {
  public:
   explicit PostgresType(PostgresTypeId type_id) : oid_(0), type_id_(type_id) {}
 
-  PostgresType() : PostgresType(TYPE_ID_UNINITIALIZED) {}
+  PostgresType() : PostgresType(PostgresTypeId::UNINITIALIZED) {}
 
   void AppendChild(const std::string& field_name, const PostgresType& type) {
     PostgresType child(type);
@@ -154,7 +154,7 @@ class PostgresType {
   }
 
   PostgresType Array(uint32_t oid = 0, const std::string& typname = "") const {
-    PostgresType out(TYPE_ID_ARRAY);
+    PostgresType out(PostgresTypeId::ARRAY);
     out.AppendChild("item", *this);
     out.oid_ = oid;
     out.typname_ = typname;
@@ -166,7 +166,7 @@ class PostgresType {
   }
 
   PostgresType Range(uint32_t oid = 0, const std::string& typname = "") const {
-    PostgresType out(TYPE_ID_RANGE);
+    PostgresType out(PostgresTypeId::RANGE);
     out.AppendChild("item", *this);
     out.oid_ = oid;
     out.typname_ = typname;
@@ -189,42 +189,42 @@ class PostgresType {
   // binary COPY representation in the output.
   ArrowErrorCode SetSchema(ArrowSchema* schema) const {
     switch (type_id_) {
-      case TYPE_ID_BOOL:
+      case PostgresTypeId::BOOL:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
         break;
-      case TYPE_ID_INT2:
+      case PostgresTypeId::INT2:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
         break;
-      case TYPE_ID_INT4:
+      case PostgresTypeId::INT4:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT32));
         break;
-      case TYPE_ID_INT8:
+      case PostgresTypeId::INT8:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT64));
         break;
-      case TYPE_ID_FLOAT4:
+      case PostgresTypeId::FLOAT4:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_FLOAT));
         break;
-      case TYPE_ID_FLOAT8:
+      case PostgresTypeId::FLOAT8:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
         break;
-      case TYPE_ID_CHAR:
-      case TYPE_ID_BPCHAR:
-      case TYPE_ID_VARCHAR:
-      case TYPE_ID_TEXT:
+      case PostgresTypeId::CHAR:
+      case PostgresTypeId::BPCHAR:
+      case PostgresTypeId::VARCHAR:
+      case PostgresTypeId::TEXT:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
-      case TYPE_ID_BYTEA:
+      case PostgresTypeId::BYTEA:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         break;
 
-      case TYPE_ID_RECORD:
+      case PostgresTypeId::RECORD:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {
           NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
         }
         break;
 
-      case TYPE_ID_ARRAY:
+      case PostgresTypeId::ARRAY:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
         NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
         break;
@@ -330,7 +330,7 @@ class PostgresTypeResolver {
     PostgresType type = base.WithPgTypeInfo(item.oid, item.typname);
 
     switch (base.type_id()) {
-      case TYPE_ID_ARRAY: {
+      case PostgresTypeId::ARRAY: {
         PostgresType child;
         NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
         mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
@@ -339,11 +339,11 @@ class PostgresTypeResolver {
         break;
       }
 
-      case TYPE_ID_RECORD: {
+      case PostgresTypeId::RECORD: {
         std::vector<std::pair<std::string, uint32_t>> child_desc;
         NANOARROW_RETURN_NOT_OK(ResolveClass(item.class_oid, &child_desc, error));
 
-        PostgresType out(TYPE_ID_RECORD);
+        PostgresType out(PostgresTypeId::RECORD);
         for (const auto& child_item : child_desc) {
           PostgresType child;
           NANOARROW_RETURN_NOT_OK(Find(child_item.second, &child, error));
@@ -355,7 +355,7 @@ class PostgresTypeResolver {
         break;
       }
 
-      case TYPE_ID_DOMAIN: {
+      case PostgresTypeId::DOMAIN_: {
         PostgresType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Domain(item.oid, item.typname)});
@@ -363,7 +363,7 @@ class PostgresTypeResolver {
         break;
       }
 
-      case TYPE_ID_RANGE: {
+      case PostgresTypeId::RANGE: {
         PostgresType base_type;
         NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
         mapping_.insert({item.oid, base_type.Range(item.oid, item.typname)});
@@ -436,26 +436,26 @@ static inline ArrowErrorCode PostgresTypeFromSchema(const PostgresTypeResolver& 
 
   switch (schema_view.type) {
     case NANOARROW_TYPE_BOOL:
-      return resolver.Find(resolver.GetOID(TYPE_ID_BOOL), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::BOOL), out, error);
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT16:
-      return resolver.Find(resolver.GetOID(TYPE_ID_INT2), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::INT2), out, error);
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_INT32:
-      return resolver.Find(resolver.GetOID(TYPE_ID_INT4), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::INT4), out, error);
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT64:
-      return resolver.Find(resolver.GetOID(TYPE_ID_INT8), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::INT8), out, error);
     case NANOARROW_TYPE_FLOAT:
-      return resolver.Find(resolver.GetOID(TYPE_ID_FLOAT4), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::FLOAT4), out, error);
     case NANOARROW_TYPE_DOUBLE:
-      return resolver.Find(resolver.GetOID(TYPE_ID_FLOAT8), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::FLOAT8), out, error);
     case NANOARROW_TYPE_STRING:
-      return resolver.Find(resolver.GetOID(TYPE_ID_TEXT), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::TEXT), out, error);
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      return resolver.Find(resolver.GetOID(TYPE_ID_BYTEA), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::BYTEA), out, error);
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST: {
@@ -474,163 +474,163 @@ static inline ArrowErrorCode PostgresTypeFromSchema(const PostgresTypeResolver& 
 
 static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
   switch (type_id) {
-    case TYPE_ID_ACLITEM:
+    case PostgresTypeId::ACLITEM:
       return "aclitem_recv";
-    case TYPE_ID_ANYARRAY:
+    case PostgresTypeId::ANYARRAY:
       return "anyarray_recv";
-    case TYPE_ID_ANYCOMPATIBLEARRAY:
+    case PostgresTypeId::ANYCOMPATIBLEARRAY:
       return "anycompatiblearray_recv";
-    case TYPE_ID_ARRAY:
+    case PostgresTypeId::ARRAY:
       return "array_recv";
-    case TYPE_ID_BIT:
+    case PostgresTypeId::BIT:
       return "bit_recv";
-    case TYPE_ID_BOOL:
+    case PostgresTypeId::BOOL:
       return "boolrecv";
-    case TYPE_ID_BOX:
+    case PostgresTypeId::BOX:
       return "box_recv";
-    case TYPE_ID_BPCHAR:
+    case PostgresTypeId::BPCHAR:
       return "bpcharrecv";
-    case TYPE_ID_BRIN_BLOOM_SUMMARY:
+    case PostgresTypeId::BRIN_BLOOM_SUMMARY:
       return "brin_bloom_summary_recv";
-    case TYPE_ID_BRIN_MINMAX_MULTI_SUMMARY:
+    case PostgresTypeId::BRIN_MINMAX_MULTI_SUMMARY:
       return "brin_minmax_multi_summary_recv";
-    case TYPE_ID_BYTEA:
+    case PostgresTypeId::BYTEA:
       return "bytearecv";
-    case TYPE_ID_CASH:
+    case PostgresTypeId::CASH:
       return "cash_recv";
-    case TYPE_ID_CHAR:
+    case PostgresTypeId::CHAR:
       return "charrecv";
-    case TYPE_ID_CIDR:
+    case PostgresTypeId::CIDR:
       return "cidr_recv";
-    case TYPE_ID_CID:
+    case PostgresTypeId::CID:
       return "cidrecv";
-    case TYPE_ID_CIRCLE:
+    case PostgresTypeId::CIRCLE:
       return "circle_recv";
-    case TYPE_ID_CSTRING:
+    case PostgresTypeId::CSTRING:
       return "cstring_recv";
-    case TYPE_ID_DATE:
+    case PostgresTypeId::DATE:
       return "date_recv";
-    case TYPE_ID_DOMAIN:
+    case PostgresTypeId::DOMAIN_:
       return "domain_recv";
-    case TYPE_ID_FLOAT4:
+    case PostgresTypeId::FLOAT4:
       return "float4recv";
-    case TYPE_ID_FLOAT8:
+    case PostgresTypeId::FLOAT8:
       return "float8recv";
-    case TYPE_ID_INET:
+    case PostgresTypeId::INET:
       return "inet_recv";
-    case TYPE_ID_INT2:
+    case PostgresTypeId::INT2:
       return "int2recv";
-    case TYPE_ID_INT2VECTOR:
+    case PostgresTypeId::INT2VECTOR:
       return "int2vectorrecv";
-    case TYPE_ID_INT4:
+    case PostgresTypeId::INT4:
       return "int4recv";
-    case TYPE_ID_INT8:
+    case PostgresTypeId::INT8:
       return "int8recv";
-    case TYPE_ID_INTERVAL:
+    case PostgresTypeId::INTERVAL:
       return "interval_recv";
-    case TYPE_ID_JSON:
+    case PostgresTypeId::JSON:
       return "json_recv";
-    case TYPE_ID_JSONB:
+    case PostgresTypeId::JSONB:
       return "jsonb_recv";
-    case TYPE_ID_JSONPATH:
+    case PostgresTypeId::JSONPATH:
       return "jsonpath_recv";
-    case TYPE_ID_LINE:
+    case PostgresTypeId::LINE:
       return "line_recv";
-    case TYPE_ID_LSEG:
+    case PostgresTypeId::LSEG:
       return "lseg_recv";
-    case TYPE_ID_MACADDR:
+    case PostgresTypeId::MACADDR:
       return "macaddr_recv";
-    case TYPE_ID_MACADDR8:
+    case PostgresTypeId::MACADDR8:
       return "macaddr8_recv";
-    case TYPE_ID_MULTIRANGE:
+    case PostgresTypeId::MULTIRANGE:
       return "multirange_recv";
-    case TYPE_ID_NAME:
+    case PostgresTypeId::NAME:
       return "namerecv";
-    case TYPE_ID_NUMERIC:
+    case PostgresTypeId::NUMERIC:
       return "numeric_recv";
-    case TYPE_ID_OID:
+    case PostgresTypeId::OID:
       return "oidrecv";
-    case TYPE_ID_OIDVECTOR:
+    case PostgresTypeId::OIDVECTOR:
       return "oidvectorrecv";
-    case TYPE_ID_PATH:
+    case PostgresTypeId::PATH:
       return "path_recv";
-    case TYPE_ID_PG_NODE_TREE:
+    case PostgresTypeId::PG_NODE_TREE:
       return "pg_node_tree_recv";
-    case TYPE_ID_PG_NDISTINCT:
+    case PostgresTypeId::PG_NDISTINCT:
       return "pg_ndistinct_recv";
-    case TYPE_ID_PG_DEPENDENCIES:
+    case PostgresTypeId::PG_DEPENDENCIES:
       return "pg_dependencies_recv";
-    case TYPE_ID_PG_LSN:
+    case PostgresTypeId::PG_LSN:
       return "pg_lsn_recv";
-    case TYPE_ID_PG_MCV_LIST:
+    case PostgresTypeId::PG_MCV_LIST:
       return "pg_mcv_list_recv";
-    case TYPE_ID_PG_DDL_COMMAND:
+    case PostgresTypeId::PG_DDL_COMMAND:
       return "pg_ddl_command_recv";
-    case TYPE_ID_PG_SNAPSHOT:
+    case PostgresTypeId::PG_SNAPSHOT:
       return "pg_snapshot_recv";
-    case TYPE_ID_POINT:
+    case PostgresTypeId::POINT:
       return "point_recv";
-    case TYPE_ID_POLY:
+    case PostgresTypeId::POLY:
       return "poly_recv";
-    case TYPE_ID_RANGE:
+    case PostgresTypeId::RANGE:
       return "range_recv";
-    case TYPE_ID_RECORD:
+    case PostgresTypeId::RECORD:
       return "record_recv";
-    case TYPE_ID_REGCLASS:
+    case PostgresTypeId::REGCLASS:
       return "regclassrecv";
-    case TYPE_ID_REGCOLLATION:
+    case PostgresTypeId::REGCOLLATION:
       return "regcollationrecv";
-    case TYPE_ID_REGCONFIG:
+    case PostgresTypeId::REGCONFIG:
       return "regconfigrecv";
-    case TYPE_ID_REGDICTIONARY:
+    case PostgresTypeId::REGDICTIONARY:
       return "regdictionaryrecv";
-    case TYPE_ID_REGNAMESPACE:
+    case PostgresTypeId::REGNAMESPACE:
       return "regnamespacerecv";
-    case TYPE_ID_REGOPERATOR:
+    case PostgresTypeId::REGOPERATOR:
       return "regoperatorrecv";
-    case TYPE_ID_REGOPER:
+    case PostgresTypeId::REGOPER:
       return "regoperrecv";
-    case TYPE_ID_REGPROCEDURE:
+    case PostgresTypeId::REGPROCEDURE:
       return "regprocedurerecv";
-    case TYPE_ID_REGPROC:
+    case PostgresTypeId::REGPROC:
       return "regprocrecv";
-    case TYPE_ID_REGROLE:
+    case PostgresTypeId::REGROLE:
       return "regrolerecv";
-    case TYPE_ID_REGTYPE:
+    case PostgresTypeId::REGTYPE:
       return "regtyperecv";
-    case TYPE_ID_TEXT:
+    case PostgresTypeId::TEXT:
       return "textrecv";
-    case TYPE_ID_TID:
+    case PostgresTypeId::TID:
       return "tidrecv";
-    case TYPE_ID_TIME:
+    case PostgresTypeId::TIME:
       return "time_recv";
-    case TYPE_ID_TIMESTAMP:
+    case PostgresTypeId::TIMESTAMP:
       return "timestamp_recv";
-    case TYPE_ID_TIMESTAMPTZ:
+    case PostgresTypeId::TIMESTAMPTZ:
       return "timestamptz_recv";
-    case TYPE_ID_TIMETZ:
+    case PostgresTypeId::TIMETZ:
       return "timetz_recv";
-    case TYPE_ID_TSQUERY:
+    case PostgresTypeId::TSQUERY:
       return "tsqueryrecv";
-    case TYPE_ID_TSVECTOR:
+    case PostgresTypeId::TSVECTOR:
       return "tsvectorrecv";
-    case TYPE_ID_TXID_SNAPSHOT:
+    case PostgresTypeId::TXID_SNAPSHOT:
       return "txid_snapshot_recv";
-    case TYPE_ID_UNKNOWN:
+    case PostgresTypeId::UNKNOWN:
       return "unknownrecv";
-    case TYPE_ID_UUID:
+    case PostgresTypeId::UUID:
       return "uuid_recv";
-    case TYPE_ID_VARBIT:
+    case PostgresTypeId::VARBIT:
       return "varbit_recv";
-    case TYPE_ID_VARCHAR:
+    case PostgresTypeId::VARCHAR:
       return "varcharrecv";
-    case TYPE_ID_VOID:
+    case PostgresTypeId::VOID:
       return "void_recv";
-    case TYPE_ID_XID8:
+    case PostgresTypeId::XID8:
       return "xid8recv";
-    case TYPE_ID_XID:
+    case PostgresTypeId::XID:
       return "xidrecv";
-    case TYPE_ID_XML:
+    case PostgresTypeId::XML:
       return "xml_recv";
     default:
       return "";
@@ -639,163 +639,163 @@ static inline const char* PostgresTyprecv(PostgresTypeId type_id) {
 
 static inline const char* PostgresTypname(PostgresTypeId type_id) {
   switch (type_id) {
-    case TYPE_ID_ACLITEM:
+    case PostgresTypeId::ACLITEM:
       return "aclitem";
-    case TYPE_ID_ANYARRAY:
+    case PostgresTypeId::ANYARRAY:
       return "anyarray";
-    case TYPE_ID_ANYCOMPATIBLEARRAY:
+    case PostgresTypeId::ANYCOMPATIBLEARRAY:
       return "anycompatiblearray";
-    case TYPE_ID_ARRAY:
+    case PostgresTypeId::ARRAY:
       return "array";
-    case TYPE_ID_BIT:
+    case PostgresTypeId::BIT:
       return "bit";
-    case TYPE_ID_BOOL:
+    case PostgresTypeId::BOOL:
       return "bool";
-    case TYPE_ID_BOX:
+    case PostgresTypeId::BOX:
       return "box";
-    case TYPE_ID_BPCHAR:
+    case PostgresTypeId::BPCHAR:
       return "bpchar";
-    case TYPE_ID_BRIN_BLOOM_SUMMARY:
+    case PostgresTypeId::BRIN_BLOOM_SUMMARY:
       return "brin_bloom_summary";
-    case TYPE_ID_BRIN_MINMAX_MULTI_SUMMARY:
+    case PostgresTypeId::BRIN_MINMAX_MULTI_SUMMARY:
       return "brin_minmax_multi_summary";
-    case TYPE_ID_BYTEA:
+    case PostgresTypeId::BYTEA:
       return "bytea";
-    case TYPE_ID_CASH:
+    case PostgresTypeId::CASH:
       return "cash";
-    case TYPE_ID_CHAR:
+    case PostgresTypeId::CHAR:
       return "char";
-    case TYPE_ID_CIDR:
+    case PostgresTypeId::CIDR:
       return "cidr";
-    case TYPE_ID_CID:
+    case PostgresTypeId::CID:
       return "cid";
-    case TYPE_ID_CIRCLE:
+    case PostgresTypeId::CIRCLE:
       return "circle";
-    case TYPE_ID_CSTRING:
+    case PostgresTypeId::CSTRING:
       return "cstring";
-    case TYPE_ID_DATE:
+    case PostgresTypeId::DATE:
       return "date";
-    case TYPE_ID_DOMAIN:
+    case PostgresTypeId::DOMAIN_:
       return "domain";
-    case TYPE_ID_FLOAT4:
+    case PostgresTypeId::FLOAT4:
       return "float4";
-    case TYPE_ID_FLOAT8:
+    case PostgresTypeId::FLOAT8:
       return "float8";
-    case TYPE_ID_INET:
+    case PostgresTypeId::INET:
       return "inet";
-    case TYPE_ID_INT2:
+    case PostgresTypeId::INT2:
       return "int2";
-    case TYPE_ID_INT2VECTOR:
+    case PostgresTypeId::INT2VECTOR:
       return "int2vector";
-    case TYPE_ID_INT4:
+    case PostgresTypeId::INT4:
       return "int4";
-    case TYPE_ID_INT8:
+    case PostgresTypeId::INT8:
       return "int8";
-    case TYPE_ID_INTERVAL:
+    case PostgresTypeId::INTERVAL:
       return "interval";
-    case TYPE_ID_JSON:
+    case PostgresTypeId::JSON:
       return "json";
-    case TYPE_ID_JSONB:
+    case PostgresTypeId::JSONB:
       return "jsonb";
-    case TYPE_ID_JSONPATH:
+    case PostgresTypeId::JSONPATH:
       return "jsonpath";
-    case TYPE_ID_LINE:
+    case PostgresTypeId::LINE:
       return "line";
-    case TYPE_ID_LSEG:
+    case PostgresTypeId::LSEG:
       return "lseg";
-    case TYPE_ID_MACADDR:
+    case PostgresTypeId::MACADDR:
       return "macaddr";
-    case TYPE_ID_MACADDR8:
+    case PostgresTypeId::MACADDR8:
       return "macaddr8";
-    case TYPE_ID_MULTIRANGE:
+    case PostgresTypeId::MULTIRANGE:
       return "multirange";
-    case TYPE_ID_NAME:
+    case PostgresTypeId::NAME:
       return "name";
-    case TYPE_ID_NUMERIC:
+    case PostgresTypeId::NUMERIC:
       return "numeric";
-    case TYPE_ID_OID:
+    case PostgresTypeId::OID:
       return "oid";
-    case TYPE_ID_OIDVECTOR:
+    case PostgresTypeId::OIDVECTOR:
       return "oidvector";
-    case TYPE_ID_PATH:
+    case PostgresTypeId::PATH:
       return "path";
-    case TYPE_ID_PG_NODE_TREE:
+    case PostgresTypeId::PG_NODE_TREE:
       return "pg_node_tree";
-    case TYPE_ID_PG_NDISTINCT:
+    case PostgresTypeId::PG_NDISTINCT:
       return "pg_ndistinct";
-    case TYPE_ID_PG_DEPENDENCIES:
+    case PostgresTypeId::PG_DEPENDENCIES:
       return "pg_dependencies";
-    case TYPE_ID_PG_LSN:
+    case PostgresTypeId::PG_LSN:
       return "pg_lsn";
-    case TYPE_ID_PG_MCV_LIST:
+    case PostgresTypeId::PG_MCV_LIST:
       return "pg_mcv_list";
-    case TYPE_ID_PG_DDL_COMMAND:
+    case PostgresTypeId::PG_DDL_COMMAND:
       return "pg_ddl_command";
-    case TYPE_ID_PG_SNAPSHOT:
+    case PostgresTypeId::PG_SNAPSHOT:
       return "pg_snapshot";
-    case TYPE_ID_POINT:
+    case PostgresTypeId::POINT:
       return "point";
-    case TYPE_ID_POLY:
+    case PostgresTypeId::POLY:
       return "poly";
-    case TYPE_ID_RANGE:
+    case PostgresTypeId::RANGE:
       return "range";
-    case TYPE_ID_RECORD:
+    case PostgresTypeId::RECORD:
       return "record";
-    case TYPE_ID_REGCLASS:
+    case PostgresTypeId::REGCLASS:
       return "regclass";
-    case TYPE_ID_REGCOLLATION:
+    case PostgresTypeId::REGCOLLATION:
       return "regcollation";
-    case TYPE_ID_REGCONFIG:
+    case PostgresTypeId::REGCONFIG:
       return "regconfig";
-    case TYPE_ID_REGDICTIONARY:
+    case PostgresTypeId::REGDICTIONARY:
       return "regdictionary";
-    case TYPE_ID_REGNAMESPACE:
+    case PostgresTypeId::REGNAMESPACE:
       return "regnamespace";
-    case TYPE_ID_REGOPERATOR:
+    case PostgresTypeId::REGOPERATOR:
       return "regoperator";
-    case TYPE_ID_REGOPER:
+    case PostgresTypeId::REGOPER:
       return "regoper";
-    case TYPE_ID_REGPROCEDURE:
+    case PostgresTypeId::REGPROCEDURE:
       return "regprocedure";
-    case TYPE_ID_REGPROC:
+    case PostgresTypeId::REGPROC:
       return "regproc";
-    case TYPE_ID_REGROLE:
+    case PostgresTypeId::REGROLE:
       return "regrole";
-    case TYPE_ID_REGTYPE:
+    case PostgresTypeId::REGTYPE:
       return "regtype";
-    case TYPE_ID_TEXT:
+    case PostgresTypeId::TEXT:
       return "text";
-    case TYPE_ID_TID:
+    case PostgresTypeId::TID:
       return "tid";
-    case TYPE_ID_TIME:
+    case PostgresTypeId::TIME:
       return "time";
-    case TYPE_ID_TIMESTAMP:
+    case PostgresTypeId::TIMESTAMP:
       return "timestamp";
-    case TYPE_ID_TIMESTAMPTZ:
+    case PostgresTypeId::TIMESTAMPTZ:
       return "timestamptz";
-    case TYPE_ID_TIMETZ:
+    case PostgresTypeId::TIMETZ:
       return "timetz";
-    case TYPE_ID_TSQUERY:
+    case PostgresTypeId::TSQUERY:
       return "tsquery";
-    case TYPE_ID_TSVECTOR:
+    case PostgresTypeId::TSVECTOR:
       return "tsvector";
-    case TYPE_ID_TXID_SNAPSHOT:
+    case PostgresTypeId::TXID_SNAPSHOT:
       return "txid_snapshot";
-    case TYPE_ID_UNKNOWN:
+    case PostgresTypeId::UNKNOWN:
       return "unknown";
-    case TYPE_ID_UUID:
+    case PostgresTypeId::UUID:
       return "uuid";
-    case TYPE_ID_VARBIT:
+    case PostgresTypeId::VARBIT:
       return "varbit";
-    case TYPE_ID_VARCHAR:
+    case PostgresTypeId::VARCHAR:
       return "varchar";
-    case TYPE_ID_VOID:
+    case PostgresTypeId::VOID:
       return "void";
-    case TYPE_ID_XID8:
+    case PostgresTypeId::XID8:
       return "xid8";
-    case TYPE_ID_XID:
+    case PostgresTypeId::XID:
       return "xid";
-    case TYPE_ID_XML:
+    case PostgresTypeId::XML:
       return "xml";
     default:
       return "";
@@ -803,87 +803,87 @@ static inline const char* PostgresTypname(PostgresTypeId type_id) {
 }
 
 static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
-  std::vector<PostgresTypeId> base = {TYPE_ID_ACLITEM,
-                                      TYPE_ID_ANYARRAY,
-                                      TYPE_ID_ANYCOMPATIBLEARRAY,
-                                      TYPE_ID_BIT,
-                                      TYPE_ID_BOOL,
-                                      TYPE_ID_BOX,
-                                      TYPE_ID_BPCHAR,
-                                      TYPE_ID_BRIN_BLOOM_SUMMARY,
-                                      TYPE_ID_BRIN_MINMAX_MULTI_SUMMARY,
-                                      TYPE_ID_BYTEA,
-                                      TYPE_ID_CASH,
-                                      TYPE_ID_CHAR,
-                                      TYPE_ID_CIDR,
-                                      TYPE_ID_CID,
-                                      TYPE_ID_CIRCLE,
-                                      TYPE_ID_CSTRING,
-                                      TYPE_ID_DATE,
-                                      TYPE_ID_FLOAT4,
-                                      TYPE_ID_FLOAT8,
-                                      TYPE_ID_INET,
-                                      TYPE_ID_INT2,
-                                      TYPE_ID_INT2VECTOR,
-                                      TYPE_ID_INT4,
-                                      TYPE_ID_INT8,
-                                      TYPE_ID_INTERVAL,
-                                      TYPE_ID_JSON,
-                                      TYPE_ID_JSONB,
-                                      TYPE_ID_JSONPATH,
-                                      TYPE_ID_LINE,
-                                      TYPE_ID_LSEG,
-                                      TYPE_ID_MACADDR,
-                                      TYPE_ID_MACADDR8,
-                                      TYPE_ID_MULTIRANGE,
-                                      TYPE_ID_NAME,
-                                      TYPE_ID_NUMERIC,
-                                      TYPE_ID_OID,
-                                      TYPE_ID_OIDVECTOR,
-                                      TYPE_ID_PATH,
-                                      TYPE_ID_PG_NODE_TREE,
-                                      TYPE_ID_PG_NDISTINCT,
-                                      TYPE_ID_PG_DEPENDENCIES,
-                                      TYPE_ID_PG_LSN,
-                                      TYPE_ID_PG_MCV_LIST,
-                                      TYPE_ID_PG_DDL_COMMAND,
-                                      TYPE_ID_PG_SNAPSHOT,
-                                      TYPE_ID_POINT,
-                                      TYPE_ID_POLY,
-                                      TYPE_ID_REGCLASS,
-                                      TYPE_ID_REGCOLLATION,
-                                      TYPE_ID_REGCONFIG,
-                                      TYPE_ID_REGDICTIONARY,
-                                      TYPE_ID_REGNAMESPACE,
-                                      TYPE_ID_REGOPERATOR,
-                                      TYPE_ID_REGOPER,
-                                      TYPE_ID_REGPROCEDURE,
-                                      TYPE_ID_REGPROC,
-                                      TYPE_ID_REGROLE,
-                                      TYPE_ID_REGTYPE,
-                                      TYPE_ID_TEXT,
-                                      TYPE_ID_TID,
-                                      TYPE_ID_TIME,
-                                      TYPE_ID_TIMESTAMP,
-                                      TYPE_ID_TIMESTAMPTZ,
-                                      TYPE_ID_TIMETZ,
-                                      TYPE_ID_TSQUERY,
-                                      TYPE_ID_TSVECTOR,
-                                      TYPE_ID_TXID_SNAPSHOT,
-                                      TYPE_ID_UNKNOWN,
-                                      TYPE_ID_UUID,
-                                      TYPE_ID_VARBIT,
-                                      TYPE_ID_VARCHAR,
-                                      TYPE_ID_VOID,
-                                      TYPE_ID_XID8,
-                                      TYPE_ID_XID,
-                                      TYPE_ID_XML};
+  std::vector<PostgresTypeId> base = {PostgresTypeId::ACLITEM,
+                                      PostgresTypeId::ANYARRAY,
+                                      PostgresTypeId::ANYCOMPATIBLEARRAY,
+                                      PostgresTypeId::BIT,
+                                      PostgresTypeId::BOOL,
+                                      PostgresTypeId::BOX,
+                                      PostgresTypeId::BPCHAR,
+                                      PostgresTypeId::BRIN_BLOOM_SUMMARY,
+                                      PostgresTypeId::BRIN_MINMAX_MULTI_SUMMARY,
+                                      PostgresTypeId::BYTEA,
+                                      PostgresTypeId::CASH,
+                                      PostgresTypeId::CHAR,
+                                      PostgresTypeId::CIDR,
+                                      PostgresTypeId::CID,
+                                      PostgresTypeId::CIRCLE,
+                                      PostgresTypeId::CSTRING,
+                                      PostgresTypeId::DATE,
+                                      PostgresTypeId::FLOAT4,
+                                      PostgresTypeId::FLOAT8,
+                                      PostgresTypeId::INET,
+                                      PostgresTypeId::INT2,
+                                      PostgresTypeId::INT2VECTOR,
+                                      PostgresTypeId::INT4,
+                                      PostgresTypeId::INT8,
+                                      PostgresTypeId::INTERVAL,
+                                      PostgresTypeId::JSON,
+                                      PostgresTypeId::JSONB,
+                                      PostgresTypeId::JSONPATH,
+                                      PostgresTypeId::LINE,
+                                      PostgresTypeId::LSEG,
+                                      PostgresTypeId::MACADDR,
+                                      PostgresTypeId::MACADDR8,
+                                      PostgresTypeId::MULTIRANGE,
+                                      PostgresTypeId::NAME,
+                                      PostgresTypeId::NUMERIC,
+                                      PostgresTypeId::OID,
+                                      PostgresTypeId::OIDVECTOR,
+                                      PostgresTypeId::PATH,
+                                      PostgresTypeId::PG_NODE_TREE,
+                                      PostgresTypeId::PG_NDISTINCT,
+                                      PostgresTypeId::PG_DEPENDENCIES,
+                                      PostgresTypeId::PG_LSN,
+                                      PostgresTypeId::PG_MCV_LIST,
+                                      PostgresTypeId::PG_DDL_COMMAND,
+                                      PostgresTypeId::PG_SNAPSHOT,
+                                      PostgresTypeId::POINT,
+                                      PostgresTypeId::POLY,
+                                      PostgresTypeId::REGCLASS,
+                                      PostgresTypeId::REGCOLLATION,
+                                      PostgresTypeId::REGCONFIG,
+                                      PostgresTypeId::REGDICTIONARY,
+                                      PostgresTypeId::REGNAMESPACE,
+                                      PostgresTypeId::REGOPERATOR,
+                                      PostgresTypeId::REGOPER,
+                                      PostgresTypeId::REGPROCEDURE,
+                                      PostgresTypeId::REGPROC,
+                                      PostgresTypeId::REGROLE,
+                                      PostgresTypeId::REGTYPE,
+                                      PostgresTypeId::TEXT,
+                                      PostgresTypeId::TID,
+                                      PostgresTypeId::TIME,
+                                      PostgresTypeId::TIMESTAMP,
+                                      PostgresTypeId::TIMESTAMPTZ,
+                                      PostgresTypeId::TIMETZ,
+                                      PostgresTypeId::TSQUERY,
+                                      PostgresTypeId::TSVECTOR,
+                                      PostgresTypeId::TXID_SNAPSHOT,
+                                      PostgresTypeId::UNKNOWN,
+                                      PostgresTypeId::UUID,
+                                      PostgresTypeId::VARBIT,
+                                      PostgresTypeId::VARCHAR,
+                                      PostgresTypeId::VOID,
+                                      PostgresTypeId::XID8,
+                                      PostgresTypeId::XID,
+                                      PostgresTypeId::XML};
 
   if (nested) {
-    base.push_back(TYPE_ID_ARRAY);
-    base.push_back(TYPE_ID_RECORD);
-    base.push_back(TYPE_ID_RANGE);
-    base.push_back(TYPE_ID_DOMAIN);
+    base.push_back(PostgresTypeId::ARRAY);
+    base.push_back(PostgresTypeId::RECORD);
+    base.push_back(PostgresTypeId::RANGE);
+    base.push_back(PostgresTypeId::DOMAIN_);
   }
 
   return base;

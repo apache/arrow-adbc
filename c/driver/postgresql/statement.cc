@@ -184,23 +184,23 @@ struct BindStream {
       PostgresTypeId type_id;
       switch (bind_schema_fields[i].type) {
         case ArrowType::NANOARROW_TYPE_INT16:
-          type_id = TYPE_ID_INT2;
+          type_id = PostgresTypeId::INT2;
           param_lengths[i] = 2;
           break;
         case ArrowType::NANOARROW_TYPE_INT32:
-          type_id = TYPE_ID_INT4;
+          type_id = PostgresTypeId::INT4;
           param_lengths[i] = 4;
           break;
         case ArrowType::NANOARROW_TYPE_INT64:
-          type_id = TYPE_ID_INT8;
+          type_id = PostgresTypeId::INT8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_DOUBLE:
-          type_id = TYPE_ID_FLOAT8;
+          type_id = PostgresTypeId::FLOAT8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_STRING:
-          type_id = TYPE_ID_TEXT;
+          type_id = PostgresTypeId::TEXT;
           param_lengths[i] = 0;
           break;
         default:
