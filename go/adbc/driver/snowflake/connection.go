@@ -40,7 +40,7 @@ type snowflakeConn interface {
 	driver.ExecerContext
 	driver.QueryerContext
 	driver.Pinger
-	QueryArrowStream(context.Context, string) (gosnowflake.ArrowStreamLoader, error)
+	QueryArrowStream(context.Context, string, ...driver.NamedValue) (gosnowflake.ArrowStreamLoader, error)
 }
 
 type cnxn struct {
@@ -48,6 +48,8 @@ type cnxn struct {
 	db    *database
 	ctor  gosnowflake.Connector
 	sqldb *sql.DB
+
+	activeTransaction bool
 }
 
 // Metadata methods
@@ -690,7 +692,20 @@ func (c *cnxn) GetTableTypes(_ context.Context) (array.RecordReader, error) {
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
 func (c *cnxn) Commit(_ context.Context) error {
-	return adbc.Error{Code: adbc.StatusInvalidState}
+	if !c.activeTransaction {
+		return adbc.Error{
+			Msg:  "no active transaction, cannot commit",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	_, err := c.cn.ExecContext(context.Background(), "COMMIT", nil)
+	if err != nil {
+		return errToAdbcErr(adbc.StatusInternal, err)
+	}
+
+	_, err = c.cn.ExecContext(context.Background(), "BEGIN", nil)
+	return errToAdbcErr(adbc.StatusInternal, err)
 }
 
 // Rollback rolls back any pending transactions. Only used if autocommit
@@ -698,7 +713,20 @@ func (c *cnxn) Commit(_ context.Context) error {
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
 func (c *cnxn) Rollback(_ context.Context) error {
-	return adbc.Error{Code: adbc.StatusInvalidState}
+	if !c.activeTransaction {
+		return adbc.Error{
+			Msg:  "no active transaction, cannot rollback",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	_, err := c.cn.ExecContext(context.Background(), "ROLLBACK", nil)
+	if err != nil {
+		return errToAdbcErr(adbc.StatusInternal, err)
+	}
+
+	_, err = c.cn.ExecContext(context.Background(), "BEGIN", nil)
+	return errToAdbcErr(adbc.StatusInternal, err)
 }
 
 // NewStatement initializes a new statement object tied to this connection
@@ -731,5 +759,43 @@ func (c *cnxn) Close() error {
 //
 // A partition can be retrieved by using ExecutePartitions on a statement.
 func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error) {
-	panic("not implemented") // TODO: Implement
+	return nil, adbc.Error{
+		Code: adbc.StatusNotImplemented,
+		Msg:  "ReadPartition not yet implemented for snowflake driver",
+	}
+}
+
+func (c *cnxn) SetOption(key, value string) error {
+	switch key {
+	case adbc.OptionKeyAutoCommit:
+		switch value {
+		case adbc.OptionValueEnabled:
+			if c.activeTransaction {
+				_, err := c.cn.ExecContext(context.Background(), "COMMIT", nil)
+				if err != nil {
+					return errToAdbcErr(adbc.StatusInternal, err)
+				}
+				c.activeTransaction = false
+			}
+		case adbc.OptionValueDisabled:
+			if !c.activeTransaction {
+				_, err := c.cn.ExecContext(context.Background(), "BEGIN", nil)
+				if err != nil {
+					return errToAdbcErr(adbc.StatusInternal, err)
+				}
+				c.activeTransaction = true
+			}
+		default:
+			return adbc.Error{
+				Msg:  "[Snowflake] invalid value for option " + key + ": " + value,
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	default:
+		return adbc.Error{
+			Msg:  "[Snowflake] unknown connection option " + key + ": " + value,
+			Code: adbc.StatusInvalidArgument,
+		}
+	}
+	return nil
 }

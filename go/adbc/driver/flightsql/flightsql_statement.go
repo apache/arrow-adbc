@@ -313,6 +313,7 @@ func (s *statement) Bind(_ context.Context, values arrow.Record) error {
 			Code: adbc.StatusInvalidState}
 	}
 
+	// calls retain
 	s.prepared.SetParameters(values)
 	return nil
 }
@@ -329,6 +330,7 @@ func (s *statement) BindStream(_ context.Context, stream array.RecordReader) err
 			Code: adbc.StatusInvalidState}
 	}
 
+	// calls retain
 	s.prepared.SetRecordReader(stream)
 	return nil
 }

@@ -70,6 +70,10 @@ func init() {
 }
 
 func errToAdbcErr(code adbc.Status, err error) error {
+	if err == nil {
+		return nil
+	}
+
 	var e adbc.Error
 	if errors.As(err, &e) {
 		e.Code = code
@@ -81,6 +85,7 @@ func errToAdbcErr(code adbc.Status, err error) error {
 		var sqlstate [5]byte
 		copy(sqlstate[:], sferr.SQLState[:5])
 		return adbc.Error{
+			Code:       code,
 			Msg:        sferr.Error(),
 			VendorCode: int32(sferr.Number),
 			SqlState:   sqlstate,

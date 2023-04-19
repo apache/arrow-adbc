@@ -174,7 +174,7 @@ func (s *SnowflakeQuirks) Alloc() memory.Allocator               { return s.mem 
 func (s *SnowflakeQuirks) BindParameter(_ int) string            { return "?" }
 func (s *SnowflakeQuirks) SupportsConcurrentStatements() bool    { return true }
 func (s *SnowflakeQuirks) SupportsPartitionedData() bool         { return false }
-func (s *SnowflakeQuirks) SupportsTransactions() bool            { return false }
+func (s *SnowflakeQuirks) SupportsTransactions() bool            { return true }
 func (s *SnowflakeQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *SnowflakeQuirks) SupportsDynamicParameterBinding() bool { return false }
 func (s *SnowflakeQuirks) SupportsBulkIngest() bool              { return true }

@@ -44,7 +44,8 @@ type statement struct {
 	targetTable string
 	append      bool
 
-	binder array.RecordReader
+	bound      arrow.Record
+	streamBind array.RecordReader
 }
 
 // Close releases any relevant resources associated with this statement
@@ -58,9 +59,12 @@ func (st *statement) Close() error {
 			Code: adbc.StatusInvalidState}
 	}
 
-	if st.binder != nil {
-		st.binder.Release()
-		st.binder = nil
+	if st.bound != nil {
+		st.bound.Release()
+		st.bound = nil
+	} else if st.streamBind != nil {
+		st.streamBind.Release()
+		st.streamBind = nil
 	}
 	st.cnxn = nil
 	return nil
@@ -166,7 +170,14 @@ func (st *statement) initIngest(ctx context.Context) (string, error) {
 	insertBldr.WriteString(st.targetTable)
 	insertBldr.WriteString(" VALUES (")
 
-	for i, f := range st.binder.Schema().Fields() {
+	var schema *arrow.Schema
+	if st.bound != nil {
+		schema = st.bound.Schema()
+	} else {
+		schema = st.streamBind.Schema()
+	}
+
+	for i, f := range schema.Fields() {
 		if i != 0 {
 			insertBldr.WriteString(", ")
 			createBldr.WriteString(", ")
@@ -198,7 +209,7 @@ func (st *statement) initIngest(ctx context.Context) (string, error) {
 		createQuery := createBldr.String()
 		_, err := st.cnxn.cn.ExecContext(ctx, createQuery, nil)
 		if err != nil {
-			return "", errToAdbcErr(adbc.StatusIO, err)
+			return "", errToAdbcErr(adbc.StatusInternal, err)
 		}
 	}
 
@@ -211,6 +222,14 @@ type nativeArrowArr[T string | []byte] interface {
 }
 
 func convToArr[T string | []byte](arr nativeArrowArr[T]) interface{} {
+	if arr.Len() == 1 {
+		if arr.IsNull(0) {
+			return nil
+		}
+
+		return arr.Value(0)
+	}
+
 	v := make([]interface{}, arr.Len())
 	for i := 0; i < arr.Len(); i++ {
 		if arr.IsNull(i) {
@@ -222,6 +241,13 @@ func convToArr[T string | []byte](arr nativeArrowArr[T]) interface{} {
 }
 
 func convMarshal(arr arrow.Array) interface{} {
+	if arr.Len() == 0 {
+		if arr.IsNull(0) {
+			return nil
+		}
+		return arr.ValueStr(0)
+	}
+
 	v := make([]interface{}, arr.Len())
 	for i := 0; i < arr.Len(); i++ {
 		if arr.IsNull(i) {
@@ -233,6 +259,14 @@ func convMarshal(arr arrow.Array) interface{} {
 }
 
 func convToSlice[T any](arr arrow.Array, vals []T) interface{} {
+	if arr.Len() == 1 {
+		if arr.IsNull(0) {
+			return nil
+		}
+
+		return vals[0]
+	}
+
 	out := make([]interface{}, arr.Len())
 	for i, v := range vals {
 		if arr.IsNull(i) {
@@ -293,7 +327,7 @@ func getQueryArg(arr arrow.Array) interface{} {
 }
 
 func (st *statement) executeIngest(ctx context.Context) (int64, error) {
-	if st.binder == nil {
+	if st.streamBind == nil && st.bound == nil {
 		return -1, adbc.Error{
 			Msg:  "must call Bind before bulk ingestion",
 			Code: adbc.StatusInvalidState,
@@ -313,28 +347,43 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 	// https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-Batch_Inserts_and_Binding_Parameters
 	// snowflake's internal driver work should already be doing this.
 
-	defer func() {
-		st.binder.Release()
-		st.binder = nil
-	}()
-
 	var n int64
-	args := make([]driver.NamedValue, len(st.binder.Schema().Fields()))
-	for st.binder.Next() {
-		rec := st.binder.Record()
+	exec := func(rec arrow.Record, args []driver.NamedValue) error {
 		for i, c := range rec.Columns() {
-			args[i].Name = rec.ColumnName(i)
+			args[i].Ordinal = i
 			args[i].Value = getQueryArg(c)
 		}
 
 		r, err := st.cnxn.cn.ExecContext(ctx, insertQuery, args)
 		if err != nil {
-			return n, err
+			return errToAdbcErr(adbc.StatusInternal, err)
 		}
 
 		rows, err := r.RowsAffected()
 		if err == nil {
 			n += rows
+		}
+		return nil
+	}
+
+	if st.bound != nil {
+		defer func() {
+			st.bound.Release()
+			st.bound = nil
+		}()
+		args := make([]driver.NamedValue, len(st.bound.Schema().Fields()))
+		return n, exec(st.bound, args)
+	}
+
+	defer func() {
+		st.streamBind.Release()
+		st.streamBind = nil
+	}()
+	args := make([]driver.NamedValue, len(st.streamBind.Schema().Fields()))
+	for st.streamBind.Next() {
+		rec := st.streamBind.Record()
+		if err := exec(rec, args); err != nil {
+			return n, err
 		}
 	}
 
@@ -359,9 +408,19 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		}
 	}
 
+	// for a bound stream reader we'd need to implement something to
+	// concatenate RecordReaders which doesn't exist yet. let's put
+	// that off for now.
+	if st.streamBind != nil || st.bound != nil {
+		return nil, -1, adbc.Error{
+			Msg:  "executing non-bulk ingest with bound params not yet implemented",
+			Code: adbc.StatusNotImplemented,
+		}
+	}
+
 	loader, err := st.cnxn.cn.QueryArrowStream(ctx, st.query)
 	if err != nil {
-		return nil, -1, err
+		return nil, -1, errToAdbcErr(adbc.StatusInternal, err)
 	}
 
 	rdr, err := newRecordReader(ctx, st.alloc, loader, st.queueSize)
@@ -426,14 +485,19 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 // but it may not do this until the statement is closed or another
 // record is bound.
 func (st *statement) Bind(_ context.Context, values arrow.Record) error {
-	if st.binder != nil {
-		st.binder.Release()
-		st.binder = nil
+	if st.streamBind != nil {
+		st.streamBind.Release()
+		st.streamBind = nil
+	} else if st.bound != nil {
+		st.bound.Release()
+		st.bound = nil
 	}
 
-	var err error
-	st.binder, err = array.NewRecordReader(values.Schema(), []arrow.Record{values})
-	return err
+	st.bound = values
+	if st.bound != nil {
+		st.bound.Retain()
+	}
+	return nil
 }
 
 // BindStream uses a record batch stream to bind parameters for this
@@ -441,8 +505,20 @@ func (st *statement) Bind(_ context.Context, values arrow.Record) error {
 //
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
-func (st *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
-	panic("not implemented") // TODO: Implement
+func (st *statement) BindStream(_ context.Context, stream array.RecordReader) error {
+	if st.streamBind != nil {
+		st.streamBind.Release()
+		st.streamBind = nil
+	} else if st.bound != nil {
+		st.bound.Release()
+		st.bound = nil
+	}
+
+	st.streamBind = stream
+	if st.streamBind != nil {
+		st.streamBind.Retain()
+	}
+	return nil
 }
 
 // GetParameterSchema returns an Arrow schema representation of
@@ -486,6 +562,9 @@ func (st *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc
 		}
 	}
 
+	// snowflake partitioned results are not currently portable enough to
+	// satisfy the requirements of this function. At least not what is
+	// returned from the snowflake driver.
 	return nil, adbc.Partitions{}, -1, adbc.Error{
 		Msg:  "ExecutePartitions not implemented for Snowflake",
 		Code: adbc.StatusNotImplemented,
