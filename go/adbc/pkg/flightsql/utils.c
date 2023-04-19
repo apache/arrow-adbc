@@ -19,7 +19,7 @@
 
 // clang-format off
 //go:build driverlib
-// clang-format on
+//  clang-format on
 
 #include "utils.h"
 
