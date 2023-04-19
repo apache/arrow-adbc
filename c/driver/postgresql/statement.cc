@@ -464,7 +464,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     out->children[col]->length = num_rows;
   }
   out->length = num_rows;
-  na_res = ArrowArrayFinishBuilding(out, 0);
+  na_res = ArrowArrayFinishBuildingDefault(out, 0);
   if (na_res != 0) {
     result_code = na_res;
     if (!last_error_.empty()) last_error_ += '\n';
