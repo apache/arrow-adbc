@@ -49,8 +49,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -252,6 +254,7 @@ func TestADBCFlightSQL(t *testing.T) {
 
 	suite.Run(t, &DefaultDialOptionsTests{Quirks: q})
 	suite.Run(t, &HeaderTests{Quirks: q})
+	suite.Run(t, &AuthnTests{})
 	suite.Run(t, &OptionTests{Quirks: q})
 	suite.Run(t, &PartitionTests{Quirks: q})
 	suite.Run(t, &StatementTests{Quirks: q})
@@ -706,6 +709,134 @@ func (suite *HeaderTests) TestPrepared() {
 
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-one"), "value 1")
 	suite.Contains(suite.Quirks.middle.recordedHeaders.Get("x-header-two"), "value 2")
+}
+
+type AuthnTests struct {
+	suite.Suite
+
+	s    flight.Server
+	db   adbc.Database
+	cnxn adbc.Connection
+}
+
+type AuthnTestServer struct {
+	flightsql.BaseServer
+}
+
+func (server *AuthnTestServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	md := metadata.MD{}
+	md.Set("authorization", "Bearer final")
+	if err := grpc.SendHeader(ctx, md); err != nil {
+		return nil, err
+	}
+	tkt, _ := flightsql.CreateStatementQueryTicket([]byte{})
+	info := &flight.FlightInfo{
+		FlightDescriptor: desc,
+		Endpoint: []*flight.FlightEndpoint{
+			{Ticket: &flight.Ticket{Ticket: tkt}},
+		},
+		TotalRecords: -1,
+		TotalBytes:   -1,
+	}
+	return info, nil
+}
+
+func (server *AuthnTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+	rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ch := make(chan flight.StreamChunk)
+	go func() {
+		defer close(ch)
+		ch <- flight.StreamChunk{
+			Data: rec,
+			Desc: nil,
+			Err:  nil,
+		}
+	}()
+	return sc, ch, nil
+}
+
+func authnTestUnary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "Could not get metadata")
+	}
+	auth := md.Get("authorization")
+	if len(auth) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "No token")
+	} else if auth[0] != "Bearer initial" {
+		return nil, status.Error(codes.Unauthenticated, "Invalid token for unary call: "+auth[0])
+	}
+
+	md.Set("authorization", "Bearer final")
+	ctx = metadata.NewOutgoingContext(ctx, md)
+	return handler(ctx, req)
+}
+
+func authnTestStream(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	md, ok := metadata.FromIncomingContext(ss.Context())
+	if !ok {
+		return status.Error(codes.InvalidArgument, "Could not get metadata")
+	}
+	auth := md.Get("authorization")
+	if len(auth) == 0 {
+		return status.Error(codes.Unauthenticated, "No token")
+	} else if auth[0] != "Bearer final" {
+		return status.Error(codes.Unauthenticated, "Invalid token for stream call: "+auth[0])
+	}
+
+	return handler(srv, ss)
+}
+
+func (suite *AuthnTests) SetupSuite() {
+	suite.s = flight.NewServerWithMiddleware([]flight.ServerMiddleware{
+		{Stream: authnTestStream, Unary: authnTestUnary},
+	})
+	suite.s.RegisterFlightService(flightsql.NewFlightServer(&AuthnTestServer{}))
+	suite.Require().NoError(suite.s.Init("localhost:0"))
+	suite.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
+	go func() {
+		_ = suite.s.Serve()
+	}()
+
+	uri := "grpc+tcp://" + suite.s.Addr().String()
+	var err error
+	suite.db, err = (driver.Driver{}).NewDatabase(map[string]string{
+		"uri":                            uri,
+		driver.OptionAuthorizationHeader: "Bearer initial",
+	})
+	suite.Require().NoError(err)
+}
+
+func (suite *AuthnTests) SetupTest() {
+	var err error
+	suite.cnxn, err = suite.db.Open(context.Background())
+	suite.Require().NoError(err)
+}
+
+func (suite *AuthnTests) TearDownTest() {
+	suite.Require().NoError(suite.cnxn.Close())
+}
+
+func (suite *AuthnTests) TearDownSuite() {
+	suite.db = nil
+	suite.s.Shutdown()
+}
+
+func (suite *AuthnTests) TestBearerTokenUpdated() {
+	// apache/arrow-adbc#584: when setting the auth header directly, the client should use any updated token value from the server if given
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	suite.NoError(err)
+	defer reader.Release()
 }
 
 type TimeoutTestServer struct {

@@ -45,6 +45,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -512,12 +513,25 @@ func streamTimeoutInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *gr
 }
 
 type bearerAuthMiddleware struct {
-	hdrs metadata.MD
+	mutex sync.RWMutex
+	hdrs  metadata.MD
 }
 
 func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
 	md, _ := metadata.FromOutgoingContext(ctx)
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
 	return metadata.NewOutgoingContext(ctx, metadata.Join(md, b.hdrs))
+}
+
+func (b *bearerAuthMiddleware) HeadersReceived(ctx context.Context, md metadata.MD) {
+	// apache/arrow-adbc#584
+	headers := md.Get("authorization")
+	if len(headers) > 0 {
+		b.mutex.Lock()
+		defer b.mutex.Unlock()
+		b.hdrs.Set("authorization", headers...)
+	}
 }
 
 func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.Client, error) {
@@ -564,6 +578,7 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 		}
 
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
+			// No need to worry about lock here since we are sole owner
 			authMiddle.hdrs.Set("authorization", md.Get("Authorization")[0])
 		}
 	}
