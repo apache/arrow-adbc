@@ -205,13 +205,17 @@ void ConnectionTest::TestAutocommitDefault() {
   // or rollback
   ASSERT_THAT(AdbcConnectionCommit(&connection, &error),
               IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  if (error.release) error.release(&error);
+
   ASSERT_THAT(AdbcConnectionRollback(&connection, &error),
               IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  if (error.release) error.release(&error);
 
   // Invalid option value
   ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
                                       "invalid", &error),
               ::testing::Not(IsOkStatus(&error)));
+  if (error.release) error.release(&error);
 }
 
 void ConnectionTest::TestAutocommitToggle() {
@@ -856,6 +860,8 @@ void StatementTest::TestNewInit() {
   // Cannot execute
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  if (error.release) error.release(&error);
+
 }
 
 void StatementTest::TestRelease() {
@@ -1154,6 +1160,8 @@ void StatementTest::TestSqlIngestErrors() {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               ::testing::Not(IsOkStatus(&error)));
+  if (error.release) error.release(&error);
+
 }
 
 void StatementTest::TestSqlIngestMultipleConnections() {
@@ -1633,6 +1641,7 @@ void StatementTest::TestSqlPrepareErrorParamCountMismatch() {
         return ADBC_STATUS_OK;
       })(),
       ::testing::Not(IsOkStatus(&error)));
+  if (error.release) error.release(&error);
 }
 
 void StatementTest::TestSqlQueryInts() {
@@ -1768,6 +1777,8 @@ void StatementTest::TestSqlQueryErrors() {
     code = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error);
   }
   ASSERT_NE(ADBC_STATUS_OK, code);
+  if (error.release) error.release(&error);
+
 }
 
 void StatementTest::TestTransactions() {
@@ -1840,6 +1851,7 @@ void StatementTest::TestTransactions() {
                 return ADBC_STATUS_OK;
               })(),
               ::testing::Not(IsOkStatus(&error)));
+  if (error.release) error.release(&error);
 
   // Commit
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
