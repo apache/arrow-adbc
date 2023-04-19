@@ -37,7 +37,14 @@ if ($env:CGO_ENABLED -eq "1") {
       -buildmode=c-shared `
       ./flightsql
     if (-not $?) { exit 1 }
-    Pop-Location
+
+    go build `
+      -tags driverlib `
+      -o adbc_driver_snowflake.dll `
+      -buildmode=c-shared `
+      ./snowflake
+    if (-not $?) { exit 1 }
+    Pop-Location    
 }
 
 Pop-Location
