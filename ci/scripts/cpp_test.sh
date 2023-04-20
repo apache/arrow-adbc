@@ -31,7 +31,7 @@ test_subproject() {
 
     pushd "${build_dir}/${subproject}"
 
-    "./ctest --output-on-failure --no-tests=error"
+    ctest --output-on-failure --no-tests=error
 
     popd
 }
