@@ -28,21 +28,14 @@ $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 
 function Build-Subproject {
-    $Subproject = $Args[0]
-    $SubprojectBuild = Join-Path $BuildDir $Subproject
-
-    echo "============================================================"
-    echo "Building $($Subproject)"
-    echo "============================================================"
-
-    New-Item -ItemType Directory -Force -Path $SubprojectBuild | Out-Null
-    Push-Location $SubprojectBuild
-
     cmake `
-      $(Join-Path $SourceDir "c\$($Subproject)") `
+      $(Join-Path $SourceDir "c\") `
       -DADBC_BUILD_SHARED=ON `
       -DADBC_BUILD_STATIC=OFF `
       -DADBC_BUILD_TESTS=ON `
+      -DADBC_BUILD_DRIVER_MANAGER="$($BuildDriverManager)" `
+      -DADBC_BUILD_DRIVER_POSTGRESQL="$($BuildDriverPostgreSQL)" `
+      -DADBC_BUILD_DRIVER_SQLITE="$($BuildDriverSqlite)" `
       -DCMAKE_BUILD_TYPE=Debug `
       -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `
       -DCMAKE_VERBOSE_MAKEFILE=ON
@@ -54,12 +47,4 @@ function Build-Subproject {
     Pop-Location
 }
 
-if ($BuildDriverManager) {
-    Build-Subproject driver_manager
-}
-if ($BuildDriverPostgreSQL) {
-    Build-Subproject driver\postgresql
-}
-if ($BuildDriverSqlite) {
-    Build-Subproject driver\sqlite
-}
+Build-Subproject

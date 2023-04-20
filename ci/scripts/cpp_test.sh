@@ -26,14 +26,12 @@ set -e
 
 test_subproject() {
     local -r build_dir="${1}"
-    local -r subproject="${2}"
 
     echo "=== Testing ${subproject} ==="
 
     pushd "${build_dir}/${subproject}"
 
-    # macOS will not propagate DYLD_LIBRARY_PATH through a subprocess
-    "./adbc-$(echo ${subproject} | sed "s|[/_]|-|g")-test"
+    "./ctest --output-on-failure --no-tests=error"
 
     popd
 }
@@ -47,25 +45,7 @@ main() {
         install_dir="${build_dir}/local"
     fi
 
-    export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-
-    if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then
-        test_subproject "${build_dir}" driver_manager
-    fi
-
-    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
-        test_subproject "${build_dir}" driver/postgresql
-    fi
-
-    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
-        test_subproject "${build_dir}" driver/sqlite
-    fi
-
-    if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
-        export GODEBUG=cgocheck=2
-        test_subproject "${build_dir}" driver/flightsql
-    fi
+    test_subproject "${build_dir}"
 }
 
 main "$@"

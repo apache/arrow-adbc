@@ -37,20 +37,19 @@ build_subproject() {
     local -r source_dir="${1}"
     local -r build_dir="${2}"
     local -r install_dir="${3}"
-    local -r subproject="${4}"
 
     if [[ -z "${CMAKE_INSTALL_PREFIX}" ]]; then
         CMAKE_INSTALL_PREFIX="${install_dir}"
     fi
     echo "Installing to ${CMAKE_INSTALL_PREFIX}"
 
-    mkdir -p "${build_dir}/${subproject}"
-    pushd "${build_dir}/${subproject}"
-
     set -x
-    cmake "${source_dir}/c/${subproject}" \
+    cmake "${source_dir}/c" \
           "${ADBC_CMAKE_ARGS}" \
           -DADBC_BUILD_SHARED="${ADBC_BUILD_SHARED}" \
+          -DADBC_BUILD_DRIVER_MANAGER="${BUILD_DRIVER_MANAGER}" \
+          -DADBC_BUILD_DRIVER_POSTGRESQL="${BUILD_DRIVER_POSTGRESQL}" \
+          -DADBC_BUILD_DRIVER_SQLITE="${BUILD_DRIVER_SQLITE}" \
           -DADBC_BUILD_STATIC="${ADBC_BUILD_STATIC}" \
           -DADBC_BUILD_TESTS="${ADBC_BUILD_TESTS}" \
           -DADBC_USE_ASAN="${ADBC_USE_ASAN}" \
@@ -73,21 +72,7 @@ main() {
         install_dir="${build_dir}/local"
     fi
 
-    if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then
-        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver_manager
-    fi
-
-    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
-        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver/postgresql
-    fi
-
-    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
-        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver/sqlite
-    fi
-
-    if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
-        build_subproject "${source_dir}" "${build_dir}" "${install_dir}" driver/flightsql
-    fi
+    build_subproject "${source_dir}" "${build_dir}" "${install_dir}"
 }
 
 main "$@"
