@@ -84,7 +84,6 @@ if(ADBC_BUILD_TESTS)
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
-  target_compile_definitions(adbc-driver-postgresql-test PRIVATE -DADBC_BUILDING_TESTS)
   adbc_configure_target(adbc-driver-postgresql-test)
 endif()
 
