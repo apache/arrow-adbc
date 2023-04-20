@@ -26,6 +26,14 @@
 
 #include <nanoarrow/nanoarrow.h>
 
+#include <adbc.h>
+
+#if defined(ADBC_BUILDING_TESTS)
+#define ADBC_EXPORT_TEST ADBC_EXPORT
+#else
+#define ADBC_EXPORT_TEST
+#endif
+
 namespace adbcpq {
 
 // An enum of the types available in most Postgres pg_type tables
@@ -190,11 +198,11 @@ class PostgresType {
   // do not have a corresponding Arrow type are returned as Binary with field
   // metadata ADBC:posgresql:typname. These types can be represented as their
   // binary COPY representation in the output.
-  ArrowErrorCode SetSchema(ArrowSchema* schema) const;
+  ADBC_EXPORT_TEST ArrowErrorCode SetSchema(ArrowSchema* schema) const;
 
-  static ArrowErrorCode FromSchema(const PostgresTypeResolver& resolver,
-                                   ArrowSchema* schema, PostgresType* out,
-                                   ArrowError* error);
+  ADBC_EXPORT_TEST static ArrowErrorCode FromSchema(const PostgresTypeResolver& resolver,
+                                                    ArrowSchema* schema,
+                                                    PostgresType* out, ArrowError* error);
 
  private:
   uint32_t oid_;
@@ -267,7 +275,7 @@ class PostgresTypeResolver {
   // of Inserts matters: Non-array types must be inserted before the corresponding
   // array types and class definitions must be inserted before the corresponding
   // class type using InsertClass().
-  ArrowErrorCode Insert(const Item& item, ArrowError* error);
+  ADBC_EXPORT_TEST ArrowErrorCode Insert(const Item& item, ArrowError* error);
 
   // Insert a class definition. For the purposes of resolving a PostgresType
   // instance, this is simply a vector of field_name: oid tuples. The specified
