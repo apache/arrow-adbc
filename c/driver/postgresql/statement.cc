@@ -30,7 +30,7 @@
 #include <nanoarrow/nanoarrow.h>
 
 #include "connection.h"
-#include "type.h"
+#include "postgres_type.h"
 #include "util.h"
 
 namespace adbcpq {
@@ -105,57 +105,23 @@ struct Handle {
 };
 
 /// Build an Arrow schema from a PostgreSQL result set
-AdbcStatusCode InferSchema(const TypeMapping& type_mapping, PGresult* result,
+AdbcStatusCode InferSchema(const PostgresTypeResolver& type_resolver, PGresult* result,
                            struct ArrowSchema* out, struct AdbcError* error) {
+  ArrowError na_error;
   const int num_fields = PQnfields(result);
   ArrowSchemaInit(out);
   CHECK_NA_ADBC(ArrowSchemaSetTypeStruct(out, num_fields), error);
   for (int i = 0; i < num_fields; i++) {
-    ArrowType field_type = NANOARROW_TYPE_NA;
-    const Oid pg_type = PQftype(result, i);
-
-    auto it = type_mapping.type_mapping.find(pg_type);
-    if (it == type_mapping.type_mapping.end()) {
+    const Oid pg_oid = PQftype(result, i);
+    PostgresType pg_type;
+    if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
       SetError(error, "Column #", i + 1, " (\"", PQfname(result, i),
-               "\") has unknown type code ", pg_type);
+               "\") has unknown type code ", pg_oid);
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
-    switch (it->second) {
-      // TODO: this mapping will eventually have to become dynamic,
-      // because of complex types like arrays/records
-      case PgType::kBool:
-        field_type = NANOARROW_TYPE_BOOL;
-        break;
-      case PgType::kFloat4:
-        field_type = NANOARROW_TYPE_FLOAT;
-        break;
-      case PgType::kFloat8:
-        field_type = NANOARROW_TYPE_DOUBLE;
-        break;
-      case PgType::kInt2:
-        field_type = NANOARROW_TYPE_INT16;
-        break;
-      case PgType::kInt4:
-        field_type = NANOARROW_TYPE_INT32;
-        break;
-      case PgType::kInt8:
-        field_type = NANOARROW_TYPE_INT64;
-        break;
-      case PgType::kVarBinary:
-        field_type = NANOARROW_TYPE_BINARY;
-        break;
-      case PgType::kText:
-      case PgType::kVarChar:
-        field_type = NANOARROW_TYPE_STRING;
-        break;
-      default:
-        SetError(error, "Column #", i + 1, " (\"", PQfname(result, i),
-                 "\") has unimplemented type code ", pg_type);
-        return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
-    CHECK_NA_ADBC(ArrowSchemaSetType(out->children[i], field_type), error);
-    CHECK_NA_ADBC(ArrowSchemaSetName(out->children[i], PQfname(result, i)), error);
+    CHECK_NA_ADBC(pg_type.WithFieldName(PQfname(result, i)).SetSchema(out->children[i]),
+                  error);
   }
   return ADBC_STATUS_OK;
 }
@@ -206,7 +172,8 @@ struct BindStream {
     return std::move(callback)();
   }
 
-  AdbcStatusCode SetParamTypes(const TypeMapping& type_mapping, struct AdbcError* error) {
+  AdbcStatusCode SetParamTypes(const PostgresTypeResolver& type_resolver,
+                               struct AdbcError* error) {
     param_types.resize(bind_schema->n_children);
     param_values.resize(bind_schema->n_children);
     param_lengths.resize(bind_schema->n_children);
@@ -214,41 +181,40 @@ struct BindStream {
     param_values_offsets.reserve(bind_schema->n_children);
 
     for (size_t i = 0; i < bind_schema_fields.size(); i++) {
-      PgType pg_type;
+      PostgresTypeId type_id;
       switch (bind_schema_fields[i].type) {
         case ArrowType::NANOARROW_TYPE_INT16:
-          pg_type = PgType::kInt2;
+          type_id = PostgresTypeId::kInt2;
           param_lengths[i] = 2;
           break;
         case ArrowType::NANOARROW_TYPE_INT32:
-          pg_type = PgType::kInt4;
+          type_id = PostgresTypeId::kInt4;
           param_lengths[i] = 4;
           break;
         case ArrowType::NANOARROW_TYPE_INT64:
-          pg_type = PgType::kInt8;
+          type_id = PostgresTypeId::kInt8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_DOUBLE:
-          pg_type = PgType::kFloat8;
+          type_id = PostgresTypeId::kFloat8;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_STRING:
-          pg_type = PgType::kText;
+          type_id = PostgresTypeId::kText;
           param_lengths[i] = 0;
           break;
         default:
-          // TODO: data type to string
           SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
-                   "') has unsupported parameter type ", bind_schema_fields[i].type);
+                   "') has unsupported parameter type ",
+                   ArrowTypeString(bind_schema_fields[i].type));
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
 
-      param_types[i] = type_mapping.GetOid(pg_type);
+      param_types[i] = type_resolver.GetOID(type_id);
       if (param_types[i] == 0) {
-        // TODO: data type to string
         SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
                  "') has type with no corresponding PostgreSQL type ",
-                 bind_schema_fields[i].type);
+                 ArrowTypeString(bind_schema_fields[i].type));
         return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
@@ -421,7 +387,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
         kPgCopyBinarySignature.size() + sizeof(uint32_t) + sizeof(uint32_t);
     // https://www.postgresql.org/docs/14/sql-copy.html#id-1.9.3.55.9.4.5
     const int size = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
-    if (size < kPqHeaderLength) {
+    if (size < static_cast<int>(kPqHeaderLength)) {
       return EIO;
     } else if (std::strcmp(pgbuf_, kPgCopyBinarySignature.data()) != 0) {
       return EIO;
@@ -676,7 +642,7 @@ AdbcStatusCode PostgresStatement::New(struct AdbcConnection* connection,
   }
   connection_ =
       *reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
-  type_mapping_ = connection_->type_mapping();
+  type_resolver_ = connection_->type_resolver();
   reader_.conn_ = connection_->conn();
   return ADBC_STATUS_OK;
 }
@@ -785,7 +751,7 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
   std::memset(&bind_, 0, sizeof(bind_));
 
   CHECK(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
-  CHECK(bind_stream.SetParamTypes(*type_mapping_, error));
+  CHECK(bind_stream.SetParamTypes(*type_resolver_, error));
   CHECK(bind_stream.Prepare(connection_->conn(), query_, error));
   CHECK(bind_stream.Execute(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
@@ -836,7 +802,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
       PQclear(result);
       return ADBC_STATUS_IO;
     }
-    AdbcStatusCode status = InferSchema(*type_mapping_, result, &reader_.schema_, error);
+    AdbcStatusCode status = InferSchema(*type_resolver_, result, &reader_.schema_, error);
     PQclear(result);
     if (status != ADBC_STATUS_OK) return status;
   }
@@ -882,7 +848,7 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
         return ADBC_STATUS_OK;
       },
       error));
-  CHECK(bind_stream.SetParamTypes(*type_mapping_, error));
+  CHECK(bind_stream.SetParamTypes(*type_resolver_, error));
 
   std::string insert = "INSERT INTO ";
   insert += ingest_.target;

@@ -307,8 +307,6 @@ AdbcStatusCode PostgresStatementExecutePartitions(struct AdbcStatement* statemen
                                                   int64_t* rows_affected,
                                                   struct AdbcError* error) {
   if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
-  auto* ptr =
-      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
