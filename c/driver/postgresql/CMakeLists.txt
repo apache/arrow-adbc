@@ -44,8 +44,8 @@ add_arrow_lib(adbc_driver_postgresql
               ${LIBPQ_LINK_LIBRARIES}
               STATIC_LINK_LIBS
               ${LIBPQ_LINK_LIBRARIES}
-              ${LIBPQ_STATIC_LIBRARIES}
-              nanoarrow)
+              nanoarrow
+              ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 include_directories(SYSTEM ${LIBPQ_INCLUDE_DIRS})
@@ -71,8 +71,8 @@ if(ADBC_BUILD_TESTS)
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
-                ${TEST_LINK_LIBS}
-                nanoarrow)
+                nanoarrow
+                ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
   adbc_configure_target(adbc-driver-postgresql-test)
 endif()

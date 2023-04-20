@@ -27,9 +27,7 @@ set -e
 test_subproject() {
     local -r build_dir="${1}"
 
-    echo "=== Testing ${subproject} ==="
-
-    pushd "${build_dir}/${subproject}"
+    pushd "${build_dir}/"
 
     ctest --output-on-failure --no-tests=error
 
