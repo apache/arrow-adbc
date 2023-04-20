@@ -39,7 +39,6 @@ endif()
 
 add_arrow_lib(adbc_driver_postgresql
               SOURCES
-              postgres_type.cc
               connection.cc
               database.cc
               postgresql.cc
