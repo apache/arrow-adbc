@@ -23,5 +23,4 @@ OBJECTS = init.o \
     database.o \
     statement.o \
     postgresql.o \
-    postgres_type.o \
     nanoarrow/nanoarrow.o
