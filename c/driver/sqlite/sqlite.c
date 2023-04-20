@@ -343,7 +343,8 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(const uint32_t* info_codes,
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
   }
 
-  CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuilding(array, &na_error), &na_error, error);
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array, &na_error), &na_error,
+                  error);
 
   return ADBC_STATUS_OK;
 }  // NOLINT(whitespace/indent)
@@ -971,7 +972,8 @@ AdbcStatusCode SqliteConnectionGetObjectsImpl(
     // TODO: implement "temp", other attached databases as catalogs
   }
 
-  CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuilding(array, &na_error), &na_error, error);
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array, &na_error), &na_error,
+                  error);
   return ADBC_STATUS_OK;
 }
 
@@ -1072,7 +1074,7 @@ AdbcStatusCode SqliteConnectionGetTableTypesImpl(struct ArrowSchema* schema,
            error);
   CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
 
-  CHECK_NA(INTERNAL, ArrowArrayFinishBuilding(array, NULL), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishBuildingDefault(array, NULL), error);
   return ADBC_STATUS_OK;
 }
 

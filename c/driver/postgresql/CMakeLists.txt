@@ -32,7 +32,6 @@ add_arrow_lib(adbc_driver_postgresql
               database.cc
               postgresql.cc
               statement.cc
-              type.cc
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
@@ -67,6 +66,7 @@ if(ADBC_BUILD_TESTS)
                 PREFIX
                 adbc
                 SOURCES
+                postgres_type_test.cc
                 postgresql_test.cc
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
