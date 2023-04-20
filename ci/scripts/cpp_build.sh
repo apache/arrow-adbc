@@ -59,8 +59,6 @@ build_subproject() {
           -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
     set +x
     cmake --build . --target install -j
-
-    popd
 }
 
 main() {
