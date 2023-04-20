@@ -194,163 +194,163 @@ ADBC_EXPORT_TEST ArrowErrorCode PostgresTypeResolver::Insert(const Item& item,
 
 ADBC_EXPORT_TEST const char* PostgresTyprecv(PostgresTypeId type_id) {
   switch (type_id) {
-    case PostgresTypeId::ACLITEM:
+    case PostgresTypeId::kAclitem:
       return "aclitem_recv";
-    case PostgresTypeId::ANYARRAY:
+    case PostgresTypeId::kAnyarray:
       return "anyarray_recv";
-    case PostgresTypeId::ANYCOMPATIBLEARRAY:
+    case PostgresTypeId::kAnycompatiblearray:
       return "anycompatiblearray_recv";
-    case PostgresTypeId::ARRAY:
+    case PostgresTypeId::kArray:
       return "array_recv";
-    case PostgresTypeId::BIT:
+    case PostgresTypeId::kBit:
       return "bit_recv";
-    case PostgresTypeId::BOOL:
+    case PostgresTypeId::kBool:
       return "boolrecv";
-    case PostgresTypeId::BOX:
+    case PostgresTypeId::kBox:
       return "box_recv";
-    case PostgresTypeId::BPCHAR:
+    case PostgresTypeId::kBpchar:
       return "bpcharrecv";
-    case PostgresTypeId::BRIN_BLOOM_SUMMARY:
+    case PostgresTypeId::kBrinBloomSummary:
       return "brin_bloom_summary_recv";
-    case PostgresTypeId::BRIN_MINMAX_MULTI_SUMMARY:
+    case PostgresTypeId::kBrinMinmaxMultiSummary:
       return "brin_minmax_multi_summary_recv";
-    case PostgresTypeId::BYTEA:
+    case PostgresTypeId::kBytea:
       return "bytearecv";
-    case PostgresTypeId::CASH:
+    case PostgresTypeId::kCash:
       return "cash_recv";
-    case PostgresTypeId::CHAR:
+    case PostgresTypeId::kChar:
       return "charrecv";
-    case PostgresTypeId::CIDR:
+    case PostgresTypeId::kCidr:
       return "cidr_recv";
-    case PostgresTypeId::CID:
+    case PostgresTypeId::kCid:
       return "cidrecv";
-    case PostgresTypeId::CIRCLE:
+    case PostgresTypeId::kCircle:
       return "circle_recv";
-    case PostgresTypeId::CSTRING:
+    case PostgresTypeId::kCstring:
       return "cstring_recv";
-    case PostgresTypeId::DATE:
+    case PostgresTypeId::kDate:
       return "date_recv";
-    case PostgresTypeId::DOMAIN_:
+    case PostgresTypeId::kDomain:
       return "domain_recv";
-    case PostgresTypeId::FLOAT4:
+    case PostgresTypeId::kFloat4:
       return "float4recv";
-    case PostgresTypeId::FLOAT8:
+    case PostgresTypeId::kFloat8:
       return "float8recv";
-    case PostgresTypeId::INET:
+    case PostgresTypeId::kInet:
       return "inet_recv";
-    case PostgresTypeId::INT2:
+    case PostgresTypeId::kInt2:
       return "int2recv";
-    case PostgresTypeId::INT2VECTOR:
+    case PostgresTypeId::kInt2vector:
       return "int2vectorrecv";
-    case PostgresTypeId::INT4:
+    case PostgresTypeId::kInt4:
       return "int4recv";
-    case PostgresTypeId::INT8:
+    case PostgresTypeId::kInt8:
       return "int8recv";
-    case PostgresTypeId::INTERVAL:
+    case PostgresTypeId::kInterval:
       return "interval_recv";
-    case PostgresTypeId::JSON:
+    case PostgresTypeId::kJson:
       return "json_recv";
-    case PostgresTypeId::JSONB:
+    case PostgresTypeId::kJsonb:
       return "jsonb_recv";
-    case PostgresTypeId::JSONPATH:
+    case PostgresTypeId::kJsonpath:
       return "jsonpath_recv";
-    case PostgresTypeId::LINE:
+    case PostgresTypeId::kLine:
       return "line_recv";
-    case PostgresTypeId::LSEG:
+    case PostgresTypeId::kLseg:
       return "lseg_recv";
-    case PostgresTypeId::MACADDR:
+    case PostgresTypeId::kMacaddr:
       return "macaddr_recv";
-    case PostgresTypeId::MACADDR8:
+    case PostgresTypeId::kMacaddr8:
       return "macaddr8_recv";
-    case PostgresTypeId::MULTIRANGE:
+    case PostgresTypeId::kMultirange:
       return "multirange_recv";
-    case PostgresTypeId::NAME:
+    case PostgresTypeId::kName:
       return "namerecv";
-    case PostgresTypeId::NUMERIC:
+    case PostgresTypeId::kNumeric:
       return "numeric_recv";
-    case PostgresTypeId::OID:
+    case PostgresTypeId::kOid:
       return "oidrecv";
-    case PostgresTypeId::OIDVECTOR:
+    case PostgresTypeId::kOidvector:
       return "oidvectorrecv";
-    case PostgresTypeId::PATH:
+    case PostgresTypeId::kPath:
       return "path_recv";
-    case PostgresTypeId::PG_NODE_TREE:
+    case PostgresTypeId::kPgNodeTree:
       return "pg_node_tree_recv";
-    case PostgresTypeId::PG_NDISTINCT:
+    case PostgresTypeId::kPgNdistinct:
       return "pg_ndistinct_recv";
-    case PostgresTypeId::PG_DEPENDENCIES:
+    case PostgresTypeId::kPgDependencies:
       return "pg_dependencies_recv";
-    case PostgresTypeId::PG_LSN:
+    case PostgresTypeId::kPgLsn:
       return "pg_lsn_recv";
-    case PostgresTypeId::PG_MCV_LIST:
+    case PostgresTypeId::kPgMcvList:
       return "pg_mcv_list_recv";
-    case PostgresTypeId::PG_DDL_COMMAND:
+    case PostgresTypeId::kPgDdlCommand:
       return "pg_ddl_command_recv";
-    case PostgresTypeId::PG_SNAPSHOT:
+    case PostgresTypeId::kPgSnapshot:
       return "pg_snapshot_recv";
-    case PostgresTypeId::POINT:
+    case PostgresTypeId::kPoint:
       return "point_recv";
-    case PostgresTypeId::POLY:
+    case PostgresTypeId::kPoly:
       return "poly_recv";
-    case PostgresTypeId::RANGE:
+    case PostgresTypeId::kRange:
       return "range_recv";
-    case PostgresTypeId::RECORD:
+    case PostgresTypeId::kRecord:
       return "record_recv";
-    case PostgresTypeId::REGCLASS:
+    case PostgresTypeId::kRegclass:
       return "regclassrecv";
-    case PostgresTypeId::REGCOLLATION:
+    case PostgresTypeId::kRegcollation:
       return "regcollationrecv";
-    case PostgresTypeId::REGCONFIG:
+    case PostgresTypeId::kRegconfig:
       return "regconfigrecv";
-    case PostgresTypeId::REGDICTIONARY:
+    case PostgresTypeId::kRegdictionary:
       return "regdictionaryrecv";
-    case PostgresTypeId::REGNAMESPACE:
+    case PostgresTypeId::kRegnamespace:
       return "regnamespacerecv";
-    case PostgresTypeId::REGOPERATOR:
+    case PostgresTypeId::kRegoperator:
       return "regoperatorrecv";
-    case PostgresTypeId::REGOPER:
+    case PostgresTypeId::kRegoper:
       return "regoperrecv";
-    case PostgresTypeId::REGPROCEDURE:
+    case PostgresTypeId::kRegprocedure:
       return "regprocedurerecv";
-    case PostgresTypeId::REGPROC:
+    case PostgresTypeId::kRegproc:
       return "regprocrecv";
-    case PostgresTypeId::REGROLE:
+    case PostgresTypeId::kRegrole:
       return "regrolerecv";
-    case PostgresTypeId::REGTYPE:
+    case PostgresTypeId::kRegtype:
       return "regtyperecv";
-    case PostgresTypeId::TEXT:
+    case PostgresTypeId::kText:
       return "textrecv";
-    case PostgresTypeId::TID:
+    case PostgresTypeId::kTid:
       return "tidrecv";
-    case PostgresTypeId::TIME:
+    case PostgresTypeId::kTime:
       return "time_recv";
-    case PostgresTypeId::TIMESTAMP:
+    case PostgresTypeId::kTimestamp:
       return "timestamp_recv";
-    case PostgresTypeId::TIMESTAMPTZ:
+    case PostgresTypeId::kTimestamptz:
       return "timestamptz_recv";
-    case PostgresTypeId::TIMETZ:
+    case PostgresTypeId::kTimetz:
       return "timetz_recv";
-    case PostgresTypeId::TSQUERY:
+    case PostgresTypeId::kTsquery:
       return "tsqueryrecv";
-    case PostgresTypeId::TSVECTOR:
+    case PostgresTypeId::kTsvector:
       return "tsvectorrecv";
-    case PostgresTypeId::TXID_SNAPSHOT:
+    case PostgresTypeId::kTxidSnapshot:
       return "txid_snapshot_recv";
-    case PostgresTypeId::UNKNOWN:
+    case PostgresTypeId::kUnknown:
       return "unknownrecv";
-    case PostgresTypeId::UUID:
+    case PostgresTypeId::kUuid:
       return "uuid_recv";
-    case PostgresTypeId::VARBIT:
+    case PostgresTypeId::kVarbit:
       return "varbit_recv";
-    case PostgresTypeId::VARCHAR:
+    case PostgresTypeId::kVarchar:
       return "varcharrecv";
-    case PostgresTypeId::VOID:
+    case PostgresTypeId::kVoid:
       return "void_recv";
-    case PostgresTypeId::XID8:
+    case PostgresTypeId::kXid8:
       return "xid8recv";
-    case PostgresTypeId::XID:
+    case PostgresTypeId::kXid:
       return "xidrecv";
-    case PostgresTypeId::XML:
+    case PostgresTypeId::kXml:
       return "xml_recv";
     default:
       return "";
@@ -359,163 +359,163 @@ ADBC_EXPORT_TEST const char* PostgresTyprecv(PostgresTypeId type_id) {
 
 ADBC_EXPORT_TEST const char* PostgresTypname(PostgresTypeId type_id) {
   switch (type_id) {
-    case PostgresTypeId::ACLITEM:
+    case PostgresTypeId::kAclitem:
       return "aclitem";
-    case PostgresTypeId::ANYARRAY:
+    case PostgresTypeId::kAnyarray:
       return "anyarray";
-    case PostgresTypeId::ANYCOMPATIBLEARRAY:
+    case PostgresTypeId::kAnycompatiblearray:
       return "anycompatiblearray";
-    case PostgresTypeId::ARRAY:
+    case PostgresTypeId::kArray:
       return "array";
-    case PostgresTypeId::BIT:
+    case PostgresTypeId::kBit:
       return "bit";
-    case PostgresTypeId::BOOL:
+    case PostgresTypeId::kBool:
       return "bool";
-    case PostgresTypeId::BOX:
+    case PostgresTypeId::kBox:
       return "box";
-    case PostgresTypeId::BPCHAR:
+    case PostgresTypeId::kBpchar:
       return "bpchar";
-    case PostgresTypeId::BRIN_BLOOM_SUMMARY:
+    case PostgresTypeId::kBrinBloomSummary:
       return "brin_bloom_summary";
-    case PostgresTypeId::BRIN_MINMAX_MULTI_SUMMARY:
+    case PostgresTypeId::kBrinMinmaxMultiSummary:
       return "brin_minmax_multi_summary";
-    case PostgresTypeId::BYTEA:
+    case PostgresTypeId::kBytea:
       return "bytea";
-    case PostgresTypeId::CASH:
+    case PostgresTypeId::kCash:
       return "cash";
-    case PostgresTypeId::CHAR:
+    case PostgresTypeId::kChar:
       return "char";
-    case PostgresTypeId::CIDR:
+    case PostgresTypeId::kCidr:
       return "cidr";
-    case PostgresTypeId::CID:
+    case PostgresTypeId::kCid:
       return "cid";
-    case PostgresTypeId::CIRCLE:
+    case PostgresTypeId::kCircle:
       return "circle";
-    case PostgresTypeId::CSTRING:
+    case PostgresTypeId::kCstring:
       return "cstring";
-    case PostgresTypeId::DATE:
+    case PostgresTypeId::kDate:
       return "date";
-    case PostgresTypeId::DOMAIN_:
+    case PostgresTypeId::kDomain:
       return "domain";
-    case PostgresTypeId::FLOAT4:
+    case PostgresTypeId::kFloat4:
       return "float4";
-    case PostgresTypeId::FLOAT8:
+    case PostgresTypeId::kFloat8:
       return "float8";
-    case PostgresTypeId::INET:
+    case PostgresTypeId::kInet:
       return "inet";
-    case PostgresTypeId::INT2:
+    case PostgresTypeId::kInt2:
       return "int2";
-    case PostgresTypeId::INT2VECTOR:
+    case PostgresTypeId::kInt2vector:
       return "int2vector";
-    case PostgresTypeId::INT4:
+    case PostgresTypeId::kInt4:
       return "int4";
-    case PostgresTypeId::INT8:
+    case PostgresTypeId::kInt8:
       return "int8";
-    case PostgresTypeId::INTERVAL:
+    case PostgresTypeId::kInterval:
       return "interval";
-    case PostgresTypeId::JSON:
+    case PostgresTypeId::kJson:
       return "json";
-    case PostgresTypeId::JSONB:
+    case PostgresTypeId::kJsonb:
       return "jsonb";
-    case PostgresTypeId::JSONPATH:
+    case PostgresTypeId::kJsonpath:
       return "jsonpath";
-    case PostgresTypeId::LINE:
+    case PostgresTypeId::kLine:
       return "line";
-    case PostgresTypeId::LSEG:
+    case PostgresTypeId::kLseg:
       return "lseg";
-    case PostgresTypeId::MACADDR:
+    case PostgresTypeId::kMacaddr:
       return "macaddr";
-    case PostgresTypeId::MACADDR8:
+    case PostgresTypeId::kMacaddr8:
       return "macaddr8";
-    case PostgresTypeId::MULTIRANGE:
+    case PostgresTypeId::kMultirange:
       return "multirange";
-    case PostgresTypeId::NAME:
+    case PostgresTypeId::kName:
       return "name";
-    case PostgresTypeId::NUMERIC:
+    case PostgresTypeId::kNumeric:
       return "numeric";
-    case PostgresTypeId::OID:
+    case PostgresTypeId::kOid:
       return "oid";
-    case PostgresTypeId::OIDVECTOR:
+    case PostgresTypeId::kOidvector:
       return "oidvector";
-    case PostgresTypeId::PATH:
+    case PostgresTypeId::kPath:
       return "path";
-    case PostgresTypeId::PG_NODE_TREE:
+    case PostgresTypeId::kPgNodeTree:
       return "pg_node_tree";
-    case PostgresTypeId::PG_NDISTINCT:
+    case PostgresTypeId::kPgNdistinct:
       return "pg_ndistinct";
-    case PostgresTypeId::PG_DEPENDENCIES:
+    case PostgresTypeId::kPgDependencies:
       return "pg_dependencies";
-    case PostgresTypeId::PG_LSN:
+    case PostgresTypeId::kPgLsn:
       return "pg_lsn";
-    case PostgresTypeId::PG_MCV_LIST:
+    case PostgresTypeId::kPgMcvList:
       return "pg_mcv_list";
-    case PostgresTypeId::PG_DDL_COMMAND:
+    case PostgresTypeId::kPgDdlCommand:
       return "pg_ddl_command";
-    case PostgresTypeId::PG_SNAPSHOT:
+    case PostgresTypeId::kPgSnapshot:
       return "pg_snapshot";
-    case PostgresTypeId::POINT:
+    case PostgresTypeId::kPoint:
       return "point";
-    case PostgresTypeId::POLY:
+    case PostgresTypeId::kPoly:
       return "poly";
-    case PostgresTypeId::RANGE:
+    case PostgresTypeId::kRange:
       return "range";
-    case PostgresTypeId::RECORD:
+    case PostgresTypeId::kRecord:
       return "record";
-    case PostgresTypeId::REGCLASS:
+    case PostgresTypeId::kRegclass:
       return "regclass";
-    case PostgresTypeId::REGCOLLATION:
+    case PostgresTypeId::kRegcollation:
       return "regcollation";
-    case PostgresTypeId::REGCONFIG:
+    case PostgresTypeId::kRegconfig:
       return "regconfig";
-    case PostgresTypeId::REGDICTIONARY:
+    case PostgresTypeId::kRegdictionary:
       return "regdictionary";
-    case PostgresTypeId::REGNAMESPACE:
+    case PostgresTypeId::kRegnamespace:
       return "regnamespace";
-    case PostgresTypeId::REGOPERATOR:
+    case PostgresTypeId::kRegoperator:
       return "regoperator";
-    case PostgresTypeId::REGOPER:
+    case PostgresTypeId::kRegoper:
       return "regoper";
-    case PostgresTypeId::REGPROCEDURE:
+    case PostgresTypeId::kRegprocedure:
       return "regprocedure";
-    case PostgresTypeId::REGPROC:
+    case PostgresTypeId::kRegproc:
       return "regproc";
-    case PostgresTypeId::REGROLE:
+    case PostgresTypeId::kRegrole:
       return "regrole";
-    case PostgresTypeId::REGTYPE:
+    case PostgresTypeId::kRegtype:
       return "regtype";
-    case PostgresTypeId::TEXT:
+    case PostgresTypeId::kText:
       return "text";
-    case PostgresTypeId::TID:
+    case PostgresTypeId::kTid:
       return "tid";
-    case PostgresTypeId::TIME:
+    case PostgresTypeId::kTime:
       return "time";
-    case PostgresTypeId::TIMESTAMP:
+    case PostgresTypeId::kTimestamp:
       return "timestamp";
-    case PostgresTypeId::TIMESTAMPTZ:
+    case PostgresTypeId::kTimestamptz:
       return "timestamptz";
-    case PostgresTypeId::TIMETZ:
+    case PostgresTypeId::kTimetz:
       return "timetz";
-    case PostgresTypeId::TSQUERY:
+    case PostgresTypeId::kTsquery:
       return "tsquery";
-    case PostgresTypeId::TSVECTOR:
+    case PostgresTypeId::kTsvector:
       return "tsvector";
-    case PostgresTypeId::TXID_SNAPSHOT:
+    case PostgresTypeId::kTxidSnapshot:
       return "txid_snapshot";
-    case PostgresTypeId::UNKNOWN:
+    case PostgresTypeId::kUnknown:
       return "unknown";
-    case PostgresTypeId::UUID:
+    case PostgresTypeId::kUuid:
       return "uuid";
-    case PostgresTypeId::VARBIT:
+    case PostgresTypeId::kVarbit:
       return "varbit";
-    case PostgresTypeId::VARCHAR:
+    case PostgresTypeId::kVarchar:
       return "varchar";
-    case PostgresTypeId::VOID:
+    case PostgresTypeId::kVoid:
       return "void";
-    case PostgresTypeId::XID8:
+    case PostgresTypeId::kXid8:
       return "xid8";
-    case PostgresTypeId::XID:
+    case PostgresTypeId::kXid:
       return "xid";
-    case PostgresTypeId::XML:
+    case PostgresTypeId::kXml:
       return "xml";
     default:
       return "";
@@ -523,87 +523,87 @@ ADBC_EXPORT_TEST const char* PostgresTypname(PostgresTypeId type_id) {
 }
 
 ADBC_EXPORT_TEST std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
-  std::vector<PostgresTypeId> base = {PostgresTypeId::ACLITEM,
-                                      PostgresTypeId::ANYARRAY,
-                                      PostgresTypeId::ANYCOMPATIBLEARRAY,
-                                      PostgresTypeId::BIT,
-                                      PostgresTypeId::BOOL,
-                                      PostgresTypeId::BOX,
-                                      PostgresTypeId::BPCHAR,
-                                      PostgresTypeId::BRIN_BLOOM_SUMMARY,
-                                      PostgresTypeId::BRIN_MINMAX_MULTI_SUMMARY,
-                                      PostgresTypeId::BYTEA,
-                                      PostgresTypeId::CASH,
-                                      PostgresTypeId::CHAR,
-                                      PostgresTypeId::CIDR,
-                                      PostgresTypeId::CID,
-                                      PostgresTypeId::CIRCLE,
-                                      PostgresTypeId::CSTRING,
-                                      PostgresTypeId::DATE,
-                                      PostgresTypeId::FLOAT4,
-                                      PostgresTypeId::FLOAT8,
-                                      PostgresTypeId::INET,
-                                      PostgresTypeId::INT2,
-                                      PostgresTypeId::INT2VECTOR,
-                                      PostgresTypeId::INT4,
-                                      PostgresTypeId::INT8,
-                                      PostgresTypeId::INTERVAL,
-                                      PostgresTypeId::JSON,
-                                      PostgresTypeId::JSONB,
-                                      PostgresTypeId::JSONPATH,
-                                      PostgresTypeId::LINE,
-                                      PostgresTypeId::LSEG,
-                                      PostgresTypeId::MACADDR,
-                                      PostgresTypeId::MACADDR8,
-                                      PostgresTypeId::MULTIRANGE,
-                                      PostgresTypeId::NAME,
-                                      PostgresTypeId::NUMERIC,
-                                      PostgresTypeId::OID,
-                                      PostgresTypeId::OIDVECTOR,
-                                      PostgresTypeId::PATH,
-                                      PostgresTypeId::PG_NODE_TREE,
-                                      PostgresTypeId::PG_NDISTINCT,
-                                      PostgresTypeId::PG_DEPENDENCIES,
-                                      PostgresTypeId::PG_LSN,
-                                      PostgresTypeId::PG_MCV_LIST,
-                                      PostgresTypeId::PG_DDL_COMMAND,
-                                      PostgresTypeId::PG_SNAPSHOT,
-                                      PostgresTypeId::POINT,
-                                      PostgresTypeId::POLY,
-                                      PostgresTypeId::REGCLASS,
-                                      PostgresTypeId::REGCOLLATION,
-                                      PostgresTypeId::REGCONFIG,
-                                      PostgresTypeId::REGDICTIONARY,
-                                      PostgresTypeId::REGNAMESPACE,
-                                      PostgresTypeId::REGOPERATOR,
-                                      PostgresTypeId::REGOPER,
-                                      PostgresTypeId::REGPROCEDURE,
-                                      PostgresTypeId::REGPROC,
-                                      PostgresTypeId::REGROLE,
-                                      PostgresTypeId::REGTYPE,
-                                      PostgresTypeId::TEXT,
-                                      PostgresTypeId::TID,
-                                      PostgresTypeId::TIME,
-                                      PostgresTypeId::TIMESTAMP,
-                                      PostgresTypeId::TIMESTAMPTZ,
-                                      PostgresTypeId::TIMETZ,
-                                      PostgresTypeId::TSQUERY,
-                                      PostgresTypeId::TSVECTOR,
-                                      PostgresTypeId::TXID_SNAPSHOT,
-                                      PostgresTypeId::UNKNOWN,
-                                      PostgresTypeId::UUID,
-                                      PostgresTypeId::VARBIT,
-                                      PostgresTypeId::VARCHAR,
-                                      PostgresTypeId::VOID,
-                                      PostgresTypeId::XID8,
-                                      PostgresTypeId::XID,
-                                      PostgresTypeId::XML};
+  std::vector<PostgresTypeId> base = {PostgresTypeId::kAclitem,
+                                      PostgresTypeId::kAnyarray,
+                                      PostgresTypeId::kAnycompatiblearray,
+                                      PostgresTypeId::kBit,
+                                      PostgresTypeId::kBool,
+                                      PostgresTypeId::kBox,
+                                      PostgresTypeId::kBpchar,
+                                      PostgresTypeId::kBrinBloomSummary,
+                                      PostgresTypeId::kBrinMinmaxMultiSummary,
+                                      PostgresTypeId::kBytea,
+                                      PostgresTypeId::kCash,
+                                      PostgresTypeId::kChar,
+                                      PostgresTypeId::kCidr,
+                                      PostgresTypeId::kCid,
+                                      PostgresTypeId::kCircle,
+                                      PostgresTypeId::kCstring,
+                                      PostgresTypeId::kDate,
+                                      PostgresTypeId::kFloat4,
+                                      PostgresTypeId::kFloat8,
+                                      PostgresTypeId::kInet,
+                                      PostgresTypeId::kInt2,
+                                      PostgresTypeId::kInt2vector,
+                                      PostgresTypeId::kInt4,
+                                      PostgresTypeId::kInt8,
+                                      PostgresTypeId::kInterval,
+                                      PostgresTypeId::kJson,
+                                      PostgresTypeId::kJsonb,
+                                      PostgresTypeId::kJsonpath,
+                                      PostgresTypeId::kLine,
+                                      PostgresTypeId::kLseg,
+                                      PostgresTypeId::kMacaddr,
+                                      PostgresTypeId::kMacaddr8,
+                                      PostgresTypeId::kMultirange,
+                                      PostgresTypeId::kName,
+                                      PostgresTypeId::kNumeric,
+                                      PostgresTypeId::kOid,
+                                      PostgresTypeId::kOidvector,
+                                      PostgresTypeId::kPath,
+                                      PostgresTypeId::kPgNodeTree,
+                                      PostgresTypeId::kPgNdistinct,
+                                      PostgresTypeId::kPgDependencies,
+                                      PostgresTypeId::kPgLsn,
+                                      PostgresTypeId::kPgMcvList,
+                                      PostgresTypeId::kPgDdlCommand,
+                                      PostgresTypeId::kPgSnapshot,
+                                      PostgresTypeId::kPoint,
+                                      PostgresTypeId::kPoly,
+                                      PostgresTypeId::kRegclass,
+                                      PostgresTypeId::kRegcollation,
+                                      PostgresTypeId::kRegconfig,
+                                      PostgresTypeId::kRegdictionary,
+                                      PostgresTypeId::kRegnamespace,
+                                      PostgresTypeId::kRegoperator,
+                                      PostgresTypeId::kRegoper,
+                                      PostgresTypeId::kRegprocedure,
+                                      PostgresTypeId::kRegproc,
+                                      PostgresTypeId::kRegrole,
+                                      PostgresTypeId::kRegtype,
+                                      PostgresTypeId::kText,
+                                      PostgresTypeId::kTid,
+                                      PostgresTypeId::kTime,
+                                      PostgresTypeId::kTimestamp,
+                                      PostgresTypeId::kTimestamptz,
+                                      PostgresTypeId::kTimetz,
+                                      PostgresTypeId::kTsquery,
+                                      PostgresTypeId::kTsvector,
+                                      PostgresTypeId::kTxidSnapshot,
+                                      PostgresTypeId::kUnknown,
+                                      PostgresTypeId::kUuid,
+                                      PostgresTypeId::kVarbit,
+                                      PostgresTypeId::kVarchar,
+                                      PostgresTypeId::kVoid,
+                                      PostgresTypeId::kXid8,
+                                      PostgresTypeId::kXid,
+                                      PostgresTypeId::kXml};
 
   if (nested) {
-    base.push_back(PostgresTypeId::ARRAY);
-    base.push_back(PostgresTypeId::RECORD);
-    base.push_back(PostgresTypeId::RANGE);
-    base.push_back(PostgresTypeId::DOMAIN_);
+    base.push_back(PostgresTypeId::kArray);
+    base.push_back(PostgresTypeId::kRecord);
+    base.push_back(PostgresTypeId::kRange);
+    base.push_back(PostgresTypeId::kDomain);
   }
 
   return base;
