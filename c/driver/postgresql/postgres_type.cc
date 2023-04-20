@@ -27,42 +27,42 @@ namespace adbcpq {
 
 ADBC_EXPORT_TEST ArrowErrorCode PostgresType::SetSchema(ArrowSchema* schema) const {
   switch (type_id_) {
-    case PostgresTypeId::BOOL:
+    case PostgresTypeId::kBool:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
       break;
-    case PostgresTypeId::INT2:
+    case PostgresTypeId::kInt2:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
       break;
-    case PostgresTypeId::INT4:
+    case PostgresTypeId::kInt4:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT32));
       break;
-    case PostgresTypeId::INT8:
+    case PostgresTypeId::kInt8:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT64));
       break;
-    case PostgresTypeId::FLOAT4:
+    case PostgresTypeId::kFloat4:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_FLOAT));
       break;
-    case PostgresTypeId::FLOAT8:
+    case PostgresTypeId::kFloat8:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
       break;
-    case PostgresTypeId::CHAR:
-    case PostgresTypeId::BPCHAR:
-    case PostgresTypeId::VARCHAR:
-    case PostgresTypeId::TEXT:
+    case PostgresTypeId::kChar:
+    case PostgresTypeId::kBpchar:
+    case PostgresTypeId::kVarchar:
+    case PostgresTypeId::kText:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
       break;
-    case PostgresTypeId::BYTEA:
+    case PostgresTypeId::kBytea:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
       break;
 
-    case PostgresTypeId::RECORD:
+    case PostgresTypeId::kRecord:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
       for (int64_t i = 0; i < n_children(); i++) {
         NANOARROW_RETURN_NOT_OK(children_[i].SetSchema(schema->children[i]));
       }
       break;
 
-    case PostgresTypeId::ARRAY:
+    case PostgresTypeId::kArray:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
       NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
       break;
@@ -93,26 +93,26 @@ PostgresType::FromSchema(const PostgresTypeResolver& resolver, ArrowSchema* sche
 
   switch (schema_view.type) {
     case NANOARROW_TYPE_BOOL:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::BOOL), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kBool), out, error);
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT16:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::INT2), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kInt2), out, error);
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_INT32:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::INT4), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kInt4), out, error);
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT64:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::INT8), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kInt8), out, error);
     case NANOARROW_TYPE_FLOAT:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::FLOAT4), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kFloat4), out, error);
     case NANOARROW_TYPE_DOUBLE:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::FLOAT8), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kFloat8), out, error);
     case NANOARROW_TYPE_STRING:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::TEXT), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kText), out, error);
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      return resolver.Find(resolver.GetOID(PostgresTypeId::BYTEA), out, error);
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kBytea), out, error);
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST: {
@@ -142,7 +142,7 @@ ADBC_EXPORT_TEST ArrowErrorCode PostgresTypeResolver::Insert(const Item& item,
   PostgresType type = base.WithPgTypeInfo(item.oid, item.typname);
 
   switch (base.type_id()) {
-    case PostgresTypeId::ARRAY: {
+    case PostgresTypeId::kArray: {
       PostgresType child;
       NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
       mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
@@ -151,11 +151,11 @@ ADBC_EXPORT_TEST ArrowErrorCode PostgresTypeResolver::Insert(const Item& item,
       break;
     }
 
-    case PostgresTypeId::RECORD: {
+    case PostgresTypeId::kRecord: {
       std::vector<std::pair<std::string, uint32_t>> child_desc;
       NANOARROW_RETURN_NOT_OK(ResolveClass(item.class_oid, &child_desc, error));
 
-      PostgresType out(PostgresTypeId::RECORD);
+      PostgresType out(PostgresTypeId::kRecord);
       for (const auto& child_item : child_desc) {
         PostgresType child;
         NANOARROW_RETURN_NOT_OK(Find(child_item.second, &child, error));
@@ -167,7 +167,7 @@ ADBC_EXPORT_TEST ArrowErrorCode PostgresTypeResolver::Insert(const Item& item,
       break;
     }
 
-    case PostgresTypeId::DOMAIN_: {
+    case PostgresTypeId::kDomain: {
       PostgresType base_type;
       NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
       mapping_.insert({item.oid, base_type.Domain(item.oid, item.typname)});
@@ -175,7 +175,7 @@ ADBC_EXPORT_TEST ArrowErrorCode PostgresTypeResolver::Insert(const Item& item,
       break;
     }
 
-    case PostgresTypeId::RANGE: {
+    case PostgresTypeId::kRange: {
       PostgresType base_type;
       NANOARROW_RETURN_NOT_OK(Find(item.base_oid, &base_type, error));
       mapping_.insert({item.oid, base_type.Range(item.oid, item.typname)});
