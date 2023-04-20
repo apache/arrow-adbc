@@ -45,6 +45,9 @@ main() {
         install_dir="${build_dir}/local"
     fi
 
+    export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
+    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
+
     test_subproject "${build_dir}"
 }
 
