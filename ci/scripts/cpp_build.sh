@@ -43,6 +43,9 @@ build_subproject() {
     fi
     echo "Installing to ${CMAKE_INSTALL_PREFIX}"
 
+    mkdir -p "${build_dir}"
+    pushd "${build_dir}"
+
     set -x
     cmake "${source_dir}/c" \
           "${ADBC_CMAKE_ARGS}" \
@@ -59,6 +62,8 @@ build_subproject() {
           -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
     set +x
     cmake --build . --target install -j
+
+    popd
 }
 
 main() {
