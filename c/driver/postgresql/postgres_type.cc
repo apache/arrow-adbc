@@ -25,7 +25,7 @@
 
 namespace adbcpq {
 
-ArrowErrorCode PostgresType::SetSchema(ArrowSchema* schema) const {
+ADBC_EXPORT_TEST ArrowErrorCode PostgresType::SetSchema(ArrowSchema* schema) const {
   switch (type_id_) {
     case PostgresTypeId::BOOL:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
@@ -85,9 +85,9 @@ ArrowErrorCode PostgresType::SetSchema(ArrowSchema* schema) const {
   return NANOARROW_OK;
 }
 
-ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resolver,
-                                        ArrowSchema* schema, PostgresType* out,
-                                        ArrowError* error) {
+ADBC_EXPORT_TEST ArrowErrorCode
+PostgresType::FromSchema(const PostgresTypeResolver& resolver, ArrowSchema* schema,
+                         PostgresType* out, ArrowError* error) {
   ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
 
@@ -129,7 +129,8 @@ ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resolver,
   }
 }
 
-ArrowErrorCode PostgresTypeResolver::Insert(const Item& item, ArrowError* error) {
+ADBC_EXPORT_TEST ArrowErrorCode PostgresTypeResolver::Insert(const Item& item,
+                                                             ArrowError* error) {
   auto result = base_.find(item.typreceive);
   if (result == base_.end()) {
     ArrowErrorSet(error, "Base type not found for type '%s' with receive function '%s'",
@@ -191,7 +192,7 @@ ArrowErrorCode PostgresTypeResolver::Insert(const Item& item, ArrowError* error)
   return NANOARROW_OK;
 }
 
-const char* PostgresTyprecv(PostgresTypeId type_id) {
+ADBC_EXPORT_TEST const char* PostgresTyprecv(PostgresTypeId type_id) {
   switch (type_id) {
     case PostgresTypeId::ACLITEM:
       return "aclitem_recv";
@@ -356,7 +357,7 @@ const char* PostgresTyprecv(PostgresTypeId type_id) {
   }
 }
 
-const char* PostgresTypname(PostgresTypeId type_id) {
+ADBC_EXPORT_TEST const char* PostgresTypname(PostgresTypeId type_id) {
   switch (type_id) {
     case PostgresTypeId::ACLITEM:
       return "aclitem";
@@ -521,7 +522,7 @@ const char* PostgresTypname(PostgresTypeId type_id) {
   }
 }
 
-std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
+ADBC_EXPORT_TEST std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
   std::vector<PostgresTypeId> base = {PostgresTypeId::ACLITEM,
                                       PostgresTypeId::ANYARRAY,
                                       PostgresTypeId::ANYCOMPATIBLEARRAY,

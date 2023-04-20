@@ -123,16 +123,16 @@ enum class PostgresTypeId {
 // Returns the receive function name as defined in the typrecieve column
 // of the pg_type table. This name is the one that gets used to look up
 // the PostgresTypeId.
-const char* PostgresTyprecv(PostgresTypeId type_id);
+ADBC_EXPORT_TEST const char* PostgresTyprecv(PostgresTypeId type_id);
 
 // Returns a likely typname value for a given PostgresTypeId. This is useful
 // for testing and error messages but may not be the actual value present
 // in the pg_type typname column.
-const char* PostgresTypname(PostgresTypeId type_id);
+ADBC_EXPORT_TEST const char* PostgresTypname(PostgresTypeId type_id);
 
 // A vector of all type IDs, optionally including the nested types PostgresTypeId::ARRAY,
 // PostgresTypeId::DOMAIN_, PostgresTypeId::RECORD, and PostgresTypeId::RANGE.
-std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested = true);
+ADBC_EXPORT_TEST std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested = true);
 
 // Forward-declare the type resolver for use in PostgresType::FromSchema
 class PostgresTypeResolver;
