@@ -18,11 +18,9 @@
 # Common definitions for the CMake projects in this repository.
 # Must define REPOSITORY_ROOT before including this.
 
-add_arrow_lib(
+add_library(
   nanoarrow
-  SOURCES
+  STATIC
   nanoarrow.c
-  SHARED_LINK_FLAGS
-  ${ADBC_LINK_FLAGS}  
 )
 
