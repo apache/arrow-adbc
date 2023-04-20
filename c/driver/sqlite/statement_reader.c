@@ -424,7 +424,7 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
   if (status == 0) {
     out->length = batch_size;
     for (int i = 0; i < reader->schema.n_children; i++) {
-      status = ArrowArrayFinishBuilding(out->children[i], &reader->error);
+      status = ArrowArrayFinishBuildingDefault(out->children[i], &reader->error);
       if (status != 0) break;
     }
 

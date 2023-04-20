@@ -298,7 +298,7 @@ int MakeBatch(struct ArrowArray* batch, struct ArrowError* error,
     }
     batch->length = batch->children[i]->length;
   }
-  return ArrowArrayFinishBuilding(batch, error);
+  return ArrowArrayFinishBuildingDefault(batch, error);
 }
 
 template <typename... T>

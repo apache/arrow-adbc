@@ -32,9 +32,19 @@ main() {
     mkdir -p nanoarrow
     tar --strip-components 1 -C "$SCRATCH" -xf "$tarball"
 
-    cp "$SCRATCH/dist/nanoarrow.c" nanoarrow/
-    cp "$SCRATCH/dist/nanoarrow.h" nanoarrow/
-    cp "$SCRATCH/src/nanoarrow/nanoarrow.hpp" nanoarrow/
+    # Build the bundle using cmake. We could also use the dist/ files
+    # but this allows us to add the symbol namespace and ensures that the
+    # resulting bundle is perfectly synchronized with the commit we've pulled.
+    pushd "$SCRATCH"
+    mkdir build && cd build
+    cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=AdbcNs
+    cmake --build .
+    cmake --install . --prefix=../dist-adbc
+    popd
+
+    cp "$SCRATCH/dist-adbc/nanoarrow.c" nanoarrow/
+    cp "$SCRATCH/dist-adbc/nanoarrow.h" nanoarrow/
+    cp "$SCRATCH/dist-adbc/nanoarrow.hpp" nanoarrow/
 }
 
 main "$@"
