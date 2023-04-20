@@ -15,10 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-add_arrow_lib(adbc_driver_common
-              SOURCES
-              utils.c
-              SHARED_LINK_FLAGS
-              ${ADBC_LINK_FLAGS})
+add_library(adbc_driver_common STATIC utils.c)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
