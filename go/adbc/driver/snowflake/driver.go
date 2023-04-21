@@ -269,7 +269,10 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
-			d.cfg.LoginTimeout = dur.Abs()
+			if dur < 0 {
+				dur = -dur
+			}
+			d.cfg.LoginTimeout = dur
 		case OptionRequestTimeout:
 			dur, err := time.ParseDuration(v)
 			if err != nil {
@@ -278,7 +281,10 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
-			d.cfg.RequestTimeout = dur.Abs()
+			if dur < 0 {
+				dur = -dur
+			}
+			d.cfg.RequestTimeout = dur
 		case OptionJwtExpireTimeout:
 			dur, err := time.ParseDuration(v)
 			if err != nil {
@@ -287,7 +293,10 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
-			d.cfg.JWTExpireTimeout = dur.Abs()
+			if dur < 0 {
+				dur = -dur
+			}
+			d.cfg.JWTExpireTimeout = dur
 		case OptionClientTimeout:
 			dur, err := time.ParseDuration(v)
 			if err != nil {
@@ -296,7 +305,10 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
-			d.cfg.ClientTimeout = dur.Abs()
+			if dur < 0 {
+				dur = -dur
+			}
+			d.cfg.ClientTimeout = dur
 		case OptionApplicationName:
 			d.cfg.Application = v
 		case OptionSSLSkipVerify:
