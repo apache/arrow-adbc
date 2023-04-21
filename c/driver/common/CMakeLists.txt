@@ -16,5 +16,6 @@
 # under the License.
 
 add_library(adbc_driver_common STATIC utils.c)
+set_target_properties(adbc_driver_common PROPERTIES POSITION_INDEPENDENT_CODE ON)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)

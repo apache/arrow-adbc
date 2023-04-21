@@ -70,7 +70,11 @@ function build_drivers {
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
-    echo "=== Building driver/flightsql ==="
+    "${VCPKG_ROOT}/vcpkg" install libpq \
+          --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
+          --triplet "${VCPKG_DEFAULT_TRIPLET}"
+
+    echo "=== Building drivers ==="
     mkdir -p ${build_dir}
     pushd ${build_dir}
     cmake \
@@ -79,8 +83,11 @@ function build_drivers {
         -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_INSTALL_PREFIX=${build_dir} \
+        -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
         -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
         ${CMAKE_ARGUMENTS} \
+        -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
+        -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
         -DADBC_BUILD_DRIVER_FLIGHTSQL=ON \
         -DADBC_BUILD_DRIVER_POSTGRESQL=ON \
         -DADBC_BUILD_DRIVER_SQLITE=ON \

@@ -24,3 +24,6 @@ add_library(
   nanoarrow.c
 )
 
+set_target_properties(
+  nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON
+)
