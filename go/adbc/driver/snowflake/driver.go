@@ -19,10 +19,16 @@ package snowflake
 
 import (
 	"context"
+	"crypto/x509"
 	"database/sql"
 	"errors"
+	"fmt"
+	"net/url"
+	"os"
 	"runtime/debug"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v12/arrow/memory"
@@ -33,6 +39,78 @@ import (
 const (
 	infoDriverName = "ADBC Snowflake Driver - Go"
 	infoVendorName = "Snowflake"
+
+	OptionDatabase  = "adbc.snowflake.sql.db"
+	OptionSchema    = "adbc.snowflake.sql.schema"
+	OptionWarehouse = "adbc.snowflake.sql.warehouse"
+	OptionRole      = "adbc.snowflake.sql.role"
+	OptionRegion    = "adbc.snowflake.sql.region"
+	OptionAccount   = "adbc.snowflake.sql.account"
+	OptionProtocol  = "adbc.snowflake.sql.uri.protocol"
+	OptionPort      = "adbc.snowflake.sql.uri.port"
+	OptionHost      = "adbc.snowflake.sql.uri.host"
+	// Specify auth type to use for snowflake connection based on
+	// what is supported by the snowflake driver. Default is
+	// "auth_snowflake" (use OptionValueAuth* consts to specify desired
+	// authentication type).
+	OptionAuthType = "adbc.snowflake.sql.auth_type"
+	// Login retry timeout EXCLUDING network roundtrip and reading http response
+	// use format like http://pkg.go.dev/time#ParseDuration such as
+	// "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
+	// but the absolute value will be used.
+	OptionLoginTimeout = "adbc.snowflake.sql.client_option.login_timeout"
+	// request retry timeout EXCLUDING network roundtrip and reading http response
+	// use format like http://pkg.go.dev/time#ParseDuration such as
+	// "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
+	// but the absolute value will be used.
+	OptionRequestTimeout = "adbc.snowflake.sql.client_option.request_timeout"
+	// JWT expiration after timeout
+	// use format like http://pkg.go.dev/time#ParseDuration such as
+	// "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
+	// but the absolute value will be used.
+	OptionJwtExpireTimeout = "adbc.snowflake.sql.client_option.jwt_expire_timeout"
+	// Timeout for network round trip + reading http response
+	// use format like http://pkg.go.dev/time#ParseDuration such as
+	// "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
+	// but the absolute value will be used.
+	OptionClientTimeout = "adbc.snowflake.sql.client_option.client_timeout"
+
+	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
+	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"
+	OptionOCSPFailOpenMode = "adbc.snowflake.sql.client_option.ocsp_fail_open_mode"
+	// specify the token to use for OAuth or other forms of authentication
+	OptionAuthToken = "adbc.snowflake.sql.client_option.auth_token"
+	// specify the OKTAUrl to use for OKTA Authentication
+	OptionAuthOktaUrl = "adbc.snowflake.sql.client_option.okta_url"
+	// enable the session to persist even after the connection is closed
+	OptionKeepSessionAlive = "adbc.snowflake.sql.client_option.keep_session_alive"
+	// specify the RSA private key to use to sign the JWT
+	// this should point to a file containing a PKCS1 private key to be
+	// loaded. Commonly encoded in PEM blocks of type "RSA PRIVATE KEY"
+	OptionJwtPrivateKey    = "adbc.snowflake.sql.client_option.jwt_private_key"
+	OptionDisableTelemetry = "adbc.snowflake.sql.client_option.disable_telemetry"
+	// snowflake driver logging level
+	OptionLogTracing = "adbc.snowflake.sql.client_option.tracing"
+	// When true, the MFA token is cached in the credential manager. True by default
+	// on Windows/OSX, false for Linux
+	OptionClientRequestMFAToken = "adbc.snowflake.sql.client_option.cache_mfa_token"
+	// When true, the ID token is cached in the credential manager. True by default
+	// on Windows/OSX, false for Linux
+	OptionClientStoreTempCred = "adbc.snowflake.sql.client_option.store_temp_creds"
+
+	// auth types are implemented by the Snowflake driver in gosnowflake
+	// general username password authentication
+	OptionValueAuthSnowflake = "auth_snowflake"
+	// use OAuth authentication for snowflake connection
+	OptionValueAuthOAuth = "auth_oauth"
+	// use an external browser to access a FED and perform SSO auth
+	OptionValueAuthExternalBrowser = "auth_ext_browser"
+	// use a native OKTA URL to perform SSO authentication on Okta
+	OptionValueAuthOkta = "auth_okta"
+	// use a JWT to perform authentication
+	OptionValueAuthJwt = "auth_jwt"
+	// use a username and password with mfa
+	OptionValueAuthUserPassMFA = "auth_mfa"
 )
 
 var (
@@ -106,17 +184,6 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	db := &database{alloc: d.Alloc}
 
 	opts = maps.Clone(opts)
-	uri, ok := opts[adbc.OptionKeyURI]
-	if ok {
-		cfg, err := gosnowflake.ParseDSN(uri)
-		if err != nil {
-			return nil, err
-		}
-
-		db.cfg = cfg
-		delete(opts, adbc.OptionKeyURI)
-	}
-
 	if db.alloc == nil {
 		db.alloc = memory.DefaultAllocator
 	}
@@ -124,7 +191,17 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	return db, db.SetOptions(opts)
 }
 
-var drv = gosnowflake.SnowflakeDriver{}
+var (
+	drv         = gosnowflake.SnowflakeDriver{}
+	authTypeMap = map[string]gosnowflake.AuthType{
+		OptionValueAuthSnowflake:       gosnowflake.AuthTypeSnowflake,
+		OptionValueAuthOAuth:           gosnowflake.AuthTypeOAuth,
+		OptionValueAuthExternalBrowser: gosnowflake.AuthTypeExternalBrowser,
+		OptionValueAuthOkta:            gosnowflake.AuthTypeOkta,
+		OptionValueAuthJwt:             gosnowflake.AuthTypeJwt,
+		OptionValueAuthUserPassMFA:     gosnowflake.AuthTypeUsernamePasswordMFA,
+	}
+)
 
 type database struct {
 	cfg   *gosnowflake.Config
@@ -132,6 +209,198 @@ type database struct {
 }
 
 func (d *database) SetOptions(cnOptions map[string]string) error {
+	uri, ok := cnOptions[adbc.OptionKeyURI]
+	if ok {
+		cfg, err := gosnowflake.ParseDSN(uri)
+		if err != nil {
+			return errToAdbcErr(adbc.StatusInvalidArgument, err)
+		}
+
+		d.cfg = cfg
+		delete(cnOptions, adbc.OptionKeyURI)
+	} else {
+		d.cfg = &gosnowflake.Config{}
+	}
+
+	var err error
+	for k, v := range cnOptions {
+		switch k {
+		case adbc.OptionKeyUsername:
+			d.cfg.User = v
+		case adbc.OptionKeyPassword:
+			d.cfg.Password = v
+		case OptionDatabase:
+			d.cfg.Database = v
+		case OptionSchema:
+			d.cfg.Schema = v
+		case OptionWarehouse:
+			d.cfg.Warehouse = v
+		case OptionRole:
+			d.cfg.Role = v
+		case OptionRegion:
+			d.cfg.Region = v
+		case OptionAccount:
+			d.cfg.Account = v
+		case OptionProtocol:
+			d.cfg.Protocol = v
+		case OptionHost:
+			d.cfg.Host = v
+		case OptionPort:
+			d.cfg.Port, err = strconv.Atoi(v)
+			if err != nil {
+				return adbc.Error{
+					Msg:  "error encountered parsing Port option: " + err.Error(),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case OptionAuthType:
+			d.cfg.Authenticator, ok = authTypeMap[v]
+			if !ok {
+				return adbc.Error{
+					Msg:  "invalid option value for " + OptionAuthType + ": '" + v + "'",
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case OptionLoginTimeout:
+			dur, err := time.ParseDuration(v)
+			if err != nil {
+				return adbc.Error{
+					Msg:  "could not parse duration for '" + OptionLoginTimeout + "': " + err.Error(),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+			d.cfg.LoginTimeout = dur.Abs()
+		case OptionRequestTimeout:
+			dur, err := time.ParseDuration(v)
+			if err != nil {
+				return adbc.Error{
+					Msg:  "could not parse duration for '" + OptionRequestTimeout + "': " + err.Error(),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+			d.cfg.RequestTimeout = dur.Abs()
+		case OptionJwtExpireTimeout:
+			dur, err := time.ParseDuration(v)
+			if err != nil {
+				return adbc.Error{
+					Msg:  "could not parse duration for '" + OptionJwtExpireTimeout + "': " + err.Error(),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+			d.cfg.JWTExpireTimeout = dur.Abs()
+		case OptionClientTimeout:
+			dur, err := time.ParseDuration(v)
+			if err != nil {
+				return adbc.Error{
+					Msg:  "could not parse duration for '" + OptionClientTimeout + "': " + err.Error(),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+			d.cfg.ClientTimeout = dur.Abs()
+		case OptionApplicationName:
+			d.cfg.Application = v
+		case OptionSSLSkipVerify:
+			switch v {
+			case adbc.OptionValueEnabled:
+				d.cfg.InsecureMode = true
+			case adbc.OptionValueDisabled:
+				d.cfg.InsecureMode = false
+			default:
+				return adbc.Error{
+					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case OptionOCSPFailOpenMode:
+			switch v {
+			case adbc.OptionValueEnabled:
+				d.cfg.OCSPFailOpen = gosnowflake.OCSPFailOpenTrue
+			case adbc.OptionValueDisabled:
+				d.cfg.OCSPFailOpen = gosnowflake.OCSPFailOpenFalse
+			default:
+				return adbc.Error{
+					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case OptionAuthToken:
+			d.cfg.Token = v
+		case OptionAuthOktaUrl:
+			d.cfg.OktaURL, err = url.Parse(v)
+			if err != nil {
+				return adbc.Error{
+					Msg:  fmt.Sprintf("error parsing URL for database option '%s': '%s'", k, v),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case OptionKeepSessionAlive:
+			switch v {
+			case adbc.OptionValueEnabled:
+				d.cfg.KeepSessionAlive = true
+			case adbc.OptionValueDisabled:
+				d.cfg.KeepSessionAlive = false
+			default:
+				return adbc.Error{
+					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case OptionDisableTelemetry:
+			switch v {
+			case adbc.OptionValueEnabled:
+				d.cfg.DisableTelemetry = true
+			case adbc.OptionValueDisabled:
+				d.cfg.DisableTelemetry = false
+			default:
+				return adbc.Error{
+					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case OptionJwtPrivateKey:
+			data, err := os.ReadFile(v)
+			if err != nil {
+				return adbc.Error{
+					Msg:  "could not read private key file '" + v + "': " + err.Error(),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+
+			d.cfg.PrivateKey, err = x509.ParsePKCS1PrivateKey(data)
+			if err != nil {
+				return adbc.Error{
+					Msg:  "failed parsing private key file '" + v + "': " + err.Error(),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case OptionClientRequestMFAToken:
+			switch v {
+			case adbc.OptionValueEnabled:
+				d.cfg.ClientRequestMfaToken = gosnowflake.ConfigBoolTrue
+			case adbc.OptionValueDisabled:
+				d.cfg.ClientRequestMfaToken = gosnowflake.ConfigBoolFalse
+			default:
+				return adbc.Error{
+					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case OptionClientStoreTempCred:
+			switch v {
+			case adbc.OptionValueEnabled:
+				d.cfg.ClientStoreTemporaryCredential = gosnowflake.ConfigBoolTrue
+			case adbc.OptionValueDisabled:
+				d.cfg.ClientStoreTemporaryCredential = gosnowflake.ConfigBoolFalse
+			default:
+				return adbc.Error{
+					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		default:
+			d.cfg.Params[k] = &v
+		}
+	}
 	return nil
 }
 

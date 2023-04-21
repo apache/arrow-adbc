@@ -213,7 +213,13 @@ func (s *SnowflakeQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 }
 
 func TestADBCSnowflake(t *testing.T) {
-	q := &SnowflakeQuirks{dsn: os.Getenv("SNOWFLAKE_URI")}
+	uri := os.Getenv("SNOWFLAKE_URI")
+
+	if uri == "" {
+		t.Skip("no SNOWFLAKE_URI defined, skip snowflake driver tests")
+	}
+
+	q := &SnowflakeQuirks{dsn: uri}
 	suite.Run(t, &validation.DatabaseTests{Quirks: q})
 	suite.Run(t, &validation.ConnectionTests{Quirks: q})
 	suite.Run(t, &validation.StatementTests{Quirks: q})
