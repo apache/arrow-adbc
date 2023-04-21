@@ -33,6 +33,7 @@ add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
 
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
   set(TEST_LINK_LIBS adbc_driver_flightsql_shared)

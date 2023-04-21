@@ -28,6 +28,9 @@ $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 
 function Build-Subproject {
+    New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
+    Push-Location $BuildDir
+
     cmake `
       $(Join-Path $SourceDir "c\") `
       -DADBC_BUILD_SHARED=ON `

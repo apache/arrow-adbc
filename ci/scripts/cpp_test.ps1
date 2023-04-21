@@ -38,8 +38,6 @@ echo $env:LD_LIBRARY_PATH
 echo $env:PATH
 
 function Build-Subproject {
-    $Subproject = $Args[0]
-
     Push-Location $BuildDir
 
     ctest --output-on-failure --no-tests=error
@@ -48,4 +46,4 @@ function Build-Subproject {
     Pop-Location
 }
 
-Build-Subproject driver_manager
+Build-Subproject
