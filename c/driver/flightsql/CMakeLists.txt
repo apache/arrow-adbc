@@ -15,17 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
 include(GoUtils)
-
-project(adbc_driver_flightsql
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES C CXX)
-include(CTest)
 
 set(LDFLAGS "$<$<CONFIG:Release>:-s> $<$<CONFIG:Release>:-w>")
 add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"

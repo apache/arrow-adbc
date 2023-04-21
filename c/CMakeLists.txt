@@ -42,3 +42,7 @@ endif()
 if(ADBC_BUILD_DRIVER_POSTGRESQL)
   add_subdirectory(driver/postgresql)
 endif()
+
+if(ADBC_BUILD_DRIVER_FLIGHTSQL)
+  add_subdirectory(driver/flightsql)
+endif()
