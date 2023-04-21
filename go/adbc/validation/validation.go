@@ -242,11 +242,11 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 	c.Require().NoError(err)
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
-		{Name: "ints", Type: arrow.PrimitiveTypes.Int64,
+		{Name: "ints", Type: arrow.PrimitiveTypes.Int64, Nullable: true,
 			Metadata: arrow.MetadataFrom(map[string]string{
 				flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
 				flightsql.TableNameKey: "sample_test", flightsql.PrecisionKey: "10"})},
-		{Name: "strings", Type: arrow.BinaryTypes.String,
+		{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true,
 			Metadata: arrow.MetadataFrom(map[string]string{
 				flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
 				flightsql.TableNameKey: "sample_test"})},
