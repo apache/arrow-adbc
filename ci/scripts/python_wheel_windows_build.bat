@@ -34,13 +34,12 @@ IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
 set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\flightsql\adbc_driver_flightsql.dll
 
-mkdir %build_dir%\flightsql
+mkdir %build_dir%
 pushd %source_dir%\go\adbc\pkg
 go build -tags driverlib -o %ADBC_FLIGHTSQL_LIBRARY% -buildmode=c-shared ./flightsql
 popd
 
-mkdir %build_dir%\postgresql
-pushd %build_dir%\postgresql
+pushd %build_dir%
 
 cmake ^
       -G "%CMAKE_GENERATOR%" ^
@@ -56,23 +55,6 @@ cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exi
 
 @REM XXX: CMake installs it to bin instead of lib for some reason
 set ADBC_POSTGRESQL_LIBRARY=%build_dir%\bin\adbc_driver_postgresql.dll
-
-popd
-
-mkdir %build_dir%\sqlite
-pushd %build_dir%\sqlite
-
-cmake ^
-      -G "%CMAKE_GENERATOR%" ^
-      -DADBC_BUILD_SHARED=ON ^
-      -DADBC_BUILD_STATIC=OFF ^
-      -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE% ^
-      -DCMAKE_INSTALL_PREFIX=%build_dir% ^
-      -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake ^
-      -DCMAKE_UNITY_BUILD=%CMAKE_UNITY_BUILD% ^
-      -DVCPKG_TARGET_TRIPLET=%VCPKG_TARGET_TRIPLET% ^
-      %source_dir%\c\driver\sqlite || exit /B 1
-cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
 
 @REM XXX: CMake installs it to bin instead of lib for some reason
 set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
