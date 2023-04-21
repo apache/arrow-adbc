@@ -52,9 +52,9 @@ override_dh_auto_build:
 	  --buildsystem=meson+ninja			\
 	  --						\
 	  --buildtype=debugoptimized			\
-	  -Dadbc_build_dir=../c.build
+	  -Dadbc_build_dir=../c.build/driver_manager
 	env							\
-	  LD_LIBRARY_PATH=$(CURDIR)/c.build	\
+	  LD_LIBRARY_PATH=$(CURDIR)/c.build/driver_manager	\
 	    dh_auto_build					\
 	      --sourcedirectory=glib				\
 	      --builddirectory=glib.build			\
