@@ -41,6 +41,7 @@ add_arrow_lib(adbc_driver_postgresql
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
+              nanoarrow
               ${LIBPQ_LINK_LIBRARIES}
               STATIC_LINK_LIBS
               ${LIBPQ_LINK_LIBRARIES}
