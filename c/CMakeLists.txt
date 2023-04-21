@@ -16,15 +16,15 @@
 # under the License.
 
 cmake_minimum_required(VERSION 3.18)
-project(adbc
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
 
 get_filename_component(REPOSITORY_ROOT ".." ABSOLUTE)
 message(STATUS "${REPOSITORY_ROOT}")
 list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
+project(adbc
+        VERSION "${ADBC_BASE_VERSION}"
+        LANGUAGES CXX)
 
 include(CTest)
 
