@@ -16,7 +16,7 @@
 .. under the License.
 
 ================
-Snowflake Driver 
+Snowflake Driver
 ================
 
 The Snowflake Driver provides access to Snowflake Database Warehouses.
@@ -84,7 +84,7 @@ Authentication
 Snowflake requires some form of authentication to be enabled. By default
 it will attempt to use Username/Password authentication. The username and
 password can be provided in the URI or via the ``username`` and ``password``
-options to the :cpp:class:`AdbcDatabase`. 
+options to the :cpp:class:`AdbcDatabase`.
 
 Alternately, other types of authentication can be specified and customized.
 See "Client Options" below.
@@ -105,7 +105,7 @@ Performance
 
 Formal benchmarking is forthcoming. Snowflake does provide an Arrow native
 format for requesting results, but bulk ingestion is still currently executed
-using the REST API. As described in the `Snowflake Documentation 
+using the REST API. As described in the `Snowflake Documentation
 <https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-Batch_Inserts_and_Binding_Parameters>`
 the driver will potentially attempt to improve performance by streaming the data
 (without creating files on the local machine) to a temporary stage for ingestion
@@ -120,7 +120,7 @@ In addition, the current database and schema for the session must be set. If
 these are not set, the ``CREATE TEMPORARY STAGE`` command executed by the driver
 can fail with the following error:
 
-.. code-block:: 
+.. code-block::
   CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by='"')
   CANNOT perform CREATE STAGE. This session does not have a current schema. Call 'USE SCHEMA' or use a qualified name.
 
@@ -167,7 +167,7 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     Allows specifying alternate types of authentication, the allowed values are:
 
     - ``auth_snowflake``: General username/password authentication (this is the default)
-    - ``auth_oauth``: Use OAuth authentication for the snowflake connection. 
+    - ``auth_oauth``: Use OAuth authentication for the snowflake connection.
     - ``auth_ext_browser``: Use an external browser to access a FED and perform SSO auth.
     - ``auth_okta``: Use a native Okta URL to perform SSO authentication using Okta
     - ``auth_jwt``: Use a provided JWT to perform authentication.
@@ -225,9 +225,9 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     authentication. This should be a path to a file containing a PKCS1
     private key to be read in and parsed. Commonly encoded in PEM blocks
     of type "RSA PRIVATE KEY".
-  
+
 ``adbc.snowflake.sql.client_option.disable_telemetry``
-    The Snowflake driver allows for telemetry information which can be 
+    The Snowflake driver allows for telemetry information which can be
     disabled by setting this to ``true``. Value should be either ``true``
     or ``false``.
 
@@ -286,7 +286,7 @@ indicated are done to ensure consistency of the stream of record batches.
 +----------------+---------------+-----------------------------------------+
 | Snowflake Type | Arrow Type    | Notes                                   |
 +----------------+---------------+-----------------------------------------+
-| Integral Types | Int64         | All integral types in snowflake are     | 
+| Integral Types | Int64         | All integral types in snowflake are     |
 |                |               | stored as 64-bit integers.              |
 +----------------+---------------+-----------------------------------------+
 | Float/Double   | Float64       | Snowflake does not distinguish between  |
