@@ -108,6 +108,30 @@ public class FlightSqlConnection implements AdbcConnection {
   }
 
   @Override
+  public ArrowReader getObjects(
+      GetObjectsDepth depth,
+      String catalogPattern,
+      String dbSchemaPattern,
+      String tableNamePattern,
+      String[] tableTypes,
+      String columnNamePattern)
+      throws AdbcException {
+    try (final VectorSchemaRoot root =
+        new ObjectMetadataBuilder(
+                allocator,
+                client,
+                depth,
+                catalogPattern,
+                dbSchemaPattern,
+                tableNamePattern,
+                tableTypes,
+                columnNamePattern)
+            .build()) {
+      return RootArrowReader.fromRoot(allocator, root);
+    }
+  }
+
+  @Override
   public ArrowReader getInfo(int[] infoCodes) throws AdbcException {
     try (final VectorSchemaRoot root =
         new InfoMetadataBuilder(allocator, client, infoCodes).build()) {

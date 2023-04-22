@@ -33,26 +33,6 @@ public class FlightSqlConnectionMetadataTest extends AbstractConnectionMetadataT
 
   @Override
   @Disabled("Not yet implemented")
-  public void getObjectsColumns() throws Exception {}
-
-  @Override
-  @Disabled("Not yet implemented")
-  public void getObjectsCatalogs() throws Exception {}
-
-  @Override
-  @Disabled("Not yet implemented")
-  public void getObjectsDbSchemas() throws Exception {
-    super.getObjectsDbSchemas();
-  }
-
-  @Override
-  @Disabled("Not yet implemented")
-  public void getObjectsTables() throws Exception {
-    super.getObjectsTables();
-  }
-
-  @Override
-  @Disabled("Not yet implemented")
   public void getTableSchema() throws Exception {
     super.getTableSchema();
   }
