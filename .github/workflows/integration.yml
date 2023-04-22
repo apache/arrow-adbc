@@ -52,21 +52,6 @@ jobs:
   dremio:
     name: "Dremio Integration Tests"
     runs-on: ubuntu-latest
-    services:
-      dremio:
-        image: dremio/dremio-oss:latest
-        env:
-          DREMIO_JAVA_EXTRA_OPTS: "-Ddebug.addDefaultUser=true -Ddremio.eula.disabled=true"
-        options: >-
-          --health-cmd "curl --fail http://localhost:9047/ || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 9047:9047
-          - 32010:32010
-          - 31010:31010
-          - 45678:45678
     steps:
       - uses: actions/checkout@v3
         with:
@@ -100,14 +85,10 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
-      - name: Bootstrap Dremio
-        shell: bash -l {0}
-        run: |
-          ./ci/scripts/integration/dremio/bootstrap.sh
       - name: Start SQLite server
         shell: bash -l {0}
         run: |
-          docker-compose up -d golang-sqlite-flightsql
+          docker-compose up -d golang-sqlite-flightsql dremio dremio-init
 
       - name: Build FlightSQL Driver
         shell: bash -l {0}
