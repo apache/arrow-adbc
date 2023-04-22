@@ -50,7 +50,8 @@ cmake ^
       -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake ^
       -DCMAKE_UNITY_BUILD=%CMAKE_UNITY_BUILD% ^
       -DVCPKG_TARGET_TRIPLET=%VCPKG_TARGET_TRIPLET% ^
-      %source_dir%\c\driver\postgresql || exit /B 1
+      -DADBC_BUILD_DRIVER_POSTGRESQL=ON ^
+      %source_dir%\c || exit /B 1
 cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
 
 @REM XXX: CMake installs it to bin instead of lib for some reason
