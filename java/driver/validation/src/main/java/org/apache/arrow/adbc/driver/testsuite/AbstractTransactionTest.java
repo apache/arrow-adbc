@@ -63,7 +63,7 @@ public abstract class AbstractTransactionTest {
   }
 
   @Test
-  void autoCommitByDefault() throws Exception {
+  public void autoCommitByDefault() throws Exception {
     assertAdbcException(assertThrows(AdbcException.class, () -> connection.commit()))
         .isStatus(AdbcStatusCode.INVALID_STATE);
     assertAdbcException(assertThrows(AdbcException.class, () -> connection.rollback()))
@@ -72,7 +72,7 @@ public abstract class AbstractTransactionTest {
   }
 
   @Test
-  void toggleAutoCommit() throws Exception {
+  public void toggleAutoCommit() throws Exception {
     assertThat(connection.getAutoCommit()).isTrue();
     connection.setAutoCommit(true);
     assertThat(connection.getAutoCommit()).isTrue();
@@ -83,7 +83,7 @@ public abstract class AbstractTransactionTest {
   }
 
   @Test
-  void rollback() throws Exception {
+  public void rollback() throws Exception {
     final Schema schema =
         new Schema(Collections.singletonList(Field.nullable("ints", new ArrowType.Int(32, true))));
 
@@ -112,7 +112,7 @@ public abstract class AbstractTransactionTest {
   }
 
   @Test
-  void commit() throws Exception {
+  public void commit() throws Exception {
     final Schema schema =
         new Schema(Collections.singletonList(Field.nullable("ints", new ArrowType.Int(32, true))));
     final String tableName = quirks.caseFoldTableName("temptable");
@@ -143,7 +143,7 @@ public abstract class AbstractTransactionTest {
   }
 
   @Test
-  void enableAutoCommitAlsoCommits() throws Exception {
+  public void enableAutoCommitAlsoCommits() throws Exception {
     final Schema schema =
         new Schema(Collections.singletonList(Field.nullable("ints", new ArrowType.Int(32, true))));
     final String tableName = quirks.caseFoldTableName("temptable");
