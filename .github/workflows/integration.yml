@@ -49,8 +49,8 @@ env:
   CACHE_NUMBER: "0"
 
 jobs:
-  dremio:
-    name: "Dremio Integration Tests"
+  flightsql:
+    name: "FlightSQL Integration Tests (Dremio and SQLite)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -85,7 +85,7 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
-      - name: Start SQLite server
+      - name: Start SQLite server and Dremio
         shell: bash -l {0}
         run: |
           docker-compose up -d golang-sqlite-flightsql dremio dremio-init
@@ -127,7 +127,7 @@ jobs:
           ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
         run: |
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
-      - name: Stop SQLite server
+      - name: Stop SQLite server and Dremio
         shell: bash -l {0}
         run: |
           docker-compose down
