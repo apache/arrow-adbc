@@ -79,10 +79,17 @@ gboolean gadbc_error_check(GError** error, AdbcStatusCode status_code,
   if (status_code == ADBC_STATUS_OK) {
     return TRUE;
   } else {
-    g_set_error(error, GADBC_ERROR, gadbc_error_from_status_code(status_code),
-                "%s[%s][%d] %s", context, AdbcStatusCodeMessage(status_code),
-                adbc_error->vendor_code, adbc_error->message);
-    adbc_error->release(adbc_error);
+    if (adbc_error && adbc_error->message) {
+      g_set_error(error, GADBC_ERROR, gadbc_error_from_status_code(status_code),
+                  "%s[%s][%d] %s", context, AdbcStatusCodeMessage(status_code),
+                  adbc_error->vendor_code, adbc_error->message);
+    } else {
+      g_set_error(error, GADBC_ERROR, gadbc_error_from_status_code(status_code), "%s[%s]",
+                  context, AdbcStatusCodeMessage(status_code));
+    }
+    if (adbc_error && adbc_error->release) {
+      adbc_error->release(adbc_error);
+    }
     return FALSE;
   }
 }
