@@ -802,5 +802,4 @@ func (c *cnxn) SetOption(key, value string) error {
 			Code: adbc.StatusInvalidArgument,
 		}
 	}
-	return nil
 }
