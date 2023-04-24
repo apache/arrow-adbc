@@ -175,7 +175,7 @@ of the partitions.
 The queue size can be changed by setting an option on the
 :cpp:class:`AdbcStatement`:
 
-``adbc.flight.sql.rpc.queue_size``
+``adbc.sql.results.rpc.queue_size``
     The number of batches to queue per partition.  Defaults to 5.
 
 Metadata

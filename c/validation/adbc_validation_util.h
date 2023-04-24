@@ -244,10 +244,10 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
           return errno_res;
         }
       } else if constexpr (std::is_same<T, std::string>::value) {
-        struct ArrowStringView view;
-        view.data = v->c_str();
+        struct ArrowBufferView view;
+        view.data.as_char = v->c_str();
         view.size_bytes = v->size();
-        if (int errno_res = ArrowArrayAppendString(array, view); errno_res != 0) {
+        if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
           return errno_res;
         }
       } else {

@@ -124,10 +124,20 @@ can fail with the following error:
   CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by='"')
   CANNOT perform CREATE STAGE. This session does not have a current schema. Call 'USE SCHEMA' or use a qualified name.
 
+In addition, results are potentially fetched in parallel from multiple endpoints.
+A limited number of batches are queued per endpoint, though data is always
+returned to the client in the order of the endpoints.
+
+The queue size can be changed by setting an option on the :cpp:class:`AdbcStatement`:
+
+``adbc.sql.results.rpc.queue_size``
+    The number of batches to queue per endpoint. Defaults to 5.
+
 Transactions
 ------------
 
-Transactions are supported.
+Transactions are supported. Keep in mind that Snowflake transactions will
+implicitly commit if any DDL statements are run, such as ``CREATE TABLE``.
 
 Client Options
 --------------

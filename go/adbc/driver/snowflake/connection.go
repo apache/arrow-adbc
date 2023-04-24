@@ -247,6 +247,11 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 			return nil, errToAdbcErr(adbc.StatusInvalidData, err)
 		}
 
+		// SNOWFLAKE catalog contains functions and no tables
+		if name == "SNOWFLAKE" {
+			continue
+		}
+
 		// schema for SHOW TERSE DATABASES is:
 		// created_on:timestamp, name:text, kind:null, database_name:null, schema_name:null
 		// the last three columns are always null because they are not applicable for databases
@@ -323,7 +328,7 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 var loc = time.Now().Location()
 
-func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc, comment sql.NullString) (ret arrow.Field) {
+func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
 	ret.Name, ret.Nullable = name, isnullable
 	switch dataType {
 	case "NUMBER":
@@ -377,6 +382,7 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 	if comment.Valid {
 		md["COMMENT"] = comment.String
 	}
+	md["ORDINAL_POSITION"] = strconv.Itoa(ordinalPos)
 
 	ret.Metadata = arrow.MetadataFrom(md)
 	return
@@ -392,13 +398,13 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 
 	conditions := make([]string, 0)
 	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` TABLE_CATALOG LIKE \'`+*catalog+`\'`)
+		conditions = append(conditions, ` TABLE_CATALOG ILIKE \'`+*catalog+`\'`)
 	}
 	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` TABLE_SCHEMA LIKE \'`+*dbSchema+`\'`)
+		conditions = append(conditions, ` TABLE_SCHEMA ILIKE \'`+*dbSchema+`\'`)
 	}
 	if tableName != nil && *tableName != "" {
-		conditions = append(conditions, ` TABLE_NAME LIKE \'`+*dbSchema+`\'`)
+		conditions = append(conditions, ` TABLE_NAME ILIKE \'`+*tableName+`\'`)
 	}
 
 	const queryPrefix = `DECLARE
@@ -440,6 +446,8 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	var tblConditions []string
 	if len(tableType) > 0 {
 		tblConditions = append(conditions, ` TABLE_TYPE IN (\'`+strings.Join(tableType, `\',\'`)+`\')`)
+	} else {
+		tblConditions = conditions
 	}
 
 	cond := strings.Join(tblConditions, " AND ")
@@ -472,7 +480,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		// if we need to include the schemas of the tables, make another fetch
 		// to fetch the columns and column info
 		if columnName != nil && *columnName != "" {
-			conditions = append(conditions, ` column_name LIKE \'`+*columnName+`\'`)
+			conditions = append(conditions, ` column_name ILIKE \'`+*columnName+`\'`)
 		}
 		cond = strings.Join(conditions, " AND ")
 		if cond != "" {
@@ -527,14 +535,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			}
 
 			prevKey = key
-			fieldList = append(fieldList, toField(colName, isNullable, dataType, numericPrec, numericPrecRadix, numericScale, isIdent, identGen, identIncrement, comment))
-			if ordinalPos != len(fieldList) {
-				err = adbc.Error{
-					Msg:  "mismatch of ordinal positions",
-					Code: adbc.StatusInternal,
-				}
-				return
-			}
+			fieldList = append(fieldList, toField(colName, isNullable, dataType, numericPrec, numericPrecRadix, numericScale, isIdent, identGen, identIncrement, comment, ordinalPos))
 		}
 
 		if len(fieldList) > 0 && curTableInfo != nil {
@@ -777,6 +778,8 @@ func (c *cnxn) SetOption(key, value string) error {
 				}
 				c.activeTransaction = false
 			}
+			_, err := c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = true", nil)
+			return err
 		case adbc.OptionValueDisabled:
 			if !c.activeTransaction {
 				_, err := c.cn.ExecContext(context.Background(), "BEGIN", nil)
@@ -785,6 +788,8 @@ func (c *cnxn) SetOption(key, value string) error {
 				}
 				c.activeTransaction = true
 			}
+			_, err := c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = false", nil)
+			return err
 		default:
 			return adbc.Error{
 				Msg:  "[Snowflake] invalid value for option " + key + ": " + value,

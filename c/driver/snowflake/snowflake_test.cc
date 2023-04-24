@@ -78,6 +78,25 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
     return ADBC_STATUS_OK;
   }
 
+  ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const override {
+    switch (ingest_type) {
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
+      return NANOARROW_TYPE_INT64;
+    case NANOARROW_TYPE_FLOAT:
+    case NANOARROW_TYPE_DOUBLE:
+      return NANOARROW_TYPE_DOUBLE;
+    default:
+      return ingest_type;
+    }    
+  }
+
   std::string BindParameter(int index) const override { return "?"; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_transactions() const override { return true; }
@@ -86,6 +105,7 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   bool supports_bulk_ingest() const override { return true; }
   bool supports_partitioned_data() const override { return false; }
   bool supports_dynamic_parameter_binding() const override { return false; }
+  bool ddl_implicit_commit_txn() const override { return true; }
 };
 
 class SnowflakeTest : public ::testing::Test, public adbc_validation::DatabaseTest {
@@ -117,7 +137,7 @@ class SnowflakeStatementTest : public ::testing::Test,
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
-
+  
  protected:
   SnowflakeQuirks quirks_;
 };

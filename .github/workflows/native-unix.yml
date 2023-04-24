@@ -331,6 +331,22 @@ jobs:
         shell: bash -l {0}
         run: |
           docker-compose down
+      - name: Build Snowflake Driver
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SNOWFLAKE: "1"
+        run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test Snowflake Driver
+        if: ${{ secrets.SNOWFLAKE_URI != '' }}
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SNOWFLAKE: "1"
+          ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
+        run: |
+          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
 
   # ------------------------------------------------------------
   # GLib/Ruby

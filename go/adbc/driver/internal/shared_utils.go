@@ -20,6 +20,7 @@ package internal
 import (
 	"context"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -48,7 +49,7 @@ func PatternToRegexp(pattern *string) (*regexp.Regexp, error) {
 	}
 
 	var builder strings.Builder
-	if _, err := builder.WriteString("^"); err != nil {
+	if _, err := builder.WriteString("(?i)^"); err != nil {
 		return nil, err
 	}
 	for _, c := range *pattern {
@@ -193,6 +194,7 @@ func (g *GetObjects) Release() {
 func (g *GetObjects) Finish() (array.RecordReader, error) {
 	record := g.builder.NewRecord()
 	defer record.Release()
+
 	result, err := array.NewRecordReader(g.builder.Schema(), []arrow.Record{record})
 	if err != nil {
 		return nil, adbc.Error{
@@ -213,6 +215,7 @@ func (g *GetObjects) AppendCatalog(catalogName string) {
 		g.catalogDbSchemasBuilder.AppendNull()
 		return
 	}
+
 	g.catalogDbSchemasBuilder.Append(true)
 
 	for _, dbSchemaName := range g.schemaLookup[catalogName] {
@@ -252,20 +255,33 @@ func (g *GetObjects) appendTableInfo(tableInfo TableInfo) {
 	// TODO: unimplemented for now
 	g.tableConstraintsBuilder.Append(true)
 
+	if tableInfo.Schema == nil {
+		return
+	}
+
 	for colIndex, column := range tableInfo.Schema.Fields() {
 		if g.columnNamePattern != nil && !g.columnNamePattern.MatchString(column.Name) {
 			continue
 		}
 		g.columnNameBuilder.Append(column.Name)
-		g.ordinalPositionBuilder.Append(int32(colIndex + 1))
-		if column.HasMetadata() {
+		if !column.HasMetadata() {
+			g.ordinalPositionBuilder.Append(int32(colIndex + 1))
+			g.remarksBuilder.AppendNull()
+		} else {
 			if remark, ok := column.Metadata.GetValue("COMMENT"); ok {
 				g.remarksBuilder.Append(remark)
 			} else {
 				g.remarksBuilder.AppendNull()
 			}
-		} else {
-			g.remarksBuilder.AppendNull()
+
+			pos := int32(colIndex)
+			if ordinal, ok := column.Metadata.GetValue("ORDINAL_POSITION"); ok {
+				v, err := strconv.ParseInt(ordinal, 10, 32)
+				if err == nil {
+					pos = int32(v)
+				}
+			}
+			g.ordinalPositionBuilder.Append(pos)
 		}
 
 		g.xdbcDataTypeBuilder.AppendNull()

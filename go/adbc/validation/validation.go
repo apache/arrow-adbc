@@ -275,6 +275,88 @@ func (c *ConnectionTests) TestMetadataGetTableTypes() {
 	c.True(rdr.Next())
 }
 
+func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
+	ctx := context.Background()
+	cnxn, _ := c.DB.Open(ctx)
+	defer cnxn.Close()
+
+	c.Require().NoError(c.Quirks.DropTable(cnxn, "bulk_ingest"))
+	rec, _, err := array.RecordFromJSON(c.Quirks.Alloc(), arrow.NewSchema(
+		[]arrow.Field{
+			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true},
+		}, nil), strings.NewReader(`[
+			{"int64s": 42, "strings": "foo"},
+			{"int64s": -42, "strings": null},
+			{"int64s": null, "strings": ""}
+		]`))
+	c.Require().NoError(err)
+	defer rec.Release()
+
+	c.Require().NoError(c.Quirks.CreateSampleTable("bulk_ingest", rec))
+
+	filter := "in%"
+	tests := []struct {
+		name      string
+		filter    *string
+		colnames  []string
+		positions []int32
+	}{
+		{"no filter", nil, []string{"int64s", "strings"}, []int32{1, 2}},
+		{"filter: in%", &filter, []string{"int64s"}, []int32{1}},
+	}
+
+	for _, tt := range tests {
+		c.Run(tt.name, func() {
+			rdr, err := cnxn.GetObjects(ctx, adbc.ObjectDepthColumns, nil, nil, nil, tt.filter, nil)
+			c.Require().NoError(err)
+			defer rdr.Release()
+
+			c.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
+			c.True(rdr.Next())
+			rec := rdr.Record()
+			c.Greater(rec.NumRows(), int64(0))
+			var (
+				foundExpected        = false
+				catalogDbSchemasList = rec.Column(1).(*array.List)
+				catalogDbSchemas     = catalogDbSchemasList.ListValues().(*array.Struct)
+				dbSchemaTablesList   = catalogDbSchemas.Field(1).(*array.List)
+				dbSchemaTables       = dbSchemaTablesList.ListValues().(*array.Struct)
+				tableColumnsList     = dbSchemaTables.Field(2).(*array.List)
+				tableColumns         = tableColumnsList.ListValues().(*array.Struct)
+
+				colnames  = make([]string, 0)
+				positions = make([]int32, 0)
+			)
+			for row := 0; row < int(rec.NumRows()); row++ {
+				dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
+				for dbSchemaIdx := dbSchemaIdxStart; dbSchemaIdx < dbSchemaIdxEnd; dbSchemaIdx++ {
+					tblIdxStart, tblIdxEnd := dbSchemaTablesList.ValueOffsets(int(dbSchemaIdx))
+					for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
+						tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
+
+						if strings.EqualFold("bulk_ingest", tableName) {
+							foundExpected = true
+
+							colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
+							for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
+								name := tableColumns.Field(0).(*array.String).Value(int(colIdx))
+								colnames = append(colnames, strings.ToLower(name))
+								positions = append(positions, tableColumns.Field(1).(*array.Int32).Value(int(colIdx)))
+							}
+						}
+					}
+				}
+			}
+
+			c.False(rdr.Next())
+			c.True(foundExpected)
+			c.Equal(tt.colnames, colnames)
+			c.Equal(tt.positions, positions)
+		})
+	}
+}
+
 type StatementTests struct {
 	suite.Suite
 

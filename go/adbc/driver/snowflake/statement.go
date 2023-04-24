@@ -29,10 +29,11 @@ import (
 	"github.com/apache/arrow/go/v12/arrow/array"
 	"github.com/apache/arrow/go/v12/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
+	"golang.org/x/exp/constraints"
 )
 
 const (
-	OptionStatementQueueSize = "adbc.flight.sql.rpc.queue_size"
+	OptionStatementQueueSize = "adbc.sql.results.rpc.queue_size"
 )
 
 type statement struct {
@@ -258,7 +259,10 @@ func convMarshal(arr arrow.Array) interface{} {
 	return gosnowflake.Array(&v)
 }
 
-func convToSlice[T any](arr arrow.Array, vals []T) interface{} {
+// snowflake driver bindings only support specific types
+// int/int32/int64/float64/float32/bool/string/byte/time
+// so we have to cast anything else appropriately
+func convToSlice[T, O constraints.Integer | constraints.Float](arr arrow.Array, vals []T) interface{} {
 	if arr.Len() == 1 {
 		if arr.IsNull(0) {
 			return nil
@@ -272,7 +276,7 @@ func convToSlice[T any](arr arrow.Array, vals []T) interface{} {
 		if arr.IsNull(i) {
 			continue
 		}
-		out[i] = v
+		out[i] = O(v)
 	}
 	return gosnowflake.Array(&out)
 }
@@ -281,34 +285,34 @@ func getQueryArg(arr arrow.Array) interface{} {
 	switch arr := arr.(type) {
 	case *array.Int8:
 		v := arr.Int8Values()
-		return convToSlice(arr, v)
+		return convToSlice[int8, int32](arr, v)
 	case *array.Uint8:
 		v := arr.Uint8Values()
-		return convToSlice(arr, v)
+		return convToSlice[uint8, int32](arr, v)
 	case *array.Int16:
 		v := arr.Int16Values()
-		return convToSlice(arr, v)
+		return convToSlice[int16, int32](arr, v)
 	case *array.Uint16:
 		v := arr.Uint16Values()
-		return convToSlice(arr, v)
+		return convToSlice[uint16, int32](arr, v)
 	case *array.Int32:
 		v := arr.Int32Values()
-		return convToSlice(arr, v)
+		return convToSlice[int32, int32](arr, v)
 	case *array.Uint32:
 		v := arr.Uint32Values()
-		return convToSlice(arr, v)
+		return convToSlice[uint32, int64](arr, v)
 	case *array.Int64:
 		v := arr.Int64Values()
-		return convToSlice(arr, v)
+		return convToSlice[int64, int64](arr, v)
 	case *array.Uint64:
 		v := arr.Uint64Values()
-		return convToSlice(arr, v)
+		return convToSlice[uint64, int64](arr, v)
 	case *array.Float32:
 		v := arr.Float32Values()
-		return convToSlice(arr, v)
+		return convToSlice[float32, float64](arr, v)
 	case *array.Float64:
 		v := arr.Float64Values()
-		return convToSlice(arr, v)
+		return convToSlice[float64, float64](arr, v)
 	case *array.LargeBinary:
 		return convToArr[[]byte](arr)
 	case *array.Binary:
@@ -458,6 +462,12 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (st *statement) Prepare(_ context.Context) error {
+	if st.query == "" {
+		return adbc.Error{
+			Code: adbc.StatusInvalidState,
+			Msg:  "cannot prepare statement with no query",
+		}
+	}
 	// snowflake doesn't provide a "Prepare" api, this is a no-op
 	return nil
 }
