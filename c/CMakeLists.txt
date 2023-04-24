@@ -16,9 +16,7 @@
 # under the License.
 
 cmake_minimum_required(VERSION 3.18)
-
 get_filename_component(REPOSITORY_ROOT ".." ABSOLUTE)
-message(STATUS "${REPOSITORY_ROOT}")
 list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
 include(AdbcDefines)
 include(BuildUtils)
@@ -31,18 +29,18 @@ include(CTest)
 add_subdirectory(vendor/nanoarrow)
 add_subdirectory(driver/common)
 
-if(ADBC_DRIVER_MANAGER)
-  add_subdirectory(driver_manager)
+if(ADBC_DRIVER_FLIGHTSQL)
+  add_subdirectory(driver/flightsql)
 endif()
 
-if(ADBC_DRIVER_SQLITE)
-  add_subdirectory(driver/sqlite)
+if(ADBC_DRIVER_MANAGER)
+  add_subdirectory(driver_manager)
 endif()
 
 if(ADBC_DRIVER_POSTGRESQL)
   add_subdirectory(driver/postgresql)
 endif()
 
-if(ADBC_DRIVER_FLIGHTSQL)
-  add_subdirectory(driver/flightsql)
+if(ADBC_DRIVER_SQLITE)
+  add_subdirectory(driver/sqlite)
 endif()
