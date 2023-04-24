@@ -15,9 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Common definitions for the CMake projects in this repository.
-# Must define REPOSITORY_ROOT before including this.
-
 add_library(
   nanoarrow
   STATIC
