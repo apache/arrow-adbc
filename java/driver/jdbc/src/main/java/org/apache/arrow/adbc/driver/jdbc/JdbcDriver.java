@@ -16,8 +16,10 @@
  */
 package org.apache.arrow.adbc.driver.jdbc;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import javax.sql.DataSource;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
@@ -25,11 +27,12 @@ import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.util.Preconditions;
 
 /** An ADBC driver wrapping the JDBC API. */
 public class JdbcDriver implements AdbcDriver {
   public static final JdbcDriver INSTANCE = new JdbcDriver();
+  /** A parameter for creating an {@link AdbcDatabase} from a {@link DataSource}. */
+  public static final String PARAM_DATASOURCE = "adbc.jdbc.datasource";
 
   static {
     AdbcDriverManager.getInstance().registerDriver("org.apache.arrow.adbc.driver.jdbc", INSTANCE);
@@ -47,20 +50,64 @@ public class JdbcDriver implements AdbcDriver {
 
   @Override
   public AdbcDatabase open(Map<String, Object> parameters) throws AdbcException {
-    Object target = parameters.get(PARAM_URL);
-    if (!(target instanceof String)) {
-      throw AdbcException.invalidArgument("[JDBC] Must provide String " + PARAM_URL + " parameter");
+    DataSource dataSource = getParam(DataSource.class, parameters, PARAM_DATASOURCE);
+    // XXX(apache/arrow-adbc#316): allow "url" to align with C/Go
+    String target = getParam(String.class, parameters, "url", PARAM_URL);
+    if (dataSource != null && target != null) {
+      throw AdbcException.invalidArgument(
+          "[JDBC] Can only provide one of " + PARAM_URL + " and " + PARAM_DATASOURCE);
     }
-    Object quirks = parameters.get(PARAM_SQL_QUIRKS);
-    if (quirks != null) {
-      Preconditions.checkArgument(
-          quirks instanceof SqlQuirks,
-          String.format(
-              "[JDBC] %s must be a SqlQuirks instance, not %s",
-              PARAM_SQL_QUIRKS, quirks.getClass().getName()));
-    } else {
+
+    SqlQuirks quirks = getParam(SqlQuirks.class, parameters, PARAM_SQL_QUIRKS);
+    if (quirks == null) {
       quirks = new SqlQuirks();
     }
-    return new JdbcDatabase(allocator, (String) target, (SqlQuirks) quirks);
+
+    String username = getParam(String.class, parameters, "username");
+    String password = getParam(String.class, parameters, "password");
+    if ((username != null && password == null) || (username == null && password != null)) {
+      throw AdbcException.invalidArgument(
+          "[JDBC] Must provide both or neither of username and password");
+    }
+
+    if (target != null) {
+      dataSource = new UrlDataSource(target);
+    }
+
+    if (dataSource != null) {
+      return new JdbcDataSourceDatabase(allocator, dataSource, username, password, quirks);
+    }
+    throw AdbcException.invalidArgument(
+        "[JDBC] Must provide one of url and " + PARAM_DATASOURCE + " options");
+  }
+
+  private static <T> T getParam(Class<T> klass, Map<String, Object> parameters, String... choices)
+      throws AdbcException {
+    Object result = null;
+    for (String choice : choices) {
+      Object value = parameters.get(choice);
+      if (value != null) {
+        if (result != null) {
+          throw AdbcException.invalidArgument(
+              "[JDBC] Provide at most one of these parameters: " + Arrays.toString(choices));
+        }
+        result = value;
+      }
+    }
+    if (result == null) {
+      return null;
+    }
+
+    try {
+      return klass.cast(result);
+    } catch (ClassCastException e) {
+      throw AdbcException.invalidArgument(
+          "[JDBC] "
+              + Arrays.toString(choices)
+              + " must be a "
+              + klass
+              + ", not a "
+              + result.getClass());
+    }
   }
 }
