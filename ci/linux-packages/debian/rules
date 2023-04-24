@@ -37,10 +37,10 @@ override_dh_auto_configure:
 	  --buildsystem=cmake+ninja			\
 	  --						\
 	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)        \
-          -DADBC_BUILD_DRIVER_MANAGER=ON                \
-          -DADBC_BUILD_DRIVER_POSTGRESQL=ON             \
-          -DADBC_BUILD_DRIVER_SQLITE=ON                 \
-          -DADBC_BUILD_DRIVER_FLIGHTSQL=ON
+          -DADBC_DRIVER_MANAGER=ON                      \
+          -DADBC_DRIVER_POSTGRESQL=ON                   \
+          -DADBC_DRIVER_SQLITE=ON                       \
+          -DADBC_DRIVER_FLIGHTSQL=ON
 
 override_dh_auto_build:
 	dh_auto_build					\

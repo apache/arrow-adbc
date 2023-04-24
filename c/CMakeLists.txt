@@ -31,18 +31,18 @@ include(CTest)
 add_subdirectory(vendor/nanoarrow)
 add_subdirectory(driver/common)
 
-if(ADBC_BUILD_DRIVER_MANAGER)
+if(ADBC_DRIVER_MANAGER)
   add_subdirectory(driver_manager)
 endif()
 
-if(ADBC_BUILD_DRIVER_SQLITE)
+if(ADBC_DRIVER_SQLITE)
   add_subdirectory(driver/sqlite)
 endif()
 
-if(ADBC_BUILD_DRIVER_POSTGRESQL)
+if(ADBC_DRIVER_POSTGRESQL)
   add_subdirectory(driver/postgresql)
 endif()
 
-if(ADBC_BUILD_DRIVER_FLIGHTSQL)
+if(ADBC_DRIVER_FLIGHTSQL)
   add_subdirectory(driver/flightsql)
 endif()

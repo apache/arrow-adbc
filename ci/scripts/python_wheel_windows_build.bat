@@ -50,10 +50,10 @@ cmake ^
       -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake ^
       -DCMAKE_UNITY_BUILD=%CMAKE_UNITY_BUILD% ^
       -DVCPKG_TARGET_TRIPLET=%VCPKG_TARGET_TRIPLET% ^
-      -DADBC_BUILD_DRIVER_POSTGRESQL=ON ^
-      -DADBC_BUILD_DRIVER_SQLITE=ON ^
-      -DADBC_BUILD_DRIVER_FLIGHTSQL=ON ^
-      -DADBC_BUILD_DRIVER_MANAGER=ON ^
+      -DADBC_DRIVER_POSTGRESQL=ON ^
+      -DADBC_DRIVER_SQLITE=ON ^
+      -DADBC_DRIVER_FLIGHTSQL=ON ^
+      -DADBC_DRIVER_MANAGER=ON ^
       %source_dir%\c || exit /B 1
 cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
 

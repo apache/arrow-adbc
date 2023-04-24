@@ -36,9 +36,9 @@ function Build-Subproject {
       -DADBC_BUILD_SHARED=ON `
       -DADBC_BUILD_STATIC=OFF `
       -DADBC_BUILD_TESTS=ON `
-      -DADBC_BUILD_DRIVER_MANAGER="$($BuildDriverManager)" `
-      -DADBC_BUILD_DRIVER_POSTGRESQL="$($BuildDriverPostgreSQL)" `
-      -DADBC_BUILD_DRIVER_SQLITE="$($BuildDriverSqlite)" `
+      -DADBC_DRIVER_MANAGER="$($BuildDriverManager)" `
+      -DADBC_DRIVER_POSTGRESQL="$($BuildDriverPostgreSQL)" `
+      -DADBC_DRIVER_SQLITE="$($BuildDriverSqlite)" `
       -DCMAKE_BUILD_TYPE=Debug `
       -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `
       -DCMAKE_VERBOSE_MAKEFILE=ON

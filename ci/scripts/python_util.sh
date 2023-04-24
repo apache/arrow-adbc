@@ -88,9 +88,9 @@ function build_drivers {
         ${CMAKE_ARGUMENTS} \
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
-        -DADBC_BUILD_DRIVER_FLIGHTSQL=ON \
-        -DADBC_BUILD_DRIVER_POSTGRESQL=ON \
-        -DADBC_BUILD_DRIVER_SQLITE=ON \
+        -DADBC_DRIVER_FLIGHTSQL=ON \
+        -DADBC_DRIVER_POSTGRESQL=ON \
+        -DADBC_DRIVER_SQLITE=ON \
         ${source_dir}/c
     cmake --build . --target install --verbose -j
     popd
