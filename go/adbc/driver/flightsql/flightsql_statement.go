@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	OptionStatementQueueSize = "adbc.sql.results.rpc.queue_size"
+	OptionStatementQueueSize = "adbc.rpc.result_queue_size"
 	// Explicitly set substrait version for Flight SQL
 	// substrait *does* include the version in the serialized plan
 	// so this is not entirely necessary depending on the version

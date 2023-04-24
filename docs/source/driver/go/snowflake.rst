@@ -130,7 +130,7 @@ returned to the client in the order of the endpoints.
 
 The queue size can be changed by setting an option on the :cpp:class:`AdbcStatement`:
 
-``adbc.sql.results.rpc.queue_size``
+``adbc.rpc.result_queue_size``
     The number of batches to queue per endpoint. Defaults to 5.
 
 Transactions

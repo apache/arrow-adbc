@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	OptionStatementQueueSize = "adbc.sql.results.rpc.queue_size"
+	OptionStatementQueueSize = "adbc.rpc.result_queue_size"
 )
 
 type statement struct {
