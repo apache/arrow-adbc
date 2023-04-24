@@ -47,8 +47,8 @@ else
     export GOARCH="amd64"
 fi
 
-mkdir -p "build-cpp/"
-pushd "build-cpp/"
+mkdir -p "build-${PKG_NAME}/"
+pushd "build-${PKG_NAME}/"
 
 cmake "../c" \
       -G Ninja \
@@ -57,8 +57,8 @@ cmake "../c" \
       -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
       ${BUILD_MANAGER:+-DADBC_BUILD_DRIVER_MANAGER="$BUILD_MANAGER"} \
       ${BUILD_FLIGHTSQL:+-DADBC_BUILD_DRIVER_FLIGHTSQL="$BUILD_FLIGHTSQL" } \
-      ${BUILD_POSTGRESQL:+-DADBC_BUILD_DRIVER_POSTGRESQL=$"BUILD_POSTGRESQL"} \
-      ${BUILD_SQLITE:+-DADBC_BUILD_DRIVER_SQLITE=$"BUILD_SQLITE"} \
+      ${BUILD_POSTGRESQL:+-DADBC_BUILD_DRIVER_POSTGRESQL="$BUILD_POSTGRESQL"} \
+      ${BUILD_SQLITE:+-DADBC_BUILD_DRIVER_SQLITE="$BUILD_SQLITE"} \
       -DCMAKE_PREFIX_PATH="${PREFIX}"
 
 cmake --build . --target install -j
