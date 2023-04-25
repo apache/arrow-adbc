@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
 #include <algorithm>
+#include <cstring>
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
@@ -38,7 +39,7 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
  public:
   SnowflakeQuirks() {
     uri_ = std::getenv("ADBC_SNOWFLAKE_URI");
-    if (uri_ == nullptr) {
+    if (uri_ == nullptr || std::strlen(uri_) == 0) {
       skip_ = true;
     }
   }
