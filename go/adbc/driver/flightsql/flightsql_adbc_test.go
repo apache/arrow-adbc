@@ -221,7 +221,7 @@ func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 	}
 	defer stmt.Close()
 
-	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS` + tblname); err != nil {
+	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + tblname); err != nil {
 		return err
 	}
 
@@ -547,16 +547,16 @@ func (suite *StatementTests) TearDownTest() {
 
 func (suite *StatementTests) TestQueueSizeOption() {
 	var err error
-	option := "adbc.flight.sql.rpc.queue_size"
+	option := "adbc.rpc.result_queue_size"
 
 	err = suite.Stmt.SetOption(option, "")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': '' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option '"+option+"': '' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "foo")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': 'foo' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option '"+option+"': 'foo' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "-1")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': '-1' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option '"+option+"': '-1' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "1")
 	suite.Require().NoError(err)
