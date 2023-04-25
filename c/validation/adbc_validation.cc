@@ -53,6 +53,15 @@ namespace {
   } while (false)
 }  // namespace
 
+/// case insensitive string compare
+bool iequals(std::string s1, std::string s2) {
+  std::transform(s1.begin(), s1.end(), s1.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  std::transform(s2.begin(), s2.end(), s2.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return s1 == s2;
+}
+
 //------------------------------------------------------------
 // DriverQuirks
 
@@ -604,7 +613,8 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
-            if (strncasecmp(table_name.data, "bulk_ingest", table_name.size_bytes) == 0) {
+            if (iequals(std::string(table_name.data, table_name.size_bytes),
+                        "bulk_ingest")) {
               found_expected_table = true;
             }
 
@@ -780,7 +790,8 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
             ASSERT_FALSE(ArrowArrayViewIsNull(table_constraints_list, tables_index))
                 << "Row " << row << " should have non-null table_constraints";
 
-            if (strncasecmp("bulk_ingest", table_name.data, table_name.size_bytes) == 0) {
+            if (iequals(std::string(table_name.data, table_name.size_bytes),
+                        "bulk_ingest")) {
               found_expected_table = true;
 
               for (int64_t columns_index =
