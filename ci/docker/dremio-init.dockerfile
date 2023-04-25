@@ -15,18 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require "adbc"
+FROM alpine:3.17
 
-require "tempfile"
-
-require "test-unit"
-
-module Helper
-  def require_gi_bindings(major, minor, micro)
-    return if GLib.check_binding_version?(major, minor, micro)
-    message =
-      "Require gobject-introspection #{major}.#{minor}.#{micro} or later: " +
-      GLib::BINDING_VERSION.join(".")
-    omit(message)
-  end
-end
+RUN apk add --no-cache curl jq bash

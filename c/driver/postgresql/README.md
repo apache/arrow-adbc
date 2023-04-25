@@ -50,6 +50,15 @@ $ docker run -it --rm \
     postgres
 ```
 
+Alternatively use the `docker compose` provided by ADBC to manage the test
+database container.
+
+```shell
+$ docker compose up postgres_test
+# When finished:
+# docker compose down postgres_test
+```
+
 Then, to run the tests, set the environment variable specifying the
 PostgreSQL URI before running tests:
 
@@ -57,3 +66,7 @@ PostgreSQL URI before running tests:
 $ export ADBC_POSTGRESQL_TEST_URI=postgresql://localhost:5432/postgres?user=postgres&password=password
 $ ctest
 ```
+
+Users of VSCode can use the CMake extension with the supplied CMakeUserPresets.json
+example to supply the required CMake and environment variables required to build and
+run tests.

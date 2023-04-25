@@ -20,8 +20,7 @@
 files_to_vendor <- c(
   "../../adbc.h",
   "../../c/driver/postgresql/util.h",
-  "../../c/driver/postgresql/type.h",
-  "../../c/driver/postgresql/type.cc",
+  "../../c/driver/postgresql/postgres_type.h",
   "../../c/driver/postgresql/statement.h",
   "../../c/driver/postgresql/statement.cc",
   "../../c/driver/postgresql/connection.h",
@@ -30,6 +29,7 @@ files_to_vendor <- c(
   "../../c/driver/postgresql/database.cc",
   "../../c/driver/postgresql/postgresql.cc",
   "../../c/vendor/nanoarrow/nanoarrow.h",
+  "../../c/vendor/nanoarrow/nanoarrow.hpp",
   "../../c/vendor/nanoarrow/nanoarrow.c"
 )
 
@@ -50,8 +50,12 @@ if (all(file.exists(files_to_vendor))) {
 
   if (all(file.copy(files_to_vendor, "src"))) {
     file.rename(
-      c("src/nanoarrow.c", "src/nanoarrow.h"),
-      c("src/nanoarrow/nanoarrow.c", "src/nanoarrow/nanoarrow.h")
+      c("src/nanoarrow.c", "src/nanoarrow.h", "src/nanoarrow.hpp"),
+      c(
+        "src/nanoarrow/nanoarrow.c",
+        "src/nanoarrow/nanoarrow.h",
+        "src/nanoarrow/nanoarrow.hpp"
+      )
     )
     cat("All files successfully copied to src/\n")
   } else {

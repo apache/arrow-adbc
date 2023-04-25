@@ -15,18 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require "adbc"
-
-require "tempfile"
-
-require "test-unit"
-
-module Helper
-  def require_gi_bindings(major, minor, micro)
-    return if GLib.check_binding_version?(major, minor, micro)
-    message =
-      "Require gobject-introspection #{major}.#{minor}.#{micro} or later: " +
-      GLib::BINDING_VERSION.join(".")
-    omit(message)
-  end
-end
+add_library(adbc_driver_common STATIC utils.c)
+set_target_properties(adbc_driver_common PROPERTIES POSITION_INDEPENDENT_CODE ON)
+include_directories(SYSTEM ${REPOSITORY_ROOT})
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)

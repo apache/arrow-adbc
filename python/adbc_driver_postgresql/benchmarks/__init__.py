@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,12 +14,3 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
-main() {
-   local CMAKE_BINARY_DIR="$1"
-   local TEST_OR_BENCHMARK="$2"
-   local TEST_PATH="$3"
-   exec "${CMAKE_BINARY_DIR}/${TEST_PATH}"
-}
-
-main "$@"

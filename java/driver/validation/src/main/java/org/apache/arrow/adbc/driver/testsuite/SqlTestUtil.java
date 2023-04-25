@@ -27,6 +27,7 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -45,9 +46,9 @@ public final class SqlTestUtil {
     final Schema schema =
         new Schema(
             Arrays.asList(
+                Field.nullable(quirks.caseFoldColumnName("INTS"), Types.MinorType.INT.getType()),
                 Field.nullable(
-                    quirks.caseFoldColumnName("INTS"), new ArrowType.Int(32, /*signed=*/ true)),
-                Field.nullable(quirks.caseFoldColumnName("STRS"), new ArrowType.Utf8())));
+                    quirks.caseFoldColumnName("STRS"), Types.MinorType.VARCHAR.getType())));
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
       final IntVector ints = (IntVector) root.getVector(0);
       final VarCharVector strs = (VarCharVector) root.getVector(1);

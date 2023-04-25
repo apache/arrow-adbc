@@ -1,0 +1,33 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "user-local",
+            "displayName": "(user) local build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "ADBC_BUILD_TESTS": "ON"
+            },
+            "environment": {
+                "PKG_CONFIG_PATH": ""
+            }
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "user-test-preset",
+            "description": "",
+            "displayName": "(user) test preset",
+            "configurePreset": "user-local",
+            "environment": {
+              "CTEST_OUTPUT_ON_FAILURE": "1",
+              "ADBC_POSTGRESQL_TEST_URI": "postgresql://localhost:5432/postgres?user=postgres&password=password"
+            }
+        }
+    ]
+}

@@ -24,7 +24,7 @@
 #include <adbc.h>
 #include <libpq-fe.h>
 
-#include "type.h"
+#include "postgres_type.h"
 
 namespace adbcpq {
 class PostgresDatabase {
@@ -42,12 +42,15 @@ class PostgresDatabase {
 
   AdbcStatusCode Connect(PGconn** conn, struct AdbcError* error);
   AdbcStatusCode Disconnect(PGconn** conn, struct AdbcError* error);
+  const std::shared_ptr<PostgresTypeResolver>& type_resolver() const {
+    return type_resolver_;
+  }
 
-  const std::shared_ptr<TypeMapping>& type_mapping() const { return type_mapping_; }
+  AdbcStatusCode RebuildTypeResolver(struct AdbcError* error);
 
  private:
   int32_t open_connections_;
   std::string uri_;
-  std::shared_ptr<TypeMapping> type_mapping_;
+  std::shared_ptr<PostgresTypeResolver> type_resolver_;
 };
 }  // namespace adbcpq

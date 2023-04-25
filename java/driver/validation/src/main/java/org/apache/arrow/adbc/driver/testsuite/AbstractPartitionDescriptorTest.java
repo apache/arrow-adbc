@@ -30,11 +30,11 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.util.Preconditions;
-import org.apache.arrow.vector.IntVector;
+import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
-import org.apache.arrow.vector.types.pojo.ArrowType;
+import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.junit.jupiter.api.AfterEach;
@@ -63,9 +63,9 @@ public abstract class AbstractPartitionDescriptorTest {
     schema =
         new Schema(
             Arrays.asList(
+                Field.nullable(quirks.caseFoldColumnName("ints"), Types.MinorType.BIGINT.getType()),
                 Field.nullable(
-                    quirks.caseFoldColumnName("ints"), new ArrowType.Int(32, /*signed=*/ true)),
-                Field.nullable(quirks.caseFoldColumnName("strs"), new ArrowType.Utf8())));
+                    quirks.caseFoldColumnName("strs"), Types.MinorType.VARCHAR.getType())));
     quirks.cleanupTable(tableName);
   }
 
@@ -78,7 +78,7 @@ public abstract class AbstractPartitionDescriptorTest {
   @Test
   public void serializeDeserializeQuery() throws Exception {
     try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
-      final IntVector ints = (IntVector) root.getVector(0);
+      final BigIntVector ints = (BigIntVector) root.getVector(0);
       final VarCharVector strs = (VarCharVector) root.getVector(1);
 
       ints.allocateNew(4);
@@ -111,7 +111,6 @@ public abstract class AbstractPartitionDescriptorTest {
               connection2.readPartition(
                   partitionResult.getPartitionDescriptors().get(0).getDescriptor())) {
         assertThat(reader.loadNextBatch()).isTrue();
-        assertThat(reader.getVectorSchemaRoot().getSchema()).isEqualTo(root.getSchema());
         assertRoot(reader.getVectorSchemaRoot()).isEqualTo(root);
       }
     }

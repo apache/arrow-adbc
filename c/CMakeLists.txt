@@ -15,18 +15,32 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require "adbc"
+cmake_minimum_required(VERSION 3.18)
+get_filename_component(REPOSITORY_ROOT ".." ABSOLUTE)
+list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
+include(AdbcDefines)
+include(BuildUtils)
+project(adbc
+        VERSION "${ADBC_BASE_VERSION}"
+        LANGUAGES C CXX)
 
-require "tempfile"
+include(CTest)
 
-require "test-unit"
+add_subdirectory(vendor/nanoarrow)
+add_subdirectory(driver/common)
 
-module Helper
-  def require_gi_bindings(major, minor, micro)
-    return if GLib.check_binding_version?(major, minor, micro)
-    message =
-      "Require gobject-introspection #{major}.#{minor}.#{micro} or later: " +
-      GLib::BINDING_VERSION.join(".")
-    omit(message)
-  end
-end
+if(ADBC_DRIVER_FLIGHTSQL)
+  add_subdirectory(driver/flightsql)
+endif()
+
+if(ADBC_DRIVER_MANAGER)
+  add_subdirectory(driver_manager)
+endif()
+
+if(ADBC_DRIVER_POSTGRESQL)
+  add_subdirectory(driver/postgresql)
+endif()
+
+if(ADBC_DRIVER_SQLITE)
+  add_subdirectory(driver/sqlite)
+endif()

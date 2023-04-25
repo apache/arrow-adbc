@@ -18,6 +18,7 @@ package org.apache.arrow.adbc.driver.flightsql;
 
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
@@ -29,14 +30,22 @@ import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.Preconditions;
 
 /** An ADBC driver wrapping Arrow Flight SQL. */
-public enum FlightSqlDriver implements AdbcDriver {
-  INSTANCE;
+public class FlightSqlDriver implements AdbcDriver {
+  public static final FlightSqlDriver INSTANCE = new FlightSqlDriver();
+
+  static {
+    AdbcDriverManager.getInstance()
+        .registerDriver("org.apache.arrow.adbc.driver.flightsql", INSTANCE);
+  }
 
   private final BufferAllocator allocator;
 
   FlightSqlDriver() {
-    allocator = new RootAllocator();
-    AdbcDriverManager.getInstance().registerDriver("org.apache.arrow.adbc.driver.flightsql", this);
+    this(new RootAllocator());
+  }
+
+  FlightSqlDriver(BufferAllocator allocator) {
+    this.allocator = Objects.requireNonNull(allocator);
   }
 
   @Override

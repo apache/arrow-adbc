@@ -22,10 +22,10 @@ adbc.h
 connection.cc
 connection.h
 database.h
+database.cc
 postgresql.cc
 statement.h
 statement.cc
-type.cc
-type.h
+postgres_type.h
 util.h
 Makevars
