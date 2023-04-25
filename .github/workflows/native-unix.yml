@@ -338,8 +338,7 @@ jobs:
           BUILD_DRIVER_SNOWFLAKE: "1"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test Snowflake Driver
-        if: ${{ secrets.SNOWFLAKE_URI != '' }}
+      - name: Test Snowflake Driver        
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"

@@ -32,6 +32,7 @@
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
+#include <algorithm>
 
 #include "adbc_validation_util.h"
 
