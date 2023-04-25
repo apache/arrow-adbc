@@ -36,10 +36,16 @@ using adbc_validation::IsOkStatus;
 
 class SnowflakeQuirks : public adbc_validation::DriverQuirks {
  public:
+  SnowflakeQuirks() {
+    uri_ = std::getenv("ADBC_SNOWFLAKE_URI");
+    if (uri_ == nullptr) {
+      skip_ = true;
+    }
+  }
+
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
-    const char* uri = std::getenv("ADBC_SNOWFLAKE_URI");
-    EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri, error), IsOkStatus(error));
+    EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri_, error), IsOkStatus(error));
     return ADBC_STATUS_OK;
   }
 
@@ -107,13 +113,25 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   bool supports_partitioned_data() const override { return false; }
   bool supports_dynamic_parameter_binding() const override { return false; }
   bool ddl_implicit_commit_txn() const override { return true; }
+
+  const char* uri_;
+  bool skip_{false};
 };
 
 class SnowflakeTest : public ::testing::Test, public adbc_validation::DatabaseTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
-  void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
-  void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
+  void SetUp() override {
+    if (quirks_.skip_) {
+      GTEST_SKIP();
+    }
+    ASSERT_NO_FATAL_FAILURE(SetUpTest());
+  }
+  void TearDown() override {
+    if (!quirks_.skip_) {
+      ASSERT_NO_FATAL_FAILURE(TearDownTest());
+    }
+  }
 
  protected:
   SnowflakeQuirks quirks_;
@@ -124,8 +142,17 @@ class SnowflakeConnectionTest : public ::testing::Test,
                                 public adbc_validation::ConnectionTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
-  void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
-  void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
+  void SetUp() override {
+    if (quirks_.skip_) {
+      GTEST_SKIP();
+    }
+    ASSERT_NO_FATAL_FAILURE(SetUpTest());
+  }
+  void TearDown() override {
+    if (!quirks_.skip_) {
+      ASSERT_NO_FATAL_FAILURE(TearDownTest());
+    }
+  }
 
  protected:
   SnowflakeQuirks quirks_;
@@ -136,8 +163,17 @@ class SnowflakeStatementTest : public ::testing::Test,
                                public adbc_validation::StatementTest {
  public:
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
-  void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
-  void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
+  void SetUp() override {
+    if (quirks_.skip_) {
+      GTEST_SKIP();
+    }
+    ASSERT_NO_FATAL_FAILURE(SetUpTest());
+  }
+  void TearDown() override {
+    if (!quirks_.skip_) {
+      ASSERT_NO_FATAL_FAILURE(TearDownTest());
+    }
+  }
 
  protected:
   SnowflakeQuirks quirks_;
