@@ -22,7 +22,7 @@ include(AdbcDefines)
 include(BuildUtils)
 project(adbc
         VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
+        LANGUAGES C CXX)
 
 include(CTest)
 
