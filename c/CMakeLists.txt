@@ -45,5 +45,10 @@ if(ADBC_DRIVER_SQLITE)
   add_subdirectory(driver/sqlite)
 endif()
 
+if(ADBC_DRIVER_SNOWFLAKE)
+  add_subdirectory(driver/snowflake)
+endif()
+
 validate_config()
 config_summary_message()
+
