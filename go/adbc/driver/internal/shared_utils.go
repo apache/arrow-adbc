@@ -274,7 +274,7 @@ func (g *GetObjects) appendTableInfo(tableInfo TableInfo) {
 				g.remarksBuilder.AppendNull()
 			}
 
-			pos := int32(colIndex)
+			pos := int32(colIndex + 1)
 			if ordinal, ok := column.Metadata.GetValue("ORDINAL_POSITION"); ok {
 				v, err := strconv.ParseInt(ordinal, 10, 32)
 				if err == nil {

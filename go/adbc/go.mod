@@ -105,4 +105,4 @@ require (
 	modernc.org/token v1.1.0 // indirect
 )
 
-replace github.com/snowflakedb/gosnowflake => github.com/zeroshade/gosnowflake v0.0.0-20230419185854-4870fd63961f
+replace github.com/snowflakedb/gosnowflake => github.com/zeroshade/gosnowflake v0.0.0-20230424204232-7d572e64ed4c

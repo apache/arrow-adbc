@@ -147,8 +147,8 @@ github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o
 github.com/zeebo/assert v1.3.0 h1:g7C04CbJuIDKNPFHmsk4hwZDO5O+kntRxzaUoNXj+IQ=
 github.com/zeebo/xxh3 v1.0.2 h1:xZmwmqxHZA8AI603jOQ0tMqmBr9lPeFwGg6d+xy9DC0=
 github.com/zeebo/xxh3 v1.0.2/go.mod h1:5NWz9Sef7zIDm2JHfFlcQvNekmcEl9ekUZQQKCYaDcA=
-github.com/zeroshade/gosnowflake v0.0.0-20230419185854-4870fd63961f h1:MLgnvNakTOizuAsdTOq7heY9qm+sVuGCGNYdp1k+SyE=
-github.com/zeroshade/gosnowflake v0.0.0-20230419185854-4870fd63961f/go.mod h1:45uptpjfG6N5VQzbU5MVz2MJiqg/A6a7up+TRJtBn+A=
+github.com/zeroshade/gosnowflake v0.0.0-20230424204232-7d572e64ed4c h1:tKnyZc8bg11LV9RaZNG+PDvOfoXaJ48G/9fDbbRMatA=
+github.com/zeroshade/gosnowflake v0.0.0-20230424204232-7d572e64ed4c/go.mod h1:BD4pgch4dCUCi29r6japI5W9plp38ys+k6Hm2ujHdAI=
 golang.org/x/crypto v0.8.0 h1:pd9TJtTueMTVQXzk8E2XESSMQDj/U7OUu0PqJqPXQjQ=
 golang.org/x/crypto v0.8.0/go.mod h1:mRqEX+O9/h5TFCrQhkgjo2yKi0yYA+9ecGkdQoHrywE=
 golang.org/x/exp v0.0.0-20230420155640-133eef4313cb h1:rhjz/8Mbfa8xROFiH+MQphmAmgqRM0bOMnytznhWEXk=
