@@ -126,24 +126,24 @@ void StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
 }
 void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
   va_list argptr;
-  ssize_t bytes_available = builder->capacity - builder->size;
+  int bytes_available = builder->capacity - builder->size;
 
   va_start(argptr, fmt);
-  ssize_t n = vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
+  int n = vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
   va_end(argptr);
 
   if (n < 0) {                        // TODO: handle error
   } else if (n >= bytes_available) {  // output was truncated
-    builder->buffer = (char*)realloc(builder->buffer, builder->capacity + n + 1);
+    builder->buffer = (char*)realloc(builder->buffer, n + 1);
     if (builder->buffer == NULL) { /* TODO: handle error */
     }
-    builder->capacity += n + 1;
+    builder->capacity = n + 1;
 
     va_start(argptr, fmt);
-    vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
+    vsnprintf(builder->buffer + builder->size, n + 1, fmt, argptr);
     va_end(argptr);
   }
-  builder->size += n;
+  builder->size = n;
 }
 void StringBuilderReset(struct StringBuilder* builder) {
   if (builder->buffer) {
