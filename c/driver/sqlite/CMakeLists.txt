@@ -15,17 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
-
-project(adbc_driver_sqlite
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
-include(CTest)
-
 find_package(SQLite3)
 if(SQLite3_FOUND)
   set(SQLite3_LINK_LIBRARIES SQLite::SQLite3)
@@ -59,7 +48,10 @@ add_arrow_lib(adbc_driver_sqlite
               ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver/common)
 include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
+
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()

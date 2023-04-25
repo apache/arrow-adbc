@@ -15,17 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-cmake_minimum_required(VERSION 3.18)
-get_filename_component(REPOSITORY_ROOT "../../../" ABSOLUTE)
-list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
-
-project(adbc_driver_postgresql
-        VERSION "${ADBC_BASE_VERSION}"
-        LANGUAGES CXX)
-include(CTest)
-
 if(WIN32)
   # XXX: for now, assume vcpkg
   find_package(PostgreSQL REQUIRED)
@@ -52,8 +41,8 @@ add_arrow_lib(adbc_driver_postgresql
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
-              ${LIBPQ_LINK_LIBRARIES}
               nanoarrow
+              ${LIBPQ_LINK_LIBRARIES}
               STATIC_LINK_LIBS
               ${LIBPQ_LINK_LIBRARIES}
               nanoarrow
@@ -61,6 +50,8 @@ add_arrow_lib(adbc_driver_postgresql
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 include_directories(SYSTEM ${LIBPQ_INCLUDE_DIRS})
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
+
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()

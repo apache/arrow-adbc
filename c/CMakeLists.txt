@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,37 +15,32 @@
 # specific language governing permissions and limitations
 # under the License.
 
-set -e
+cmake_minimum_required(VERSION 3.18)
+get_filename_component(REPOSITORY_ROOT ".." ABSOLUTE)
+list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
+include(AdbcDefines)
+include(BuildUtils)
+project(adbc
+        VERSION "${ADBC_BASE_VERSION}"
+        LANGUAGES C CXX)
 
-: ${BUILD_ALL:=1}
-: ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
-: ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
-: ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
-: ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
+include(CTest)
 
-test_subproject() {
-    local -r build_dir="${1}"
+add_subdirectory(vendor/nanoarrow)
+add_subdirectory(driver/common)
 
-    pushd "${build_dir}/"
+if(ADBC_DRIVER_FLIGHTSQL)
+  add_subdirectory(driver/flightsql)
+endif()
 
-    ctest --output-on-failure --no-tests=error
+if(ADBC_DRIVER_MANAGER)
+  add_subdirectory(driver_manager)
+endif()
 
-    popd
-}
+if(ADBC_DRIVER_POSTGRESQL)
+  add_subdirectory(driver/postgresql)
+endif()
 
-main() {
-    local -r source_dir="${1}"
-    local -r build_dir="${2}"
-    local install_dir="${3}"
-
-    if [[ -z "${install_dir}" ]]; then
-        install_dir="${build_dir}/local"
-    fi
-
-    export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-
-    test_subproject "${build_dir}"
-}
-
-main "$@"
+if(ADBC_DRIVER_SQLITE)
+  add_subdirectory(driver/sqlite)
+endif()

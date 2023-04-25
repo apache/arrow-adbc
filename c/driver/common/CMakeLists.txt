@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,37 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-set -e
-
-: ${BUILD_ALL:=1}
-: ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
-: ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
-: ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
-: ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
-
-test_subproject() {
-    local -r build_dir="${1}"
-
-    pushd "${build_dir}/"
-
-    ctest --output-on-failure --no-tests=error
-
-    popd
-}
-
-main() {
-    local -r source_dir="${1}"
-    local -r build_dir="${2}"
-    local install_dir="${3}"
-
-    if [[ -z "${install_dir}" ]]; then
-        install_dir="${build_dir}/local"
-    fi
-
-    export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-
-    test_subproject "${build_dir}"
-}
-
-main "$@"
+add_library(adbc_driver_common STATIC utils.c)
+set_target_properties(adbc_driver_common PROPERTIES POSITION_INDEPENDENT_CODE ON)
+include_directories(SYSTEM ${REPOSITORY_ROOT})
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)

@@ -59,25 +59,6 @@ if(CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
   list(APPEND ADBC_LINK_FLAGS ${ADBC_VERSION_SCRIPT_LINK_FLAG})
 endif()
 
-# Nanoarrow definition
-add_library(nanoarrow STATIC EXCLUDE_FROM_ALL
-            ${REPOSITORY_ROOT}/c/vendor/nanoarrow/nanoarrow.c)
-set_target_properties(nanoarrow
-                      PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-                                 "${REPOSITORY_ROOT}/c/vendor/"
-                                 INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
-                                 "${REPOSITORY_ROOT}/c/vendor/"
-                                 POSITION_INDEPENDENT_CODE ON)
-
-# ADBC libraries shared across multiple drivers
-add_library(adbc_driver_common STATIC EXCLUDE_FROM_ALL
-            ${REPOSITORY_ROOT}/c/driver/common/utils.c)
-set_target_properties(adbc_driver_common
-                      PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-                                 "${REPOSITORY_ROOT}/c/driver/common"
-                                 POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(adbc_driver_common nanoarrow)
-
 # Set common build options
 macro(adbc_configure_target TARGET)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
