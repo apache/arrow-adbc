@@ -51,4 +51,3 @@ endif()
 
 validate_config()
 config_summary_message()
-
