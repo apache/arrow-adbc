@@ -28,7 +28,7 @@
 static size_t kErrorBufferSize = 256;
 static char kErrorPrefix[] = "[SQLite] ";
 
-void ReleaseError(struct AdbcError* error) {
+static void ReleaseError(struct AdbcError* error) {
   free(error->message);
   error->message = NULL;
   error->release = NULL;
@@ -58,11 +58,11 @@ struct SingleBatchArrayStream {
   struct ArrowSchema schema;
   struct ArrowArray batch;
 };
-const char* SingleBatchArrayStreamGetLastError(struct ArrowArrayStream* stream) {
+static const char* SingleBatchArrayStreamGetLastError(struct ArrowArrayStream* stream) {
   return NULL;
 }
-int SingleBatchArrayStreamGetNext(struct ArrowArrayStream* stream,
-                                  struct ArrowArray* batch) {
+static int SingleBatchArrayStreamGetNext(struct ArrowArrayStream* stream,
+                                         struct ArrowArray* batch) {
   if (!stream || !stream->private_data) return EINVAL;
   struct SingleBatchArrayStream* impl =
       (struct SingleBatchArrayStream*)stream->private_data;
@@ -71,15 +71,15 @@ int SingleBatchArrayStreamGetNext(struct ArrowArrayStream* stream,
   memset(&impl->batch, 0, sizeof(*batch));
   return 0;
 }
-int SingleBatchArrayStreamGetSchema(struct ArrowArrayStream* stream,
-                                    struct ArrowSchema* schema) {
+static int SingleBatchArrayStreamGetSchema(struct ArrowArrayStream* stream,
+                                           struct ArrowSchema* schema) {
   if (!stream || !stream->private_data) return EINVAL;
   struct SingleBatchArrayStream* impl =
       (struct SingleBatchArrayStream*)stream->private_data;
 
   return ArrowSchemaDeepCopy(&impl->schema, schema);
 }
-void SingleBatchArrayStreamRelease(struct ArrowArrayStream* stream) {
+static void SingleBatchArrayStreamRelease(struct ArrowArrayStream* stream) {
   if (!stream || !stream->private_data) return;
   struct SingleBatchArrayStream* impl =
       (struct SingleBatchArrayStream*)stream->private_data;
@@ -126,10 +126,10 @@ void StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
 }
 void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
   va_list argptr;
-  size_t bytes_available = builder->capacity - builder->size;
+  ssize_t bytes_available = builder->capacity - builder->size;
 
   va_start(argptr, fmt);
-  int n = vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
+  ssize_t n = vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
   va_end(argptr);
 
   if (n < 0) {                        // TODO: handle error

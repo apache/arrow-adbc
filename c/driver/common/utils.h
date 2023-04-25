@@ -27,6 +27,10 @@
 #define SET_ERROR_ATTRIBUTE
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /// Set error details using a format string.
 void SetError(struct AdbcError* error, const char* format, ...) SET_ERROR_ATTRIBUTE;
 
@@ -92,3 +96,7 @@ void StringBuilderReset(struct StringBuilder* builder);
     AdbcStatusCode adbc_status_code = (EXPR);                        \
     if (adbc_status_code != ADBC_STATUS_OK) return adbc_status_code; \
   } while (0)
+
+#ifdef __cplusplus
+}
+#endif
