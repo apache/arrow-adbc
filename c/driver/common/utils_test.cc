@@ -35,7 +35,7 @@ TEST(TestStringBuilder, TestBoundary) {
   StringBuilderInit(&str, /*initial_size=*/10);
   EXPECT_EQ(str.capacity, 10);
   StringBuilderAppend(&str, "%s", "BASIC TEST");
-  // should resize to include \n
+  // should resize to include \0
   EXPECT_EQ(str.capacity, 11);
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");

@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <assert.h>
 #include <nanoarrow/nanoarrow.h>
 
 static size_t kErrorBufferSize = 256;
@@ -124,7 +125,8 @@ void StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
   builder->size = 0;
   builder->capacity = initial_size;
 }
-void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
+void __attribute__((format(printf, 2, 3)))
+StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
   va_list argptr;
   int bytes_available = builder->capacity - builder->size;
 
@@ -141,7 +143,9 @@ void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
     builder->capacity += bytes_needed;
 
     va_start(argptr, fmt);
-    vsnprintf(builder->buffer + builder->size, n + 1, fmt, argptr);
+    int ret = vsnprintf(builder->buffer + builder->size, n + 1, fmt, argptr);
+    assert(ret >= 0);
+
     va_end(argptr);
   }
   builder->size += n;
