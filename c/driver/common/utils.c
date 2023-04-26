@@ -120,12 +120,16 @@ AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema*
   return ADBC_STATUS_OK;
 }
 
-void StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
+int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
   builder->buffer = (char*)malloc(initial_size);
+  if (builder->buffer == NULL) return -1;
+
   builder->size = 0;
   builder->capacity = initial_size;
+
+  return 0;
 }
-void __attribute__((format(printf, 2, 3)))
+int __attribute__((format(printf, 2, 3)))
 StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
   va_list argptr;
   int bytes_available = builder->capacity - builder->size;
@@ -134,11 +138,13 @@ StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
   int n = vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
   va_end(argptr);
 
-  if (n < 0) {                        // TODO: handle error
+  if (n < 0) {
+    return -1;
   } else if (n >= bytes_available) {  // output was truncated
     int bytes_needed = n - bytes_available + 1;
     builder->buffer = (char*)realloc(builder->buffer, builder->capacity + bytes_needed);
-    if (builder->buffer == NULL) { /* TODO: handle error */
+    if (builder->buffer == NULL) {
+      return -1;
     }
     builder->capacity += bytes_needed;
 
@@ -149,6 +155,8 @@ StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
     va_end(argptr);
   }
   builder->size += n;
+
+  return 0;
 }
 void StringBuilderReset(struct StringBuilder* builder) {
   if (builder->buffer) {

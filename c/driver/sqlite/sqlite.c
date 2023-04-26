@@ -1022,8 +1022,16 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
   }
 
   struct StringBuilder query = {0};
-  StringBuilderInit(&query, /*initial_size=*/64);
-  StringBuilderAppend(&query, "%s%s", "SELECT * FROM ", table_name);
+  if (StringBuilderInit(&query, /*initial_size=*/64) != 0) {
+    SetError(error, "Could not initiate StringBuilder");
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  if (StringBuilderAppend(&query, "%s%s", "SELECT * FROM ", table_name) != 0) {
+    StringBuilderReset(&query);
+    SetError(error, "Call to StringBuilderAppend failed");
+    return ADBC_STATUS_INTERNAL;
+  }
 
   sqlite3_stmt* stmt = NULL;
   int rc =
@@ -1221,23 +1229,66 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   // Create statements for CREATE TABLE / INSERT
   struct StringBuilder create_query = {0};
   struct StringBuilder insert_query = {0};
-  StringBuilderInit(&create_query, 256);
-  StringBuilderInit(&insert_query, 256);
 
-  StringBuilderAppend(&create_query, "%s%s%s", "CREATE TABLE ", stmt->target_table, " (");
-  StringBuilderAppend(&insert_query, "%s%s%s", "INSERT INTO ", stmt->target_table,
-                      " VALUES (");
+  if (StringBuilderInit(&create_query, /*initial_size=*/256) != 0) {
+    SetError(error, "Could not initiate StringBuilder");
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  if (StringBuilderInit(&insert_query, /*initial_size=*/256) != 0) {
+    SetError(error, "Could not initiate StringBuilder");
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  if (StringBuilderAppend(&create_query, "%s%s%s", "CREATE TABLE ", stmt->target_table,
+                          " (") != 0) {
+    SetError(error, "Call to StringBuilderAppend failed");
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  if (StringBuilderAppend(&insert_query, "%s%s%s", "INSERT INTO ", stmt->target_table,
+                          " VALUES (") != 0) {
+    SetError(error, "Call to StringBuilderAppend failed");
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
 
   for (int i = 0; i < stmt->binder.schema.n_children; i++) {
     if (i > 0) StringBuilderAppend(&create_query, "%s", ", ");
     // XXX: should escape the column name too
-    StringBuilderAppend(&create_query, "%s", stmt->binder.schema.children[i]->name);
+    if (StringBuilderAppend(&create_query, "%s", stmt->binder.schema.children[i]->name) !=
+        0) {
+      SetError(error, "Call to StringBuilderAppend failed");
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
 
-    if (i > 0) StringBuilderAppend(&insert_query, "%s", ", ");
-    StringBuilderAppend(&insert_query, "%s", "?");
+    if (i > 0) {
+      if (StringBuilderAppend(&insert_query, "%s", ", ") != 0) {
+        SetError(error, "Call to StringBuilderAppend failed");
+        code = ADBC_STATUS_INTERNAL;
+        goto cleanup;
+      }
+    }
+
+    if (StringBuilderAppend(&insert_query, "%s", "?") != 0) {
+      SetError(error, "Call to StringBuilderAppend failed");
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
   }
-  StringBuilderAppend(&create_query, "%s", ")");
-  StringBuilderAppend(&insert_query, "%s", ")");
+  if (StringBuilderAppend(&create_query, "%s", ")") != 0) {
+    SetError(error, "Call to StringBuilderAppend failed");
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  if (StringBuilderAppend(&insert_query, "%s", ")") != 0) {
+    SetError(error, "Call to StringBuilderAppend failed");
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
 
   sqlite3_stmt* create = NULL;
   if (!stmt->append) {
@@ -1266,6 +1317,8 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   }
 
   sqlite3_finalize(create);
+
+cleanup:
   StringBuilderReset(&create_query);
   StringBuilderReset(&insert_query);
   return code;

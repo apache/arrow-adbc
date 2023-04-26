@@ -47,8 +47,8 @@ struct StringBuilder {
   size_t size;
   size_t capacity;
 };
-void StringBuilderInit(struct StringBuilder* builder, size_t initial_size);
-void __attribute__((format(printf, 2, 3)))
+int StringBuilderInit(struct StringBuilder* builder, size_t initial_size);
+int __attribute__((format(printf, 2, 3)))
 StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...);
 void StringBuilderReset(struct StringBuilder* builder);
 

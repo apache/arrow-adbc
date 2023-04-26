@@ -21,9 +21,13 @@
 
 TEST(TestStringBuilder, TestBasic) {
   struct StringBuilder str;
-  StringBuilderInit(&str, /*initial_size=*/64);
+  int ret;
+  ret = StringBuilderInit(&str, /*initial_size=*/64);
+  EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 64);
-  StringBuilderAppend(&str, "%s", "BASIC TEST");
+
+  ret = StringBuilderAppend(&str, "%s", "BASIC TEST");
+  EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");
 
@@ -32,9 +36,13 @@ TEST(TestStringBuilder, TestBasic) {
 
 TEST(TestStringBuilder, TestBoundary) {
   struct StringBuilder str;
-  StringBuilderInit(&str, /*initial_size=*/10);
+  int ret;
+  ret = StringBuilderInit(&str, /*initial_size=*/10);
+  EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 10);
-  StringBuilderAppend(&str, "%s", "BASIC TEST");
+
+  ret = StringBuilderAppend(&str, "%s", "BASIC TEST");
+  EXPECT_EQ(ret, 0);
   // should resize to include \0
   EXPECT_EQ(str.capacity, 11);
   EXPECT_EQ(str.size, 10);
@@ -45,15 +53,19 @@ TEST(TestStringBuilder, TestBoundary) {
 
 TEST(TestStringBuilder, TestMultipleAppends) {
   struct StringBuilder str;
-  StringBuilderInit(&str, /*initial_size=*/2);
+  int ret;
+  ret = StringBuilderInit(&str, /*initial_size=*/2);
+  EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 2);
-  StringBuilderAppend(&str, "%s", "BASIC");
 
+  ret = StringBuilderAppend(&str, "%s", "BASIC");
+  EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 6);
   EXPECT_EQ(str.size, 5);
   EXPECT_STREQ(str.buffer, "BASIC");
 
-  StringBuilderAppend(&str, "%s", " TEST");
+  ret = StringBuilderAppend(&str, "%s", " TEST");
+  EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 11);
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");
