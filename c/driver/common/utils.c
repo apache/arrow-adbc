@@ -129,8 +129,7 @@ int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
 
   return 0;
 }
-int __attribute__((format(printf, 2, 3)))
-StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
+int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
   va_list argptr;
   int bytes_available = builder->capacity - builder->size;
 
