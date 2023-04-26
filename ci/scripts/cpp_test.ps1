@@ -40,7 +40,7 @@ echo $env:PATH
 function Build-Subproject {
     Push-Location $BuildDir
 
-    ctest --output-on-failure --no-tests=error
+    ctest --output-on-failure --no-tests=error --verbose
     if (-not $?) { exit 1 }
 
     Pop-Location
