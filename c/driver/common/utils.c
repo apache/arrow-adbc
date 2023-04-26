@@ -143,11 +143,8 @@ void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
     va_start(argptr, fmt);
     vsnprintf(builder->buffer + builder->size, n + 1, fmt, argptr);
     va_end(argptr);
-
-    builder->size += n;
-  } else {
-    builder->size = n;
   }
+  builder->size += n;
 }
 void StringBuilderReset(struct StringBuilder* builder) {
   if (builder->buffer) {
