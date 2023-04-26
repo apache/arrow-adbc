@@ -26,6 +26,8 @@ TEST(TestStringBuilder, TestBasic) {
   StringBuilderAppend(&str, "%s", "BASIC TEST");
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");
+
+  StringBuilderReset(&str);
 }
 
 TEST(TestStringBuilder, TestBoundary) {
@@ -37,6 +39,8 @@ TEST(TestStringBuilder, TestBoundary) {
   EXPECT_EQ(str.capacity, 11);
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");
+
+  StringBuilderReset(&str);
 }
 
 TEST(TestStringBuilder, TestMultipleAppends) {
@@ -53,4 +57,6 @@ TEST(TestStringBuilder, TestMultipleAppends) {
   EXPECT_EQ(str.capacity, 11);
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");
+
+  StringBuilderReset(&str);
 }
