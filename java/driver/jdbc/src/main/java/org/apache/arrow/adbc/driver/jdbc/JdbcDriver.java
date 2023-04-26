@@ -33,6 +33,12 @@ public class JdbcDriver implements AdbcDriver {
   public static final JdbcDriver INSTANCE = new JdbcDriver();
   /** A parameter for creating an {@link AdbcDatabase} from a {@link DataSource}. */
   public static final String PARAM_DATASOURCE = "adbc.jdbc.datasource";
+  /**
+   * A parameter for specifying a URI to connect to.
+   *
+   * <p>Matches the parameter used by C and Go.
+   */
+  public static final String PARAM_URI = "uri";
 
   static {
     AdbcDriverManager.getInstance().registerDriver("org.apache.arrow.adbc.driver.jdbc", INSTANCE);
@@ -51,11 +57,11 @@ public class JdbcDriver implements AdbcDriver {
   @Override
   public AdbcDatabase open(Map<String, Object> parameters) throws AdbcException {
     DataSource dataSource = getParam(DataSource.class, parameters, PARAM_DATASOURCE);
-    // XXX(apache/arrow-adbc#316): allow "url" to align with C/Go
-    String target = getParam(String.class, parameters, "url", PARAM_URL);
+    // XXX(apache/arrow-adbc#316): allow "uri" to align with C/Go
+    String target = getParam(String.class, parameters, PARAM_URI, PARAM_URL);
     if (dataSource != null && target != null) {
       throw AdbcException.invalidArgument(
-          "[JDBC] Can only provide one of " + PARAM_URL + " and " + PARAM_DATASOURCE);
+          "[JDBC] Provide at most one of " + PARAM_URI + " and " + PARAM_DATASOURCE);
     }
 
     SqlQuirks quirks = getParam(SqlQuirks.class, parameters, PARAM_SQL_QUIRKS);
@@ -78,7 +84,7 @@ public class JdbcDriver implements AdbcDriver {
       return new JdbcDataSourceDatabase(allocator, dataSource, username, password, quirks);
     }
     throw AdbcException.invalidArgument(
-        "[JDBC] Must provide one of url and " + PARAM_DATASOURCE + " options");
+        "[JDBC] Must provide one of " + PARAM_URI + " and " + PARAM_DATASOURCE + " options");
   }
 
   private static <T> T getParam(Class<T> klass, Map<String, Object> parameters, String... choices)
@@ -89,7 +95,7 @@ public class JdbcDriver implements AdbcDriver {
       if (value != null) {
         if (result != null) {
           throw AdbcException.invalidArgument(
-              "[JDBC] Provide at most one of these parameters: " + Arrays.toString(choices));
+              "[JDBC] Provide at most one of " + Arrays.toString(choices));
         }
         result = value;
       }

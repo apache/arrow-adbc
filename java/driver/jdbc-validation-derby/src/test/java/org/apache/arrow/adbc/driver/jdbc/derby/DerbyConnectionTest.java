@@ -45,7 +45,7 @@ public class DerbyConnectionTest extends AbstractConnectionTest {
     try (final BufferAllocator allocator = new RootAllocator()) {
       AdbcDriver driver = new JdbcDriver(allocator);
       Map<String, Object> parameters = new HashMap<>();
-      parameters.put("url", "jdbc:derby:memory:newUrlOption;create=true");
+      parameters.put(JdbcDriver.PARAM_URI, "jdbc:derby:memory:newUrlOption;create=true");
       try (final AdbcDatabase database = driver.open(parameters)) {
         assertThat(database).isNotNull();
       }

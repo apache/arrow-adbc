@@ -48,34 +48,45 @@ class JdbcDatabaseTest {
   }
 
   @Test
-  void conflictingUrlOption() {
+  void conflictingUriOption() {
     Map<String, Object> parameters = new HashMap<>();
-    parameters.put("url", "jdbc:derby:memory:newUrlOption;create=true");
-    parameters.put(AdbcDriver.PARAM_URL, "jdbc:derby:memory:newUrlOption;create=true");
+    parameters.put(JdbcDriver.PARAM_URI, "jdbc:derby:memory:newUriOption;create=true");
+    parameters.put(AdbcDriver.PARAM_URL, "jdbc:derby:memory:newUriOption;create=true");
     assertThat(assertThrows(AdbcException.class, () -> driver.open(parameters)))
-        .hasMessageContaining("Provide at most one of these parameters");
+        .hasMessageContaining("Provide at most one of [uri, adbc.url]");
   }
 
   @Test
-  void noUrl() {
+  void conflictingUriDataSourceOption() {
     Map<String, Object> parameters = new HashMap<>();
+    parameters.put(JdbcDriver.PARAM_URI, "jdbc:derby:memory:newUriOption;create=true");
+    parameters.put(
+        JdbcDriver.PARAM_DATASOURCE,
+        new UrlDataSource("jdbc:derby:memory:newUriOption;create=true"));
     assertThat(assertThrows(AdbcException.class, () -> driver.open(parameters)))
-        .hasMessageContaining("Must provide one of url and adbc.jdbc.datasource options");
+        .hasMessageContaining("Provide at most one of uri and adbc.jdbc.datasource");
   }
 
   @Test
-  void badUrlOptionType() {
+  void noUri() {
     Map<String, Object> parameters = new HashMap<>();
-    parameters.put("url", 5);
+    assertThat(assertThrows(AdbcException.class, () -> driver.open(parameters)))
+        .hasMessageContaining("Must provide one of uri and adbc.jdbc.datasource options");
+  }
+
+  @Test
+  void badUriOptionType() {
+    Map<String, Object> parameters = new HashMap<>();
+    parameters.put(JdbcDriver.PARAM_URI, 5);
     assertThat(assertThrows(AdbcException.class, () -> driver.open(parameters)))
         .hasMessageContaining(
-            "[url, adbc.url] must be a class java.lang.String, not a class java.lang.Integer");
+            "[uri, adbc.url] must be a class java.lang.String, not a class java.lang.Integer");
   }
 
   @Test
   void badSqlQuirksOptionType() {
     Map<String, Object> parameters = new HashMap<>();
-    parameters.put("url", "");
+    parameters.put(JdbcDriver.PARAM_URI, "");
     parameters.put(JdbcDriver.PARAM_SQL_QUIRKS, "");
     assertThat(assertThrows(AdbcException.class, () -> driver.open(parameters)))
         .hasMessageContaining(
@@ -86,14 +97,14 @@ class JdbcDatabaseTest {
   @Test
   void badUsernameOptionType() {
     Map<String, Object> parameters = new HashMap<>();
-    parameters.put("url", "");
+    parameters.put(JdbcDriver.PARAM_URI, "");
     parameters.put("username", 2);
     assertThat(assertThrows(AdbcException.class, () -> driver.open(parameters)))
         .hasMessageContaining(
             "[username] must be a class java.lang.String, not a class java.lang.Integer");
 
     parameters.clear();
-    parameters.put("url", "");
+    parameters.put(JdbcDriver.PARAM_URI, "");
     parameters.put("password", 2);
     assertThat(assertThrows(AdbcException.class, () -> driver.open(parameters)))
         .hasMessageContaining(
@@ -103,13 +114,13 @@ class JdbcDatabaseTest {
   @Test
   void usernameWithoutPassword() {
     Map<String, Object> parameters = new HashMap<>();
-    parameters.put("url", "");
+    parameters.put(JdbcDriver.PARAM_URI, "");
     parameters.put("username", "");
     assertThat(assertThrows(AdbcException.class, () -> driver.open(parameters)))
         .hasMessageContaining("Must provide both or neither of username and password");
 
     parameters.clear();
-    parameters.put("url", "");
+    parameters.put(JdbcDriver.PARAM_URI, "");
     parameters.put("password", "");
     assertThat(assertThrows(AdbcException.class, () -> driver.open(parameters)))
         .hasMessageContaining("Must provide both or neither of username and password");
