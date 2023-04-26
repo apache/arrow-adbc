@@ -48,8 +48,14 @@ struct StringBuilder {
   size_t capacity;
 };
 int StringBuilderInit(struct StringBuilder* builder, size_t initial_size);
-int __attribute__((format(printf, 2, 3)))
-StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...);
+
+#if defined(__GNUC__)
+#define ADBC_STRING_BUILDER_FORMAT_CHECK __attribute__((format(printf, 2, 3)))
+#else
+#define ADBC_STRING_BUILDER_FORMAT_CHECK
+#endif
+int ADBC_STRING_BUILDER_FORMAT_CHECK StringBuilderAppend(struct StringBuilder* builder,
+                                                         const char* fmt, ...);
 void StringBuilderReset(struct StringBuilder* builder);
 
 /// Check an NanoArrow status code.
