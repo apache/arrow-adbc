@@ -1237,6 +1237,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
 
   if (StringBuilderInit(&insert_query, /*initial_size=*/256) != 0) {
     SetError(error, "Could not initiate StringBuilder");
+    StringBuilderReset(&create_query);
     return ADBC_STATUS_INTERNAL;
   }
 
