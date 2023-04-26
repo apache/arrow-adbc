@@ -17,6 +17,7 @@
 
 #include "adbc_validation.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <limits>
@@ -32,7 +33,6 @@
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
-#include <algorithm>
 
 #include "adbc_validation_util.h"
 
@@ -52,16 +52,16 @@ namespace {
       return adbc_status;                                           \
     }                                                               \
   } while (false)
-}  // namespace
 
 /// case insensitive string compare
-bool iequals(std::string s1, std::string s2) {
-  std::transform(s1.begin(), s1.end(), s1.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
-  std::transform(s2.begin(), s2.end(), s2.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
-  return s1 == s2;
+bool iequals(std::string_view s1, std::string_view s2) {
+  return std::equal(s1.begin(), s1.end(), s2.begin(), s2.end(),
+                    [](unsigned char a, unsigned char b) {
+                      return std::tolower(a) == std::tolower(b);
+                    });
 }
+
+}  // namespace
 
 //------------------------------------------------------------
 // DriverQuirks
