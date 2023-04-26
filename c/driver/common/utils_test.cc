@@ -38,3 +38,19 @@ TEST(TestStringBuilder, TestBoundary) {
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");
 }
+
+TEST(TestStringBuilder, TestMultipleAppends) {
+  struct StringBuilder str;
+  StringBuilderInit(&str, /*initial_size=*/2);
+  EXPECT_EQ(str.capacity, 2);
+  StringBuilderAppend(&str, "%s", "BASIC");
+
+  EXPECT_EQ(str.capacity, 6);
+  EXPECT_EQ(str.size, 5);
+  EXPECT_STREQ(str.buffer, "BASIC");
+
+  StringBuilderAppend(&str, "%s", " TEST");
+  EXPECT_EQ(str.capacity, 11);
+  EXPECT_EQ(str.size, 10);
+  EXPECT_STREQ(str.buffer, "BASIC TEST");
+}

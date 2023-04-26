@@ -25,7 +25,7 @@ if(ADBC_BUILD_TESTS)
                 PREFIX
                 adbc
                 SOURCES
-                test_utils.cc
+                utils_test.cc
                 EXTRA_LINK_LIBS
                 adbc_driver_common
                 nanoarrow)

@@ -134,16 +134,20 @@ void StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
 
   if (n < 0) {                        // TODO: handle error
   } else if (n >= bytes_available) {  // output was truncated
-    builder->buffer = (char*)realloc(builder->buffer, n + 1);
+    int bytes_needed = n - bytes_available + 1;
+    builder->buffer = (char*)realloc(builder->buffer, builder->capacity + bytes_needed);
     if (builder->buffer == NULL) { /* TODO: handle error */
     }
-    builder->capacity = n + 1;
+    builder->capacity += bytes_needed;
 
     va_start(argptr, fmt);
     vsnprintf(builder->buffer + builder->size, n + 1, fmt, argptr);
     va_end(argptr);
+
+    builder->size += n;
+  } else {
+    builder->size = n;
   }
-  builder->size = n;
 }
 void StringBuilderReset(struct StringBuilder* builder) {
   if (builder->buffer) {
