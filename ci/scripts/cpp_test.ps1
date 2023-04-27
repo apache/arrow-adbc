@@ -18,14 +18,8 @@
 
 $ErrorActionPreference = "Stop"
 
-$SourceDir = $Args[0]
-$BuildDir = $Args[1]
-$InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "local/" }
-
-$BuildAll = $env:BUILD_ALL -ne "0"
-$BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
-$BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
-$BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
+$BuildDir = $Args[0]
+$InstallDir = if ($Args[1] -ne $null) { $Args[2] } else { Join-Path $BuildDir "local/" }
 
 $env:LD_LIBRARY_PATH += ":$($InstallDir)"
 $env:LD_LIBRARY_PATH += ":$($InstallDir)/bin"
@@ -37,7 +31,7 @@ $env:PATH += ";$($InstallDir)\lib"
 echo $env:LD_LIBRARY_PATH
 echo $env:PATH
 
-function Build-Subproject {
+function Build-Project {
     Push-Location $BuildDir
 
     ctest --output-on-failure --no-tests=error
@@ -46,4 +40,4 @@ function Build-Subproject {
     Pop-Location
 }
 
-Build-Subproject
+Build-Project

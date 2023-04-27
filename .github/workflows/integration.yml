@@ -108,7 +108,7 @@ jobs:
           ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
       - name: Build Python Flight SQL driver
         shell: bash -l {0}
         env:
@@ -191,7 +191,7 @@ jobs:
           BUILD_DRIVER_POSTGRESQL: "1"
           ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
         run: |
-          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
       - name: Build Python PostgreSQL Driver
         shell: bash -l {0}

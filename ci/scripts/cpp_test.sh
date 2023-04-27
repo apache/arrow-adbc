@@ -18,13 +18,7 @@
 
 set -e
 
-: ${BUILD_ALL:=1}
-: ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
-: ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
-: ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
-: ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
-
-test_subproject() {
+test_project() {
     local -r build_dir="${1}"
 
     pushd "${build_dir}/"
@@ -35,9 +29,8 @@ test_subproject() {
 }
 
 main() {
-    local -r source_dir="${1}"
-    local -r build_dir="${2}"
-    local install_dir="${3}"
+    local -r build_dir="${1}"
+    local install_dir="${2}"
 
     if [[ -z "${install_dir}" ]]; then
         install_dir="${build_dir}/local"
@@ -46,7 +39,7 @@ main() {
     export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
 
-    test_subproject "${build_dir}"
+    test_project
 }
 
 main "$@"
