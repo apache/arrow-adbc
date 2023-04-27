@@ -51,7 +51,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   // TODO: sqlite uses a StringBuilder class that seems roughly equivalent
   // to a similar tool in arrow/util/string_builder.h but wasn't clear on
   // structure and how to use, so relying on simplistic appends for now
-  AdbcStatusCode final_status;
+  AdbcStatusCode final_status = ADBC_STATUS_OK;
 
   std::string query =
       "SELECT attname, atttypid "
@@ -81,55 +81,22 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
     ArrowSchemaInit(schema);
     CHECK_NA_ADBC(ArrowSchemaSetTypeStruct(schema, num_rows), error);
 
-    // TODO: much of this code is copied from statement.cc InferSchema
+    ArrowError na_error;
     for (int row = 0; row < num_rows; row++) {
-      ArrowType field_type = NANOARROW_TYPE_NA;
       const char* colname = PQgetvalue(result, row, 0);
-      const uint32_t oid = static_cast<uint32_t>(
+      const Oid pg_oid = static_cast<uint32_t>(
           std::strtol(PQgetvalue(result, row, 1), /*str_end=*/nullptr, /*base=*/10));
 
-      auto it = type_mapping_->type_mapping.find(oid);
-      if (it == type_mapping_->type_mapping.end()) {
+      PostgresType pg_type;
+      if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
         SetError(error, "Column #", row + 1, " (\"", colname,
-                 "\") has unknown type code ", oid);
+                 "\") has unknown type code ", pg_oid);
         return ADBC_STATUS_NOT_IMPLEMENTED;
       }
 
-      switch (it->second) {
-        // TODO: this mapping will eventually have to become dynamic,
-        // because of complex types like arrays/records
-        case PgType::kBool:
-          field_type = NANOARROW_TYPE_BOOL;
-          break;
-        case PgType::kFloat4:
-          field_type = NANOARROW_TYPE_FLOAT;
-          break;
-        case PgType::kFloat8:
-          field_type = NANOARROW_TYPE_DOUBLE;
-          break;
-        case PgType::kInt2:
-          field_type = NANOARROW_TYPE_INT16;
-          break;
-        case PgType::kInt4:
-          field_type = NANOARROW_TYPE_INT32;
-          break;
-        case PgType::kInt8:
-          field_type = NANOARROW_TYPE_INT64;
-          break;
-        case PgType::kVarBinary:
-          field_type = NANOARROW_TYPE_BINARY;
-          break;
-        case PgType::kText:
-        case PgType::kVarChar:
-          field_type = NANOARROW_TYPE_STRING;
-          break;
-        default:
-          SetError(error, "Column #", row + 1, " (\"", colname,
-                   "\") has unimplemented type code ", oid);
-          return ADBC_STATUS_NOT_IMPLEMENTED;
-      }
-      CHECK_NA_ADBC(ArrowSchemaSetType(schema->children[row], field_type), error);
-      CHECK_NA_ADBC(ArrowSchemaSetName(schema->children[row], colname), error);
+      CHECK_NA_ADBC(
+          pg_type.WithFieldName(PQfname(result, row)).SetSchema(schema->children[row]),
+          error);
     }
   } else {
     SetError(error, "Failed to get table schema: ", PQerrorMessage(conn_));
