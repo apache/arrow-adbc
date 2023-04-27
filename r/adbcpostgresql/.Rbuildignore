@@ -9,3 +9,4 @@
 ^docker-compose\.yml$
 ^configure\.win$
 ^windows$
+^\.vscode$
