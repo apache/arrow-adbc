@@ -38,15 +38,7 @@ echo $env:LD_LIBRARY_PATH
 echo $env:PATH
 
 function Build-Subproject {
-    $Subproject = $Args[0]
-    $SubprojectBuild = Join-Path $BuildDir $Subproject
-
-    echo "============================================================"
-    echo "Testing $($Subproject)"
-    echo "============================================================"
-
-    New-Item -ItemType Directory -Force -Path $SubprojectBuild | Out-Null
-    Push-Location $SubprojectBuild
+    Push-Location $BuildDir
 
     ctest --output-on-failure --no-tests=error
     if (-not $?) { exit 1 }
@@ -54,12 +46,4 @@ function Build-Subproject {
     Pop-Location
 }
 
-if ($BuildDriverManager) {
-    Build-Subproject driver_manager
-}
-if ($BuildDriverPostgreSQL) {
-    Build-Subproject driver\postgresql
-}
-if ($BuildDriverSqlite) {
-    Build-Subproject driver\sqlite
-}
+Build-Subproject

@@ -26,15 +26,15 @@ main() {
         curl \
             -X POST \
             -H "Content-Type: application/json" \
-            "http://localhost:9047/apiv2/login" \
+            "$dremio_url/apiv2/login" \
             -d '{"userName":"dremio","password":"dremio123"}')
-    local -r token="_dremio$(echo "${login}" | jq .token)"
+    local -r token="_dremio$(echo ${login} | jq -r .token)"
 
     curl \
         -X PUT \
         -H "content-type: application/json" \
         -H "authorization: ${token}" \
-        "http://localhost:9047/apiv2/source/Samples/" \
+        "$dremio_url/apiv2/source/Samples/" \
         -d '{"config":{"externalBucketList":["samples.dremio.com"], "credentialType":"NONE","secure":false,"propertyList":[]},"name":"Samples","accelerationRefreshPeriod":3600000, "accelerationGracePeriod":10800000,"accelerationNeverRefresh":true,"accelerationNeverExpire":true,"type":"S3"}'
 }
 

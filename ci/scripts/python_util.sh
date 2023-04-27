@@ -55,21 +55,6 @@ function build_drivers {
         fi
     fi
 
-    echo "=== Building driver/flightsql ==="
-    mkdir -p ${build_dir}/driver/flightsql
-    pushd ${build_dir}/driver/flightsql
-    cmake \
-        -DADBC_BUILD_SHARED=ON \
-        -DADBC_BUILD_STATIC=OFF \
-        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_INSTALL_PREFIX=${build_dir} \
-        -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
-        ${CMAKE_ARGUMENTS} \
-        ${source_dir}/c/driver/flightsql
-    cmake --build . --target install --verbose -j
-    popd
-
     echo "=== Setup VCPKG ==="
 
     pushd "${VCPKG_ROOT}"
@@ -85,30 +70,14 @@ function build_drivers {
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
-    echo "=== Building driver/postgresql ==="
-    mkdir -p ${build_dir}/driver/postgresql
-    pushd ${build_dir}/driver/postgresql
-    cmake \
-        -G ${CMAKE_GENERATOR} \
-        -DADBC_BUILD_SHARED=ON \
-        -DADBC_BUILD_STATIC=OFF \
-        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_INSTALL_PREFIX=${build_dir} \
-        -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
-        -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD} \
-        ${CMAKE_ARGUMENTS} \
-        -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
-        -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
-        ${source_dir}/c/driver/postgresql
-    cmake --build . --target install --verbose -j
-    popd
+    "${VCPKG_ROOT}/vcpkg" install libpq \
+          --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
+          --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
-    echo "=== Building driver/sqlite ==="
-    mkdir -p ${build_dir}/driver/sqlite
-    pushd ${build_dir}/driver/sqlite
+    echo "=== Building drivers ==="
+    mkdir -p ${build_dir}
+    pushd ${build_dir}
     cmake \
-        -G ${CMAKE_GENERATOR} \
         -DADBC_BUILD_SHARED=ON \
         -DADBC_BUILD_STATIC=OFF \
         -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
@@ -119,7 +88,10 @@ function build_drivers {
         ${CMAKE_ARGUMENTS} \
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
-        ${source_dir}/c/driver/sqlite
+        -DADBC_DRIVER_FLIGHTSQL=ON \
+        -DADBC_DRIVER_POSTGRESQL=ON \
+        -DADBC_DRIVER_SQLITE=ON \
+        ${source_dir}/c
     cmake --build . --target install --verbose -j
     popd
 }

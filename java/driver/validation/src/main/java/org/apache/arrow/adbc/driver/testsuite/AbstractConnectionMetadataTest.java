@@ -315,7 +315,9 @@ public abstract class AbstractConnectionMetadataTest {
         assertThrows(
             AdbcException.class,
             () -> connection.getTableSchema(/*catalog*/ null, /*dbSchema*/ null, "DOESNOTEXIST"));
-    assertThat(thrown.getStatus()).isEqualTo(AdbcStatusCode.NOT_FOUND);
+    assertThat(thrown.getStatus())
+        .describedAs(thrown.toString())
+        .isEqualTo(AdbcStatusCode.NOT_FOUND);
   }
 
   @Test

@@ -9,12 +9,13 @@
 \usage{
 adbcsqlite()
 
-\method{adbc_database_init}{adbcsqlite_driver_sqlite}(driver, uri = ":memory:")
+\method{adbc_database_init}{adbcsqlite_driver_sqlite}(driver, ..., uri = ":memory:")
 
-\method{adbc_connection_init}{adbcsqlite_database}(database, adbc.connection.autocommit = NULL)
+\method{adbc_connection_init}{adbcsqlite_database}(database, ..., adbc.connection.autocommit = NULL)
 
 \method{adbc_statement_init}{adbcsqlite_connection}(
   connection,
+  ...,
   adbc.ingest.target_table = NULL,
   adbc.ingest.mode = NULL,
   adbc.sqlite.query.batch_rows = NULL
@@ -22,6 +23,9 @@ adbcsqlite()
 }
 \arguments{
 \item{driver}{An \code{\link[adbcdrivermanager:adbc_driver]{adbc_driver()}}.}
+
+\item{...}{Driver-specific options. For the default method, these are
+named values that are converted to strings.}
 
 \item{uri}{A URI to a database path or ":memory:" for an in-memory database.}
 

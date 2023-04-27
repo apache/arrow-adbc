@@ -59,6 +59,12 @@ public class FlightSqlConnectionMetadataTest extends AbstractConnectionMetadataT
 
   @Override
   @Disabled("Not yet implemented")
+  public void getTableSchemaDoesNotExist() throws Exception {
+    super.getTableSchemaDoesNotExist();
+  }
+
+  @Override
+  @Disabled("Not yet implemented")
   public void getTableTypes() throws Exception {
     super.getTableTypes();
   }

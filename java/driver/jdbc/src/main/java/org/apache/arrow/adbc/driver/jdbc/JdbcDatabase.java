@@ -20,6 +20,7 @@ package org.apache.arrow.adbc.driver.jdbc;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
@@ -27,7 +28,12 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 
-/** An instance of a database (e.g. a handle to an in-memory database). */
+/**
+ * An instance of a database (e.g. a handle to an in-memory database).
+ *
+ * @deprecated Use {@link JdbcDataSourceDatabase}.
+ */
+@Deprecated
 public final class JdbcDatabase implements AdbcDatabase {
   private final BufferAllocator allocator;
   private final String target;
@@ -37,9 +43,9 @@ public final class JdbcDatabase implements AdbcDatabase {
 
   JdbcDatabase(BufferAllocator allocator, final String target, SqlQuirks quirks)
       throws AdbcException {
-    this.allocator = allocator;
-    this.target = target;
-    this.quirks = quirks;
+    this.allocator = Objects.requireNonNull(allocator);
+    this.target = Objects.requireNonNull(target);
+    this.quirks = Objects.requireNonNull(quirks);
     try {
       this.connection = DriverManager.getConnection(target);
     } catch (SQLException e) {

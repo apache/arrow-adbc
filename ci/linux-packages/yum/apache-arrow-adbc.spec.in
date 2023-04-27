@@ -59,31 +59,14 @@ Apache Arrow Database Connectivity (ADBC) is an Apache Arrow based database acce
 cmake_build_type=RelWithDebInfo
 meson_build_type=debugoptimized
 
-cd c/driver_manager
+cd c
 %adbc_cmake \
   -DCMAKE_BUILD_TYPE=${cmake_build_type} \
-  -G"Unix Makefiles"
-%adbc_cmake_build
-cd -
-
-cd c/driver/postgresql
-%adbc_cmake \
-  -DCMAKE_BUILD_TYPE=${cmake_build_type} \
-  -G"Unix Makefiles"
-%adbc_cmake_build
-cd -
-
-cd c/driver/sqlite
-%adbc_cmake \
-  -DCMAKE_BUILD_TYPE=${cmake_build_type} \
-  -G"Unix Makefiles"
-%adbc_cmake_build
-cd -
-
-cd c/driver/flightsql
-%adbc_cmake \
-  -DCMAKE_BUILD_TYPE=${cmake_build_type} \
-  -G"Unix Makefiles"
+  -G"Unix Makefiles" \
+  -DADBC_DRIVER_MANAGER=ON \
+  -DADBC_DRIVER_POSTGRESQL=ON \
+  -DADBC_DRIVER_SQLITE=ON \
+  -DADBC_DRIVER_FLIGHTSQL=ON
 %adbc_cmake_build
 cd -
 
@@ -94,26 +77,14 @@ meson setup build \
   --default-library=both \
   --libdir=%{_libdir} \
   --prefix=%{_prefix} \
-  -Dadbc_build_dir=$PWD/../c/driver_manager/%{adbc_cmake_builddir}
+  -Dadbc_build_dir=$PWD/../c/%{adbc_cmake_builddir}/driver_manager
 
-LD_LIBRARY_PATH=$PWD/../c/driver_manager/%{adbc_cmake_builddir}/ \
+LD_LIBRARY_PATH=$PWD/../c/%{adbc_cmake_builddir}/driver_manager \
   meson compile -C build %{?_smp_mflags}
 cd -
 
 %install
-cd c/driver_manager
-%adbc_cmake_install
-cd -
-
-cd c/driver/postgresql
-%adbc_cmake_install
-cd -
-
-cd c/driver/sqlite
-%adbc_cmake_install
-cd -
-
-cd c/driver/flightsql
+cd c
 %adbc_cmake_install
 cd -
 

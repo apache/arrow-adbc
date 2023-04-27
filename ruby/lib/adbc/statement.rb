@@ -62,6 +62,9 @@ module ADBC
         message = "wrong number of arguments (given #{n_args}, expected 1 with block)"
         raise ArgumentError, message unless n_args == 1
         values = args[0]
+        if values.is_a?(Arrow::Table)
+          values = Arrow::TableBatchReader.new(values)
+        end
         if values.is_a?(Arrow::RecordBatchReader)
           c_abi_array_stream = values.export
           begin

@@ -52,7 +52,7 @@ adbcpostgresql <- function() {
 #' @rdname adbcpostgresql
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcpostgresql_driver_postgresql <- function(driver, uri) {
+adbc_database_init.adbcpostgresql_driver_postgresql <- function(driver, ..., uri) {
   adbcdrivermanager::adbc_database_init_default(
     driver,
     list(uri = uri),
@@ -63,8 +63,8 @@ adbc_database_init.adbcpostgresql_driver_postgresql <- function(driver, uri) {
 #' @rdname adbcpostgresql
 #' @importFrom adbcdrivermanager adbc_connection_init
 #' @export
-adbc_connection_init.adbcpostgresql_database <- function(database,
-                                                     adbc.connection.autocommit = NULL) {
+adbc_connection_init.adbcpostgresql_database <- function(database, ...,
+                                                         adbc.connection.autocommit = NULL) {
   options <- list(adbc.connection.autocommit = adbc.connection.autocommit)
   adbcdrivermanager::adbc_connection_init_default(
     database,
@@ -76,7 +76,7 @@ adbc_connection_init.adbcpostgresql_database <- function(database,
 #' @rdname adbcpostgresql
 #' @importFrom adbcdrivermanager adbc_statement_init
 #' @export
-adbc_statement_init.adbcpostgresql_connection <- function(connection,
+adbc_statement_init.adbcpostgresql_connection <- function(connection, ...,
                                                       adbc.ingest.target_table = NULL,
                                                       adbc.ingest.mode = NULL) {
   options <- list(

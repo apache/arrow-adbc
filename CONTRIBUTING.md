@@ -28,24 +28,27 @@ https://github.com/apache/arrow-adbc/issues
 
 ### C/C++
 
-The libraries here are all **individual** CMake projects.
+All libraries here contained within one CMake project. To build any
+library, pass the `-DADBC_COMPONENT=ON` flag to your cmake invocation,
+replacing `_COMPONENT` with the name of the library/libraries.
 
 _Note:_ unlike the Arrow C++ build system, the CMake projects will
 **not** automatically download and build dependencies—you should
 configure CMake appropriately to find dependencies in system or
 package manager locations.
 
-For example, the driver manager is built as follows:
+For example, the driver manager and postgres driver may be built
+together as follows:
 
 ```shell
-$ mkdir -p build/driver_manager
-$ cd build/driver_manager
-$ cmake ../../c/driver_manager
+$ mkdir build
+$ cd build
+$ cmake ../c -DADBC_DRIVER_POSTGRESQL=ON -DADBC_DRIVER_MANAGER=ON
 $ make -j
 ```
 
-All libraries here can be built similarly.  For information on what
-they do and their dependencies, see their individual READMEs.
+For information on what each library can do and their dependencies,
+see their individual READMEs.
 
 To specify where dependencies are to the build, use standard CMake
 options such as [`CMAKE_PREFIX_PATH`][cmake-prefix-path].  A list of
@@ -69,10 +72,10 @@ All libraries use the same build options to enable tests.
 For example, to build and run tests for the SQLite3 driver:
 
 ```shell
-$ mkdir -p build/sqlite
-$ cd build/sqlite
+$ mkdir build
+$ cd build
 # You may need to set -DCMAKE_PREFIX_PATH such that googletest can be found
-$ cmake ../../c/driver/sqlite -DADBC_BUILD_TESTS=ON
+$ cmake ../c -DADBC_BUILD_TESTS=ON -DADBC_DRIVER_SQLITE=ON
 $ make -j
 $ ctest
 ```

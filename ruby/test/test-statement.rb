@@ -32,33 +32,50 @@ class StatementTest < Test::Unit::TestCase
     end
   end
 
-  def test_ingest
-    numbers = Arrow::Int64Array.new([10, 20, 30])
-    record_batch = Arrow::RecordBatch.new(number: numbers)
-    @statement.ingest("data", record_batch)
-    table, n_rows_affected = @statement.query("SELECT * FROM data")
-    assert_equal([
-                   Arrow::Table.new(number: numbers),
-                   -1,
-                 ],
-                 [
-                   table,
-                   n_rows_affected,
-                 ])
-  end
+  sub_test_case("#ingest") do
+    test("Arrow::RecordBatch") do
+      numbers = Arrow::Int64Array.new([10, 20, 30])
+      record_batch = Arrow::RecordBatch.new(number: numbers)
+      @statement.ingest("data", record_batch)
+      table, n_rows_affected = @statement.query("SELECT * FROM data")
+      assert_equal([
+                     Arrow::Table.new(number: numbers),
+                     -1,
+                   ],
+                   [
+                     table,
+                     n_rows_affected,
+                   ])
+    end
 
-  def test_ingest_stream
-    numbers = Arrow::Int64Array.new([10, 20, 30])
-    record_batch = Arrow::RecordBatch.new(number: numbers)
-    @statement.ingest("data", Arrow::RecordBatchReader.new([record_batch]))
-    table, n_rows_affected = @statement.query("SELECT * FROM data")
-    assert_equal([
-                   Arrow::Table.new(number: numbers),
-                   -1,
-                 ],
-                 [
-                   table,
-                   n_rows_affected,
-                 ])
+    test("Arrow::RecordBatchReader") do
+      numbers = Arrow::Int64Array.new([10, 20, 30])
+      record_batch = Arrow::RecordBatch.new(number: numbers)
+      @statement.ingest("data", Arrow::RecordBatchReader.new([record_batch]))
+      table, n_rows_affected = @statement.query("SELECT * FROM data")
+      assert_equal([
+                     Arrow::Table.new(number: numbers),
+                     -1,
+                   ],
+                   [
+                     table,
+                     n_rows_affected,
+                   ])
+    end
+
+    test("Arrow::Table") do
+      numbers = Arrow::Int64Array.new([10, 20, 30])
+      input_table = Arrow::Table.new(number: numbers)
+      @statement.ingest("data", input_table)
+      table, n_rows_affected = @statement.query("SELECT * FROM data")
+      assert_equal([
+                     input_table,
+                     -1,
+                   ],
+                   [
+                     table,
+                     n_rows_affected,
+                   ])
+    end
   end
 end

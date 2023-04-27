@@ -53,7 +53,13 @@ jobs:
           cache: "maven"
           distribution: "temurin"
           java-version: ${{ matrix.java }}
+      - name: Start SQLite server
+        shell: bash -l {0}
+        run: |
+          docker-compose up -d golang-sqlite-flightsql
       - name: Build/Test
+        env:
+          ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
         run: |
           cd java
           mvn install

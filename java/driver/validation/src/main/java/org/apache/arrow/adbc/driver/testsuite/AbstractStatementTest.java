@@ -17,6 +17,7 @@
 
 package org.apache.arrow.adbc.driver.testsuite;
 
+import static org.apache.arrow.adbc.driver.testsuite.ArrowAssertions.assertField;
 import static org.apache.arrow.adbc.driver.testsuite.ArrowAssertions.assertRoot;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,9 +35,11 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.util.Preconditions;
+import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -54,7 +57,9 @@ public abstract class AbstractStatementTest {
   protected BufferAllocator allocator;
   protected SqlTestUtil util;
   protected String tableName;
-  protected Schema schema;
+  // Implementations vary on the integer type
+  protected Schema schema32;
+  protected Schema schema64;
 
   @BeforeEach
   public void beforeEach() throws Exception {
@@ -64,12 +69,18 @@ public abstract class AbstractStatementTest {
     connection = database.connect();
     util = new SqlTestUtil(quirks);
     tableName = quirks.caseFoldTableName("bulktable");
-    schema =
+    schema32 =
         new Schema(
             Arrays.asList(
+                Field.nullable(quirks.caseFoldColumnName("ints"), Types.MinorType.INT.getType()),
                 Field.nullable(
-                    quirks.caseFoldColumnName("ints"), new ArrowType.Int(32, /*signed=*/ true)),
-                Field.nullable(quirks.caseFoldColumnName("strs"), new ArrowType.Utf8())));
+                    quirks.caseFoldColumnName("strs"), Types.MinorType.VARCHAR.getType())));
+    schema64 =
+        new Schema(
+            Arrays.asList(
+                Field.nullable(quirks.caseFoldColumnName("ints"), Types.MinorType.BIGINT.getType()),
+                Field.nullable(
+                    quirks.caseFoldColumnName("strs"), Types.MinorType.VARCHAR.getType())));
     quirks.cleanupTable(tableName);
   }
 
@@ -81,53 +92,96 @@ public abstract class AbstractStatementTest {
 
   @Test
   public void bulkIngestAppend() throws Exception {
-    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
-      final IntVector ints = (IntVector) root.getVector(0);
-      final VarCharVector strs = (VarCharVector) root.getVector(1);
+    // Implementations vary on the integer type here.
+    try (final VectorSchemaRoot root32 = VectorSchemaRoot.create(schema32, allocator);
+        final VectorSchemaRoot root64 = VectorSchemaRoot.create(schema64, allocator)) {
+      {
+        final IntVector ints = (IntVector) root32.getVector(0);
+        final VarCharVector strs = (VarCharVector) root32.getVector(1);
 
-      ints.allocateNew(4);
-      ints.setSafe(0, 0);
-      ints.setSafe(1, 1);
-      ints.setSafe(2, 2);
-      ints.setNull(3);
-      strs.allocateNew(4);
-      strs.setNull(0);
-      strs.setSafe(1, "foo".getBytes(StandardCharsets.UTF_8));
-      strs.setSafe(2, "".getBytes(StandardCharsets.UTF_8));
-      strs.setSafe(3, "asdf".getBytes(StandardCharsets.UTF_8));
-      root.setRowCount(4);
+        ints.allocateNew(4);
+        ints.setSafe(0, 0);
+        ints.setSafe(1, 1);
+        ints.setSafe(2, 2);
+        ints.setNull(3);
+        strs.allocateNew(4);
+        strs.setNull(0);
+        strs.setSafe(1, "foo".getBytes(StandardCharsets.UTF_8));
+        strs.setSafe(2, "".getBytes(StandardCharsets.UTF_8));
+        strs.setSafe(3, "asdf".getBytes(StandardCharsets.UTF_8));
+        root32.setRowCount(4);
+      }
+      {
+        final BigIntVector ints = (BigIntVector) root64.getVector(0);
+        final VarCharVector strs = (VarCharVector) root64.getVector(1);
+
+        ints.allocateNew(4);
+        ints.setSafe(0, 0);
+        ints.setSafe(1, 1);
+        ints.setSafe(2, 2);
+        ints.setNull(3);
+        strs.allocateNew(4);
+        strs.setNull(0);
+        strs.setSafe(1, "foo".getBytes(StandardCharsets.UTF_8));
+        strs.setSafe(2, "".getBytes(StandardCharsets.UTF_8));
+        strs.setSafe(3, "asdf".getBytes(StandardCharsets.UTF_8));
+        root64.setRowCount(4);
+      }
 
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
-        stmt.bind(root);
+        stmt.bind(root32);
         stmt.executeUpdate();
       }
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM " + tableName);
         try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
           assertThat(queryResult.getReader().loadNextBatch()).isTrue();
-          assertRoot(queryResult.getReader().getVectorSchemaRoot()).isEqualTo(root);
+          assertThat(queryResult.getReader().getVectorSchemaRoot())
+              .satisfiesAnyOf(
+                  data -> assertRoot(data).isEqualTo(root32),
+                  data -> assertRoot(data).isEqualTo(root64));
         }
       }
 
       // Append
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.APPEND)) {
-        stmt.bind(root);
+        stmt.bind(root32);
         stmt.executeUpdate();
       }
       try (final AdbcStatement stmt = connection.createStatement()) {
         stmt.setSqlQuery("SELECT * FROM " + tableName);
         try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
           assertThat(queryResult.getReader().loadNextBatch()).isTrue();
-          root.setRowCount(8);
-          ints.setSafe(4, 0);
-          ints.setSafe(5, 1);
-          ints.setSafe(6, 2);
-          ints.setNull(7);
-          strs.setNull(4);
-          strs.setSafe(5, "foo".getBytes(StandardCharsets.UTF_8));
-          strs.setSafe(6, "".getBytes(StandardCharsets.UTF_8));
-          strs.setSafe(7, "asdf".getBytes(StandardCharsets.UTF_8));
-          assertRoot(queryResult.getReader().getVectorSchemaRoot()).isEqualTo(root);
+          {
+            root32.setRowCount(8);
+            final IntVector ints = (IntVector) root32.getVector(0);
+            final VarCharVector strs = (VarCharVector) root32.getVector(1);
+            ints.setSafe(4, 0);
+            ints.setSafe(5, 1);
+            ints.setSafe(6, 2);
+            ints.setNull(7);
+            strs.setNull(4);
+            strs.setSafe(5, "foo".getBytes(StandardCharsets.UTF_8));
+            strs.setSafe(6, "".getBytes(StandardCharsets.UTF_8));
+            strs.setSafe(7, "asdf".getBytes(StandardCharsets.UTF_8));
+          }
+          {
+            root64.setRowCount(8);
+            final BigIntVector ints = (BigIntVector) root64.getVector(0);
+            final VarCharVector strs = (VarCharVector) root64.getVector(1);
+            ints.setSafe(4, 0);
+            ints.setSafe(5, 1);
+            ints.setSafe(6, 2);
+            ints.setNull(7);
+            strs.setNull(4);
+            strs.setSafe(5, "foo".getBytes(StandardCharsets.UTF_8));
+            strs.setSafe(6, "".getBytes(StandardCharsets.UTF_8));
+            strs.setSafe(7, "asdf".getBytes(StandardCharsets.UTF_8));
+          }
+          assertThat(queryResult.getReader().getVectorSchemaRoot())
+              .satisfiesAnyOf(
+                  data -> assertRoot(data).isEqualTo(root32),
+                  data -> assertRoot(data).isEqualTo(root64));
         }
       }
     }
@@ -139,7 +193,7 @@ public abstract class AbstractStatementTest {
         new Schema(
             Collections.singletonList(
                 Field.nullable(quirks.caseFoldColumnName("ints"), new ArrowType.Utf8())));
-    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema32, allocator)) {
       root.setRowCount(1);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
@@ -157,7 +211,7 @@ public abstract class AbstractStatementTest {
 
   @Test
   public void bulkIngestAppendNotFound() throws Exception {
-    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema32, allocator)) {
       root.setRowCount(1);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.APPEND)) {
         stmt.bind(root);
@@ -169,14 +223,14 @@ public abstract class AbstractStatementTest {
 
   @Test
   public void bulkIngestCreateConflict() throws Exception {
-    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema32, allocator)) {
       root.setRowCount(1);
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
         stmt.executeUpdate();
       }
     }
-    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+    try (final VectorSchemaRoot root = VectorSchemaRoot.create(schema32, allocator)) {
       try (final AdbcStatement stmt = connection.bulkIngest(tableName, BulkIngestMode.CREATE)) {
         stmt.bind(root);
         final AdbcException e = assertThrows(AdbcException.class, stmt::executeUpdate);
@@ -192,8 +246,12 @@ public abstract class AbstractStatementTest {
       stmt.setSqlQuery("SELECT * FROM " + tableName);
       stmt.prepare();
       try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
-        assertThat(queryResult.getReader().getVectorSchemaRoot().getSchema())
-            .isEqualTo(expectedSchema);
+        // Implementations vary on the integer type here.
+        Schema actualSchema = queryResult.getReader().getVectorSchemaRoot().getSchema();
+        assertThat(actualSchema.getFields().size()).isEqualTo(2);
+        assertThat(actualSchema.getFields().get(0).getType())
+            .isIn(Types.MinorType.INT.getType(), Types.MinorType.BIGINT.getType());
+        assertField(actualSchema.getFields().get(1)).isEqualTo(expectedSchema.getFields().get(1));
         assertThat(queryResult.getReader().loadNextBatch()).isTrue();
         assertThat(queryResult.getReader().getVectorSchemaRoot().getRowCount()).isEqualTo(4);
         while (queryResult.getReader().loadNextBatch()) {
@@ -271,7 +329,8 @@ public abstract class AbstractStatementTest {
       stmt.setSqlQuery(String.format("SELECT * FROM %s WHERE INTS = ?", tableName));
       stmt.prepare();
       final Schema paramsSchema = stmt.getParameterSchema();
-      assertThat(paramsSchema.getFields().size()).isEqualTo(1);
+      // Golang SQLite Flight SQL server doesn't support this
+      assertThat(paramsSchema).isNotNull();
     }
   }
 }

@@ -15,5 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Just call the original configure script
-./configure
+# See configure for a description of this process.
+# This is only for development: this file and bootstrap.R will be removed
+# prior to packaging
+if [ -f bootstrap.R ]; then
+  $R_HOME/bin/Rscript bootstrap.R
+fi

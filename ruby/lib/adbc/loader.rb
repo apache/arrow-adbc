@@ -33,5 +33,13 @@ module ADBC
       require_relative "database"
       require_relative "statement"
     end
+
+    def load_function_info_singleton_method(info, klass, method_name)
+      if klass.name == "ADBC::IsolationLevel" and method_name == "to_string"
+        define_method(info, klass, "to_s")
+      else
+        super
+      end
+    end
   end
 end

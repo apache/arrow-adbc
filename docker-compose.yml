@@ -15,13 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-version: '3.5'
+version: '3.9'
 
 services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
 
-  ############################ Documentation###################################
+  ############################ Documentation ###################################
 
   docs:
     image: condaforge/mambaforge:latest
@@ -128,3 +128,37 @@ services:
         POSTGRES_PASSWORD: password
       ports:
         - "5432:5432"
+
+  dremio:
+    container_name: adbc-dremio
+    image: dremio/dremio-oss:latest
+    environment:
+      DREMIO_JAVA_EXTRA_OPTS: "-Ddebug.addDefaultUser=true -Ddremio.eula.disabled=true"
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://localhost:9047" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    ports:
+      - "9047:9047"
+      - "32010:32010"
+      - "31010:31010"
+      - "45678:45678"
+
+  dremio-init:
+    container_name: adbc-dremio-init
+    image: ${REPO}:adbc-dremio-init
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:adbc-dremio-init
+      dockerfile: ci/docker/dremio-init.dockerfile
+    environment:
+      dremio_url: http://dremio:9047
+    depends_on:
+      dremio:
+        condition: service_healthy
+    entrypoint: "/init/bootstrap.sh"
+    volumes:
+      - "./ci/scripts/integration/dremio:/init"

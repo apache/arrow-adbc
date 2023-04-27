@@ -35,6 +35,35 @@
 #define BOOLEAN_TO_OPTION_VALUE(boolean) \
   ((boolean) ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED)
 
+/**
+ * gadbc_isolation_level_to_string:
+ * @level: A #GADBCIsolationLevel.
+ *
+ * Returns: The string representation of @level.
+ *
+ * Since: 0.4.0
+ */
+const gchar* gadbc_isolation_level_to_string(GADBCIsolationLevel level) {
+  switch (level) {
+    case GADBC_ISOLATION_LEVEL_DEFAULT:
+      return ADBC_OPTION_ISOLATION_LEVEL_DEFAULT;
+    case GADBC_ISOLATION_LEVEL_READ_UNCOMMITTED:
+      return ADBC_OPTION_ISOLATION_LEVEL_READ_UNCOMMITTED;
+    case GADBC_ISOLATION_LEVEL_READ_COMMITTED:
+      return ADBC_OPTION_ISOLATION_LEVEL_READ_COMMITTED;
+    case GADBC_ISOLATION_LEVEL_REPEATABLE_READ:
+      return ADBC_OPTION_ISOLATION_LEVEL_REPEATABLE_READ;
+    case GADBC_ISOLATION_LEVEL_SNAPSHOT:
+      return ADBC_OPTION_ISOLATION_LEVEL_SNAPSHOT;
+    case GADBC_ISOLATION_LEVEL_SERIALIZABLE:
+      return ADBC_OPTION_ISOLATION_LEVEL_SERIALIZABLE;
+    case GADBC_ISOLATION_LEVEL_LINEARIZABLE:
+      return ADBC_OPTION_ISOLATION_LEVEL_LINEARIZABLE;
+    default:
+      return "adbc.connection.transaction.isolation.invalid";
+  }
+}
+
 typedef struct {
   gboolean initialized;
   struct AdbcConnection adbc_connection;
@@ -164,6 +193,38 @@ gboolean gadbc_connection_set_auto_commit(GADBCConnection* connection,
                                           gboolean auto_commit, GError** error) {
   return gadbc_connection_set_option(connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
                                      BOOLEAN_TO_OPTION_VALUE(auto_commit), error);
+}
+
+/**
+ * gadbc_connection_set_read_only:
+ * @connection: A #GADBCConnection.
+ * @read_only: Whether read only or not.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Returns: %TRUE if this is set successfully, %FALSE otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_connection_set_read_only(GADBCConnection* connection, gboolean read_only,
+                                        GError** error) {
+  return gadbc_connection_set_option(connection, ADBC_CONNECTION_OPTION_READ_ONLY,
+                                     BOOLEAN_TO_OPTION_VALUE(read_only), error);
+}
+
+/**
+ * gadbc_connection_set_isolation_level:
+ * @connection: A #GADBCConnection.
+ * @level: A #GADBCIsolationLevel to be used.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Returns: %TRUE if this is set successfully, %FALSE otherwise.
+ *
+ * Since: 0.4.0
+ */
+gboolean gadbc_connection_set_isolation_level(GADBCConnection* connection,
+                                              GADBCIsolationLevel level, GError** error) {
+  return gadbc_connection_set_option(connection, ADBC_CONNECTION_OPTION_ISOLATION_LEVEL,
+                                     gadbc_isolation_level_to_string(level), error);
 }
 
 /**
