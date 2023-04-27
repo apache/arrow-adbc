@@ -31,7 +31,7 @@ $env:PATH += ";$($InstallDir)\lib"
 echo $env:LD_LIBRARY_PATH
 echo $env:PATH
 
-function Build-Project {
+function Test-Project {
     Push-Location $BuildDir
 
     ctest --output-on-failure --no-tests=error
@@ -40,4 +40,4 @@ function Build-Project {
     Pop-Location
 }
 
-Build-Project
+Test-Project
