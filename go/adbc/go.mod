@@ -22,7 +22,7 @@ go 1.18
 require (
 	github.com/apache/arrow/go/v12 v12.0.0-20230421000340-388f3a88c647
 	github.com/bluele/gcache v0.0.2
-	github.com/snowflakedb/gosnowflake v1.6.19-0.20230228202026-7c7d86c6b3d0
+	github.com/snowflakedb/gosnowflake v1.6.21-0.20230427202326-79f2d00be7ac
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/exp v0.0.0-20230420155640-133eef4313cb
 	golang.org/x/sync v0.1.0
@@ -104,5 +104,3 @@ require (
 	modernc.org/strutil v1.1.3 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
-
-replace github.com/snowflakedb/gosnowflake => github.com/zeroshade/gosnowflake v0.0.0-20230424204232-7d572e64ed4c
