@@ -9,18 +9,22 @@
 \usage{
 adbcpostgresql()
 
-\method{adbc_database_init}{adbcpostgresql_driver_postgresql}(driver, uri)
+\method{adbc_database_init}{adbcpostgresql_driver_postgresql}(driver, ..., uri)
 
-\method{adbc_connection_init}{adbcpostgresql_database}(database, adbc.connection.autocommit = NULL)
+\method{adbc_connection_init}{adbcpostgresql_database}(database, ..., adbc.connection.autocommit = NULL)
 
 \method{adbc_statement_init}{adbcpostgresql_connection}(
   connection,
+  ...,
   adbc.ingest.target_table = NULL,
   adbc.ingest.mode = NULL
 )
 }
 \arguments{
 \item{driver}{An \code{\link[adbcdrivermanager:adbc_driver]{adbc_driver()}}.}
+
+\item{...}{Driver-specific options. For the default method, these are
+named values that are converted to strings.}
 
 \item{uri}{A URI to a database path (e.g.,
 \verb{postgresql://localhost:1234/postgres?user=user&password=password})}
