@@ -52,6 +52,31 @@ typedef enum {
 } GADBCInfo;
 
 /**
+ * GADBCObjectDepth:
+ * @GADBC_OBJECT_DEPTH_ALL: Return metadata on catalogs, schemas,
+ *   tables, and columns.
+ * @GADBC_OBJECT_DEPTH_CATALOGS: Return metadata on catalogs only.
+ * @GADBC_OBJECT_DEPTH_DB_SCHEMAS: Return metadata on catalogs and schemas.
+ * @GADBC_OBJECT_DEPTH_TABLES: Return metadata on catalogs, schemas,
+ *   and tables.
+ *
+ * The object depth that is used by gadbc_connection_get_objects().
+ *
+ * They are corresponding to `ADBC_OBJECT_DEPTH_*` values in `adbc.h`.
+ *
+ * Note that @ADBC_OBJECT_DEPTH_COLUMNS doesn't exist because it's
+ * same as @ADBC_OBJECT_DEPTH_ALL.
+ *
+ * Since: 0.4.0
+ */
+typedef enum {
+  GADBC_OBJECT_DEPTH_ALL = 0,
+  GADBC_OBJECT_DEPTH_CATALOGS = 1,
+  GADBC_OBJECT_DEPTH_DB_SCHEMAS = 2,
+  GADBC_OBJECT_DEPTH_TABLES = 3,
+} GADBCObjectDepth;
+
+/**
  * GADBCIsolationLevel:
  * @GADBC_ISOLATION_LEVEL_DEFAULT: Use database or driver default
  *   isolation level
@@ -143,6 +168,11 @@ gboolean gadbc_connection_init(GADBCConnection* connection, GADBCDatabase* datab
 GADBC_AVAILABLE_IN_0_4
 gpointer gadbc_connection_get_info(GADBCConnection* connection, guint32* info_codes,
                                    gsize n_info_codes, GError** error);
+GADBC_AVAILABLE_IN_0_4
+gpointer gadbc_connection_get_objects(GADBCConnection* connection, GADBCObjectDepth depth,
+                                      const gchar* catalog, const gchar* db_schema,
+                                      const gchar* table_name, const gchar** table_types,
+                                      const gchar* column_name, GError** error);
 GADBC_AVAILABLE_IN_0_4
 gpointer gadbc_connection_get_table_schema(GADBCConnection* connection,
                                            const gchar* catalog, const gchar* db_schema,
