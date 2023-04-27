@@ -122,7 +122,7 @@ AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema*
 
 int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
   builder->buffer = (char*)malloc(initial_size);
-  if (builder->buffer == NULL) return -1;
+  if (builder->buffer == NULL) return errno;
 
   builder->size = 0;
   builder->capacity = initial_size;
@@ -138,11 +138,11 @@ int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
   va_end(argptr);
 
   if (n < 0) {
-    return -1;
+    return errno;
   } else if (n >= bytes_available) {  // output was truncated
     int bytes_needed = n - bytes_available + 1;
     builder->buffer = (char*)realloc(builder->buffer, builder->capacity + bytes_needed);
-    if (builder->buffer == NULL) return -1;
+    if (builder->buffer == NULL) return errno;
 
     builder->capacity += bytes_needed;
 
