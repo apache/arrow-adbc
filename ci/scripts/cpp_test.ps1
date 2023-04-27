@@ -19,7 +19,7 @@
 $ErrorActionPreference = "Stop"
 
 $BuildDir = $Args[0]
-$InstallDir = if ($Args[1] -ne $null) { $Args[2] } else { Join-Path $BuildDir "local/" }
+$InstallDir = if ($Args[1] -ne $null) { $Args[1] } else { Join-Path $BuildDir "local/" }
 
 $env:LD_LIBRARY_PATH += ":$($InstallDir)"
 $env:LD_LIBRARY_PATH += ":$($InstallDir)/bin"
