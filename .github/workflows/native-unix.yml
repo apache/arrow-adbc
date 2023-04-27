@@ -186,7 +186,7 @@ jobs:
       - name: Test Driver Manager
         shell: bash -l {0}
         run: |
-          ./ci/scripts/cpp_test.sh $(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
   # ------------------------------------------------------------
   # GLib/Ruby
