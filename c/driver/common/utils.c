@@ -27,7 +27,6 @@
 #include <nanoarrow/nanoarrow.h>
 
 static size_t kErrorBufferSize = 256;
-static char kErrorPrefix[] = "[SQLite] ";
 
 static void ReleaseError(struct AdbcError* error) {
   free(error->message);
@@ -46,12 +45,9 @@ void SetError(struct AdbcError* error, const char* format, ...) {
 
   error->release = &ReleaseError;
 
-  memcpy(error->message, kErrorPrefix, sizeof(kErrorPrefix));
-
   va_list args;
   va_start(args, format);
-  vsnprintf(error->message + sizeof(kErrorPrefix) - 1,
-            kErrorBufferSize - sizeof(kErrorPrefix) + 1, format, args);
+  vsnprintf(error->message, kErrorBufferSize, format, args);
   va_end(args);
 }
 

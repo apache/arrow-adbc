@@ -42,7 +42,7 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
   if (open_connections_ != 0) {
-    SetError(error, "%s%d%s", "Database released with ", open_connections_,
+    SetError(error, "%s%d%s", "[libpq] Database released with ", open_connections_,
              " open connections");
     return ADBC_STATUS_INVALID_STATE;
   }
@@ -54,7 +54,7 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
   if (strcmp(key, "uri") == 0) {
     uri_ = value;
   } else {
-    SetError(error, "%s%s", "Unknown database option ", key);
+    SetError(error, "%s%s", "[libpq] Unknown database option ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return ADBC_STATUS_OK;
@@ -62,12 +62,13 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
 
 AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error) {
   if (uri_.empty()) {
-    SetError(error, "%s", "Must set database option 'uri' before creating a connection");
+    SetError(error, "%s",
+             "[libpq] Must set database option 'uri' before creating a connection");
     return ADBC_STATUS_INVALID_STATE;
   }
   *conn = PQconnectdb(uri_.c_str());
   if (PQstatus(*conn) != CONNECTION_OK) {
-    SetError(error, "%s%s", "Failed to connect: ", PQerrorMessage(*conn));
+    SetError(error, "%s%s", "[libpq] Failed to connect: ", PQerrorMessage(*conn));
     PQfinish(*conn);
     *conn = nullptr;
     return ADBC_STATUS_IO;
@@ -80,7 +81,7 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
   PQfinish(*conn);
   *conn = nullptr;
   if (--open_connections_ < 0) {
-    SetError(error, "%s", "Open connection count underflowed");
+    SetError(error, "%s", "[libpq] Open connection count underflowed");
     return ADBC_STATUS_INTERNAL;
   }
   return ADBC_STATUS_OK;
@@ -145,7 +146,8 @@ ORDER BY
   if (pq_status == PGRES_TUPLES_OK) {
     InsertPgAttributeResult(result, resolver);
   } else {
-    SetError(error, "%s%s", "Failed to build type mapping table: ", PQerrorMessage(conn));
+    SetError(error, "%s%s",
+             "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
     final_status = ADBC_STATUS_IO;
   }
 
@@ -160,7 +162,7 @@ ORDER BY
       InsertPgTypeResult(result, resolver);
     } else {
       SetError(error, "%s%s",
-               "Failed to build type mapping table: ", PQerrorMessage(conn));
+               "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
       final_status = ADBC_STATUS_IO;
     }
 
