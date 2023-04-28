@@ -44,3 +44,6 @@ endif()
 if(ADBC_DRIVER_SQLITE)
   add_subdirectory(driver/sqlite)
 endif()
+
+validate_config()
+config_summary_message()
