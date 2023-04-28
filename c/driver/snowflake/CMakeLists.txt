@@ -45,6 +45,8 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_snowflake_test
                 PREFIX
                 adbc
+                EXTRA_LABELS
+                driver-snowflake
                 SOURCES
                 snowflake_test.cc
                 ../../validation/adbc_validation.cc
@@ -55,6 +57,3 @@ if(ADBC_BUILD_TESTS)
   target_compile_features(adbc-driver-snowflake-test PRIVATE cxx_std_17)
   adbc_configure_target(adbc-driver-snowflake-test)
 endif()
-
-validate_config()
-config_summary_message()
