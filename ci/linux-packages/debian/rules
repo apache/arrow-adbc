@@ -26,54 +26,53 @@ export DH_OPTIONS
 export DEB_BUILD_MAINT_OPTIONS=reproducible=-timeless
 
 %:
-  dh $@ --with gir
+	dh $@ --with gir
 
 CMAKE_BUILD_TYPE = RelWithDebInfo
 
 override_dh_auto_configure:
-  dh_auto_configure				\
-    --sourcedirectory=c/		                \
-    --builddirectory=c.build               	\
-    --buildsystem=cmake+ninja			\
-    --						\
-    -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)        \
+	dh_auto_configure				\
+	  --sourcedirectory=c/		                \
+	  --builddirectory=c.build               	\
+	  --buildsystem=cmake+ninja			\
+	  --						\
+	  -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)        \
           -DADBC_DRIVER_MANAGER=ON                      \
           -DADBC_DRIVER_POSTGRESQL=ON                   \
           -DADBC_DRIVER_SQLITE=ON                       \
-          -DADBC_DRIVER_FLIGHTSQL=ON										\
+          -DADBC_DRIVER_FLIGHTSQL=ON                    \
           -DADBC_DRIVER_SNOWFLAKE=ON
 
 override_dh_auto_build:
-  dh_auto_build					\
-    --sourcedirectory=c              		\
-    --builddirectory=c.build
-  dh_auto_configure				\
-    --sourcedirectory=glib			\
-    --builddirectory=glib.build			\
-    --buildsystem=meson+ninja			\
-    --						\
-    --buildtype=debugoptimized			\
-    -Dadbc_build_dir=../c.build/driver_manager
-  env							\
-    LD_LIBRARY_PATH=$(CURDIR)/c.build/driver_manager	\
-      dh_auto_build					\
-        --sourcedirectory=glib				\
-        --builddirectory=glib.build			\
-        --buildsystem=meson+ninja
+	dh_auto_build					\
+	  --sourcedirectory=c              		\
+	  --builddirectory=c.build
+	dh_auto_configure				\
+	  --sourcedirectory=glib			\
+	  --builddirectory=glib.build			\
+	  --buildsystem=meson+ninja			\
+	  --						\
+	  --buildtype=debugoptimized			\
+	  -Dadbc_build_dir=../c.build/driver_manager
+	env							\
+	  LD_LIBRARY_PATH=$(CURDIR)/c.build/driver_manager	\
+	    dh_auto_build					\
+	      --sourcedirectory=glib				\
+	      --builddirectory=glib.build			\
+	      --buildsystem=meson+ninja
 
 override_dh_auto_install:
-  dh_auto_install					\
-    --sourcedirectory=c           		\
-    --builddirectory=c.build
-  dh_auto_install				\
-     --sourcedirectory=glib		\
-     --builddirectory=glib.build		\
-     --buildsystem=meson+ninja
+	dh_auto_install					\
+	  --sourcedirectory=c           		\
+	  --builddirectory=c.build
+	dh_auto_install				\
+	   --sourcedirectory=glib		\
+	   --builddirectory=glib.build		\
+	   --buildsystem=meson+ninja
 
 override_dh_auto_test:
 
 override_dh_dwz:
-  # libadbc_driver_flightsql.so.* and libadbc_driver_snowflake.so.*
-  # have compressed DWARF.
-  # We can't use dwz for compressed DWARF.
-  dh_dwz --exclude=libadbc_driver_flightsql --exclude=libadbc_driver_snowflake
+	# libadbc_driver_flightsql.so.* has compressed DWARF.
+	# We can't use dwz for compressed DWARF.
+	dh_dwz --exclude=libadbc_driver_flightsql
