@@ -79,3 +79,37 @@ jobs:
         run: |
           cd java
           mvn install
+
+  java-errorprone:
+    name: "Java ${{ matrix.java }}/Linux with ErrorProne"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: ['11']
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v3
+        with:
+          cache: "maven"
+          distribution: "temurin"
+          java-version: ${{ matrix.java }}
+      - name: Build/Test
+        run: |
+          cd java
+          mkdir .mvn
+          cat <<HERE > .mvn/jvm.config
+          --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+          --add-opens jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
+          --add-opens jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED
+          HERE
+          mvn -P errorprone install
