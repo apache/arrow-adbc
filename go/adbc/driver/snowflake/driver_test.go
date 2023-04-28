@@ -253,6 +253,8 @@ func TestADBCSnowflake(t *testing.T) {
 		t.Skip("no SNOWFLAKE_URI defined, skip snowflake driver tests")
 	}
 
+	// avoid multiple runs clashing by operating in a fresh schema and then
+	// dropping that schema when we're done.
 	q := &SnowflakeQuirks{dsn: uri, schemaName: createTempSchema(uri)}
 	defer dropTempSchema(uri, q.schemaName)
 	suite.Run(t, &validation.DatabaseTests{Quirks: q})
