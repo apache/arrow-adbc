@@ -23,12 +23,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <assert.h>
 #include <nanoarrow/nanoarrow.h>
 
 static size_t kErrorBufferSize = 256;
 static char kErrorPrefix[] = "[SQLite] ";
 
-void ReleaseError(struct AdbcError* error) {
+static void ReleaseError(struct AdbcError* error) {
   free(error->message);
   error->message = NULL;
   error->release = NULL;
@@ -58,11 +59,11 @@ struct SingleBatchArrayStream {
   struct ArrowSchema schema;
   struct ArrowArray batch;
 };
-const char* SingleBatchArrayStreamGetLastError(struct ArrowArrayStream* stream) {
+static const char* SingleBatchArrayStreamGetLastError(struct ArrowArrayStream* stream) {
   return NULL;
 }
-int SingleBatchArrayStreamGetNext(struct ArrowArrayStream* stream,
-                                  struct ArrowArray* batch) {
+static int SingleBatchArrayStreamGetNext(struct ArrowArrayStream* stream,
+                                         struct ArrowArray* batch) {
   if (!stream || !stream->private_data) return EINVAL;
   struct SingleBatchArrayStream* impl =
       (struct SingleBatchArrayStream*)stream->private_data;
@@ -71,15 +72,15 @@ int SingleBatchArrayStreamGetNext(struct ArrowArrayStream* stream,
   memset(&impl->batch, 0, sizeof(*batch));
   return 0;
 }
-int SingleBatchArrayStreamGetSchema(struct ArrowArrayStream* stream,
-                                    struct ArrowSchema* schema) {
+static int SingleBatchArrayStreamGetSchema(struct ArrowArrayStream* stream,
+                                           struct ArrowSchema* schema) {
   if (!stream || !stream->private_data) return EINVAL;
   struct SingleBatchArrayStream* impl =
       (struct SingleBatchArrayStream*)stream->private_data;
 
   return ArrowSchemaDeepCopy(&impl->schema, schema);
 }
-void SingleBatchArrayStreamRelease(struct ArrowArrayStream* stream) {
+static void SingleBatchArrayStreamRelease(struct ArrowArrayStream* stream) {
   if (!stream || !stream->private_data) return;
   struct SingleBatchArrayStream* impl =
       (struct SingleBatchArrayStream*)stream->private_data;
@@ -119,24 +120,41 @@ AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema*
   return ADBC_STATUS_OK;
 }
 
-void StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
+int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
   builder->buffer = (char*)malloc(initial_size);
+  if (builder->buffer == NULL) return errno;
+
   builder->size = 0;
   builder->capacity = initial_size;
-}
-void StringBuilderAppend(struct StringBuilder* builder, const char* value) {
-  size_t length = strlen(value);
-  size_t new_size = builder->size + length;
-  if (new_size > builder->capacity) {
-    size_t new_capacity = builder->size + length - builder->capacity;
-    if (builder->size == 0) new_capacity++;
 
-    builder->buffer = realloc(builder->buffer, new_capacity);
-    builder->capacity = new_capacity;
+  return 0;
+}
+int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
+  va_list argptr;
+  int bytes_available = builder->capacity - builder->size;
+
+  va_start(argptr, fmt);
+  int n = vsnprintf(builder->buffer + builder->size, bytes_available, fmt, argptr);
+  va_end(argptr);
+
+  if (n < 0) {
+    return errno;
+  } else if (n >= bytes_available) {  // output was truncated
+    int bytes_needed = n - bytes_available + 1;
+    builder->buffer = (char*)realloc(builder->buffer, builder->capacity + bytes_needed);
+    if (builder->buffer == NULL) return errno;
+
+    builder->capacity += bytes_needed;
+
+    va_start(argptr, fmt);
+    int ret = vsnprintf(builder->buffer + builder->size, n + 1, fmt, argptr);
+    assert(ret >= 0);
+
+    va_end(argptr);
   }
-  memcpy(builder->buffer + builder->size, value, length);
-  builder->buffer[new_size] = '\0';
-  builder->size = new_size;
+  builder->size += n;
+
+  return 0;
 }
 void StringBuilderReset(struct StringBuilder* builder) {
   if (builder->buffer) {
