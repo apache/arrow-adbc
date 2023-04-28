@@ -19,7 +19,6 @@ class IsolationLevelTest < Test::Unit::TestCase
   include Helper
 
   def test_to_string
-    require_gi_bindings(4, 1, 3)
     assert_equal("adbc.connection.transaction.isolation.default",
                  ADBC::IsolationLevel.to_string(:default))
   end
