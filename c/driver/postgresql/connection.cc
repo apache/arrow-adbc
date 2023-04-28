@@ -94,9 +94,8 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
         return ADBC_STATUS_NOT_IMPLEMENTED;
       }
 
-      CHECK_NA_ADBC(
-          pg_type.WithFieldName(PQfname(result, row)).SetSchema(schema->children[row]),
-          error);
+      CHECK_NA_ADBC(pg_type.WithFieldName(colname).SetSchema(schema->children[row]),
+                    error);
     }
   } else {
     SetError(error, "Failed to get table schema: ", PQerrorMessage(conn_));
