@@ -51,6 +51,8 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_manager_test
                 PREFIX
                 adbc
+                EXTRA_LABELS
+                driver-manager
                 SOURCES
                 adbc_driver_manager_test.cc
                 ../validation/adbc_validation.cc
@@ -62,6 +64,3 @@ if(ADBC_BUILD_TESTS)
   target_include_directories(adbc-driver-manager-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
 endif()
-
-validate_config()
-config_summary_message()

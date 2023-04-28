@@ -24,6 +24,8 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_common_test
                 PREFIX
                 adbc
+                EXTRA_LABELS
+                driver-common
                 SOURCES
                 utils_test.cc
                 EXTRA_LINK_LIBS
@@ -32,5 +34,3 @@ if(ADBC_BUILD_TESTS)
   target_compile_features(adbc-driver-common-test PRIVATE cxx_std_17)
   adbc_configure_target(adbc-driver-common-test)
 endif()
-
-validate_config()

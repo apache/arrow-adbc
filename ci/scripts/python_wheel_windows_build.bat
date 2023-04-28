@@ -31,12 +31,14 @@ set VCPKG_TARGET_TRIPLET=x64-windows-static
 IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
 %VCPKG_ROOT%\vcpkg install --triplet=%VCPKG_TARGET_TRIPLET% libpq sqlite3
+IF %errorlevel% NEQ 0 EXIT /B %errorlevel%
 
 set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\flightsql\adbc_driver_flightsql.dll
 
 mkdir %build_dir%
 pushd %source_dir%\go\adbc\pkg
 go build -tags driverlib -o %ADBC_FLIGHTSQL_LIBRARY% -buildmode=c-shared ./flightsql
+IF %errorlevel% NEQ 0 EXIT /B %errorlevel%
 popd
 
 pushd %build_dir%
@@ -55,6 +57,7 @@ cmake ^
       -DADBC_DRIVER_FLIGHTSQL=ON ^
       -DADBC_DRIVER_MANAGER=ON ^
       %source_dir%\c || exit /B 1
+
 cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
 
 @REM XXX: CMake installs it to bin instead of lib for some reason
@@ -65,7 +68,7 @@ set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
 
 popd
 
-python -m pip install --upgrade pip delvewheel wheel
+python -m pip install --upgrade pip delvewheel wheel || exit /B 1
 
 FOR /F %%i IN ('python -c "import sysconfig; print(sysconfig.get_platform())"') DO set PLAT_NAME=%%i
 
@@ -73,7 +76,7 @@ FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adb
     pushd %source_dir%\python\%%c
 
     echo "=== (%PYTHON_VERSION%) Checking %%c version ==="
-    python %%c\_version.py
+    python %%c\_version.py || exit /B 1
 
     echo "=== (%PYTHON_VERSION%) Building %%c wheel ==="
     python -m pip wheel --no-deps -w dist -vvv . || exit /B 1
@@ -85,7 +88,7 @@ FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adb
 
     echo "=== (%PYTHON_VERSION%) Repair %%c wheel ==="
     FOR %%w IN (dist\*.whl) DO (
-        delvewheel repair -w repaired_wheels\ %%w
+        delvewheel repair -w repaired_wheels\ %%w || exit /B 1
     )
 
     popd

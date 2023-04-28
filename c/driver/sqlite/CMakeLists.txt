@@ -66,6 +66,8 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_sqlite_test
                 PREFIX
                 adbc
+                EXTRA_LABELS
+                driver-sqlite
                 SOURCES
                 sqlite_test.cc
                 ../../validation/adbc_validation.cc
@@ -77,6 +79,3 @@ if(ADBC_BUILD_TESTS)
   target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)
   adbc_configure_target(adbc-driver-sqlite-test)
 endif()
-
-validate_config()
-config_summary_message()
