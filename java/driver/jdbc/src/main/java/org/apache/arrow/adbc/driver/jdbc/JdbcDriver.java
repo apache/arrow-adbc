@@ -26,11 +26,9 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
 
 /** An ADBC driver wrapping the JDBC API. */
 public class JdbcDriver implements AdbcDriver {
-  public static final JdbcDriver INSTANCE = new JdbcDriver();
   /** A parameter for creating an {@link AdbcDatabase} from a {@link DataSource}. */
   public static final String PARAM_DATASOURCE = "adbc.jdbc.datasource";
   /**
@@ -41,14 +39,11 @@ public class JdbcDriver implements AdbcDriver {
   public static final String PARAM_URI = "uri";
 
   static {
-    AdbcDriverManager.getInstance().registerDriver("org.apache.arrow.adbc.driver.jdbc", INSTANCE);
+    AdbcDriverManager.getInstance()
+        .registerDriver("org.apache.arrow.adbc.driver.jdbc", JdbcDriver::new);
   }
 
   private final BufferAllocator allocator;
-
-  public JdbcDriver() {
-    this(new RootAllocator());
-  }
 
   public JdbcDriver(BufferAllocator allocator) {
     this.allocator = Objects.requireNonNull(allocator);
