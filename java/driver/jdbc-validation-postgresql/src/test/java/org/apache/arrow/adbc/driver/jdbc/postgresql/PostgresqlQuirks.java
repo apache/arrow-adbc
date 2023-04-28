@@ -80,6 +80,12 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
   }
 
   @Override
+  public String defaultCatalog() {
+    // XXX: this should really come from configuration
+    return "postgres";
+  }
+
+  @Override
   public String caseFoldTableName(String name) {
     return name.toLowerCase();
   }

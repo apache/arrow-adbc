@@ -78,6 +78,10 @@ public abstract class AbstractConnectionMetadataTest {
     tableName = quirks.caseFoldTableName("foo");
     mainTable = quirks.caseFoldTableName("product");
     dependentTable = quirks.caseFoldTableName("sale");
+
+    quirks.cleanupTable(tableName);
+    quirks.cleanupTable(mainTable);
+    quirks.cleanupTable(dependentTable);
   }
 
   @AfterEach
@@ -256,6 +260,28 @@ public abstract class AbstractConnectionMetadataTest {
       final FieldVector dbSchemas = reader.getVectorSchemaRoot().getVector(1);
       // We requested depth == CATALOGS, so the db_schemas field should be all null
       assertThat(dbSchemas.getNullCount()).isEqualTo(dbSchemas.getValueCount());
+    }
+  }
+
+  @Test
+  public void getObjectsCatalogsPattern() throws Exception {
+    util.ingestTableIntsStrs(allocator, connection, tableName);
+    try (final ArrowReader reader =
+        connection.getObjects(
+            AdbcConnection.GetObjectsDepth.CATALOGS,
+            quirks.defaultCatalog(),
+            null,
+            null,
+            null,
+            null)) {
+      assertThat(reader.getVectorSchemaRoot().getSchema())
+          .isEqualTo(StandardSchemas.GET_OBJECTS_SCHEMA);
+      assertThat(reader.loadNextBatch()).isTrue();
+      assertThat(reader.getVectorSchemaRoot().getRowCount()).isEqualTo(1);
+      final FieldVector dbSchemas = reader.getVectorSchemaRoot().getVector(1);
+      // We requested depth == CATALOGS, so the db_schemas field should be all null
+      assertThat(dbSchemas.getNullCount()).isEqualTo(dbSchemas.getValueCount());
+      assertThat(reader.loadNextBatch()).isFalse();
     }
   }
 

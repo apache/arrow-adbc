@@ -29,6 +29,9 @@ public abstract class SqlValidationQuirks {
 
   public void cleanupTable(String name) throws Exception {}
 
+  /** Get the name of the default catalog. */
+  public abstract String defaultCatalog();
+
   /** Normalize a table name. */
   public String caseFoldTableName(String name) {
     return name;
