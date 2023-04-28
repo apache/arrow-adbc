@@ -1007,7 +1007,7 @@ void StatementTest::TestSqlIngestString() {
 
 void StatementTest::TestSqlIngestBinary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
-      NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x00\x01\x02\x04", "", "\xFE\xFF"}));
+      NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x00\x01\x02\x04", "\xFE\xFF"}));
 }
 
 void StatementTest::TestSqlIngestAppend() {
@@ -1237,6 +1237,46 @@ void StatementTest::TestSqlIngestMultipleConnections() {
     ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcConnectionRelease(&connection2, &error), IsOkStatus(&error));
   }
+}
+
+void StatementTest::TestSqlIngestSample() {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement, "SELECT * FROM bulk_ingest ORDER BY \"int64s\" ASC NULLS FIRST",
+          &error),
+      IsOkStatus(&error));
+  StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(reader.rows_affected,
+              ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
+
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(CompareSchema(&reader.schema.value,
+                                        {{"int64s", NANOARROW_TYPE_INT64, NULLABLE},
+                                         {"strings", NANOARROW_TYPE_STRING, NULLABLE}}));
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_EQ(3, reader.array->length);
+  ASSERT_EQ(2, reader.array->n_children);
+
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {std::nullopt, -42, 42}));
+  ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[1],
+                                                    {"", std::nullopt, "foo"}));
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(nullptr, reader.array->release);
 }
 
 void StatementTest::TestSqlPartitionedInts() {

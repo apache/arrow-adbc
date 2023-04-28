@@ -116,7 +116,6 @@ class PostgresStatementTest : public ::testing::Test,
   void TestSqlIngestUInt64() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestFloat32() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestFloat64() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestString() { GTEST_SKIP() << "TODO(apache/arrow-adbc#557)"; }
   void TestSqlIngestBinary() { GTEST_SKIP() << "Not implemented"; }
 
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
@@ -147,6 +146,8 @@ struct TypeTestCase {
     return info.param.name;
   }
 };
+
+void PrintTo(const TypeTestCase& value, std::ostream* os) { (*os) << value.name; }
 
 class PostgresTypeTest : public ::testing::TestWithParam<TypeTestCase> {
  public:

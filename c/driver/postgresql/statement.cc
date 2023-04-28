@@ -41,6 +41,8 @@ constexpr std::array<char, 11> kPgCopyBinarySignature = {
     'P', 'G', 'C', 'O', 'P', 'Y', '\n', '\377', '\r', '\n', '\0'};
 /// The flag indicating to PostgreSQL that we want binary-format values.
 constexpr int kPgBinaryFormat = 1;
+// A negative field length indicates a null.
+constexpr int32_t kNullFieldLength = -1;
 
 /// One-value ArrowArrayStream used to unify the implementations of Bind
 struct OneValueStream {
@@ -370,10 +372,6 @@ int TupleReader::GetNext(struct ArrowArray* out) {
       if (out->release) out->release(out);
       return na_res;
     }
-
-    struct ArrowBitmap validity_bitmap;
-    ArrowBitmapInit(&validity_bitmap);
-    ArrowArraySetValidityBitmap(out->children[col], &validity_bitmap);
   }
 
   // TODO: we need to always PQgetResult
@@ -430,11 +428,11 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     out->children[col]->length = num_rows;
   }
   out->length = num_rows;
-  na_res = ArrowArrayFinishBuildingDefault(out, 0);
+  na_res = ArrowArrayFinishBuildingDefault(out, &error);
   if (na_res != 0) {
     result_code = na_res;
     if (!last_error_.empty()) last_error_ += '\n';
-    last_error_ += StringBuilder("[libpq] Failed to build result array");
+    last_error_ += StringBuilder("[libpq] Failed to build result array: ", error.message);
   }
 
   // Check the server-side response
@@ -496,109 +494,88 @@ int TupleReader::AppendNext(struct ArrowSchemaView* fields, const char* buf, int
     int32_t field_length = LoadNetworkInt32(buf);
     buf += sizeof(int32_t);
 
-    struct ArrowBitmap* bitmap = ArrowArrayValidityBitmap(out->children[col]);
-
     // TODO: set error message here
-    CHECK_NA(ArrowBitmapAppend(bitmap, field_length >= 0, 1));
-
-    switch (fields[col].type) {
-      case NANOARROW_TYPE_BOOL: {
-        // DCHECK_EQ(field_length, 1);
-        struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
-        uint8_t raw_value = buf[0];
-        buf += 1;
-
-        if (raw_value != 0 && raw_value != 1) {
-          last_error_ = StringBuilder("[libpq] Column #", col + 1, " (\"",
-                                      schema_.children[col]->name,
-                                      "\"): invalid BOOL value ", raw_value);
-          return EINVAL;
-        }
-
-        int64_t bytes_required = _ArrowRoundUpToMultipleOf8(*row_count + 1) / 8;
-        if (bytes_required > buffer->size_bytes) {
-          CHECK_NA(ArrowBufferAppendFill(buffer, 0, bytes_required - buffer->size_bytes));
-        }
-        ArrowBitsSetTo(buffer->data, *row_count, 1, raw_value);
-        break;
-      }
-      case NANOARROW_TYPE_DOUBLE: {
-        // DCHECK_EQ(field_length, 8);
-        static_assert(sizeof(double) == sizeof(uint64_t),
-                      "Float is not same size as uint64_t");
-        struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
-        uint64_t raw_value = LoadNetworkUInt64(buf);
-        buf += sizeof(uint64_t);
-        double value = 0.0;
-        std::memcpy(&value, &raw_value, sizeof(double));
-        CHECK_NA(ArrowBufferAppendDouble(buffer, value));
-        break;
-      }
-      case NANOARROW_TYPE_FLOAT: {
-        // DCHECK_EQ(field_length, 4);
-        static_assert(sizeof(float) == sizeof(uint32_t),
-                      "Float is not same size as uint32_t");
-        struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
-        uint32_t raw_value = LoadNetworkUInt32(buf);
-        buf += sizeof(uint32_t);
-        float value = 0.0;
-        std::memcpy(&value, &raw_value, sizeof(float));
-        CHECK_NA(ArrowBufferAppendFloat(buffer, value));
-        break;
-      }
-      case NANOARROW_TYPE_INT16: {
-        // DCHECK_EQ(field_length, 2);
-        struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
-        int32_t value = LoadNetworkInt16(buf);
-        buf += sizeof(int32_t);
-        CHECK_NA(ArrowBufferAppendInt16(buffer, value));
-        break;
-      }
-      case NANOARROW_TYPE_INT32: {
-        // DCHECK_EQ(field_length, 4);
-        struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
-        int32_t value = LoadNetworkInt32(buf);
-        buf += sizeof(int32_t);
-        CHECK_NA(ArrowBufferAppendInt32(buffer, value));
-        break;
-      }
-      case NANOARROW_TYPE_INT64: {
-        // DCHECK_EQ(field_length, 8);
-        struct ArrowBuffer* buffer = ArrowArrayBuffer(out->children[col], 1);
-        int64_t value = field_length < 0 ? 0 : LoadNetworkInt64(buf);
-        buf += sizeof(int64_t);
-        CHECK_NA(ArrowBufferAppendInt64(buffer, value));
-        break;
-      }
-      case NANOARROW_TYPE_BINARY: {
-        struct ArrowBuffer* offset = ArrowArrayBuffer(out->children[col], 1);
-        struct ArrowBuffer* data = ArrowArrayBuffer(out->children[col], 2);
-        const int32_t last_offset =
-            reinterpret_cast<const int32_t*>(offset->data)[*row_count];
-        CHECK_NA(ArrowBufferAppendInt32(offset, last_offset + field_length));
-        CHECK_NA(ArrowBufferAppend(data, buf, field_length));
-        buf += field_length;
-        break;
-      }
-      case NANOARROW_TYPE_STRING: {
-        // textsend() in varlena.c
-        struct ArrowBuffer* offset = ArrowArrayBuffer(out->children[col], 1);
-        struct ArrowBuffer* data = ArrowArrayBuffer(out->children[col], 2);
-        const int32_t last_offset =
-            reinterpret_cast<const int32_t*>(offset->data)[*row_count];
-        CHECK_NA(ArrowBufferAppendInt32(offset, last_offset + field_length));
-        CHECK_NA(ArrowBufferAppend(data, buf, field_length));
-        buf += field_length;
-        break;
-      }
-      default:
-        last_error_ = StringBuilder("[libpq] Column #", col + 1, " (\"",
-                                    schema_.children[col]->name,
-                                    "\") has unsupported type ", fields[col].type);
-        return ENOTSUP;
+    if (field_length != kNullFieldLength) {
+      CHECK_NA(AppendValue(fields, buf, col, *row_count, field_length, out));
+      buf += field_length;
+    } else {
+      CHECK_NA(ArrowArrayAppendNull(out->children[col], 1));
     }
   }
   (*row_count)++;
+  return 0;
+}
+
+int TupleReader::AppendValue(struct ArrowSchemaView* fields, const char* buf, int col,
+                             int64_t row_count, int32_t field_length,
+                             struct ArrowArray* out) {
+  switch (fields[col].type) {
+    case NANOARROW_TYPE_BOOL: {
+      uint8_t raw_value = buf[0];
+      buf += 1;
+
+      if (raw_value != 0 && raw_value != 1) {
+        last_error_ = StringBuilder("[libpq] Column #", col + 1, " (\"",
+                                    schema_.children[col]->name,
+                                    "\"): invalid BOOL value ", raw_value);
+        return EINVAL;
+      }
+      CHECK_NA(ArrowArrayAppendInt(out->children[col], raw_value));
+      break;
+    }
+    case NANOARROW_TYPE_DOUBLE: {
+      static_assert(sizeof(double) == sizeof(uint64_t),
+                    "Float is not same size as uint64_t");
+      uint64_t raw_value = LoadNetworkUInt64(buf);
+      buf += sizeof(uint64_t);
+      double value = 0.0;
+      std::memcpy(&value, &raw_value, sizeof(double));
+      CHECK_NA(ArrowArrayAppendDouble(out->children[col], value));
+      break;
+    }
+    case NANOARROW_TYPE_FLOAT: {
+      static_assert(sizeof(float) == sizeof(uint32_t),
+                    "Float is not same size as uint32_t");
+      uint32_t raw_value = LoadNetworkUInt32(buf);
+      buf += sizeof(uint32_t);
+      float value = 0.0;
+      std::memcpy(&value, &raw_value, sizeof(float));
+      CHECK_NA(ArrowArrayAppendDouble(out->children[col], value));
+      break;
+    }
+    case NANOARROW_TYPE_INT16: {
+      int32_t value = LoadNetworkInt16(buf);
+      buf += sizeof(int32_t);
+      CHECK_NA(ArrowArrayAppendInt(out->children[col], value));
+      break;
+    }
+    case NANOARROW_TYPE_INT32: {
+      int32_t value = LoadNetworkInt32(buf);
+      buf += sizeof(int32_t);
+      CHECK_NA(ArrowArrayAppendInt(out->children[col], value));
+      break;
+    }
+    case NANOARROW_TYPE_INT64: {
+      int64_t value = LoadNetworkInt64(buf);
+      buf += sizeof(int64_t);
+      CHECK_NA(ArrowArrayAppendInt(out->children[col], value));
+      break;
+    }
+    case NANOARROW_TYPE_BINARY: {
+      CHECK_NA(ArrowArrayAppendBytes(out->children[col], {buf, field_length}));
+      break;
+    }
+    case NANOARROW_TYPE_STRING: {
+      // textsend() in varlena.c
+      CHECK_NA(ArrowArrayAppendString(out->children[col], {buf, field_length}));
+      break;
+    }
+    default:
+      last_error_ =
+          StringBuilder("[libpq] Column #", col + 1, " (\"", schema_.children[col]->name,
+                        "\") has unsupported type ", fields[col].type);
+      return ENOTSUP;
+  }
   return 0;
 }
 
