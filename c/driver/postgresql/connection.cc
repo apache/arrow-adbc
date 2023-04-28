@@ -23,18 +23,18 @@
 #include <adbc.h>
 
 #include "database.h"
-#include "util.h"
+#include "utils.h"
 
 namespace adbcpq {
 AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
   if (autocommit_) {
-    SetError(error, "Cannot commit when autocommit is enabled");
+    SetError(error, "%s", "Cannot commit when autocommit is enabled");
     return ADBC_STATUS_INVALID_STATE;
   }
 
   PGresult* result = PQexec(conn_, "COMMIT");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "Failed to commit: ", PQerrorMessage(conn_));
+    SetError(error, "%s%s", "Failed to commit: ", PQerrorMessage(conn_));
     PQclear(result);
     return ADBC_STATUS_IO;
   }
@@ -53,7 +53,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
 AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
                                         struct AdbcError* error) {
   if (!database || !database->private_data) {
-    SetError(error, "Must provide an initialized AdbcDatabase");
+    SetError(error, "%s", "Must provide an initialized AdbcDatabase");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   database_ =
@@ -71,13 +71,13 @@ AdbcStatusCode PostgresConnection::Release(struct AdbcError* error) {
 
 AdbcStatusCode PostgresConnection::Rollback(struct AdbcError* error) {
   if (autocommit_) {
-    SetError(error, "Cannot rollback when autocommit is enabled");
+    SetError(error, "%s", "Cannot rollback when autocommit is enabled");
     return ADBC_STATUS_INVALID_STATE;
   }
 
   PGresult* result = PQexec(conn_, "ROLLBACK");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "Failed to rollback: ", PQerrorMessage(conn_));
+    SetError(error, "%s%s", "Failed to rollback: ", PQerrorMessage(conn_));
     PQclear(result);
     return ADBC_STATUS_IO;
   }
@@ -94,7 +94,7 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
       autocommit = false;
     } else {
-      SetError(error, "Invalid value for option ", key, ": ", value);
+      SetError(error, "%s%s%s%s", "Invalid value for option ", key, ": ", value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
@@ -103,7 +103,7 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
 
       PGresult* result = PQexec(conn_, query);
       if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-        SetError(error, "Failed to update autocommit: ", PQerrorMessage(conn_));
+        SetError(error, "%s%s", "Failed to update autocommit: ", PQerrorMessage(conn_));
         PQclear(result);
         return ADBC_STATUS_IO;
       }
@@ -112,7 +112,7 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     }
     return ADBC_STATUS_OK;
   }
-  SetError(error, "Unknown option ", key);
+  SetError(error, "%s%s", "Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 }  // namespace adbcpq
