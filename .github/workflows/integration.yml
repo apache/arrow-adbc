@@ -208,3 +208,48 @@ jobs:
           ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
         run: |
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+
+  snowflake:
+    name: "Snowflake Integration Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        shell: bash
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache/restore@v3
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -c conda-forge \
+            --file ci/conda_env_cpp.txt
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.18.6
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
+      - name: Build and Test Snowflake Driver
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SNOWFLAKE: "1"
+          ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
+        run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"

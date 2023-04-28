@@ -17,6 +17,7 @@
 
 #include "adbc_validation.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <limits>
@@ -51,6 +52,15 @@ namespace {
       return adbc_status;                                           \
     }                                                               \
   } while (false)
+
+/// case insensitive string compare
+bool iequals(std::string_view s1, std::string_view s2) {
+  return std::equal(s1.begin(), s1.end(), s2.begin(), s2.end(),
+                    [](unsigned char a, unsigned char b) {
+                      return std::tolower(a) == std::tolower(b);
+                    });
+}
+
 }  // namespace
 
 //------------------------------------------------------------
@@ -594,19 +604,18 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
              db_schemas_index <
              ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row + 1);
              db_schemas_index++) {
-          ASSERT_FALSE(
-              ArrowArrayViewIsNull(db_schema_tables_list, row + db_schemas_index))
+          ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
               << "Row " << row << " should have non-null db_schema_tables";
 
           for (int64_t tables_index = ArrowArrayViewGetOffsetUnsafe(
                    db_schema_tables_list, row + db_schemas_index);
-               tables_index < ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list,
-                                                            row + db_schemas_index + 1);
+               tables_index <
+               ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index + 1);
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
-            if (std::string_view(table_name.data, table_name.size_bytes) ==
-                "bulk_ingest") {
+            if (iequals(std::string(table_name.data, table_name.size_bytes),
+                        "bulk_ingest")) {
               found_expected_table = true;
             }
 
@@ -766,8 +775,7 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
              db_schemas_index <
              ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row + 1);
              db_schemas_index++) {
-          ASSERT_FALSE(
-              ArrowArrayViewIsNull(db_schema_tables_list, row + db_schemas_index))
+          ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
               << "Row " << row << " should have non-null db_schema_tables";
 
           for (int64_t tables_index =
@@ -783,8 +791,8 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
             ASSERT_FALSE(ArrowArrayViewIsNull(table_constraints_list, tables_index))
                 << "Row " << row << " should have non-null table_constraints";
 
-            if (std::string_view(table_name.data, table_name.size_bytes) ==
-                "bulk_ingest") {
+            if (iequals(std::string(table_name.data, table_name.size_bytes),
+                        "bulk_ingest")) {
               found_expected_table = true;
 
               for (int64_t columns_index =
@@ -794,7 +802,10 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
                    columns_index++) {
                 ArrowStringView name = ArrowArrayViewGetStringUnsafe(
                     table_columns->children[0], columns_index);
-                column_names.push_back(std::string(name.data, name.size_bytes));
+                std::string temp(name.data, name.size_bytes);
+                std::transform(temp.begin(), temp.end(), temp.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+                column_names.push_back(std::move(temp));
                 ordinal_positions.push_back(
                     static_cast<int32_t>(ArrowArrayViewGetIntUnsafe(
                         table_columns->children[1], columns_index)));
@@ -897,7 +908,9 @@ void StatementTest::TestSqlIngestType(ArrowType type,
   ASSERT_THAT(rows_affected,
               ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -989,7 +1002,7 @@ void StatementTest::TestSqlIngestFloat64() {
 
 void StatementTest::TestSqlIngestString() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
-      NANOARROW_TYPE_STRING, {std::nullopt, "", "1234", "", "例"}));
+      NANOARROW_TYPE_STRING, {std::nullopt, "", "", "1234", "例"}));
 }
 
 void StatementTest::TestSqlIngestBinary() {
@@ -1191,8 +1204,11 @@ void StatementTest::TestSqlIngestMultipleConnections() {
     ASSERT_THAT(AdbcConnectionInit(&connection2, &database, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementNew(&connection2, &statement, &error), IsOkStatus(&error));
 
-    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
-                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement, "SELECT * FROM bulk_ingest ORDER BY \"int64s\" DESC NULLS LAST",
+            &error),
+        IsOkStatus(&error));
 
     {
       StreamReader reader;
@@ -1423,7 +1439,8 @@ void StatementTest::TestSqlPrepareSelectParams() {
 }
 
 void StatementTest::TestSqlPrepareUpdate() {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest() ||
+      !quirks()->supports_dynamic_parameter_binding()) {
     GTEST_SKIP();
   }
 
@@ -1501,7 +1518,8 @@ void StatementTest::TestSqlPrepareUpdateNoParams() {
 }
 
 void StatementTest::TestSqlPrepareUpdateStream() {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest() ||
+      !quirks()->supports_dynamic_parameter_binding()) {
     GTEST_SKIP();
   }
 
@@ -1771,7 +1789,7 @@ void StatementTest::TestSqlQueryErrors() {
 }
 
 void StatementTest::TestTransactions() {
-  if (!quirks()->supports_transactions()) {
+  if (!quirks()->supports_transactions() || quirks()->ddl_implicit_commit_txn()) {
     GTEST_SKIP();
   }
 

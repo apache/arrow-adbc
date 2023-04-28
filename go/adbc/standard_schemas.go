@@ -91,4 +91,12 @@ var (
 		{Name: "catalog_name", Type: arrow.BinaryTypes.String, Nullable: true},
 		{Name: "catalog_db_schemas", Type: arrow.ListOf(DBSchemaSchema), Nullable: true},
 	}, nil)
+
+	GetTableSchemaSchema = arrow.NewSchema([]arrow.Field{
+		{Name: "catalog_name", Type: arrow.BinaryTypes.String, Nullable: true},
+		{Name: "db_schema_name", Type: arrow.BinaryTypes.String, Nullable: true},
+		{Name: "table_name", Type: arrow.BinaryTypes.String},
+		{Name: "table_type", Type: arrow.BinaryTypes.String},
+		{Name: "table_schema", Type: arrow.BinaryTypes.Binary},
+	}, nil)
 )

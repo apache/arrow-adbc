@@ -79,6 +79,9 @@ class DriverQuirks {
   /// \brief Whether transaction methods are implemented
   virtual bool supports_transactions() const { return true; }
 
+  /// \brief Whether or not DDL implicitly commits a transaction
+  virtual bool ddl_implicit_commit_txn() const { return false; }
+
   /// \brief Whether GetSqlInfo is implemented
   virtual bool supports_get_sql_info() const { return true; }
 

@@ -170,6 +170,9 @@ echo "::group::Test ADBC Flight SQL Driver"
 ${APT_INSTALL} libadbc-driver-flightsql-dev=${package_version}
 echo "::endgroup::"
 
+echo "::group::Test ADBC Snowflake Driver"
+${APT_INSTALL} libadbc-driver-snowflake-dev=${package_version}
+echo "::endgroup::"
 
 echo "::group::Test ADBC GLib"
 export G_DEBUG=fatal-warnings

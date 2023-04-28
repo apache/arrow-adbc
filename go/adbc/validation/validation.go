@@ -27,9 +27,9 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/utils"
 	"github.com/apache/arrow/go/v12/arrow"
 	"github.com/apache/arrow/go/v12/arrow/array"
-	"github.com/apache/arrow/go/v12/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v12/arrow/memory"
 	"github.com/stretchr/testify/suite"
 )
@@ -58,6 +58,12 @@ type DriverQuirks interface {
 	GetMetadata(adbc.InfoCode) interface{}
 	// Create a sample table from an arrow record
 	CreateSampleTable(tableName string, r arrow.Record) error
+	// Field Metadata for Sample Table for comparison
+	SampleTableSchemaMetadata(tblName string, dt arrow.DataType) arrow.Metadata
+	// Whether the driver supports bulk ingest
+	SupportsBulkIngest() bool
+	// have the driver drop a table with the correct SQL syntax
+	DropTable(adbc.Connection, string) error
 
 	Alloc() memory.Allocator
 }
@@ -213,8 +219,13 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 			code := codeCol.Value(i)
 
 			child := valUnion.Field(valUnion.ChildID(i))
-			// currently we only define utf8 values for metadata
-			c.Equal(c.Quirks.GetMetadata(adbc.InfoCode(code)), child.(*array.String).Value(i), adbc.InfoCode(code).String())
+			if child.IsNull(i) {
+				exp := c.Quirks.GetMetadata(adbc.InfoCode(code))
+				c.Nilf(exp, "got nil for info %s, expected: %s", adbc.InfoCode(code), exp)
+			} else {
+				// currently we only define utf8 values for metadata
+				c.Equal(c.Quirks.GetMetadata(adbc.InfoCode(code)), child.(*array.String).Value(i), adbc.InfoCode(code).String())
+			}
 		}
 	}
 }
@@ -243,13 +254,9 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
 		{Name: "ints", Type: arrow.PrimitiveTypes.Int64, Nullable: true,
-			Metadata: arrow.MetadataFrom(map[string]string{
-				flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
-				flightsql.TableNameKey: "sample_test", flightsql.PrecisionKey: "10"})},
+			Metadata: c.Quirks.SampleTableSchemaMetadata("sample_test", arrow.PrimitiveTypes.Int64)},
 		{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true,
-			Metadata: arrow.MetadataFrom(map[string]string{
-				flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
-				flightsql.TableNameKey: "sample_test"})},
+			Metadata: c.Quirks.SampleTableSchemaMetadata("sample_test", arrow.BinaryTypes.String)},
 	}, nil)
 
 	c.Truef(expectedSchema.Equal(sc), "expected: %s\ngot: %s", expectedSchema, sc)
@@ -266,6 +273,88 @@ func (c *ConnectionTests) TestMetadataGetTableTypes() {
 
 	c.Truef(adbc.TableTypesSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.TableTypesSchema, rdr.Schema())
 	c.True(rdr.Next())
+}
+
+func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
+	ctx := context.Background()
+	cnxn, _ := c.DB.Open(ctx)
+	defer cnxn.Close()
+
+	c.Require().NoError(c.Quirks.DropTable(cnxn, "bulk_ingest"))
+	rec, _, err := array.RecordFromJSON(c.Quirks.Alloc(), arrow.NewSchema(
+		[]arrow.Field{
+			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true},
+		}, nil), strings.NewReader(`[
+			{"int64s": 42, "strings": "foo"},
+			{"int64s": -42, "strings": null},
+			{"int64s": null, "strings": ""}
+		]`))
+	c.Require().NoError(err)
+	defer rec.Release()
+
+	c.Require().NoError(c.Quirks.CreateSampleTable("bulk_ingest", rec))
+
+	filter := "in%"
+	tests := []struct {
+		name      string
+		filter    *string
+		colnames  []string
+		positions []int32
+	}{
+		{"no filter", nil, []string{"int64s", "strings"}, []int32{1, 2}},
+		{"filter: in%", &filter, []string{"int64s"}, []int32{1}},
+	}
+
+	for _, tt := range tests {
+		c.Run(tt.name, func() {
+			rdr, err := cnxn.GetObjects(ctx, adbc.ObjectDepthColumns, nil, nil, nil, tt.filter, nil)
+			c.Require().NoError(err)
+			defer rdr.Release()
+
+			c.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
+			c.True(rdr.Next())
+			rec := rdr.Record()
+			c.Greater(rec.NumRows(), int64(0))
+			var (
+				foundExpected        = false
+				catalogDbSchemasList = rec.Column(1).(*array.List)
+				catalogDbSchemas     = catalogDbSchemasList.ListValues().(*array.Struct)
+				dbSchemaTablesList   = catalogDbSchemas.Field(1).(*array.List)
+				dbSchemaTables       = dbSchemaTablesList.ListValues().(*array.Struct)
+				tableColumnsList     = dbSchemaTables.Field(2).(*array.List)
+				tableColumns         = tableColumnsList.ListValues().(*array.Struct)
+
+				colnames  = make([]string, 0)
+				positions = make([]int32, 0)
+			)
+			for row := 0; row < int(rec.NumRows()); row++ {
+				dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
+				for dbSchemaIdx := dbSchemaIdxStart; dbSchemaIdx < dbSchemaIdxEnd; dbSchemaIdx++ {
+					tblIdxStart, tblIdxEnd := dbSchemaTablesList.ValueOffsets(int(dbSchemaIdx))
+					for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
+						tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
+
+						if strings.EqualFold("bulk_ingest", tableName) {
+							foundExpected = true
+
+							colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
+							for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
+								name := tableColumns.Field(0).(*array.String).Value(int(colIdx))
+								colnames = append(colnames, strings.ToLower(name))
+								positions = append(positions, tableColumns.Field(1).(*array.Int32).Value(int(colIdx)))
+							}
+						}
+					}
+				}
+			}
+
+			c.False(rdr.Next())
+			c.True(foundExpected)
+			c.Equal(tt.colnames, colnames)
+			c.Equal(tt.positions, positions)
+		})
+	}
 }
 
 type StatementTests struct {
@@ -500,4 +589,214 @@ func (s *StatementTests) TestSqlPrepareErrorParamCountMismatch() {
 	s.NoError(stmt.Bind(s.ctx, batch))
 	_, _, err = stmt.ExecuteQuery(s.ctx)
 	s.Error(err)
+}
+
+func (s *StatementTests) TestSqlIngestInts() {
+	if !s.Quirks.SupportsBulkIngest() {
+		s.T().SkipNow()
+	}
+
+	s.Require().NoError(s.Quirks.DropTable(s.Cnxn, "bulk_ingest"))
+
+	schema := arrow.NewSchema([]arrow.Field{{
+		Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)
+
+	batchbldr := array.NewRecordBuilder(s.Quirks.Alloc(), schema)
+	defer batchbldr.Release()
+	bldr := batchbldr.Field(0).(*array.Int64Builder)
+	bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
+	batch := batchbldr.NewRecord()
+	defer batch.Release()
+
+	stmt, err := s.Cnxn.NewStatement()
+	s.Require().NoError(err)
+	defer stmt.Close()
+
+	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+	s.Require().NoError(stmt.Bind(s.ctx, batch))
+
+	affected, err := stmt.ExecuteUpdate(s.ctx)
+	s.Require().NoError(err)
+	if affected != -1 && affected != 3 {
+		s.FailNowf("invalid number of affected rows", "should be -1 or 3, got: %d", affected)
+	}
+
+	// use order by clause to ensure we get the same order as the input batch
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest ORDER BY "int64s" DESC NULLS LAST`))
+	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
+	s.Require().NoError(err)
+	if rows != -1 && rows != 3 {
+		s.FailNowf("invalid number of returned rows", "should be -1 or 3, got: %d", rows)
+	}
+	defer rdr.Release()
+
+	s.Truef(schema.Equal(utils.RemoveSchemaMetadata(rdr.Schema())), "expected: %s\n got: %s", schema, rdr.Schema())
+	s.Require().True(rdr.Next())
+	rec := rdr.Record()
+	s.EqualValues(3, rec.NumRows())
+	s.EqualValues(1, rec.NumCols())
+
+	s.Truef(array.Equal(rec.Column(0), batch.Column(0)), "expected: %s\ngot: %s", batch.Column(0), rec.Column(0))
+
+	s.Require().False(rdr.Next())
+	s.Require().NoError(rdr.Err())
+}
+
+func (s *StatementTests) TestSqlIngestAppend() {
+	if !s.Quirks.SupportsBulkIngest() {
+		s.T().SkipNow()
+	}
+
+	s.Require().NoError(s.Quirks.DropTable(s.Cnxn, "bulk_ingest"))
+
+	schema := arrow.NewSchema([]arrow.Field{{
+		Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)
+
+	batchbldr := array.NewRecordBuilder(s.Quirks.Alloc(), schema)
+	defer batchbldr.Release()
+	bldr := batchbldr.Field(0).(*array.Int64Builder)
+	bldr.AppendValues([]int64{42}, []bool{true})
+	batch := batchbldr.NewRecord()
+	defer batch.Release()
+
+	// ingest and create table
+	stmt, err := s.Cnxn.NewStatement()
+	s.Require().NoError(err)
+	defer stmt.Close()
+
+	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+	s.Require().NoError(stmt.Bind(s.ctx, batch))
+
+	affected, err := stmt.ExecuteUpdate(s.ctx)
+	s.Require().NoError(err)
+	if affected != -1 && affected != 1 {
+		s.FailNowf("invalid number of affected rows", "should be -1 or 1, got: %d", affected)
+	}
+
+	// now append
+	bldr.AppendValues([]int64{-42, 0}, []bool{true, false})
+	batch2 := batchbldr.NewRecord()
+	defer batch2.Release()
+
+	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeAppend))
+	s.Require().NoError(stmt.Bind(s.ctx, batch2))
+
+	affected, err = stmt.ExecuteUpdate(s.ctx)
+	s.Require().NoError(err)
+	if affected != -1 && affected != 2 {
+		s.FailNowf("invalid number of affected rows", "should be -1 or 2, got: %d", affected)
+	}
+
+	// use order by clause to ensure we get the same order as the input batch
+	s.Require().NoError(stmt.SetSqlQuery(`SELECT * FROM bulk_ingest ORDER BY "int64s" DESC NULLS LAST`))
+	rdr, rows, err := stmt.ExecuteQuery(s.ctx)
+	s.Require().NoError(err)
+	if rows != -1 && rows != 3 {
+		s.FailNowf("invalid number of returned rows", "should be -1 or 3, got: %d", rows)
+	}
+	defer rdr.Release()
+
+	s.Truef(schema.Equal(utils.RemoveSchemaMetadata(rdr.Schema())), "expected: %s\n got: %s", schema, rdr.Schema())
+	s.Require().True(rdr.Next())
+	rec := rdr.Record()
+	s.EqualValues(3, rec.NumRows())
+	s.EqualValues(1, rec.NumCols())
+
+	exp, err := array.Concatenate([]arrow.Array{batch.Column(0), batch2.Column(0)}, s.Quirks.Alloc())
+	s.Require().NoError(err)
+	defer exp.Release()
+	s.Truef(array.Equal(rec.Column(0), exp), "expected: %s\ngot: %s", exp, rec.Column(0))
+
+	s.Require().False(rdr.Next())
+	s.Require().NoError(rdr.Err())
+}
+
+func (s *StatementTests) TestSqlIngestErrors() {
+	if !s.Quirks.SupportsBulkIngest() {
+		s.T().SkipNow()
+	}
+
+	stmt, err := s.Cnxn.NewStatement()
+	s.Require().NoError(err)
+	defer stmt.Close()
+
+	s.Run("ingest without bind", func() {
+		var e adbc.Error
+		s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+
+		_, _, err := stmt.ExecuteQuery(s.ctx)
+		s.ErrorAs(err, &e)
+		s.Equal(adbc.StatusInvalidState, e.Code)
+	})
+
+	s.Run("append to nonexistent table", func() {
+		s.Require().NoError(s.Quirks.DropTable(s.Cnxn, "bulk_ingest"))
+		schema := arrow.NewSchema([]arrow.Field{{
+			Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)
+
+		batchbldr := array.NewRecordBuilder(s.Quirks.Alloc(), schema)
+		defer batchbldr.Release()
+		bldr := batchbldr.Field(0).(*array.Int64Builder)
+		bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
+		batch := batchbldr.NewRecord()
+		defer batch.Release()
+
+		s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+		s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeAppend))
+		s.Require().NoError(stmt.Bind(s.ctx, batch))
+
+		var e adbc.Error
+		_, _, err := stmt.ExecuteQuery(s.ctx)
+		s.ErrorAs(err, &e)
+		s.NotEqual(adbc.StatusOK, e.Code)
+		// SQLSTATE 42S02 == table or view not found
+		s.Equal([5]byte{'4', '2', 'S', '0', '2'}, e.SqlState)
+	})
+
+	s.Run("overwrite and incompatible schema", func() {
+		s.Require().NoError(s.Quirks.DropTable(s.Cnxn, "bulk_ingest"))
+		schema := arrow.NewSchema([]arrow.Field{{
+			Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true}}, nil)
+
+		batchbldr := array.NewRecordBuilder(s.Quirks.Alloc(), schema)
+		defer batchbldr.Release()
+		bldr := batchbldr.Field(0).(*array.Int64Builder)
+		bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
+		batch := batchbldr.NewRecord()
+		defer batch.Release()
+
+		s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+		s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreate))
+		s.Require().NoError(stmt.Bind(s.ctx, batch))
+
+		// create it
+		_, err := stmt.ExecuteUpdate(s.ctx)
+		s.Require().NoError(err)
+
+		// error if we try to create again
+		s.Require().NoError(stmt.Bind(s.ctx, batch))
+
+		var e adbc.Error
+		_, err = stmt.ExecuteUpdate(s.ctx)
+		s.ErrorAs(err, &e)
+		s.Equal(adbc.StatusInternal, e.Code)
+
+		// try to append an incompatible schema
+		schema, _ = schema.AddField(1, arrow.Field{Name: "coltwo", Type: arrow.PrimitiveTypes.Int64, Nullable: true})
+		batchbldr = array.NewRecordBuilder(s.Quirks.Alloc(), schema)
+		defer batchbldr.Release()
+		batchbldr.Field(0).AppendNull()
+		batchbldr.Field(1).AppendNull()
+		batch = batchbldr.NewRecord()
+		defer batch.Release()
+
+		s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+		s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeAppend))
+		s.Require().NoError(stmt.Bind(s.ctx, batch))
+
+		_, err = stmt.ExecuteUpdate(s.ctx)
+		s.ErrorAs(err, &e)
+		s.NotEqual(adbc.StatusOK, e.Code)
+	})
 }

@@ -66,7 +66,8 @@ cd c
   -DADBC_DRIVER_MANAGER=ON \
   -DADBC_DRIVER_POSTGRESQL=ON \
   -DADBC_DRIVER_SQLITE=ON \
-  -DADBC_DRIVER_FLIGHTSQL=ON
+  -DADBC_DRIVER_FLIGHTSQL=ON \
+  -DADBC_DRIVER_SNOWFLAKE=ON
 %adbc_cmake_build
 cd -
 
@@ -215,6 +216,35 @@ Libraries and header files for ADBC Flight SQL driver.
 %{_libdir}/libadbc_driver_flightsql.so
 %{_libdir}/pkgconfig/adbc-driver-flightsql.pc
 
+%package driver-snowflake%{major_version}-libs
+Summary: ADBC Snowflake driver
+License: Apache-2.0
+
+%description driver-snowflake%{major_version}-libs
+This package provides an ADBC driver for Snowflake
+
+%files driver-snowflake%{major_version}-libs
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/libadbc_driver_snowflake.so.*
+
+%package driver-snowflake-devel
+Summary:  Libraries and header files for ADBC Snowflake driver
+License:  Apache-2.0
+Requires: %{name}-driver-snowflake%{major_version}-libs = %{version}-%{release}
+
+%description driver-snowflake-devel
+Libraries and header files for ADBC Snowflake driver
+
+%files driver-snowflake-devel
+%defattr(-,root,root,-)
+%doc README.md
+%license LICENSE.txt NOTICE.txt
+%{_libdir}/libadbc_driver_snowflake.a
+%{_libdir}/libadbc_driver_snowflake.so
+%{_libdir}/pkgconfig/adbc-driver-snowflake.pc
+
 %package glib%{major_version}-libs
 Summary:	Runtime libraries for ADBC GLib
 License:	Apache-2.0
@@ -266,5 +296,7 @@ Documentation for ADBC GLib.
 %{_docdir}/adbc-glib/
 
 %changelog
+* Thu Apr 27 2023 Matt Topol <matt@voltrondata.com> - 0.4.0-1
+- Add snowflake driver
 * Mon Dec 26 2022 Sutou Kouhei <kou@clear-code.com> - 0.1.0-1
 - New upstream release.

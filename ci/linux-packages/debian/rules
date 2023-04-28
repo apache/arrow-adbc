@@ -40,7 +40,8 @@ override_dh_auto_configure:
           -DADBC_DRIVER_MANAGER=ON                      \
           -DADBC_DRIVER_POSTGRESQL=ON                   \
           -DADBC_DRIVER_SQLITE=ON                       \
-          -DADBC_DRIVER_FLIGHTSQL=ON
+          -DADBC_DRIVER_FLIGHTSQL=ON                    \
+          -DADBC_DRIVER_SNOWFLAKE=ON
 
 override_dh_auto_build:
 	dh_auto_build					\
@@ -74,4 +75,4 @@ override_dh_auto_test:
 override_dh_dwz:
 	# libadbc_driver_flightsql.so.* has compressed DWARF.
 	# We can't use dwz for compressed DWARF.
-	dh_dwz --exclude=libadbc_driver_flightsql
+	dh_dwz --exclude=libadbc_driver_flightsql --exclude=libadbc_driver_snowflake
