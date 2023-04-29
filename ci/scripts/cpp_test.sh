@@ -43,6 +43,9 @@ test_subproject() {
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
        labels="${labels}|driver-sqlite"
     fi
+    if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
+       labels="${labels}|driver-snowflake"
+    fi
 
     ctest \
         --output-on-failure \
