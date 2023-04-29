@@ -17,6 +17,7 @@
 
 #include "database.h"
 
+#include <inttypes.h>
 #include <cstring>
 #include <memory>
 #include <utility>
@@ -42,8 +43,8 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
   if (open_connections_ != 0) {
-    SetError(error, "%s%d%s", "[libpq] Database released with ", open_connections_,
-             " open connections");
+    SetError(error, "%s%" PRId32 "%s", "[libpq] Database released with ",
+             open_connections_, " open connections");
     return ADBC_STATUS_INVALID_STATE;
   }
   return ADBC_STATUS_OK;
