@@ -17,7 +17,7 @@
 
 #include "database.h"
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <cstring>
 #include <memory>
 #include <utility>
