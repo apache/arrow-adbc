@@ -23,4 +23,4 @@ all: $(SHLIB)
 $(SHLIB): gostatic
 
 gostatic:
-		/usr/local/go/bin/go build -v -o go/librsnowflake.a -buildmode=c-archive go/rsnowflake.go
+		"@gobin@" build -v -o go/librsnowflake.a -buildmode=c-archive go/rsnowflake.go
