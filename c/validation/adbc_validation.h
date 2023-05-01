@@ -205,6 +205,7 @@ class StatementTest {
   void TestSqlIngestAppend();
   void TestSqlIngestErrors();
   void TestSqlIngestMultipleConnections();
+  void TestSqlIngestSample();
 
   void TestSqlPartitionedInts();
 
@@ -261,6 +262,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
+  TEST_F(FIXTURE, SqlIngestSample) { TestSqlIngestSample(); }                           \
   TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                     \
   TEST_F(FIXTURE, SqlPrepareGetParameterSchema) { TestSqlPrepareGetParameterSchema(); } \
   TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \

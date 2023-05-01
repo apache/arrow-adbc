@@ -31,21 +31,25 @@ import (
 	"github.com/apache/arrow/go/v12/arrow"
 	"github.com/apache/arrow/go/v12/arrow/array"
 	"github.com/apache/arrow/go/v12/arrow/memory"
+	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 type SnowflakeQuirks struct {
-	dsn       string
-	mem       *memory.CheckedAllocator
-	connector gosnowflake.Connector
+	dsn        string
+	mem        *memory.CheckedAllocator
+	connector  gosnowflake.Connector
+	schemaName string
 }
 
 func (s *SnowflakeQuirks) SetupDriver(t *testing.T) adbc.Driver {
 	s.mem = memory.NewCheckedAllocator(memory.DefaultAllocator)
 	cfg, err := gosnowflake.ParseDSN(s.dsn)
 	require.NoError(t, err)
+
+	cfg.Schema = s.schemaName
 	s.connector = gosnowflake.NewConnector(gosnowflake.SnowflakeDriver{}, *cfg)
 	return driver.Driver{Alloc: s.mem}
 }
@@ -56,7 +60,8 @@ func (s *SnowflakeQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 
 func (s *SnowflakeQuirks) DatabaseOptions() map[string]string {
 	return map[string]string{
-		adbc.OptionKeyURI: s.dsn,
+		adbc.OptionKeyURI:   s.dsn,
+		driver.OptionSchema: s.schemaName,
 	}
 }
 
@@ -212,6 +217,35 @@ func (s *SnowflakeQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 	return arrow.Metadata{}
 }
 
+func createTempSchema(uri string) string {
+	db, err := sql.Open("snowflake", uri)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	schemaName := "ADBC_TESTING_" + strings.ReplaceAll(uuid.New().String(), "-", "_")
+	_, err = db.Exec(`CREATE SCHEMA ADBC_TESTING.` + schemaName)
+	if err != nil {
+		panic(err)
+	}
+
+	return schemaName
+}
+
+func dropTempSchema(uri, schema string) {
+	db, err := sql.Open("snowflake", uri)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`DROP SCHEMA ` + schema)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestADBCSnowflake(t *testing.T) {
 	uri := os.Getenv("SNOWFLAKE_URI")
 
@@ -219,7 +253,10 @@ func TestADBCSnowflake(t *testing.T) {
 		t.Skip("no SNOWFLAKE_URI defined, skip snowflake driver tests")
 	}
 
-	q := &SnowflakeQuirks{dsn: uri}
+	// avoid multiple runs clashing by operating in a fresh schema and then
+	// dropping that schema when we're done.
+	q := &SnowflakeQuirks{dsn: uri, schemaName: createTempSchema(uri)}
+	defer dropTempSchema(uri, q.schemaName)
 	suite.Run(t, &validation.DatabaseTests{Quirks: q})
 	suite.Run(t, &validation.ConnectionTests{Quirks: q})
 	suite.Run(t, &validation.StatementTests{Quirks: q})
