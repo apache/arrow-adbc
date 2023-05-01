@@ -19,6 +19,7 @@
 
 #include <array>
 #include <cerrno>
+#include <cinttypes>
 #include <cstring>
 #include <iostream>
 #include <memory>
@@ -311,7 +312,7 @@ struct BindStream {
             }
             default:
               // TODO: data type to string
-              SetError(error, "%s%zu%s%s%s%ud", "[libpq] Field #", col + 1, " ('",
+              SetError(error, "%s%" PRId64 "%s%s%s%ud", "[libpq] Field #", col + 1, " ('",
                        bind_schema->children[col]->name,
                        "') has unsupported type for ingestion ",
                        bind_schema_fields[col].type);
