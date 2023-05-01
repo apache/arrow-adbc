@@ -26,6 +26,7 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.h>
 
+#include "postgres_copy_reader.h"
 #include "postgres_type.h"
 
 namespace adbcpq {
@@ -35,19 +36,12 @@ class PostgresStatement;
 /// \brief An ArrowArrayStream that reads tuples from a PGresult.
 class TupleReader final {
  public:
-  TupleReader(PGconn* conn) : conn_(conn), result_(nullptr), pgbuf_(nullptr) {
-    std::memset(&schema_, 0, sizeof(schema_));
-  }
+  TupleReader(PGconn* conn) : conn_(conn), result_(nullptr), pgbuf_(nullptr) {}
 
   int GetSchema(struct ArrowSchema* out);
   int GetNext(struct ArrowArray* out);
   const char* last_error() const { return last_error_.c_str(); }
   void Release();
-
-  int AppendNext(struct ArrowSchemaView* fields, const char* buf, int buf_size,
-                 int64_t* row_count, struct ArrowArray* out);
-  int AppendValue(struct ArrowSchemaView* fields, const char* buf, int col,
-                  int64_t row_count, int32_t field_length, struct ArrowArray* out);
   void ExportTo(struct ArrowArrayStream* stream);
 
  private:
@@ -61,8 +55,8 @@ class TupleReader final {
   PGconn* conn_;
   PGresult* result_;
   char* pgbuf_;
-  struct ArrowSchema schema_;
   std::string last_error_;
+  PostgresCopyStreamReader copy_reader_;
 };
 
 class PostgresStatement {

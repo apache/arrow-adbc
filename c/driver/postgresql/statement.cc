@@ -28,9 +28,10 @@
 
 #include <adbc.h>
 #include <libpq-fe.h>
-#include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow.hpp>
 
 #include "connection.h"
+#include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
 #include "utils.h"
@@ -39,7 +40,7 @@ namespace adbcpq {
 
 namespace {
 /// The header that comes at the start of a binary COPY stream
-constexpr std::array<char, 11> kPgCopyBinarySignature = {
+constexpr std::array<char, 11> kPgCopyBinarySignature2 = {
     'P', 'G', 'C', 'O', 'P', 'Y', '\n', '\377', '\r', '\n', '\0'};
 /// The flag indicating to PostgreSQL that we want binary-format values.
 constexpr int kPgBinaryFormat = 1;
@@ -108,13 +109,14 @@ struct Handle {
   Resource* operator->() { return &value; }
 };
 
-/// Build an Arrow schema from a PostgreSQL result set
-AdbcStatusCode InferSchema(const PostgresTypeResolver& type_resolver, PGresult* result,
-                           struct ArrowSchema* out, struct AdbcError* error) {
+/// Build an PostgresType object from a PGresult*
+AdbcStatusCode ResolvePostgresType(const PostgresTypeResolver& type_resolver,
+                                   PGresult* result, PostgresType* out,
+                                   struct AdbcError* error) {
   ArrowError na_error;
   const int num_fields = PQnfields(result);
-  ArrowSchemaInit(out);
-  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(out, num_fields), error);
+  PostgresType root_type(PostgresTypeId::kRecord);
+
   for (int i = 0; i < num_fields; i++) {
     const Oid pg_oid = PQftype(result, i);
     PostgresType pg_type;
@@ -124,10 +126,10 @@ AdbcStatusCode InferSchema(const PostgresTypeResolver& type_resolver, PGresult* 
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
-    CHECK_NA(INTERNAL,
-             pg_type.WithFieldName(PQfname(result, i)).SetSchema(out->children[i]),
-             error);
+    root_type.AppendChild(PQfname(result, i), pg_type);
   }
+
+  *out = root_type;
   return ADBC_STATUS_OK;
 }
 
@@ -343,14 +345,16 @@ struct BindStream {
 }  // namespace
 
 int TupleReader::GetSchema(struct ArrowSchema* out) {
-  if (!schema_.release) {
+  int na_res = copy_reader_.GetSchema(out);
+  if (out->release == nullptr) {
     last_error_ = "[libpq] Result set was already consumed or freed";
     return EINVAL;
+  } else if (na_res != NANOARROW_OK) {
+    // e.g., Can't allocate memory
+    last_error_ = "[libpq] Error copying schema";
   }
 
-  std::memset(out, 0, sizeof(*out));
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaDeepCopy(&schema_, out));
-  return 0;
+  return na_res;
 }
 
 int TupleReader::GetNext(struct ArrowArray* out) {
@@ -364,86 +368,59 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   result_ = nullptr;
 
   struct ArrowError error;
-  // TODO: consistently release out on error (use another trampoline?)
-  int na_res = ArrowArrayInitFromSchema(out, &schema_, &error);
-  if (na_res != 0) {
-    last_error_ = "[libpq] Failed to init output array: " + std::to_string(na_res) +
-                  std::strerror(na_res) + ": " + error.message;
-    if (out->release) out->release(out);
+  error.message[0] = '\0';
+  struct ArrowBufferView data;
+  data.data.data = nullptr;
+  data.size_bytes = 0;
+
+  // Fetch + parse the header
+  int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
+  if (get_copy_res == -2) {
+    last_error_ = StringBuilder("[libpq] Fetch header failed: ", PQerrorMessage(conn_));
+    return EIO;
+  }
+
+  data.size_bytes = get_copy_res;
+  data.data.as_char = pgbuf_;
+  int na_res = copy_reader_.ReadHeader(&data, &error);
+  if (na_res != NANOARROW_OK) {
+    last_error_ = StringBuilder("[libpq] ReadHeader failed: ", error.message);
     return na_res;
   }
 
-  std::vector<ArrowSchemaView> fields(schema_.n_children);
-  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(out));
-  for (int col = 0; col < schema_.n_children; col++) {
-    na_res = ArrowSchemaViewInit(&fields[col], schema_.children[col], &error);
-    if (na_res != 0) {
-      last_error_ = "[libpq] Failed to init schema view: " + std::to_string(na_res) +
-                    std::strerror(na_res) + ": " + error.message;
-      if (out->release) out->release(out);
-      return na_res;
-    }
-  }
-
-  // TODO: we need to always PQgetResult
-
-  char* buf = nullptr;
-  int buf_size = 0;
-
-  // Get the header
-  {
-    constexpr size_t kPqHeaderLength =
-        kPgCopyBinarySignature.size() + sizeof(uint32_t) + sizeof(uint32_t);
-    // https://www.postgresql.org/docs/14/sql-copy.html#id-1.9.3.55.9.4.5
-    const int size = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
-    if (size < static_cast<int>(kPqHeaderLength)) {
-      return EIO;
-    } else if (std::strcmp(pgbuf_, kPgCopyBinarySignature.data()) != 0) {
-      return EIO;
-    }
-    buf = pgbuf_ + kPgCopyBinarySignature.size();
-
-    uint32_t flags = LoadNetworkUInt32(buf);
-    buf += sizeof(uint32_t);
-    if (flags != 0) {
-      return EIO;
-    }
-
-    // XXX: is this signed or unsigned? not stated by the docs
-    uint32_t extension_length = LoadNetworkUInt32(buf);
-    buf += sizeof(uint32_t) + extension_length;
-
-    buf_size = size - (kPqHeaderLength + extension_length);
-  }
-
-  // Append each row
-  int result_code = 0;
-  int64_t num_rows = 0;
-  last_error_.clear();
+  int64_t row_id = 0;
   do {
-    result_code = AppendNext(fields.data(), buf, buf_size, &num_rows, out);
     PQfreemem(pgbuf_);
-    pgbuf_ = buf = nullptr;
-    if (result_code != 0) break;
+    pgbuf_ = nullptr;
 
-    buf_size = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
-    if (buf_size < 0) {
-      pgbuf_ = buf = nullptr;
+    // Fetch + check
+    get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
+    if (get_copy_res == -2) {
+      last_error_ =
+          StringBuilder("[libpq] Fetch row ", row_id, " failed: ", PQerrorMessage(conn_));
+      return EIO;
+    } else if (get_copy_res == -1) {
+      // Returned when COPY has finished
       break;
     }
-    buf = pgbuf_;
-  } while (true);
 
-  // Finish the result array
-  for (int col = 0; col < schema_.n_children; col++) {
-    out->children[col]->length = num_rows;
-  }
-  out->length = num_rows;
-  na_res = ArrowArrayFinishBuildingDefault(out, &error);
-  if (na_res != 0) {
-    result_code = na_res;
-    if (!last_error_.empty()) last_error_ += '\n';
-    last_error_ += "[libpq] Failed to build result array" + std::string(error.message);
+    // Parse the result
+    data.size_bytes = get_copy_res;
+    data.data.as_char = pgbuf_;
+    na_res = copy_reader_.ReadRecord(&data, &error);
+    if (na_res != NANOARROW_OK && na_res != ENODATA) {
+      last_error_ = StringBuilder("[libpq] ReadRecord failed at row ", row_id, " : ",
+                                  error.message);
+      return na_res;
+    }
+
+    row_id++;
+  } while (na_res == NANOARROW_OK);
+
+  na_res = copy_reader_.GetArray(out, &error);
+  if (na_res != NANOARROW_OK) {
+    last_error_ = StringBuilder("[libpq] Failed to build result array: ", error.message);
+    return na_res;
   }
 
   // Check the server-side response
@@ -451,22 +428,19 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   const int pq_status = PQresultStatus(result_);
   if (pq_status != PGRES_COMMAND_OK) {
     if (!last_error_.empty()) last_error_ += '\n';
-    last_error_ += "[libpq] Query failed: (" + std::to_string(pq_status) + ") " +
-                   PQresultErrorMessage(result_);
-    result_code = EIO;
+    last_error_ += StringBuilder("[libpq] Query failed: (", pq_status, ") ",
+                                 PQresultErrorMessage(result_));
   }
+
   PQclear(result_);
   result_ = nullptr;
-  return result_code;
+  return NANOARROW_OK;
 }
 
 void TupleReader::Release() {
   if (result_) {
     PQclear(result_);
     result_ = nullptr;
-  }
-  if (schema_.release) {
-    schema_.release(&schema_);
   }
   if (pgbuf_) {
     PQfreemem(pgbuf_);
@@ -480,117 +454,6 @@ void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
   stream->get_last_error = &GetLastErrorTrampoline;
   stream->release = &ReleaseTrampoline;
   stream->private_data = this;
-}
-
-int TupleReader::AppendNext(struct ArrowSchemaView* fields, const char* buf, int buf_size,
-                            int64_t* row_count, struct ArrowArray* out) {
-  // https://www.postgresql.org/docs/14/sql-copy.html#id-1.9.3.55.9.4.6
-  // TODO: DCHECK_GE(buf_size, 2) << "Buffer too short to contain field count";
-
-  int16_t field_count = 0;
-  std::memcpy(&field_count, buf, sizeof(int16_t));
-  buf += sizeof(int16_t);
-  field_count = ntohs(field_count);
-
-  if (field_count == -1) {
-    // end-of-stream
-    return 0;
-  } else if (field_count != schema_.n_children) {
-    last_error_ = "[libpq] Expected " + std::to_string(schema_.n_children) +
-                  " fields but found " + std::to_string(field_count);
-    return EIO;
-  }
-
-  for (int col = 0; col < schema_.n_children; col++) {
-    int32_t field_length = LoadNetworkInt32(buf);
-    buf += sizeof(int32_t);
-
-    // TODO: set error message here
-    if (field_length != kNullFieldLength) {
-      NANOARROW_RETURN_NOT_OK(
-          AppendValue(fields, buf, col, *row_count, field_length, out));
-      buf += field_length;
-    } else {
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(out->children[col], 1));
-    }
-  }
-  (*row_count)++;
-  return 0;
-}
-
-int TupleReader::AppendValue(struct ArrowSchemaView* fields, const char* buf, int col,
-                             int64_t row_count, int32_t field_length,
-                             struct ArrowArray* out) {
-  switch (fields[col].type) {
-    case NANOARROW_TYPE_BOOL: {
-      uint8_t raw_value = buf[0];
-      buf += 1;
-
-      if (raw_value != 0 && raw_value != 1) {
-        last_error_ = "[libpq] Column #" + std::to_string(col + 1) + " (\"" +
-                      schema_.children[col]->name + "\"): invalid BOOL value " +
-                      std::to_string(raw_value);
-        return EINVAL;
-      }
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], raw_value));
-      break;
-    }
-    case NANOARROW_TYPE_DOUBLE: {
-      static_assert(sizeof(double) == sizeof(uint64_t),
-                    "Float is not same size as uint64_t");
-      uint64_t raw_value = LoadNetworkUInt64(buf);
-      buf += sizeof(uint64_t);
-      double value = 0.0;
-      std::memcpy(&value, &raw_value, sizeof(double));
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(out->children[col], value));
-      break;
-    }
-    case NANOARROW_TYPE_FLOAT: {
-      static_assert(sizeof(float) == sizeof(uint32_t),
-                    "Float is not same size as uint32_t");
-      uint32_t raw_value = LoadNetworkUInt32(buf);
-      buf += sizeof(uint32_t);
-      float value = 0.0;
-      std::memcpy(&value, &raw_value, sizeof(float));
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(out->children[col], value));
-      break;
-    }
-    case NANOARROW_TYPE_INT16: {
-      int32_t value = LoadNetworkInt16(buf);
-      buf += sizeof(int32_t);
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], value));
-      break;
-    }
-    case NANOARROW_TYPE_INT32: {
-      int32_t value = LoadNetworkInt32(buf);
-      buf += sizeof(int32_t);
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], value));
-      break;
-    }
-    case NANOARROW_TYPE_INT64: {
-      int64_t value = LoadNetworkInt64(buf);
-      buf += sizeof(int64_t);
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], value));
-      break;
-    }
-    case NANOARROW_TYPE_BINARY: {
-      NANOARROW_RETURN_NOT_OK(
-          ArrowArrayAppendBytes(out->children[col], {buf, field_length}));
-      break;
-    }
-    case NANOARROW_TYPE_STRING: {
-      // textsend() in varlena.c
-      NANOARROW_RETURN_NOT_OK(
-          ArrowArrayAppendString(out->children[col], {buf, field_length}));
-      break;
-    }
-    default:
-      last_error_ = "[libpq] Column #" + std::to_string(col + 1) + " (\"" +
-                    schema_.children[col]->name + "\") has unsupported type " +
-                    std::to_string(fields[col].type);
-      return ENOTSUP;
-  }
-  return 0;
 }
 
 int TupleReader::GetSchemaTrampoline(struct ArrowArrayStream* self,
@@ -797,9 +660,32 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
       PQclear(result);
       return ADBC_STATUS_IO;
     }
-    AdbcStatusCode status = InferSchema(*type_resolver_, result, &reader_.schema_, error);
+
+    // Resolve the information from the PGresult into a PostgresType
+    PostgresType root_type;
+    AdbcStatusCode status =
+        ResolvePostgresType(*type_resolver_, result, &root_type, error);
     PQclear(result);
     if (status != ADBC_STATUS_OK) return status;
+
+    // Initialize the copy reader and infer the output schema (i.e., error for
+    // unsupported types before issuing the COPY query)
+    reader_.copy_reader_.Init(root_type);
+    struct ArrowError na_error;
+    int na_res = reader_.copy_reader_.InferOutputSchema(&na_error);
+    if (na_res != NANOARROW_OK) {
+      SetError(error, "[libpq] Failed to infer output schema: ", na_error.message);
+      return na_res;
+    }
+
+    // This resolves the reader specific to each PostgresType -> ArrowSchema
+    // conversion. It is unlikely that this will fail given that we have just
+    // inferred these conversions ourselves.
+    na_res = reader_.copy_reader_.InitFieldReaders(&na_error);
+    if (na_res != NANOARROW_OK) {
+      SetError(error, "[libpq] Failed to initialize field readers: ", na_error.message);
+      return na_res;
+    }
   }
 
   // 2. Execute the query with COPY to get binary tuples
