@@ -5,5 +5,4 @@
 ^README\.Rmd$
 ^src/Makevars$
 ^configure\.win$
-^windows$
 ^\.vscode$

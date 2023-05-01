@@ -25,11 +25,17 @@ if [ -f bootstrap.R ]; then
   $R_HOME/bin/Rscript bootstrap.R
 fi
 
+# Find the go binary
+GO_BIN="/usr/local/go/bin/go"
+
+sed \
+  -e "s|@gobin@|$GO_BIN|" \
+  src/Makevars.in > src/Makevars
+
 if [ -f "src/adbc.h" ]; then
   echo "Found vendored ADBC"
   exit 0
 fi
-
 
 echo "Vendored ADBC Snowflake driver was not found."
 echo "This source package was probably built incorrectly and it's probably not your fault"
