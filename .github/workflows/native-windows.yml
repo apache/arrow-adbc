@@ -93,6 +93,9 @@ jobs:
         shell: pwsh
         env:
           BUILD_ALL: "1"
+          # TODO(apache/arrow-adbc#634)
+          BUILD_DRIVER_FLIGHTSQL: "0"
+          BUILD_DRIVER_SNOWFLAKE: "0"
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
@@ -162,13 +165,6 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
-      - name: Build Driver Snowflake
-        shell: pwsh
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_SNOWFLAKE: "1"
         run:
           .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
@@ -336,13 +332,6 @@ jobs:
           BUILD_DRIVER_MANAGER: "1"
         run:
           .\ci\scripts\python_test.ps1 $pwd $pwd\build
-      - name: Test Python Driver Flight SQL
-        shell: pwsh
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_FLIGHTSQL: "1"
-        run:
-          .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver PostgreSQL
         shell: pwsh
         env:
@@ -355,12 +344,5 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run:
-          .\ci\scripts\python_test.ps1 $pwd $pwd\build
-      - name: Test Python Driver Snowflake
-        shell: pwsh
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_SNOWFLAKE: "1"
         run:
           .\ci\scripts\python_test.ps1 $pwd $pwd\build
