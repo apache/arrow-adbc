@@ -441,7 +441,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   if (na_res != 0) {
     result_code = na_res;
     if (!last_error_.empty()) last_error_ += '\n';
-    last_error_ += "[libpq] Failed to build result array" + error.message;
+    last_error_ += "[libpq] Failed to build result array" + std::string(error.message);
   }
 
   // Check the server-side response
@@ -525,12 +525,12 @@ int TupleReader::AppendValue(struct ArrowSchemaView* fields, const char* buf, in
       buf += 1;
 
       if (raw_value != 0 && raw_value != 1) {
-        last_error_ = StringBuilder("[libpq] Column #", col + 1, " (\"",
-                                    schema_.children[col]->name,
-                                    "\"): invalid BOOL value ", raw_value);
+        last_error_ = "[libpq] Column #" + std::to_string(col + 1) + " (\"" +
+                      schema_.children[col]->name + "\"): invalid BOOL value " +
+                      std::to_string(raw_value);
         return EINVAL;
       }
-      CHECK_NA(ArrowArrayAppendInt(out->children[col], raw_value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], raw_value));
       break;
     }
     case NANOARROW_TYPE_DOUBLE: {
@@ -540,7 +540,7 @@ int TupleReader::AppendValue(struct ArrowSchemaView* fields, const char* buf, in
       buf += sizeof(uint64_t);
       double value = 0.0;
       std::memcpy(&value, &raw_value, sizeof(double));
-      CHECK_NA(ArrowArrayAppendDouble(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_FLOAT: {
@@ -550,40 +550,42 @@ int TupleReader::AppendValue(struct ArrowSchemaView* fields, const char* buf, in
       buf += sizeof(uint32_t);
       float value = 0.0;
       std::memcpy(&value, &raw_value, sizeof(float));
-      CHECK_NA(ArrowArrayAppendDouble(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_INT16: {
       int32_t value = LoadNetworkInt16(buf);
       buf += sizeof(int32_t);
-      CHECK_NA(ArrowArrayAppendInt(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_INT32: {
       int32_t value = LoadNetworkInt32(buf);
       buf += sizeof(int32_t);
-      CHECK_NA(ArrowArrayAppendInt(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_INT64: {
       int64_t value = LoadNetworkInt64(buf);
       buf += sizeof(int64_t);
-      CHECK_NA(ArrowArrayAppendInt(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_BINARY: {
-      CHECK_NA(ArrowArrayAppendBytes(out->children[col], {buf, field_length}));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayAppendBytes(out->children[col], {buf, field_length}));
       break;
     }
     case NANOARROW_TYPE_STRING: {
       // textsend() in varlena.c
-      CHECK_NA(ArrowArrayAppendString(out->children[col], {buf, field_length}));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayAppendString(out->children[col], {buf, field_length}));
       break;
     }
     default:
-      last_error_ =
-          StringBuilder("[libpq] Column #", col + 1, " (\"", schema_.children[col]->name,
-                        "\") has unsupported type ", fields[col].type);
+      last_error_ = "[libpq] Column #" + std::to_string(col + 1) + " (\"" +
+                    schema_.children[col]->name + "\") has unsupported type " +
+                    std::to_string(fields[col].type);
       return ENOTSUP;
   }
   return 0;
