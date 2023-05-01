@@ -15,4 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-adbc.h
+PKG_CPPFLAGS=-I../src -DADBC_EXPORT=""
+PKG_LIBS=-L$(CURDIR)/go -lrsnowflake
+
+.PHONY: all gostatic
+all: $(SHLIB)
+$(SHLIB): gostatic
+
+gostatic:
+		/usr/local/go/bin/go build -v -o go/librsnowflake.a -buildmode=c-archive go/rsnowflake.go
