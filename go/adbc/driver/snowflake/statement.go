@@ -89,6 +89,15 @@ func (st *statement) SetOption(key string, val string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
+	case OptionStatementQueueSize:
+		sz, err := strconv.Atoi(val)
+		if err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("could not parse '%s' as int for option '%s'", val, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		st.queueSize = sz
 	default:
 		return adbc.Error{
 			Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),

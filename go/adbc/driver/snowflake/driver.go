@@ -411,6 +411,8 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
+		case OptionLogTracing:
+			d.cfg.Tracing = v
 		default:
 			d.cfg.Params[k] = &v
 		}
