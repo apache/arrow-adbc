@@ -211,16 +211,17 @@ struct BindStream {
           param_lengths[i] = 0;
           break;
         default:
-          SetError(error, "%s%zu%s%s%s%s", "[libpq] Field #", i + 1, " ('",
-                   bind_schema->children[i]->name, "') has unsupported parameter type ",
+          SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
+                   static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
+                   "') has unsupported parameter type ",
                    ArrowTypeString(bind_schema_fields[i].type));
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
 
       param_types[i] = type_resolver.GetOID(type_id);
       if (param_types[i] == 0) {
-        SetError(error, "%s%zu%s%s%s%s", "[libpq] Field #", i + 1, " ('",
-                 bind_schema->children[i]->name,
+        SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
+                 static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
                  "') has type with no corresponding PostgreSQL type ",
                  ArrowTypeString(bind_schema_fields[i].type));
         return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -702,8 +703,8 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       default:
         // TODO: data type to string
-        SetError(error, "%s%zu%s%s%s%ud", "[libpq] Field #", i + 1, " ('",
-                 source_schema.children[i]->name,
+        SetError(error, "%s%" PRIu64 "%s%s%s%ud", "[libpq] Field #",
+                 static_cast<uint64_t>(i + 1), " ('", source_schema.children[i]->name,
                  "') has unsupported type for ingestion ", source_schema_fields[i].type);
         return ADBC_STATUS_NOT_IMPLEMENTED;
     }
