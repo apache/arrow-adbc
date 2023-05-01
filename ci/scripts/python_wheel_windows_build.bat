@@ -56,6 +56,7 @@ cmake ^
       -DADBC_DRIVER_SQLITE=ON ^
       -DADBC_DRIVER_FLIGHTSQL=ON ^
       -DADBC_DRIVER_MANAGER=ON ^
+      -DADBC_DRIVER_SNOWFLAKE=ON ^
       %source_dir%\c || exit /B 1
 
 cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
@@ -65,6 +66,7 @@ set ADBC_POSTGRESQL_LIBRARY=%build_dir%\bin\adbc_driver_postgresql.dll
 
 @REM XXX: CMake installs it to bin instead of lib for some reason
 set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
+set ADBC_SNOWFLAKE_LIBRARY=%build_dir%\bin\adbc_driver_snowflake.dll
 
 popd
 
@@ -72,7 +74,7 @@ python -m pip install --upgrade pip delvewheel wheel || exit /B 1
 
 FOR /F %%i IN ('python -c "import sysconfig; print(sysconfig.get_platform())"') DO set PLAT_NAME=%%i
 
-FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite) DO (
+FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake) DO (
     pushd %source_dir%\python\%%c
 
     echo "=== (%PYTHON_VERSION%) Checking %%c version ==="

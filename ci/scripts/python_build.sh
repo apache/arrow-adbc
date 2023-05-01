@@ -23,6 +23,7 @@ set -e
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
+: ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
 
 if [[ $(uname) = "Darwin" ]]; then
     ADBC_LIBRARY_SUFFIX="dylib"
@@ -41,6 +42,8 @@ build_subproject() {
         export ADBC_POSTGRESQL_LIBRARY="${install_dir}/lib/libadbc_driver_postgresql.${ADBC_LIBRARY_SUFFIX}"
     elif [[ "${subproject}" = "adbc_driver_sqlite" ]]; then
         export ADBC_SQLITE_LIBRARY="${install_dir}/lib/libadbc_driver_sqlite.${ADBC_LIBRARY_SUFFIX}"
+    elif [[ "${subproject}" = "adbc_driver_snowflake" ]]; then
+        export ADBC_SNOWFLAKE_LIBRARY="${install_dir}/lib/libadbc_driver_snowflake.${ADBC_LIBRARY_SUFFIX}"
     fi
 
     python -m pip install -e "${source_dir}/python/${subproject}"
@@ -69,6 +72,10 @@ main() {
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
         build_subproject "${source_dir}" "${install_dir}" adbc_driver_sqlite
+    fi
+
+    if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
+        build_subproject "${source_dir}" "${install_dir}" adbc_driver_snowflake
     fi
 }
 

@@ -164,6 +164,13 @@ jobs:
           BUILD_DRIVER_SQLITE: "1"
         run:
           .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+      - name: Build Driver Snowflake
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SNOWFLAKE: "1"
+        run:
+          .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
         shell: pwsh
         env:
@@ -301,6 +308,13 @@ jobs:
           BUILD_DRIVER_MANAGER: "1"
         run:
           .\ci\scripts\python_build.ps1 $pwd $pwd\build
+      - name: Build Python Driver FLight SQL
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_FLIGHTSQL: "1"
+        run:
+          .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Build Python Driver PostgreSQL
         shell: pwsh
         env:
@@ -322,10 +336,31 @@ jobs:
           BUILD_DRIVER_MANAGER: "1"
         run:
           .\ci\scripts\python_test.ps1 $pwd $pwd\build
+      - name: Test Python Driver Flight SQL
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_FLIGHTSQL: "1"
+        run:
+          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+      - name: Test Python Driver PostgreSQL
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+        run:
+          .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
+        run:
+          .\ci\scripts\python_test.ps1 $pwd $pwd\build
+      - name: Test Python Driver Snowflake
+        shell: pwsh
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SNOWFLAKE: "1"
         run:
           .\ci\scripts\python_test.ps1 $pwd $pwd\build

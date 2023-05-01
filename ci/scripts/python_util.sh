@@ -19,7 +19,7 @@
 
 set -ex
 
-COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite"
+COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
 
 function build_drivers {
     local -r source_dir="$1"
@@ -38,12 +38,14 @@ function build_drivers {
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.so
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
+        export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
         export CMAKE_ARGUMENTS=""
     else # macOS
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.dylib
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
+        export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.dylib
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
         if [[ "${VCPKG_ARCH}" = "x64" ]]; then
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=x86_64"
@@ -91,6 +93,7 @@ function build_drivers {
         -DADBC_DRIVER_FLIGHTSQL=ON \
         -DADBC_DRIVER_POSTGRESQL=ON \
         -DADBC_DRIVER_SQLITE=ON \
+        -DADBC_DRIVER_SNOWFLAKE=ON \
         ${source_dir}/c
     cmake --build . --target install --verbose -j
     popd

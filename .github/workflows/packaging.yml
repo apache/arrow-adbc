@@ -529,6 +529,7 @@ jobs:
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
+            adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
       - name: Test wheel
         shell: bash
@@ -634,6 +635,7 @@ jobs:
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
+            adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
       - name: Test wheel
         if: matrix.arch == 'amd64'
@@ -750,6 +752,7 @@ jobs:
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
+            adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
       - name: Test wheel
         shell: cmd
@@ -807,6 +810,7 @@ jobs:
             adbc/python/adbc_driver_manager/dist/*.tar.gz
             adbc/python/adbc_driver_postgresql/dist/*.tar.gz
             adbc/python/adbc_driver_sqlite/dist/*.tar.gz
+            adbc/python/adbc_driver_snowflake/dist/*.tar.gz
 
       - name: Test sdist
         shell: bash

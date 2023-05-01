@@ -15,6 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_flightsql, adbc_driver_manager, adbc_driver_postgresql, adbc_driver_sqlite, adbc_driver_snowflake
-profile = black
+adbc_driver_snowflake/*.c
+adbc_driver_snowflake/*.cpp
+build/
