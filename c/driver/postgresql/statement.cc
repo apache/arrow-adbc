@@ -390,10 +390,22 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 
   int64_t row_id = 0;
   do {
-    PQfreemem(pgbuf_);
-    pgbuf_ = nullptr;
+    // Parse the result (the header AND the first row are included in the first
+    // call to PQgetCopyData())
+    na_res = copy_reader_.ReadRecord(&data, &error);
+    if (na_res != NANOARROW_OK && na_res != ENODATA) {
+      last_error_ = StringBuilder("[libpq] ReadRecord failed at row ", row_id, " : ",
+                                  error.message);
+      return na_res;
+    } else if (na_res != NANOARROW_OK) {
+      break;
+    }
+
+    row_id++;
 
     // Fetch + check
+    PQfreemem(pgbuf_);
+    pgbuf_ = nullptr;
     get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
     if (get_copy_res == -2) {
       last_error_ =
@@ -404,18 +416,9 @@ int TupleReader::GetNext(struct ArrowArray* out) {
       break;
     }
 
-    // Parse the result
     data.size_bytes = get_copy_res;
     data.data.as_char = pgbuf_;
-    na_res = copy_reader_.ReadRecord(&data, &error);
-    if (na_res != NANOARROW_OK && na_res != ENODATA) {
-      last_error_ = StringBuilder("[libpq] ReadRecord failed at row ", row_id, " : ",
-                                  error.message);
-      return na_res;
-    }
-
-    row_id++;
-  } while (na_res == NANOARROW_OK);
+  } while (true);
 
   na_res = copy_reader_.GetArray(out, &error);
   if (na_res != NANOARROW_OK) {
