@@ -36,7 +36,11 @@ class PostgresStatement;
 /// \brief An ArrowArrayStream that reads tuples from a PGresult.
 class TupleReader final {
  public:
-  TupleReader(PGconn* conn) : conn_(conn), result_(nullptr), pgbuf_(nullptr) {}
+  TupleReader(PGconn* conn)
+      : conn_(conn),
+        result_(nullptr),
+        pgbuf_(nullptr),
+        copy_reader_(new PostgresCopyStreamReader()) {}
 
   int GetSchema(struct ArrowSchema* out);
   int GetNext(struct ArrowArray* out);
@@ -56,7 +60,7 @@ class TupleReader final {
   PGresult* result_;
   char* pgbuf_;
   std::string last_error_;
-  PostgresCopyStreamReader copy_reader_;
+  std::unique_ptr<PostgresCopyStreamReader> copy_reader_;
 };
 
 class PostgresStatement {

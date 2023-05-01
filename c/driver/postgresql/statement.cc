@@ -345,7 +345,7 @@ struct BindStream {
 }  // namespace
 
 int TupleReader::GetSchema(struct ArrowSchema* out) {
-  int na_res = copy_reader_.GetSchema(out);
+  int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
     last_error_ = "[libpq] Result set was already consumed or freed";
     return EINVAL;
@@ -382,7 +382,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 
   data.size_bytes = get_copy_res;
   data.data.as_char = pgbuf_;
-  int na_res = copy_reader_.ReadHeader(&data, &error);
+  int na_res = copy_reader_->ReadHeader(&data, &error);
   if (na_res != NANOARROW_OK) {
     last_error_ = StringBuilder("[libpq] ReadHeader failed: ", error.message);
     return na_res;
@@ -392,7 +392,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   do {
     // Parse the result (the header AND the first row are included in the first
     // call to PQgetCopyData())
-    na_res = copy_reader_.ReadRecord(&data, &error);
+    na_res = copy_reader_->ReadRecord(&data, &error);
     if (na_res != NANOARROW_OK && na_res != ENODATA) {
       last_error_ = StringBuilder("[libpq] ReadRecord failed at row ", row_id, " : ",
                                   error.message);
@@ -420,7 +420,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     data.data.as_char = pgbuf_;
   } while (true);
 
-  na_res = copy_reader_.GetArray(out, &error);
+  na_res = copy_reader_->GetArray(out, &error);
   if (na_res != NANOARROW_OK) {
     last_error_ = StringBuilder("[libpq] Failed to build result array: ", error.message);
     return na_res;
@@ -673,9 +673,10 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
     // Initialize the copy reader and infer the output schema (i.e., error for
     // unsupported types before issuing the COPY query)
-    reader_.copy_reader_.Init(root_type);
+    reader_.copy_reader_.reset(new PostgresCopyStreamReader());
+    reader_.copy_reader_->Init(root_type);
     struct ArrowError na_error;
-    int na_res = reader_.copy_reader_.InferOutputSchema(&na_error);
+    int na_res = reader_.copy_reader_->InferOutputSchema(&na_error);
     if (na_res != NANOARROW_OK) {
       SetError(error, "[libpq] Failed to infer output schema: ", na_error.message);
       return na_res;
@@ -684,7 +685,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     // This resolves the reader specific to each PostgresType -> ArrowSchema
     // conversion. It is unlikely that this will fail given that we have just
     // inferred these conversions ourselves.
-    na_res = reader_.copy_reader_.InitFieldReaders(&na_error);
+    na_res = reader_.copy_reader_->InitFieldReaders(&na_error);
     if (na_res != NANOARROW_OK) {
       SetError(error, "[libpq] Failed to initialize field readers: ", na_error.message);
       return na_res;
