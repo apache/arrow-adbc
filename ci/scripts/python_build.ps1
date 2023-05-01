@@ -45,6 +45,16 @@ if ($BuildDriverManager) {
     Build-Subproject adbc_driver_manager
 }
 if ($BuildDriverFlightSql) {
+    $env:ADBC_FLIGHTSQL_LIBRARY = Get-Childitem `
+      -ErrorAction SilentlyContinue `
+      -Path $InstallDir `
+      -Recurse `
+      -Include "adbc_driver_flightsql.dll","libadbc_driver_flightsql.so" | % {$_.FullName}
+    echo $env:ADBC_FLIGHTSQL_LIBRARY
+    if ($env:ADBC_FLIGHTSQL_LIBRARY -eq $null) {
+        echo "Could not find Flight SQL driver in $($InstallDir)"
+        exit 1
+    }
     Build-Subproject adbc_driver_flightsql
 }
 if ($BuildDriverPostgreSQL) {

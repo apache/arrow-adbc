@@ -308,7 +308,7 @@ jobs:
           BUILD_DRIVER_MANAGER: "1"
         run:
           .\ci\scripts\python_build.ps1 $pwd $pwd\build
-      - name: Build Python Driver FLight SQL
+      - name: Build Python Driver Flight SQL
         shell: pwsh
         env:
           BUILD_ALL: "0"

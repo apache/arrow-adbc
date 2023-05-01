@@ -337,7 +337,9 @@ jobs:
     name: "Python ${{ matrix.arch }} Conda"
     runs-on: ubuntu-latest
     # No need for Conda packages during release
-    if: "!startsWith(github.ref, 'refs/tags/')"
+    # if: "!startsWith(github.ref, 'refs/tags/')"
+    # TODO(apache/arrow-adbc#468): disable for now
+    if: false
     needs:
       - source
     strategy:
