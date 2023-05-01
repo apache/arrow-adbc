@@ -61,12 +61,13 @@ cmake ^
 
 cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
 
-@REM XXX: CMake installs it to bin instead of lib for some reason
+set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\lib\adbc_driver_flightsql.dll
 set ADBC_POSTGRESQL_LIBRARY=%build_dir%\bin\adbc_driver_postgresql.dll
-
-@REM XXX: CMake installs it to bin instead of lib for some reason
 set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
-set ADBC_SNOWFLAKE_LIBRARY=%build_dir%\bin\adbc_driver_snowflake.dll
+set ADBC_SNOWFLAKE_LIBRARY=%build_dir%\lib\adbc_driver_snowflake.dll
+
+dir %build_dir%\bin
+dir %build_dir%\lib
 
 popd
 
