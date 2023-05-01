@@ -73,6 +73,7 @@ if(ADBC_BUILD_TESTS)
                 driver-postgresql
                 SOURCES
                 postgres_type_test.cc
+                postgres_copy_reader_test.cc
                 postgresql_test.cc
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
