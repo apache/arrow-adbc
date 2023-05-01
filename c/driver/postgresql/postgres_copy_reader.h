@@ -86,7 +86,7 @@ ArrowErrorCode ReadChecked(ArrowBufferView* data, T* out, ArrowError* error) {
 
 class PostgresCopyFieldReader {
  public:
-  PostgresCopyFieldReader() : offsets_(nullptr), data_(nullptr) {
+  PostgresCopyFieldReader() : validity_(nullptr), offsets_(nullptr), data_(nullptr) {
     memset(&schema_view_, 0, sizeof(ArrowSchemaView));
   }
 
@@ -103,6 +103,7 @@ class PostgresCopyFieldReader {
 
   virtual ArrowErrorCode InitArray(ArrowArray* array) {
     // Cache some buffer pointers
+    validity_ = ArrowArrayValidityBitmap(array);
     for (int32_t i = 0; i < 3; i++) {
       switch (schema_view_.layout.buffer_type[i]) {
         case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
@@ -133,9 +134,19 @@ class PostgresCopyFieldReader {
  protected:
   PostgresType pg_type_;
   ArrowSchemaView schema_view_;
+  ArrowBitmap* validity_;
   ArrowBuffer* offsets_;
   ArrowBuffer* data_;
   std::vector<std::unique_ptr<PostgresCopyFieldReader>> children_;
+
+  ArrowErrorCode AppendValid(ArrowArray* array) {
+    if (validity_->buffer.data != nullptr) {
+      NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(validity_, true, 1));
+    }
+
+    array->length++;
+    return NANOARROW_OK;
+  }
 };
 
 // Reader for a Postgres boolean (one byte -> bitmap)
@@ -165,8 +176,7 @@ class PostgresCopyBooleanFieldReader : public PostgresCopyFieldReader {
       ArrowBitClear(data_->data, array->length);
     }
 
-    array->length++;
-    return NANOARROW_OK;
+    return AppendValid(array);
   }
 };
 
@@ -190,8 +200,7 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
 
     T value = ReadUnsafe<T>(data);
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &value, sizeof(T)));
-    array->length++;
-    return NANOARROW_OK;
+    return AppendValid(array);
   }
 };
 
@@ -222,8 +231,7 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
     NANOARROW_RETURN_NOT_OK(
         ArrowBufferAppendInt32(offsets_, offsets[array->length] + field_size_bytes));
 
-    array->length++;
-    return NANOARROW_OK;
+    return AppendValid(array);
   }
 };
 
@@ -553,6 +561,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
         case PostgresTypeId::kChar:
         case PostgresTypeId::kVarchar:
         case PostgresTypeId::kText:
+        case PostgresTypeId::kBpchar:
           *out = new PostgresCopyBinaryFieldReader();
           return NANOARROW_OK;
         default:
