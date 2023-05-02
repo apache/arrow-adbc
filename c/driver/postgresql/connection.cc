@@ -22,6 +22,7 @@
 #include <memory>
 
 #include <adbc.h>
+#include <libpq-fe.h>
 
 #include "database.h"
 #include "utils.h"
@@ -50,34 +51,43 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   struct AdbcError* error) {
   AdbcStatusCode final_status = ADBC_STATUS_OK;
   struct StringBuilder query = {0};
-  if (!StringBuilderInit(&query, /*initial_size=*/256)) return ADBC_STATUS_INTERNAL;
+  if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
 
-  if (!StringBuilderAppend(
+  if (StringBuilderAppend(
           &query, "%s",
           "SELECT attname, atttypid "
           "FROM pg_catalog.pg_class AS cls "
           "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
           "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
-          "WHERE attr.attnum >= 0 AND cls.oid = '"))
+          "WHERE attr.attnum >= 0 AND cls.oid = '") != 0)
     return ADBC_STATUS_INTERNAL;
 
   if (db_schema != nullptr) {
-    if (!StringBuilderAppend(&query, "%s%s", db_schema, "."))
+    char* schema = PQescapeIdentifier(conn_, db_schema, strlen(db_schema));
+    if (schema == NULL) {
+      SetError(error, "%s%s", "Faled to escape schema: ", PQerrorMessage(conn_));
       return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    int ret = StringBuilderAppend(&query, "%s%s", schema, ".");
+    PQfreemem(schema);
+
+    if (ret != 0) return ADBC_STATUS_INTERNAL;
   }
 
-  if (!StringBuilderAppend(&query, "%s%s", table_name, "'::regclass::oid"))
+  char* table = PQescapeIdentifier(conn_, table_name, strlen(table_name));
+  if (table == NULL) {
+    SetError(error, "%s%s", "Failed to escape table: ", PQerrorMessage(conn_));
     return ADBC_STATUS_INVALID_ARGUMENT;
+  }
 
-  // char* stmt = PQescapeLiteral(conn_, query.c_str(), query.length());
-  // if (stmt == nullptr) {
-  //   SetError(error, "Failed to get table schema: ", PQerrorMessage(conn_));
-  //  return ADBC_STATUS_INVALID_ARGUMENT;
-  // }
+  int ret = StringBuilderAppend(&query, "%s%s", table_name, "'::regclass::oid");
+  PQfreemem(table);
+
+  if (ret != 0) return ADBC_STATUS_INTERNAL;
 
   pg_result* result = PQexec(conn_, query.buffer);
   StringBuilderReset(&query);
-  // PQfreemem(stmt);
 
   ExecStatusType pq_status = PQresultStatus(result);
   if (pq_status == PGRES_TUPLES_OK) {
