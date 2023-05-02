@@ -19,3 +19,18 @@ add_library(adbc_driver_common STATIC utils.c)
 set_target_properties(adbc_driver_common PROPERTIES POSITION_INDEPENDENT_CODE ON)
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
+
+if(ADBC_BUILD_TESTS)
+  add_test_case(driver_common_test
+                PREFIX
+                adbc
+                EXTRA_LABELS
+                driver-common
+                SOURCES
+                utils_test.cc
+                EXTRA_LINK_LIBS
+                adbc_driver_common
+                nanoarrow)
+  target_compile_features(adbc-driver-common-test PRIVATE cxx_std_17)
+  adbc_configure_target(adbc-driver-common-test)
+endif()

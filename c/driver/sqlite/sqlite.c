@@ -42,25 +42,25 @@ static const uint32_t kSupportedInfoCodes[] = {
 
 // Private names (to avoid conflicts when using the driver manager)
 
-#define CHECK_DB_INIT(NAME, ERROR)                             \
-  if (!NAME->private_data) {                                   \
-    SetError(ERROR, "%s: database not initialized", __func__); \
-    return ADBC_STATUS_INVALID_STATE;                          \
+#define CHECK_DB_INIT(NAME, ERROR)                                      \
+  if (!NAME->private_data) {                                            \
+    SetError(ERROR, "[SQLite] %s: database not initialized", __func__); \
+    return ADBC_STATUS_INVALID_STATE;                                   \
   }
-#define CHECK_CONN_INIT(NAME, ERROR)                             \
-  if (!NAME->private_data) {                                     \
-    SetError(ERROR, "%s: connection not initialized", __func__); \
-    return ADBC_STATUS_INVALID_STATE;                            \
+#define CHECK_CONN_INIT(NAME, ERROR)                                      \
+  if (!NAME->private_data) {                                              \
+    SetError(ERROR, "[SQLite] %s: connection not initialized", __func__); \
+    return ADBC_STATUS_INVALID_STATE;                                     \
   }
-#define CHECK_STMT_INIT(NAME, ERROR)                            \
-  if (!NAME->private_data) {                                    \
-    SetError(ERROR, "%s: statement not initialized", __func__); \
-    return ADBC_STATUS_INVALID_STATE;                           \
+#define CHECK_STMT_INIT(NAME, ERROR)                                     \
+  if (!NAME->private_data) {                                             \
+    SetError(ERROR, "[SQLite] %s: statement not initialized", __func__); \
+    return ADBC_STATUS_INVALID_STATE;                                    \
   }
 
 AdbcStatusCode SqliteDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
   if (database->private_data) {
-    SetError(error, "AdbcDatabaseNew: database already allocated");
+    SetError(error, "[SQLite] AdbcDatabaseNew: database already allocated");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -81,7 +81,8 @@ AdbcStatusCode SqliteDatabaseSetOption(struct AdbcDatabase* database, const char
     strncpy(db->uri, value, len);
     return ADBC_STATUS_OK;
   }
-  SetError(error, "Unknown database option %s=%s", key, value ? value : "(NULL)");
+  SetError(error, "[SQLite] Unknown database option %s=%s", key,
+           value ? value : "(NULL)");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -92,9 +93,9 @@ int OpenDatabase(const char* maybe_uri, sqlite3** db, struct AdbcError* error) {
                            /*zVfs=*/NULL);
   if (rc != SQLITE_OK) {
     if (*db) {
-      SetError(error, "Failed to open %s: %s", uri, sqlite3_errmsg(*db));
+      SetError(error, "[SQLite] Failed to open %s: %s", uri, sqlite3_errmsg(*db));
     } else {
-      SetError(error, "Failed to open %s: failed to allocate memory", uri);
+      SetError(error, "[SQLite] Failed to open %s: failed to allocate memory", uri);
     }
     (void)sqlite3_close(*db);
     *db = NULL;
@@ -112,7 +113,7 @@ AdbcStatusCode ExecuteQuery(struct SqliteConnection* conn, const char* query,
   }
   rc = sqlite3_finalize(stmt);
   if (rc != SQLITE_OK && rc != SQLITE_DONE) {
-    SetError(error, "Failed to execute query \"%s\": %s", query,
+    SetError(error, "[SQLite] Failed to execute query \"%s\": %s", query,
              sqlite3_errmsg(conn->conn));
     return ADBC_STATUS_INTERNAL;
   }
@@ -125,7 +126,7 @@ AdbcStatusCode SqliteDatabaseInit(struct AdbcDatabase* database,
   struct SqliteDatabase* db = (struct SqliteDatabase*)database->private_data;
 
   if (db->db) {
-    SetError(error, "AdbcDatabaseInit: database already initialized");
+    SetError(error, "[SQLite] AdbcDatabaseInit: database already initialized");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -141,7 +142,7 @@ AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
   if (db->uri) free(db->uri);
   if (db->db) {
     if (sqlite3_close(db->db) == SQLITE_BUSY) {
-      SetError(error, "AdbcDatabaseRelease: connection is busy");
+      SetError(error, "[SQLite] AdbcDatabaseRelease: connection is busy");
       return ADBC_STATUS_IO;
     }
   }
@@ -150,7 +151,7 @@ AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
 
   if (connection_count > 0) {
     // -Wpedantic gives a warning if we use size_t in a printf() context
-    SetError(error, "AdbcDatabaseRelease: %ld open connections when released",
+    SetError(error, "[SQLite] AdbcDatabaseRelease: %ld open connections when released",
              (long)connection_count);  // NOLINT(runtime/int)
     return ADBC_STATUS_INVALID_STATE;
   }
@@ -160,7 +161,7 @@ AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
 AdbcStatusCode SqliteConnectionNew(struct AdbcConnection* connection,
                                    struct AdbcError* error) {
   if (connection->private_data) {
-    SetError(error, "AdbcConnectionNew: connection already allocated");
+    SetError(error, "[SQLite] AdbcConnectionNew: connection already allocated");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -193,12 +194,13 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
         conn->active_transaction = 1;
       }
     } else {
-      SetError(error, "Invalid connection option value %s=%s", key, value);
+      SetError(error, "[SQLite] Invalid connection option value %s=%s", key, value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     return ADBC_STATUS_OK;
   }
-  SetError(error, "Unknown connection option %s=%s", key, value ? value : "(NULL)");
+  SetError(error, "[SQLite] Unknown connection option %s=%s", key,
+           value ? value : "(NULL)");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -211,7 +213,7 @@ AdbcStatusCode SqliteConnectionInit(struct AdbcConnection* connection,
   struct SqliteDatabase* db = (struct SqliteDatabase*)database->private_data;
 
   if (conn->conn) {
-    SetError(error, "AdbcConnectionInit: connection already initialized");
+    SetError(error, "[SQLite] AdbcConnectionInit: connection already initialized");
     return ADBC_STATUS_INVALID_STATE;
   }
   return OpenDatabase(db->uri, &conn->conn, error);
@@ -225,7 +227,7 @@ AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
   if (conn->conn) {
     int rc = sqlite3_close(conn->conn);
     if (rc == SQLITE_BUSY) {
-      SetError(error, "AdbcConnectionRelease: connection is busy");
+      SetError(error, "[SQLite] AdbcConnectionRelease: connection is busy");
       return ADBC_STATUS_IO;
     }
   }
@@ -859,7 +861,8 @@ AdbcStatusCode SqliteConnectionGetTablesInner(
   }
 
   if (rc != SQLITE_DONE) {
-    SetError(error, "Failed to query for tables: %s", sqlite3_errmsg(conn->conn));
+    SetError(error, "[SQLite] Failed to query for tables: %s",
+             sqlite3_errmsg(conn->conn));
     return ADBC_STATUS_INTERNAL;
   }
   CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_tables_col), error);
@@ -909,7 +912,8 @@ AdbcStatusCode SqliteConnectionGetTablesImpl(struct SqliteConnection* conn, int 
                                             fk_stmt, table_type, column_name,
                                             db_schema_tables_col, error);
   } else {
-    SetError(error, "Failed to query for tables: %s", sqlite3_errmsg(conn->conn));
+    SetError(error, "[SQLite] Failed to query for tables: %s",
+             sqlite3_errmsg(conn->conn));
     status = ADBC_STATUS_INTERNAL;
   }
 
@@ -1017,21 +1021,28 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
     memset(schema, 0, sizeof(*schema));
     return ADBC_STATUS_OK;
   } else if (table_name == NULL) {
-    SetError(error, "AdbcConnectionGetTableSchema: must provide table_name");
+    SetError(error, "[SQLite] AdbcConnectionGetTableSchema: must provide table_name");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   struct StringBuilder query = {0};
-  StringBuilderInit(&query, /*initial_size=*/64);
-  StringBuilderAppend(&query, "SELECT * FROM ");
-  StringBuilderAppend(&query, table_name);
+  if (StringBuilderInit(&query, /*initial_size=*/64) != 0) {
+    SetError(error, "[SQLite] Could not initiate StringBuilder");
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  if (StringBuilderAppend(&query, "%s%s", "SELECT * FROM ", table_name) != 0) {
+    StringBuilderReset(&query);
+    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+    return ADBC_STATUS_INTERNAL;
+  }
 
   sqlite3_stmt* stmt = NULL;
   int rc =
       sqlite3_prepare_v2(conn->conn, query.buffer, query.size, &stmt, /*pzTail=*/NULL);
   StringBuilderReset(&query);
   if (rc != SQLITE_OK) {
-    SetError(error, "Failed to prepare query: %s", sqlite3_errmsg(conn->conn));
+    SetError(error, "[SQLite] Failed to prepare query: %s", sqlite3_errmsg(conn->conn));
     return ADBC_STATUS_INTERNAL;
   }
 
@@ -1041,7 +1052,7 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
   if (status == ADBC_STATUS_OK) {
     int code = stream.get_schema(&stream, schema);
     if (code != 0) {
-      SetError(error, "Failed to get schema: (%d) %s", code, strerror(code));
+      SetError(error, "[SQLite] Failed to get schema: (%d) %s", code, strerror(code));
       status = ADBC_STATUS_IO;
     }
   }
@@ -1109,7 +1120,7 @@ AdbcStatusCode SqliteConnectionCommit(struct AdbcConnection* connection,
   CHECK_CONN_INIT(connection, error);
   struct SqliteConnection* conn = (struct SqliteConnection*)connection->private_data;
   if (!conn->active_transaction) {
-    SetError(error, "No active transaction, cannot commit");
+    SetError(error, "[SQLite] No active transaction, cannot commit");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -1123,7 +1134,7 @@ AdbcStatusCode SqliteConnectionRollback(struct AdbcConnection* connection,
   CHECK_CONN_INIT(connection, error);
   struct SqliteConnection* conn = (struct SqliteConnection*)connection->private_data;
   if (!conn->active_transaction) {
-    SetError(error, "No active transaction, cannot rollback");
+    SetError(error, "[SQLite] No active transaction, cannot rollback");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -1138,10 +1149,10 @@ AdbcStatusCode SqliteStatementNew(struct AdbcConnection* connection,
   CHECK_CONN_INIT(connection, error);
   struct SqliteConnection* conn = (struct SqliteConnection*)connection->private_data;
   if (statement->private_data) {
-    SetError(error, "AdbcStatementNew: statement already allocated");
+    SetError(error, "[SQLite] AdbcStatementNew: statement already allocated");
     return ADBC_STATUS_INVALID_STATE;
   } else if (!conn->conn) {
-    SetError(error, "AdbcStatementNew: connection is not initialized");
+    SetError(error, "[SQLite] AdbcStatementNew: connection is not initialized");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -1169,7 +1180,8 @@ AdbcStatusCode SqliteStatementRelease(struct AdbcStatement* statement,
   AdbcSqliteBinderRelease(&stmt->binder);
   if (stmt->target_table) free(stmt->target_table);
   if (rc != SQLITE_OK) {
-    SetError(error, "AdbcStatementRelease: statement failed to finalize: (%d) %s", rc,
+    SetError(error,
+             "[SQLite] AdbcStatementRelease: statement failed to finalize: (%d) %s", rc,
              sqlite3_errmsg(stmt->conn));
   }
   free(statement->private_data);
@@ -1184,7 +1196,7 @@ AdbcStatusCode SqliteStatementPrepare(struct AdbcStatement* statement,
   struct SqliteStatement* stmt = (struct SqliteStatement*)statement->private_data;
 
   if (!stmt->query) {
-    SetError(error, "Must SetSqlQuery before ExecuteQuery or Prepare");
+    SetError(error, "[SQLite] Must SetSqlQuery before ExecuteQuery or Prepare");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (stmt->prepared == 0) {
@@ -1192,7 +1204,7 @@ AdbcStatusCode SqliteStatementPrepare(struct AdbcStatement* statement,
       int rc = sqlite3_finalize(stmt->stmt);
       stmt->stmt = NULL;
       if (rc != SQLITE_OK) {
-        SetError(error, "Failed to finalize previous statement: (%d) %s", rc,
+        SetError(error, "[SQLite] Failed to finalize previous statement: (%d) %s", rc,
                  sqlite3_errmsg(stmt->conn));
         return ADBC_STATUS_IO;
       }
@@ -1202,8 +1214,8 @@ AdbcStatusCode SqliteStatementPrepare(struct AdbcStatement* statement,
         sqlite3_prepare_v2(stmt->conn, stmt->query, (int)stmt->query_len, &stmt->stmt,
                            /*pzTail=*/NULL);
     if (rc != SQLITE_OK) {
-      SetError(error, "Failed to prepare query: %s\nQuery:%s", sqlite3_errmsg(stmt->conn),
-               stmt->query);
+      SetError(error, "[SQLite] Failed to prepare query: %s\nQuery:%s",
+               sqlite3_errmsg(stmt->conn), stmt->query);
       (void)sqlite3_finalize(stmt->stmt);
       stmt->stmt = NULL;
       return ADBC_STATUS_INVALID_ARGUMENT;
@@ -1222,27 +1234,67 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   // Create statements for CREATE TABLE / INSERT
   struct StringBuilder create_query = {0};
   struct StringBuilder insert_query = {0};
-  StringBuilderInit(&create_query, 256);
-  StringBuilderInit(&insert_query, 256);
 
-  StringBuilderAppend(&create_query, "CREATE TABLE ");
-  StringBuilderAppend(&create_query, stmt->target_table);
-  StringBuilderAppend(&create_query, " (");
+  if (StringBuilderInit(&create_query, /*initial_size=*/256) != 0) {
+    SetError(error, "[SQLite] Could not initiate StringBuilder");
+    return ADBC_STATUS_INTERNAL;
+  }
 
-  StringBuilderAppend(&insert_query, "INSERT INTO ");
-  StringBuilderAppend(&insert_query, stmt->target_table);
-  StringBuilderAppend(&insert_query, " VALUES (");
+  if (StringBuilderInit(&insert_query, /*initial_size=*/256) != 0) {
+    SetError(error, "[SQLite] Could not initiate StringBuilder");
+    StringBuilderReset(&create_query);
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  if (StringBuilderAppend(&create_query, "%s%s%s", "CREATE TABLE ", stmt->target_table,
+                          " (") != 0) {
+    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  if (StringBuilderAppend(&insert_query, "%s%s%s", "INSERT INTO ", stmt->target_table,
+                          " VALUES (") != 0) {
+    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
 
   for (int i = 0; i < stmt->binder.schema.n_children; i++) {
-    if (i > 0) StringBuilderAppend(&create_query, ", ");
+    if (i > 0) StringBuilderAppend(&create_query, "%s", ", ");
     // XXX: should escape the column name too
-    StringBuilderAppend(&create_query, stmt->binder.schema.children[i]->name);
+    if (StringBuilderAppend(&create_query, "%s", stmt->binder.schema.children[i]->name) !=
+        0) {
+      SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
 
-    if (i > 0) StringBuilderAppend(&insert_query, ", ");
-    StringBuilderAppend(&insert_query, "?");
+    if (i > 0) {
+      if (StringBuilderAppend(&insert_query, "%s", ", ") != 0) {
+        SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+        code = ADBC_STATUS_INTERNAL;
+        goto cleanup;
+      }
+    }
+
+    if (StringBuilderAppend(&insert_query, "%s", "?") != 0) {
+      SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
   }
-  StringBuilderAppend(&create_query, ")");
-  StringBuilderAppend(&insert_query, ")");
+  if (StringBuilderAppend(&create_query, "%s", ")") != 0) {
+    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  if (StringBuilderAppend(&insert_query, "%s", ")") != 0) {
+    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
 
   sqlite3_stmt* create = NULL;
   if (!stmt->append) {
@@ -1254,7 +1306,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     }
 
     if (rc != SQLITE_OK && rc != SQLITE_DONE) {
-      SetError(error, "Failed to create table: %s (executed '%s')",
+      SetError(error, "[SQLite] Failed to create table: %s (executed '%s')",
                sqlite3_errmsg(stmt->conn), create_query.buffer);
       code = ADBC_STATUS_INTERNAL;
     }
@@ -1264,13 +1316,15 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     int rc = sqlite3_prepare_v2(stmt->conn, insert_query.buffer, (int)insert_query.size,
                                 insert_statement, /*pzTail=*/NULL);
     if (rc != SQLITE_OK) {
-      SetError(error, "Failed to prepare statement: %s (executed '%s')",
+      SetError(error, "[SQLite] Failed to prepare statement: %s (executed '%s')",
                sqlite3_errmsg(stmt->conn), insert_query.buffer);
       code = ADBC_STATUS_INTERNAL;
     }
   }
 
   sqlite3_finalize(create);
+
+cleanup:
   StringBuilderReset(&create_query);
   StringBuilderReset(&insert_query);
   return code;
@@ -1280,7 +1334,7 @@ AdbcStatusCode SqliteStatementExecuteIngest(struct SqliteStatement* stmt,
                                             int64_t* rows_affected,
                                             struct AdbcError* error) {
   if (!stmt->binder.schema.release) {
-    SetError(error, "Must Bind() before bulk ingestion");
+    SetError(error, "[SQLite] Must Bind() before bulk ingestion");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -1300,7 +1354,8 @@ AdbcStatusCode SqliteStatementExecuteIngest(struct SqliteStatement* stmt,
         rc = sqlite3_step(insert);
       } while (rc == SQLITE_ROW);
       if (rc != SQLITE_DONE) {
-        SetError(error, "Failed to execute statement: %s", sqlite3_errmsg(stmt->conn));
+        SetError(error, "[SQLite] Failed to execute statement: %s",
+                 sqlite3_errmsg(stmt->conn));
         status = ADBC_STATUS_INTERNAL;
         break;
       }
@@ -1332,7 +1387,9 @@ AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
     int64_t expected = sqlite3_bind_parameter_count(stmt->stmt);
     int64_t actual = stmt->binder.schema.n_children;
     if (actual != expected) {
-      SetError(error, "Parameter count mismatch: expected %" PRId64 " but found %" PRId64,
+      SetError(error,
+               "[SQLite] Parameter count mismatch: expected %" PRId64
+               " but found %" PRId64,
                expected, actual);
       return ADBC_STATUS_INVALID_STATE;
     }
@@ -1364,7 +1421,7 @@ AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
     if (sqlite3_reset(stmt->stmt) != SQLITE_OK) {
       status = ADBC_STATUS_IO;
       const char* msg = sqlite3_errmsg(stmt->conn);
-      SetError(error, "Failed to execute query: %s",
+      SetError(error, "[SQLite] Failed to execute query: %s",
                (msg == NULL) ? "(unknown error)" : msg);
     }
 
@@ -1407,7 +1464,7 @@ AdbcStatusCode SqliteStatementSetSubstraitPlan(struct AdbcStatement* statement,
                                                const uint8_t* plan, size_t length,
                                                struct AdbcError* error) {
   CHECK_STMT_INIT(statement, error);
-  SetError(error, "Substrait is not supported");
+  SetError(error, "[SQLite] Substrait is not supported");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -1437,7 +1494,7 @@ AdbcStatusCode SqliteStatementGetParameterSchema(struct AdbcStatement* statement
   int num_params = sqlite3_bind_parameter_count(stmt->stmt);
   if (num_params < 0) {
     // Should not happen
-    SetError(error, "SQLite returned negative parameter count");
+    SetError(error, "[SQLite] SQLite returned negative parameter count");
     return ADBC_STATUS_INTERNAL;
   }
 
@@ -1484,7 +1541,7 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
     } else if (strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE) == 0) {
       stmt->append = 0;
     } else {
-      SetError(error, "Invalid statement option value %s=%s", key, value);
+      SetError(error, "[SQLite] Invalid statement option value %s=%s", key, value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     return ADBC_STATUS_OK;
@@ -1492,23 +1549,27 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
     char* end = NULL;
     long batch_size = strtol(value, &end, /*base=*/10);  // NOLINT(runtime/int)
     if (errno != 0) {
-      SetError(error, "Invalid statement option value %s=%s (out of range)", key, value);
+      SetError(error, "[SQLite] Invalid statement option value %s=%s (out of range)", key,
+               value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     } else if (batch_size <= 0) {
       SetError(error,
-               "Invalid statement option value %s=%s (value is non-positive or invalid)",
+               "[SQLite] Invalid statement option value %s=%s (value is non-positive or "
+               "invalid)",
                key, value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     } else if (batch_size > (long)INT_MAX) {  // NOLINT(runtime/int)
-      SetError(error,
-               "Invalid statement option value %s=%s (value is out of range of int)", key,
-               value);
+      SetError(
+          error,
+          "[SQLite] Invalid statement option value %s=%s (value is out of range of int)",
+          key, value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     stmt->batch_size = (int)batch_size;
     return ADBC_STATUS_OK;
   }
-  SetError(error, "Unknown statement option %s=%s", key, value ? value : "(NULL)");
+  SetError(error, "[SQLite] Unknown statement option %s=%s", key,
+           value ? value : "(NULL)");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -1518,13 +1579,14 @@ AdbcStatusCode SqliteStatementExecutePartitions(struct AdbcStatement* statement,
                                                 int64_t* rows_affected,
                                                 struct AdbcError* error) {
   CHECK_STMT_INIT(statement, error);
-  SetError(error, "Partitioned result sets are not supported");
+  SetError(error, "[SQLite] Partitioned result sets are not supported");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }  // NOLINT(whitespace/indent)
 
 AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError* error) {
   if (version != ADBC_VERSION_1_0_0) {
-    SetError(error, "Only version %d supported, got %d", ADBC_VERSION_1_0_0, version);
+    SetError(error, "[SQLite] Only version %d supported, got %d", ADBC_VERSION_1_0_0,
+             version);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 

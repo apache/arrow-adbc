@@ -125,6 +125,30 @@ Description: Apache Arrow Database Connectivity (ADBC) Flight SQL driver
  .
  This package provides CMake package, pkg-config package and so on.
 
+Package: libadbc-driver-snowflake004
+Section: libs
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends:
+  ${misc:Depends},
+  ${shlibs:Depends}
+Description: Apache Arrow Database Connectivity (ADBC) Snowflake driver
+ .
+ This package provides an ADBC driver for Snowflake
+
+Package: libadbc-driver-snowflake-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends:
+  ${misc:Depends},
+  libadbc-driver-snowflake004 (= ${binary:Version})
+Description: Apache Arrow Database Connectivity (ADBC) Snowflake driver
+ .
+ This package provides CMake package, pkg-config package and so on.
+
+
 Package: libadbc-glib0
 Section: libs
 Architecture: any

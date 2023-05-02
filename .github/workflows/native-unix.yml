@@ -280,6 +280,8 @@ jobs:
           staticcheck -f stylish ./...
           popd
       - name: Go Test
+        env:
+          SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
@@ -349,6 +351,8 @@ jobs:
           popd
       - name: Go Test
         shell: bash -l {0}
+        env:
+          SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"

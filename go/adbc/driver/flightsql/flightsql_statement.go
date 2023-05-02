@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	OptionStatementQueueSize = "adbc.flight.sql.rpc.queue_size"
+	OptionStatementQueueSize = "adbc.rpc.result_queue_size"
 	// Explicitly set substrait version for Flight SQL
 	// substrait *does* include the version in the serialized plan
 	// so this is not entirely necessary depending on the version
@@ -313,6 +313,7 @@ func (s *statement) Bind(_ context.Context, values arrow.Record) error {
 			Code: adbc.StatusInvalidState}
 	}
 
+	// calls retain
 	s.prepared.SetParameters(values)
 	return nil
 }
@@ -329,6 +330,7 @@ func (s *statement) BindStream(_ context.Context, stream array.RecordReader) err
 			Code: adbc.StatusInvalidState}
 	}
 
+	// calls retain
 	s.prepared.SetRecordReader(stream)
 	return nil
 }

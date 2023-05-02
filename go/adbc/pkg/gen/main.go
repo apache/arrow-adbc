@@ -22,7 +22,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -130,7 +129,7 @@ func main() {
 }
 
 func mustReadAll(path string) []byte {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -177,7 +176,7 @@ func process(data interface{}, specs []pathSpec) {
 				log.Fatalf("error formatting '%s': %s", spec.in, err)
 			}
 		}
-		if err := ioutil.WriteFile(spec.out, generated, fileMode(spec.in)); err != nil {
+		if err := os.WriteFile(spec.out, generated, fileMode(spec.in)); err != nil {
 			log.Fatal(err)
 		}
 	}

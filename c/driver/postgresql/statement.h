@@ -46,6 +46,8 @@ class TupleReader final {
 
   int AppendNext(struct ArrowSchemaView* fields, const char* buf, int buf_size,
                  int64_t* row_count, struct ArrowArray* out);
+  int AppendValue(struct ArrowSchemaView* fields, const char* buf, int col,
+                  int64_t row_count, int32_t field_length, struct ArrowArray* out);
   void ExportTo(struct ArrowArrayStream* stream);
 
  private:

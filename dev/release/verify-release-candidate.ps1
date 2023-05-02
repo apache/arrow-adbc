@@ -130,10 +130,12 @@ if (-not $?) { exit 1 }
 
 $env:BUILD_DRIVER_FLIGHTSQL = "0"
 $env:BUILD_DRIVER_POSTGRESQL = "0"
+$env:BUILD_DRIVER_SNOWFLAKE = "0"
 & $(Join-Path $ArrowSourceDir ci\scripts\cpp_test.ps1) $ArrowSourceDir $CppBuildDir
 if (-not $?) { exit 1 }
 $env:BUILD_DRIVER_FLIGHTSQL = "1"
 $env:BUILD_DRIVER_POSTGRESQL = "1"
+$env:BUILD_DRIVER_SNOWFLAKE = "1"
 
 Show-Header "Verify Python Sources"
 

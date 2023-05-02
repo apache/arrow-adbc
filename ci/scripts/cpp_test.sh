@@ -23,13 +23,34 @@ set -e
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 : ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
+: ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
 
 test_subproject() {
     local -r build_dir="${1}"
 
     pushd "${build_dir}/"
 
-    ctest --output-on-failure --no-tests=error
+    local labels="driver-common"
+    if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
+       labels="${labels}|driver-flightsql"
+    fi
+    if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then
+       labels="${labels}|driver-manager"
+    fi
+    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
+       labels="${labels}|driver-postgresql"
+    fi
+    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
+       labels="${labels}|driver-sqlite"
+    fi
+    if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
+       labels="${labels}|driver-snowflake"
+    fi
+
+    ctest \
+        --output-on-failure \
+        --no-tests=error \
+        -L "${labels}"
 
     popd
 }
@@ -45,6 +66,7 @@ main() {
 
     export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
+    export GODEBUG=cgocheck=2
 
     test_subproject "${build_dir}"
 }

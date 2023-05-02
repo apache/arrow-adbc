@@ -22,7 +22,8 @@ else
 endif
 
 DRIVERS := \
-	libadbc_driver_flightsql.$(SUFFIX)
+	libadbc_driver_flightsql.$(SUFFIX) \
+	libadbc_driver_snowflake.$(SUFFIX)
 
 .PHONY: all
 all: $(DRIVERS)

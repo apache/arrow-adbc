@@ -41,16 +41,19 @@ add_arrow_lib(adbc_driver_postgresql
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS}
               SHARED_LINK_LIBS
+              adbc_driver_common
               nanoarrow
               ${LIBPQ_LINK_LIBRARIES}
               STATIC_LINK_LIBS
               ${LIBPQ_LINK_LIBRARIES}
+              adbc_driver_common
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 include_directories(SYSTEM ${LIBPQ_INCLUDE_DIRS})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver/common)
 
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
@@ -66,17 +69,17 @@ if(ADBC_BUILD_TESTS)
   add_test_case(driver_postgresql_test
                 PREFIX
                 adbc
+                EXTRA_LABELS
+                driver-postgresql
                 SOURCES
                 postgres_type_test.cc
                 postgresql_test.cc
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
+                adbc_driver_common
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
   adbc_configure_target(adbc-driver-postgresql-test)
 endif()
-
-validate_config()
-config_summary_message()

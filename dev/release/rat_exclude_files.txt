@@ -11,6 +11,7 @@ go/adbc/drivermgr/adbc_driver_manager.h
 go/adbc/status_string.go
 go/adbc/infocode_string.go
 go/adbc/go.sum
+java/.mvn/jvm.config
 rat.txt
 r/adbcdrivermanager/DESCRIPTION
 r/adbcdrivermanager/NAMESPACE
