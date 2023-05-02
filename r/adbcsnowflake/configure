@@ -25,11 +25,32 @@ if [ -f bootstrap.R ]; then
   $R_HOME/bin/Rscript bootstrap.R
 fi
 
-# Find the go binary
-GO_BIN="/usr/local/go/bin/go"
+# Find the go binary so that we can go build!
+# We could download a go binary for an appropriate platform here, too
+# for a more self-contained installation.
+if [ -z "$GO_BIN" ]; then
+  GO_BIN=`which go`
+fi
+
+if [ -z "$GO_BIN" ]; then
+  GO_BIN="/usr/local/go/bin/go"
+fi
+
+echo "Trying 'go version' with GO_BIN at '$GO_BIN'"
+"$GO_BIN" version
+if [ $? -ne 0 ]; then
+  echo "go --version had a non-zero exit code"
+  exit 1
+fi
+
+# Locate ADBC. This is temporary (only works in a checkout)
+cd ../..
+ADBC_HOME=`pwd`
+cd r/adbcsnowflake
 
 sed \
   -e "s|@gobin@|$GO_BIN|" \
+  -e "s|@adbchome@|$ADBC_HOME|" \
   src/Makevars.in > src/Makevars
 
 if [ -f "src/adbc.h" ]; then
