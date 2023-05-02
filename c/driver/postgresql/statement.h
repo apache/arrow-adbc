@@ -28,6 +28,7 @@
 
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
+#include "utils.h"
 
 namespace adbcpq {
 class PostgresConnection;
@@ -40,11 +41,19 @@ class TupleReader final {
       : conn_(conn),
         result_(nullptr),
         pgbuf_(nullptr),
-        copy_reader_(new PostgresCopyStreamReader()) {}
+        copy_reader_(new PostgresCopyStreamReader()) {
+    StringBuilderInit(&error_builder_, 0);
+  }
 
   int GetSchema(struct ArrowSchema* out);
   int GetNext(struct ArrowArray* out);
-  const char* last_error() const { return last_error_.c_str(); }
+  const char* last_error() const {
+    if (error_builder_.size > 0) {
+      return error_builder_.buffer;
+    } else {
+      return nullptr;
+    }
+  }
   void Release();
   void ExportTo(struct ArrowArrayStream* stream);
 
@@ -59,7 +68,7 @@ class TupleReader final {
   PGconn* conn_;
   PGresult* result_;
   char* pgbuf_;
-  std::string last_error_;
+  struct StringBuilder error_builder_;
   std::unique_ptr<PostgresCopyStreamReader> copy_reader_;
 };
 

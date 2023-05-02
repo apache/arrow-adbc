@@ -347,11 +347,11 @@ struct BindStream {
 int TupleReader::GetSchema(struct ArrowSchema* out) {
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
-    last_error_ = "[libpq] Result set was already consumed or freed";
+    StringBuilderAppend(&error_builder_, "[libpq] Result set was already consumed or freed");
     return EINVAL;
   } else if (na_res != NANOARROW_OK) {
     // e.g., Can't allocate memory
-    last_error_ = "[libpq] Error copying schema";
+    StringBuilderAppend(&error_builder_, "[libpq] Error copying schema");
   }
 
   return na_res;
@@ -367,6 +367,9 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   PQclear(result_);
   result_ = nullptr;
 
+  // Clear the error builder
+  error_builder_.size = 0;
+
   struct ArrowError error;
   error.message[0] = '\0';
   struct ArrowBufferView data;
@@ -376,7 +379,8 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   // Fetch + parse the header
   int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
   if (get_copy_res == -2) {
-    last_error_ = StringBuilder("[libpq] Fetch header failed: ", PQerrorMessage(conn_));
+    StringBuilderAppend(&error_builder_, "[libpq] Fetch header failed: %s",
+                        PQerrorMessage(conn_));
     return EIO;
   }
 
@@ -384,7 +388,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   data.data.as_char = pgbuf_;
   int na_res = copy_reader_->ReadHeader(&data, &error);
   if (na_res != NANOARROW_OK) {
-    last_error_ = StringBuilder("[libpq] ReadHeader failed: ", error.message);
+    StringBuilderAppend(&error_builder_, "[libpq] ReadHeader failed: %s", error.message);
     return na_res;
   }
 
@@ -394,11 +398,9 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     // call to PQgetCopyData())
     na_res = copy_reader_->ReadRecord(&data, &error);
     if (na_res != NANOARROW_OK && na_res != ENODATA) {
-      last_error_ = StringBuilder("[libpq] ReadRecord failed at row ", row_id, " : ",
-                                  error.message);
+      StringBuilderAppend(&error_builder_, "[libpq] ReadRecord failed at row %ld: %s",
+                          static_cast<long>(row_id), error.message);
       return na_res;
-    } else if (na_res != NANOARROW_OK) {
-      break;
     }
 
     row_id++;
@@ -408,8 +410,8 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     pgbuf_ = nullptr;
     get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
     if (get_copy_res == -2) {
-      last_error_ =
-          StringBuilder("[libpq] Fetch row ", row_id, " failed: ", PQerrorMessage(conn_));
+      StringBuilderAppend(&error_builder_, "[libpq] Fetch row %ld failed: %s",
+                          static_cast<long>(row_id), PQerrorMessage(conn_));
       return EIO;
     } else if (get_copy_res == -1) {
       // Returned when COPY has finished
@@ -422,7 +424,8 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 
   na_res = copy_reader_->GetArray(out, &error);
   if (na_res != NANOARROW_OK) {
-    last_error_ = StringBuilder("[libpq] Failed to build result array: ", error.message);
+    StringBuilderAppend(&error_builder_, "[libpq] Failed to build result array: %s",
+                        error.message);
     return na_res;
   }
 
@@ -430,9 +433,9 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   result_ = PQgetResult(conn_);
   const int pq_status = PQresultStatus(result_);
   if (pq_status != PGRES_COMMAND_OK) {
-    if (!last_error_.empty()) last_error_ += '\n';
-    last_error_ += StringBuilder("[libpq] Query failed: (", pq_status, ") ",
-                                 PQresultErrorMessage(result_));
+    StringBuilderAppend(&error_builder_, "[libpq] Query failed [%d]: %s", pq_status,
+                        PQresultErrorMessage(result_));
+    return EIO;
   }
 
   PQclear(result_);
@@ -678,7 +681,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     struct ArrowError na_error;
     int na_res = reader_.copy_reader_->InferOutputSchema(&na_error);
     if (na_res != NANOARROW_OK) {
-      SetError(error, "[libpq] Failed to infer output schema: ", na_error.message);
+      SetError(error, "[libpq] Failed to infer output schema: %s", na_error.message);
       return na_res;
     }
 
