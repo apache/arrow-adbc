@@ -17,9 +17,9 @@
 
 #include "connection.h"
 
+#include <cinttypes>
 #include <cstring>
 #include <memory>
-#include <string>
 
 #include <adbc.h>
 
@@ -48,23 +48,26 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   const char* table_name,
                                                   struct ArrowSchema* schema,
                                                   struct AdbcError* error) {
-  // TODO: sqlite uses a StringBuilder class that seems roughly equivalent
-  // to a similar tool in arrow/util/string_builder.h but wasn't clear on
-  // structure and how to use, so relying on simplistic appends for now
   AdbcStatusCode final_status = ADBC_STATUS_OK;
+  struct StringBuilder query = {0};
+  if (!StringBuilderInit(&query, /*initial_size=*/256)) return ADBC_STATUS_INTERNAL;
 
-  std::string query =
-      "SELECT attname, atttypid "
-      "FROM pg_catalog.pg_class AS cls "
-      "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
-      "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
-      "WHERE attr.attnum >= 0 AND cls.oid = '";
+  if (!StringBuilderAppend(
+          &query, "%s",
+          "SELECT attname, atttypid "
+          "FROM pg_catalog.pg_class AS cls "
+          "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
+          "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
+          "WHERE attr.attnum >= 0 AND cls.oid = '"))
+    return ADBC_STATUS_INTERNAL;
+
   if (db_schema != nullptr) {
-    query.append(db_schema);
-    query.append(".");
+    if (!StringBuilderAppend(&query, "%s%s", db_schema, "."))
+      return ADBC_STATUS_INVALID_ARGUMENT;
   }
-  query.append(table_name);
-  query.append("'::regclass::oid");
+
+  if (!StringBuilderAppend(&query, "%s%s", table_name, "'::regclass::oid"))
+    return ADBC_STATUS_INVALID_ARGUMENT;
 
   // char* stmt = PQescapeLiteral(conn_, query.c_str(), query.length());
   // if (stmt == nullptr) {
@@ -72,14 +75,15 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   //  return ADBC_STATUS_INVALID_ARGUMENT;
   // }
 
-  pg_result* result = PQexec(conn_, query.c_str());
+  pg_result* result = PQexec(conn_, query.buffer);
+  StringBuilderReset(&query);
   // PQfreemem(stmt);
 
   ExecStatusType pq_status = PQresultStatus(result);
   if (pq_status == PGRES_TUPLES_OK) {
     int num_rows = PQntuples(result);
     ArrowSchemaInit(schema);
-    CHECK_NA_ADBC(ArrowSchemaSetTypeStruct(schema, num_rows), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(schema, num_rows), error);
 
     ArrowError na_error;
     for (int row = 0; row < num_rows; row++) {
@@ -89,16 +93,16 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
 
       PostgresType pg_type;
       if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-        SetError(error, "Column #", row + 1, " (\"", colname,
+        SetError(error, "%s%d%s%s%s%" PRIu32, "Column #", row + 1, " (\"", colname,
                  "\") has unknown type code ", pg_oid);
         return ADBC_STATUS_NOT_IMPLEMENTED;
       }
 
-      CHECK_NA_ADBC(pg_type.WithFieldName(colname).SetSchema(schema->children[row]),
-                    error);
+      CHECK_NA(INTERNAL, pg_type.WithFieldName(colname).SetSchema(schema->children[row]),
+               error);
     }
   } else {
-    SetError(error, "Failed to get table schema: ", PQerrorMessage(conn_));
+    SetError(error, "%s%s", "Failed to get table schema: ", PQerrorMessage(conn_));
     final_status = ADBC_STATUS_IO;
   }
   PQclear(result);
