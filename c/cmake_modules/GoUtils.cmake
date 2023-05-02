@@ -84,17 +84,26 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     set(LIB_NAME_SHARED
         "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
-    set(EXTLDFLAGS "-extldflags=-Wl,--version-script=${REPOSITORY_ROOT}/c/symbols.map")
+    set(ADBC_VERSION_SCRIPT_LINK_FLAG "-Wl,--version-script=${REPOSITORY_ROOT}/c/symbols.map")
+
+    check_linker_flag(CXX ${ADBC_VERSION_SCRIPT_LINK_FLAG} CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
+    if(CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
+      set(EXTLDFLAGS ",--version-script=${REPOSITORY_ROOT}/c/symbols.map")
+    endif()
 
     if(NOT APPLE)
       set(EXTLDFLAGS "${EXTLDFLAGS},-soname,${LIB_NAME_SHARED}.${ADBC_SO_VERSION}")
+    endif()
+
+    if(DEFINED EXTLDFLAGS)
+      set(EXTLDFLAGS "'-extldflags=-Wl${EXTLDFLAGS}'")
     endif()
 
     if(DEFINED ARG_SHARED_LINK_FLAGS)
       separate_arguments(ARG_SHARED_LINK_FLAGS NATIVE_COMMAND "${ARG_SHARED_LINK_FLAGS}")
     endif()
 
-    set(GO_LDFLAGS "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-a;'${EXTLDFLAGS}'\"")
+    set(GO_LDFLAGS "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-a;${EXTLDFLAGS}\"")
 
     set(LIBOUT_SHARED "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME_SHARED}")
 
