@@ -580,6 +580,9 @@ func (r *rows) Next(dest []driver.Value) error {
 
 	for r.curRecord == nil {
 		if !r.rdr.Next() {
+			if err := r.rdr.Err(); err != nil {
+				return err
+			}
 			return io.EOF
 		}
 		r.curRecord = r.rdr.Record()
