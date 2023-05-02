@@ -186,6 +186,7 @@ func (s *SnowflakeQuirks) SupportsTransactions() bool            { return true }
 func (s *SnowflakeQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *SnowflakeQuirks) SupportsDynamicParameterBinding() bool { return false }
 func (s *SnowflakeQuirks) SupportsBulkIngest() bool              { return true }
+func (s *SnowflakeQuirks) DBSchema() string                      { return s.schemaName }
 func (s *SnowflakeQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:

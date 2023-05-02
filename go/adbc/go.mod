@@ -22,6 +22,7 @@ go 1.18
 require (
 	github.com/apache/arrow/go/v12 v12.0.0-20230421000340-388f3a88c647
 	github.com/bluele/gcache v0.0.2
+	github.com/google/uuid v1.3.0
 	github.com/snowflakedb/gosnowflake v1.6.21-0.20230427202326-79f2d00be7ac
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/exp v0.0.0-20230420155640-133eef4313cb
@@ -65,7 +66,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v23.3.3+incompatible // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect

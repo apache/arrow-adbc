@@ -65,6 +65,8 @@ type DriverQuirks interface {
 	// have the driver drop a table with the correct SQL syntax
 	DropTable(adbc.Connection, string) error
 
+	DBSchema() string
+
 	Alloc() memory.Allocator
 }
 
@@ -320,6 +322,7 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 				foundExpected        = false
 				catalogDbSchemasList = rec.Column(1).(*array.List)
 				catalogDbSchemas     = catalogDbSchemasList.ListValues().(*array.Struct)
+				dbSchemaNames        = catalogDbSchemas.Field(0).(*array.String)
 				dbSchemaTablesList   = catalogDbSchemas.Field(1).(*array.List)
 				dbSchemaTables       = dbSchemaTablesList.ListValues().(*array.Struct)
 				tableColumnsList     = dbSchemaTables.Field(2).(*array.List)
@@ -331,11 +334,12 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 			for row := 0; row < int(rec.NumRows()); row++ {
 				dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
 				for dbSchemaIdx := dbSchemaIdxStart; dbSchemaIdx < dbSchemaIdxEnd; dbSchemaIdx++ {
+					schemaName := dbSchemaNames.Value(int(dbSchemaIdx))
 					tblIdxStart, tblIdxEnd := dbSchemaTablesList.ValueOffsets(int(dbSchemaIdx))
 					for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
 						tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
 
-						if strings.EqualFold("bulk_ingest", tableName) {
+						if strings.EqualFold(schemaName, c.Quirks.DBSchema()) && strings.EqualFold("bulk_ingest", tableName) {
 							foundExpected = true
 
 							colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
