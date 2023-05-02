@@ -65,7 +65,7 @@ type DriverQuirks interface {
 	// have the driver drop a table with the correct SQL syntax
 	DropTable(adbc.Connection, string) error
 
-	ExampleSchema() string
+	DBSchema() string
 
 	Alloc() memory.Allocator
 }
@@ -339,7 +339,7 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 					for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
 						tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
 
-						if strings.EqualFold(schemaName, c.Quirks.ExampleSchema()) && strings.EqualFold("bulk_ingest", tableName) {
+						if strings.EqualFold(schemaName, c.Quirks.DBSchema()) && strings.EqualFold("bulk_ingest", tableName) {
 							foundExpected = true
 
 							colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))

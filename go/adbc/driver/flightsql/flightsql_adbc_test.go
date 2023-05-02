@@ -273,7 +273,7 @@ func (s *FlightSQLQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 	}
 }
 
-func (s *FlightSQLQuirks) ExampleSchema() string { return "" }
+func (s *FlightSQLQuirks) DBSchema() string { return "" }
 
 func TestADBCFlightSQL(t *testing.T) {
 	db, err := example.CreateDB()
