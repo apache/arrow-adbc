@@ -16,11 +16,11 @@
 # under the License.
 
 PKG_CPPFLAGS=-I../src -DADBC_EXPORT=""
-PKG_LIBS=-ladbc_driver_snowflake
+PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_snowflake
 
 .PHONY: all gostatic
 all: $(SHLIB)
 $(SHLIB): gostatic
 
 gostatic:
-		(cd "@adbchome@/go/adbc"; "@gobin@" build -v -tags driverlib,noasm -o adbc_driver_snowflake.a -buildmode=c-archive "./pkg/snowflake")
+		(cd "@adbchome@/go/adbc"; "@gobin@" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_snowflake.a -buildmode=c-archive "./pkg/snowflake")

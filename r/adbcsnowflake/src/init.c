@@ -21,9 +21,7 @@
 
 #include <adbc.h>
 
-AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* error) {
-  return -1;
-}
+AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* error);
 
 static SEXP init_func_xptr = 0;
 
