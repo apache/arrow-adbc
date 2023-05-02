@@ -15,4 +15,4 @@
 # specific language governing permissions and limitations
 # under the License.
 
-rm src/*.o src/nanoarrow/*.o || true
+rm src/*.o src/go/*.a
