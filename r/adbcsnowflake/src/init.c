@@ -19,8 +19,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
-#include <adbc.h>
-
+typedef int AdbcStatusCode;
+struct AdbcError;
 AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* error);
 
 static SEXP init_func_xptr = 0;
