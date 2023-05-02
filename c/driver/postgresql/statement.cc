@@ -687,7 +687,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     // inferred these conversions ourselves.
     na_res = reader_.copy_reader_->InitFieldReaders(&na_error);
     if (na_res != NANOARROW_OK) {
-      SetError(error, "[libpq] Failed to initialize field readers: ", na_error.message);
+      SetError(error, "[libpq] Failed to initialize field readers: %s", na_error.message);
       return na_res;
     }
   }
