@@ -17,6 +17,7 @@
 
 #include "database.h"
 
+#include <cinttypes>
 #include <cstring>
 #include <memory>
 #include <utility>
@@ -26,7 +27,7 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.h>
 
-#include "util.h"
+#include "utils.h"
 
 namespace adbcpq {
 
@@ -42,7 +43,8 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
   if (open_connections_ != 0) {
-    SetError(error, "Database released with ", open_connections_, " open connections");
+    SetError(error, "%s%" PRId32 "%s", "[libpq] Database released with ",
+             open_connections_, " open connections");
     return ADBC_STATUS_INVALID_STATE;
   }
   return ADBC_STATUS_OK;
@@ -53,7 +55,7 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
   if (strcmp(key, "uri") == 0) {
     uri_ = value;
   } else {
-    SetError(error, "Unknown database option ", key);
+    SetError(error, "%s%s", "[libpq] Unknown database option ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return ADBC_STATUS_OK;
@@ -61,12 +63,13 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
 
 AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error) {
   if (uri_.empty()) {
-    SetError(error, "Must set database option 'uri' before creating a connection");
+    SetError(error, "%s",
+             "[libpq] Must set database option 'uri' before creating a connection");
     return ADBC_STATUS_INVALID_STATE;
   }
   *conn = PQconnectdb(uri_.c_str());
   if (PQstatus(*conn) != CONNECTION_OK) {
-    SetError(error, "Failed to connect: ", PQerrorMessage(*conn));
+    SetError(error, "%s%s", "[libpq] Failed to connect: ", PQerrorMessage(*conn));
     PQfinish(*conn);
     *conn = nullptr;
     return ADBC_STATUS_IO;
@@ -79,7 +82,7 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
   PQfinish(*conn);
   *conn = nullptr;
   if (--open_connections_ < 0) {
-    SetError(error, "Open connection count underflowed");
+    SetError(error, "%s", "[libpq] Open connection count underflowed");
     return ADBC_STATUS_INTERNAL;
   }
   return ADBC_STATUS_OK;
@@ -144,7 +147,8 @@ ORDER BY
   if (pq_status == PGRES_TUPLES_OK) {
     InsertPgAttributeResult(result, resolver);
   } else {
-    SetError(error, "Failed to build type mapping table: ", PQerrorMessage(conn));
+    SetError(error, "%s%s",
+             "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
     final_status = ADBC_STATUS_IO;
   }
 
@@ -158,7 +162,8 @@ ORDER BY
     if (pq_status == PGRES_TUPLES_OK) {
       InsertPgTypeResult(result, resolver);
     } else {
-      SetError(error, "Failed to build type mapping table: ", PQerrorMessage(conn));
+      SetError(error, "%s%s",
+               "[libpq] Failed to build type mapping table: ", PQerrorMessage(conn));
       final_status = ADBC_STATUS_IO;
     }
 
@@ -246,7 +251,7 @@ static inline int32_t InsertPgTypeResult(
 
     // If there's an array type and the insert succeeded, add that now too
     if (result == NANOARROW_OK && typarray != 0) {
-      std::string array_typname = StringBuilder("_", typname);
+      std::string array_typname = "_" + *typname;
       item.oid = typarray;
       item.typname = array_typname.c_str();
       item.typreceive = "array_recv";

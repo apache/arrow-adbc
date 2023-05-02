@@ -19,6 +19,7 @@
 
 #include <array>
 #include <cerrno>
+#include <cinttypes>
 #include <cstring>
 #include <iostream>
 #include <memory>
@@ -31,7 +32,8 @@
 
 #include "connection.h"
 #include "postgres_type.h"
-#include "util.h"
+#include "postgres_util.h"
+#include "utils.h"
 
 namespace adbcpq {
 
@@ -112,18 +114,19 @@ AdbcStatusCode InferSchema(const PostgresTypeResolver& type_resolver, PGresult* 
   ArrowError na_error;
   const int num_fields = PQnfields(result);
   ArrowSchemaInit(out);
-  CHECK_NA_ADBC(ArrowSchemaSetTypeStruct(out, num_fields), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(out, num_fields), error);
   for (int i = 0; i < num_fields; i++) {
     const Oid pg_oid = PQftype(result, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      SetError(error, "Column #", i + 1, " (\"", PQfname(result, i),
-               "\") has unknown type code ", pg_oid);
+      SetError(error, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
+               PQfname(result, i), "\") has unknown type code ", pg_oid);
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
-    CHECK_NA_ADBC(pg_type.WithFieldName(PQfname(result, i)).SetSchema(out->children[i]),
-                  error);
+    CHECK_NA(INTERNAL,
+             pg_type.WithFieldName(PQfname(result, i)).SetSchema(out->children[i]),
+             error);
   }
   return ADBC_STATUS_OK;
 }
@@ -154,21 +157,23 @@ struct BindStream {
 
   template <typename Callback>
   AdbcStatusCode Begin(Callback&& callback, struct AdbcError* error) {
-    CHECK_NA_ADBC(bind->get_schema(&bind.value, &bind_schema.value), error);
-    CHECK_NA_ADBC(
+    CHECK_NA(INTERNAL, bind->get_schema(&bind.value, &bind_schema.value), error);
+    CHECK_NA(
+        INTERNAL,
         ArrowSchemaViewInit(&bind_schema_view, &bind_schema.value, /*error*/ nullptr),
         error);
 
     if (bind_schema_view.type != ArrowType::NANOARROW_TYPE_STRUCT) {
-      SetError(error, "Bind parameters must have type STRUCT");
+      SetError(error, "%s", "[libpq] Bind parameters must have type STRUCT");
       return ADBC_STATUS_INVALID_STATE;
     }
 
     bind_schema_fields.resize(bind_schema->n_children);
     for (size_t i = 0; i < bind_schema_fields.size(); i++) {
-      CHECK_NA_ADBC(ArrowSchemaViewInit(&bind_schema_fields[i], bind_schema->children[i],
-                                        /*error*/ nullptr),
-                    error);
+      CHECK_NA(INTERNAL,
+               ArrowSchemaViewInit(&bind_schema_fields[i], bind_schema->children[i],
+                                   /*error*/ nullptr),
+               error);
     }
 
     return std::move(callback)();
@@ -206,7 +211,8 @@ struct BindStream {
           param_lengths[i] = 0;
           break;
         default:
-          SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
+          SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
+                   static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
                    "') has unsupported parameter type ",
                    ArrowTypeString(bind_schema_fields[i].type));
           return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -214,7 +220,8 @@ struct BindStream {
 
       param_types[i] = type_resolver.GetOID(type_id);
       if (param_types[i] == 0) {
-        SetError(error, "Field #", i + 1, " ('", bind_schema->children[i]->name,
+        SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
+                 static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
                  "') has type with no corresponding PostgreSQL type ",
                  ArrowTypeString(bind_schema_fields[i].type));
         return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -235,8 +242,8 @@ struct BindStream {
     PGresult* result = PQprepare(conn, /*stmtName=*/"", query.c_str(),
                                  /*nParams=*/bind_schema->n_children, param_types.data());
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      SetError(error, "Failed to prepare query: ", PQerrorMessage(conn));
-      SetError(error, "Query: ", query);
+      SetError(error, "%s%s", "[libpq] Failed to prepare query: ", PQerrorMessage(conn));
+      SetError(error, "%s%s", "[libpq] Query: ", query.c_str());
       PQclear(result);
       return ADBC_STATUS_IO;
     }
@@ -253,7 +260,8 @@ struct BindStream {
       int res = bind->get_next(&bind.value, &array.value);
       if (res != 0) {
         // TODO: include errno
-        SetError(error, "Failed to read next batch from stream of bind parameters: ",
+        SetError(error, "%s%s",
+                 "[libpq] Failed to read next batch from stream of bind parameters: ",
                  bind->get_last_error(&bind.value));
         return ADBC_STATUS_IO;
       }
@@ -261,11 +269,12 @@ struct BindStream {
 
       Handle<struct ArrowArrayView> array_view;
       // TODO: include error messages
-      CHECK_NA_ADBC(
+      CHECK_NA(
+          INTERNAL,
           ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, nullptr),
           error);
-      CHECK_NA_ADBC(ArrowArrayViewSetArray(&array_view.value, &array.value, nullptr),
-                    error);
+      CHECK_NA(INTERNAL, ArrowArrayViewSetArray(&array_view.value, &array.value, nullptr),
+               error);
 
       for (int64_t row = 0; row < array->length; row++) {
         for (int64_t col = 0; col < array_view->n_children; col++) {
@@ -304,7 +313,8 @@ struct BindStream {
             }
             default:
               // TODO: data type to string
-              SetError(error, "Field #", col + 1, " ('", bind_schema->children[col]->name,
+              SetError(error, "%s%" PRId64 "%s%s%s%ud", "[libpq] Field #", col + 1, " ('",
+                       bind_schema->children[col]->name,
                        "') has unsupported type for ingestion ",
                        bind_schema_fields[col].type);
               return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -317,7 +327,8 @@ struct BindStream {
                                 /*resultFormat=*/0 /*text*/);
 
         if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-          SetError(error, "Failed to execute prepared statement: ", PQerrorMessage(conn));
+          SetError(error, "%s%s", "[libpq] Failed to execute prepared statement: ",
+                   PQerrorMessage(conn));
           PQclear(result);
           return ADBC_STATUS_IO;
         }
@@ -338,7 +349,7 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
   }
 
   std::memset(out, 0, sizeof(*out));
-  CHECK_NA(ArrowSchemaDeepCopy(&schema_, out));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaDeepCopy(&schema_, out));
   return 0;
 }
 
@@ -356,19 +367,19 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   // TODO: consistently release out on error (use another trampoline?)
   int na_res = ArrowArrayInitFromSchema(out, &schema_, &error);
   if (na_res != 0) {
-    last_error_ = StringBuilder("[libpq] Failed to init output array: ", na_res,
-                                std::strerror(na_res), ": ", error.message);
+    last_error_ = "[libpq] Failed to init output array: " + std::to_string(na_res) +
+                  std::strerror(na_res) + ": " + error.message;
     if (out->release) out->release(out);
     return na_res;
   }
 
   std::vector<ArrowSchemaView> fields(schema_.n_children);
-  CHECK_NA(ArrowArrayStartAppending(out));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(out));
   for (int col = 0; col < schema_.n_children; col++) {
     na_res = ArrowSchemaViewInit(&fields[col], schema_.children[col], &error);
     if (na_res != 0) {
-      last_error_ = StringBuilder("[libpq] Failed to init schema view: ", na_res,
-                                  std::strerror(na_res), ": ", error.message);
+      last_error_ = "[libpq] Failed to init schema view: " + std::to_string(na_res) +
+                    std::strerror(na_res) + ": " + error.message;
       if (out->release) out->release(out);
       return na_res;
     }
@@ -432,7 +443,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   if (na_res != 0) {
     result_code = na_res;
     if (!last_error_.empty()) last_error_ += '\n';
-    last_error_ += StringBuilder("[libpq] Failed to build result array: ", error.message);
+    last_error_ += "[libpq] Failed to build result array" + std::string(error.message);
   }
 
   // Check the server-side response
@@ -440,8 +451,8 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   const int pq_status = PQresultStatus(result_);
   if (pq_status != PGRES_COMMAND_OK) {
     if (!last_error_.empty()) last_error_ += '\n';
-    last_error_ += StringBuilder("[libpq] Query failed: (", pq_status, ") ",
-                                 PQresultErrorMessage(result_));
+    last_error_ += "[libpq] Query failed: (" + std::to_string(pq_status) + ") " +
+                   PQresultErrorMessage(result_);
     result_code = EIO;
   }
   PQclear(result_);
@@ -485,8 +496,8 @@ int TupleReader::AppendNext(struct ArrowSchemaView* fields, const char* buf, int
     // end-of-stream
     return 0;
   } else if (field_count != schema_.n_children) {
-    last_error_ = StringBuilder("[libpq] Expected ", schema_.n_children,
-                                " fields but found ", field_count);
+    last_error_ = "[libpq] Expected " + std::to_string(schema_.n_children) +
+                  " fields but found " + std::to_string(field_count);
     return EIO;
   }
 
@@ -496,10 +507,11 @@ int TupleReader::AppendNext(struct ArrowSchemaView* fields, const char* buf, int
 
     // TODO: set error message here
     if (field_length != kNullFieldLength) {
-      CHECK_NA(AppendValue(fields, buf, col, *row_count, field_length, out));
+      NANOARROW_RETURN_NOT_OK(
+          AppendValue(fields, buf, col, *row_count, field_length, out));
       buf += field_length;
     } else {
-      CHECK_NA(ArrowArrayAppendNull(out->children[col], 1));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(out->children[col], 1));
     }
   }
   (*row_count)++;
@@ -515,12 +527,12 @@ int TupleReader::AppendValue(struct ArrowSchemaView* fields, const char* buf, in
       buf += 1;
 
       if (raw_value != 0 && raw_value != 1) {
-        last_error_ = StringBuilder("[libpq] Column #", col + 1, " (\"",
-                                    schema_.children[col]->name,
-                                    "\"): invalid BOOL value ", raw_value);
+        last_error_ = "[libpq] Column #" + std::to_string(col + 1) + " (\"" +
+                      schema_.children[col]->name + "\"): invalid BOOL value " +
+                      std::to_string(raw_value);
         return EINVAL;
       }
-      CHECK_NA(ArrowArrayAppendInt(out->children[col], raw_value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], raw_value));
       break;
     }
     case NANOARROW_TYPE_DOUBLE: {
@@ -530,7 +542,7 @@ int TupleReader::AppendValue(struct ArrowSchemaView* fields, const char* buf, in
       buf += sizeof(uint64_t);
       double value = 0.0;
       std::memcpy(&value, &raw_value, sizeof(double));
-      CHECK_NA(ArrowArrayAppendDouble(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_FLOAT: {
@@ -540,40 +552,42 @@ int TupleReader::AppendValue(struct ArrowSchemaView* fields, const char* buf, in
       buf += sizeof(uint32_t);
       float value = 0.0;
       std::memcpy(&value, &raw_value, sizeof(float));
-      CHECK_NA(ArrowArrayAppendDouble(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_INT16: {
       int32_t value = LoadNetworkInt16(buf);
       buf += sizeof(int32_t);
-      CHECK_NA(ArrowArrayAppendInt(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_INT32: {
       int32_t value = LoadNetworkInt32(buf);
       buf += sizeof(int32_t);
-      CHECK_NA(ArrowArrayAppendInt(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_INT64: {
       int64_t value = LoadNetworkInt64(buf);
       buf += sizeof(int64_t);
-      CHECK_NA(ArrowArrayAppendInt(out->children[col], value));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(out->children[col], value));
       break;
     }
     case NANOARROW_TYPE_BINARY: {
-      CHECK_NA(ArrowArrayAppendBytes(out->children[col], {buf, field_length}));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayAppendBytes(out->children[col], {buf, field_length}));
       break;
     }
     case NANOARROW_TYPE_STRING: {
       // textsend() in varlena.c
-      CHECK_NA(ArrowArrayAppendString(out->children[col], {buf, field_length}));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayAppendString(out->children[col], {buf, field_length}));
       break;
     }
     default:
-      last_error_ =
-          StringBuilder("[libpq] Column #", col + 1, " (\"", schema_.children[col]->name,
-                        "\") has unsupported type ", fields[col].type);
+      last_error_ = "[libpq] Column #" + std::to_string(col + 1) + " (\"" +
+                    schema_.children[col]->name + "\") has unsupported type " +
+                    std::to_string(fields[col].type);
       return ENOTSUP;
   }
   return 0;
@@ -614,7 +628,7 @@ void TupleReader::ReleaseTrampoline(struct ArrowArrayStream* self) {
 AdbcStatusCode PostgresStatement::New(struct AdbcConnection* connection,
                                       struct AdbcError* error) {
   if (!connection || !connection->private_data) {
-    SetError(error, "Must provide an initialized AdbcConnection");
+    SetError(error, "%s", "[libpq] Must provide an initialized AdbcConnection");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   connection_ =
@@ -628,10 +642,10 @@ AdbcStatusCode PostgresStatement::Bind(struct ArrowArray* values,
                                        struct ArrowSchema* schema,
                                        struct AdbcError* error) {
   if (!values || !values->release) {
-    SetError(error, "Must provide non-NULL array");
+    SetError(error, "%s", "[libpq] Must provide non-NULL array");
     return ADBC_STATUS_INVALID_ARGUMENT;
   } else if (!schema || !schema->release) {
-    SetError(error, "Must provide non-NULL schema");
+    SetError(error, "%s", "[libpq] Must provide non-NULL schema");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
@@ -650,7 +664,7 @@ AdbcStatusCode PostgresStatement::Bind(struct ArrowArray* values,
 AdbcStatusCode PostgresStatement::Bind(struct ArrowArrayStream* stream,
                                        struct AdbcError* error) {
   if (!stream || !stream->release) {
-    SetError(error, "Must provide non-NULL stream");
+    SetError(error, "%s", "[libpq] Must provide non-NULL stream");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   // Move stream
@@ -689,21 +703,23 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       default:
         // TODO: data type to string
-        SetError(error, "Field #", i + 1, " ('", source_schema.children[i]->name,
+        SetError(error, "%s%" PRIu64 "%s%s%s%ud", "[libpq] Field #",
+                 static_cast<uint64_t>(i + 1), " ('", source_schema.children[i]->name,
                  "') has unsupported type for ingestion ", source_schema_fields[i].type);
         return ADBC_STATUS_NOT_IMPLEMENTED;
     }
   }
 
   create += ")";
-  SetError(error, create);
+  SetError(error, "%s%s", "[libpq] ", create.c_str());
   PGresult* result = PQexecParams(connection_->conn(), create.c_str(), /*nParams=*/0,
                                   /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                                   /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                   /*resultFormat=*/1 /*(binary)*/);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "Failed to create table: ", PQerrorMessage(connection_->conn()));
-    SetError(error, "Query: ", create);
+    SetError(error, "%s%s",
+             "[libpq] Failed to create table: ", PQerrorMessage(connection_->conn()));
+    SetError(error, "%s%s", "[libpq] Query: ", create.c_str());
     PQclear(result);
     return ADBC_STATUS_IO;
   }
@@ -715,22 +731,24 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
     struct ArrowArrayStream* stream, int64_t* rows_affected, struct AdbcError* error) {
   if (!bind_.release) {
     // TODO: set an empty stream just to unify the code paths
-    SetError(error, "Prepared statements without parameters are not implemented");
+    SetError(error, "%s",
+             "[libpq] Prepared statements without parameters are not implemented");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   if (stream) {
     // TODO:
-    SetError(error, "Prepared statements returning result sets are not implemented");
+    SetError(error, "%s",
+             "[libpq] Prepared statements returning result sets are not implemented");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
   BindStream bind_stream(std::move(bind_));
   std::memset(&bind_, 0, sizeof(bind_));
 
-  CHECK(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
-  CHECK(bind_stream.SetParamTypes(*type_resolver_, error));
-  CHECK(bind_stream.Prepare(connection_->conn(), query_, error));
-  CHECK(bind_stream.Execute(connection_->conn(), rows_affected, error));
+  RAISE_ADBC(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
+  RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
+  RAISE_ADBC(bind_stream.Prepare(connection_->conn(), query_, error));
+  RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
 
@@ -760,7 +778,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   }
 
   if (query_.empty()) {
-    SetError(error, "Must SetSqlQuery before ExecuteQuery");
+    SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -773,8 +791,8 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
     if (PQresultStatus(result) != PGRES_TUPLES_OK) {
-      SetError(error, "Query was: ", schema_query);
-      SetError(error, "Failed to execute query: could not infer schema: ",
+      SetError(error, "%s%s", "[libpq] Query was: ", schema_query.c_str());
+      SetError(error, "%s%s", "[libpq] Failed to execute query: could not infer schema: ",
                PQerrorMessage(connection_->conn()));
       PQclear(result);
       return ADBC_STATUS_IO;
@@ -792,8 +810,8 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
     if (PQresultStatus(reader_.result_) != PGRES_COPY_OUT) {
-      SetError(error, "Query was: ", copy_query);
-      SetError(error, "Failed to execute query: could not begin COPY: ",
+      SetError(error, "%s%s", "[libpq] Query was: ", copy_query.c_str());
+      SetError(error, "%s%s", "[libpq] Failed to execute query: could not begin COPY: ",
                PQerrorMessage(connection_->conn()));
       ClearResult();
       return ADBC_STATUS_IO;
@@ -809,13 +827,13 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
                                                     struct AdbcError* error) {
   if (!bind_.release) {
-    SetError(error, "Must Bind() before Execute() for bulk ingestion");
+    SetError(error, "%s", "[libpq] Must Bind() before Execute() for bulk ingestion");
     return ADBC_STATUS_INVALID_STATE;
   }
 
   BindStream bind_stream(std::move(bind_));
   std::memset(&bind_, 0, sizeof(bind_));
-  CHECK(bind_stream.Begin(
+  RAISE_ADBC(bind_stream.Begin(
       [&]() -> AdbcStatusCode {
         if (!ingest_.append) {
           // CREATE TABLE
@@ -825,7 +843,7 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
         return ADBC_STATUS_OK;
       },
       error));
-  CHECK(bind_stream.SetParamTypes(*type_resolver_, error));
+  RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
 
   std::string insert = "INSERT INTO ";
   insert += ingest_.target;
@@ -837,15 +855,15 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
   }
   insert += ")";
 
-  CHECK(bind_stream.Prepare(connection_->conn(), insert, error));
-  CHECK(bind_stream.Execute(connection_->conn(), rows_affected, error));
+  RAISE_ADBC(bind_stream.Prepare(connection_->conn(), insert, error));
+  RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
                                                      struct AdbcError* error) {
   if (query_.empty()) {
-    SetError(error, "Must SetSqlQuery before ExecuteQuery");
+    SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -862,8 +880,9 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
                           /*resultFormat=*/kPgBinaryFormat);
   }
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "Query was: ", query_);
-    SetError(error, "Failed to execute query: ", PQerrorMessage(connection_->conn()));
+    SetError(error, "%s%s", "[libpq] Query was: ", query_.c_str());
+    SetError(error, "%s%s",
+             "[libpq] Failed to execute query: ", PQerrorMessage(connection_->conn()));
     PQclear(result);
     return ADBC_STATUS_IO;
   }
@@ -879,7 +898,7 @@ AdbcStatusCode PostgresStatement::GetParameterSchema(struct ArrowSchema* schema,
 
 AdbcStatusCode PostgresStatement::Prepare(struct AdbcError* error) {
   if (query_.empty()) {
-    SetError(error, "Must SetSqlQuery() before Prepare()");
+    SetError(error, "%s", "[libpq] Must SetSqlQuery() before Prepare()");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -916,11 +935,11 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
     } else if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_APPEND) == 0) {
       ingest_.append = true;
     } else {
-      SetError(error, "Invalid value ", value, " for option ", key);
+      SetError(error, "%s%s%s%s", "[libpq] Invalid value ", value, " for option ", key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
   } else {
-    SetError(error, "Unknown statement option ", key);
+    SetError(error, "%s%s", "[libq] Unknown statement option ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return ADBC_STATUS_OK;

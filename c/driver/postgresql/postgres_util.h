@@ -22,10 +22,6 @@
 #else
 #include <netinet/in.h>
 #endif
-#include <cstring>
-#include <sstream>
-#include <string>
-#include <utility>
 
 #if defined(__linux__)
 #include <endian.h>
@@ -36,9 +32,6 @@
 #include "adbc.h"
 
 namespace adbcpq {
-
-#define CONCAT(x, y) x##y
-#define MAKE_NAME(x, y) CONCAT(x, y)
 
 #if defined(_WIN32) && defined(_MSC_VER)
 static inline uint32_t SwapNetworkToHost(uint16_t x) { return ntohs(x); }
@@ -75,79 +68,6 @@ static inline uint32_t SwapHostToNetwork(uint32_t x) { return htobe32(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) { return be64toh(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return htobe64(x); }
 #endif
-
-// see arrow/util/string_builder.h
-
-template <typename Head>
-static inline void StringBuilderRecursive(std::stringstream& stream, Head&& head) {
-  stream << head;
-}
-
-template <typename Head, typename... Tail>
-static inline void StringBuilderRecursive(std::stringstream& stream, Head&& head,
-                                          Tail&&... tail) {
-  StringBuilderRecursive(stream, std::forward<Head>(head));
-  StringBuilderRecursive(stream, std::forward<Tail>(tail)...);
-}
-
-template <typename... Args>
-static inline std::string StringBuilder(Args&&... args) {
-  std::stringstream ss;
-  StringBuilderRecursive(ss, std::forward<Args>(args)...);
-  return ss.str();
-}
-
-static inline void ReleaseError(struct AdbcError* error) {
-  delete[] error->message;
-  error->message = nullptr;
-  error->release = nullptr;
-}
-
-template <typename... Args>
-static inline void SetError(struct AdbcError* error, Args&&... args) {
-  if (!error) return;
-  std::string message = StringBuilder("[libpq] ", std::forward<Args>(args)...);
-  if (error->message) {
-    message.reserve(message.size() + 1 + std::strlen(error->message));
-    message.append(1, '\n');
-    message.append(error->message);
-    delete[] error->message;
-  }
-  error->message = new char[message.size() + 1];
-  message.copy(error->message, message.size());
-  error->message[message.size()] = '\0';
-  error->release = ReleaseError;
-}
-
-#define CHECK_IMPL(NAME, EXPR)          \
-  do {                                  \
-    const AdbcStatusCode NAME = (EXPR); \
-    if (NAME != ADBC_STATUS_OK) {       \
-      return NAME;                      \
-    }                                   \
-  } while (false)
-#define CHECK(EXPR) CHECK_IMPL(MAKE_NAME(adbc_status_, __COUNTER__), EXPR)
-
-#define CHECK_NA_ADBC_IMPL(NAME, EXPR, ERROR)                    \
-  do {                                                           \
-    const int NAME = (EXPR);                                     \
-    if (NAME) {                                                  \
-      SetError((ERROR), #EXPR " failed: ", std::strerror(NAME)); \
-      return ADBC_STATUS_INTERNAL;                               \
-    }                                                            \
-  } while (false)
-/// Check an errno-style code and return an ADBC code if necessary.
-#define CHECK_NA_ADBC(EXPR, ERROR) \
-  CHECK_NA_ADBC_IMPL(MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR)
-
-#define CHECK_NA_IMPL(NAME, EXPR) \
-  do {                            \
-    const int NAME = (EXPR);      \
-    if (NAME) return NAME;        \
-  } while (false)
-
-/// Check an errno-style code and return it if necessary.
-#define CHECK_NA(EXPR) CHECK_NA_IMPL(MAKE_NAME(errno_status_, __COUNTER__), EXPR)
 
 /// Endianness helpers
 
