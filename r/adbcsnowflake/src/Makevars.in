@@ -23,4 +23,4 @@ all: $(SHLIB)
 $(SHLIB): gostatic
 
 gostatic:
-		"@gobin@" build -v -tags driverlib -o adbc_driver_snowflake.a -buildmode=c-archive "@adbchome@/go/adbc/pkg/snowflake"
+		(cd "@adbchome@/go/adbc"; "@gobin@" build -v -tags driverlib -o adbc_driver_snowflake.a -buildmode=c-archive "./pkg/snowflake")
