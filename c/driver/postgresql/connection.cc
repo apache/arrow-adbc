@@ -20,6 +20,7 @@
 #include <cinttypes>
 #include <cstring>
 #include <memory>
+#include <string>
 
 #include <adbc.h>
 #include <libpq-fe.h>
@@ -28,6 +29,27 @@
 #include "utils.h"
 
 namespace adbcpq {
+
+class PqResultHelper {
+ public:
+  PqResultHelper(PGconn* conn, const char* query) : conn_(conn) {
+    query_ = std::string(query);
+  }
+  pg_result* Execute() {
+    result_ = PQexec(conn_, query_.c_str());
+    return result_;
+  }
+
+  ~PqResultHelper() {
+    if (result_ != nullptr) PQclear(result_);
+  }
+
+ private:
+  pg_result* result_ = nullptr;
+  PGconn* conn_;
+  std::string query_;
+};
+
 AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
   if (autocommit_) {
     SetError(error, "%s", "[libpq] Cannot commit when autocommit is enabled");
@@ -86,8 +108,9 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
 
   if (ret != 0) return ADBC_STATUS_INTERNAL;
 
-  pg_result* result = PQexec(conn_, query.buffer);
+  PqResultHelper result_helper = PqResultHelper{conn_, query.buffer};
   StringBuilderReset(&query);
+  pg_result* result = result_helper.Execute();
 
   ExecStatusType pq_status = PQresultStatus(result);
   if (pq_status == PGRES_TUPLES_OK) {
@@ -116,7 +139,6 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
     SetError(error, "%s%s", "Failed to get table schema: ", PQerrorMessage(conn_));
     final_status = ADBC_STATUS_IO;
   }
-  PQclear(result);
 
   return final_status;
 }
