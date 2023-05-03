@@ -116,9 +116,9 @@ AdbcStatusCode ResolvePostgresType(const PostgresTypeResolver& type_resolver,
     const Oid pg_oid = PQftype(result, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      SetError(error, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
-               PQfname(result, i), "\") has unknown type code ", pg_oid);
-      return ADBC_STATUS_NOT_IMPLEMENTED;
+      std::string type_name = "oid:" + std::to_string(pg_oid);
+      pg_type =
+          PostgresType(PostgresTypeId::kUserDefined).WithPgTypeInfo(pg_oid, type_name);
     }
 
     root_type.AppendChild(PQfname(result, i), pg_type);
@@ -342,7 +342,8 @@ struct BindStream {
 int TupleReader::GetSchema(struct ArrowSchema* out) {
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
-    StringBuilderAppend(&error_builder_, "[libpq] Result set was already consumed or freed");
+    StringBuilderAppend(&error_builder_,
+                        "[libpq] Result set was already consumed or freed");
     return EINVAL;
   } else if (na_res != NANOARROW_OK) {
     // e.g., Can't allocate memory

@@ -110,6 +110,7 @@ enum class PostgresTypeId {
   kXid8,
   kXid,
   kXml,
+  kUserDefined
 };
 
 // Returns the receive function name as defined in the typrecieve column
@@ -198,6 +199,8 @@ class PostgresType {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT16));
         break;
       case PostgresTypeId::kInt4:
+      case PostgresTypeId::kOid:
+      case PostgresTypeId::kRegproc:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_INT32));
         break;
       case PostgresTypeId::kInt8:
@@ -213,6 +216,7 @@ class PostgresType {
       case PostgresTypeId::kBpchar:
       case PostgresTypeId::kVarchar:
       case PostgresTypeId::kText:
+      case PostgresTypeId::kName:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
       case PostgresTypeId::kBytea:
@@ -230,9 +234,12 @@ class PostgresType {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
         NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0]));
         break;
+
+      case PostgresTypeId::kUserDefined:
       default: {
-        // For any types we don't explicitly know how to deal with, we can still
-        // return the bytes postgres gives us and attach the type name as metadata
+        // For user-defined types or types we don't explicitly know how to deal with, we
+        // can still return the bytes postgres gives us and attach the type name as
+        // metadata
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         nanoarrow::UniqueBuffer buffer;
         ArrowMetadataBuilderInit(buffer.get(), nullptr);

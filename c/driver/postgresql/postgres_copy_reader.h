@@ -523,6 +523,8 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
     case NANOARROW_TYPE_INT32:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kInt4:
+        case PostgresTypeId::kOid:
+        case PostgresTypeId::kRegproc:
           *out = new PostgresCopyNetworkEndianFieldReader<int32_t>();
           return NANOARROW_OK;
         default:
@@ -562,6 +564,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
         case PostgresTypeId::kVarchar:
         case PostgresTypeId::kText:
         case PostgresTypeId::kBpchar:
+        case PostgresTypeId::kName:
           *out = new PostgresCopyBinaryFieldReader();
           return NANOARROW_OK;
         default:

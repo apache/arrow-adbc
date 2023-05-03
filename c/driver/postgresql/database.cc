@@ -251,7 +251,7 @@ static inline int32_t InsertPgTypeResult(
 
     // If there's an array type and the insert succeeded, add that now too
     if (result == NANOARROW_OK && typarray != 0) {
-      std::string array_typname = "_" + *typname;
+      std::string array_typname = "_" + std::string(typname);
       item.oid = typarray;
       item.typname = array_typname.c_str();
       item.typreceive = "array_recv";
