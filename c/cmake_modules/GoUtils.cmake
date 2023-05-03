@@ -72,7 +72,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
 
   # Go gcflags for disabling optimizations and inlining if debug
   separate_arguments(GO_BUILD_FLAGS NATIVE_COMMAND
-                     "${GO_BUILD_FLAGS} $<$<CONFIG:DEBUG>:-gcflags=\"-N -l\">")
+                     "${GO_BUILD_FLAGS} $<$<CONFIG:DEBUG>:-gcflags='-N -l'>")
 
   # if we're building debug mode then change the default CGO_CFLAGS and CGO_CXXFLAGS from "-g O2" to "-g3"
   set(GO_ENV_VARS
@@ -84,16 +84,28 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     set(LIB_NAME_SHARED
         "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
+    set(ADBC_VERSION_SCRIPT_LINK_FLAG
+        "-Wl,--version-script=${REPOSITORY_ROOT}/c/symbols.map")
+
+    check_linker_flag(CXX ${ADBC_VERSION_SCRIPT_LINK_FLAG}
+                      CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
+    if(CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
+      set(EXTLDFLAGS ",--version-script=${REPOSITORY_ROOT}/c/symbols.map")
+    endif()
+
     if(NOT APPLE)
-      set(ARG_SHARED_LINK_FLAGS
-          "${ARG_SHARED_LINK_FLAGS} -extldflags -Wl,-soname,${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
-      )
+      set(EXTLDFLAGS "${EXTLDFLAGS},-soname,${LIB_NAME_SHARED}.${ADBC_SO_VERSION}")
+    endif()
+
+    if(DEFINED EXTLDFLAGS)
+      set(EXTLDFLAGS "'-extldflags=-Wl${EXTLDFLAGS}'")
     endif()
 
     if(DEFINED ARG_SHARED_LINK_FLAGS)
       separate_arguments(ARG_SHARED_LINK_FLAGS NATIVE_COMMAND "${ARG_SHARED_LINK_FLAGS}")
-      set(GO_LDFLAGS "-ldflags=\"${ARG_SHARED_LINK_FLAGS}\"")
     endif()
+
+    set(GO_LDFLAGS "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-a;${EXTLDFLAGS}\"")
 
     set(LIBOUT_SHARED "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME_SHARED}")
 
