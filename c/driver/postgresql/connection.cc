@@ -105,7 +105,8 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
       if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
         SetError(error, "%s%d%s%s%s%" PRIu32, "Column #", row + 1, " (\"", colname,
                  "\") has unknown type code ", pg_oid);
-        return ADBC_STATUS_NOT_IMPLEMENTED;
+        final_status = ADBC_STATUS_NOT_IMPLEMENTED;
+        break;
       }
 
       CHECK_NA(INTERNAL, pg_type.WithFieldName(colname).SetSchema(schema->children[row]),
@@ -117,11 +118,6 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   }
   PQclear(result);
 
-  // Disconnect since PostgreSQL connections can be heavy.
-  {
-    AdbcStatusCode status = database_->Disconnect(&conn_, error);
-    if (status != ADBC_STATUS_OK) final_status = status;
-  }
   return final_status;
 }
 
