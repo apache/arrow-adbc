@@ -86,6 +86,7 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+          mamba uninstall -c conda-forge compilers clang
 
       - name: Build and Install (No ASan)
         shell: pwsh
@@ -138,6 +139,7 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+          mamba uninstall -c conda-forge compilers clang
 
       - name: Build Driver Manager
         shell: pwsh
