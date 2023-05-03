@@ -21,11 +21,6 @@ set -ex
 
 COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
 
-if [[ $(uname) = "Darwin" ]] && [[ "${VCPKG_ARCH}" = "arm64" ]]; then
-    # Can't build Arrow v11 on non-x64 platforms without noasm
-    export GOFLAGS="-tags=noasm"
-fi
-
 function build_drivers {
     local -r source_dir="$1"
     local -r build_dir="$2/${VCPKG_ARCH}"
@@ -56,7 +51,8 @@ function build_drivers {
         if [[ "${VCPKG_ARCH}" = "x64" ]]; then
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=x86_64"
         elif [[ "${VCPKG_ARCH}" = "arm64" ]]; then
-            export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=arm64"
+            # Can't build Arrow v11 on non-x64 platforms without noasm
+            export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=arm64 -DADBC_GO_BUILD_TAGS=noasm"
         else
             echo "Unknown architecture: ${VCPKG_ARCH}"
             exit 1
