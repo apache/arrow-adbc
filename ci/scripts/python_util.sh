@@ -19,13 +19,11 @@
 
 set -ex
 
-COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite"
+COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
 
 if [[ $(uname) = "Darwin" ]] && [[ "${VCPKG_ARCH}" = "arm64" ]]; then
-    echo "Disabling adbc_driver_snowflake"
-    echo "(snowflake uses arrow v11 which can't be compiled on non-x64 platforms without noasm)"
-else
-    COMPONENTS="${COMPONENTS} adbc_driver_snowflake"
+    # Can't build Arrow v11 on non-x64 platforms without noasm
+    export GOFLAGS="-tags=noasm"
 fi
 
 function build_drivers {

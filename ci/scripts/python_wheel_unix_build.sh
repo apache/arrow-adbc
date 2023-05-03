@@ -79,12 +79,10 @@ echo "=== Building C/C++ driver components ==="
 build_drivers "${source_dir}" "${build_dir}"
 
 # Check that we don't expose any unwanted symbols
-# TODO(apache/arrow-adbc#635)
-# check_visibility $ADBC_FLIGHTSQL_LIBRARY
+check_visibility $ADBC_FLIGHTSQL_LIBRARY
 check_visibility $ADBC_POSTGRESQL_LIBRARY
 check_visibility $ADBC_SQLITE_LIBRARY
-# TODO(apache/arrow-adbc#635)
-# check_visibility $ADBC_SNOWFLAKE_LIBRARY
+check_visibility $ADBC_SNOWFLAKE_LIBRARY
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
