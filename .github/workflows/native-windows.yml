@@ -86,13 +86,14 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
-          mamba uninstall -c conda-forge compilers clang
 
       - name: Build and Install (No ASan)
         shell: pwsh
         env:
           BUILD_ALL: "1"
         run: |
+          $env:CC = $(Get-Command cl.exe).Path
+          $env:CXX = $(Get-Command cl.exe).Path
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
       - uses: actions/upload-artifact@v3
@@ -139,7 +140,6 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
-          mamba uninstall -c conda-forge compilers clang
 
       - name: Build Driver Manager
         shell: pwsh
@@ -147,6 +147,8 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
         run:
+          $env:CC = $(Get-Command cl.exe).Path
+          $env:CXX = $(Get-Command cl.exe).Path
           .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver PostgreSQL
         shell: pwsh
@@ -154,6 +156,8 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
         run:
+          $env:CC = $(Get-Command cl.exe).Path
+          $env:CXX = $(Get-Command cl.exe).Path
           .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver SQLite
         shell: pwsh
@@ -161,6 +165,8 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run:
+          $env:CC = $(Get-Command cl.exe).Path
+          $env:CXX = $(Get-Command cl.exe).Path
           .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
         shell: pwsh
