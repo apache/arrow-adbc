@@ -185,7 +185,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["windows-latest"]
+        os: ["windows-2019"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -252,7 +252,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["windows-latest"]
+        os: ["windows-2019"]
         python: ["3.9", "3.11"]
     steps:
       - uses: actions/checkout@v3
