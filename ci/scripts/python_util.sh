@@ -57,9 +57,6 @@ function build_drivers {
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=x86_64"
         elif [[ "${VCPKG_ARCH}" = "arm64" ]]; then
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=arm64"
-            # XXX: Snowflake package uses Arrow 11 which can't be compiled on non-x64 platforms
-            # without noasm. Just disable it for now.
-            export ADBC_DRIVER_SNOWFLAKE=OFF
         else
             echo "Unknown architecture: ${VCPKG_ARCH}"
             exit 1
@@ -102,7 +99,7 @@ function build_drivers {
         -DADBC_DRIVER_FLIGHTSQL=ON \
         -DADBC_DRIVER_POSTGRESQL=ON \
         -DADBC_DRIVER_SQLITE=ON \
-        -DADBC_DRIVER_SNOWFLAKE=${ADBC_DRIVER_SNOWFLAKE} \
+        -DADBC_DRIVER_SNOWFLAKE=ON \
         ${source_dir}/c
     cmake --build . --target install --verbose -j
     popd
