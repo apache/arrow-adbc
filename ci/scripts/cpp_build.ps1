@@ -43,7 +43,7 @@ function Build-Subproject {
       -DCMAKE_BUILD_TYPE=Release `
       -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `
       -DCMAKE_VERBOSE_MAKEFILE=ON `
-      -GNinja
+      -G "Visual Studio 16 2019"
     if (-not $?) { exit 1 }
 
     cmake --build . --target install -j

@@ -91,13 +91,7 @@ jobs:
         shell: pwsh
         env:
           BUILD_ALL: "1"
-        # https://github.com/microsoft/vswhere/wiki/Find-VC
         run: |
-          $installDir = vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          $path = join-path $installDir 'VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt'
-          $version = $(gc -raw $path).Trim()
-          $env:CC = Join-Path $installDir "VC\Tools\MSVC\$version\bin\HostX64\x64\cl.exe"
-          $env:CXX = $env:CC
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
       - uses: actions/upload-artifact@v3
