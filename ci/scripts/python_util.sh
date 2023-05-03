@@ -19,7 +19,14 @@
 
 set -ex
 
-COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
+COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite"
+
+if [[ $(uname) = "Darwin" ]] && [[ "${VCPKG_ARCH}" = "arm64" ]]; then
+    # Can't build Arrow v11 without noasm
+    echo "Skipping Snowflake build"
+else
+    COMPONENTS="${COMPONENTS} adbc_driver_snowflake"
+fi
 
 function build_drivers {
     local -r source_dir="$1"
@@ -51,8 +58,9 @@ function build_drivers {
         if [[ "${VCPKG_ARCH}" = "x64" ]]; then
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=x86_64"
         elif [[ "${VCPKG_ARCH}" = "arm64" ]]; then
-            # Can't build Arrow v11 on non-x64 platforms without noasm
-            export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=arm64 -DADBC_GO_BUILD_TAGS=noasm"
+            # Can't build Arrow v11 on non-x64 platforms
+            export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=arm64"
+            ADBC_DRIVER_SNOWFLAKE=OFF
         else
             echo "Unknown architecture: ${VCPKG_ARCH}"
             exit 1
@@ -95,7 +103,7 @@ function build_drivers {
         -DADBC_DRIVER_FLIGHTSQL=ON \
         -DADBC_DRIVER_POSTGRESQL=ON \
         -DADBC_DRIVER_SQLITE=ON \
-        -DADBC_DRIVER_SNOWFLAKE=ON \
+        -DADBC_DRIVER_SNOWFLAKE="${ADBC_DRIVER_SNOWFLAKE}" \
         ${source_dir}/c
     cmake --build . --target install --verbose -j
     popd
