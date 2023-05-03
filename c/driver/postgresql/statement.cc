@@ -39,13 +39,8 @@
 namespace adbcpq {
 
 namespace {
-/// The header that comes at the start of a binary COPY stream
-constexpr std::array<char, 11> kPgCopyBinarySignature2 = {
-    'P', 'G', 'C', 'O', 'P', 'Y', '\n', '\377', '\r', '\n', '\0'};
 /// The flag indicating to PostgreSQL that we want binary-format values.
 constexpr int kPgBinaryFormat = 1;
-// A negative field length indicates a null.
-constexpr int32_t kNullFieldLength = -1;
 
 /// One-value ArrowArrayStream used to unify the implementations of Bind
 struct OneValueStream {
