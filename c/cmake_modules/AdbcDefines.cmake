@@ -21,6 +21,7 @@
 enable_language(C CXX)
 
 set(BUILD_SUPPORT_DIR "${REPOSITORY_ROOT}/ci/build_support")
+set(CMAKE_CXX_STANDARD 17)
 
 include(AdbcVersion)
 include(CheckLinkerFlag)

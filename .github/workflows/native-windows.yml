@@ -57,7 +57,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["windows-2019"]
+        os: ["windows-latest"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -86,6 +86,8 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+          # Force bundled gtest
+          mamba uninstall gtest
 
       - name: Build and Install (No ASan)
         shell: pwsh
@@ -109,7 +111,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["windows-2019"]
+        os: ["windows-latest"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -138,6 +140,8 @@ jobs:
         run: |
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
+          # Force bundled gtest
+          mamba uninstall gtest
 
       - name: Build Driver Manager
         shell: pwsh
@@ -185,7 +189,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["windows-2019"]
+        os: ["windows-latest"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -252,7 +256,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["windows-2019"]
+        os: ["windows-latest"]
         python: ["3.9", "3.11"]
     steps:
       - uses: actions/checkout@v3
