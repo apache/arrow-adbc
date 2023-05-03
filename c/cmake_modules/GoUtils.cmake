@@ -65,7 +65,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     if(NOT "${BUILD_TAGS}" STREQUAL "")
       set(BUILD_TAGS "${BUILD_TAGS},")
     endif()
-    set(BUILD_TAGS "${BUILD_TAGS},${ADBC_GO_BUILD_TAGS}")
+    set(BUILD_TAGS "${BUILD_TAGS}${ADBC_GO_BUILD_TAGS}")
   endif()
 
   if(NOT "${BUILD_TAGS}" STREQUAL "")
