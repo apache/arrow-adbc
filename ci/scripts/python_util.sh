@@ -19,14 +19,7 @@
 
 set -ex
 
-COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite"
-
-if [[ $(uname) = "Darwin" ]] && [[ "${VCPKG_ARCH}" = "arm64" ]]; then
-    # Can't build Arrow v11 without noasm
-    echo "Skipping Snowflake build"
-else
-    COMPONENTS="${COMPONENTS} adbc_driver_snowflake"
-fi
+COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
 
 function build_drivers {
     local -r source_dir="$1"

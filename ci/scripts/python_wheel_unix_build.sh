@@ -89,6 +89,11 @@ check_visibility $ADBC_SNOWFLAKE_LIBRARY
 python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools wheel
 
 for component in $COMPONENTS; do
+    if [[ $(uname) = "Darwin" ]] && [[ "${VCPKG_ARCH}" = "arm64" ]]; then
+        # XXX: can't build Snowflake driver on non-x64 platforms until upgraded to Arrow 12
+        continue
+    fi
+
     pushd ${source_dir}/python/$component
 
     component_dashes=${component//_/-}
