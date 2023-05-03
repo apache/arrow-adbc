@@ -31,6 +31,7 @@ function Build-Subproject {
     New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
     Push-Location $BuildDir
 
+    # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
     cmake `
       $(Join-Path $SourceDir "c\") `
       -DADBC_BUILD_SHARED=ON `
@@ -39,7 +40,7 @@ function Build-Subproject {
       -DADBC_DRIVER_MANAGER="$($BuildDriverManager)" `
       -DADBC_DRIVER_POSTGRESQL="$($BuildDriverPostgreSQL)" `
       -DADBC_DRIVER_SQLITE="$($BuildDriverSqlite)" `
-      -DCMAKE_BUILD_TYPE=Debug `
+      -DCMAKE_BUILD_TYPE=Release `
       -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `
       -DCMAKE_VERBOSE_MAKEFILE=ON
     if (-not $?) { exit 1 }
