@@ -42,8 +42,7 @@ function Build-Subproject {
       -DADBC_DRIVER_SQLITE="$($BuildDriverSqlite)" `
       -DCMAKE_BUILD_TYPE=Release `
       -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `
-      -DCMAKE_VERBOSE_MAKEFILE=ON `
-      -G "Visual Studio 16 2019"
+      -DCMAKE_VERBOSE_MAKEFILE=ON
     if (-not $?) { exit 1 }
 
     cmake --build . --target install -j
