@@ -109,7 +109,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["windows-latest"]
+        os: ["windows-2019"]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -145,8 +145,6 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
         run:
-          $env:CC = $(Get-Command cl.exe).Path
-          $env:CXX = $(Get-Command cl.exe).Path
           .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver PostgreSQL
         shell: pwsh
@@ -154,8 +152,6 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
         run:
-          $env:CC = $(Get-Command cl.exe).Path
-          $env:CXX = $(Get-Command cl.exe).Path
           .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver SQLite
         shell: pwsh
@@ -163,8 +159,6 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run:
-          $env:CC = $(Get-Command cl.exe).Path
-          $env:CXX = $(Get-Command cl.exe).Path
           .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
         shell: pwsh
