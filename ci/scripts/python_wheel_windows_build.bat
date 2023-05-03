@@ -87,7 +87,10 @@ FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adb
     )
 
     echo "=== (%PYTHON_VERSION%) Repair %%c wheel ==="
+    REM Always copy the wheel once since delvewheel doesn't copy if no changes needed
+    mkdir repaired_wheels
     FOR %%w IN (dist\*.whl) DO (
+        copy %%w repaired_wheels\
         delvewheel repair -w repaired_wheels\ %%w || exit /B 1
     )
 
