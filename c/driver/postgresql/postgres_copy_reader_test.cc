@@ -20,9 +20,7 @@
 
 #include "postgres_copy_reader.h"
 
-using adbcpq::PostgresCopyStreamReader;
-using adbcpq::PostgresType;
-using adbcpq::PostgresTypeId;
+namespace adbcpq {
 
 class PostgresCopyStreamTester {
  public:
@@ -499,3 +497,5 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
   ASSERT_DOUBLE_EQ(data_buffer2[1], 345.678);
   ASSERT_DOUBLE_EQ(data_buffer2[2], 0);
 }
+
+}  // namespace adbcpq
