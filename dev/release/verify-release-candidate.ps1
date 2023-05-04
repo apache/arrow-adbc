@@ -124,7 +124,7 @@ conda activate $(Join-Path $ArrowTempDir conda-env)
 mamba uninstall gtest
 
 # Activating doesn't appear to set GOROOT
-$env:GOROOT = $(Join-Path $ArrowTempDir conda-env)
+$env:GOROOT = $(Join-Path $ArrowTempDir conda-env go)
 
 Show-Header "Verify C/C++ Sources"
 
