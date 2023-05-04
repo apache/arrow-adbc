@@ -119,6 +119,9 @@ mamba create -c conda-forge -f -y -p $(Join-Path $ArrowTempDir conda-env) `
 
 Invoke-Expression $(conda shell.powershell hook | Out-String)
 conda activate $(Join-Path $ArrowTempDir conda-env)
+# XXX: force bundled gtest as the conda-forge version appears to
+# require you to exactly match the MSVC version it was compiled with
+mamba uninstall gtest
 
 Show-Header "Verify C/C++ Sources"
 
