@@ -32,58 +32,34 @@ test_that("default options can open a database and execute a query", {
   con <- adbcdrivermanager::adbc_connection_init(db)
   expect_s3_class(con, "adbcsnowflake_connection")
 
-  stmt <- adbcdrivermanager::adbc_statement_init(con)
-  expect_s3_class(stmt, "adbcsnowflake_statement")
-
-  # Use BIGINT to make sure that endian swapping on Windows works
-  adbcdrivermanager::adbc_statement_set_sql_query(
-    stmt,
-    "CREATE TABLE crossfit (exercise TEXT, difficulty_level BIGINT);"
-  )
-  adbcdrivermanager::adbc_statement_execute_query(stmt)
-  adbcdrivermanager::adbc_statement_release(stmt)
-
-  # If we get this far, remove the table and disconnect when the test is done
   on.exit({
-    stmt <- adbcdrivermanager::adbc_statement_init(con)
-    adbcdrivermanager::adbc_statement_set_sql_query(
-      stmt,
-      "DROP TABLE IF EXISTS crossfit;"
-    )
-    adbcdrivermanager::adbc_statement_execute_query(stmt)
-    adbcdrivermanager::adbc_statement_release(stmt)
-
     adbcdrivermanager::adbc_connection_release(con)
     adbcdrivermanager::adbc_database_release(db)
   })
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
+  expect_s3_class(stmt, "adbcsnowflake_statement")
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "INSERT INTO crossfit values
-      ('Push Ups', 3),
-      ('Pull Ups', 5),
-      ('Push Jerk', 7),
-      ('Bar Muscle Up', 10);"
+    "use schema snowflake_sample_data.tpch_sf1;"
   )
   adbcdrivermanager::adbc_statement_execute_query(stmt)
   adbcdrivermanager::adbc_statement_release(stmt)
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
+  expect_s3_class(stmt, "adbcsnowflake_statement")
+
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "SELECT * from crossfit ORDER BY difficulty_level"
+    "SELECT * FROM REGION ORDER BY R_REGIONKEY"
   )
 
   stream <- nanoarrow::nanoarrow_allocate_array_stream()
   adbcdrivermanager::adbc_statement_execute_query(stmt, stream)
+  result <- as.data.frame(stream)
   expect_identical(
-    as.data.frame(stream),
-    data.frame(
-      exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
-      difficulty_level = c(3, 5, 7, 10),
-      stringsAsFactors = FALSE
-    )
+    result$R_REGIONKEY,
+    c(1, 2, 3, 4)
   )
 
   adbcdrivermanager::adbc_statement_release(stmt)
