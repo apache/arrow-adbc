@@ -395,7 +395,8 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     na_res = copy_reader_->ReadRecord(&data, &error);
     if (na_res != NANOARROW_OK && na_res != ENODATA) {
       StringBuilderAppend(&error_builder_, "[libpq] ReadRecord failed at row %ld: %s",
-                          static_cast<long>(row_id), error.message);
+                          static_cast<long>(row_id),
+                          error.message);  // NOLINT(runtime/int)
       return na_res;
     }
 
@@ -407,7 +408,8 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
     if (get_copy_res == -2) {
       StringBuilderAppend(&error_builder_, "[libpq] Fetch row %ld failed: %s",
-                          static_cast<long>(row_id), PQerrorMessage(conn_));
+                          static_cast<long>(row_id),
+                          PQerrorMessage(conn_));  // NOLINT(runtime/int)
       return EIO;
     } else if (get_copy_res == -1) {
       // Returned when COPY has finished
