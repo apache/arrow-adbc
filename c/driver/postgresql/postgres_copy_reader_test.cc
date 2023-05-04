@@ -74,7 +74,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBoolean) {
   ASSERT_EQ(tester.Init(input_type), NANOARROW_OK);
   ASSERT_EQ(tester.ReadAll(&data), ENODATA);
 
-  // Apparently the output above contains an extra 0xff 0xff at the end
   ASSERT_EQ(data.data.as_uint8 - kTestPgCopyBoolean, sizeof(kTestPgCopyBoolean));
   ASSERT_EQ(data.size_bytes, 0);
 

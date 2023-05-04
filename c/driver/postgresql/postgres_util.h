@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <string.h>
+#include <cstring>
 
 #ifdef _WIN32
 #include <winsock2.h>
