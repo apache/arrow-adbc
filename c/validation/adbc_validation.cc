@@ -950,8 +950,8 @@ void StatementTest::TestSqlIngestNumericType(ArrowType type) {
   if constexpr (std::is_floating_point_v<CType>) {
     // XXX: sqlite and others seem to have trouble with extreme
     // values. Likely a bug on our side, but for now, avoid them.
-    values.push_back(-1.5);
-    values.push_back(1.5);
+    values.push_back(static_cast<CType>(-1.5));
+    values.push_back(static_cast<CType>(1.5));
   } else {
     values.push_back(std::numeric_limits<CType>::lowest());
     values.push_back(std::numeric_limits<CType>::max());
