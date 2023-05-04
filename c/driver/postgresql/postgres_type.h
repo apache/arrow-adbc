@@ -338,7 +338,7 @@ class PostgresTypeResolver {
     if (result == base_.end()) {
       // This occurs when a user-defined type has defined a custom receive function
       // (e.g., PostGIS/geometry). The only way these types can be supported is
-      // by returning binary unless.
+      // by returning binary unless we hard-code support for some extensions.
       base = PostgresType(PostgresTypeId::kUserDefined);
     } else {
       base = result->second;
