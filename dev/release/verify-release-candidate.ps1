@@ -123,9 +123,8 @@ conda activate $(Join-Path $ArrowTempDir conda-env)
 # require you to exactly match the MSVC version it was compiled with
 mamba uninstall gtest
 
-# Try to make sure GOROOT is set?
-conda activate $(Join-Path $ArrowTempDir conda-env)
-echo "GOROOT = $($env:GOROOT)"
+# Activating doesn't appear to set GOROOT
+$env:GOROOT = $(Join-Path $ArrowTempDir conda-env)
 
 Show-Header "Verify C/C++ Sources"
 
