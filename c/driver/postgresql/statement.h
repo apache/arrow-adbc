@@ -41,7 +41,7 @@ class TupleReader final {
       : conn_(conn),
         result_(nullptr),
         pgbuf_(nullptr),
-        copy_reader_(new PostgresCopyStreamReader()) {
+        copy_reader_(nullptr) {
     StringBuilderInit(&error_builder_, 0);
   }
 
