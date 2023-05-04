@@ -79,14 +79,21 @@ echo "=== Building C/C++ driver components ==="
 build_drivers "${source_dir}" "${build_dir}"
 
 # Check that we don't expose any unwanted symbols
+check_visibility $ADBC_FLIGHTSQL_LIBRARY
 check_visibility $ADBC_POSTGRESQL_LIBRARY
 check_visibility $ADBC_SQLITE_LIBRARY
+check_visibility $ADBC_SNOWFLAKE_LIBRARY
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
 python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools wheel
 
 for component in $COMPONENTS; do
+    if [[ $(uname) = "Darwin" ]] && [[ "${VCPKG_ARCH}" = "arm64" ]]; then
+        # XXX: can't build Snowflake driver on non-x64 platforms until upgraded to Arrow 12
+        continue
+    fi
+
     pushd ${source_dir}/python/$component
 
     component_dashes=${component//_/-}

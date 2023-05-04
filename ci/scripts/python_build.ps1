@@ -23,9 +23,11 @@ $BuildDir = $Args[1]
 $InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "local/" }
 
 $BuildAll = $env:BUILD_ALL -ne "0"
+$BuildDriverFlightSql = ($BuildAll -and (-not ($env:BUILD_DRIVER_FLIGHTSQL -eq "0"))) -or ($env:BUILD_DRIVER_FLIGHTSQL -eq "1")
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
 $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
+$BuildDriverSnowflake = ($BuildAll -and (-not ($env:BUILD_DRIVER_SNOWFLAKE -eq "0"))) -or ($env:BUILD_DRIVER_SNOWFLAKE -eq "1")
 
 function Build-Subproject {
     $Subproject = $Args[0]
@@ -41,6 +43,19 @@ function Build-Subproject {
 
 if ($BuildDriverManager) {
     Build-Subproject adbc_driver_manager
+}
+if ($BuildDriverFlightSql) {
+    $env:ADBC_FLIGHTSQL_LIBRARY = Get-Childitem `
+      -ErrorAction SilentlyContinue `
+      -Path $InstallDir `
+      -Recurse `
+      -Include "adbc_driver_flightsql.dll","libadbc_driver_flightsql.so" | % {$_.FullName}
+    echo $env:ADBC_FLIGHTSQL_LIBRARY
+    if ($env:ADBC_FLIGHTSQL_LIBRARY -eq $null) {
+        echo "Could not find Flight SQL driver in $($InstallDir)"
+        exit 1
+    }
+    Build-Subproject adbc_driver_flightsql
 }
 if ($BuildDriverPostgreSQL) {
     $env:ADBC_POSTGRESQL_LIBRARY = Get-Childitem `
@@ -67,4 +82,17 @@ if ($BuildDriverSqlite) {
         exit 1
     }
     Build-Subproject adbc_driver_sqlite
+}
+if ($BuildDriverSnowflake) {
+    $env:ADBC_SNOWFLAKE_LIBRARY = Get-Childitem `
+      -ErrorAction SilentlyContinue `
+      -Path $InstallDir `
+      -Recurse `
+      -Include "adbc_driver_snowflake.dll","libadbc_driver_snowflake.so" | % {$_.FullName}
+    echo $env:ADBC_SNOWFLAKE_LIBRARY
+    if ($env:ADBC_SNOWFLAKE_LIBRARY -eq $null) {
+        echo "Could not find Snowflake driver in $($InstallDir)"
+        exit 1
+    }
+    Build-Subproject adbc_driver_snowflake
 }

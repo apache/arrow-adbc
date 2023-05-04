@@ -24,8 +24,10 @@ $InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "l
 
 $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
+$BuildDriverFlightSql = ($BuildAll -and (-not ($env:BUILD_DRIVER_FLIGHTSQL -eq "0"))) -or ($env:BUILD_DRIVER_FLIGHTSQL -eq "1")
 $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
+$BuildDriverSnowflake = ($BuildAll -and (-not ($env:BUILD_DRIVER_SNOWFLAKE -eq "0"))) -or ($env:BUILD_DRIVER_SNOWFLAKE -eq "1")
 
 $env:LD_LIBRARY_PATH += ":$($InstallDir)"
 $env:LD_LIBRARY_PATH += ":$($InstallDir)/bin"
@@ -34,13 +36,28 @@ $env:PATH += ";$($InstallDir)"
 $env:PATH += ";$($InstallDir)\bin"
 $env:PATH += ";$($InstallDir)\lib"
 
-echo $env:LD_LIBRARY_PATH
-echo $env:PATH
-
 function Build-Subproject {
     Push-Location $BuildDir
 
-    ctest --output-on-failure --no-tests=error
+    $labels = "driver-common"
+
+    if ($BuildDriverManager) {
+        $labels += "|driver-manager"
+    }
+    if ($BuildDriverFlightSql) {
+        $labels += "|driver-flightsql"
+    }
+    if ($BuildDriverPostgreSQL) {
+        $labels += "|driver-postgresql"
+    }
+    if ($BuildDriverSqlite) {
+        $labels += "|driver-sqlite"
+    }
+    if ($BuildDriverSnowflake) {
+        $labels += "|driver-snowflake"
+    }
+
+    ctest --output-on-failure --no-tests=error -L "$($labels)"
     if (-not $?) { exit 1 }
 
     Pop-Location

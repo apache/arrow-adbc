@@ -55,8 +55,21 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     set(BUILD_STATIC ${ADBC_BUILD_STATIC})
   endif()
 
+  set(BUILD_TAGS)
+
   if(DEFINED ARG_BUILD_TAGS)
-    set(GO_BUILD_TAGS "-tags=${ARG_BUILD_TAGS}")
+    set(BUILD_TAGS "${ARG_BUILD_TAGS}")
+  endif()
+
+  if(NOT "${ADBC_GO_BUILD_TAGS}" STREQUAL "")
+    if(NOT "${BUILD_TAGS}" STREQUAL "")
+      set(BUILD_TAGS "${BUILD_TAGS},")
+    endif()
+    set(BUILD_TAGS "${BUILD_TAGS}${ADBC_GO_BUILD_TAGS}")
+  endif()
+
+  if(NOT "${BUILD_TAGS}" STREQUAL "")
+    set(GO_BUILD_TAGS "-tags=${BUILD_TAGS}")
   endif()
 
   list(TRANSFORM ARG_SOURCES PREPEND "${GO_MOD_DIR}/")

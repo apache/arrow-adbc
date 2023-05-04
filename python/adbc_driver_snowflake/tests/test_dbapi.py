@@ -15,6 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[settings]
-known_first_party = adbc_driver_flightsql, adbc_driver_manager, adbc_driver_postgresql, adbc_driver_sqlite, adbc_driver_snowflake
-profile = black
+import pytest
+
+from adbc_driver_snowflake import dbapi
+
+
+@pytest.fixture
+def snowflake(snowflake_uri: str):
+    with dbapi.connect(snowflake_uri) as conn:
+        yield conn
+
+
+def test_query_trivial(snowflake):
+    with snowflake.cursor() as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchone() == (1,)
