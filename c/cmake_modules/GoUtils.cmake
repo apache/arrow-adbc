@@ -85,7 +85,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
 
   # Go gcflags for disabling optimizations and inlining if debug
   separate_arguments(GO_BUILD_FLAGS NATIVE_COMMAND
-                     "${GO_BUILD_FLAGS} $<$<CONFIG:DEBUG>:-gcflags='-N -l'>")
+                     "${GO_BUILD_FLAGS} $<$<CONFIG:DEBUG>:-gcflags=\"-N -l\">")
 
   # if we're building debug mode then change the default CGO_CFLAGS and CGO_CXXFLAGS from "-g O2" to "-g3"
   set(GO_ENV_VARS
