@@ -342,7 +342,8 @@ void ConnectionTest::TestMetadataGetTableSchema() {
 
   Handle<ArrowSchema> schema;
   ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/nullptr, "bulk_ingest",
+                                           /*db_schema=*/nullptr,
+                                           "bulk_ingest; DROP TABLE bulk_ingest; --",
                                            &schema.value, &error),
               IsOkStatus(&error));
 
