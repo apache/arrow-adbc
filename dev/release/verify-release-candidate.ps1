@@ -131,17 +131,19 @@ Show-Header "Verify C/C++ Sources"
 $CppBuildDir = Join-Path $ArrowTempDir cpp-build
 New-Item -ItemType Directory -Force -Path $CppBuildDir | Out-Null
 
+# XXX(apache/arrow-adbc#634): not working on Windows due to it picking
+# up MSVC as the C compiler, which then blows up when /Werror gets
+# passed in by some package
+$env:BUILD_DRIVER_FLIGHTSQL = "0"
+$env:BUILD_DRIVER_SNOWFLAKE = "0"
+
 & $(Join-Path $ArrowSourceDir ci\scripts\cpp_build.ps1) $ArrowSourceDir $CppBuildDir
 if (-not $?) { exit 1 }
 
-$env:BUILD_DRIVER_FLIGHTSQL = "0"
 $env:BUILD_DRIVER_POSTGRESQL = "0"
-$env:BUILD_DRIVER_SNOWFLAKE = "0"
 & $(Join-Path $ArrowSourceDir ci\scripts\cpp_test.ps1) $ArrowSourceDir $CppBuildDir
 if (-not $?) { exit 1 }
-$env:BUILD_DRIVER_FLIGHTSQL = "1"
 $env:BUILD_DRIVER_POSTGRESQL = "1"
-$env:BUILD_DRIVER_SNOWFLAKE = "1"
 
 Show-Header "Verify Python Sources"
 
