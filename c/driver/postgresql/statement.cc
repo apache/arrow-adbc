@@ -116,9 +116,9 @@ AdbcStatusCode ResolvePostgresType(const PostgresTypeResolver& type_resolver,
     const Oid pg_oid = PQftype(result, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      std::string type_name = "oid:" + std::to_string(pg_oid);
-      pg_type =
-          PostgresType(PostgresTypeId::kUserDefined).WithPgTypeInfo(pg_oid, type_name);
+      SetError(error, "%s%d%s%s%s%d", "[libpq] Column #", i + 1, " (\"",
+               PQfname(result, i), "\") has unknown type code ", pg_oid);
+      return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
     root_type.AppendChild(PQfname(result, i), pg_type);

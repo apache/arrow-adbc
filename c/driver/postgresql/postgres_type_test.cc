@@ -298,16 +298,8 @@ TEST(PostgresTypeTest, PostgresTypeResolver) {
   EXPECT_EQ(resolver.Find(123, &type, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error), "Postgres type with oid 123 not found");
 
-  // Check error for unsupported type_id name
-  item.oid = 123;
-  item.typname = "invalid";
-  item.typreceive = "invalid_recv";
-  EXPECT_EQ(resolver.Insert(item, &error), ENOTSUP);
-  EXPECT_STREQ(
-      ArrowErrorMessage(&error),
-      "Base type not found for type 'invalid' with receive function 'invalid_recv'");
-
   // Check error for Array with unknown child
+  item.oid = 123;
   item.typname = "some_array";
   item.typreceive = "array_recv";
   item.child_oid = 1234;

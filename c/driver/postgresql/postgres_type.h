@@ -333,13 +333,17 @@ class PostgresTypeResolver {
   // class type using InsertClass().
   ArrowErrorCode Insert(const Item& item, ArrowError* error) {
     auto result = base_.find(item.typreceive);
+    PostgresType base;
+
     if (result == base_.end()) {
-      ArrowErrorSet(error, "Base type not found for type '%s' with receive function '%s'",
-                    item.typname, item.typreceive);
-      return ENOTSUP;
+      // This occurs when a user-defined type has defined a custom receive function
+      // (e.g., PostGIS/geometry). The only way these types can be supported is
+      // by returning binary unless.
+      base = PostgresType(PostgresTypeId::kUserDefined);
+    } else {
+      base = result->second;
     }
 
-    const PostgresType& base = result->second;
     PostgresType type = base.WithPgTypeInfo(item.oid, item.typname);
 
     switch (base.type_id()) {
