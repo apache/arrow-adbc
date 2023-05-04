@@ -21,7 +21,6 @@
 enable_language(C CXX)
 
 set(BUILD_SUPPORT_DIR "${REPOSITORY_ROOT}/ci/build_support")
-set(CMAKE_CXX_STANDARD 17)
 
 include(AdbcVersion)
 include(CheckLinkerFlag)
@@ -79,6 +78,8 @@ if(ADBC_BUILD_TESTS)
   find_package(GTest)
   if(NOT GTest_FOUND)
     message(STATUS "Building googletest from source")
+    # Required for GoogleTest
+    set(CMAKE_CXX_STANDARD 17)
     include(FetchContent)
     fetchcontent_declare(googletest
                          URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
