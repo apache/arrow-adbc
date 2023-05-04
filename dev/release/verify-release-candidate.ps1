@@ -115,13 +115,17 @@ Show-Header "Create Conda Environment"
 mamba create -c conda-forge -f -y -p $(Join-Path $ArrowTempDir conda-env) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_cpp.txt) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_python.txt) `
-  go=1.18
+  go
 
 Invoke-Expression $(conda shell.powershell hook | Out-String)
 conda activate $(Join-Path $ArrowTempDir conda-env)
 # XXX: force bundled gtest as the conda-forge version appears to
 # require you to exactly match the MSVC version it was compiled with
 mamba uninstall gtest
+
+# Try to make sure GOROOT is set?
+conda activate $(Join-Path $ArrowTempDir conda-env)
+echo "GOROOT = $($env:GOROOT)"
 
 Show-Header "Verify C/C++ Sources"
 
