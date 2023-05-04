@@ -28,8 +28,7 @@
 #include "database.h"
 #include "utils.h"
 
-namespace adbcpq {
-
+namespace {
 class PqResultHelper {
  public:
   PqResultHelper(PGconn* conn, const char* query) : conn_(conn) {
@@ -49,6 +48,9 @@ class PqResultHelper {
   PGconn* conn_;
   std::string query_;
 };
+}  // namespace
+
+namespace adbcpq {
 
 AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
   if (autocommit_) {
@@ -113,10 +115,12 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   pg_result* result = result_helper.Execute();
 
   ExecStatusType pq_status = PQresultStatus(result);
+  auto uschema = nanoarrow::UniqueSchema();
+
   if (pq_status == PGRES_TUPLES_OK) {
     int num_rows = PQntuples(result);
-    ArrowSchemaInit(schema);
-    CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(schema, num_rows), error);
+    ArrowSchemaInit(uschema.get());
+    CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema.get(), num_rows), error);
 
     ArrowError na_error;
     for (int row = 0; row < num_rows; row++) {
@@ -132,7 +136,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
         break;
       }
 
-      CHECK_NA(INTERNAL, pg_type.WithFieldName(colname).SetSchema(schema->children[row]),
+      CHECK_NA(INTERNAL, pg_type.WithFieldName(colname).SetSchema(uschema->children[row]),
                error);
     }
   } else {
@@ -140,6 +144,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
     final_status = ADBC_STATUS_IO;
   }
 
+  uschema.move(schema);
   return final_status;
 }
 
