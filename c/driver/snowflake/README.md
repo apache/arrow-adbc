@@ -17,7 +17,7 @@
   under the License.
 -->
 
-# ADBC SQLite Driver
+# ADBC Snowflake Driver
 
 This driver provides an interface to
 [Snowflake](https://www.snowflake.com/) using ADBC.
