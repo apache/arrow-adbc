@@ -16,7 +16,7 @@
 // under the License.
 
 #include <gtest/gtest.h>
-#include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow.hpp>
 
 #include "postgres_copy_reader.h"
 
@@ -77,15 +77,15 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBoolean) {
   ASSERT_EQ(data.data.as_uint8 - kTestPgCopyBoolean, sizeof(kTestPgCopyBoolean));
   ASSERT_EQ(data.size_bytes, 0);
 
-  struct ArrowArray array;
-  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
-  ASSERT_EQ(array.length, 3);
-  ASSERT_EQ(array.n_children, 1);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 3);
+  ASSERT_EQ(array->n_children, 1);
 
   const uint8_t* validity =
-      reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
+      reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
   const uint8_t* data_buffer =
-      reinterpret_cast<const uint8_t*>(array.children[0]->buffers[1]);
+      reinterpret_cast<const uint8_t*>(array->children[0]->buffers[1]);
   ASSERT_NE(validity, nullptr);
   ASSERT_NE(data_buffer, nullptr);
 
@@ -96,8 +96,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBoolean) {
   ASSERT_TRUE(ArrowBitGet(data_buffer, 0));
   ASSERT_FALSE(ArrowBitGet(data_buffer, 1));
   ASSERT_FALSE(ArrowBitGet(data_buffer, 2));
-
-  array.release(&array);
 }
 
 // COPY (SELECT CAST("col" AS SMALLINT) AS "col" FROM (  VALUES (-123), (-1), (1), (123),
@@ -124,13 +122,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadSmallInt) {
   ASSERT_EQ(data.data.as_uint8 - kTestPgCopySmallInt, sizeof(kTestPgCopySmallInt));
   ASSERT_EQ(data.size_bytes, 0);
 
-  struct ArrowArray array;
-  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
-  ASSERT_EQ(array.length, 5);
-  ASSERT_EQ(array.n_children, 1);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 5);
+  ASSERT_EQ(array->n_children, 1);
 
-  auto validity = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
-  auto data_buffer = reinterpret_cast<const int16_t*>(array.children[0]->buffers[1]);
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto data_buffer = reinterpret_cast<const int16_t*>(array->children[0]->buffers[1]);
   ASSERT_NE(validity, nullptr);
   ASSERT_NE(data_buffer, nullptr);
 
@@ -145,8 +143,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadSmallInt) {
   ASSERT_EQ(data_buffer[2], 1);
   ASSERT_EQ(data_buffer[3], 123);
   ASSERT_EQ(data_buffer[4], 0);
-
-  array.release(&array);
 }
 
 // COPY (SELECT CAST("col" AS INTEGER) AS "col" FROM (  VALUES (-123), (-1), (1), (123),
@@ -173,13 +169,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadInteger) {
   ASSERT_EQ(data.data.as_uint8 - kTestPgCopyInteger, sizeof(kTestPgCopyInteger));
   ASSERT_EQ(data.size_bytes, 0);
 
-  struct ArrowArray array;
-  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
-  ASSERT_EQ(array.length, 5);
-  ASSERT_EQ(array.n_children, 1);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 5);
+  ASSERT_EQ(array->n_children, 1);
 
-  auto validity = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
-  auto data_buffer = reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]);
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto data_buffer = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);
   ASSERT_NE(validity, nullptr);
   ASSERT_NE(data_buffer, nullptr);
 
@@ -194,8 +190,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadInteger) {
   ASSERT_EQ(data_buffer[2], 1);
   ASSERT_EQ(data_buffer[3], 123);
   ASSERT_EQ(data_buffer[4], 0);
-
-  array.release(&array);
 }
 
 // COPY (SELECT CAST("col" AS BIGINT) AS "col" FROM (  VALUES (-123), (-1), (1), (123),
@@ -223,13 +217,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBigInt) {
   ASSERT_EQ(data.data.as_uint8 - kTestPgCopyBigInt, sizeof(kTestPgCopyBigInt));
   ASSERT_EQ(data.size_bytes, 0);
 
-  struct ArrowArray array;
-  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
-  ASSERT_EQ(array.length, 5);
-  ASSERT_EQ(array.n_children, 1);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 5);
+  ASSERT_EQ(array->n_children, 1);
 
-  auto validity = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
-  auto data_buffer = reinterpret_cast<const int64_t*>(array.children[0]->buffers[1]);
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto data_buffer = reinterpret_cast<const int64_t*>(array->children[0]->buffers[1]);
   ASSERT_NE(validity, nullptr);
   ASSERT_NE(data_buffer, nullptr);
 
@@ -244,8 +238,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBigInt) {
   ASSERT_EQ(data_buffer[2], 1);
   ASSERT_EQ(data_buffer[3], 123);
   ASSERT_EQ(data_buffer[4], 0);
-
-  array.release(&array);
 }
 
 // COPY (SELECT CAST("col" AS REAL) AS "col" FROM (  VALUES (-123.456), (-1), (1),
@@ -272,13 +264,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadReal) {
   ASSERT_EQ(data.data.as_uint8 - kTestPgCopyReal, sizeof(kTestPgCopyReal));
   ASSERT_EQ(data.size_bytes, 0);
 
-  struct ArrowArray array;
-  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
-  ASSERT_EQ(array.length, 5);
-  ASSERT_EQ(array.n_children, 1);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 5);
+  ASSERT_EQ(array->n_children, 1);
 
-  auto validity = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
-  auto data_buffer = reinterpret_cast<const float*>(array.children[0]->buffers[1]);
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto data_buffer = reinterpret_cast<const float*>(array->children[0]->buffers[1]);
   ASSERT_NE(validity, nullptr);
   ASSERT_NE(data_buffer, nullptr);
 
@@ -293,8 +285,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadReal) {
   ASSERT_EQ(data_buffer[2], 1);
   ASSERT_FLOAT_EQ(data_buffer[3], 123.456);
   ASSERT_EQ(data_buffer[4], 0);
-
-  array.release(&array);
 }
 
 // COPY (SELECT CAST("col" AS DOUBLE PRECISION) AS "col" FROM (  VALUES (-123.456), (-1),
@@ -323,13 +313,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDoublePrecision) {
             sizeof(kTestPgCopyDoublePrecision));
   ASSERT_EQ(data.size_bytes, 0);
 
-  struct ArrowArray array;
-  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
-  ASSERT_EQ(array.length, 5);
-  ASSERT_EQ(array.n_children, 1);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 5);
+  ASSERT_EQ(array->n_children, 1);
 
-  auto validity = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
-  auto data_buffer = reinterpret_cast<const double*>(array.children[0]->buffers[1]);
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto data_buffer = reinterpret_cast<const double*>(array->children[0]->buffers[1]);
   ASSERT_NE(validity, nullptr);
   ASSERT_NE(data_buffer, nullptr);
 
@@ -344,8 +334,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDoublePrecision) {
   ASSERT_EQ(data_buffer[2], 1);
   ASSERT_DOUBLE_EQ(data_buffer[3], 123.456);
   ASSERT_EQ(data_buffer[4], 0);
-
-  array.release(&array);
 }
 
 // COPY (SELECT CAST("col" AS TEXT) AS "col" FROM (  VALUES ('abc'), ('1234'),
@@ -371,14 +359,14 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadText) {
   ASSERT_EQ(data.data.as_uint8 - kTestPgCopyText, sizeof(kTestPgCopyText));
   ASSERT_EQ(data.size_bytes, 0);
 
-  struct ArrowArray array;
-  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
-  ASSERT_EQ(array.length, 3);
-  ASSERT_EQ(array.n_children, 1);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 3);
+  ASSERT_EQ(array->n_children, 1);
 
-  auto validity = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
-  auto offsets = reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]);
-  auto data_buffer = reinterpret_cast<const char*>(array.children[0]->buffers[2]);
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto offsets = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);
+  auto data_buffer = reinterpret_cast<const char*>(array->children[0]->buffers[2]);
   ASSERT_NE(validity, nullptr);
   ASSERT_NE(data_buffer, nullptr);
 
@@ -393,8 +381,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadText) {
 
   ASSERT_EQ(std::string(data_buffer + 0, 3), "abc");
   ASSERT_EQ(std::string(data_buffer + 3, 4), "1234");
-
-  array.release(&array);
 }
 
 // COPY (SELECT CAST("col" AS INTEGER ARRAY) AS "col" FROM (  VALUES ('{-123, -1}'), ('{0,
@@ -426,17 +412,17 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadArray) {
             sizeof(kTestPgCopyIntegerArray));
   ASSERT_EQ(data.size_bytes, 0);
 
-  struct ArrowArray array;
-  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
-  ASSERT_EQ(array.length, 3);
-  ASSERT_EQ(array.n_children, 1);
-  ASSERT_EQ(array.children[0]->n_children, 1);
-  ASSERT_EQ(array.children[0]->children[0]->length, 5);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 3);
+  ASSERT_EQ(array->n_children, 1);
+  ASSERT_EQ(array->children[0]->n_children, 1);
+  ASSERT_EQ(array->children[0]->children[0]->length, 5);
 
-  auto validity = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
-  auto offsets = reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]);
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto offsets = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);
   auto data_buffer =
-      reinterpret_cast<const int32_t*>(array.children[0]->children[0]->buffers[1]);
+      reinterpret_cast<const int32_t*>(array->children[0]->children[0]->buffers[1]);
   ASSERT_NE(validity, nullptr);
   ASSERT_NE(data_buffer, nullptr);
 
@@ -454,8 +440,6 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadArray) {
   ASSERT_EQ(data_buffer[2], 0);
   ASSERT_EQ(data_buffer[3], 1);
   ASSERT_EQ(data_buffer[4], 123);
-
-  array.release(&array);
 }
 
 // CREATE TYPE custom_record AS (nested1 integer, nested2 double precision);
@@ -489,19 +473,19 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
             sizeof(kTestPgCopyCustomRecord));
   ASSERT_EQ(data.size_bytes, 0);
 
-  struct ArrowArray array;
-  ASSERT_EQ(tester.GetArray(&array), NANOARROW_OK);
-  ASSERT_EQ(array.length, 3);
-  ASSERT_EQ(array.n_children, 1);
-  ASSERT_EQ(array.children[0]->n_children, 2);
-  ASSERT_EQ(array.children[0]->children[0]->length, 3);
-  ASSERT_EQ(array.children[0]->children[1]->length, 3);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 3);
+  ASSERT_EQ(array->n_children, 1);
+  ASSERT_EQ(array->children[0]->n_children, 2);
+  ASSERT_EQ(array->children[0]->children[0]->length, 3);
+  ASSERT_EQ(array->children[0]->children[1]->length, 3);
 
-  auto validity = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[0]);
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
   auto data_buffer1 =
-      reinterpret_cast<const int32_t*>(array.children[0]->children[0]->buffers[1]);
+      reinterpret_cast<const int32_t*>(array->children[0]->children[0]->buffers[1]);
   auto data_buffer2 =
-      reinterpret_cast<const double*>(array.children[0]->children[1]->buffers[1]);
+      reinterpret_cast<const double*>(array->children[0]->children[1]->buffers[1]);
 
   ASSERT_TRUE(ArrowBitGet(validity, 0));
   ASSERT_TRUE(ArrowBitGet(validity, 1));
@@ -514,6 +498,4 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
   ASSERT_DOUBLE_EQ(data_buffer2[0], 456.789);
   ASSERT_DOUBLE_EQ(data_buffer2[1], 345.678);
   ASSERT_DOUBLE_EQ(data_buffer2[2], 0);
-
-  array.release(&array);
 }
