@@ -21,6 +21,7 @@ files_to_vendor <- c(
   "../../adbc.h",
   "../../c/driver/postgresql/postgres_util.h",
   "../../c/driver/postgresql/postgres_type.h",
+  "../../c/driver/postgresql/postgres_copy_reader.h",
   "../../c/driver/postgresql/statement.h",
   "../../c/driver/postgresql/statement.cc",
   "../../c/driver/postgresql/connection.h",
