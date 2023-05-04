@@ -38,10 +38,7 @@ class PostgresStatement;
 class TupleReader final {
  public:
   TupleReader(PGconn* conn)
-      : conn_(conn),
-        result_(nullptr),
-        pgbuf_(nullptr),
-        copy_reader_(nullptr) {
+      : conn_(conn), result_(nullptr), pgbuf_(nullptr), copy_reader_(nullptr) {
     StringBuilderInit(&error_builder_, 0);
   }
 
