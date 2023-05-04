@@ -607,8 +607,8 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
           ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
               << "Row " << row << " should have non-null db_schema_tables";
 
-          for (int64_t tables_index = ArrowArrayViewGetOffsetUnsafe(
-                   db_schema_tables_list, row + db_schemas_index);
+          for (int64_t tables_index =
+                   ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index);
                tables_index <
                ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index + 1);
                tables_index++) {
