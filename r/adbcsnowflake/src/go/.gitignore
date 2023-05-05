@@ -16,5 +16,6 @@
 # under the License.
 
 adbc/
+tmp/
 libadbc_driver_snowflake.a
 libadbc_driver_snowflake.h

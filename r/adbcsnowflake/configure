@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+R_BIN="$R_HOME/bin/R"
+RSCRIPT_BIN="$R_HOME/bin/Rscript"
+
 # Run bootstrap.R. This will have already run if we are installing a source
 # package built with pkgbuild::build() with pkgbuild >1.4.0; however, we
 # run it again in case this is R CMD INSTALL on a directory or
@@ -22,7 +25,7 @@
 # ADBC repo into this package. If the file doesn't exist, we're installing
 # from a pre-built tarball.
 if [ -f bootstrap.R ]; then
-  $R_HOME/bin/Rscript bootstrap.R
+  "$RSCRIPT_BIN" bootstrap.R
 fi
 
 # Find the go binary so that we can go build!
@@ -32,8 +35,22 @@ if [ -z "$GO_BIN" ]; then
   GO_BIN=`which go`
 fi
 
-if [ -z "$GO_BIN" ]; then
-  GO_BIN="/usr/local/go/bin/go"
+if [ -z "$GO_BIN"]; then
+  if [ ! -f src/go/tmp/go/bin/go ]; then
+    echo ""
+    echo "Downloading and extracting Go into the package source directory:"
+    echo "This may take a few minutes. To eliminate this step, install Go"
+    echo "from your faviourite package manager or set the GO_BIN environment variable:"
+    echo "- apt-get install golang"
+    echo "- brew install golang"
+    echo "- dnf install golang"
+    echo "- apk add go"
+    echo "- pacman -S go"
+
+    "$RSCRIPT_BIN" tools/download-go.R
+  fi
+
+  GO_BIN="`pwd`/src/go/tmp/go/bin/go"
 fi
 
 echo "Trying 'go version' with GO_BIN at '$GO_BIN'"
@@ -46,7 +63,6 @@ fi
 # clang and gcc use different symbol-hiding syntax and we need to
 # make sure to hide any Adbc* symbols that might conflict with another
 # driver.
-R_BIN="$R_HOME/bin/R"
 if "$R_BIN" CMD config CC | grep -e "clang" ; then
   SYMBOL_ARGS="-Wl,-exported_symbol,_adbcsnowflake_c_snowflake -Wl,-exported_symbol,_R_init_adbcsnowflake"
 elif "$R_BIN" CMD config CC | grep -e "gcc" ; then
