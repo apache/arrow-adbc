@@ -27,5 +27,8 @@ postgresql.cc
 statement.h
 statement.cc
 postgres_type.h
-util.h
+postgres_copy_reader.h
+postgres_util.h
+utils.h
+utils.c
 Makevars

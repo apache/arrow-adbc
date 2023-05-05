@@ -175,7 +175,7 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
-      - name: BuildPostgreSQL Driver
+      - name: Build PostgreSQL Driver
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
@@ -440,6 +440,14 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Build Python Driver Snowflake
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_SNOWFLAKE=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Test Python Driver Snowflake
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_SNOWFLAKE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       # Docs requires Python packages since it runs doctests
       - name: Build Docs
         shell: bash -l {0}

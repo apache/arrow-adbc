@@ -18,25 +18,23 @@
 #include <utility>
 
 #include <gtest/gtest.h>
-#include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow.hpp>
 
 #include "postgres_type.h"
 
-using adbcpq::PostgresType;
-using adbcpq::PostgresTypeId;
-using adbcpq::PostgresTypeResolver;
+namespace adbcpq {
 
 class MockTypeResolver : public PostgresTypeResolver {
  public:
   ArrowErrorCode Init() {
-    auto all_types = adbcpq::PostgresTypeIdAll(false);
+    auto all_types = PostgresTypeIdAll(false);
     PostgresTypeResolver::Item item;
     item.oid = 0;
 
     // Insert all the base types
     for (auto type_id : all_types) {
-      std::string typreceive = adbcpq::PostgresTyprecv(type_id);
-      std::string typname = adbcpq::PostgresTypname(type_id);
+      std::string typreceive = PostgresTyprecv(type_id);
+      std::string typname = PostgresTypname(type_id);
       item.oid++;
       item.typname = typname.c_str();
       item.typreceive = typreceive.c_str();
@@ -125,168 +123,169 @@ TEST(PostgresTypeTest, PostgresTypeBasic) {
 }
 
 TEST(PostgresTypeTest, PostgresTypeSetSchema) {
-  ArrowSchema schema;
+  nanoarrow::UniqueSchema schema;
 
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresTypeId::kBool).SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "b");
-  schema.release(&schema);
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kBool).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "b");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresTypeId::kInt2).SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "s");
-  schema.release(&schema);
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kInt2).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "s");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresTypeId::kInt4).SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "i");
-  schema.release(&schema);
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kInt4).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "i");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresTypeId::kInt8).SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "l");
-  schema.release(&schema);
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kInt8).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "l");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresTypeId::kFloat4).SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "f");
-  schema.release(&schema);
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kFloat4).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "f");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresTypeId::kFloat8).SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "g");
-  schema.release(&schema);
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kFloat8).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "g");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresTypeId::kText).SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "u");
-  schema.release(&schema);
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kText).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "u");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresTypeId::kBytea).SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "z");
-  schema.release(&schema);
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kBytea).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "z");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(PostgresType(PostgresTypeId::kBool).Array().SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "+l");
-  EXPECT_STREQ(schema.children[0]->format, "b");
-  schema.release(&schema);
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kBool).Array().SetSchema(schema.get()),
+            NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "+l");
+  EXPECT_STREQ(schema->children[0]->format, "b");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
+  ArrowSchemaInit(schema.get());
   PostgresType record(PostgresTypeId::kRecord);
   record.AppendChild("col1", PostgresType(PostgresTypeId::kBool));
-  EXPECT_EQ(record.SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "+s");
-  EXPECT_STREQ(schema.children[0]->format, "b");
-  schema.release(&schema);
+  EXPECT_EQ(record.SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "+s");
+  EXPECT_STREQ(schema->children[0]->format, "b");
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
+  ArrowSchemaInit(schema.get());
   PostgresType unknown(PostgresTypeId::kBrinMinmaxMultiSummary);
-  EXPECT_EQ(unknown.WithPgTypeInfo(0, "some_name").SetSchema(&schema), NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "z");
+  EXPECT_EQ(unknown.WithPgTypeInfo(0, "some_name").SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "z");
 
   ArrowStringView value = ArrowCharView("<not found>");
-  ArrowMetadataGetValue(schema.metadata, ArrowCharView("ADBC:postgresql:typname"),
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ADBC:postgresql:typname"),
                         &value);
   EXPECT_EQ(std::string(value.data, value.size_bytes), "some_name");
-  schema.release(&schema);
+  schema.reset();
 }
 
 TEST(PostgresTypeTest, PostgresTypeFromSchema) {
-  ArrowSchema schema;
+  nanoarrow::UniqueSchema schema;
   PostgresType type;
   MockTypeResolver resolver;
   ASSERT_EQ(resolver.Init(), NANOARROW_OK);
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_BOOL), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_BOOL), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kBool);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT8), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT8), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kInt2);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UINT8), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_UINT8), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kInt2);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT16), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT16), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kInt2);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UINT16), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_UINT16), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kInt4);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kInt4);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UINT32), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_UINT32), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kInt8);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT64), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT64), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kInt8);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_FLOAT), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kFloat4);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_DOUBLE), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_DOUBLE), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kFloat8);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_BINARY), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_BINARY), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kBytea);
-  schema.release(&schema);
+  schema.reset();
 
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRING), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRING), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kText);
-  schema.release(&schema);
+  schema.reset();
 
-  ArrowSchemaInit(&schema);
-  ASSERT_EQ(ArrowSchemaSetType(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_BOOL), NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, nullptr),
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_BOOL), NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(type.type_id(), PostgresTypeId::kArray);
   EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::kBool);
-  schema.release(&schema);
+  schema.reset();
 
   ArrowError error;
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO),
             NANOARROW_OK);
-  EXPECT_EQ(adbcpq::PostgresType::FromSchema(resolver, &schema, &type, &error), ENOTSUP);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, &error), ENOTSUP);
   EXPECT_STREQ(error.message,
                "Can't map Arrow type 'interval_month_day_nano' to Postgres type");
-  schema.release(&schema);
+  schema.reset();
 }
 
 TEST(PostgresTypeTest, PostgresTypeResolver) {
@@ -299,16 +298,8 @@ TEST(PostgresTypeTest, PostgresTypeResolver) {
   EXPECT_EQ(resolver.Find(123, &type, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error), "Postgres type with oid 123 not found");
 
-  // Check error for unsupported type_id name
-  item.oid = 123;
-  item.typname = "invalid";
-  item.typreceive = "invalid_recv";
-  EXPECT_EQ(resolver.Insert(item, &error), ENOTSUP);
-  EXPECT_STREQ(
-      ArrowErrorMessage(&error),
-      "Base type not found for type 'invalid' with receive function 'invalid_recv'");
-
   // Check error for Array with unknown child
+  item.oid = 123;
   item.typname = "some_array";
   item.typreceive = "array_recv";
   item.child_oid = 1234;
@@ -403,3 +394,5 @@ TEST(PostgresTypeTest, PostgresTypeResolveRecord) {
   EXPECT_EQ(type.child(1).field_name(), "text_col");
   EXPECT_EQ(type.child(1).type_id(), PostgresTypeId::kText);
 }
+
+}  // namespace adbcpq

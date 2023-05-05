@@ -608,8 +608,8 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
           ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
               << "Row " << row << " should have non-null db_schema_tables";
 
-          for (int64_t tables_index = ArrowArrayViewGetOffsetUnsafe(
-                   db_schema_tables_list, row + db_schemas_index);
+          for (int64_t tables_index =
+                   ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index);
                tables_index <
                ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index + 1);
                tables_index++) {
@@ -951,8 +951,8 @@ void StatementTest::TestSqlIngestNumericType(ArrowType type) {
   if constexpr (std::is_floating_point_v<CType>) {
     // XXX: sqlite and others seem to have trouble with extreme
     // values. Likely a bug on our side, but for now, avoid them.
-    values.push_back(-1.5);
-    values.push_back(1.5);
+    values.push_back(static_cast<CType>(-1.5));
+    values.push_back(static_cast<CType>(1.5));
   } else {
     values.push_back(std::numeric_limits<CType>::lowest());
     values.push_back(std::numeric_limits<CType>::max());

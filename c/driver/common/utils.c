@@ -144,7 +144,9 @@ int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
 
     va_start(argptr, fmt);
     int ret = vsnprintf(builder->buffer + builder->size, n + 1, fmt, argptr);
-    assert(ret >= 0);
+    if (ret < 0) {
+      return errno;
+    }
 
     va_end(argptr);
   }
