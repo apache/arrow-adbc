@@ -96,6 +96,8 @@ class PostgresConnectionTest : public ::testing::Test,
   void TestMetadataGetObjectsColumns() { GTEST_SKIP() << "Not yet implemented"; }
 
   void TestMetadataGetTableSchema() {
+    // We are overriding to test against SQL injection
+    // TODO: should refactor to provide general pattern for all drivers to test
     adbc_validation::ConnectionTest::TestMetadataGetTableSchema();
     adbc_validation::Handle<ArrowSchema> schema;
     ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
@@ -103,6 +105,12 @@ class PostgresConnectionTest : public ::testing::Test,
                                              "0'::int; DROP TABLE bulk_ingest;--",
                                              &schema.value, &error),
                 IsStatus(ADBC_STATUS_IO, &error));
+
+    ASSERT_THAT(
+        AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                     /*db_schema=*/"0'::int; DROP TABLE bulk_ingest;--",
+                                     "DROP TABLE bulk_ingest;", &schema.value, &error),
+        IsStatus(ADBC_STATUS_IO, &error));
 
     ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
                                              /*db_schema=*/nullptr, "bulk_ingest",

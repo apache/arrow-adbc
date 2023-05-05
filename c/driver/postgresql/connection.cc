@@ -93,7 +93,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    int ret = StringBuilderAppend(&query, "%s%s", db_schema, ".");
+    int ret = StringBuilderAppend(&query, "%s%s", schema, ".");
     PQfreemem(schema);
 
     if (ret != 0) return ADBC_STATUS_INTERNAL;
