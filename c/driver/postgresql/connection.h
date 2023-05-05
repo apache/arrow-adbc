@@ -32,7 +32,7 @@ class PostgresConnection {
   PostgresConnection() : database_(nullptr), conn_(nullptr), autocommit_(true) {}
 
   AdbcStatusCode Commit(struct AdbcError* error);
-  AdbcStatusCode GetInfo(struct AdbcConnect* connection, uint32_t* info_codes,
+  AdbcStatusCode GetInfo(struct AdbcConnection* connection, uint32_t* info_codes,
                          size_t info_codes_length, struct ArrowArrayStream* out,
                          struct AdbcError* error);
   AdbcStatusCode GetTableSchema(const char* catalog, const char* db_schema,
