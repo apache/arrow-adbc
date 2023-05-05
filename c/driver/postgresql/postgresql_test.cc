@@ -30,6 +30,7 @@
 #include "validation/adbc_validation_util.h"
 
 using adbc_validation::IsOkStatus;
+using adbc_validation::IsStatus;
 
 class PostgresQuirks : public adbc_validation::DriverQuirks {
  public:
@@ -93,6 +94,25 @@ class PostgresConnectionTest : public ::testing::Test,
   void TestMetadataGetObjectsTables() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsColumns() { GTEST_SKIP() << "Not yet implemented"; }
+
+  void TestMetadataGetTableSchema() {
+    adbc_validation::ConnectionTest::TestMetadataGetTableSchema();
+    adbc_validation::Handle<ArrowSchema> schema;
+    ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                             /*db_schema=*/nullptr,
+                                             "0'::int; DROP TABLE bulk_ingest;--",
+                                             &schema.value, &error),
+                IsStatus(ADBC_STATUS_IO, &error));
+
+    ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                             /*db_schema=*/nullptr, "bulk_ingest",
+                                             &schema.value, &error),
+                IsOkStatus(&error));
+
+    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+        &schema.value, {{"int64s", NANOARROW_TYPE_INT64, true},
+                        {"strings", NANOARROW_TYPE_STRING, true}}));
+  }
 
  protected:
   PostgresQuirks quirks_;

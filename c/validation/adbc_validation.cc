@@ -341,11 +341,6 @@ void ConnectionTest::TestMetadataGetTableSchema() {
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
 
   Handle<ArrowSchema> schema;
-  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/nullptr,
-                                           "0'::int; DROP TABLE bulk_ingest;--",
-                                           &schema.value, &error),
-              IsStatus(ADBC_STATUS_IO, &error));
 
   ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
                                            /*db_schema=*/nullptr, "bulk_ingest",
