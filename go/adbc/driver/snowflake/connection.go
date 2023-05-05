@@ -288,6 +288,28 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 			statement VARCHAR DEFAULT '';
 		BEGIN
 		  FOR rec IN c1 DO
+				LET sharelist RESULTSET := (EXECUTE IMMEDIATE 'SHOW SHARES LIKE \'%' || rec.database_name || '%\'');
+				LET cnt RESULTSET := (SELECT COUNT(*) FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())));
+				LET cnt_cur CURSOR for cnt;
+				LET share_cnt INTEGER DEFAULT 0;
+				OPEN cnt_cur;
+				FETCH cnt_cur INTO share_cnt;
+				CLOSE cnt_cur;
+
+				IF (share_cnt > 0) THEN
+					LET c2 CURSOR for sharelist;
+					LET created_on TIMESTAMP;
+					LET kind VARCHAR DEFAULT '';
+					LET share_name VARCHAR DEFAULT '';
+					LET dbname VARCHAR DEFAULT '';
+					OPEN c2;
+					FETCH c2 INTO created_on, kind, share_name, dbname;
+					CLOSE c2;
+					IF (dbname = '') THEN
+						CONTINUE;
+					END IF;
+				END IF;
+
 				IF (counter > 0) THEN
 				  statement := statement || ' UNION ALL ';
 				END IF;
@@ -414,6 +436,27 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		statement VARCHAR DEFAULT '';
 	BEGIN
 		FOR rec IN c1 DO
+			LET sharelist RESULTSET := (EXECUTE IMMEDIATE 'SHOW SHARES LIKE \'%' || rec.database_name || '%\'');
+			LET cnt RESULTSET := (SELECT COUNT(*) FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())));
+			LET cnt_cur CURSOR for cnt;
+			LET share_cnt INTEGER DEFAULT 0;
+			OPEN cnt_cur;
+			FETCH cnt_cur INTO share_cnt;
+			CLOSE cnt_cur;
+
+			IF (share_cnt > 0) THEN
+				LET c2 CURSOR for sharelist;
+				LET created_on TIMESTAMP;
+				LET kind VARCHAR DEFAULT '';
+				LET share_name VARCHAR DEFAULT '';
+				LET dbname VARCHAR DEFAULT '';
+				OPEN c2;
+				FETCH c2 INTO created_on, kind, share_name, dbname;
+				CLOSE c2;
+				IF (dbname = '') THEN
+					CONTINUE;
+				END IF;
+			END IF;
 			IF (counter > 0) THEN
 				statement := statement || ' UNION ALL ';
 			END IF;
@@ -462,7 +505,8 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	}
 	defer rows.Close()
 
-	var tblCat, tblSchema, tblName, tblType string
+	var tblCat, tblSchema, tblName string
+	var tblType sql.NullString
 	for rows.Next() {
 		if err = rows.Scan(&tblCat, &tblSchema, &tblName, &tblType); err != nil {
 			err = errToAdbcErr(adbc.StatusIO, err)
@@ -473,7 +517,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			Catalog: tblCat, Schema: tblSchema}
 
 		result[key] = append(result[key], internal.TableInfo{
-			Name: tblName, TableType: tblType})
+			Name: tblName, TableType: tblType.String})
 	}
 
 	if includeSchema {
