@@ -96,6 +96,57 @@ class PostgresConnectionTest : public ::testing::Test,
  protected:
   PostgresQuirks quirks_;
 };
+
+TEST_F(PostgresConnectionTest, GetInfoMetadata) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  std::vector<uint32_t> info = {
+      ADBC_INFO_DRIVER_NAME,
+      ADBC_INFO_DRIVER_VERSION,
+      ADBC_INFO_VENDOR_NAME,
+      ADBC_INFO_VENDOR_VERSION,
+  };
+  ASSERT_THAT(AdbcConnectionGetInfo(&connection, info.data(), info.size(),
+                                    &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  std::vector<uint32_t> seen;
+  while (true) {
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    if (!reader.array->release) break;
+
+    for (int64_t row = 0; row < reader.array->length; row++) {
+      ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], row));
+      const uint32_t code =
+          reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
+      seen.push_back(code);
+
+      switch (code) {
+        case ADBC_INFO_DRIVER_NAME:
+          ASSERT_EQ("ADBC PostgreSQL Driver",
+                    reader.array_view->children[1]->buffer_views[0].data.as_char);
+          break;
+        case ADBC_INFO_DRIVER_VERSION:
+        case ADBC_INFO_VENDOR_NAME:
+          ASSERT_EQ("PostgreSQL",
+                    reader.array_view->children[1]->buffer_views[0].data.as_char);
+          break;
+        case ADBC_INFO_VENDOR_VERSION:
+          // UTF8
+          ASSERT_EQ(uint8_t(0),
+                    reader.array_view->children[1]->buffer_views[0].data.as_uint8[row]);
+        default:
+          // Ignored
+          break;
+      }
+    }
+  }
+  ASSERT_THAT(seen, ::testing::UnorderedElementsAreArray(info));
+}
+
 ADBCV_TEST_CONNECTION(PostgresConnectionTest)
 
 class PostgresStatementTest : public ::testing::Test,
