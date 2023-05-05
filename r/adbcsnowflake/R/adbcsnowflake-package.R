@@ -30,11 +30,12 @@ NULL
 #' @inheritParams adbcdrivermanager::adbc_connection_init
 #' @inheritParams adbcdrivermanager::adbc_statement_init
 #' @param uri A URI to a database path (e.g.,
-#'   `snowflake://localhost:1234/postgres?user=user&password=password`)
+#'   `user[:password]@account/database[?param1=value1]`)
 #' @param adbc.connection.autocommit Use FALSE to disable the default
 #'   autocommit behaviour.
 #' @param adbc.ingest.target_table The name of the target table for a bulk insert.
 #' @param adbc.ingest.mode Whether to create (the default) or append.
+#' @param ... Extra key/value options passed to the driver.
 #'
 #' @return An [adbcdrivermanager::adbc_driver()]
 #' @export
@@ -52,10 +53,11 @@ adbcsnowflake <- function() {
 #' @rdname adbcsnowflake
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcsnowflake_driver_snowflake <- function(driver, ..., uri) {
+adbc_database_init.adbcsnowflake_driver_snowflake <- function(driver, ..., uri = NULL) {
+  options <- list(..., uri = uri)
   adbcdrivermanager::adbc_database_init_default(
     driver,
-    list(uri = uri),
+    options[!vapply(options, is.null, logical(1))],
     subclass = "adbcsnowflake_database"
   )
 }
@@ -64,8 +66,8 @@ adbc_database_init.adbcsnowflake_driver_snowflake <- function(driver, ..., uri) 
 #' @importFrom adbcdrivermanager adbc_connection_init
 #' @export
 adbc_connection_init.adbcsnowflake_database <- function(database, ...,
-                                                         adbc.connection.autocommit = NULL) {
-  options <- list(adbc.connection.autocommit = adbc.connection.autocommit)
+                                                        adbc.connection.autocommit = NULL) {
+  options <- list(..., adbc.connection.autocommit = adbc.connection.autocommit)
   adbcdrivermanager::adbc_connection_init_default(
     database,
     options[!vapply(options, is.null, logical(1))],
@@ -77,9 +79,10 @@ adbc_connection_init.adbcsnowflake_database <- function(database, ...,
 #' @importFrom adbcdrivermanager adbc_statement_init
 #' @export
 adbc_statement_init.adbcsnowflake_connection <- function(connection, ...,
-                                                      adbc.ingest.target_table = NULL,
-                                                      adbc.ingest.mode = NULL) {
+                                                         adbc.ingest.target_table = NULL,
+                                                         adbc.ingest.mode = NULL) {
   options <- list(
+    ...,
     adbc.ingest.target_table = adbc.ingest.target_table,
     adbc.ingest.mode = adbc.ingest.mode
   )

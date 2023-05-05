@@ -9,7 +9,7 @@
 \usage{
 adbcsnowflake()
 
-\method{adbc_database_init}{adbcsnowflake_driver_snowflake}(driver, ..., uri)
+\method{adbc_database_init}{adbcsnowflake_driver_snowflake}(driver, ..., uri = NULL)
 
 \method{adbc_connection_init}{adbcsnowflake_database}(database, ..., adbc.connection.autocommit = NULL)
 
@@ -23,11 +23,10 @@ adbcsnowflake()
 \arguments{
 \item{driver}{An \code{\link[adbcdrivermanager:adbc_driver]{adbc_driver()}}.}
 
-\item{...}{Driver-specific options. For the default method, these are
-named values that are converted to strings.}
+\item{...}{Extra key/value options passed to the driver.}
 
 \item{uri}{A URI to a database path (e.g.,
-\verb{snowflake://localhost:1234/postgres?user=user&password=password})}
+\verb{user[:password]@account/database[?param1=value1]})}
 
 \item{database}{An \link[adbcdrivermanager:adbc_database_init]{adbc_database}.}
 
