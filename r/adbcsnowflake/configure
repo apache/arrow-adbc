@@ -43,11 +43,6 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Locate ADBC. This is temporary (only works in a checkout)
-cd ../..
-ADBC_HOME=`pwd`
-cd r/adbcsnowflake
-
 # clang and gcc use different symbol-hiding syntax and we need to
 # make sure to hide any Adbc* symbols that might conflict with another
 # driver.
@@ -60,7 +55,6 @@ fi
 
 sed \
   -e "s|@gobin@|$GO_BIN|" \
-  -e "s|@adbchome@|$ADBC_HOME|" \
   -e "s|@symbolargs@|$SYMBOL_ARGS|" \
   src/Makevars.in > src/Makevars
 

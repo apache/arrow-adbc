@@ -15,5 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
+adbc/
 libadbc_driver_snowflake.a
 libadbc_driver_snowflake.h

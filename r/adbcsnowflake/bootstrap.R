@@ -15,29 +15,42 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# If we are building within the repo, copy the latest adbc.h and driver source
-# into src/
-files_to_vendor <- c(
-  "../../adbc.h"
+# If we are building within the repo, copy the go sources into the go/
+# directory. Technically this copies all go drivers but this is easier
+# than remembering the internal dependency structure of the go sources.
+files_to_vendor <- list.files(
+  "../../go/adbc",
+  "\\.(go|mod|txt|sum|h|c)$",
+  recursive = TRUE
 )
 
-if (all(file.exists(files_to_vendor))) {
-  files_dst <- file.path("src", basename(files_to_vendor))
+files_to_vendor_src <- file.path("../../go/adbc", files_to_vendor)
+files_to_vendor_dst <- file.path("src/go/adbc", files_to_vendor)
 
-  n_removed <- suppressWarnings(sum(file.remove(files_dst)))
-  if (n_removed > 0) {
-    cat(sprintf("Removed %d previously vendored files from src/\n", n_removed))
-  }
+if (all(file.exists(files_to_vendor_src))) {
+  unlink("src/go/adbc", recursive = TRUE)
 
   cat(
     sprintf(
-      "Vendoring files from arrow-adbc to src/:\n%s\n",
-      paste("-", files_to_vendor, collapse = "\n")
+      "Vendoring files from arrow-adbc/go/adbc to src/go/adbc:\n%s\n",
+      paste(
+        "-", files_to_vendor_src, " -> ", files_to_vendor_dst,
+        collapse = "\n"
+      )
     )
   )
 
-  if (all(file.copy(files_to_vendor, "src"))) {
-    cat("All files successfully copied to src/\n")
+  # Recreate the directory structure
+  dst_dirs <- unique(dirname(files_to_vendor_dst))
+  for (dst_dir in dst_dirs) {
+    if (!dir.exists(dst_dir)) {
+      dir.create(dst_dir, recursive = TRUE)
+    }
+  }
+
+  # Copy the files
+  if (all(file.copy(files_to_vendor_src, files_to_vendor_dst))) {
+    cat("All files successfully copied to src/go/adbc\n")
   } else {
     stop("Failed to vendor all files")
   }
