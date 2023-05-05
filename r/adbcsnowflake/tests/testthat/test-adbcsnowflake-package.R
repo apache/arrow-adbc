@@ -59,7 +59,7 @@ test_that("default options can open a database and execute a query", {
   result <- as.data.frame(stream)
   expect_identical(
     result$R_REGIONKEY,
-    c(1, 2, 3, 4)
+    c(0, 1, 2, 3, 4)
   )
 
   adbcdrivermanager::adbc_statement_release(stmt)

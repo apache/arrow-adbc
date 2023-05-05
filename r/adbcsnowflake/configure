@@ -53,13 +53,20 @@ elif "$R_BIN" CMD config CC | grep -e "gcc" ; then
   SYMBOL_ARGS="-Wl,--version-script=go/symbols.map"
 fi
 
+# On OSX we need -framework Security because of some dependency somewhere
+if [ `uname` = "Darwin" ]; then
+  PKG_LIBS="-framework Security $PKG_LIBS"
+fi
+
+PKG_LIBS="$PKG_LIBS $SYMBOL_ARGS"
+
 sed \
   -e "s|@gobin@|$GO_BIN|" \
-  -e "s|@symbolargs@|$SYMBOL_ARGS|" \
+  -e "s|@libs@|$PKG_LIBS|" \
   src/Makevars.in > src/Makevars
 
-if [ -f "src/adbc.h" ]; then
-  echo "Found vendored ADBC"
+if [ -f "src/go/adbc/pkg/snowflake/driver.go" ]; then
+  echo "Found vendored ADBC Snowflake driver"
   exit 0
 fi
 
