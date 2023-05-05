@@ -93,7 +93,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    int ret = StringBuilderAppend(&query, "%s%s", schema, ".");
+    int ret = StringBuilderAppend(&query, "%s%s", db_schema, ".");
     PQfreemem(schema);
 
     if (ret != 0) return ADBC_STATUS_INTERNAL;
@@ -105,7 +105,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
-  int ret = StringBuilderAppend(&query, "%s%s", table_name, "'::regclass::oid");
+  int ret = StringBuilderAppend(&query, "%s%s", table, "'::regclass::oid");
   PQfreemem(table);
 
   if (ret != 0) return ADBC_STATUS_INTERNAL;
