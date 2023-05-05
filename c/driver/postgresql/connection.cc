@@ -55,21 +55,6 @@ class PqResultHelper {
   std::string query_;
 };
 
-AdbcStatusCode PostgresConnectionGetInfoAppendStringImpl(struct ArrowArray* array,
-                                                         uint32_t info_code,
-                                                         const char* info_value,
-                                                         struct AdbcError* error) {
-  CHECK_NA(INTERNAL, ArrowArrayAppendUInt(array->children[0], info_code), error);
-  // Append to type variant
-  struct ArrowStringView value = ArrowCharView(info_value);
-  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[1]->children[0], value),
-           error);
-  // Append type code/offset
-  CHECK_NA(INTERNAL, ArrowArrayFinishUnionElement(array->children[1], /*type_id=*/0),
-           error);
-  return ADBC_STATUS_OK;
-}
-
 }  // namespace
 
 namespace adbcpq {
@@ -104,85 +89,31 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnect* connection,
   struct ArrowSchema schema = {0};
   struct ArrowArray array = {0};
 
-  // TODO: refactor with sqlite.c SqliteConnectionGetInfoImpl
-  ArrowSchemaInit(&schema);
-  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(&schema, /*num_columns=*/2), error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(schema.children[0], NANOARROW_TYPE_UINT32),
-           error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetName(schema.children[0], "info_name"), error);
-  schema.children[0]->flags &= ~ARROW_FLAG_NULLABLE;
-
-  struct ArrowSchema* info_value = schema.children[1];
-  CHECK_NA(INTERNAL, ArrowSchemaSetTypeUnion(info_value, NANOARROW_TYPE_DENSE_UNION, 6),
-           error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[0], NANOARROW_TYPE_STRING),
-           error);
-
-  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[0], "string_value"), error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[1], NANOARROW_TYPE_BOOL),
-           error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[1], "bool_value"), error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[2], NANOARROW_TYPE_INT64),
-           error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[2], "int64_value"), error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[3], NANOARROW_TYPE_INT32),
-           error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[3], "int32_bitmask"), error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[4], NANOARROW_TYPE_LIST),
-           error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetName(info_value->children[4], "string_list"), error);
-  CHECK_NA(INTERNAL, ArrowSchemaSetType(info_value->children[5], NANOARROW_TYPE_MAP),
-           error);
-  CHECK_NA(INTERNAL,
-           ArrowSchemaSetName(info_value->children[5], "int32_to_int32_list_map"), error);
-
-  CHECK_NA(
-      INTERNAL,
-      ArrowSchemaSetType(info_value->children[4]->children[0], NANOARROW_TYPE_STRING),
-      error);
-
-  CHECK_NA(INTERNAL,
-           ArrowSchemaSetType(info_value->children[5]->children[0]->children[0],
-                              NANOARROW_TYPE_INT32),
-           error);
-  info_value->children[5]->children[0]->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
-  CHECK_NA(INTERNAL,
-           ArrowSchemaSetType(info_value->children[5]->children[0]->children[1],
-                              NANOARROW_TYPE_LIST),
-           error);
-  CHECK_NA(
-      INTERNAL,
-      ArrowSchemaSetType(info_value->children[5]->children[0]->children[1]->children[0],
-                         NANOARROW_TYPE_INT32),
-      error);
-
-  struct ArrowError na_error = {0};
-  CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(&array, &schema, &na_error),
-                  &na_error, error);
-  CHECK_NA(INTERNAL, ArrowArrayStartAppending(&array), error);
+  RAISE_ADBC(AdbcInitConnectionGetInfoSchema(info_codes, info_codes_length, &schema,
+                                             &array, error));
 
   for (size_t i = 0; i < info_codes_length; i++) {
     switch (info_codes[i]) {
       case ADBC_INFO_VENDOR_NAME:
-        RAISE_ADBC(PostgresConnectionGetInfoAppendStringImpl(&array, info_codes[i],
-                                                             "PostgreSQL", error));
+        RAISE_ADBC(AdbcConnectionGetInfoAppendString(&array, info_codes[i], "PostgreSQL",
+                                                     error));
         break;
       case ADBC_INFO_VENDOR_VERSION:
-        RAISE_ADBC(PostgresConnectionGetInfoAppendStringImpl(
+        RAISE_ADBC(AdbcConnectionGetInfoAppendString(
             &array, info_codes[i], std::to_string(PQlibVersion()).c_str(), error));
         break;
       case ADBC_INFO_DRIVER_NAME:
-        RAISE_ADBC(PostgresConnectionGetInfoAppendStringImpl(
-            &array, info_codes[i], "ADBC PostgreSQL Driver", error));
+        RAISE_ADBC(AdbcConnectionGetInfoAppendString(&array, info_codes[i],
+                                                     "ADBC PostgreSQL Driver", error));
         break;
       case ADBC_INFO_DRIVER_VERSION:
         // TODO(lidavidm): fill in driver version
-        RAISE_ADBC(PostgresConnectionGetInfoAppendStringImpl(&array, info_codes[i],
-                                                             "(unknown)", error));
+        RAISE_ADBC(
+            AdbcConnectionGetInfoAppendString(&array, info_codes[i], "(unknown)", error));
         break;
       case ADBC_INFO_DRIVER_ARROW_VERSION:
-        RAISE_ADBC(PostgresConnectionGetInfoAppendStringImpl(&array, info_codes[i],
-                                                             NANOARROW_VERSION, error));
+        RAISE_ADBC(AdbcConnectionGetInfoAppendString(&array, info_codes[i],
+                                                     NANOARROW_VERSION, error));
         break;
       default:
         // Ignore
@@ -191,6 +122,7 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnect* connection,
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(&array), error);
   }
 
+  struct ArrowError na_error = {0};
   CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(&array, &na_error), &na_error,
                   error);
 
