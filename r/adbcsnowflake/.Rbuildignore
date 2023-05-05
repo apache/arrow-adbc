@@ -6,3 +6,4 @@
 ^src/Makevars$
 ^configure\.win$
 ^\.vscode$
+^src/go/tmp$

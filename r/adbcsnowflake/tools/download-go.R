@@ -37,8 +37,10 @@ if (identical(r_arch, "aarch64")) {
 
 if (identical(go_platform, "windows")) {
   go_ext <- "zip"
+  go_bin <- paste0(tmp_dir, "/go/bin/go.exe")
 } else {
   go_ext <- "tar.gz"
+  go_bin <- paste0(tmp_dir, "/go/bin/go")
 }
 
 archive_filename <- sprintf("go%s.%s-%s.%s",
@@ -56,7 +58,7 @@ if (!dir.exists(tmp_dir)) {
 }
 
 if (!file.exists(archive_dest)) {
-    download.file(archive_url, archive_dest, mode = "wb")
+  download.file(archive_url, archive_dest, mode = "wb")
 }
 
 # This step takes a while and there is no good way to communicate progress.
@@ -80,4 +82,6 @@ do_extract <- function() {
   extract_completed <- TRUE
 }
 
-do_extract()
+if (!file.exists(go_bin)) {
+  do_extract()
+}

@@ -27,6 +27,13 @@ files_to_vendor <- list.files(
 files_to_vendor_src <- file.path("../../go/adbc", files_to_vendor)
 files_to_vendor_dst <- file.path("src/go/adbc", files_to_vendor)
 
+# On Windows, file.copy does not handle symlinks. This
+# is not a problem for a user install, where this script
+# should not even exist, but the below helps development
+# on Windows.
+is_adbc_h <- basename(files_to_vendor_src) == "adbc.h"
+files_to_vendor_src[is_adbc_h] <- "../../adbc.h"
+
 if (all(file.exists(files_to_vendor_src))) {
   unlink("src/go/adbc", recursive = TRUE)
 
