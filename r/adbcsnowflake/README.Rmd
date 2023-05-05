@@ -44,7 +44,8 @@ You can install the development version of adbcsnowflake from [GitHub](https://g
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcsnowflake")
+remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager", build = FALSE)
+remotes::install_github("apache/arrow-adbc/r/adbcsnowflake", build = FALSE)
 ```
 
 ## Example
