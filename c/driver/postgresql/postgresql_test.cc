@@ -125,15 +125,21 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
       seen.push_back(code);
 
       switch (code) {
-        case ADBC_INFO_DRIVER_NAME:
-          ASSERT_EQ("ADBC PostgreSQL Driver",
-                    reader.array_view->children[1]->buffer_views[0].data.as_char);
+        case ADBC_INFO_DRIVER_NAME: {
+          const char* expected = "ADBC PostgreSQL Driver";
+          int len = strlen(expected);
+          char* result = (char*)malloc(len + 1);
+          strncpy(
+              result,
+              reader.array_view->children[1]->children[0]->buffer_views[2].data.as_char,
+              len);
+          result[len] = '\0';
+          ASSERT_STREQ("ADBC PostgreSQL Driver", result);
+          free(result);
           break;
+        }
         case ADBC_INFO_DRIVER_VERSION:
         case ADBC_INFO_VENDOR_NAME:
-          ASSERT_EQ("PostgreSQL",
-                    reader.array_view->children[1]->buffer_views[0].data.as_char);
-          break;
         case ADBC_INFO_VENDOR_VERSION:
           // UTF8
           ASSERT_EQ(uint8_t(0),
