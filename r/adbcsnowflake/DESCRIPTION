@@ -1,0 +1,25 @@
+Package: adbcsnowflake
+Title: Arrow Database Connectivity (ADBC) Snowflake Driver
+Version: 0.0.0.9000
+Authors@R: c(
+      person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
+             comment = c(ORCID = "0000-0002-9415-4582")),
+      person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph"))
+    )
+Description: Provides a developer-facing interface to the Arrow Database
+  Connectivity (ADBC) Snowflake driver.
+License: Apache License (>= 2)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Suggests:
+    nanoarrow,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Config/build/bootstrap: TRUE
+URL: https://github.com/apache/arrow-adbc
+BugReports: https://github.com/apache/arrow-adbc/issues
+Imports:
+    adbcdrivermanager
+Remotes:
+    adbcdrivermanager=apache/arrow-adbc/r/adbcdrivermanager
