@@ -20,15 +20,15 @@ PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_snowflake
 
 CGO_CC = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CC`
 CGO_CXX = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CXX`
-CGO_CFLAGS = "$(ALL_CPPFLAGS)"
-GO_BIN = "$(CURDIR)/go/tmp/go/bin/go.exe"
+CGO_CFLAGS = $(ALL_CPPFLAGS)
+GO_BIN = $(CURDIR)/go/tmp/go/bin/go.exe
 
 .PHONY: all gostatic gobin
 all: $(SHLIB)
 $(SHLIB): gostatic
 
 gostatic: gobin
-		(cd "$(CURDIR)/go/adbc"; CC=$(CGO_CC) CXX=$(CGO_CXX) CGO_CFLAGS=$(CGO_CFLAGS) $(GO_BIN) build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_snowflake.a -buildmode=c-archive "./pkg/snowflake")
+		(cd "$(CURDIR)/go/adbc"; CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" "$(GO_BIN)" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_snowflake.a -buildmode=c-archive "./pkg/snowflake")
 
 gobin:
 		(cd ..; "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" "tools/download-go.R")
