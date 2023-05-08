@@ -124,22 +124,25 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
           reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
       seen.push_back(code);
 
+      int str_child_index = 0;
+      struct ArrowArrayView* str_child =
+          reader.array_view->children[1]->children[str_child_index];
       switch (code) {
         case ADBC_INFO_DRIVER_NAME: {
-          const char* expected = "ADBC PostgreSQL Driver";
-          int len = strlen(expected);
-          char* result = (char*)malloc(len + 1);
-          strncpy(
-              result,
-              reader.array_view->children[1]->children[0]->buffer_views[2].data.as_char,
-              len);
-          result[len] = '\0';
-          ASSERT_STREQ("ADBC PostgreSQL Driver", result);
-          free(result);
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 0);
+          EXPECT_EQ("ADBC PostgreSQL Driver", std::string(val.data, val.size_bytes));
           break;
         }
-        case ADBC_INFO_DRIVER_VERSION:
-        case ADBC_INFO_VENDOR_NAME:
+        case ADBC_INFO_DRIVER_VERSION: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 1);
+          EXPECT_EQ("(unknown)", std::string(val.data, val.size_bytes));
+          break;
+        }
+        case ADBC_INFO_VENDOR_NAME: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 2);
+          EXPECT_EQ("PostgreSQL", std::string(val.data, val.size_bytes));
+          break;
+        }
         case ADBC_INFO_VENDOR_VERSION:
           // UTF8
           ASSERT_EQ(uint8_t(0),
