@@ -23,19 +23,4 @@ gemspec
 
 gem "bundler"
 gem "rake"
-# Use the version of red-arrow based on the available arrow-glib version
-red_arrow_version = ">= 0"
-IO.pipe do |input, output|
-  begin
-    pid = spawn("pkg-config", "--modversion", "arrow-glib",
-                out: output,
-                err: File::NULL)
-    output.close
-    Process.waitpid(pid)
-    arrow_glib_version = input.read.strip.sub(/-SNAPSHOT\z/, "")
-    red_arrow_version = "<= #{arrow_glib_version}"
-  rescue SystemCallError
-  end
-end
-gem "red-arrow", red_arrow_version
 gem "test-unit"
