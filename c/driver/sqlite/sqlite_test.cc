@@ -138,10 +138,11 @@ TEST_F(SqliteConnectionTest, GetInfoMetadata) {
           EXPECT_EQ("SQLite", std::string(val.data, val.size_bytes));
           break;
         }
-        case ADBC_INFO_VENDOR_VERSION:
-          // UTF8
-          ASSERT_EQ(uint8_t(0),
-                    reader.array_view->children[1]->buffer_views[0].data.as_uint8[row]);
+        case ADBC_INFO_VENDOR_VERSION: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 3);
+          EXPECT_THAT(std::string(val.data, val.size_bytes),
+                      ::testing::MatchesRegex("3\\..*"));
+        }
         default:
           // Ignored
           break;
