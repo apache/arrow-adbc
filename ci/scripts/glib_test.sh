@@ -79,6 +79,7 @@ test_subproject() {
     local red_arrow=""
     if [ -n "${arrow_glib_version}" ]; then
         red_arrow="red-arrow:${arrow_glib_version}"
+        export RED_ARROW_VERSION="<= ${arrow_glib_version}"
     fi
     gem install \
         --install-dir "${build_dir}/gems" \
