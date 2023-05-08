@@ -82,7 +82,11 @@ build_drivers "${source_dir}" "${build_dir}"
 check_visibility $ADBC_FLIGHTSQL_LIBRARY
 check_visibility $ADBC_POSTGRESQL_LIBRARY
 check_visibility $ADBC_SQLITE_LIBRARY
-check_visibility $ADBC_SNOWFLAKE_LIBRARY
+if [[ -f "$ADBC_SNOWFLAKE_LIBRARY" ]]; then
+    check_visibility $ADBC_SNOWFLAKE_LIBRARY
+else
+    echo "adbc_driver_snowflake not built"
+fi
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
