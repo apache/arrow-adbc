@@ -146,7 +146,9 @@ function test_packages {
     for component in ${COMPONENTS}; do
         echo "=== Testing $component ==="
 
-        if [[ "$component" = "adbc_driver_snowflake" ]] && [[ "$(uname -m)" = "arm64" ]]; then
+        if [[ "$component" = "adbc_driver_snowflake" ]] &&
+               ([[ "$(uname -m)" = "arm64" ]] ||
+                    [[ "$(uname -m)" = "aarch64" ]]); then
             echo "=== Skipping $component on arm64 ==="
             continue
         fi
