@@ -61,6 +61,14 @@ test_subproject() {
                --with-cppflags=-D_LIBCPP_DISABLE_AVAILABILITY
     fi
 
+    # Install consistent version of red-arrow for given arrow-glib
+    local -r arrow_glib_version=$(pkg-config --modversion arrow-glib | sed -e 's/-SNAPSHOT$//g' || :)
+    local red_arrow=""
+    if [ -n "${arrow_glib_version}" ]; then
+        red_arrow="red-arrow:${arrow_glib_version}"
+        export RED_ARROW_VERSION="<= ${arrow_glib_version}"
+    fi
+
     bundle config set --local path 'vendor/bundle'
     bundle install
     bundle exec \
@@ -74,13 +82,6 @@ test_subproject() {
         gem_flags='-- --with-cflags="-D_LIBCPP_DISABLE_AVAILABILITY" --with-cppflags="-D_LIBCPP_DISABLE_AVAILABILITY"'
     fi
 
-    # Install consistent version of red-arrow for given arrow-glib
-    local -r arrow_glib_version=$(pkg-config --modversion arrow-glib | sed -e 's/-SNAPSHOT$//g' || :)
-    local red_arrow=""
-    if [ -n "${arrow_glib_version}" ]; then
-        red_arrow="red-arrow:${arrow_glib_version}"
-        export RED_ARROW_VERSION="<= ${arrow_glib_version}"
-    fi
     gem install \
         --install-dir "${build_dir}/gems" \
         ${red_arrow} \
