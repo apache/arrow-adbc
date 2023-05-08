@@ -143,10 +143,17 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
           EXPECT_EQ("PostgreSQL", std::string(val.data, val.size_bytes));
           break;
         }
-        case ADBC_INFO_VENDOR_VERSION:
-          // UTF8
-          ASSERT_EQ(uint8_t(0),
-                    reader.array_view->children[1]->buffer_views[0].data.as_uint8[row]);
+        case ADBC_INFO_VENDOR_VERSION: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 3);
+#ifdef __WIN32
+          const char* pater = "\\d\\d\\d\\d\\d\\d";
+#else
+          const char* pater = "[0-9]{6}";
+#endif
+          EXPECT_THAT(std::string(val.data, val.size_bytes),
+                      ::testing::MatchesRegex(pater));
+          break;
+        }
         default:
           // Ignored
           break;
