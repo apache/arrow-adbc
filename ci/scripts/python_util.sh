@@ -42,6 +42,10 @@ function build_drivers {
         export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
         export CMAKE_ARGUMENTS=""
+        if [[ "${VCPKG_ARCH}" = "arm64" ]]; then
+            # Can't build Arrow v11 on non-x64 platforms
+            ADBC_DRIVER_SNOWFLAKE=OFF
+        fi
     else # macOS
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.dylib
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
