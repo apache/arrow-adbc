@@ -146,6 +146,11 @@ function test_packages {
     for component in ${COMPONENTS}; do
         echo "=== Testing $component ==="
 
+        if [[ "$component" = "adbc_driver_snowflake" ]] && [[ "${VCPKG_ARCH}" = "arm64" ]]; then
+            echo "=== Skipping $component on arm64 ==="
+            continue
+        fi
+
         python -c "
 import $component
 import $component.dbapi

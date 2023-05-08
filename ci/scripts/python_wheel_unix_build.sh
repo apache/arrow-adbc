@@ -94,7 +94,7 @@ python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools 
 
 for component in $COMPONENTS; do
     if [[ "$component" = "adbc_driver_snowflake" ]] && [[ "${VCPKG_ARCH}" = "arm64" ]]; then
-        # XXX: can't build Snowflake driver on non-x64 platforms until upgraded to Arrow 12
+        echo "Skipping $component on arm64"
         continue
     fi
 
