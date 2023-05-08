@@ -76,14 +76,16 @@ test_subproject() {
 
     # Install consistent version of red-arrow for given arrow-glib
     local -r arrow_glib_version=$(pkg-config --modversion arrow-glib | sed -e 's/-SNAPSHOT$//g' || :)
+    local red_arrow=""
     if [ -n "${arrow_glib_version}" ]; then
-        gem install \
-            --install-dir "${build_dir}/gems" \
-            --version ${arrow_glib_version} \
-            red-arrow \
-            -- ${gem_flags}
+        red_arrow="red-arrow:${arrow_glib_version}"
     fi
-    gem install --install-dir "${build_dir}/gems" pkg/*.gem -- ${gem_flags}
+    gem install \
+        --install-dir "${build_dir}/gems" \
+        ${red_arrow} \
+        pkg/*.gem \
+        -- \
+        ${gem_flags}
     popd
 }
 
