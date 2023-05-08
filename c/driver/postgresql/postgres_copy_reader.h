@@ -31,8 +31,10 @@
 
 namespace adbcpq {
 
-static int8_t kPgCopyBinarySignature[] = {'P',  'G',    'C',  'O',  'P', 'Y',
-                                          '\n', '\377', '\r', '\n', '\0'};
+// "PGCOPY\n\377\r\n\0"
+static int8_t kPgCopyBinarySignature[] = {0x50, 0x47, 0x43, 0x4F,
+                                          0x50, 0x59, 0x0A, static_cast<int8_t>(0xFF),
+                                          0x0D, 0x0A, 0x00};
 
 // Read a value from the buffer without checking the buffer size. Advances
 // the cursor of data and reduces its size by sizeof(T).
