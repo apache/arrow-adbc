@@ -482,15 +482,23 @@ test_r() {
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R -e 'if (!requireNamespace("testthat", quietly = TRUE)) install.packages("testthat", repos = "https://cloud.r-project.org/")' --vanilla
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcdrivermanager" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsqlite" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
+  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcpostgresql" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
+  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsnowflake" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
 
   pushd "${ARROW_TMPDIR}/r"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcdrivermanager"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcsqlite"
+  R CMD build "${ADBC_SOURCE_DIR}/r/adbcpostgresql"
+  R CMD build "${ADBC_SOURCE_DIR}/r/adbcsnowflake"
   local -r adbcdrivermanager_tar_gz="$(ls adbcdrivermanager_*.tar.gz)"
   local -r adbcsqlite_tar_gz="$(ls adbcsqlite_*.tar.gz)"
+  local -r adbcpostgresql_tar_gz="$(ls adbcpostgresql_*.tar.gz)"
+  local -r adbcsnowflake_tar_gz="$(ls adbcsnowflake_*.tar.gz)"
 
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcdrivermanager_tar_gz}" --no-manual
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcsqlite_tar_gz}" --no-manual
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcpostgresql_tar_gz}" --no-manual
+  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcsnowflake_tar_gz}" --no-manual
   popd
 }
 
