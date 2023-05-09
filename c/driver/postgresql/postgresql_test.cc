@@ -30,6 +30,7 @@
 #include "validation/adbc_validation_util.h"
 
 using adbc_validation::IsOkStatus;
+using adbc_validation::IsStatus;
 
 class PostgresQuirks : public adbc_validation::DriverQuirks {
  public:
@@ -97,6 +98,41 @@ class PostgresConnectionTest : public ::testing::Test,
  protected:
   PostgresQuirks quirks_;
 };
+
+TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::Handle<ArrowSchema> schema;
+  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                           /*db_schema=*/nullptr,
+                                           "0'::int; DROP TABLE bulk_ingest;--",
+                                           &schema.value, &error),
+              IsStatus(ADBC_STATUS_IO, &error));
+
+  ASSERT_THAT(
+      AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                   /*db_schema=*/"0'::int; DROP TABLE bulk_ingest;--",
+                                   "DROP TABLE bulk_ingest;", &schema.value, &error),
+      IsStatus(ADBC_STATUS_IO, &error));
+
+  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                           /*db_schema=*/nullptr, "bulk_ingest",
+                                           &schema.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      &schema.value, {{"int64s", NANOARROW_TYPE_INT64, true},
+                      {"strings", NANOARROW_TYPE_STRING, true}}));
+}
+
 ADBCV_TEST_CONNECTION(PostgresConnectionTest)
 
 class PostgresStatementTest : public ::testing::Test,
