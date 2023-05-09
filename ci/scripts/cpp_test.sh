@@ -18,6 +18,13 @@
 
 set -e
 
+: ${BUILD_ALL:=1}
+: ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
+: ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
+: ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
+: ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
+: ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
+
 test_project() {
     local -r build_dir="${1}"
 
