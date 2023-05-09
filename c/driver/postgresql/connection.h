@@ -38,6 +38,8 @@ class PostgresConnection {
   AdbcStatusCode GetTableSchema(const char* catalog, const char* db_schema,
                                 const char* table_name, struct ArrowSchema* schema,
                                 struct AdbcError* error);
+  AdbcStatusCode GetTableTypes(struct AdbcConnection* connection,
+                               struct ArrowArrayStream* out, struct AdbcError* error);
   AdbcStatusCode Init(struct AdbcDatabase* database, struct AdbcError* error);
   AdbcStatusCode Release(struct AdbcError* error);
   AdbcStatusCode Rollback(struct AdbcError* error);

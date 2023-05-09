@@ -225,6 +225,69 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   return final_status;
 }
 
+AdbcStatusCode PostgresConnectionGetTableTypesImpl(struct ArrowSchema* schema,
+                                                   struct ArrowArray* array,
+                                                   struct AdbcError* error) {
+  // See 'relkind' in https://www.postgresql.org/docs/current/catalog-pg-class.html
+  auto uschema = nanoarrow::UniqueSchema();
+  ArrowSchemaInit(uschema.get());
+
+  CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema.get(), NANOARROW_TYPE_STRUCT), error);
+  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(uschema.get(), /*num_columns=*/1),
+           error);
+  ArrowSchemaInit(uschema.get()->children[0]);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetType(uschema.get()->children[0], NANOARROW_TYPE_STRING), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema.get()->children[0], "table_type"), error);
+  uschema.get()->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array, uschema.get(), NULL), error);
+  CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
+
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], ArrowCharView("table")),
+           error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  CHECK_NA(INTERNAL,
+           ArrowArrayAppendString(array->children[0], ArrowCharView("toast_table")),
+           error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], ArrowCharView("view")),
+           error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  CHECK_NA(INTERNAL,
+           ArrowArrayAppendString(array->children[0], ArrowCharView("materialized_view")),
+           error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  CHECK_NA(INTERNAL,
+           ArrowArrayAppendString(array->children[0], ArrowCharView("foreign_table")),
+           error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  CHECK_NA(INTERNAL,
+           ArrowArrayAppendString(array->children[0], ArrowCharView("partitioned_table")),
+           error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+
+  CHECK_NA(INTERNAL, ArrowArrayFinishBuildingDefault(array, NULL), error);
+
+  uschema.move(schema);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresConnection::GetTableTypes(struct AdbcConnection* connection,
+                                                 struct ArrowArrayStream* out,
+                                                 struct AdbcError* error) {
+  struct ArrowSchema schema = {0};
+  struct ArrowArray array = {0};
+
+  AdbcStatusCode status = PostgresConnectionGetTableTypesImpl(&schema, &array, error);
+  if (status != ADBC_STATUS_OK) {
+    if (schema.release) schema.release(&schema);
+    if (array.release) array.release(&array);
+    return status;
+  }
+  return BatchToArrayStream(&array, &schema, out, error);
+}
+
 AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
                                         struct AdbcError* error) {
   if (!database || !database->private_data) {
