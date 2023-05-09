@@ -318,6 +318,9 @@ void ConnectionTest::TestMetadataGetInfo() {
         case ADBC_INFO_DRIVER_VERSION:
         case ADBC_INFO_VENDOR_NAME:
         case ADBC_INFO_VENDOR_VERSION:
+          // UTF8
+          ASSERT_EQ(uint8_t(0),
+                    reader.array_view->children[1]->buffer_views[0].data.as_uint8[row]);
         default:
           // Ignored
           break;
