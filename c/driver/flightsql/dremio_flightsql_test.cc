@@ -72,7 +72,7 @@ class DremioFlightSqlConnectionTest : public ::testing::Test,
   void TestMetadataGetObjectsCatalogs() { GTEST_SKIP() << "Dremio reports no catalogs"; }
   void TestMetadataGetObjectsDbSchemas() { GTEST_SKIP() << "Ingestion not supported"; }
   void TestMetadataGetObjectsTables() { GTEST_SKIP() << "Ingestion not supported"; }
-  void TestMetadataGetObjectsTableTypes() { GTEST_SKIP() << "Ingestion not supported"; }
+  void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Ingestion not supported"; }
   void TestMetadataGetObjectsColumns() { GTEST_SKIP() << "Ingestion not supported"; }
 
  protected:
