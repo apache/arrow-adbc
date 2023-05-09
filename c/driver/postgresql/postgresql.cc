@@ -125,7 +125,10 @@ AdbcStatusCode PostgresConnectionGetInfo(struct AdbcConnection* connection,
                                          uint32_t* info_codes, size_t info_codes_length,
                                          struct ArrowArrayStream* stream,
                                          struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetInfo(connection, info_codes, info_codes_length, stream, error);
 }
 
 AdbcStatusCode PostgresConnectionGetObjects(
