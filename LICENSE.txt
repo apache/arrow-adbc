@@ -311,6 +311,142 @@ distributions, like the Python wheels. SQLite is public domain.
 
 --------------------------------------------------------------------------------
 
+3rdparty dependency github.com/99designs/keyring
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/99designs/keyring is under the MIT license.
+The MIT License (MIT)
+
+Copyright (c) 2015 99designs
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/Azure/azure-sdk-for-go/sdk/azcore
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/Azure/azure-sdk-for-go/sdk/azcore is under the MIT license.
+MIT License
+
+Copyright (c) Microsoft Corporation.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/Azure/azure-sdk-for-go/sdk/internal
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/Azure/azure-sdk-for-go/sdk/internal is under the MIT license.
+MIT License
+
+Copyright (c) Microsoft Corporation.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/Azure/azure-sdk-for-go/sdk/storage/azblob
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/Azure/azure-sdk-for-go/sdk/storage/azblob is under the MIT license.
+MIT License
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/JohnCGriffin/overflow
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/JohnCGriffin/overflow is under the MIT license.
+MIT License
+
+Copyright (c) 2017 John C. Griffin,
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+
 3rdparty dependency github.com/andybalholm/brotli
 is statically linked in certain binary distributions, like the Python wheels.
 github.com/andybalholm/brotli is under the MIT license.
@@ -339,6 +475,152 @@ THE SOFTWARE.
 3rdparty dependency github.com/apache/thrift/lib/go/thrift
 is statically linked in certain binary distributions, like the Python wheels.
 github.com/apache/thrift/lib/go/thrift is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2 is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/credentials
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/credentials is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/feature/s3/manager
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/feature/s3/manager is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/internal/configsources
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/internal/configsources is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/internal/sync/singleflight
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/internal/sync/singleflight is under the BSD-3-Clause license.
+Copyright (c) 2009 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/internal/v4a
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/internal/v4a is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/service/internal/checksum
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/service/internal/checksum is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/service/internal/presigned-url is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/service/internal/s3shared
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/service/internal/s3shared is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/aws-sdk-go-v2/service/s3
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/aws-sdk-go-v2/service/s3 is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/smithy-go
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/smithy-go is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/aws/smithy-go/internal/sync/singleflight
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/aws/smithy-go/internal/sync/singleflight is under the BSD-3-Clause license.
+Copyright (c) 2009 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 
 --------------------------------------------------------------------------------
 
@@ -390,6 +672,74 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
 
+3rdparty dependency github.com/dvsekhvalnov/jose2go
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/dvsekhvalnov/jose2go is under the MIT license.
+The MIT License (MIT)
+
+Copyright (c) 2014
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/form3tech-oss/jwt-go
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/form3tech-oss/jwt-go is under the MIT license.
+Copyright (c) 2012 Dave Grijalva
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/gabriel-vasile/mimetype
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/gabriel-vasile/mimetype is under the MIT license.
+MIT License
+
+Copyright (c) 2018-2020 Gabriel Vasile
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+
 3rdparty dependency github.com/goccy/go-json
 is statically linked in certain binary distributions, like the Python wheels.
 github.com/goccy/go-json is under the MIT license.
@@ -414,6 +764,37 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/godbus/dbus
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/godbus/dbus is under the BSD-2-Clause license.
+Copyright (c) 2013, Georg Reinke (<guelfey at gmail dot com>), Google
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 
@@ -487,6 +868,40 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 3rdparty dependency github.com/google/flatbuffers/go
 is statically linked in certain binary distributions, like the Python wheels.
 github.com/google/flatbuffers/go is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/gsterjov/go-libsecret
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/gsterjov/go-libsecret is under the MIT license.
+The MIT License (MIT)
+
+Copyright (c) 2016 Goran Sterjov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/jmespath/go-jmespath
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/jmespath/go-jmespath is under the Apache-2.0 license.
 
 --------------------------------------------------------------------------------
 
@@ -585,6 +1000,33 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 
+3rdparty dependency github.com/mtibben/percent
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/mtibben/percent is under the MIT license.
+MIT License
+
+Copyright (c) 2020 Michael Tibben
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+
 3rdparty dependency github.com/pierrec/lz4/v4
 is statically linked in certain binary distributions, like the Python wheels.
 github.com/pierrec/lz4/v4 is under the BSD-3-Clause license.
@@ -619,6 +1061,35 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 
+3rdparty dependency github.com/pkg/browser
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/pkg/browser is under the BSD-2-Clause license.
+Copyright (c) 2014, Dave Cheney <dave@cheney.net>
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
 3rdparty dependency github.com/pmezard/go-difflib/difflib
 is statically linked in certain binary distributions, like the Python wheels.
 github.com/pmezard/go-difflib/difflib is under the BSD-3-Clause license.
@@ -649,6 +1120,39 @@ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/sirupsen/logrus
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/sirupsen/logrus is under the MIT license.
+The MIT License (MIT)
+
+Copyright (c) 2014 Simon Eskildsen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency github.com/snowflakedb/gosnowflake
+is statically linked in certain binary distributions, like the Python wheels.
+github.com/snowflakedb/gosnowflake is under the Apache-2.0 license.
 
 --------------------------------------------------------------------------------
 
@@ -710,9 +1214,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 
-3rdparty dependency golang.org/x/exp/maps
+3rdparty dependency google.golang.org/genproto/googleapis/rpc/status
 is statically linked in certain binary distributions, like the Python wheels.
-golang.org/x/exp/maps is under the BSD-3-Clause license.
+google.golang.org/genproto/googleapis/rpc/status is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency google.golang.org/grpc
+is statically linked in certain binary distributions, like the Python wheels.
+google.golang.org/grpc is under the Apache-2.0 license.
+
+--------------------------------------------------------------------------------
+
+3rdparty dependency golang.org/x/crypto/ocsp
+is statically linked in certain binary distributions, like the Python wheels.
+golang.org/x/crypto/ocsp is under the BSD-3-Clause license.
+
+3rdparty dependency golang.org/x/exp
+is statically linked in certain binary distributions, like the Python wheels.
+golang.org/x/exp is under the BSD-3-Clause license.
 
 3rdparty dependency golang.org/x/mod/semver
 is statically linked in certain binary distributions, like the Python wheels.
@@ -730,6 +1250,10 @@ golang.org/x/sync/errgroup is under the BSD-3-Clause license.
 is statically linked in certain binary distributions, like the Python wheels.
 golang.org/x/sys is under the BSD-3-Clause license.
 
+3rdparty dependency golang.org/x/term
+is statically linked in certain binary distributions, like the Python wheels.
+golang.org/x/term is under the BSD-3-Clause license.
+
 3rdparty dependency golang.org/x/text
 is statically linked in certain binary distributions, like the Python wheels.
 golang.org/x/text is under the BSD-3-Clause license.
@@ -738,56 +1262,9 @@ golang.org/x/text is under the BSD-3-Clause license.
 is statically linked in certain binary distributions, like the Python wheels.
 golang.org/x/tools is under the BSD-3-Clause license.
 
-3rdparty dependency golang.org/x/xerrors
-is statically linked in certain binary distributions, like the Python wheels.
-golang.org/x/xerrors is under the BSD-3-Clause license.
-
-Copyright (c) 2009 The Go Authors. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-   * Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-   * Redistributions in binary form must reproduce the above
-copyright notice, this list of conditions and the following disclaimer
-in the documentation and/or other materials provided with the
-distribution.
-   * Neither the name of Google Inc. nor the names of its
-contributors may be used to endorse or promote products derived from
-this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
---------------------------------------------------------------------------------
-
-3rdparty dependency google.golang.org/genproto/googleapis/rpc/status
-is statically linked in certain binary distributions, like the Python wheels.
-google.golang.org/genproto/googleapis/rpc/status is under the Apache-2.0 license.
-
---------------------------------------------------------------------------------
-
-3rdparty dependency google.golang.org/grpc
-is statically linked in certain binary distributions, like the Python wheels.
-google.golang.org/grpc is under the Apache-2.0 license.
-
---------------------------------------------------------------------------------
-
 3rdparty dependency google.golang.org/protobuf
 is statically linked in certain binary distributions, like the Python wheels.
 google.golang.org/protobuf is under the BSD-3-Clause license.
-
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -820,6 +1297,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 3rdparty dependency gopkg.in/yaml.v3
 is statically linked in certain binary distributions, like the Python wheels.
+gopkg.in/yaml.v3 is under the MIT license.
+
 This project is covered by two different licenses: MIT and Apache.
 
 #### MIT License ####

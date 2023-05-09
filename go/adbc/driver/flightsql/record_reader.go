@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/utils"
 	"github.com/apache/arrow/go/v12/arrow"
 	"github.com/apache/arrow/go/v12/arrow/array"
 	"github.com/apache/arrow/go/v12/arrow/flight"
@@ -117,7 +118,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 
 	lastChannelIndex := len(chs) - 1
 
-	referenceSchema := removeSchemaMetadata(schema)
+	referenceSchema := utils.RemoveSchemaMetadata(schema)
 	for i, ep := range endpoints {
 		endpoint := ep
 		endpointIndex := i
@@ -134,7 +135,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 			}
 			defer rdr.Release()
 
-			streamSchema := removeSchemaMetadata(rdr.Schema())
+			streamSchema := utils.RemoveSchemaMetadata(rdr.Schema())
 			if !streamSchema.Equal(referenceSchema) {
 				return fmt.Errorf("endpoint %d returned inconsistent schema: expected %s but got %s", endpointIndex, referenceSchema.String(), streamSchema.String())
 			}
@@ -207,51 +208,4 @@ func (r *reader) Schema() *arrow.Schema {
 
 func (r *reader) Record() arrow.Record {
 	return r.rec
-}
-
-func removeSchemaMetadata(schema *arrow.Schema) *arrow.Schema {
-	fields := make([]arrow.Field, len(schema.Fields()))
-	for i, field := range schema.Fields() {
-		fields[i] = removeFieldMetadata(&field)
-	}
-	return arrow.NewSchema(fields, nil)
-}
-
-func removeFieldMetadata(field *arrow.Field) arrow.Field {
-	fieldType := field.Type
-
-	if nestedType, ok := field.Type.(arrow.NestedType); ok {
-		childFields := make([]arrow.Field, len(nestedType.Fields()))
-		for i, field := range nestedType.Fields() {
-			childFields[i] = removeFieldMetadata(&field)
-		}
-
-		switch ty := field.Type.(type) {
-		case *arrow.DenseUnionType:
-			fieldType = arrow.DenseUnionOf(childFields, ty.TypeCodes())
-		case *arrow.FixedSizeListType:
-			fieldType = arrow.FixedSizeListOfField(ty.Len(), childFields[0])
-		case *arrow.ListType:
-			fieldType = arrow.ListOfField(childFields[0])
-		case *arrow.LargeListType:
-			fieldType = arrow.LargeListOfField(childFields[0])
-		case *arrow.MapType:
-			mapType := arrow.MapOf(childFields[0].Type, childFields[1].Type)
-			mapType.KeysSorted = ty.KeysSorted
-			fieldType = mapType
-		case *arrow.SparseUnionType:
-			fieldType = arrow.SparseUnionOf(childFields, ty.TypeCodes())
-		case *arrow.StructType:
-			fieldType = arrow.StructOf(childFields...)
-		default:
-			// XXX: ignore it
-		}
-	}
-
-	return arrow.Field{
-		Name:     field.Name,
-		Type:     fieldType,
-		Nullable: field.Nullable,
-		Metadata: arrow.Metadata{},
-	}
 }

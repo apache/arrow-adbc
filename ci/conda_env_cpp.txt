@@ -17,7 +17,6 @@
 
 cmake
 compilers
-gmock>=1.10.0
 gtest>=1.10.0
 libpq
 ninja

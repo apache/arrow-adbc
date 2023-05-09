@@ -25,7 +25,7 @@
 #include "connection.h"
 #include "database.h"
 #include "statement.h"
-#include "util.h"
+#include "utils.h"
 
 using adbcpq::PostgresConnection;
 using adbcpq::PostgresDatabase;
@@ -51,7 +51,6 @@ using adbcpq::PostgresStatement;
 // AdbcDatabase
 
 namespace {
-using adbcpq::SetError;
 AdbcStatusCode PostgresDatabaseInit(struct AdbcDatabase* database,
                                     struct AdbcError* error) {
   if (!database || !database->private_data) return ADBC_STATUS_INVALID_STATE;
@@ -62,11 +61,11 @@ AdbcStatusCode PostgresDatabaseInit(struct AdbcDatabase* database,
 AdbcStatusCode PostgresDatabaseNew(struct AdbcDatabase* database,
                                    struct AdbcError* error) {
   if (!database) {
-    SetError(error, "database must not be null");
+    SetError(error, "%s", "[libpq] database must not be null");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (database->private_data) {
-    SetError(error, "database is already initialized");
+    SetError(error, "%s", "[libpq] database is already initialized");
     return ADBC_STATUS_INVALID_STATE;
   }
   auto impl = std::make_shared<PostgresDatabase>();
@@ -126,7 +125,10 @@ AdbcStatusCode PostgresConnectionGetInfo(struct AdbcConnection* connection,
                                          uint32_t* info_codes, size_t info_codes_length,
                                          struct ArrowArrayStream* stream,
                                          struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetInfo(connection, info_codes, info_codes_length, stream, error);
 }
 
 AdbcStatusCode PostgresConnectionGetObjects(

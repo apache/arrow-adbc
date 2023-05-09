@@ -38,10 +38,14 @@ module ADBC
       if need_result
         begin
           reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
-          if block_given?
-            yield(reader, n_rows_affected)
-          else
-            [reader.read_all, n_rows_affected]
+          begin
+            if block_given?
+              yield(reader, n_rows_affected)
+            else
+              [reader.read_all, n_rows_affected]
+            end
+          ensure
+            reader.unref
           end
         ensure
           GLib.free(c_abi_array_stream)

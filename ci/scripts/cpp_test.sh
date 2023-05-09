@@ -23,7 +23,27 @@ test_project() {
 
     pushd "${build_dir}/"
 
-    ctest --output-on-failure --no-tests=error
+    local labels="driver-common"
+    if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
+       labels="${labels}|driver-flightsql"
+    fi
+    if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then
+       labels="${labels}|driver-manager"
+    fi
+    if [[ "${BUILD_DRIVER_POSTGRESQL}" -gt 0 ]]; then
+       labels="${labels}|driver-postgresql"
+    fi
+    if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
+       labels="${labels}|driver-sqlite"
+    fi
+    if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
+       labels="${labels}|driver-snowflake"
+    fi
+
+    ctest \
+        --output-on-failure \
+        --no-tests=error \
+        -L "${labels}"
 
     popd
 }
@@ -38,6 +58,7 @@ main() {
 
     export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
+    export GODEBUG=cgocheck=2
 
     test_project "${build_dir}"
 }

@@ -175,7 +175,7 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)/build"
-      - name: BuildPostgreSQL Driver
+      - name: Build PostgreSQL Driver
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
@@ -279,6 +279,8 @@ jobs:
           staticcheck -f stylish ./...
           popd
       - name: Go Test
+        env:
+          SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
@@ -348,6 +350,8 @@ jobs:
           popd
       - name: Go Test
         shell: bash -l {0}
+        env:
+          SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/1.18.6/x64/bin:$PATH
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
@@ -435,6 +439,14 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Build Python Driver Snowflake
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_SNOWFLAKE=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Test Python Driver Snowflake
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_SNOWFLAKE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       # Docs requires Python packages since it runs doctests
       - name: Build Docs
         shell: bash -l {0}
@@ -459,6 +471,9 @@ jobs:
           - {os: macOS-latest,   r: 'release', pkg: 'adbcpostgresql'}
           - {os: windows-latest,   r: 'release', pkg: 'adbcpostgresql'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcpostgresql'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcsnowflake'}
+          - {os: windows-latest,   r: 'release', pkg: 'adbcsnowflake'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsnowflake'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -513,6 +528,8 @@ jobs:
           echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
 
       - uses: r-lib/actions/check-r-package@v2
+        env:
+          ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }}
         with:
           upload-snapshots: true
           working-directory: r/${{ matrix.config.pkg }}

@@ -214,6 +214,21 @@ func (s *FlightSQLQuirks) CreateSampleTable(tableName string, r arrow.Record) er
 	return nil
 }
 
+func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) error {
+	stmt, err := cnxn.NewStatement()
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + tblname); err != nil {
+		return err
+	}
+
+	_, err = stmt.ExecuteUpdate(context.Background())
+	return err
+}
+
 func (s *FlightSQLQuirks) Alloc() memory.Allocator               { return s.mem }
 func (s *FlightSQLQuirks) BindParameter(_ int) string            { return "?" }
 func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool    { return true }
@@ -221,6 +236,7 @@ func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
 func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
 func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
+func (s *FlightSQLQuirks) SupportsBulkIngest() bool              { return false }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
@@ -241,6 +257,23 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 
 	return nil
 }
+
+func (s *FlightSQLQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.DataType) arrow.Metadata {
+	switch dt.ID() {
+	case arrow.STRING:
+		return arrow.MetadataFrom(map[string]string{
+			flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
+			flightsql.TableNameKey: tblName,
+		})
+	default:
+		return arrow.MetadataFrom(map[string]string{
+			flightsql.ScaleKey: "15", flightsql.IsReadOnlyKey: "0", flightsql.IsAutoIncrementKey: "0",
+			flightsql.TableNameKey: tblName, flightsql.PrecisionKey: "10",
+		})
+	}
+}
+
+func (s *FlightSQLQuirks) DBSchema() string { return "" }
 
 func TestADBCFlightSQL(t *testing.T) {
 	db, err := example.CreateDB()
@@ -516,16 +549,16 @@ func (suite *StatementTests) TearDownTest() {
 
 func (suite *StatementTests) TestQueueSizeOption() {
 	var err error
-	option := "adbc.flight.sql.rpc.queue_size"
+	option := "adbc.rpc.result_queue_size"
 
 	err = suite.Stmt.SetOption(option, "")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': '' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option '"+option+"': '' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "foo")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': 'foo' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option '"+option+"': 'foo' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "-1")
-	suite.Require().ErrorContains(err, "Invalid value for statement option 'adbc.flight.sql.rpc.queue_size': '-1' is not a positive integer")
+	suite.Require().ErrorContains(err, "Invalid value for statement option '"+option+"': '-1' is not a positive integer")
 
 	err = suite.Stmt.SetOption(option, "1")
 	suite.Require().NoError(err)

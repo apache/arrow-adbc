@@ -103,7 +103,7 @@ class StatementOptions(enum.Enum):
     #: The number of batches to queue per partition. Defaults to 5.
     #:
     #: This controls how much we read ahead on result sets.
-    QUEUE_SIZE = "adbc.flight.sql.rpc.queue_size"
+    QUEUE_SIZE = "adbc.rpc.result_queue_size"
     #: Add an arbitrary header to all outgoing requests.
     #:
     #: This option should prefix the name of the header to add

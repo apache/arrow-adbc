@@ -56,6 +56,11 @@ public class DerbyQuirks extends SqlValidationQuirks {
   }
 
   @Override
+  public String defaultCatalog() {
+    return "";
+  }
+
+  @Override
   public String caseFoldTableName(String name) {
     return name.toUpperCase();
   }

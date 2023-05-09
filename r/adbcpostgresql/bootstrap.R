@@ -19,8 +19,9 @@
 # into src/
 files_to_vendor <- c(
   "../../adbc.h",
-  "../../c/driver/postgresql/util.h",
+  "../../c/driver/postgresql/postgres_util.h",
   "../../c/driver/postgresql/postgres_type.h",
+  "../../c/driver/postgresql/postgres_copy_reader.h",
   "../../c/driver/postgresql/statement.h",
   "../../c/driver/postgresql/statement.cc",
   "../../c/driver/postgresql/connection.h",
@@ -28,6 +29,8 @@ files_to_vendor <- c(
   "../../c/driver/postgresql/database.h",
   "../../c/driver/postgresql/database.cc",
   "../../c/driver/postgresql/postgresql.cc",
+  "../../c/driver/common/utils.h",
+  "../../c/driver/common/utils.c",
   "../../c/vendor/nanoarrow/nanoarrow.h",
   "../../c/vendor/nanoarrow/nanoarrow.hpp",
   "../../c/vendor/nanoarrow/nanoarrow.c"

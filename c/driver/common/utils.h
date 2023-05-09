@@ -27,6 +27,10 @@
 #define SET_ERROR_ATTRIBUTE
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /// Set error details using a format string.
 void SetError(struct AdbcError* error, const char* format, ...) SET_ERROR_ATTRIBUTE;
 
@@ -43,8 +47,15 @@ struct StringBuilder {
   size_t size;
   size_t capacity;
 };
-void StringBuilderInit(struct StringBuilder* builder, size_t initial_size);
-void StringBuilderAppend(struct StringBuilder* builder, const char* value);
+int StringBuilderInit(struct StringBuilder* builder, size_t initial_size);
+
+#if defined(__GNUC__)
+#define ADBC_STRING_BUILDER_FORMAT_CHECK __attribute__((format(printf, 2, 3)))
+#else
+#define ADBC_STRING_BUILDER_FORMAT_CHECK
+#endif
+int ADBC_STRING_BUILDER_FORMAT_CHECK StringBuilderAppend(struct StringBuilder* builder,
+                                                         const char* fmt, ...);
 void StringBuilderReset(struct StringBuilder* builder);
 
 /// Check an NanoArrow status code.
@@ -92,3 +103,22 @@ void StringBuilderReset(struct StringBuilder* builder);
     AdbcStatusCode adbc_status_code = (EXPR);                        \
     if (adbc_status_code != ADBC_STATUS_OK) return adbc_status_code; \
   } while (0)
+
+/// \defgroup adbc-connection-utils Connection Utilities
+/// Utilities for implementing connection-related functions for drivers
+///
+/// @{
+AdbcStatusCode AdbcInitConnectionGetInfoSchema(const uint32_t* info_codes,
+                                               size_t info_codes_length,
+                                               struct ArrowSchema* schema,
+                                               struct ArrowArray* array,
+                                               struct AdbcError* error);
+AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
+                                                 uint32_t info_code,
+                                                 const char* info_value,
+                                                 struct AdbcError* error);
+/// @}
+
+#ifdef __cplusplus
+}
+#endif

@@ -19,7 +19,7 @@
 
 set -ex
 
-COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite"
+COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
 
 function build_drivers {
     local -r source_dir="$1"
@@ -31,6 +31,7 @@ function build_drivers {
     : ${VCPKG_ROOT:=/opt/vcpkg}
     # Enable manifest mode
     : ${VCPKG_FEATURE_FLAGS:=manifests}
+    : ${ADBC_DRIVER_SNOWFLAKE:=ON}
     # Add our custom triplets
     export VCPKG_OVERLAY_TRIPLETS="${source_dir}/ci/vcpkg/triplets/"
 
@@ -38,17 +39,25 @@ function build_drivers {
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.so
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
+        export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.so
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-linux-static-release"
         export CMAKE_ARGUMENTS=""
+        if [[ "${VCPKG_ARCH}" = "arm64" ]]; then
+            # Can't build Arrow v11 on non-x64 platforms
+            ADBC_DRIVER_SNOWFLAKE=OFF
+        fi
     else # macOS
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.dylib
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
+        export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.dylib
         export VCPKG_DEFAULT_TRIPLET="${VCPKG_ARCH}-osx-static-release"
         if [[ "${VCPKG_ARCH}" = "x64" ]]; then
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=x86_64"
         elif [[ "${VCPKG_ARCH}" = "arm64" ]]; then
+            # Can't build Arrow v11 on non-x64 platforms
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=arm64"
+            ADBC_DRIVER_SNOWFLAKE=OFF
         else
             echo "Unknown architecture: ${VCPKG_ARCH}"
             exit 1
@@ -91,6 +100,7 @@ function build_drivers {
         -DADBC_DRIVER_FLIGHTSQL=ON \
         -DADBC_DRIVER_POSTGRESQL=ON \
         -DADBC_DRIVER_SQLITE=ON \
+        -DADBC_DRIVER_SNOWFLAKE="${ADBC_DRIVER_SNOWFLAKE}" \
         ${source_dir}/c
     cmake --build . --target install --verbose -j
     popd
@@ -135,6 +145,13 @@ function setup_build_vars {
 function test_packages {
     for component in ${COMPONENTS}; do
         echo "=== Testing $component ==="
+
+        if [[ "$component" = "adbc_driver_snowflake" ]] &&
+               ([[ "$(uname -m)" = "arm64" ]] ||
+                    [[ "$(uname -m)" = "aarch64" ]]); then
+            echo "=== Skipping $component on arm64 ==="
+            continue
+        fi
 
         python -c "
 import $component

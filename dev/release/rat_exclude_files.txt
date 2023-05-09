@@ -11,6 +11,7 @@ go/adbc/drivermgr/adbc_driver_manager.h
 go/adbc/status_string.go
 go/adbc/infocode_string.go
 go/adbc/go.sum
+java/.mvn/jvm.config
 rat.txt
 r/adbcdrivermanager/DESCRIPTION
 r/adbcdrivermanager/NAMESPACE
@@ -21,6 +22,9 @@ r/adbcsqlite/.Rbuildignore
 r/adbcpostgresql/DESCRIPTION
 r/adbcpostgresql/NAMESPACE
 r/adbcpostgresql/.Rbuildignore
+r/adbcsnowflake/DESCRIPTION
+r/adbcsnowflake/NAMESPACE
+r/adbcsnowflake/.Rbuildignore
 c/vendor/sqlite3/sqlite3.c
 c/vendor/sqlite3/sqlite3.h
 *.Rproj

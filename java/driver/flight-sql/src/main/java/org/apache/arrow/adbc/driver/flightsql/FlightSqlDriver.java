@@ -26,23 +26,16 @@ import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.flight.Location;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.Preconditions;
 
 /** An ADBC driver wrapping Arrow Flight SQL. */
 public class FlightSqlDriver implements AdbcDriver {
-  public static final FlightSqlDriver INSTANCE = new FlightSqlDriver();
-
   static {
     AdbcDriverManager.getInstance()
-        .registerDriver("org.apache.arrow.adbc.driver.flightsql", INSTANCE);
+        .registerDriver("org.apache.arrow.adbc.driver.flightsql", FlightSqlDriver::new);
   }
 
   private final BufferAllocator allocator;
-
-  FlightSqlDriver() {
-    this(new RootAllocator());
-  }
 
   FlightSqlDriver(BufferAllocator allocator) {
     this.allocator = Objects.requireNonNull(allocator);

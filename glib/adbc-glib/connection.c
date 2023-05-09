@@ -322,6 +322,147 @@ gpointer gadbc_connection_get_info(GADBCConnection* connection, guint32* info_co
 }
 
 /**
+ * gadbc_connection_get_objects:
+ * @connection: A #GADBCConnection.
+ * @depth: The level of nesting to display. If
+ *   @GADBC_OBJECT_DEPTH_ALL, display all levels. If
+ *   @GADBC_OBJECT_DEPTH_CATALOGS, display only catalogs
+ *   (i.e. `catalog_schemas` will be null). If
+ *   @GADBC_OBJECT_DEPTH_DB_SCHEMAS, display only catalogs and schemas
+ *   (i.e. `db_schema_tables` will be null). if
+ *   @GADBC_OBJECT_DEPTH_TABLES, display only catalogs, schemas and
+ *   tables (i.e. `table_columns` and `table_constraints` will be
+ *   null).
+ * @catalog: (nullable): Only show tables in the given catalog. If
+ *   %NULL, do not filter by catalog. If an empty string, only show
+ *   tables without a catalog. May be a search pattern (see section
+ *   documentation).
+ * @db_schema: (nullable): Only show tables in the given database
+ *   schema. If %NULL, do not filter by database schema. If an empty
+ *   string, only show tables without a database schema. May be a
+ *   search pattern (see section documentation).
+ * @table_name: (nullable): Only show tables with the given name. If
+ *   %NULL, do not filter by name. May be a search pattern (see
+ *   section documentation).
+ * @table_types: (nullable) (array zero-terminated=1): Only show
+ *   tables matching one of the given table types. If %NULL, show
+ *   tables of any type. Valid table types can be fetched from
+ *   gadbc_connection_get_table_types(). Terminate the list with a
+ *   %NULL entry.
+ * @column_name: (nullable): Only show columns with the given name. If
+ *   %NULL, do not filter by name. May be a search pattern (see section
+ *   documentation).
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * Get a hierarchical view of all catalogs, database schemas, tables,
+ * and columns.
+ *
+ * The result is an Arrow dataset with the following schema:
+ *
+ * | Field Name               | Field Type              |
+ * |--------------------------|-------------------------|
+ * | catalog_name             | utf8                    |
+ * | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
+ *
+ * DB_SCHEMA_SCHEMA is a Struct with fields:
+ *
+ * | Field Name               | Field Type              |
+ * |--------------------------|-------------------------|
+ * | db_schema_name           | utf8                    |
+ * | db_schema_tables         | list<TABLE_SCHEMA>      |
+ *
+ * TABLE_SCHEMA is a Struct with fields:
+ *
+ * | Field Name               | Field Type              |
+ * |--------------------------|-------------------------|
+ * | table_name               | utf8 not null           |
+ * | table_type               | utf8 not null           |
+ * | table_columns            | list<COLUMN_SCHEMA>     |
+ * | table_constraints        | list<CONSTRAINT_SCHEMA> |
+ *
+ * COLUMN_SCHEMA is a Struct with fields:
+ *
+ * | Field Name               | Field Type              | Comments |
+ * |--------------------------|-------------------------|----------|
+ * | column_name              | utf8 not null           |          |
+ * | ordinal_position         | int32                   | (1)      |
+ * | remarks                  | utf8                    | (2)      |
+ * | xdbc_data_type           | int16                   | (3)      |
+ * | xdbc_type_name           | utf8                    | (3)      |
+ * | xdbc_column_size         | int32                   | (3)      |
+ * | xdbc_decimal_digits      | int16                   | (3)      |
+ * | xdbc_num_prec_radix      | int16                   | (3)      |
+ * | xdbc_nullable            | int16                   | (3)      |
+ * | xdbc_column_def          | utf8                    | (3)      |
+ * | xdbc_sql_data_type       | int16                   | (3)      |
+ * | xdbc_datetime_sub        | int16                   | (3)      |
+ * | xdbc_char_octet_length   | int32                   | (3)      |
+ * | xdbc_is_nullable         | utf8                    | (3)      |
+ * | xdbc_scope_catalog       | utf8                    | (3)      |
+ * | xdbc_scope_schema        | utf8                    | (3)      |
+ * | xdbc_scope_table         | utf8                    | (3)      |
+ * | xdbc_is_autoincrement    | bool                    | (3)      |
+ * | xdbc_is_generatedcolumn  | bool                    | (3)      |
+ *
+ * 1. The column's ordinal position in the table (starting from 1).
+ * 2. Database-specific description of the column.
+ * 3. Optional value.  Should be null if not supported by the driver.
+ *    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
+ *    in an agnostic manner.
+ *
+ * CONSTRAINT_SCHEMA is a Struct with fields:
+ *
+ * | Field Name               | Field Type              | Comments |
+ * |--------------------------|-------------------------|----------|
+ * | constraint_name          | utf8                    |          |
+ * | constraint_type          | utf8 not null           | (1)      |
+ * | constraint_column_names  | list<utf8> not null     | (2)      |
+ * | constraint_column_usage  | list<USAGE_SCHEMA>      | (3)      |
+ *
+ * 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
+ * 2. The columns on the current table that are constrained, in
+ *    order.
+ * 3. For FOREIGN KEY only, the referenced table and columns.
+ *
+ * USAGE_SCHEMA is a Struct with fields:
+ *
+ * | Field Name               | Field Type              |
+ * |--------------------------|-------------------------|
+ * | fk_catalog               | utf8                    |
+ * | fk_db_schema             | utf8                    |
+ * | fk_table                 | utf8 not null           |
+ * | fk_column_name           | utf8 not null           |
+ *
+ * Returns: The result set as `struct ArrowArrayStream *`. It should
+ *   be freed with the `ArrowArrayStream::release` callback then
+ *   g_free() when no longer needed.
+ *
+ * Since: 0.4.0
+ */
+gpointer gadbc_connection_get_objects(GADBCConnection* connection, GADBCObjectDepth depth,
+                                      const gchar* catalog, const gchar* db_schema,
+                                      const gchar* table_name, const gchar** table_types,
+                                      const gchar* column_name, GError** error) {
+  const gchar* context = "[adbc][connection][get-objects]";
+  struct AdbcConnection* adbc_connection =
+      gadbc_connection_get_raw(connection, context, error);
+  if (!adbc_connection) {
+    return NULL;
+  }
+  struct ArrowArrayStream* array_stream = g_new0(struct ArrowArrayStream, 1);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcConnectionGetObjects(adbc_connection, depth, catalog, db_schema, table_name,
+                               table_types, column_name, array_stream, &adbc_error);
+  if (gadbc_error_check(error, status_code, &adbc_error, context)) {
+    return array_stream;
+  } else {
+    g_free(array_stream);
+    return NULL;
+  }
+}
+
+/**
  * gadbc_connection_get_table_schema:
  * @connection: A #GADBCConnection.
  * @catalog: (nullable): A catalog or %NULL if not applicable.

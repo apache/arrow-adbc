@@ -28,13 +28,28 @@ $env:PATH += ";$($InstallDir)"
 $env:PATH += ";$($InstallDir)\bin"
 $env:PATH += ";$($InstallDir)\lib"
 
-echo $env:LD_LIBRARY_PATH
-echo $env:PATH
-
 function Test-Project {
     Push-Location $BuildDir
 
-    ctest --output-on-failure --no-tests=error
+    $labels = "driver-common"
+
+    if ($BuildDriverManager) {
+        $labels += "|driver-manager"
+    }
+    if ($BuildDriverFlightSql) {
+        $labels += "|driver-flightsql"
+    }
+    if ($BuildDriverPostgreSQL) {
+        $labels += "|driver-postgresql"
+    }
+    if ($BuildDriverSqlite) {
+        $labels += "|driver-sqlite"
+    }
+    if ($BuildDriverSnowflake) {
+        $labels += "|driver-snowflake"
+    }
+
+    ctest --output-on-failure --no-tests=error -L "$($labels)"
     if (-not $?) { exit 1 }
 
     Pop-Location

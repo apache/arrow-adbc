@@ -26,6 +26,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.memory.ArrowBuf;
@@ -45,7 +47,7 @@ import org.apache.arrow.vector.complex.writer.VarCharWriter;
 /** Helper class to track state needed to build up the object metadata structure. */
 final class ObjectMetadataBuilder implements AutoCloseable {
   private final AdbcConnection.GetObjectsDepth depth;
-  private final String catalogPattern;
+  private final Predicate<String> catalogPattern;
   private final String dbSchemaPattern;
   private final String tableNamePattern;
   private final String[] tableTypesFilter;
@@ -93,7 +95,12 @@ final class ObjectMetadataBuilder implements AutoCloseable {
       throws SQLException {
     this.allocator = allocator;
     this.depth = depth;
-    this.catalogPattern = catalogPattern;
+    if (catalogPattern == null) {
+      this.catalogPattern = (ignored) -> true;
+    } else {
+      Pattern pattern = Pattern.compile(translatePattern(catalogPattern));
+      this.catalogPattern = (catalog) -> pattern.matcher(catalog).matches();
+    }
     this.dbSchemaPattern = dbSchemaPattern;
     this.tableNamePattern = tableNamePattern;
     this.tableTypesFilter = tableTypesFilter;
@@ -133,17 +140,19 @@ final class ObjectMetadataBuilder implements AutoCloseable {
   }
 
   VectorSchemaRoot build() throws SQLException {
-    // TODO: need to turn catalogPattern into a catalog filter since JDBC doesn't support this
     try (final ResultSet rs = dbmd.getCatalogs()) {
       int catalogCount = 0;
       while (rs.next()) {
         final String catalogName = rs.getString(1);
+        if (!catalogPattern.test(catalogName)) continue;
         addCatalogRow(catalogCount, catalogName);
         catalogCount++;
       }
-      // TODO: only include this if matches filter
-      addCatalogRow(catalogCount, /*catalogName*/ "");
-      catalogCount++;
+      // Some databases have an anonymous catalog
+      if (catalogPattern.test("") && catalogCount == 0) {
+        addCatalogRow(catalogCount, /*catalogName*/ "");
+        catalogCount++;
+      }
       root.setRowCount(catalogCount);
     }
     VectorSchemaRoot result = root;
@@ -278,10 +287,10 @@ final class ObjectMetadataBuilder implements AutoCloseable {
         if (depth == AdbcConnection.GetObjectsDepth.TABLES) {
           tableColumns.setNull(rowIndex + tableCount);
         } else {
-          int columnBaseIndex = tableColumns.startNewValue(rowIndex);
+          int columnBaseIndex = tableColumns.startNewValue(rowIndex + tableCount);
           final int columnCount =
               buildColumns(columnBaseIndex, catalogName, dbSchemaName, tableName);
-          tableColumns.endValue(rowIndex, columnCount);
+          tableColumns.endValue(rowIndex + tableCount, columnCount);
         }
         tableCount++;
       }
@@ -358,6 +367,23 @@ final class ObjectMetadataBuilder implements AutoCloseable {
   @Override
   public void close() throws Exception {
     AutoCloseables.close(root);
+  }
+
+  /** Turn a SQL-style pattern (%, _) to a regex. */
+  String translatePattern(String filter) {
+    StringBuilder builder = new StringBuilder(filter.length());
+    builder.append("^");
+    for (char c : filter.toCharArray()) {
+      if (c == '%') {
+        builder.append(".*");
+      } else if (c == '_') {
+        builder.append(".");
+      } else {
+        builder.append(Pattern.quote(String.valueOf(c)));
+      }
+    }
+    builder.append("$");
+    return builder.toString();
   }
 
   static class ReferencedColumn {

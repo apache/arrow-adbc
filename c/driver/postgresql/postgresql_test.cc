@@ -30,6 +30,7 @@
 #include "validation/adbc_validation_util.h"
 
 using adbc_validation::IsOkStatus;
+using adbc_validation::IsStatus;
 
 class PostgresQuirks : public adbc_validation::DriverQuirks {
  public:
@@ -85,8 +86,6 @@ class PostgresConnectionTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestMetadataGetInfo() { GTEST_SKIP() << "Not yet implemented"; }
-  void TestMetadataGetTableSchema() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetTableTypes() { GTEST_SKIP() << "Not yet implemented"; }
 
   void TestMetadataGetObjectsCatalogs() { GTEST_SKIP() << "Not yet implemented"; }
@@ -98,6 +97,107 @@ class PostgresConnectionTest : public ::testing::Test,
  protected:
   PostgresQuirks quirks_;
 };
+
+TEST_F(PostgresConnectionTest, GetInfoMetadata) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  std::vector<uint32_t> info = {
+      ADBC_INFO_DRIVER_NAME,
+      ADBC_INFO_DRIVER_VERSION,
+      ADBC_INFO_VENDOR_NAME,
+      ADBC_INFO_VENDOR_VERSION,
+  };
+  ASSERT_THAT(AdbcConnectionGetInfo(&connection, info.data(), info.size(),
+                                    &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  std::vector<uint32_t> seen;
+  while (true) {
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    if (!reader.array->release) break;
+
+    for (int64_t row = 0; row < reader.array->length; row++) {
+      ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], row));
+      const uint32_t code =
+          reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
+      seen.push_back(code);
+
+      int str_child_index = 0;
+      struct ArrowArrayView* str_child =
+          reader.array_view->children[1]->children[str_child_index];
+      switch (code) {
+        case ADBC_INFO_DRIVER_NAME: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 0);
+          EXPECT_EQ("ADBC PostgreSQL Driver", std::string(val.data, val.size_bytes));
+          break;
+        }
+        case ADBC_INFO_DRIVER_VERSION: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 1);
+          EXPECT_EQ("(unknown)", std::string(val.data, val.size_bytes));
+          break;
+        }
+        case ADBC_INFO_VENDOR_NAME: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 2);
+          EXPECT_EQ("PostgreSQL", std::string(val.data, val.size_bytes));
+          break;
+        }
+        case ADBC_INFO_VENDOR_VERSION: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 3);
+#ifdef __WIN32
+          const char* pater = "\\d\\d\\d\\d\\d\\d";
+#else
+          const char* pater = "[0-9]{6}";
+#endif
+          EXPECT_THAT(std::string(val.data, val.size_bytes),
+                      ::testing::MatchesRegex(pater));
+          break;
+        }
+        default:
+          // Ignored
+          break;
+      }
+    }
+  }
+  ASSERT_THAT(seen, ::testing::UnorderedElementsAreArray(info));
+}
+
+TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::Handle<ArrowSchema> schema;
+  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                           /*db_schema=*/nullptr,
+                                           "0'::int; DROP TABLE bulk_ingest;--",
+                                           &schema.value, &error),
+              IsStatus(ADBC_STATUS_IO, &error));
+
+  ASSERT_THAT(
+      AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                   /*db_schema=*/"0'::int; DROP TABLE bulk_ingest;--",
+                                   "DROP TABLE bulk_ingest;", &schema.value, &error),
+      IsStatus(ADBC_STATUS_IO, &error));
+
+  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                           /*db_schema=*/nullptr, "bulk_ingest",
+                                           &schema.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      &schema.value, {{"int64s", NANOARROW_TYPE_INT64, true},
+                      {"strings", NANOARROW_TYPE_STRING, true}}));
+}
+
 ADBCV_TEST_CONNECTION(PostgresConnectionTest)
 
 class PostgresStatementTest : public ::testing::Test,
@@ -116,7 +216,6 @@ class PostgresStatementTest : public ::testing::Test,
   void TestSqlIngestUInt64() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestFloat32() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestFloat64() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestString() { GTEST_SKIP() << "TODO(apache/arrow-adbc#557)"; }
   void TestSqlIngestBinary() { GTEST_SKIP() << "Not implemented"; }
 
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
@@ -147,6 +246,8 @@ struct TypeTestCase {
     return info.param.name;
   }
 };
+
+void PrintTo(const TypeTestCase& value, std::ostream* os) { (*os) << value.name; }
 
 class PostgresTypeTest : public ::testing::TestWithParam<TypeTestCase> {
  public:

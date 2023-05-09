@@ -64,6 +64,11 @@ public class FlightSqlQuirks extends SqlValidationQuirks {
   }
 
   @Override
+  public String defaultCatalog() {
+    return "main";
+  }
+
+  @Override
   public String caseFoldTableName(String name) {
     return name.toUpperCase();
   }
