@@ -362,6 +362,20 @@ void ConnectionTest::TestMetadataGetTableTypes() {
   ASSERT_NO_FATAL_FAILURE(CompareSchema(
       &reader.schema.value, {{"table_type", NANOARROW_TYPE_STRING, NOT_NULL}}));
   ASSERT_NO_FATAL_FAILURE(reader.Next());
+
+  bool seen_table = false;
+  bool seen_view = false;
+  for (auto row = 0; row < reader.array->length; row++) {
+    ArrowStringView val =
+        ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], row);
+    auto str_val = std::string(val.data, val.size_bytes);
+    if (str_val == "table")
+      seen_table = true;
+    else if (str_val == "view")
+      seen_view = true;
+  }
+  ASSERT_TRUE(seen_table);
+  ASSERT_TRUE(seen_view);
 }
 
 void CheckGetObjectsSchema(struct ArrowSchema* schema) {
