@@ -86,8 +86,6 @@ class PostgresConnectionTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestMetadataGetTableTypes() { GTEST_SKIP() << "Not yet implemented"; }
-
   void TestMetadataGetObjectsCatalogs() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsDbSchemas() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsTables() { GTEST_SKIP() << "Not yet implemented"; }
