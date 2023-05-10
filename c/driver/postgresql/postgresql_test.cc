@@ -86,7 +86,6 @@ class PostgresConnectionTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestMetadataGetObjectsCatalogs() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsDbSchemas() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsTables() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Not yet implemented"; }
@@ -160,6 +159,53 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
     }
   }
   ASSERT_THAT(seen, ::testing::UnorderedElementsAreArray(info));
+}
+
+TEST_F(PostgresConnectionTest, GetObjectsGetCatalogs) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
+  {
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr,
+                                         nullptr, nullptr, nullptr, nullptr,
+                                         &reader.stream.value, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_GT(reader.array->length, 0);
+
+    // A default psql install will contain these databases, but users
+    // can drop. Googletest does not support a warning outcome for tests (?)
+    // so these may be too strict
+    bool seen_postgres_db = false;
+    bool seen_template0_db = false;
+    bool seen_tempalte1_db = false;
+
+    do {
+      for (int64_t row = 0; row < reader.array->length; row++) {
+        ArrowStringView val =
+            ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], row);
+        auto val_str = std::string(val.data, val.size_bytes);
+        if (val_str == "postgres")
+          seen_postgres_db = true;
+        else if (val_str == "template0")
+          seen_template0_db = true;
+        else if (val_str == "template1")
+          seen_tempalte1_db = true;
+      }
+      ASSERT_NO_FATAL_FAILURE(reader.Next());
+    } while (reader.array->release);
+
+    EXPECT_TRUE(seen_postgres_db) << "postgres database does not exist";
+    EXPECT_TRUE(seen_template0_db) << "template0 database does not exist";
+    EXPECT_TRUE(seen_tempalte1_db) << "template1 database does not exist";
+  }
 }
 
 TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
