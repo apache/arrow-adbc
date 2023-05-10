@@ -219,7 +219,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 		default:
 			transformers[i] = identCol
 		}
-		f.Name = strings.ToLower(f.Name)
+
 		fields[i] = f
 	}
 

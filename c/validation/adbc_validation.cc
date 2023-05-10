@@ -522,7 +522,7 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
             << "Row " << row << " (Catalog "
             << std::string(catalog_name.data, catalog_name.size_bytes)
             << ") should have nonempty catalog_db_schemas ";
-        ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, row));        
+        ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, row));
         for (int64_t list_index = start_offset; list_index < end_offset; list_index++) {
           ASSERT_TRUE(ArrowArrayViewIsNull(db_schema_tables_list, row + list_index))
               << "Row " << row << " should have null db_schema_tables";
