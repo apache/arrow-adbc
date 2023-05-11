@@ -145,6 +145,40 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
   return BatchToArrayStream(&array, &schema, out, error);
 }
 
+AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
+                                                struct ArrowArray* db_schemas_col,
+                                                struct AdbcError* error) {
+  struct ArrowArray* db_schema_items = db_schemas_col->children[0];
+  struct ArrowArray* schema_name_col = db_schema_items->children[0];
+  struct ArrowArray* schema_tables_col = db_schema_items->children[1];
+
+  const char* stmt =
+      "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
+      "nspname !~ '^pg_' AND nspname <> 'information_schema'";
+  auto result_helper = PqResultHelper(conn, stmt);
+
+  pg_result* result = result_helper.Execute();
+  ExecStatusType pq_status = PQresultStatus(result);
+  if (pq_status == PGRES_TUPLES_OK) {
+    int num_rows = PQntuples(result);
+    for (int row = 0; row < num_rows; row++) {
+      const char* schema_name = PQgetvalue(result, row, 0);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(schema_name_col, ArrowCharView(schema_name)),
+               error);
+      if (depth >= ADBC_OBJECT_DEPTH_TABLES) {
+        return ADBC_STATUS_NOT_IMPLEMENTED;
+      } else {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(schema_tables_col, 1), error);
+      }
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_items), error);
+    }
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schemas_col), error);
+  }
+
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode PostgresConnectionGetObjectsImpl(
     PGconn* conn, int depth, const char* catalog, const char* db_schema,
     const char* table_name, const char** table_types, const char* column_name,
@@ -182,7 +216,12 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
         if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
           CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
         } else {
-          return ADBC_STATUS_NOT_IMPLEMENTED;
+          if (depth >= ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
+            RAISE_ADBC(PostgresConnectionGetSchemasImpl(conn, depth,
+                                                        catalog_db_schemas_col, error));
+          } else {
+            return ADBC_STATUS_NOT_IMPLEMENTED;
+          }
         }
         CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
       }

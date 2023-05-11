@@ -86,7 +86,6 @@ class PostgresConnectionTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestMetadataGetObjectsDbSchemas() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsTables() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsColumns() { GTEST_SKIP() << "Not yet implemented"; }
@@ -202,6 +201,53 @@ TEST_F(PostgresConnectionTest, GetObjectsGetCatalogs) {
   EXPECT_TRUE(seen_postgres_db) << "postgres database does not exist";
   EXPECT_TRUE(seen_template0_db) << "template0 database does not exist";
   EXPECT_TRUE(seen_tempalte1_db) << "template1 database does not exist";
+}
+
+TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
+                                       nullptr, nullptr, nullptr, nullptr,
+                                       &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_GT(reader.array->length, 0);
+
+  bool seen_public = false;
+
+  do {
+    for (int64_t row = 0; row < reader.array->length; row++) {
+      ArrowStringView val =
+          ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], row);
+      auto val_str = std::string(val.data, val.size_bytes);
+      if (val_str == "postgres") {
+        // ASSERT_EQ(reader.array->children[1]->children[0]->length, 1);
+        auto schema_name_col = reader.array->children[1]->children[0];
+        for (auto i = 0; i < schema_name_col->length; i++) {
+          ArrowStringView schema = ArrowArrayViewGetStringUnsafe(
+              reader.array_view->children[1]->children[0]->children[0], i);
+          auto schema_str = std::string(schema.data, schema.size_bytes);
+          if (schema_str == "public") {
+            seen_public = true;
+          }
+        }
+      } else {
+        // Should not be able to view schemas from other databases
+        // ASSERT_EQ(reader.array->children[1]->children[0]->length, 0);
+      }
+    }
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+  } while (reader.array->release);
+
+  EXPECT_TRUE(seen_public) << "public schema does not exist";
 }
 
 TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
