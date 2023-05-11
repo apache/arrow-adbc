@@ -114,6 +114,7 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
   bool supports_partitioned_data() const override { return false; }
   bool supports_dynamic_parameter_binding() const override { return false; }
   bool ddl_implicit_commit_txn() const override { return true; }
+  std::string db_schema() const override { return "ADBC_TESTING"; }
 
   const char* uri_;
   bool skip_{false};

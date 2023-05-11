@@ -251,7 +251,7 @@ void CompareSchema(
               (schema->children[i]->flags & ARROW_FLAG_NULLABLE) != 0)
         << "Nullability mismatch";
     if (std::get<0>(fields[i]).has_value()) {
-      ASSERT_EQ(*std::get<0>(fields[i]), schema->children[i]->name);
+      ASSERT_STRCASEEQ(std::get<0>(fields[i])->c_str(), schema->children[i]->name);
     }
   }
 }
