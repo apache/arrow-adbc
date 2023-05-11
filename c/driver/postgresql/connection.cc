@@ -175,7 +175,6 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
     ExecStatusType pq_status = PQresultStatus(result);
     if (pq_status == PGRES_TUPLES_OK) {
       int num_rows = PQntuples(result);
-      array->length = num_rows - 1;  // makes ArrowArrayFinishElement happy, but why?
       for (int row = 0; row < num_rows; row++) {
         const char* db_name = PQgetvalue(result, row, 0);
         CHECK_NA(INTERNAL,
@@ -185,12 +184,11 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
         } else {
           return ADBC_STATUS_NOT_IMPLEMENTED;
         }
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
       }
     } else {
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
-
-    CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
   }
 
   CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array, &na_error), &na_error,
