@@ -164,8 +164,9 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
     struct StringBuilder query = {0};
     if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
 
-    if (StringBuilderAppend(&query, "%s", "SELECT datname FROM pg_catalog.pg_database"))
+    if (StringBuilderAppend(&query, "%s", "SELECT datname FROM pg_catalog.pg_database")) {
       return ADBC_STATUS_INTERNAL;
+    }
 
     PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
     StringBuilderReset(&query);
@@ -185,6 +186,8 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
           return ADBC_STATUS_NOT_IMPLEMENTED;
         }
       }
+    } else {
+      return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
