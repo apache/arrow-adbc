@@ -145,6 +145,77 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
   return BatchToArrayStream(&array, &schema, out, error);
 }
 
+AdbcStatusCode PostgresConnectionGetObjectsImpl(
+    PGconn* conn, int depth, const char* catalog, const char* db_schema,
+    const char* table_name, const char** table_types, const char* column_name,
+    struct ArrowSchema* schema, struct ArrowArray* array, struct AdbcError* error) {
+  RAISE_ADBC(AdbcInitConnectionObjectsSchema(schema, error));
+
+  struct ArrowError na_error = {0};
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array, schema, &na_error), &na_error,
+                  error);
+  CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
+
+  struct ArrowArray* catalog_name_col = array->children[0];
+  struct ArrowArray* catalog_db_schemas_col = array->children[1];
+
+  // TODO: support proper filters
+  if (!catalog) {
+    struct StringBuilder query = {0};
+    if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
+
+    if (StringBuilderAppend(&query, "%s", "SELECT datname FROM pg_catalog.pg_database")) {
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
+    StringBuilderReset(&query);
+    pg_result* result = result_helper.Execute();
+
+    ExecStatusType pq_status = PQresultStatus(result);
+    if (pq_status == PGRES_TUPLES_OK) {
+      int num_rows = PQntuples(result);
+      for (int row = 0; row < num_rows; row++) {
+        const char* db_name = PQgetvalue(result, row, 0);
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
+        if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+          CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
+        } else {
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+        }
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+      }
+    } else {
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+  }
+
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array, &na_error), &na_error,
+                  error);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresConnection::GetObjects(
+    struct AdbcConnection* connection, int depth, const char* catalog,
+    const char* db_schema, const char* table_name, const char** table_types,
+    const char* column_name, struct ArrowArrayStream* out, struct AdbcError* error) {
+  struct ArrowSchema schema = {0};
+  struct ArrowArray array = {0};
+
+  AdbcStatusCode status =
+      PostgresConnectionGetObjectsImpl(conn_, depth, catalog, db_schema, table_name,
+                                       table_types, column_name, &schema, &array, error);
+
+  if (status != ADBC_STATUS_OK) {
+    if (schema.release) schema.release(&schema);
+    if (array.release) array.release(&array);
+    return status;
+  }
+
+  return BatchToArrayStream(&array, &schema, out, error);
+}
+
 AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   const char* db_schema,
                                                   const char* table_name,
