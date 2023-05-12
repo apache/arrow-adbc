@@ -135,7 +135,11 @@ AdbcStatusCode PostgresConnectionGetObjects(
     struct AdbcConnection* connection, int depth, const char* catalog,
     const char* db_schema, const char* table_name, const char** table_types,
     const char* column_name, struct ArrowArrayStream* stream, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetObjects(connection, depth, catalog, db_schema, table_name,
+                            table_types, column_name, stream, error);
 }
 
 AdbcStatusCode PostgresConnectionGetTableSchema(
@@ -150,7 +154,10 @@ AdbcStatusCode PostgresConnectionGetTableSchema(
 AdbcStatusCode PostgresConnectionGetTableTypes(struct AdbcConnection* connection,
                                                struct ArrowArrayStream* stream,
                                                struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetTableTypes(connection, stream, error);
 }
 
 AdbcStatusCode PostgresConnectionInit(struct AdbcConnection* connection,

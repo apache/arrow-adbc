@@ -653,7 +653,7 @@ test_source_distribution() {
 }
 
 test_binary_distribution() {
-  if [ ${TEST_BINARIES} -gt 0 ]; then
+  if [ $((${TEST_BINARY} + ${TEST_JARS} + ${TEST_WHEELS})) -gt 0 ]; then
     show_header "Downloading binary artifacts"
     export BINARY_DIR="${ARROW_TMPDIR}/binaries"
     mkdir -p "${BINARY_DIR}"

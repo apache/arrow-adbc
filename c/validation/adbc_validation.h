@@ -93,6 +93,9 @@ class DriverQuirks {
 
   /// \brief Whether dynamic parameter bindings are supported for prepare
   virtual bool supports_dynamic_parameter_binding() const { return true; }
+
+  /// \brief Default Schema to use for tests
+  virtual std::string db_schema() const { return ""; }
 };
 
 class DatabaseTest {
