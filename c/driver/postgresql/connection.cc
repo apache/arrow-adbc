@@ -18,6 +18,7 @@
 #include "connection.h"
 
 #include <cinttypes>
+#include <cstddef>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -42,6 +43,10 @@ class PqResultHelper {
   }
   pg_result* Execute() {
     result_ = PQexec(conn_, query_.c_str());
+    ExecStatusType pq_status = PQresultStatus(result_);
+    if (pq_status == PGRES_TUPLES_OK) {
+      num_rows_ = PQntuples(result_);
+    }
     return result_;
   }
 
@@ -49,10 +54,38 @@ class PqResultHelper {
     if (result_ != nullptr) PQclear(result_);
   }
 
+  class iterator {
+    int num = 0;
+
+   public:
+    explicit iterator(int _num = 0) : num(_num) {}
+    iterator& operator++() {
+      num++;
+      return *this;
+    }
+    iterator operator++(int) {
+      iterator retval = *this;
+      ++(*this);
+      return retval;
+    }
+    bool operator==(iterator other) const { return num == other.num; }
+    bool operator!=(iterator other) const { return !(*this == other); }
+    int operator*() { return num; }
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = std::ptrdiff_t;
+    using value_type = int;
+    using pointer = const int*;
+    using reference = const int&;
+  };
+
+  iterator begin() { return 0; }
+  iterator end() { return num_rows_; }
+
  private:
   pg_result* result_ = nullptr;
   PGconn* conn_;
   std::string query_;
+  int num_rows_;
 };
 
 }  // namespace
@@ -170,24 +203,18 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
 
     PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
     StringBuilderReset(&query);
-    pg_result* result = result_helper.Execute();
 
-    ExecStatusType pq_status = PQresultStatus(result);
-    if (pq_status == PGRES_TUPLES_OK) {
-      int num_rows = PQntuples(result);
-      for (int row = 0; row < num_rows; row++) {
-        const char* db_name = PQgetvalue(result, row, 0);
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
-        if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
-          CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
-        } else {
-          return ADBC_STATUS_NOT_IMPLEMENTED;
-        }
-        CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+    auto result = result_helper.Execute();
+    for (auto row : result_helper) {
+      const char* db_name = PQgetvalue(result, row, 0);
+      CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)),
+               error);
+      if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
+      } else {
+        return ADBC_STATUS_NOT_IMPLEMENTED;
       }
-    } else {
-      return ADBC_STATUS_NOT_IMPLEMENTED;
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
     }
   }
 
