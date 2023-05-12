@@ -20,8 +20,10 @@
 #include <cinttypes>
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <memory>
 #include <string>
+#include <tuple>
 
 #include <adbc.h>
 #include <libpq-fe.h>
@@ -34,6 +36,59 @@ namespace {
 static const uint32_t kSupportedInfoCodes[] = {
     ADBC_INFO_VENDOR_NAME,    ADBC_INFO_VENDOR_VERSION,       ADBC_INFO_DRIVER_NAME,
     ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ARROW_VERSION,
+};
+
+class PqResultRow {
+ public:
+  PqResultRow(pg_result* result, int row_num) : result_(result), row_num_(row_num) {
+    ncols_ = PQnfields(result);
+  }
+  class iterator {
+    pg_result* result;
+    int row_num;
+    int col_num = 0;
+    int ncols;
+
+   public:
+    explicit iterator(pg_result* _result, int _ncols, int _row_num, int _col_num = 0)
+        : result(_result), ncols(_ncols), row_num(_row_num), col_num(_col_num) {}
+    iterator& operator++() {
+      col_num++;
+      return *this;
+    }
+
+    iterator operator++(int) {
+      iterator retval = *this;
+      ++(*this);
+      return retval;
+    }
+    bool operator==(iterator other) const {
+      return result == other.result && row_num == other.row_num &&
+             col_num == other.col_num;
+    }
+    bool operator!=(iterator other) const { return !(*this == other); }
+    std::tuple<const char*, const int, const int> operator*() {
+      const char* db_name = PQgetvalue(result, row_num, col_num);
+      const int len = PQgetlength(result, row_num, col_num);
+      const int is_null = PQgetisnull(result, row_num, col_num);
+
+      return std::tuple<const char*, const int, const int>(db_name, len, is_null);
+    }
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = std::ptrdiff_t;
+    using value_type =
+        std::tuple<const char*, const int, const int>;  // value, length, isnull
+    using pointer = const std::tuple<const char*, const int, const int>*;
+    using reference = const std::tuple<const char*, const int, const int>&;
+  };
+
+  iterator begin() { return iterator(result_, ncols_, row_num_); }
+  iterator end() { return iterator(result_, ncols_, row_num_, ncols_); }
+
+ private:
+  pg_result* result_ = nullptr;
+  int row_num_;
+  int ncols_;
 };
 
 class PqResultHelper {
@@ -78,8 +133,8 @@ class PqResultHelper {
     using reference = const int&;
   };
 
-  iterator begin() { return 0; }
-  iterator end() { return num_rows_; }
+  iterator begin() { return iterator(0); }
+  iterator end() { return iterator(num_rows_); }
 
  private:
   pg_result* result_ = nullptr;
@@ -205,16 +260,19 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
     StringBuilderReset(&query);
 
     auto result = result_helper.Execute();
-    for (auto row : result_helper) {
-      const char* db_name = PQgetvalue(result, row, 0);
-      CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)),
-               error);
-      if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
-      } else {
-        return ADBC_STATUS_NOT_IMPLEMENTED;
+    for (auto row_num : result_helper) {
+      auto row = PqResultRow(result, row_num);
+      for (auto result : row) {
+        auto db_name = std::get<0>(result);
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
+        if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+          CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
+        } else {
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+        }
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
       }
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
     }
   }
 
