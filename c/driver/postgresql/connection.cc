@@ -18,7 +18,6 @@
 #include "connection.h"
 
 #include <cinttypes>
-#include <cstddef>
 #include <cstring>
 #include <iterator>
 #include <memory>
