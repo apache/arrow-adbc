@@ -48,19 +48,14 @@ class PqResultRow {
     ncols_ = PQnfields(result);
   }
   class iterator {
-    pg_result* iter_result_;
-    int iter_row_num_;
-    int iter_col_num_ = 0;
-    int iter_ncols_;
+    const PqResultRow& outer_;
+    int col_num_ = 0;
 
    public:
-    explicit iterator(pg_result* result, int ncols, int row_num, int col_num = 0)
-        : iter_result_(result),
-          iter_ncols_(ncols),
-          iter_row_num_(row_num),
-          iter_col_num_(col_num) {}
+    explicit iterator(const PqResultRow& outer, int col_num = 0)
+        : outer_(outer), col_num_(col_num) {}
     iterator& operator++() {
-      iter_col_num_++;
+      col_num_++;
       return *this;
     }
 
@@ -71,7 +66,7 @@ class PqResultRow {
     }
 
     iterator operator+=(const int& n) {
-      iter_col_num_ += n;
+      col_num_ += n;
       return *this;
     }
 
@@ -83,15 +78,12 @@ class PqResultRow {
 
     PqRecord operator[](const int& n) { return *(*this + n); }
 
-    bool operator==(iterator other) const {
-      return iter_result_ == other.iter_result_ && iter_row_num_ == other.iter_row_num_ &&
-             iter_col_num_ == other.iter_col_num_;
-    }
+    bool operator==(iterator other) const { return col_num_ == other.col_num_; }
     bool operator!=(iterator other) const { return !(*this == other); }
     PqRecord operator*() {
-      const char* data = PQgetvalue(iter_result_, iter_row_num_, iter_col_num_);
-      const int len = PQgetlength(iter_result_, iter_row_num_, iter_col_num_);
-      const bool is_null = PQgetisnull(iter_result_, iter_row_num_, iter_col_num_);
+      const char* data = PQgetvalue(outer_.result_, outer_.row_num_, col_num_);
+      const int len = PQgetlength(outer_.result_, outer_.row_num_, col_num_);
+      const bool is_null = PQgetisnull(outer_.result_, outer_.row_num_, col_num_);
 
       return PqRecord{data, len, is_null};
     }
@@ -102,8 +94,8 @@ class PqResultRow {
     using reference = PqRecord&;
   };
 
-  iterator begin() { return iterator(result_, ncols_, row_num_); }
-  iterator end() { return iterator(result_, ncols_, row_num_, ncols_); }
+  iterator begin() { return iterator(*this); }
+  iterator end() { return iterator(*this, ncols_); }
 
  private:
   pg_result* result_ = nullptr;
@@ -127,15 +119,14 @@ class PqResultHelper {
   int NumColumns() { return PQnfields(result_); }
 
   class iterator {
-    pg_result* iter_result_;
-    int iter_num_rows_;
-    int iter_curr_row_ = 0;
+    const PqResultHelper& outer_;
+    int curr_row_ = 0;
 
    public:
-    explicit iterator(pg_result* result, int curr_row = 0)
-        : iter_result_(result), iter_curr_row_(curr_row) {}
+    explicit iterator(const PqResultHelper& outer, int curr_row = 0)
+        : outer_(outer), curr_row_(curr_row) {}
     iterator& operator++() {
-      iter_curr_row_++;
+      curr_row_++;
       return *this;
     }
     iterator operator++(int) {
@@ -143,11 +134,9 @@ class PqResultHelper {
       ++(*this);
       return retval;
     }
-    bool operator==(iterator other) const {
-      return iter_result_ == other.iter_result_ && iter_curr_row_ == other.iter_curr_row_;
-    }
+    bool operator==(iterator other) const { return curr_row_ == other.curr_row_; }
     bool operator!=(iterator other) const { return !(*this == other); }
-    PqResultRow operator*() { return PqResultRow(iter_result_, iter_curr_row_); }
+    PqResultRow operator*() { return PqResultRow(outer_.result_, curr_row_); }
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = PqResultRow::iterator;
@@ -155,8 +144,8 @@ class PqResultHelper {
     using reference = const PqResultRow::iterator&;
   };
 
-  iterator begin() { return iterator(result_, 0); }
-  iterator end() { return iterator(result_, NumRows()); }
+  iterator begin() { return iterator(*this); }
+  iterator end() { return iterator(*this, NumRows()); }
 
  private:
   pg_result* result_ = nullptr;
