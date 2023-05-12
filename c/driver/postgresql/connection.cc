@@ -44,16 +44,19 @@ class PqResultRow {
     ncols_ = PQnfields(result);
   }
   class iterator {
-    pg_result* result;
-    int row_num;
-    int col_num = 0;
-    int ncols;
+    pg_result* iter_result_;
+    int iter_row_num_;
+    int iter_col_num_ = 0;
+    int iter_ncols_;
 
    public:
-    explicit iterator(pg_result* _result, int _ncols, int _row_num, int _col_num = 0)
-        : result(_result), ncols(_ncols), row_num(_row_num), col_num(_col_num) {}
+    explicit iterator(pg_result* result, int ncols, int row_num, int col_num = 0)
+        : iter_result_(result),
+          iter_ncols_(ncols),
+          iter_row_num_(row_num),
+          iter_col_num_(col_num) {}
     iterator& operator++() {
-      col_num++;
+      iter_col_num_++;
       return *this;
     }
 
@@ -63,14 +66,14 @@ class PqResultRow {
       return retval;
     }
     bool operator==(iterator other) const {
-      return result == other.result && row_num == other.row_num &&
-             col_num == other.col_num;
+      return iter_result_ == other.iter_result_ && iter_row_num_ == other.iter_row_num_ &&
+             iter_col_num_ == other.iter_col_num_;
     }
     bool operator!=(iterator other) const { return !(*this == other); }
     std::tuple<const char*, const int, const int> operator*() {
-      const char* db_name = PQgetvalue(result, row_num, col_num);
-      const int len = PQgetlength(result, row_num, col_num);
-      const int is_null = PQgetisnull(result, row_num, col_num);
+      const char* db_name = PQgetvalue(iter_result_, iter_row_num_, iter_col_num_);
+      const int len = PQgetlength(iter_result_, iter_row_num_, iter_col_num_);
+      const int is_null = PQgetisnull(iter_result_, iter_row_num_, iter_col_num_);
 
       return std::tuple<const char*, const int, const int>(db_name, len, is_null);
     }
@@ -110,12 +113,15 @@ class PqResultHelper {
   }
 
   class iterator {
-    int num = 0;
+    pg_result* iter_result_;
+    int iter_num_rows_;
+    int iter_curr_row_ = 0;
 
    public:
-    explicit iterator(int _num = 0) : num(_num) {}
+    explicit iterator(pg_result* result, int num_rows, int curr_row = 0)
+        : iter_result_(result), iter_num_rows_(num_rows), iter_curr_row_(curr_row) {}
     iterator& operator++() {
-      num++;
+      iter_curr_row_++;
       return *this;
     }
     iterator operator++(int) {
@@ -123,18 +129,22 @@ class PqResultHelper {
       ++(*this);
       return retval;
     }
-    bool operator==(iterator other) const { return num == other.num; }
+    bool operator==(iterator other) const {
+      return iter_result_ == other.iter_result_ &&
+             iter_num_rows_ == other.iter_num_rows_ &&
+             iter_curr_row_ == other.iter_curr_row_;
+    }
     bool operator!=(iterator other) const { return !(*this == other); }
-    int operator*() { return num; }
+    PqResultRow operator*() { return PqResultRow(iter_result_, iter_curr_row_); }
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
-    using value_type = int;
-    using pointer = const int*;
-    using reference = const int&;
+    using value_type = PqResultRow::iterator;
+    using pointer = const PqResultRow::iterator*;
+    using reference = const PqResultRow::iterator&;
   };
 
-  iterator begin() { return iterator(0); }
-  iterator end() { return iterator(num_rows_); }
+  iterator begin() { return iterator(result_, num_rows_, 0); }
+  iterator end() { return iterator(result_, num_rows_, num_rows_); }
 
  private:
   pg_result* result_ = nullptr;
@@ -260,8 +270,7 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
     StringBuilderReset(&query);
 
     auto result = result_helper.Execute();
-    for (auto row_num : result_helper) {
-      auto row = PqResultRow(result, row_num);
+    for (auto row : result_helper) {
       for (auto result : row) {
         auto db_name = std::get<0>(result);
         CHECK_NA(INTERNAL,
