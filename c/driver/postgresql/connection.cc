@@ -23,7 +23,6 @@
 #include <iterator>
 #include <memory>
 #include <string>
-#include <tuple>
 
 #include <adbc.h>
 #include <libpq-fe.h>
@@ -36,6 +35,12 @@ namespace {
 static const uint32_t kSupportedInfoCodes[] = {
     ADBC_INFO_VENDOR_NAME,    ADBC_INFO_VENDOR_VERSION,       ADBC_INFO_DRIVER_NAME,
     ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ARROW_VERSION,
+};
+
+struct PqRecord {
+  const char* db_name;
+  const int len;
+  const bool is_null;
 };
 
 class PqResultRow {
@@ -70,19 +75,18 @@ class PqResultRow {
              iter_col_num_ == other.iter_col_num_;
     }
     bool operator!=(iterator other) const { return !(*this == other); }
-    std::tuple<const char*, const int, const int> operator*() {
+    PqRecord operator*() {
       const char* db_name = PQgetvalue(iter_result_, iter_row_num_, iter_col_num_);
       const int len = PQgetlength(iter_result_, iter_row_num_, iter_col_num_);
-      const int is_null = PQgetisnull(iter_result_, iter_row_num_, iter_col_num_);
+      const bool is_null = PQgetisnull(iter_result_, iter_row_num_, iter_col_num_);
 
-      return std::tuple<const char*, const int, const int>(db_name, len, is_null);
+      return PqRecord{db_name, len, is_null};
     }
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
-    using value_type =
-        std::tuple<const char*, const int, const int>;  // value, length, isnull
-    using pointer = const std::tuple<const char*, const int, const int>*;
-    using reference = const std::tuple<const char*, const int, const int>&;
+    using value_type = PqRecord;
+    using pointer = PqRecord*;
+    using reference = PqRecord&;
   };
 
   iterator begin() { return iterator(result_, ncols_, row_num_); }
@@ -150,7 +154,7 @@ class PqResultHelper {
   pg_result* result_ = nullptr;
   PGconn* conn_;
   std::string query_;
-  int num_rows_;
+  int num_rows_ = 0;
 };
 
 }  // namespace
@@ -271,8 +275,8 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
 
     auto result = result_helper.Execute();
     for (auto row : result_helper) {
-      for (auto result : row) {
-        auto db_name = std::get<0>(result);
+      for (auto pq_record : row) {
+        auto db_name = pq_record.db_name;
         CHECK_NA(INTERNAL,
                  ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
         if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
