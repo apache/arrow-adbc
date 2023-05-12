@@ -157,6 +157,36 @@ TEST_F(DriverManager, MultiDriverTest) {
   error->release(&error.value);
 }
 
+class AdbcVersion : public ::testing::Test {
+ public:
+  void SetUp() override {
+    std::memset(&driver, 0, sizeof(driver));
+    std::memset(&error, 0, sizeof(error));
+  }
+
+  void TearDown() override {
+    if (error.release) {
+      error.release(&error);
+    }
+
+    if (driver.base.release) {
+      ASSERT_THAT(driver.base.release(&driver.base, &error), IsOkStatus(&error));
+      ASSERT_EQ(driver.base.private_data, nullptr);
+      ASSERT_EQ(driver.base.private_manager, nullptr);
+    }
+  }
+
+ protected:
+  struct AdbcDriver110 driver = {};
+  struct AdbcError error = {};
+};
+
+TEST_F(AdbcVersion, ForwardsCompatible) {
+  ASSERT_THAT(
+      AdbcLoadDriver("adbc_driver_sqlite", nullptr, ADBC_VERSION_1_1_0, &driver, &error),
+      IsOkStatus(&error));
+}
+
 class SqliteQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,

@@ -279,6 +279,12 @@ struct ADBC_EXPORT AdbcError {
 /// point to an AdbcDriver.
 #define ADBC_VERSION_1_0_0 1000000
 
+/// \brief ADBC revision 1.1.0.
+///
+/// When passed to an AdbcDriverInitFunc(), the driver parameter must
+/// point to an AdbcDriver110.
+#define ADBC_VERSION_1_1_0 1001000
+
 /// \brief Canonical option value for enabling an option.
 ///
 /// For use as the value in SetOption calls.
@@ -479,7 +485,7 @@ struct ADBC_EXPORT AdbcDatabase {
   void* private_data;
   /// \brief The associated driver (used by the driver manager to help
   ///   track state).
-  struct AdbcDriver* private_driver;
+  void* private_driver;
 };
 
 /// @}
@@ -502,7 +508,7 @@ struct ADBC_EXPORT AdbcConnection {
   void* private_data;
   /// \brief The associated driver (used by the driver manager to help
   ///   track state).
-  struct AdbcDriver* private_driver;
+  void* private_driver;
 };
 
 /// @}
@@ -541,7 +547,7 @@ struct ADBC_EXPORT AdbcStatement {
 
   /// \brief The associated driver (used by the driver manager to help
   ///   track state).
-  struct AdbcDriver* private_driver;
+  void* private_driver;
 };
 
 /// \defgroup adbc-statement-partition Partitioned Results
@@ -595,7 +601,7 @@ struct AdbcPartitions {
 /// driver and the driver manager.
 /// @{
 
-/// \brief An instance of an initialized database driver.
+/// \brief An instance of an initialized database driver (API 1.0.0).
 ///
 /// This provides a common interface for vendor-specific driver
 /// initialization routines. Drivers should populate this struct, and
@@ -667,6 +673,16 @@ struct ADBC_EXPORT AdbcDriver {
                                          struct AdbcError*);
   AdbcStatusCode (*StatementSetSubstraitPlan)(struct AdbcStatement*, const uint8_t*,
                                               size_t, struct AdbcError*);
+};
+
+/// \brief An instance of an initialized database driver (API 1.1.0).
+///
+/// This provides a common interface for vendor-specific driver
+/// initialization routines. Drivers should populate this struct, and
+/// applications can call ADBC functions through this struct, without
+/// worrying about multiple definitions of the same symbol.
+struct ADBC_EXPORT AdbcDriver110 {
+  struct AdbcDriver base;
 };
 
 /// @}
