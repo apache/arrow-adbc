@@ -253,7 +253,7 @@ jobs:
           ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-          ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
       - name: Build and Test Snowflake Driver (Python)
         shell: bash -l {0}
         env:
