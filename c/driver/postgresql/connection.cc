@@ -272,7 +272,7 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
     PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
     StringBuilderReset(&query);
 
-    auto result = result_helper.Execute();
+    result_helper.Execute();
     for (auto row : result_helper) {
       for (auto pq_record : row) {
         auto db_name = pq_record.db_name;
