@@ -22,6 +22,7 @@
 #include <iterator>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <adbc.h>
 #include <libpq-fe.h>
@@ -47,55 +48,14 @@ class PqResultRow {
   PqResultRow(pg_result* result, int row_num) : result_(result), row_num_(row_num) {
     ncols_ = PQnfields(result);
   }
-  class iterator {
-    const PqResultRow& outer_;
-    int col_num_ = 0;
 
-   public:
-    explicit iterator(const PqResultRow& outer, int col_num = 0)
-        : outer_(outer), col_num_(col_num) {}
-    iterator& operator++() {
-      col_num_++;
-      return *this;
-    }
+  PqRecord operator[](const int& col_num) {
+    const char* data = PQgetvalue(result_, row_num_, col_num);
+    const int len = PQgetlength(result_, row_num_, col_num);
+    const bool is_null = PQgetisnull(result_, row_num_, col_num);
 
-    iterator operator++(int) {
-      iterator retval = *this;
-      ++(*this);
-      return retval;
-    }
-
-    iterator operator+=(const int& n) {
-      col_num_ += n;
-      return *this;
-    }
-
-    iterator operator+(const int& n) {
-      iterator tmp(*this);
-      tmp += n;
-      return tmp;
-    }
-
-    PqRecord operator[](const int& n) { return *(*this + n); }
-
-    bool operator==(iterator other) const { return col_num_ == other.col_num_; }
-    bool operator!=(iterator other) const { return !(*this == other); }
-    PqRecord operator*() {
-      const char* data = PQgetvalue(outer_.result_, outer_.row_num_, col_num_);
-      const int len = PQgetlength(outer_.result_, outer_.row_num_, col_num_);
-      const bool is_null = PQgetisnull(outer_.result_, outer_.row_num_, col_num_);
-
-      return PqRecord{data, len, is_null};
-    }
-    using iterator_category = std::random_access_iterator_tag;
-    using difference_type = std::ptrdiff_t;
-    using value_type = PqRecord;
-    using pointer = PqRecord*;
-    using reference = PqRecord&;
-  };
-
-  iterator begin() { return iterator(*this); }
-  iterator end() { return iterator(*this, ncols_); }
+    return PqRecord{data, len, is_null};
+  }
 
  private:
   pg_result* result_ = nullptr;
@@ -139,9 +99,9 @@ class PqResultHelper {
     PqResultRow operator*() { return PqResultRow(outer_.result_, curr_row_); }
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
-    using value_type = PqResultRow::iterator;
-    using pointer = const PqResultRow::iterator*;
-    using reference = const PqResultRow::iterator&;
+    using value_type = std::vector<PqResultRow>;
+    using pointer = const std::vector<PqResultRow>*;
+    using reference = const std::vector<PqResultRow>&;
   };
 
   iterator begin() { return iterator(*this); }
@@ -270,17 +230,15 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
     StringBuilderReset(&query);
 
     for (auto row : result_helper) {
-      for (auto pq_record : row) {
-        auto db_name = pq_record.data;
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
-        if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
-          CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
-        } else {
-          return ADBC_STATUS_NOT_IMPLEMENTED;
-        }
-        CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+      auto db_name = row[0].data;
+      CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)),
+               error);
+      if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
+      } else {
+        return ADBC_STATUS_NOT_IMPLEMENTED;
       }
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
     }
   }
 
@@ -366,10 +324,9 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
     ArrowError na_error;
     int row_counter = 0;
     for (auto row : result_helper) {
-      auto iter = row.begin();
-      const char* colname = iter[0].data;
+      const char* colname = row[0].data;
       const Oid pg_oid = static_cast<uint32_t>(
-          std::strtol(iter[1].data, /*str_end=*/nullptr, /*base=*/10));
+          std::strtol(row[1].data, /*str_end=*/nullptr, /*base=*/10));
 
       PostgresType pg_type;
       if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
