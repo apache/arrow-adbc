@@ -72,7 +72,11 @@ class PqResultHelper {
 
   ExecStatusType Status() { return PQresultStatus(result_); }
 
-  ~PqResultHelper() { PQclear(result_); }
+  ~PqResultHelper() {
+    if (result_ != nullptr) {
+      PQclear(result_);
+    }
+  }
 
   int NumRows() { return PQntuples(result_); }
 
