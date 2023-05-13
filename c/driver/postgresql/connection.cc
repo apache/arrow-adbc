@@ -94,7 +94,9 @@ class PqResultHelper {
       ++(*this);
       return retval;
     }
-    bool operator==(iterator other) const { return curr_row_ == other.curr_row_; }
+    bool operator==(iterator other) const {
+      return outer_.result_ == other.outer_.result_ && curr_row_ == other.curr_row_;
+    }
     bool operator!=(iterator other) const { return !(*this == other); }
     PqResultRow operator*() { return PqResultRow(outer_.result_, curr_row_); }
     using iterator_category = std::forward_iterator_tag;
