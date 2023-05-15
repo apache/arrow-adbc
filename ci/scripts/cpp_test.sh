@@ -25,7 +25,7 @@ set -e
 : ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
 
-test_subproject() {
+test_project() {
     local -r build_dir="${1}"
 
     pushd "${build_dir}/"
@@ -56,9 +56,8 @@ test_subproject() {
 }
 
 main() {
-    local -r source_dir="${1}"
-    local -r build_dir="${2}"
-    local install_dir="${3}"
+    local -r build_dir="${1}"
+    local install_dir="${2}"
 
     if [[ -z "${install_dir}" ]]; then
         install_dir="${build_dir}/local"
@@ -68,7 +67,7 @@ main() {
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export GODEBUG=cgocheck=2
 
-    test_subproject "${build_dir}"
+    test_project "${build_dir}"
 }
 
 main "$@"
