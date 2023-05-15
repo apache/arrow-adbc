@@ -1,0 +1,214 @@
+.. Licensed to the Apache Software Foundation (ASF) under one
+.. or more contributor license agreements.  See the NOTICE file
+.. distributed with this work for additional information
+.. regarding copyright ownership.  The ASF licenses this file
+.. to you under the Apache License, Version 2.0 (the
+.. "License"); you may not use this file except in compliance
+.. with the License.  You may obtain a copy of the License at
+..
+..   http://www.apache.org/licenses/LICENSE-2.0
+..
+.. Unless required by applicable law or agreed to in writing,
+.. software distributed under the License is distributed on an
+.. "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+.. KIND, either express or implied.  See the License for the
+.. specific language governing permissions and limitations
+.. under the License.
+
+============================================
+Driver Feature Support/Implementation Status
+============================================
+
+Implementation Status
+=====================
+
+**Experimental** drivers are not feature-complete and the implementation is still progressing.
+**Beta** drivers are (mostly) feature-complete but have only been available for a short time.
+**Stable** drivers are feature-complete (as much as possible for the underlying database) and have been available/tested for a while.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Driver
+     - Supported Languages [#supported-languages]_
+     - Implementation Language
+     - Status
+
+   * - Flight SQL (Go)
+     - C, Go
+     - Go
+     - Beta
+
+   * - Flight SQL (Java)
+     - Java
+     - Java
+     - Experimental
+
+   * - JDBC
+     - Java
+     - Java
+     - Experimental
+
+   * - PostgreSQL
+     - C
+     - C++
+     - Experimental
+
+   * - SQLite
+     - C
+     - C
+     - Beta
+
+.. [#supported-languages] C drivers are usable from Go, Python, and Ruby as well.
+
+Feature Support
+===============
+
+N/A indicates that it is not possible to support this feature in the underlying database.
+
+See individual driver documentation pages for full details.
+
+Bulk Ingestion
+    Does the driver support :ref:`bulk ingestion of data <specification-bulk-ingestion>` (creating or appending to a database table from an Arrow table)?
+
+Database Metadata
+    Does the driver support functions like :cpp:func:`AdbcConnectionGetObjects` that get metadata about the database catalog, etc.?
+
+Parameterized Queries
+    Does the driver support binding query parameters?
+
+Partitioned Data
+    Being able to read individual chunks of a (generally distributed)
+    result set (:cpp:func:`AdbcStatementExecutePartitions`).
+
+Prepared Statements
+    Does the driver support binding query parameters?
+
+Full Type Support
+    Does the driver map all database types to/from equivalent Arrow types, as much as is possible?
+
+Select Queries
+    Does the driver support queries returning result sets?
+
+SQL
+    Does the driver support submitting SQL queries?
+
+Transactions
+    Does the driver support explicit transactions (the default is to assume auto-commit)?
+
+Substrait
+    Does the driver support submitting Substrait plans?
+
+Update Queries
+    Does the driver support queries not returning result sets?
+
+.. list-table:: General features
+   :header-rows: 1
+
+   * - Driver
+     - Full Type Support
+     - SQL
+     - Substrait
+
+   * - Flight SQL (Go)
+     - Y
+     - Y
+     - N
+
+   * - Flight SQL (Java)
+     - Y
+     - Y
+     - N
+
+   * - JDBC
+     - N
+     - Y
+     - N/A
+
+   * - PostgreSQL
+     - N
+     - Y
+     - N/A
+
+   * - SQLite
+     - Y
+     - Y
+     - N/A
+
+.. list-table:: Statement/query-level features
+   :header-rows: 1
+
+   * - Driver
+     - Partitioned Data
+     - Parameterized Queries
+     - Prepared Statements
+     - Select Queries
+     - Update Queries
+
+   * - Flight SQL (Go)
+     - Y
+     - Y
+     - Y
+     - Y
+     - Y
+
+   * - Flight SQL (Java)
+     - Y
+     - Y
+     - Y
+     - Y
+     - Y
+
+   * - JDBC
+     - N/A
+     - Y
+     - Y
+     - Y
+     - Y
+
+   * - PostgreSQL
+     - Y
+     - Y
+     - Y
+     - N/A
+     - Y
+
+   * - SQLite
+     - N/A
+     - Y
+     - Y
+     - Y
+     - Y
+
+.. list-table:: Connection/database-level features
+   :header-rows: 1
+
+   * - Driver
+     - Bulk Ingestion
+     - Database Metadata (catalogs, etc.)
+     - Transactions
+
+   * - Flight SQL (Go)
+     - N
+     - Y
+     - N
+
+   * - Flight SQL (Java)
+     - Y
+     - Y
+     - N
+
+   * - JDBC
+     - Y
+     - Y
+     - N
+
+   * - PostgreSQL
+     - Y
+     - Y
+     - N
+
+   * - SQLite
+     - Y
+     - Y
+     - Y
