@@ -17,9 +17,9 @@
 
 #include "connection.h"
 
+#include <cassert>
 #include <cinttypes>
 #include <cstring>
-#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
@@ -43,6 +43,8 @@ struct PqRecord {
   const bool is_null;
 };
 
+// Used by PqResultHelper to provide index-based access to the records within each
+// row of a pg_result
 class PqResultRow {
  public:
   PqResultRow(pg_result* result, int row_num) : result_(result), row_num_(row_num) {
@@ -50,6 +52,7 @@ class PqResultRow {
   }
 
   PqRecord operator[](const int& col_num) {
+    assert(col_num < ncols_);
     const char* data = PQgetvalue(result_, row_num_, col_num);
     const int len = PQgetlength(result_, row_num_, col_num);
     const bool is_null = PQgetisnull(result_, row_num_, col_num);
@@ -63,6 +66,10 @@ class PqResultRow {
   int ncols_;
 };
 
+// Helper to manager the lifecycle of a PQResult. The query argument
+// will be evaluated as part of the constructor, with the desctructor handling cleanup
+// Caller is responsible for calling the `Status()` method to ensure results are
+// as expected prior to iterating
 class PqResultHelper {
  public:
   PqResultHelper(PGconn* conn, const char* query) : conn_(conn) {
@@ -235,16 +242,20 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
     PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
     StringBuilderReset(&query);
 
-    for (auto row : result_helper) {
-      auto db_name = row[0].data;
-      CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)),
-               error);
-      if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
-      } else {
-        return ADBC_STATUS_NOT_IMPLEMENTED;
+    if (result_helper.Status() == PGRES_TUPLES_OK) {
+      for (PqResultRow row : result_helper) {
+        const char* db_name = row[0].data;
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
+        if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+          CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
+        } else {
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+        }
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
       }
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+    } else {
+      return ADBC_STATUS_NOT_IMPLEMENTED;
     }
   }
 
