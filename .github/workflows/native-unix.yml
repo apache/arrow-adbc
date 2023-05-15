@@ -174,7 +174,7 @@ jobs:
       - name: Test SQLite3 Driver
         shell: bash -l {0}
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_test.sh "$(pwd)/build"
       - name: Build PostgreSQL Driver
         shell: bash -l {0}
         run: |
@@ -186,8 +186,7 @@ jobs:
       - name: Test Driver Manager
         shell: bash -l {0}
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_test.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
   # ------------------------------------------------------------
   # GLib/Ruby

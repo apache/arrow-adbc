@@ -141,7 +141,7 @@ $env:BUILD_DRIVER_SNOWFLAKE = "0"
 if (-not $?) { exit 1 }
 
 $env:BUILD_DRIVER_POSTGRESQL = "0"
-& $(Join-Path $ArrowSourceDir ci\scripts\cpp_test.ps1) $ArrowSourceDir $CppBuildDir
+& $(Join-Path $ArrowSourceDir ci\scripts\cpp_test.ps1) $CppBuildDir
 if (-not $?) { exit 1 }
 $env:BUILD_DRIVER_POSTGRESQL = "1"
 
