@@ -119,3 +119,57 @@
 - **r/adbcsqlite**: Package SQLite driver for R (#463)
 - **go/adbc/driver/flightsql**: add transaction and substrait support (#467)
 - **r**: Add R Driver Manager (#365)
+
+## ADBC Libraries 0.4.0 (2023-05-08)
+
+### Fix
+
+- **ruby**: Free an imported reader in Statement#execute explicitly (#665)
+- **go/adbc/driver/snowflake**: Skip shared dbs that have no data or we can't access (#656)
+- **c/validation**: correct indexing in TestMetadataGetObjectsTables (#649)
+- **c/driver**: hide symbols when buildling Go Flight SQL and Snowflake drivers (#640)
+- **go/adbc/sqldriver**: do not swallow array.RecordReader error (#641)
+- **go/adbc/driver/snowflake**: some more cleanup (#637)
+- **c/driver/postgresql**: properly handle NULLs (#626)
+- **java**: require supplying BufferAllocator to create drivers (#622)
+- **go/adbc/driver/flightsql**: use updated authorization header from server (#594)
+- **c/driver/sqlite,c/validation**: Ensure float/double values are not truncated on bind or select (#585)
+- **java/driver/jdbc**: check for existence when getting table schema (#567)
+- **java/driver/jdbc**: clean up buffer leaks (#533)
+- **python/adbc_driver_manager**: fix uncaught exception in __del__ (#556)
+
+### Feat
+
+- **r/adbcsnowflake**: Package Snowflake driver for R (#638)
+- **c/driver/postgresql**: implement GetTableSchema (#577)
+- **python/adbc_driver_snowflake**: package the Snowflake driver (#633)
+- **go/adbc/driver**: Adbc Driver for Snowflake (#586)
+- **glib**: add gadbc_connection_get_objects() (#617)
+- **java/driver/jdbc**: support catalogPattern in getObjects (#613)
+- **java/driver/jdbc**: create AdbcDatabase from javax.sql.DataSource (#607)
+- **glib**: add support for no AdbcError error case (#604)
+- **ruby**: add support for statement.ingest("table", table) (#601)
+- **glib**: add gadbc_connection_set_isolation_level() (#590)
+- **glib**: add gadbc_connection_set_read_only() (#589)
+- **java/driver/flight-sql**: allow passing BufferAllocator (#564)
+- **glib**: add transaction related connection bindings (#579)
+- **r/adbdpostgresql**: Package postgresql driver for R (#511)
+- **glib**: add gadbc_connection_get_table_schema() (#576)
+- **glib**: add gadbc_connection_get_info() (#571)
+- **glib**: add gadbc_connection_get_table_types() (#560)
+- **python/adbc_driver_manager**: expose StatementGetParameterSchema (#555)
+- **glib**: add gadbc_statement_bind_stream() (#536)
+- **docs**: maintain relative URL when switching versions (#531)
+- **rpm**: add adbc-driver-flightsql (#526)
+- **glib**: add gadbc_statement_bind() and ingest related bindings (#528)
+- **deb**: add libadbc-driver-flightsql (#521)
+
+### Refactor
+
+- **c**: fix some build warnings (#654)
+- **c/driver/postgresql**: Factor out COPY reader and test it independently (#636)
+- **c/driver/postgresql**: Remove utils duplication (#628)
+- **c/driver/common**: Variadic arguments for StringBuilderAppend (#587)
+- **c**: merge CMake projects (#597)
+- **c/driver/postgresql**: Factor out Postgres type abstraction and test it independently of the driver (#573)
+- **c/driver/shared**: created shared util library for drivers (#582)
