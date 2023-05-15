@@ -173,14 +173,14 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
         run:
-          .\ci\scripts\cpp_test.ps1 $pwd $pwd\build
+          .\ci\scripts\cpp_test.ps1 $pwd\build
       - name: Test Driver SQLite
         shell: pwsh
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run:
-          .\ci\scripts\cpp_test.ps1 $pwd $pwd\build
+          .\ci\scripts\cpp_test.ps1 $pwd\build
 
   # ------------------------------------------------------------
   # Go build
