@@ -82,22 +82,13 @@ build_drivers "${source_dir}" "${build_dir}"
 check_visibility $ADBC_FLIGHTSQL_LIBRARY
 check_visibility $ADBC_POSTGRESQL_LIBRARY
 check_visibility $ADBC_SQLITE_LIBRARY
-if [[ -f "$ADBC_SNOWFLAKE_LIBRARY" ]]; then
-    check_visibility $ADBC_SNOWFLAKE_LIBRARY
-else
-    echo "adbc_driver_snowflake not built"
-fi
+check_visibility $ADBC_SNOWFLAKE_LIBRARY
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
 python -m pip install --upgrade pip auditwheel cibuildwheel delocate setuptools wheel
 
 for component in $COMPONENTS; do
-    if [[ "$component" = "adbc_driver_snowflake" ]] && [[ "${VCPKG_ARCH}" = "arm64" ]]; then
-        echo "Skipping $component on arm64"
-        continue
-    fi
-
     pushd ${source_dir}/python/$component
 
     component_dashes=${component//_/-}
