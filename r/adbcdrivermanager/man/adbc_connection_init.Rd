@@ -4,6 +4,7 @@
 \alias{adbc_connection_init}
 \alias{adbc_connection_init_default}
 \alias{adbc_connection_set_options}
+\alias{adbc_connection_join_database}
 \alias{adbc_connection_release}
 \title{Connections}
 \usage{
@@ -12,6 +13,8 @@ adbc_connection_init(database, ...)
 adbc_connection_init_default(database, options = NULL, subclass = character())
 
 adbc_connection_set_options(connection, options)
+
+adbc_connection_join_database(connection, database)
 
 adbc_connection_release(connection)
 }

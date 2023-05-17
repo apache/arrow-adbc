@@ -150,7 +150,19 @@ adbc_connection_set_options <- function(connection, options) {
 
 #' @rdname adbc_connection_init
 #' @export
+adbc_connection_join_database <- function(connection, database) {
+  connection$.release_database <- TRUE
+  invisible(connection)
+}
+
+#' @rdname adbc_connection_init
+#' @export
 adbc_connection_release <- function(connection) {
+  if (isTRUE(connection$.release_database)) {
+    database <- connection$database
+    on.exit(adbc_database_release(database))
+  }
+
   error <- adbc_allocate_error()
   status <- .Call(RAdbcConnectionRelease, connection, error)
   stop_for_error(status, error)
@@ -336,7 +348,19 @@ adbc_statement_set_options <- function(statement, options) {
 
 #' @rdname adbc_statement_init
 #' @export
+adbc_statement_join_connection <- function(statement, connection) {
+  statement$.release_connection <- TRUE
+  invisible(statement)
+}
+
+#' @rdname adbc_statement_init
+#' @export
 adbc_statement_release <- function(statement) {
+  if (isTRUE(statement$.release_connection)) {
+    connection <- statement$connection
+    on.exit(adbc_connection_release(connection))
+  }
+
   error <- adbc_allocate_error()
   status <- .Call(RAdbcStatementRelease, statement, error)
   stop_for_error(status, error)

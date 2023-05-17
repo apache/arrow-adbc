@@ -103,6 +103,8 @@ local_adbc_connection <- function(connection, .local_envir = parent.frame()) {
   invisible(connection)
 }
 
+#' @rdname with_adbc_database
+#' @export
 local_adbc_statement <- function(statement, .local_envir = parent.frame()) {
   if (!inherits(statement, "adbc_statement")) {
     stop("`statement` must inherit from 'adbc_statement'")

@@ -6,6 +6,7 @@
 \alias{with_adbc_statement}
 \alias{local_adbc_database}
 \alias{local_adbc_connection}
+\alias{local_adbc_statement}
 \title{Cleanup helpers}
 \usage{
 with_adbc_database(database, code)
@@ -17,6 +18,8 @@ with_adbc_statement(statement, code)
 local_adbc_database(database, .local_envir = parent.frame())
 
 local_adbc_connection(connection, .local_envir = parent.frame())
+
+local_adbc_statement(statement, .local_envir = parent.frame())
 }
 \arguments{
 \item{database}{A database created with \code{\link[=adbc_database_init]{adbc_database_init()}}}
