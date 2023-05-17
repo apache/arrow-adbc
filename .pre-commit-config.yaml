@@ -50,7 +50,7 @@ repos:
         - "--linelength=90"
         - "--verbose=2"
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.49.0
+    rev: v1.52.2
     hooks:
     - id: golangci-lint
       entry: bash -c 'cd go/adbc && golangci-lint run --fix --timeout 5m'

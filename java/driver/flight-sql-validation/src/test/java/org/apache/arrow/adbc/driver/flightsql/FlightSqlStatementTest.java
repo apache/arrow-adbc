@@ -30,4 +30,12 @@ class FlightSqlStatementTest extends AbstractStatementTest {
   @Override
   @Disabled("Requires spec clarification")
   public void prepareQueryWithParameters() {}
+
+  @Override
+  @Disabled("Not supported by the SQLite test server")
+  public void executeSchema() {}
+
+  @Override
+  @Disabled("Not supported by the SQLite test server")
+  public void executeSchemaPrepared() {}
 }

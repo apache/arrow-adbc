@@ -323,6 +323,38 @@ public abstract class AbstractStatementTest {
   }
 
   @Test
+  public void executeSchema() throws Exception {
+    util.ingestTableIntsStrs(allocator, connection, tableName);
+    final String column = quirks.caseFoldColumnName("ints");
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery(String.format("SELECT %s FROM %s", column, tableName));
+      final Schema paramsSchema = stmt.executeSchema();
+      assertThat(paramsSchema).isNotNull();
+      assertThat(paramsSchema)
+          .isEqualTo(
+              new Schema(
+                  Collections.singletonList(
+                      Field.nullable(column, Types.MinorType.INT.getType()))));
+    }
+  }
+
+  @Test
+  public void executeSchemaPrepared() throws Exception {
+    util.ingestTableIntsStrs(allocator, connection, tableName);
+    final String column = quirks.caseFoldColumnName("ints");
+    try (final AdbcStatement stmt = connection.createStatement()) {
+      stmt.setSqlQuery(String.format("SELECT %s FROM %s", column, tableName));
+      stmt.prepare();
+      final Schema paramsSchema = stmt.executeSchema();
+      assertThat(paramsSchema)
+          .isEqualTo(
+              new Schema(
+                  Collections.singletonList(
+                      Field.nullable(column, Types.MinorType.INT.getType()))));
+    }
+  }
+
+  @Test
   public void getParameterSchema() throws Exception {
     util.ingestTableIntsStrs(allocator, connection, tableName);
     try (final AdbcStatement stmt = connection.createStatement()) {

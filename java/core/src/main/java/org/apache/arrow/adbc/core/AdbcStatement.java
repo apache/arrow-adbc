@@ -84,6 +84,17 @@ public interface AdbcStatement extends AutoCloseable {
   UpdateResult executeUpdate() throws AdbcException;
 
   /**
+   * Get the schema of the result set of a query without executing it.
+   *
+   * @since ADBC API revision 1.1.0
+   * @throws AdbcException with status {@link AdbcStatusCode#NOT_IMPLEMENTED} if the driver does not
+   *     support this.
+   */
+  default Schema executeSchema() throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support executeSchema");
+  }
+
+  /**
    * Execute a result set-generating query and get a list of partitions of the result set.
    *
    * <p>These can be serialized and deserialized for parallel and/or distributed fetching.

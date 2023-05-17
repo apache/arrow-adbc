@@ -1352,6 +1352,22 @@ func (c *cnxn) executeSubstraitUpdate(ctx context.Context, plan flightsql.Substr
 	return c.cl.ExecuteSubstraitUpdate(ctx, plan, opts...)
 }
 
+func (c *cnxn) getExecuteSchema(ctx context.Context, query string, opts ...grpc.CallOption) (schemaResult *flight.SchemaResult, err error) {
+	if c.txn != nil {
+		return c.txn.GetExecuteSchema(ctx, query, opts...)
+	}
+
+	return c.cl.GetExecuteSchema(ctx, query, opts...)
+}
+
+func (c *cnxn) getExecuteSubstraitSchema(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (schemaResult *flight.SchemaResult, err error) {
+	if c.txn != nil {
+		return c.txn.GetExecuteSubstraitSchema(ctx, plan, opts...)
+	}
+
+	return c.cl.GetExecuteSubstraitSchema(ctx, plan, opts...)
+}
+
 func (c *cnxn) prepare(ctx context.Context, query string, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
 	if c.txn != nil {
 		return c.txn.Prepare(ctx, query, opts...)

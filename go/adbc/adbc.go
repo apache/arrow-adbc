@@ -536,3 +536,15 @@ type Statement interface {
 	// an error with a StatusNotImplemented code.
 	ExecutePartitions(context.Context) (*arrow.Schema, Partitions, int64, error)
 }
+
+// StatementExecuteSchema enhances Statement with a way to get a result set schema without executing the query.
+//
+// Added in ADBC API revision 1.1.0.
+type StatementExecuteSchema interface {
+	// ExecuteSchema returns the schema of the result set of a query without
+	// executing it.
+	//
+	// If the driver does not support this, this will return an error with a
+	// StatusNotImplemented code.
+	ExecuteSchema(context.Context) (*arrow.Schema, error)
+}

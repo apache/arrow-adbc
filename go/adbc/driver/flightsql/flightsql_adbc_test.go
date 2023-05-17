@@ -232,6 +232,7 @@ func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 func (s *FlightSQLQuirks) Alloc() memory.Allocator               { return s.mem }
 func (s *FlightSQLQuirks) BindParameter(_ int) string            { return "?" }
 func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool    { return true }
+func (s *FlightSQLQuirks) SupportsExecuteSchema() bool           { return true }
 func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
 func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
 func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }

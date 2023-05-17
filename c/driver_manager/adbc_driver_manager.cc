@@ -191,6 +191,12 @@ AdbcStatusCode StatementExecutePartitions(struct AdbcStatement* statement,
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode StatementExecuteSchema(struct AdbcStatement* statement,
+                                      struct ArrowSchema* schema,
+                                      struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode StatementGetParameterSchema(struct AdbcStatement* statement,
                                            struct ArrowSchema* schema,
                                            struct AdbcError* error) {
@@ -560,6 +566,16 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
       ->base.StatementExecuteQuery(statement, out, rows_affected, error);
 }
 
+AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return static_cast<struct AdbcDriver110*>(statement->private_driver)
+      ->StatementExecuteSchema(statement, schema, error);
+}
+
 AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
                                                struct ArrowSchema* schema,
                                                struct AdbcError* error) {
@@ -852,7 +868,7 @@ AdbcStatusCode PolyfillDriver100(AdbcDriver* driver, AdbcError* error) {
 }
 
 AdbcStatusCode PolyfillDriver110(AdbcDriver110* driver, AdbcError* error) {
-  // No new functions yet
+  FILL_DEFAULT(driver, StatementExecuteSchema);
   return PolyfillDriver100(&driver->base, error);
 }
 

@@ -46,6 +46,8 @@ type DriverQuirks interface {
 	BindParameter(index int) string
 	// Whether two statements can be used at the same time on a single connection
 	SupportsConcurrentStatements() bool
+	// Whether retrieving the schema of a query is supported
+	SupportsExecuteSchema() bool
 	// Whether AdbcStatementExecutePartitions should work
 	SupportsPartitionedData() bool
 	// Whether transactions are supported (Commit/Rollback on connection)
@@ -407,6 +409,34 @@ func (s *StatementTests) TestNewStatement() {
 	s.Equal(adbc.StatusInvalidState, adbcError.Code)
 }
 
+func (s *StatementTests) TestSQLExecuteSchema() {
+	stmt, err := s.Cnxn.NewStatement()
+	s.NoError(err)
+	defer stmt.Close()
+
+	es, ok := stmt.(adbc.StatementExecuteSchema)
+	if !ok {
+		s.False(s.Quirks.SupportsExecuteSchema())
+		return
+	}
+
+	query := "SELECT 1"
+	s.NoError(stmt.SetSqlQuery(query))
+
+	sc, err := es.ExecuteSchema(s.ctx)
+	if !s.Quirks.SupportsExecuteSchema() {
+		var adbcError adbc.Error
+		s.ErrorAs(err, &adbcError)
+		s.Equal(adbc.StatusNotImplemented, adbcError.Code)
+		return
+	}
+	// TODO: check for NotImplemented here, too, since even if the
+	// driver supports it the server may not
+	s.NoError(err)
+
+	s.Len(sc.Fields(), 1)
+}
+
 func (s *StatementTests) TestSqlPartitionedInts() {
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
@@ -458,6 +488,34 @@ func (s *StatementTests) TestSqlPartitionedInts() {
 	}
 
 	s.False(rdr.Next())
+}
+
+func (s *StatementTests) TestSQLPrepareExecuteSchema() {
+	stmt, err := s.Cnxn.NewStatement()
+	s.NoError(err)
+	defer stmt.Close()
+
+	es, ok := stmt.(adbc.StatementExecuteSchema)
+	if !ok {
+		s.False(s.Quirks.SupportsExecuteSchema())
+		return
+	}
+
+	query := "SELECT 1"
+	s.NoError(stmt.SetSqlQuery(query))
+	s.NoError(stmt.Prepare(s.ctx))
+
+	// TODO: move new validation tests into new file?
+	sc, err := es.ExecuteSchema(s.ctx)
+	if !s.Quirks.SupportsExecuteSchema() {
+		var adbcError adbc.Error
+		s.ErrorAs(err, &adbcError)
+		s.Equal(adbc.StatusNotImplemented, adbcError.Code)
+		return
+	}
+	s.NoError(err)
+
+	s.Len(sc.Fields(), 1)
 }
 
 func (s *StatementTests) TestSQLPrepareGetParameterSchema() {

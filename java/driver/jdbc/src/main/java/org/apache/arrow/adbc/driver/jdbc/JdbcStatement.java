@@ -22,7 +22,9 @@ import java.sql.Connection;
 import java.sql.ParameterMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +32,8 @@ import java.util.Objects;
 import java.util.stream.LongStream;
 import org.apache.arrow.adapter.jdbc.JdbcFieldInfo;
 import org.apache.arrow.adapter.jdbc.JdbcParameterBinder;
+import org.apache.arrow.adapter.jdbc.JdbcToArrowConfig;
+import org.apache.arrow.adapter.jdbc.JdbcToArrowConfigBuilder;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
@@ -196,6 +200,37 @@ public class JdbcStatement implements AdbcStatement {
       }
     } catch (SQLException e) {
       throw JdbcDriverUtil.fromSqlException(e);
+    }
+  }
+
+  @Override
+  public Schema executeSchema() throws AdbcException {
+    if (bulkOperation != null) {
+      throw AdbcException.invalidState("[JDBC] Ingestion operations have no schema");
+    } else if (sqlQuery == null) {
+      throw AdbcException.invalidState("[JDBC] Must setSqlQuery() first");
+    }
+
+    try (final PreparedStatement preparedStatement =
+        connection.prepareStatement(
+            sqlQuery, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+      final ResultSetMetaData rsmd = preparedStatement.getMetaData();
+      final JdbcToArrowConfig config =
+          new JdbcToArrowConfigBuilder()
+              .setAllocator(allocator)
+              .setCalendar(JdbcToArrowUtils.getUtcCalendar())
+              .build();
+      try {
+        return JdbcToArrowUtils.jdbcToArrowSchema(rsmd, config);
+      } catch (SQLException e) {
+        throw JdbcDriverUtil.fromSqlException("Failed to convert JDBC schema to Arrow schema:", e);
+      }
+    } catch (SQLFeatureNotSupportedException e) {
+      throw AdbcException.notImplemented(
+              "[JDBC] Driver does not support getting a result set schema")
+          .withCause(e);
+    } catch (SQLException e) {
+      throw JdbcDriverUtil.fromSqlException("Failed to prepare statement:", e);
     }
   }
 

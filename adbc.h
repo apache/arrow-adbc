@@ -683,6 +683,9 @@ struct ADBC_EXPORT AdbcDriver {
 /// worrying about multiple definitions of the same symbol.
 struct ADBC_EXPORT AdbcDriver110 {
   struct AdbcDriver base;
+
+  AdbcStatusCode (*StatementExecuteSchema)(struct AdbcStatement*, struct ArrowSchema*,
+                                           struct AdbcError*);
 };
 
 /// @}
@@ -1071,6 +1074,24 @@ ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                          struct ArrowArrayStream* out,
                                          int64_t* rows_affected, struct AdbcError* error);
+
+/// \brief Get the schema of the result set of a query without
+///   executing it.
+///
+/// This invalidates any prior result sets.
+///
+/// \since ADBC API revision 1.1.0
+///
+/// \param[in] statement The statement to execute.
+/// \param[out] out The result schema.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support this.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcError* error);
 
 /// \brief Turn this statement into a prepared statement to be
 ///   executed multiple times.

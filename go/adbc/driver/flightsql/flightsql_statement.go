@@ -86,6 +86,35 @@ func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *cnxn, opts ...
 	}
 }
 
+func (s *sqlOrSubstrait) getExecuteSchema(ctx context.Context, alloc memory.Allocator, cnxn *cnxn, opts ...grpc.CallOption) (*arrow.Schema, error) {
+	var result *flight.SchemaResult
+	var err error
+	if s.sqlQuery != "" {
+		result, err = cnxn.getExecuteSchema(ctx, s.sqlQuery, opts...)
+	} else if s.substraitPlan != nil {
+		result, err = cnxn.getExecuteSubstraitSchema(ctx, flightsql.SubstraitPlan{Plan: s.substraitPlan, Version: s.substraitVersion}, opts...)
+	} else {
+		return nil, adbc.Error{
+			Code: adbc.StatusInvalidState,
+			Msg:  "[Flight SQL Statement] cannot call ExecuteSchema without a query or prepared statement",
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	schema, err := flight.DeserializeSchema(result.GetSchema(), alloc)
+	if err != nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  "[Flight SQL Statement] server returned invalid schema",
+		}
+	}
+
+	return schema, nil
+}
+
 func (s *sqlOrSubstrait) prepare(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*flightsql.PreparedStatement, error) {
 	if s.sqlQuery != "" {
 		return cnxn.prepare(ctx, s.sqlQuery, opts...)
@@ -244,6 +273,32 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 
 	nrec = info.TotalRecords
 	rdr, err = newRecordReader(ctx, s.alloc, s.cnxn.cl, info, s.clientCache, s.queueSize, s.timeouts)
+	return
+}
+
+// ExecuteSchema returns the schema of the result set of a query without
+// executing it.
+//
+// If the driver does not support this, this will return an error with a
+// StatusNotImplemented code.
+func (s *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
+	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
+
+	if s.prepared != nil {
+		schema = s.prepared.DatasetSchema()
+		if schema == nil {
+			err = adbc.Error{
+				Msg:  "[Flight SQL Statement] server did not provide schema for prepared statement",
+				Code: adbc.StatusNotImplemented}
+		}
+	} else {
+		schema, err = s.query.getExecuteSchema(ctx, s.alloc, s.cnxn, s.timeouts)
+	}
+
+	if err != nil {
+		err = adbcFromFlightStatus(err)
+	}
+
 	return
 }
 
