@@ -461,3 +461,22 @@ adbc_statement_execute_query <- function(statement, stream = NULL) {
   stop_for_error(result$status, error)
   result$rows_affected
 }
+
+#' @rdname adbc_statement_set_sql_query
+#' @export
+adbc_stream_join_statement <- function(stream, statement) {
+  if (packageVersion("nanoarrow") >= "0.1.9000") {
+    self_contained_finalizer <- function() {
+      adbc_statement_release(statement)
+    }
+
+    self_contained_finalizer_env <- as.environment(list(statement = statement))
+    parent.env(self_contained_finalizer_env) <- asNamespace("adbcdrivermanager")
+    environment(self_contained_finalizer) <- self_contained_finalizer_env
+    nanoarrow::nanoarrow_pointer_set_protected(stream, self_contained_finalizer)
+
+    invisible(stream)
+  } else {
+    stop("adbc_stream_join_statement() requires nanoarrow >= 0.2.0")
+  }
+}
