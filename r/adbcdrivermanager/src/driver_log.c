@@ -26,6 +26,7 @@
 
 struct LogDriverPrivate {
   char tag[1024];
+  struct AdbcDriver* parent_driver;
 };
 
 struct LogDatabasePrivate {
@@ -93,9 +94,14 @@ static AdbcStatusCode LogDatabaseInit(struct AdbcDatabase* database,
   struct LogDatabasePrivate* database_private =
       (struct LogDatabasePrivate*)database->private_data;
 
+  struct LogDriverPrivate* driver_private =
+      (struct LogDriverPrivate*)database->private_driver->private_data;
+  snprintf(driver_private->tag, 1024, "%s", database_private->tag);
+
   Rprintf("%s: AdbcDatabaseInit() ", database_private->tag);
   int result = AdbcDatabaseInit(&database_private->parent_database, error);
   Rprintf("::%d::\n", result);
+  driver_private->parent_driver = database_private->parent_database.private_driver;
   return result;
 }
 
@@ -184,6 +190,16 @@ static AdbcStatusCode LogConnectionGetTableTypes(struct AdbcConnection* connecti
 static AdbcStatusCode LogConnectionInit(struct AdbcConnection* connection,
                                         struct AdbcDatabase* database,
                                         struct AdbcError* error) {
+  struct LogConnectionPrivate* connection_private =
+      (struct LogConnectionPrivate*)connection->private_data;
+  struct LogDatabasePrivate* database_private =
+      (struct LogDatabasePrivate*)database->private_data;
+
+  Rprintf("%s: AdbcConnectionInit() ", database_private->tag);
+  int result = AdbcConnectionInit(&connection_private->parent_connection,
+                                  &database_private->parent_database, error);
+  Rprintf("::%d::\n", result);
+
   return ADBC_STATUS_OK;
 }
 
@@ -199,6 +215,14 @@ static AdbcStatusCode LogConnectionNew(struct AdbcConnection* connection,
   memset(connection_private, 0, sizeof(struct LogConnectionPrivate));
   connection->private_data = connection_private;
 
+  struct LogDriverPrivate* driver_private =
+      (struct LogDriverPrivate*)connection->private_driver->private_data;
+  connection_private->tag = driver_private->tag;
+
+  Rprintf("%s: AdbcConnectionNew() ", connection_private->tag);
+  int result = AdbcConnectionNew(&connection_private->parent_connection, error);
+  Rprintf("::%d::\n", result);
+
   return ADBC_STATUS_OK;
 }
 
@@ -212,13 +236,21 @@ static AdbcStatusCode LogConnectionReadPartition(struct AdbcConnection* connecti
 
 static AdbcStatusCode LogConnectionRelease(struct AdbcConnection* connection,
                                            struct AdbcError* error) {
+  struct LogConnectionPrivate* connection_private =
+      (struct LogConnectionPrivate*)connection->private_data;
+
   if (connection->private_data == NULL) {
     return ADBC_STATUS_OK;
   }
 
+  Rprintf("%s: AdbcConnectionRelease() ", connection_private->tag);
+  int result = AdbcConnectionRelease(&connection_private->parent_connection, error);
+
   free(connection->private_data);
   connection->private_data = NULL;
-  return ADBC_STATUS_OK;
+
+  Rprintf("::%d::\n", result);
+  return result;
 }
 
 static AdbcStatusCode LogConnectionRollback(struct AdbcConnection* connection,
