@@ -18,7 +18,18 @@
 #' Cleanup helpers
 #'
 #' Managing the lifecycle of databases, connections, and statements can
-#' be complex and error-prone. These helpers
+#' be complex and error-prone. The R objects that wrap the underlying ADBC
+#' pointers will perform cleanup in the correct order if you rely on garbage
+#' collection (i.e., do nothing and let the objects go out of scope); however
+#' it is good practice to explicitly clean up these objects. These helpers
+#' are designed to make explicit and predictable cleanup easy to accomplish.
+#'
+#' Note that you can use [adbc_connection_join_database()],
+#' [adbc_statement_join_connection()], and [adbc_stream_join_statement()]
+#' to tie the lifecycle of the parent object to that of the child object.
+#' These functions mark any previous references to the parent object as
+#' released so you can still use local and with helpers to manage the parent
+#' object before it is joined.
 #'
 #' @param database A database created with [adbc_database_init()]
 #' @param connection A connection created with [adbc_connection_init()]
@@ -33,6 +44,7 @@
 #' @export
 #'
 #' @examples
+#' # Using with_adbc_*():
 #' with_adbc_database(db <- adbc_database_init(adbc_driver_void()), {
 #'   with_adbc_connection(con <- adbc_connection_init(db), {
 #'     with_adbc_statement(stmt <- adbc_statement_init(con), {
@@ -42,6 +54,7 @@
 #'   })
 #' })
 #'
+#' # Using local_adbc_*() (works best within a function, test, or local())
 #' local({
 #'   db <- local_adbc_database(adbc_database_init(adbc_driver_void()))
 #'   con <- local_adbc_connection(adbc_connection_init(db))
