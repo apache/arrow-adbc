@@ -150,13 +150,6 @@ adbc_connection_set_options <- function(connection, options) {
 
 #' @rdname adbc_connection_init
 #' @export
-adbc_connection_join_database <- function(connection, database) {
-  connection$.release_database <- TRUE
-  invisible(connection)
-}
-
-#' @rdname adbc_connection_init
-#' @export
 adbc_connection_release <- function(connection) {
   if (isTRUE(connection$.release_database)) {
     database <- connection$database
@@ -348,13 +341,6 @@ adbc_statement_set_options <- function(statement, options) {
 
 #' @rdname adbc_statement_init
 #' @export
-adbc_statement_join_connection <- function(statement, connection) {
-  statement$.release_connection <- TRUE
-  invisible(statement)
-}
-
-#' @rdname adbc_statement_init
-#' @export
 adbc_statement_release <- function(statement) {
   if (isTRUE(statement$.release_connection)) {
     connection <- statement$connection
@@ -460,27 +446,4 @@ adbc_statement_execute_query <- function(statement, stream = NULL) {
   result <- .Call(RAdbcStatementExecuteQuery, statement, stream, error)
   stop_for_error(result$status, error)
   result$rows_affected
-}
-
-#' @rdname adbc_statement_set_sql_query
-#' @export
-adbc_stream_join_statement <- function(stream, statement) {
-  if (utils::packageVersion("nanoarrow") >= "0.1.9000") {
-    self_contained_finalizer <- function() {
-      adbc_statement_release(statement)
-    }
-
-    # Make sure we don't keep any variables around that aren't needed
-    # For the finalizer
-    self_contained_finalizer_env <- as.environment(list(statement = statement))
-    parent.env(self_contained_finalizer_env) <- asNamespace("adbcdrivermanager")
-    environment(self_contained_finalizer) <- self_contained_finalizer_env
-
-    # This finalizer will run immediately on release (if released explicitly
-    # on the main R thread) or on garbage collection otherwise.
-    nanoarrow::array_stream_set_finalizer(stream, self_contained_finalizer)
-    invisible(stream)
-  } else {
-    stop("adbc_stream_join_statement() requires nanoarrow >= 0.2.0")
-  }
 }

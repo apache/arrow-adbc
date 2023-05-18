@@ -4,7 +4,6 @@
 \alias{adbc_statement_init}
 \alias{adbc_statement_init_default}
 \alias{adbc_statement_set_options}
-\alias{adbc_statement_join_connection}
 \alias{adbc_statement_release}
 \title{Statements}
 \usage{
@@ -13,8 +12,6 @@ adbc_statement_init(connection, ...)
 adbc_statement_init_default(connection, options = NULL, subclass = character())
 
 adbc_statement_set_options(statement, options)
-
-adbc_statement_join_connection(statement, connection)
 
 adbc_statement_release(statement)
 }

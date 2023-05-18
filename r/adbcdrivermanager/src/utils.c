@@ -26,3 +26,11 @@ SEXP RAdbcXptrEnv(SEXP xptr) {
 
   return R_ExternalPtrTag(xptr);
 }
+
+SEXP RAdbcXptrIsNull(SEXP xptr) {
+  if (TYPEOF(xptr) != EXTPTRSXP) {
+    Rf_error("object is not an external pointer");
+  }
+
+  return Rf_ScalarLogical(R_ExternalPtrAddr(xptr) == NULL);
+}

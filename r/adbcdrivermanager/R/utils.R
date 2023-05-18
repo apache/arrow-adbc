@@ -94,3 +94,47 @@ str.adbc_xptr <- function(object, ...) {
   str(env_proxy, ...)
   invisible(object)
 }
+
+
+#' Low-level pointer details
+#'
+#' - `adbc_xptr_move()` allocates a fresh R object and moves all the properties
+#'   of `x` into it. The original R object is invalidated by settings its pointer
+#'   to NULL. This is useful when returning from a function where
+#'   [lifecycle helpers][with_adbc] were used to manage the original
+#'   object.
+#' - `adbc_xptr_is_null()` provides a means by which to test for an invalidated
+#'   pointer.
+#'
+#' @param x An 'adbc_database', 'adbc_connection', or 'adbc_statement'.
+#'
+#' @return
+#' - `adbc_xptr_move()`: A freshly-allocated R object identical to `x`
+#' - `adbc_xptr_is_null()`: Returns TRUE if the ADBC object pointed to by `x`
+#'   has been invalidated.
+#' @export
+#'
+#' @examples
+#' db <- adbc_database_init(adbc_driver_void())
+#' adbc_xptr_is_null(db)
+#' db_new <- adbc_xptr_move(db)
+#' adbc_xptr_is_null(db)
+#' adbc_xptr_is_null(db_new)
+#'
+adbc_xptr_move <- function(x) {
+  if (inherits(x, "adbc_database")) {
+    .Call(RAdbcMoveDatabase, x)
+  } else if (inherits(x, "adbc_connection")) {
+    .Call(RAdbcMoveConnection, x)
+  } else if (inherits(x, "adbc_statement")) {
+    .Call(RAdbcMoveStatement, x)
+  } else {
+    stop("`x` must inherit from 'adbc_database', 'adbc_connection', or 'adbc_statement")
+  }
+}
+
+#' @rdname adbc_xptr_move
+#' @export
+adbc_xptr_is_null <- function(x) {
+  .Call(RAdbcXptrIsNull, x)
+}

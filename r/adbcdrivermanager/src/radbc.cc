@@ -142,7 +142,8 @@ extern "C" SEXP RAdbcMoveDatabase(SEXP database_xptr) {
   AdbcDatabase* database_new = adbc_from_xptr<AdbcDatabase>(database_xptr);
 
   memcpy(database_new, database, sizeof(AdbcDatabase));
-  memset(database, 0, sizeof(AdbcDatabase));
+  R_SetExternalPtrAddr(database_xptr, nullptr);
+  adbc_xptr_move_attrs(database_xptr, database_xptr_new);
 
   UNPROTECT(1);
   return database_xptr_new;
@@ -205,7 +206,8 @@ extern "C" SEXP RAdbcMoveConnection(SEXP connection_xptr) {
   AdbcConnection* connection_new = adbc_from_xptr<AdbcConnection>(connection_xptr);
 
   memcpy(connection_new, connection, sizeof(AdbcConnection));
-  memset(connection, 0, sizeof(AdbcConnection));
+  R_SetExternalPtrAddr(connection_xptr, nullptr);
+  adbc_xptr_move_attrs(connection_xptr, connection_xptr_new);
 
   UNPROTECT(1);
   return connection_xptr_new;
@@ -377,7 +379,8 @@ extern "C" SEXP RAdbcMoveStatement(SEXP statement_xptr) {
   AdbcStatement* statement_new = adbc_from_xptr<AdbcStatement>(statement_xptr);
 
   memcpy(statement_new, statement, sizeof(AdbcStatement));
-  memset(statement, 0, sizeof(AdbcStatement));
+  R_SetExternalPtrAddr(statement_xptr, nullptr);
+  adbc_xptr_move_attrs(statement_xptr, statement_xptr_new);
 
   UNPROTECT(1);
   return statement_xptr_new;

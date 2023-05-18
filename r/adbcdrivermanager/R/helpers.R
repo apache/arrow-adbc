@@ -24,105 +24,180 @@
 #' it is good practice to explicitly clean up these objects. These helpers
 #' are designed to make explicit and predictable cleanup easy to accomplish.
 #'
-#' Note that you can use [adbc_connection_join_database()],
-#' [adbc_statement_join_connection()], and [adbc_stream_join_statement()]
+#' Note that you can use [adbc_connection_join()],
+#' [adbc_statement_join()], and [adbc_stream_join()]
 #' to tie the lifecycle of the parent object to that of the child object.
 #' These functions mark any previous references to the parent object as
 #' released so you can still use local and with helpers to manage the parent
 #' object before it is joined.
 #'
-#' @param database A database created with [adbc_database_init()]
-#' @param connection A connection created with [adbc_connection_init()]
-#' @param statement A statement created with [adbc_statement_init()]
+#' @param x An ADBC database, ADBC connection, ADBC statement, or
+#'   nanoarrow_array_stream returned from calls to an ADBC function.
 #' @param code Code to execute before cleaning up the input.
 #' @param .local_envir The execution environment whose scope should be tied
 #'   to the input.
 #'
 #' @return
-#'   - `with_*()` variants return the result of `code`
-#'   - `local_*()` variants return the input, invisibly.
+#'   - `with_adbc()` returns the result of `code`
+#'   - `local_adbc()` variants return the input, invisibly.
 #' @export
 #'
 #' @examples
-#' # Using with_adbc_*():
-#' with_adbc_database(db <- adbc_database_init(adbc_driver_void()), {
-#'   with_adbc_connection(con <- adbc_connection_init(db), {
-#'     with_adbc_statement(stmt <- adbc_statement_init(con), {
+#' # Using with_adbc():
+#' with_adbc(db <- adbc_database_init(adbc_driver_void()), {
+#'   with_adbc(con <- adbc_connection_init(db), {
+#'     with_adbc(stmt <- adbc_statement_init(con), {
 #'       # adbc_statement_set_sql_query(stmt, "SELECT * FROM foofy")
 #'       # adbc_statement_execute_query(stmt)
+#'       "some result"
 #'     })
 #'   })
 #' })
 #'
 #' # Using local_adbc_*() (works best within a function, test, or local())
 #' local({
-#'   db <- local_adbc_database(adbc_database_init(adbc_driver_void()))
-#'   con <- local_adbc_connection(adbc_connection_init(db))
-#'   stmt <- local_adbc_statement(adbc_statement_init(con))
+#'   db <- local_adbc(adbc_database_init(adbc_driver_void()))
+#'   con <- local_adbc(adbc_connection_init(db))
+#'   stmt <- local_adbc(adbc_statement_init(con))
 #'   # adbc_statement_set_sql_query(stmt, "SELECT * FROM foofy")
 #'   # adbc_statement_execute_query(stmt)
+#'   "some result"
 #' })
 #'
-with_adbc_database <- function(database, code) {
-  if (!inherits(database, "adbc_database")) {
-    stop("`database` must inherit from 'adbc_database'")
-  }
+with_adbc <- function(x, code) {
+  assert_adbc(x)
 
-  on.exit(adbc_database_release(database))
+  on.exit(adbc_release_non_null(x))
   force(code)
 }
 
-#' @rdname with_adbc_database
+#' @rdname with_adbc
 #' @export
-with_adbc_connection <- function(connection, code) {
-  if (!inherits(connection, "adbc_connection")) {
-    stop("`connection` must inherit from 'adbc_connection'")
-  }
+local_adbc <- function(x, .local_envir = parent.frame()) {
+  assert_adbc(x)
 
-  on.exit(adbc_connection_release(connection))
-  force(code)
+  withr::defer(adbc_release_non_null(x), envir = .local_envir)
+  invisible(x)
 }
 
-#' @rdname with_adbc_database
+#' Join the lifecycle of a unique parent to its child
+#'
+#' It is occasionally useful to return a connection, statement, or stream
+#' from a function that was created from a unique parent. These helpers
+#' tie the lifecycle of a unique parent object to its child such that the
+#' parent object is released predictably and immediately after the child.
+#' These functions will invalidate all references to the previous R object.
+#'
+#' @param database A database created with [adbc_database_init()]
+#' @param connection A connection created with [adbc_connection_init()]
+#' @param statement A statement created with [adbc_statement_init()]
+#' @param stream A [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream]
+#' @inheritParams with_adbc
+#'
+#' @return The input, invisibly.
 #' @export
-with_adbc_statement <- function(statement, code) {
-  if (!inherits(statement, "adbc_statement")) {
-    stop("`statement` must inherit from 'adbc_statement'")
-  }
+#'
+#' @examples
+#' read_monkey <- function(obj) {
+#'   db <- local_adbc(adbc_database_init(adbc_driver_monkey()))
+#'   con <- local_adbc(adbc_connection_init(db))
+#'   stmt <- local_adbc(adbc_statement_init(con, obj))
+#'   adbc_connection_join(con, db)
+#'   adbc_statement_join(stmt, con)
+#'
+#'   stream <- nanoarrow::nanoarrow_allocate_array_stream()
+#'   adbc_statement_execute_query(stmt, stream)
+#'   adbc_stream_join(stream, stmt)
+#' }
+#'
+#' with_adbc(stream <- read_monkey(data.frame(x = 1:5)), {
+#'   as.data.frame(stream)
+#' })
+#'
+adbc_connection_join <- function(connection, database) {
+  assert_adbc(connection, "adbc_connection")
+  assert_adbc(database, "adbc_database")
 
-  on.exit(adbc_statement_release(statement))
-  force(code)
-}
-
-#' @rdname with_adbc_database
-#' @export
-local_adbc_database <- function(database, .local_envir = parent.frame()) {
-  if (!inherits(database, "adbc_database")) {
-    stop("`database` must inherit from 'adbc_database'")
-  }
-
-  withr::defer(adbc_database_release(database), envir = .local_envir)
-  invisible(database)
-}
-
-#' @rdname with_adbc_database
-#' @export
-local_adbc_connection <- function(connection, .local_envir = parent.frame()) {
-  if (!inherits(connection, "adbc_connection")) {
-    stop("`connection` must inherit from 'adbc_connection'")
-  }
-
-  withr::defer(adbc_connection_release(connection), envir = .local_envir)
+  connection$.release_database <- TRUE
+  connection$database <- adbc_xptr_move(database)
   invisible(connection)
 }
 
-#' @rdname with_adbc_database
+#' @rdname adbc_connection_join
 #' @export
-local_adbc_statement <- function(statement, .local_envir = parent.frame()) {
-  if (!inherits(statement, "adbc_statement")) {
-    stop("`statement` must inherit from 'adbc_statement'")
+adbc_statement_join <- function(statement, connection) {
+  assert_adbc(statement, "adbc_statement")
+  assert_adbc(connection, "adbc_connection")
+
+  statement$.release_connection <- TRUE
+  statement$connection <- adbc_xptr_move(connection)
+  invisible(statement)
+}
+
+#' @rdname adbc_connection_join
+#' @export
+adbc_stream_join <- function(stream, x) {
+  if (utils::packageVersion("nanoarrow") >= "0.1.0.9000") {
+    assert_adbc(stream, "nanoarrow_array_stream")
+    assert_adbc(x)
+
+    self_contained_finalizer <- function() {
+      try(adbc_release_non_null(x))
+    }
+
+    # Make sure we don't keep any variables around that aren't needed
+    # for the finalizer and make sure we invalidate the original statement
+    self_contained_finalizer_env <- as.environment(
+      list(x = adbc_xptr_move(x))
+    )
+    parent.env(self_contained_finalizer_env) <- asNamespace("adbcdrivermanager")
+    environment(self_contained_finalizer) <- self_contained_finalizer_env
+
+    # This finalizer will run immediately on release (if released explicitly
+    # on the main R thread) or on garbage collection otherwise.
+    nanoarrow::array_stream_set_finalizer(stream, self_contained_finalizer)
+    invisible(stream)
+  } else {
+    stop("adbc_stream_join_statement() requires nanoarrow >= 0.2.0")
+  }
+}
+
+# Usually we want errors for an attempt at double release; however,
+# the helpers we want to be compatible with adbc_xptr_move() which sets the
+# managed pointer to NULL.
+adbc_release_non_null <- function(x) {
+  if (adbc_xptr_is_null(x)) {
+    return()
   }
 
-  withr::defer(adbc_statement_release(statement), envir = .local_envir)
-  invisible(statement)
+  if (inherits(x, "adbc_database")) {
+    adbc_database_release(x)
+  } else if (inherits(x, "adbc_connection")) {
+    adbc_connection_release(x)
+  } else if (inherits(x, "adbc_statement")) {
+    adbc_statement_release(x)
+  } else if (inherits(x, "nanoarrow_array_stream")) {
+    nanoarrow::nanoarrow_pointer_release(x)
+  } else {
+    assert_adbc(x)
+  }
+}
+
+adbc_classes <- c(
+  "adbc_database", "adbc_connection", "adbc_statement",
+  "nanoarrow_array_stream"
+)
+
+assert_adbc <- function(x, what = adbc_classes) {
+  if (inherits(x, what)) {
+    return(invisible(x))
+  }
+
+  stop(
+    sprintf(
+      "`x` must inherit from one of: %s",
+      paste0("'", what, "'", collapse = ", ")
+    ),
+    call. = sys.call(-1)
+  )
 }
