@@ -38,7 +38,7 @@ defs <- tibble(
     str_remove("SEXP RAdbc[^\\(]+\\(") %>%
     str_remove("\\)$") %>%
     str_split("\\s*,\\s*") %>%
-    map(~{if(identical(.x, "")) character(0) else .x}),
+    map(~{if(identical(.x, "") || identical(.x, "void")) character(0) else .x}),
   n_args = map(args, length)
 )
 
@@ -74,3 +74,5 @@ stopifnot(str_detect(init, pattern))
 init %>%
   str_replace(pattern, header) %>%
   write_file("src/init.c")
+
+system("clang-format -i src/init.c")

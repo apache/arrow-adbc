@@ -112,7 +112,7 @@ extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr) {
 }
 
 extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
-  SEXP database_xptr = adbc_allocate_xptr<AdbcDatabase>();
+  SEXP database_xptr = PROTECT(adbc_allocate_xptr<AdbcDatabase>());
   R_RegisterCFinalizer(database_xptr, &finalize_database_xptr);
 
   AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr);
@@ -132,7 +132,20 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
     adbc_error_stop(status, &error, "RAdbcDatabaseNew()");
   }
 
+  UNPROTECT(1);
   return database_xptr;
+}
+
+extern "C" SEXP RAdbcMoveDatabase(SEXP database_xptr) {
+  AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  SEXP database_xptr_new = PROTECT(adbc_allocate_xptr<AdbcDatabase>());
+  AdbcDatabase* database_new = adbc_from_xptr<AdbcDatabase>(database_xptr);
+
+  memcpy(database_new, database, sizeof(AdbcDatabase));
+  memset(database, 0, sizeof(AdbcDatabase));
+
+  UNPROTECT(1);
+  return database_xptr_new;
 }
 
 extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
@@ -172,7 +185,7 @@ static void finalize_connection_xptr(SEXP connection_xptr) {
   adbc_xptr_default_finalize<AdbcConnection>(connection_xptr);
 }
 
-extern "C" SEXP RAdbcConnectionNew() {
+extern "C" SEXP RAdbcConnectionNew(void) {
   SEXP connection_xptr = PROTECT(adbc_allocate_xptr<AdbcConnection>());
   R_RegisterCFinalizer(connection_xptr, &finalize_connection_xptr);
 
@@ -184,6 +197,18 @@ extern "C" SEXP RAdbcConnectionNew() {
 
   UNPROTECT(1);
   return connection_xptr;
+}
+
+extern "C" SEXP RAdbcMoveConnection(SEXP connection_xptr) {
+  AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
+  SEXP connection_xptr_new = PROTECT(adbc_allocate_xptr<AdbcConnection>());
+  AdbcConnection* connection_new = adbc_from_xptr<AdbcConnection>(connection_xptr);
+
+  memcpy(connection_new, connection, sizeof(AdbcConnection));
+  memset(connection, 0, sizeof(AdbcConnection));
+
+  UNPROTECT(1);
+  return connection_xptr_new;
 }
 
 extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
@@ -344,6 +369,18 @@ extern "C" SEXP RAdbcStatementNew(SEXP connection_xptr) {
 
   UNPROTECT(1);
   return statement_xptr;
+}
+
+extern "C" SEXP RAdbcMoveStatement(SEXP statement_xptr) {
+  AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
+  SEXP statement_xptr_new = PROTECT(adbc_allocate_xptr<AdbcStatement>());
+  AdbcStatement* statement_new = adbc_from_xptr<AdbcStatement>(statement_xptr);
+
+  memcpy(statement_new, statement, sizeof(AdbcStatement));
+  memset(statement, 0, sizeof(AdbcStatement));
+
+  UNPROTECT(1);
+  return statement_xptr_new;
 }
 
 extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
