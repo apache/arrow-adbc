@@ -25,7 +25,7 @@
 #include <adbc_driver_manager.h>
 
 struct LogDriverPrivate {
-  char token[1024];
+  char tag[1024];
 };
 
 struct LogDatabasePrivate {
@@ -198,6 +198,7 @@ static AdbcStatusCode LogConnectionNew(struct AdbcConnection* connection,
 
   memset(connection_private, 0, sizeof(struct LogConnectionPrivate));
   connection->private_data = connection_private;
+
   return ADBC_STATUS_OK;
 }
 
