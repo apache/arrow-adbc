@@ -128,8 +128,12 @@ adbc_xptr_move <- function(x) {
     .Call(RAdbcMoveConnection, x)
   } else if (inherits(x, "adbc_statement")) {
     .Call(RAdbcMoveStatement, x)
+  } else if (inherits(x, "nanoarrow_array_stream")) {
+    stream <- nanoarrow::nanoarrow_allocate_array_stream()
+    nanoarrow::nanoarrow_pointer_move(x, stream)
+    stream
   } else {
-    stop("`x` must inherit from 'adbc_database', 'adbc_connection', or 'adbc_statement")
+    assert_adbc(x)
   }
 }
 
@@ -138,3 +142,44 @@ adbc_xptr_move <- function(x) {
 adbc_xptr_is_null <- function(x) {
   .Call(RAdbcXptrIsNull, x)
 }
+
+# Usually we want errors for an attempt at double release; however,
+# the helpers we want to be compatible with adbc_xptr_move() which sets the
+# managed pointer to NULL.
+adbc_release_non_null <- function(x) {
+  if (adbc_xptr_is_null(x)) {
+    return()
+  }
+
+  if (inherits(x, "adbc_database")) {
+    adbc_database_release(x)
+  } else if (inherits(x, "adbc_connection")) {
+    adbc_connection_release(x)
+  } else if (inherits(x, "adbc_statement")) {
+    adbc_statement_release(x)
+  } else if (inherits(x, "nanoarrow_array_stream")) {
+    nanoarrow::nanoarrow_pointer_release(x)
+  } else {
+    assert_adbc(x)
+  }
+}
+
+adbc_classes <- c(
+  "adbc_database", "adbc_connection", "adbc_statement",
+  "nanoarrow_array_stream"
+)
+
+assert_adbc <- function(x, what = adbc_classes) {
+  if (inherits(x, what)) {
+    return(invisible(x))
+  }
+
+  stop(
+    sprintf(
+      "`x` must inherit from one of: %s",
+      paste0("'", what, "'", collapse = ", ")
+    ),
+    call. = sys.call(-1)
+  )
+}
+

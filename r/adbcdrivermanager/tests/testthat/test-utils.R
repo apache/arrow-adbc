@@ -53,3 +53,31 @@ test_that("external pointer embedded environment works", {
   db[["key"]] <- "value2"
   expect_identical(db[["key"]], "value2")
 })
+
+test_that("pointer mover leaves behind an invalid external pointer", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+  stmt <- adbc_statement_init(con)
+
+  expect_false(adbc_xptr_is_null(db))
+  expect_false(adbc_xptr_is_null(adbc_xptr_move(db)))
+  expect_true(adbc_xptr_is_null(db))
+
+  expect_false(adbc_xptr_is_null(con))
+  expect_false(adbc_xptr_is_null(adbc_xptr_move(con)))
+  expect_true(adbc_xptr_is_null(con))
+
+  expect_false(adbc_xptr_is_null(stmt))
+  expect_false(adbc_xptr_is_null(adbc_xptr_move(stmt)))
+  expect_true(adbc_xptr_is_null(stmt))
+
+  stream <- nanoarrow::basic_array_stream(list(1:5))
+  expect_true(nanoarrow::nanoarrow_pointer_is_valid(stream))
+  expect_true(nanoarrow::nanoarrow_pointer_is_valid(adbc_xptr_move(stream)))
+  expect_false(nanoarrow::nanoarrow_pointer_is_valid(stream))
+
+  expect_error(
+    adbc_xptr_move(NULL),
+    "must inherit from one of"
+  )
+})
