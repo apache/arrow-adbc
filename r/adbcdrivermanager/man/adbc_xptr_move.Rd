@@ -15,7 +15,7 @@ adbc_xptr_is_valid(x)
 \value{
 \itemize{
 \item \code{adbc_xptr_move()}: A freshly-allocated R object identical to \code{x}
-\item \code{adbc_xptr_is_null()}: Returns TRUE if the ADBC object pointed to by \code{x}
+\item \code{adbc_xptr_is_valid()}: Returns FALSE if the ADBC object pointed to by \code{x}
 has been invalidated.
 }
 }
@@ -26,15 +26,15 @@ of \code{x} into it. The original R object is invalidated by settings its pointe
 to NULL. This is useful when returning from a function where
 \link[=with_adbc]{lifecycle helpers} were used to manage the original
 object.
-\item \code{adbc_xptr_is_null()} provides a means by which to test for an invalidated
+\item \code{adbc_xptr_is_valid()} provides a means by which to test for an invalidated
 pointer.
 }
 }
 \examples{
 db <- adbc_database_init(adbc_driver_void())
-adbc_xptr_is_null(db)
+adbc_xptr_is_valid(db)
 db_new <- adbc_xptr_move(db)
-adbc_xptr_is_null(db)
-adbc_xptr_is_null(db_new)
+adbc_xptr_is_valid(db)
+adbc_xptr_is_valid(db_new)
 
 }

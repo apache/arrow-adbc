@@ -53,13 +53,17 @@ adbc_database_init_default <- function(driver, options = NULL, subclass = charac
   }
 
   database$driver <- driver
-  adbc_database_set_options(database, options)
 
-  error <- adbc_allocate_error()
-  status <- .Call(RAdbcDatabaseInit, database, error)
-  stop_for_error(status, error)
-  class(database) <- c(subclass, class(database))
-  database
+  with_adbc(database, {
+    adbc_database_set_options(database, options)
+
+    error <- adbc_allocate_error()
+    status <- .Call(RAdbcDatabaseInit, database, error)
+    stop_for_error(status, error)
+    class(database) <- c(subclass, class(database))
+
+    adbc_xptr_move(database)
+  })
 }
 
 #' @rdname adbc_database_init
@@ -118,13 +122,18 @@ adbc_connection_init.default <- function(database, ...) {
 adbc_connection_init_default <- function(database, options = NULL, subclass = character()) {
   connection <- .Call(RAdbcConnectionNew)
   connection$database <- database
-  error <- adbc_allocate_error()
-  status <- .Call(RAdbcConnectionInit, connection, database, error)
-  stop_for_error(status, error)
 
-  adbc_connection_set_options(connection, options)
-  class(connection) <- c(subclass, class(connection))
-  connection
+  with_adbc(connection, {
+    adbc_connection_set_options(connection, options)
+
+    error <- adbc_allocate_error()
+    status <- .Call(RAdbcConnectionInit, connection, database, error)
+    stop_for_error(status, error)
+
+    class(connection) <- c(subclass, class(connection))
+
+    adbc_xptr_move(connection)
+  })
 }
 
 #' @rdname adbc_connection_init
@@ -313,9 +322,12 @@ adbc_statement_init.default <- function(connection, ...) {
 adbc_statement_init_default <- function(connection, options = NULL, subclass = character()) {
   statement <- .Call(RAdbcStatementNew, connection)
   statement$connection <- connection
-  adbc_statement_set_options(statement, options)
-  class(statement) <- c(subclass, class(statement))
-  statement
+
+  with_adbc(statement, {
+    adbc_statement_set_options(statement, options)
+    class(statement) <- c(subclass, class(statement))
+    adbc_xptr_move(statement)
+  })
 }
 
 #' @rdname adbc_statement_init
