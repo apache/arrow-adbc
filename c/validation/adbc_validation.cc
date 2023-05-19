@@ -1460,8 +1460,13 @@ void StatementTest::TestSqlPrepareSelectNoParams() {
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                         &reader.rows_affected, &error),
               IsOkStatus(&error));
-  ASSERT_THAT(reader.rows_affected,
-              ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+  if (quirks()->supports_rows_affected()) {
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+  } else {
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::Not(::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1))));
+  }
 
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_EQ(1, reader.schema->n_children);
@@ -1789,8 +1794,13 @@ void StatementTest::TestSqlQueryInts() {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(reader.rows_affected,
-                ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+    if (quirks()->supports_rows_affected()) {
+      ASSERT_THAT(reader.rows_affected,
+                  ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+    } else {
+      ASSERT_THAT(reader.rows_affected,
+                  ::testing::Not(::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1))));
+    }
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_EQ(1, reader.schema->n_children);
@@ -1830,8 +1840,13 @@ void StatementTest::TestSqlQueryFloats() {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(reader.rows_affected,
-                ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+    if (quirks()->supports_rows_affected()) {
+      ASSERT_THAT(reader.rows_affected,
+                  ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+    } else {
+      ASSERT_THAT(reader.rows_affected,
+                  ::testing::Not(::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1))));
+    }
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_EQ(1, reader.schema->n_children);
@@ -1873,8 +1888,13 @@ void StatementTest::TestSqlQueryStrings() {
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(reader.rows_affected,
-                ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+    if (quirks()->supports_rows_affected()) {
+      ASSERT_THAT(reader.rows_affected,
+                  ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+    } else {
+      ASSERT_THAT(reader.rows_affected,
+                  ::testing::Not(::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1))));
+    }
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_EQ(1, reader.schema->n_children);
@@ -1887,6 +1907,7 @@ void StatementTest::TestSqlQueryStrings() {
     ASSERT_FALSE(ArrowArrayViewIsNull(&reader.array_view.value, 0));
     ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], 0));
     switch (reader.fields[0].type) {
+      case NANOARROW_TYPE_LARGE_STRING:
       case NANOARROW_TYPE_STRING: {
         ASSERT_NO_FATAL_FAILURE(
             CompareArray<std::string>(reader.array_view->children[0], {"SaShiSuSeSo"}));

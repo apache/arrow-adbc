@@ -103,6 +103,9 @@ class DriverQuirks {
   /// \brief Whether dynamic parameter bindings are supported for prepare
   virtual bool supports_dynamic_parameter_binding() const { return true; }
 
+  /// \brief Whether ExecuteQuery sets rows_affected appropriately
+  virtual bool supports_rows_affected() const { return true; }
+
   /// \brief Default catalog to use for tests
   virtual std::string catalog() const { return ""; }
 

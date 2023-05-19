@@ -49,6 +49,55 @@ env:
   CACHE_NUMBER: "0"
 
 jobs:
+  duckdb:
+    name: "DuckDB Integration Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        shell: bash
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache/restore@v3
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -c conda-forge \
+            --file ci/conda_env_cpp.txt
+      - name: Build DuckDB Integration Tests
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_INTEGRATION_DUCKDB: "1"
+          ADBC_USE_ASAN: "OFF"
+          ADBC_USE_UBSAN: "OFF"
+          # Make seems to have issues with the nested DuckDB build
+          ADBC_CMAKE_ARGS: "-GNinja"
+        run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Run DuckDB Integration Tests
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_INTEGRATION_DUCKDB: "1"
+        run: |
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+
   flightsql:
     name: "FlightSQL Integration Tests (Dremio and SQLite)"
     runs-on: ubuntu-latest
