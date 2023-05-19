@@ -15,9 +15,71 @@
 # specific language governing permissions and limitations
 # under the License.
 
-test_that("multiplication works", {
+test_that("with_adbc() and local_adbc() release databases", {
+  db <- adbc_database_init(adbc_driver_void())
+  expect_identical(with_adbc(db, "value"), "value")
+  expect_error(
+    adbc_database_release(db),
+    "ADBC_STATUS_INVALID_STATE"
+  )
 
+  db <- adbc_database_init(adbc_driver_void())
+  local({
+    expect_identical(local_adbc(db), db)
+  })
+  expect_error(
+    adbc_database_release(db),
+    "ADBC_STATUS_INVALID_STATE"
+  )
+})
 
+test_that("with_adbc() and local_adbc() release connections", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+  expect_identical(with_adbc(con, "value"), "value")
+  expect_error(
+    adbc_connection_release(con),
+    "ADBC_STATUS_INVALID_STATE"
+  )
 
-  expect_equal(2 * 2, 4)
+  con <- adbc_connection_init(db)
+  local({
+    expect_identical(local_adbc(con), con)
+  })
+  expect_error(
+    adbc_connection_release(con),
+    "ADBC_STATUS_INVALID_STATE"
+  )
+})
+
+test_that("with_adbc() and local_adbc() release statements", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+  stmt <- adbc_statement_init(con)
+  expect_identical(with_adbc(stmt, "value"), "value")
+  expect_error(
+    adbc_statement_release(stmt),
+    "ADBC_STATUS_INVALID_STATE"
+  )
+
+  stmt <- adbc_statement_init(con)
+  local({
+    expect_identical(local_adbc(stmt), stmt)
+  })
+  expect_error(
+    adbc_statement_release(stmt),
+    "ADBC_STATUS_INVALID_STATE"
+  )
+})
+
+test_that("with_adbc() and local_adbc() release streams", {
+  stream <- nanoarrow::basic_array_stream(list(1:5))
+  expect_identical(with_adbc(stream, "value"), "value")
+  expect_false(nanoarrow::nanoarrow_pointer_is_valid(stream))
+
+  stream <- nanoarrow::basic_array_stream(list(1:5))
+  local({
+    expect_identical(local_adbc(stream), stream)
+  })
+  expect_false(nanoarrow::nanoarrow_pointer_is_valid(stream))
 })
