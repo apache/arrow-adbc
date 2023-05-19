@@ -84,26 +84,48 @@ test_that("with_adbc() and local_adbc() release streams", {
   expect_false(nanoarrow::nanoarrow_pointer_is_valid(stream))
 })
 
-test_that("joiners work", {
+test_that("joiners work for databases, connections, and statements", {
+  expect_snapshot({
+    stmt <- local({
+      db <- local_adbc(adbc_database_init(adbc_driver_log()))
+
+      con <- local_adbc(adbc_connection_init(db))
+      adbc_connection_join(con, db)
+      expect_false(adbc_xptr_is_valid(db))
+
+      stmt <- local_adbc(adbc_statement_init(con))
+      adbc_statement_join(stmt, con)
+      expect_false(adbc_xptr_is_valid(con))
+
+      adbc_xptr_move(stmt)
+    })
+
+    adbc_statement_release(stmt)
+  })
+})
+
+test_that("joiners work with streams", {
+  skip_if_not(packageVersion("nanoarrow") >= "0.1.0.9000")
+
   stream <- local({
     db <- local_adbc(adbc_database_init(adbc_driver_monkey()))
+
     con <- local_adbc(adbc_connection_init(db))
-    stmt <- local_adbc(adbc_statement_init(con, data.frame(x = 1:5)))
-
     adbc_connection_join(con, db)
-    expect_true(adbc_xptr_is_null(db))
+    expect_false(adbc_xptr_is_valid(db))
 
+    stmt <- local_adbc(adbc_statement_init(con, data.frame(x = 1:5)))
     adbc_statement_join(stmt, con)
-    expect_true(adbc_xptr_is_null(con))
+    expect_false(adbc_xptr_is_valid(con))
 
-    stream <- nanoarrow::nanoarrow_allocate_array_stream()
+    stream <- local_adbc(nanoarrow::nanoarrow_allocate_array_stream())
     adbc_statement_execute_query(stmt, stream)
     adbc_stream_join(stream, stmt)
-    expect_true(adbc_xptr_is_null(stmt))
+    expect_false(adbc_xptr_is_valid(stmt))
 
-    stream
+    adbc_xptr_move(stream)
   })
 
   expect_identical(as.data.frame(stream), data.frame(x = 1:5))
-  # TODO: stream$release()
+  expect_silent(stream$release())
 })

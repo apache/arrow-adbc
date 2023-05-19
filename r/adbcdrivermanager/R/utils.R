@@ -103,23 +103,23 @@ str.adbc_xptr <- function(object, ...) {
 #'   to NULL. This is useful when returning from a function where
 #'   [lifecycle helpers][with_adbc] were used to manage the original
 #'   object.
-#' - `adbc_xptr_is_null()` provides a means by which to test for an invalidated
+#' - `adbc_xptr_is_valid()` provides a means by which to test for an invalidated
 #'   pointer.
 #'
 #' @param x An 'adbc_database', 'adbc_connection', or 'adbc_statement'.
 #'
 #' @return
 #' - `adbc_xptr_move()`: A freshly-allocated R object identical to `x`
-#' - `adbc_xptr_is_null()`: Returns TRUE if the ADBC object pointed to by `x`
+#' - `adbc_xptr_is_valid()`: Returns FALSE if the ADBC object pointed to by `x`
 #'   has been invalidated.
 #' @export
 #'
 #' @examples
 #' db <- adbc_database_init(adbc_driver_void())
-#' adbc_xptr_is_null(db)
+#' adbc_xptr_is_valid(db)
 #' db_new <- adbc_xptr_move(db)
-#' adbc_xptr_is_null(db)
-#' adbc_xptr_is_null(db_new)
+#' adbc_xptr_is_valid(db)
+#' adbc_xptr_is_valid(db_new)
 #'
 adbc_xptr_move <- function(x) {
   if (inherits(x, "adbc_database")) {
@@ -139,15 +139,25 @@ adbc_xptr_move <- function(x) {
 
 #' @rdname adbc_xptr_move
 #' @export
-adbc_xptr_is_null <- function(x) {
-  .Call(RAdbcXptrIsNull, x)
+adbc_xptr_is_valid <- function(x) {
+  if (inherits(x, "adbc_database")) {
+    .Call(RAdbcDatabaseValid, x)
+  } else if (inherits(x, "adbc_connection")) {
+    .Call(RAdbcConnectionValid, x)
+  } else if (inherits(x, "adbc_statement")) {
+    .Call(RAdbcStatementValid, x)
+  } else if (inherits(x, "nanoarrow_array_stream")) {
+    nanoarrow::nanoarrow_pointer_is_valid(x)
+  } else {
+    assert_adbc(x)
+  }
 }
 
 # Usually we want errors for an attempt at double release; however,
 # the helpers we want to be compatible with adbc_xptr_move() which sets the
 # managed pointer to NULL.
 adbc_release_non_null <- function(x) {
-  if (adbc_xptr_is_null(x)) {
+  if (!adbc_xptr_is_valid(x)) {
     return()
   }
 

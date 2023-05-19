@@ -139,14 +139,19 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
 extern "C" SEXP RAdbcMoveDatabase(SEXP database_xptr) {
   AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr);
   SEXP database_xptr_new = PROTECT(adbc_allocate_xptr<AdbcDatabase>());
-  AdbcDatabase* database_new = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  AdbcDatabase* database_new = adbc_from_xptr<AdbcDatabase>(database_xptr_new);
 
   memcpy(database_new, database, sizeof(AdbcDatabase));
-  R_SetExternalPtrAddr(database_xptr, nullptr);
   adbc_xptr_move_attrs(database_xptr, database_xptr_new);
+  memset(database, 0, sizeof(AdbcDatabase));
 
   UNPROTECT(1);
   return database_xptr_new;
+}
+
+extern "C" SEXP RAdbcDatabaseValid(SEXP database_xptr) {
+  AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  return Rf_ScalarLogical(database != nullptr && database->private_data != nullptr);
 }
 
 extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
@@ -167,8 +172,8 @@ extern "C" SEXP RAdbcDatabaseInit(SEXP database_xptr, SEXP error_xptr) {
 extern "C" SEXP RAdbcDatabaseRelease(SEXP database_xptr, SEXP error_xptr) {
   auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  R_SetExternalPtrTag(database_xptr, R_NilValue);
-  return adbc_wrap_status(AdbcDatabaseRelease(database, error));
+  int status = AdbcDatabaseRelease(database, error);
+  return adbc_wrap_status(status);
 }
 
 static void finalize_connection_xptr(SEXP connection_xptr) {
@@ -203,14 +208,19 @@ extern "C" SEXP RAdbcConnectionNew(void) {
 extern "C" SEXP RAdbcMoveConnection(SEXP connection_xptr) {
   AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   SEXP connection_xptr_new = PROTECT(adbc_allocate_xptr<AdbcConnection>());
-  AdbcConnection* connection_new = adbc_from_xptr<AdbcConnection>(connection_xptr);
+  AdbcConnection* connection_new = adbc_from_xptr<AdbcConnection>(connection_xptr_new);
 
   memcpy(connection_new, connection, sizeof(AdbcConnection));
-  R_SetExternalPtrAddr(connection_xptr, nullptr);
   adbc_xptr_move_attrs(connection_xptr, connection_xptr_new);
+  memset(connection, 0, sizeof(AdbcConnection));
 
   UNPROTECT(1);
   return connection_xptr_new;
+}
+
+extern "C" SEXP RAdbcConnectionValid(SEXP connection_xptr) {
+  AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
+  return Rf_ScalarLogical(connection != nullptr && connection->private_data != nullptr);
 }
 
 extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
@@ -242,7 +252,6 @@ extern "C" SEXP RAdbcConnectionRelease(SEXP connection_xptr, SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcConnectionRelease(connection, error);
-  R_SetExternalPtrProtected(connection_xptr, R_NilValue);
   return adbc_wrap_status(status);
 }
 
@@ -376,14 +385,19 @@ extern "C" SEXP RAdbcStatementNew(SEXP connection_xptr) {
 extern "C" SEXP RAdbcMoveStatement(SEXP statement_xptr) {
   AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
   SEXP statement_xptr_new = PROTECT(adbc_allocate_xptr<AdbcStatement>());
-  AdbcStatement* statement_new = adbc_from_xptr<AdbcStatement>(statement_xptr);
+  AdbcStatement* statement_new = adbc_from_xptr<AdbcStatement>(statement_xptr_new);
 
   memcpy(statement_new, statement, sizeof(AdbcStatement));
-  R_SetExternalPtrAddr(statement_xptr, nullptr);
   adbc_xptr_move_attrs(statement_xptr, statement_xptr_new);
+  memset(statement, 0, sizeof(AdbcStatement));
 
   UNPROTECT(1);
   return statement_xptr_new;
+}
+
+extern "C" SEXP RAdbcStatementValid(SEXP statement_xptr) {
+  AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
+  return Rf_ScalarLogical(statement != nullptr && statement->private_data != nullptr);
 }
 
 extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
@@ -399,7 +413,6 @@ extern "C" SEXP RAdbcStatementRelease(SEXP statement_xptr, SEXP error_xptr) {
   auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcStatementRelease(statement, error);
-  R_SetExternalPtrProtected(statement_xptr, R_NilValue);
   return adbc_wrap_status(status);
 }
 

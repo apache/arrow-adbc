@@ -2,12 +2,12 @@
 % Please edit documentation in R/utils.R
 \name{adbc_xptr_move}
 \alias{adbc_xptr_move}
-\alias{adbc_xptr_is_null}
+\alias{adbc_xptr_is_valid}
 \title{Low-level pointer details}
 \usage{
 adbc_xptr_move(x)
 
-adbc_xptr_is_null(x)
+adbc_xptr_is_valid(x)
 }
 \arguments{
 \item{x}{An 'adbc_database', 'adbc_connection', or 'adbc_statement'.}

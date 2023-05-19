@@ -30,12 +30,14 @@ SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp);
 SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr);
 SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr);
 SEXP RAdbcMoveDatabase(SEXP database_xptr);
+SEXP RAdbcDatabaseValid(SEXP database_xptr);
 SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
                             SEXP error_xptr);
 SEXP RAdbcDatabaseInit(SEXP database_xptr, SEXP error_xptr);
 SEXP RAdbcDatabaseRelease(SEXP database_xptr, SEXP error_xptr);
 SEXP RAdbcConnectionNew(void);
 SEXP RAdbcMoveConnection(SEXP connection_xptr);
+SEXP RAdbcConnectionValid(SEXP connection_xptr);
 SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp, SEXP value_sexp,
                               SEXP error_xptr);
 SEXP RAdbcConnectionInit(SEXP connection_xptr, SEXP database_xptr, SEXP error_xptr);
@@ -57,6 +59,7 @@ SEXP RAdbcConnectionCommit(SEXP connection_xptr, SEXP error_xptr);
 SEXP RAdbcConnectionRollback(SEXP connection_xptr, SEXP error_xptr);
 SEXP RAdbcStatementNew(SEXP connection_xptr);
 SEXP RAdbcMoveStatement(SEXP statement_xptr);
+SEXP RAdbcStatementValid(SEXP statement_xptr);
 SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp, SEXP value_sexp,
                              SEXP error_xptr);
 SEXP RAdbcStatementRelease(SEXP statement_xptr, SEXP error_xptr);
@@ -86,11 +89,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcLoadDriverFromInitFunc", (DL_FUNC)&RAdbcLoadDriverFromInitFunc, 1},
     {"RAdbcDatabaseNew", (DL_FUNC)&RAdbcDatabaseNew, 1},
     {"RAdbcMoveDatabase", (DL_FUNC)&RAdbcMoveDatabase, 1},
+    {"RAdbcDatabaseValid", (DL_FUNC)&RAdbcDatabaseValid, 1},
     {"RAdbcDatabaseSetOption", (DL_FUNC)&RAdbcDatabaseSetOption, 4},
     {"RAdbcDatabaseInit", (DL_FUNC)&RAdbcDatabaseInit, 2},
     {"RAdbcDatabaseRelease", (DL_FUNC)&RAdbcDatabaseRelease, 2},
     {"RAdbcConnectionNew", (DL_FUNC)&RAdbcConnectionNew, 0},
     {"RAdbcMoveConnection", (DL_FUNC)&RAdbcMoveConnection, 1},
+    {"RAdbcConnectionValid", (DL_FUNC)&RAdbcConnectionValid, 1},
     {"RAdbcConnectionSetOption", (DL_FUNC)&RAdbcConnectionSetOption, 4},
     {"RAdbcConnectionInit", (DL_FUNC)&RAdbcConnectionInit, 3},
     {"RAdbcConnectionRelease", (DL_FUNC)&RAdbcConnectionRelease, 2},
@@ -103,6 +108,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcConnectionRollback", (DL_FUNC)&RAdbcConnectionRollback, 2},
     {"RAdbcStatementNew", (DL_FUNC)&RAdbcStatementNew, 1},
     {"RAdbcMoveStatement", (DL_FUNC)&RAdbcMoveStatement, 1},
+    {"RAdbcStatementValid", (DL_FUNC)&RAdbcStatementValid, 1},
     {"RAdbcStatementSetOption", (DL_FUNC)&RAdbcStatementSetOption, 4},
     {"RAdbcStatementRelease", (DL_FUNC)&RAdbcStatementRelease, 2},
     {"RAdbcStatementSetSqlQuery", (DL_FUNC)&RAdbcStatementSetSqlQuery, 3},
