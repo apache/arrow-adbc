@@ -21,7 +21,7 @@ to the input.}
 \value{
 \itemize{
 \item \code{with_adbc()} returns the result of \code{code}
-\item \code{local_adbc()} variants return the input, invisibly.
+\item \code{local_adbc()} returns the input, invisibly.
 }
 }
 \description{

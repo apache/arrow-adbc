@@ -10,7 +10,8 @@ adbc_xptr_move(x)
 adbc_xptr_is_valid(x)
 }
 \arguments{
-\item{x}{An 'adbc_database', 'adbc_connection', or 'adbc_statement'.}
+\item{x}{An 'adbc_database', 'adbc_connection', 'adbc_statement', or
+'nanoarrow_array_stream'}
 }
 \value{
 \itemize{
@@ -21,9 +22,9 @@ has been invalidated.
 }
 \description{
 \itemize{
-\item \code{adbc_xptr_move()} allocates a fresh R object and moves all the properties
-of \code{x} into it. The original R object is invalidated by settings its pointer
-to NULL. This is useful when returning from a function where
+\item \code{adbc_xptr_move()} allocates a fresh R object and moves all values pointed
+to by \code{x} into it. The original R object is invalidated by zeroing its
+content. This is useful when returning from a function where
 \link[=with_adbc]{lifecycle helpers} were used to manage the original
 object.
 \item \code{adbc_xptr_is_valid()} provides a means by which to test for an invalidated

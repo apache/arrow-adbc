@@ -98,15 +98,16 @@ str.adbc_xptr <- function(object, ...) {
 
 #' Low-level pointer details
 #'
-#' - `adbc_xptr_move()` allocates a fresh R object and moves all the properties
-#'   of `x` into it. The original R object is invalidated by settings its pointer
-#'   to NULL. This is useful when returning from a function where
+#' - `adbc_xptr_move()` allocates a fresh R object and moves all values pointed
+#'   to by `x` into it. The original R object is invalidated by zeroing its
+#'   content. This is useful when returning from a function where
 #'   [lifecycle helpers][with_adbc] were used to manage the original
 #'   object.
 #' - `adbc_xptr_is_valid()` provides a means by which to test for an invalidated
 #'   pointer.
 #'
-#' @param x An 'adbc_database', 'adbc_connection', or 'adbc_statement'.
+#' @param x An 'adbc_database', 'adbc_connection', 'adbc_statement', or
+#'   'nanoarrow_array_stream'
 #'
 #' @return
 #' - `adbc_xptr_move()`: A freshly-allocated R object identical to `x`

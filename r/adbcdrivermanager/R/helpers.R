@@ -39,7 +39,7 @@
 #'
 #' @return
 #'   - `with_adbc()` returns the result of `code`
-#'   - `local_adbc()` variants return the input, invisibly.
+#'   - `local_adbc()` returns the input, invisibly.
 #' @export
 #'
 #' @examples
@@ -159,7 +159,7 @@ adbc_stream_join <- function(stream, x) {
     # on the main R thread) or on garbage collection otherwise.
 
     # Until the release version of nanoarrow contains this we will get a check
-    # warning
+    # warning for nanoarrow::array_stream_set_finalizer()
     set_finalizer <- asNamespace("nanoarrow")[["array_stream_set_finalizer"]]
     set_finalizer(stream, self_contained_finalizer)
 
