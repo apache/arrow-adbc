@@ -182,4 +182,3 @@ assert_adbc <- function(x, what = adbc_classes) {
     call. = sys.call(-1)
   )
 }
-
