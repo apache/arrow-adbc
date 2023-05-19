@@ -157,7 +157,12 @@ adbc_stream_join <- function(stream, x) {
 
     # This finalizer will run immediately on release (if released explicitly
     # on the main R thread) or on garbage collection otherwise.
-    nanoarrow::array_stream_set_finalizer(stream, self_contained_finalizer)
+
+    # Until the release version of nanoarrow contains this we will get a check
+    # warning
+    set_finalizer <- asNamespace("nanoarrow")[["array_stream_set_finalizer"]]
+    set_finalizer(stream, self_contained_finalizer)
+
     invisible(stream)
   } else {
     stop("adbc_stream_join_statement() requires nanoarrow >= 0.2.0")
