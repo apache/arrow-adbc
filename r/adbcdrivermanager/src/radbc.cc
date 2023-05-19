@@ -50,9 +50,11 @@ static void finalize_driver_xptr(SEXP driver_xptr) {
     return;
   }
 
-  AdbcError error;
-  int status = driver->release(driver, &error);
-  adbc_error_warn(status, &error, "finalize_driver_xptr()");
+  if (driver->release != nullptr) {
+    AdbcError error;
+    int status = driver->release(driver, &error);
+    adbc_error_warn(status, &error, "finalize_driver_xptr()");
+  }
 
   adbc_xptr_default_finalize<AdbcDriver>(driver_xptr);
   R_SetExternalPtrAddr(driver_xptr, nullptr);
@@ -78,7 +80,6 @@ extern "C" SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp) {
   const char* entrypoint = adbc_as_const_char(entrypoint_sexp);
 
   SEXP driver_xptr = PROTECT(adbc_allocate_xptr<AdbcDriver>());
-  R_RegisterCFinalizer(driver_xptr, &finalize_driver_xptr);
   auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
 
   AdbcError error;
