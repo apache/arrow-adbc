@@ -55,6 +55,7 @@ static void finalize_driver_xptr(SEXP driver_xptr) {
   adbc_error_warn(status, &error, "finalize_driver_xptr()");
 
   adbc_xptr_default_finalize<AdbcDriver>(driver_xptr);
+  R_SetExternalPtrAddr(driver_xptr, nullptr);
 }
 
 static void finalize_database_xptr(SEXP database_xptr) {
