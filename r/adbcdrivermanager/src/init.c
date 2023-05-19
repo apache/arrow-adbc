@@ -29,7 +29,7 @@ SEXP RAdbcStatusCodeMessage(SEXP status_sexp);
 SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp);
 SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr);
 SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr);
-SEXP RAdbcMoveDatabase(SEXP database_init_func_xptr);
+SEXP RAdbcMoveDatabase(SEXP database_xptr);
 SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
                             SEXP error_xptr);
 SEXP RAdbcDatabaseInit(SEXP database_xptr, SEXP error_xptr);
