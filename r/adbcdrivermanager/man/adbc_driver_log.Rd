@@ -4,26 +4,21 @@
 \alias{adbc_driver_log}
 \title{Log calls to another driver}
 \usage{
-adbc_driver_log(parent_driver, tag = "LogDriver")
-}
-\arguments{
-\item{parent_driver}{An \code{\link[=adbc_driver]{adbc_driver()}} exposed as a \code{driver_init_func}.
-Drivers in the form of DLL/entrypoint are not currently supported.}
-
-\item{tag}{A message prefix.}
+adbc_driver_log()
 }
 \value{
 An object of class 'adbc_driver_log'
 }
 \description{
-Useful for debugging another driver or ensuring that certain calls take
-occur/return specific values.
+Useful for debugging or ensuring that certain calls occur during
+initialization and/or cleanup. The current logging output should not
+be considered stable and may change in future releases.
 }
 \examples{
-drv <- adbc_driver_log(adbc_driver_void())
-db <- adbc_database_init(drv)
-con <- adbc_connection_init(db)
-stmt <- adbc_statement_init(con, mtcars)
+drv <- adbc_driver_log()
+db <- adbc_database_init(drv, key = "value")
+con <- adbc_connection_init(db, key = "value")
+stmt <- adbc_statement_init(con, key = "value")
 try(adbc_statement_execute_query(stmt))
 adbc_statement_release(stmt)
 adbc_connection_release(con)

@@ -17,48 +17,40 @@
 
 #' Log calls to another driver
 #'
-#' Useful for debugging another driver or ensuring that certain calls take
-#' occur/return specific values.
+#' Useful for debugging or ensuring that certain calls occur during
+#' initialization and/or cleanup. The current logging output should not
+#' be considered stable and may change in future releases.
 #'
-#' @param parent_driver An [adbc_driver()] exposed as a `driver_init_func`.
-#'   Drivers in the form of DLL/entrypoint are not currently supported.
-#' @param tag A message prefix.
 #'
 #' @return An object of class 'adbc_driver_log'
 #' @export
 #'
 #' @examples
-#' drv <- adbc_driver_log(adbc_driver_void())
-#' db <- adbc_database_init(drv)
-#' con <- adbc_connection_init(db)
-#' stmt <- adbc_statement_init(con, mtcars)
+#' drv <- adbc_driver_log()
+#' db <- adbc_database_init(drv, key = "value")
+#' con <- adbc_connection_init(db, key = "value")
+#' stmt <- adbc_statement_init(con, key = "value")
 #' try(adbc_statement_execute_query(stmt))
 #' adbc_statement_release(stmt)
 #' adbc_connection_release(con)
 #' adbc_database_release(db)
 #'
-adbc_driver_log <- function(parent_driver,
-                            tag = "LogDriver") {
-  adbc_driver(
-    .Call(RAdbcLogDriverInitFunc),
-    parent_driver = parent_driver,
-    tag = tag,
-    subclass = "adbc_driver_log"
-  )
+adbc_driver_log <- function() {
+  if (is.null(internal_driver_env$log)) {
+    internal_driver_env$log <- adbc_driver(
+      .Call(RAdbcLogDriverInitFunc),
+      subclass = "adbc_driver_log"
+    )
+  }
+
+  internal_driver_env$log
 }
 
 #' @export
 adbc_database_init.adbc_driver_log <- function(driver, ...) {
-  init_func_addr_chr <- nanoarrow::nanoarrow_pointer_addr_chr(
-    driver$parent_driver$driver_init_func
-  )
-
   adbc_database_init_default(
     driver,
-    options = list(
-      adbc.r.logdriver.tag = driver$tag,
-      adbc.r.logdriver.driver_init_func_addr = init_func_addr_chr
-    ),
+    options = list(...),
     subclass = "adbc_database_log"
   )
 }
@@ -73,7 +65,7 @@ adbc_connection_init.adbc_database_log <- function(database, ...) {
 }
 
 #' @export
-adbc_statement_init.adbc_connection_log <- function(connection, stream = NULL, ...) {
+adbc_statement_init.adbc_connection_log <- function(connection, ...) {
   adbc_statement_init_default(
     connection,
     options = list(...),

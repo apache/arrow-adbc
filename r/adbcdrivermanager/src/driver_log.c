@@ -22,26 +22,21 @@
 #include <string.h>
 
 #include <adbc.h>
-#include <adbc_driver_manager.h>
 
 struct LogDriverPrivate {
-  char tag[1024];
-  struct AdbcDriver* parent_driver;
+  char token[1024];
 };
 
 struct LogDatabasePrivate {
-  char* tag;
-  struct AdbcDatabase parent_database;
+  char token[1024];
 };
 
 struct LogConnectionPrivate {
-  const char* tag;
-  struct AdbcConnection parent_connection;
+  char token[1024];
 };
 
 struct LogStatementPrivate {
-  const char* tag;
-  struct AdbcStatement parent_statement;
+  char token[1024];
 };
 
 static void ResetError(struct AdbcError* error) {
@@ -59,6 +54,7 @@ static void SetErrorConst(struct AdbcError* error, const char* value) {
 
 static AdbcStatusCode LogDriverRelease(struct AdbcDriver* driver,
                                        struct AdbcError* error) {
+  Rprintf("LogDriverRelease()\n");
   if (driver->private_data == NULL) {
     return ADBC_STATUS_OK;
   }
@@ -70,6 +66,8 @@ static AdbcStatusCode LogDriverRelease(struct AdbcDriver* driver,
 
 static AdbcStatusCode LogDatabaseNew(struct AdbcDatabase* database,
                                      struct AdbcError* error) {
+  Rprintf("LogDatabaseNew()\n");
+
   struct LogDatabasePrivate* database_private =
       (struct LogDatabasePrivate*)malloc(sizeof(struct LogDatabasePrivate));
   if (database_private == NULL) {
@@ -79,85 +77,36 @@ static AdbcStatusCode LogDatabaseNew(struct AdbcDatabase* database,
 
   memset(database_private, 0, sizeof(struct LogDatabasePrivate));
   database->private_data = database_private;
-
-  int result = AdbcDatabaseNew(&database_private->parent_database, &error);
-  if (result != ADBC_STATUS_OK) {
-    free(database_private);
-    database_private = NULL;
-  }
-
-  return result;
+  return ADBC_STATUS_OK;
 }
 
 static AdbcStatusCode LogDatabaseInit(struct AdbcDatabase* database,
                                       struct AdbcError* error) {
-  struct LogDatabasePrivate* database_private =
-      (struct LogDatabasePrivate*)database->private_data;
-
-  struct LogDriverPrivate* driver_private =
-      (struct LogDriverPrivate*)database->private_driver->private_data;
-  snprintf(driver_private->tag, 1024, "%s", database_private->tag);
-
-  Rprintf("%s: AdbcDatabaseInit() ", database_private->tag);
-  int result = AdbcDatabaseInit(&database_private->parent_database, error);
-  Rprintf("::%d::\n", result);
-  driver_private->parent_driver = database_private->parent_database.private_driver;
-  return result;
+  Rprintf("LogDatabaseInit()\n");
+  return ADBC_STATUS_OK;
 }
 
 static AdbcStatusCode LogDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                            const char* value, struct AdbcError* error) {
-  struct LogDatabasePrivate* database_private =
-      (struct LogDatabasePrivate*)database->private_data;
-
-  if (strcmp(key, "adbc.r.logdriver.tag") == 0) {
-    database_private->tag = malloc(strlen(value) + 1);
-    if (database_private->tag == NULL) {
-      SetErrorConst(error, "failed to allocate tag");
-      return ADBC_STATUS_INTERNAL;
-    }
-    memcpy(database_private->tag, value, strlen(value) + 1);
-    return ADBC_STATUS_OK;
-  } else if (strcmp(key, "adbc.r.logdriver.driver_init_func_addr") == 0) {
-    char* endptr;
-    intptr_t ptr = strtoll(value, &endptr, 10);
-    AdbcDriverInitFunc init_func = (AdbcDriverInitFunc)ptr;
-    return AdbcDriverManagerDatabaseSetInitFunc(&database_private->parent_database,
-                                                init_func, error);
-  }
-
-  Rprintf("%s: LogDatabaseSetOption() ", database_private->tag);
-  int result =
-      AdbcDatabaseSetOption(&database_private->parent_database, key, value, error);
-  Rprintf("::%d::\n", result);
-  return result;
+  Rprintf("LogDatabaseSetOption()\n");
+  return ADBC_STATUS_OK;
 }
 
 static AdbcStatusCode LogDatabaseRelease(struct AdbcDatabase* database,
                                          struct AdbcError* error) {
-  struct LogDatabasePrivate* database_private =
-      (struct LogDatabasePrivate*)database->private_data;
-
-  if (database_private == NULL) {
+  Rprintf("LogDatabaseRelease()\n");
+  if (database->private_data == NULL) {
     return ADBC_STATUS_OK;
-  }
-
-  Rprintf("%s: AdbcDatabaseRelease() ", database_private->tag);
-  int result = AdbcDatabaseRelease(&database_private->parent_database, error);
-
-  if (database_private->tag != NULL) {
-    free(database_private->tag);
   }
 
   free(database->private_data);
   database->private_data = NULL;
-
-  Rprintf("::%d::\n", result);
-  return result;
+  return ADBC_STATUS_OK;
 }
 
 static AdbcStatusCode LogConnectionCommit(struct AdbcConnection* connection,
                                           struct AdbcError* error) {
+  Rprintf("LogConnectionCommit()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -165,6 +114,7 @@ static AdbcStatusCode LogConnectionGetInfo(struct AdbcConnection* connection,
                                            uint32_t* info_codes, size_t info_codes_length,
                                            struct ArrowArrayStream* stream,
                                            struct AdbcError* error) {
+  Rprintf("LogConnectionGetInfo()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -172,39 +122,35 @@ static AdbcStatusCode LogConnectionGetObjects(
     struct AdbcConnection* connection, int depth, const char* catalog,
     const char* db_schema, const char* table_name, const char** table_types,
     const char* column_name, struct ArrowArrayStream* stream, struct AdbcError* error) {
+  Rprintf("LogConnectionGetObjects()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 static AdbcStatusCode LogConnectionGetTableSchema(
     struct AdbcConnection* connection, const char* catalog, const char* db_schema,
     const char* table_name, struct ArrowSchema* schema, struct AdbcError* error) {
+  Rprintf("LogConnectionGetTableSchema()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 static AdbcStatusCode LogConnectionGetTableTypes(struct AdbcConnection* connection,
                                                  struct ArrowArrayStream* stream,
                                                  struct AdbcError* error) {
+  Rprintf("LogConnectionGetTableTypes()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 static AdbcStatusCode LogConnectionInit(struct AdbcConnection* connection,
                                         struct AdbcDatabase* database,
                                         struct AdbcError* error) {
-  struct LogConnectionPrivate* connection_private =
-      (struct LogConnectionPrivate*)connection->private_data;
-  struct LogDatabasePrivate* database_private =
-      (struct LogDatabasePrivate*)database->private_data;
-
-  Rprintf("%s: AdbcConnectionInit() ", database_private->tag);
-  int result = AdbcConnectionInit(&connection_private->parent_connection,
-                                  &database_private->parent_database, error);
-  Rprintf("::%d::\n", result);
-
+  Rprintf("LogConnectionInit()\n");
   return ADBC_STATUS_OK;
 }
 
 static AdbcStatusCode LogConnectionNew(struct AdbcConnection* connection,
                                        struct AdbcError* error) {
+  Rprintf("LogConnectionNew()\n");
+
   struct LogConnectionPrivate* connection_private =
       (struct LogConnectionPrivate*)malloc(sizeof(struct LogConnectionPrivate));
   if (connection_private == NULL) {
@@ -214,15 +160,6 @@ static AdbcStatusCode LogConnectionNew(struct AdbcConnection* connection,
 
   memset(connection_private, 0, sizeof(struct LogConnectionPrivate));
   connection->private_data = connection_private;
-
-  struct LogDriverPrivate* driver_private =
-      (struct LogDriverPrivate*)connection->private_driver->private_data;
-  connection_private->tag = driver_private->tag;
-
-  Rprintf("%s: AdbcConnectionNew() ", connection_private->tag);
-  int result = AdbcConnectionNew(&connection_private->parent_connection, error);
-  Rprintf("::%d::\n", result);
-
   return ADBC_STATUS_OK;
 }
 
@@ -231,36 +168,32 @@ static AdbcStatusCode LogConnectionReadPartition(struct AdbcConnection* connecti
                                                  size_t serialized_length,
                                                  struct ArrowArrayStream* out,
                                                  struct AdbcError* error) {
+  Rprintf("LogConnectionReadPartition()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 static AdbcStatusCode LogConnectionRelease(struct AdbcConnection* connection,
                                            struct AdbcError* error) {
-  struct LogConnectionPrivate* connection_private =
-      (struct LogConnectionPrivate*)connection->private_data;
-
+  Rprintf("LogConnectionRelease()\n");
   if (connection->private_data == NULL) {
     return ADBC_STATUS_OK;
   }
 
-  Rprintf("%s: AdbcConnectionRelease() ", connection_private->tag);
-  int result = AdbcConnectionRelease(&connection_private->parent_connection, error);
-
   free(connection->private_data);
   connection->private_data = NULL;
-
-  Rprintf("::%d::\n", result);
-  return result;
+  return ADBC_STATUS_OK;
 }
 
 static AdbcStatusCode LogConnectionRollback(struct AdbcConnection* connection,
                                             struct AdbcError* error) {
+  Rprintf("LogConnectionRollback()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 static AdbcStatusCode LogConnectionSetOption(struct AdbcConnection* connection,
                                              const char* key, const char* value,
                                              struct AdbcError* error) {
+  Rprintf("LogConnectionSetOption()\n");
   return ADBC_STATUS_OK;
 }
 
@@ -268,12 +201,14 @@ static AdbcStatusCode LogStatementBind(struct AdbcStatement* statement,
                                        struct ArrowArray* values,
                                        struct ArrowSchema* schema,
                                        struct AdbcError* error) {
+  Rprintf("LogStatementBind()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }  // NOLINT(whitespace/indent)
 
 static AdbcStatusCode LogStatementBindStream(struct AdbcStatement* statement,
                                              struct ArrowArrayStream* stream,
                                              struct AdbcError* error) {
+  Rprintf("LogStatementBindStream()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -282,6 +217,7 @@ static AdbcStatusCode LogStatementExecutePartitions(struct AdbcStatement* statem
                                                     struct AdbcPartitions* partitions,
                                                     int64_t* rows_affected,
                                                     struct AdbcError* error) {
+  Rprintf("LogStatementExecutePartitions()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }  // NOLINT(whitespace/indent)
 
@@ -289,18 +225,21 @@ static AdbcStatusCode LogStatementExecuteQuery(struct AdbcStatement* statement,
                                                struct ArrowArrayStream* out,
                                                int64_t* rows_affected,
                                                struct AdbcError* error) {
+  Rprintf("LogStatementExecuteQuery()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 static AdbcStatusCode LogStatementGetParameterSchema(struct AdbcStatement* statement,
                                                      struct ArrowSchema* schema,
                                                      struct AdbcError* error) {
+  Rprintf("LogStatementGetParameterSchema()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 static AdbcStatusCode LogStatementNew(struct AdbcConnection* connection,
                                       struct AdbcStatement* statement,
                                       struct AdbcError* error) {
+  Rprintf("LogStatementNew()\n");
   struct LogStatementPrivate* statement_private =
       (struct LogStatementPrivate*)malloc(sizeof(struct LogStatementPrivate));
   if (statement_private == NULL) {
@@ -315,11 +254,13 @@ static AdbcStatusCode LogStatementNew(struct AdbcConnection* connection,
 
 static AdbcStatusCode LogStatementPrepare(struct AdbcStatement* statement,
                                           struct AdbcError* error) {
+  Rprintf("LogStatementPrepare()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 static AdbcStatusCode LogStatementRelease(struct AdbcStatement* statement,
                                           struct AdbcError* error) {
+  Rprintf("LogStatementRelease()\n");
   if (statement->private_data == NULL) {
     return ADBC_STATUS_OK;
   }
@@ -332,17 +273,20 @@ static AdbcStatusCode LogStatementRelease(struct AdbcStatement* statement,
 static AdbcStatusCode LogStatementSetOption(struct AdbcStatement* statement,
                                             const char* key, const char* value,
                                             struct AdbcError* error) {
+  Rprintf("LogStatementSetOption()\n");
   return ADBC_STATUS_OK;
 }
 
 static AdbcStatusCode LogStatementSetSqlQuery(struct AdbcStatement* statement,
                                               const char* query,
                                               struct AdbcError* error) {
+  Rprintf("LogStatementSetSqlQuery()\n");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 static AdbcStatusCode LogDriverInitFunc(int version, void* raw_driver,
                                         struct AdbcError* error) {
+  Rprintf("LogDriverInitFunc()\n");
   if (version != ADBC_VERSION_1_0_0) return ADBC_STATUS_NOT_IMPLEMENTED;
   struct AdbcDriver* driver = (struct AdbcDriver*)raw_driver;
   memset(driver, 0, sizeof(struct AdbcDriver));
