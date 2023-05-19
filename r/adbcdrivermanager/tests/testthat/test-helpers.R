@@ -83,3 +83,27 @@ test_that("with_adbc() and local_adbc() release streams", {
   })
   expect_false(nanoarrow::nanoarrow_pointer_is_valid(stream))
 })
+
+test_that("joiners work", {
+  stream <- local({
+    db <- local_adbc(adbc_database_init(adbc_driver_monkey()))
+    con <- local_adbc(adbc_connection_init(db))
+    stmt <- local_adbc(adbc_statement_init(con, data.frame(x = 1:5)))
+
+    adbc_connection_join(con, db)
+    expect_true(adbc_xptr_is_null(db))
+
+    adbc_statement_join(stmt, con)
+    expect_true(adbc_xptr_is_null(con))
+
+    stream <- nanoarrow::nanoarrow_allocate_array_stream()
+    adbc_statement_execute_query(stmt, stream)
+    adbc_stream_join(stream, stmt)
+    expect_true(adbc_xptr_is_null(stmt))
+
+    stream
+  })
+
+  expect_identical(as.data.frame(stream), data.frame(x = 1:5))
+  # TODO: stream$release()
+})

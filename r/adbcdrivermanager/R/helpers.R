@@ -98,21 +98,7 @@ local_adbc <- function(x, .local_envir = parent.frame()) {
 #' @export
 #'
 #' @examples
-#' read_monkey <- function(obj) {
-#'   db <- local_adbc(adbc_database_init(adbc_driver_monkey()))
-#'   con <- local_adbc(adbc_connection_init(db))
-#'   stmt <- local_adbc(adbc_statement_init(con, obj))
-#'   adbc_connection_join(con, db)
-#'   adbc_statement_join(stmt, con)
-#'
-#'   stream <- nanoarrow::nanoarrow_allocate_array_stream()
-#'   adbc_statement_execute_query(stmt, stream)
-#'   adbc_stream_join(stream, stmt)
-#' }
-#'
-#' with_adbc(stream <- read_monkey(data.frame(x = 1:5)), {
-#'   as.data.frame(stream)
-#' })
+#' # TODO
 #'
 adbc_connection_join <- function(connection, database) {
   assert_adbc(connection, "adbc_connection")
