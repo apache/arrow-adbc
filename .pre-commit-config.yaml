@@ -29,7 +29,7 @@ repos:
       exclude: ci/conda/meta.yaml
     - id: end-of-file-fixer
     - id: trailing-whitespace
-      exclude: r/adbcdrivermanager/tests/testthat/_snaps/*.md
+      exclude: r/adbcdrivermanager/tests/testthat/_snaps/driver_log.md
   - repo: https://github.com/pocc/pre-commit-hooks
     rev: v1.3.5
     hooks:
