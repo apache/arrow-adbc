@@ -223,25 +223,27 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
 
   bool seen_public = false;
 
+  struct ArrowArrayView* catalog_db_schemas = reader.array_view->children[0];
+  struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
+
   do {
-    for (int64_t row = 0; row < reader.array->length; row++) {
+    for (int64_t catalog_idx = 0; catalog_idx < reader.array->length; catalog_idx++) {
       ArrowStringView val =
-          ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], row);
+          ArrowArrayViewGetStringUnsafe(catalog_db_schemas, catalog_idx);
       auto val_str = std::string(val.data, val.size_bytes);
-      if (val_str == "postgres") {
-        // ASSERT_EQ(reader.array->children[1]->children[0]->length, 1);
-        auto schema_name_col = reader.array->children[1]->children[0];
-        for (auto i = 0; i < schema_name_col->length; i++) {
-          ArrowStringView schema = ArrowArrayViewGetStringUnsafe(
-              reader.array_view->children[1]->children[0]->children[0], i);
-          auto schema_str = std::string(schema.data, schema.size_bytes);
-          if (schema_str == "public") {
-            seen_public = true;
-          }
+      const int64_t start_offset =
+          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx);
+      const int64_t end_offset =
+          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx + 1);
+
+      for (auto db_schemas_index = start_offset; db_schemas_index < end_offset;
+           db_schemas_index++) {
+        if (val_str == "postgres") {
+          ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, db_schemas_index));
+          // TODO: should be able to find public schema within this database
+        } else {
+          ASSERT_TRUE(ArrowArrayViewIsNull(catalog_db_schemas_list, db_schemas_index));
         }
-      } else {
-        // Should not be able to view schemas from other databases
-        // ASSERT_EQ(reader.array->children[1]->children[0]->length, 0);
       }
     }
     ASSERT_NO_FATAL_FAILURE(reader.Next());

@@ -284,8 +284,25 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
           CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
         } else {
           if (depth >= ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
-            RAISE_ADBC(PostgresConnectionGetSchemasImpl(conn, depth,
-                                                        catalog_db_schemas_col, error));
+            // postgres only allows you to list schemas for the currently connected db
+            PqResultHelper curr_db_helper =
+                PqResultHelper{conn, "SELECT current_database()"};
+            if (curr_db_helper.Status() == PGRES_TUPLES_OK) {
+              assert(curr_db_helper.NumRows() == 1);
+              auto curr_iter = curr_db_helper.begin();
+              PqResultRow db_row = *curr_iter;
+              const char* curr_db = db_row[0].data;
+
+              if (strcmp(curr_db, db_name)) {
+                CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1),
+                         error);
+              } else {
+                RAISE_ADBC(PostgresConnectionGetSchemasImpl(
+                    conn, depth, catalog_db_schemas_col, error));
+              }
+            } else {
+              return ADBC_STATUS_NOT_IMPLEMENTED;  // TODO: different error?
+            }
           } else {
             return ADBC_STATUS_NOT_IMPLEMENTED;
           }
