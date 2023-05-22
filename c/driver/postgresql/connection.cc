@@ -307,6 +307,8 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
           } else {
             return ADBC_STATUS_NOT_IMPLEMENTED;
           }
+        } else {  // matches sqlite impl, but not correct
+          CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_col), error);
         }
         CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
       }
