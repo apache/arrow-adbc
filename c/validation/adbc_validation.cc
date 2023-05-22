@@ -515,9 +515,9 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
             ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], row);
 
         const int64_t start_offset =
-            ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row);
+            ArrowArrayViewListChildOffset(catalog_db_schemas_list, row);
         const int64_t end_offset =
-            ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row + 1);
+            ArrowArrayViewListChildOffset(catalog_db_schemas_list, row + 1);
         ASSERT_GE(end_offset, start_offset)
             << "Row " << row << " (Catalog "
             << std::string(catalog_name.data, catalog_name.size_bytes)
@@ -551,9 +551,9 @@ void ConnectionTest::TestMetadataGetObjectsDbSchemas() {
             << "Row " << row << " should have non-null catalog_db_schemas";
 
         const int64_t start_offset =
-            ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row);
+            ArrowArrayViewListChildOffset(catalog_db_schemas_list, row);
         const int64_t end_offset =
-            ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row + 1);
+            ArrowArrayViewListChildOffset(catalog_db_schemas_list, row + 1);
         ASSERT_EQ(start_offset, end_offset);
       }
       ASSERT_NO_FATAL_FAILURE(reader.Next());
@@ -606,17 +606,17 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
             << "Row " << row << " should have non-null catalog_db_schemas";
 
         for (int64_t db_schemas_index =
-                 ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row);
+                 ArrowArrayViewListChildOffset(catalog_db_schemas_list, row);
              db_schemas_index <
-             ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row + 1);
+             ArrowArrayViewListChildOffset(catalog_db_schemas_list, row + 1);
              db_schemas_index++) {
           ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
               << "Row " << row << " should have non-null db_schema_tables";
 
           for (int64_t tables_index =
-                   ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index);
+                   ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index);
                tables_index <
-               ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index + 1);
+               ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index + 1);
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
@@ -680,17 +680,17 @@ void ConnectionTest::TestMetadataGetObjectsTablesTypes() {
             << "Row " << row << " should have non-null catalog_db_schemas";
 
         for (int64_t db_schemas_index =
-                 ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row);
+                 ArrowArrayViewListChildOffset(catalog_db_schemas_list, row);
              db_schemas_index <
-             ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row + 1);
+             ArrowArrayViewListChildOffset(catalog_db_schemas_list, row + 1);
              db_schemas_index++) {
           ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
               << "Row " << row << " should have non-null db_schema_tables";
 
           for (int64_t tables_index =
-                   ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index);
+                   ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index);
                tables_index <
-               ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index + 1);
+               ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index + 1);
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
@@ -777,9 +777,9 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
             << "Row " << row << " should have non-null catalog_db_schemas";
 
         for (int64_t db_schemas_index =
-                 ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row);
+                 ArrowArrayViewListChildOffset(catalog_db_schemas_list, row);
              db_schemas_index <
-             ArrowArrayViewGetOffsetUnsafe(catalog_db_schemas_list, row + 1);
+             ArrowArrayViewListChildOffset(catalog_db_schemas_list, row + 1);
              db_schemas_index++) {
           ASSERT_FALSE(ArrowArrayViewIsNull(db_schema_tables_list, db_schemas_index))
               << "Row " << row << " should have non-null db_schema_tables";
@@ -788,9 +788,9 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
               catalog_db_schemas->children[0], db_schemas_index);
 
           for (int64_t tables_index =
-                   ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index);
+                   ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index);
                tables_index <
-               ArrowArrayViewGetOffsetUnsafe(db_schema_tables_list, db_schemas_index + 1);
+               ArrowArrayViewListChildOffset(db_schema_tables_list, db_schemas_index + 1);
                tables_index++) {
             ArrowStringView table_name = ArrowArrayViewGetStringUnsafe(
                 db_schema_tables->children[0], tables_index);
@@ -807,9 +807,9 @@ void ConnectionTest::TestMetadataGetObjectsColumns() {
               found_expected_table = true;
 
               for (int64_t columns_index =
-                       ArrowArrayViewGetOffsetUnsafe(table_columns_list, tables_index);
+                       ArrowArrayViewListChildOffset(table_columns_list, tables_index);
                    columns_index <
-                   ArrowArrayViewGetOffsetUnsafe(table_columns_list, tables_index + 1);
+                   ArrowArrayViewListChildOffset(table_columns_list, tables_index + 1);
                    columns_index++) {
                 ArrowStringView name = ArrowArrayViewGetStringUnsafe(
                     table_columns->children[0], columns_index);
