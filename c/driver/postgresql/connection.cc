@@ -228,12 +228,9 @@ AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
       "nspname !~ '^pg_' AND nspname <> 'information_schema'";
   auto result_helper = PqResultHelper(conn, stmt);
 
-  pg_result* result = result_helper.Execute();
-  ExecStatusType pq_status = PQresultStatus(result);
-  if (pq_status == PGRES_TUPLES_OK) {
-    int num_rows = PQntuples(result);
-    for (int row = 0; row < num_rows; row++) {
-      const char* schema_name = PQgetvalue(result, row, 0);
+  if (result_helper.Status() == PGRES_TUPLES_OK) {
+    for (PqResultRow row : result_helper) {
+      const char* schema_name = row[0].data;
       CHECK_NA(INTERNAL,
                ArrowArrayAppendString(schema_name_col, ArrowCharView(schema_name)),
                error);
@@ -245,6 +242,8 @@ AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_items), error);
     }
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schemas_col), error);
+  } else {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
   return ADBC_STATUS_OK;
