@@ -1,0 +1,13 @@
+.vs
+.vscode
+bin
+obj
+x64
+*.dll
+*.lib
+*.obj
+*.exe
+*.csproj.user
+*.pass
+
+src/arrow
