@@ -249,23 +249,6 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
       } else {
         ASSERT_TRUE(ArrowArrayViewIsNull(catalog_db_schemas_list, catalog_idx));
       }
-      /*
-      for (auto db_schemas_index = ArrowArrayViewListChildOffset(catalog_db_schemas_list,
-      catalog_idx); db_schemas_index <
-      ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx + 1);
-           db_schemas_index++) {
-        if (db_str == "postgres") {  // assumes test is connected to postgres db
-
-            ArrowStringView table_name =
-      ArrowArrayViewGetStringUnsafe(catalog_db_schema_names, db_schemas_index); auto
-      table_str = std::string(table_name.data, table_name.size_bytes); if (table_str ==
-      "public") { seen_public = true;
-            }
-        } else {
-          ASSERT_TRUE(ArrowArrayViewIsNull(catalog_db_schemas_list, db_schemas_index));
-        }
-      }
-      */
     }
     ASSERT_NO_FATAL_FAILURE(reader.Next());
   } while (reader.array->release);
