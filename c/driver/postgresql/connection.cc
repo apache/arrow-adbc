@@ -217,11 +217,11 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
-                                                struct ArrowArray* db_schemas_col,
+                                                struct ArrowArray* db_schemas_list,
                                                 struct AdbcError* error) {
-  struct ArrowArray* db_schema_items = db_schemas_col->children[0];
-  struct ArrowArray* schema_name_col = db_schema_items->children[0];
-  struct ArrowArray* schema_tables_col = db_schema_items->children[1];
+  struct ArrowArray* db_schema_items = db_schemas_list->children[0];
+  struct ArrowArray* db_schema_names = db_schema_items->children[0];
+  struct ArrowArray* db_schema_tables_list = db_schema_items->children[1];
 
   const char* stmt =
       "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
@@ -232,16 +232,16 @@ AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
     for (PqResultRow row : result_helper) {
       const char* schema_name = row[0].data;
       CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(schema_name_col, ArrowCharView(schema_name)),
+               ArrowArrayAppendString(db_schema_names, ArrowCharView(schema_name)),
                error);
       if (depth >= ADBC_OBJECT_DEPTH_TABLES) {
         return ADBC_STATUS_NOT_IMPLEMENTED;
       } else {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(schema_tables_col, 1), error);
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_list, 1), error);
       }
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_items), error);
     }
-    CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schemas_col), error);
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schemas_list), error);
   } else {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
@@ -282,7 +282,8 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
                  ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
         if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
           CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
-        } else {
+        } else if (!db_schema ||
+                   db_schema == NULL) {  // matches sqlite impl, but not correct
           if (depth >= ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
             // postgres only allows you to list schemas for the currently connected db
             PqResultHelper curr_db_helper =
