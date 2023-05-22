@@ -221,11 +221,10 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_GT(reader.array->length, 0);
 
-  // bool seen_public = false;
+  bool seen_public = false;
 
   struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
-  // struct ArrowArrayView* catalog_db_schema_names =
-  // catalog_db_schemas_list->children[0];
+  struct ArrowArrayView* catalog_db_schema_names = catalog_db_schemas_list->children[0];
 
   do {
     for (int64_t catalog_idx = 0; catalog_idx < reader.array->length; catalog_idx++) {
@@ -235,6 +234,18 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
 
       if (db_str == "postgres") {
         ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, catalog_idx));
+        for (auto db_schemas_index =
+                 ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx);
+             db_schemas_index <
+             ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx + 1);
+             db_schemas_index++) {
+          ArrowStringView schema_name = ArrowArrayViewGetStringUnsafe(
+              catalog_db_schema_names->children[0], db_schemas_index);
+          auto schema_str = std::string(schema_name.data, schema_name.size_bytes);
+          if (schema_str == "public") {
+            seen_public = true;
+          }
+        }
       } else {
         ASSERT_TRUE(ArrowArrayViewIsNull(catalog_db_schemas_list, catalog_idx));
       }
@@ -259,7 +270,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
   } while (reader.array->release);
 
-  // ASSERT_TRUE(seen_public) << "public schema does not exist";
+  ASSERT_TRUE(seen_public) << "public schema does not exist";
 }
 
 TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
