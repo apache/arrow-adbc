@@ -217,34 +217,50 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
+                                                const char* db_name,
                                                 struct ArrowArray* db_schemas_list,
                                                 struct AdbcError* error) {
   struct ArrowArray* db_schema_items = db_schemas_list->children[0];
   struct ArrowArray* db_schema_names = db_schema_items->children[0];
   struct ArrowArray* db_schema_tables_list = db_schema_items->children[1];
 
-  const char* stmt =
-      "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
-      "nspname !~ '^pg_' AND nspname <> 'information_schema'";
-  auto result_helper = PqResultHelper(conn, stmt);
-
-  if (result_helper.Status() == PGRES_TUPLES_OK) {
-    for (PqResultRow row : result_helper) {
-      const char* schema_name = row[0].data;
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(db_schema_names, ArrowCharView(schema_name)),
-               error);
-      if (depth >= ADBC_OBJECT_DEPTH_TABLES) {
-        return ADBC_STATUS_NOT_IMPLEMENTED;
-      } else {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_list, 1), error);
-      }
-      CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_items), error);
-    }
-    CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schemas_list), error);
+  // inefficient to place here but better localized until we do a class-based refactor
+  const char* curr_db;
+  PqResultHelper curr_db_helper = PqResultHelper{conn, "SELECT current_database()"};
+  if (curr_db_helper.Status() == PGRES_TUPLES_OK) {
+    assert(curr_db_helper.NumRows() == 1);
+    auto curr_iter = curr_db_helper.begin();
+    PqResultRow db_row = *curr_iter;
+    curr_db = db_row[0].data;
   } else {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
+
+  if (strcmp(db_name, curr_db) == 0) {
+    const char* stmt =
+        "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
+        "nspname !~ '^pg_' AND nspname <> 'information_schema'";
+    auto result_helper = PqResultHelper(conn, stmt);
+
+    if (result_helper.Status() == PGRES_TUPLES_OK) {
+      for (PqResultRow row : result_helper) {
+        const char* schema_name = row[0].data;
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(db_schema_names, ArrowCharView(schema_name)),
+                 error);
+        if (depth >= ADBC_OBJECT_DEPTH_TABLES) {
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+        } else {
+          CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_list, 1), error);
+        }
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_items), error);
+      }
+    } else {
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+  }
+
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schemas_list), error);
 
   return ADBC_STATUS_OK;
 }
@@ -263,58 +279,40 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
   struct ArrowArray* catalog_name_col = array->children[0];
   struct ArrowArray* catalog_db_schemas_col = array->children[1];
 
-  // TODO: support proper filters
-  if (!catalog) {
-    struct StringBuilder query = {0};
-    if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
+  struct ArrowArray* catalog_db_schemas_items = catalog_db_schemas_col->children[0];
+  struct ArrowArray* db_schema_name_col = catalog_db_schemas_items->children[0];
+  struct ArrowArray* db_schema_tables_col = catalog_db_schemas_items->children[1];
 
-    if (StringBuilderAppend(&query, "%s", "SELECT datname FROM pg_catalog.pg_database")) {
-      return ADBC_STATUS_INTERNAL;
-    }
+  struct StringBuilder query = {0};
+  if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
 
-    PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
-    StringBuilderReset(&query);
+  if (StringBuilderAppend(&query, "%s", "SELECT datname FROM pg_catalog.pg_database")) {
+    return ADBC_STATUS_INTERNAL;
+  }
 
-    if (result_helper.Status() == PGRES_TUPLES_OK) {
-      for (PqResultRow row : result_helper) {
-        const char* db_name = row[0].data;
+  PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
+  StringBuilderReset(&query);
+
+  if (result_helper.Status() == PGRES_TUPLES_OK) {
+    for (PqResultRow row : result_helper) {
+      const char* db_name = row[0].data;
+
+      if (catalog == NULL || !strcmp(db_name, catalog)) {
         CHECK_NA(INTERNAL,
                  ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
+
         if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
           CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
-        } else if (!db_schema ||
-                   db_schema == NULL) {  // matches sqlite impl, but not correct
-          if (depth >= ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
-            // postgres only allows you to list schemas for the currently connected db
-            PqResultHelper curr_db_helper =
-                PqResultHelper{conn, "SELECT current_database()"};
-            if (curr_db_helper.Status() == PGRES_TUPLES_OK) {
-              assert(curr_db_helper.NumRows() == 1);
-              auto curr_iter = curr_db_helper.begin();
-              PqResultRow db_row = *curr_iter;
-              const char* curr_db = db_row[0].data;
-
-              if (strcmp(curr_db, db_name)) {
-                CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1),
-                         error);
-              } else {
-                RAISE_ADBC(PostgresConnectionGetSchemasImpl(
-                    conn, depth, catalog_db_schemas_col, error));
-              }
-            } else {
-              return ADBC_STATUS_NOT_IMPLEMENTED;  // TODO: different error?
-            }
-          } else {
-            return ADBC_STATUS_NOT_IMPLEMENTED;
-          }
-        } else {  // matches sqlite impl, but not correct
-          CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_col), error);
+        } else {
+          // postgres only allows you to list schemas for the currently connected db
+          RAISE_ADBC(PostgresConnectionGetSchemasImpl(conn, depth, db_name,
+                                                      catalog_db_schemas_col, error));
         }
-        CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
       }
-    } else {
-      return ADBC_STATUS_NOT_IMPLEMENTED;
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
     }
+  } else {
+    return ADBC_STATUS_INTERNAL;
   }
 
   CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array, &na_error), &na_error,
