@@ -953,7 +953,7 @@ AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const 
 /// support setting options after initialization as well.
 ///
 /// \param[in] database The database.
-/// \param[in] key The option to get.
+/// \param[in] key The option to set.
 /// \param[in] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
