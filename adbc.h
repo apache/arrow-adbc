@@ -967,7 +967,7 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
 /// \param[in] database The database.
-/// \param[in] key The option to get.
+/// \param[in] key The option to set.
 /// \param[in] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
@@ -981,7 +981,7 @@ AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const cha
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
 /// \param[in] database The database.
-/// \param[in] key The option to get.
+/// \param[in] key The option to set.
 /// \param[in] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
@@ -1027,7 +1027,7 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
 /// support setting options after initialization as well.
 ///
 /// \param[in] connection The database connection.
-/// \param[in] key The option to get.
+/// \param[in] key The option to set.
 /// \param[in] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
@@ -1044,7 +1044,7 @@ AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const 
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
-/// \param[in] key The option to get.
+/// \param[in] key The option to set.
 /// \param[in] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
@@ -1062,7 +1062,7 @@ AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
-/// \param[in] key The option to get.
+/// \param[in] key The option to set.
 /// \param[in] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
@@ -1693,7 +1693,7 @@ AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
 
 /// \brief Set a string option on a statement.
 /// \param[in] statement The statement.
-/// \param[in] key The option to get.
+/// \param[in] key The option to set.
 /// \param[in] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
@@ -1707,7 +1707,7 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
 /// \param[in] statement The statement.
-/// \param[in] key The option to get.
+/// \param[in] key The option to set.
 /// \param[in] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
@@ -1721,7 +1721,7 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const 
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
 /// \param[in] statement The statement.
-/// \param[in] key The option to get.
+/// \param[in] key The option to set.
 /// \param[in] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
