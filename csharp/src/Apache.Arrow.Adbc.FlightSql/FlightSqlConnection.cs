@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using Apache.Arrow.Adbc.Core;
 using Apache.Arrow.Flight.Client;
 using Grpc.Core;
@@ -30,18 +29,25 @@ namespace Apache.Arrow.Adbc.FlightSql
     /// </summary>
     public class FlightSqlConnection : AdbcConnection
     {
-        private FlightClient flightClientInternal = null;
-        private readonly Dictionary<string, string> metadata;
+        private FlightClient _flightClientInternal = null;
+        private readonly Dictionary<string, string> _metadata;
 
         private Metadata headers = null;
 
         public FlightSqlConnection(Dictionary<string, string> metadata)
         {
-            this.metadata = metadata;
+            _metadata = metadata;
         }
 
-        internal FlightClient FlightClient => this.flightClientInternal;
-        internal Metadata Metadata => GetMetaData();
+        internal FlightClient FlightClient 
+        { 
+            get => _flightClientInternal; 
+        }
+        
+        internal Metadata Metadata
+        {
+            get => GetMetaData();
+        }
 
         private Metadata GetMetaData()
         {
@@ -49,9 +55,9 @@ namespace Apache.Arrow.Adbc.FlightSql
             {
                 headers = new Metadata();
 
-                foreach (string key in this.metadata.Keys)
+                foreach (string key in _metadata.Keys)
                 {
-                    headers.Add(key, this.metadata[key]);
+                    headers.Add(key, _metadata[key]);
                 }
             }
 
@@ -73,9 +79,9 @@ namespace Apache.Arrow.Adbc.FlightSql
                         
                     });
 
-                this.flightClientInternal = new FlightClient(channel);
+                _flightClientInternal = new FlightClient(channel);
             #else
-                this.flightClientInternal = new FlightClient(GrpcChannel.ForAddress(uri));
+                _flightClientInternal = new FlightClient(GrpcChannel.ForAddress(uri));
             #endif
         }
 

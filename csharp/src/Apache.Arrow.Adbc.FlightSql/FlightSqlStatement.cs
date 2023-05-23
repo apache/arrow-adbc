@@ -28,18 +28,18 @@ namespace Apache.Arrow.Adbc.FlightSql
     /// </summary>
     public class FlightSqlStatement : AdbcStatement
     {
-        private FlightSqlConnection flightSqlConnection;
+        private FlightSqlConnection _flightSqlConnection;
         
         public FlightSqlStatement(FlightSqlConnection flightSqlConnection)
         {
-            this.flightSqlConnection = flightSqlConnection;
+            _flightSqlConnection = flightSqlConnection;
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            FlightInfo info = await GetInfo(this.SqlQuery, this.flightSqlConnection.Metadata);
+            FlightInfo info = await GetInfo(SqlQuery, _flightSqlConnection.Metadata);
 
-            return new QueryResult(info.TotalRecords, new FlightSqlResult(this.flightSqlConnection, info));
+            return new QueryResult(info.TotalRecords, new FlightSqlResult(_flightSqlConnection, info));
         }
 
         public override QueryResult ExecuteQuery()
@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.FlightSql
         {
             FlightDescriptor commandDescripter = FlightDescriptor.CreateCommandDescriptor(query);
 
-            return await this.flightSqlConnection.FlightClient.GetInfo(commandDescripter, headers).ResponseAsync;
+            return await _flightSqlConnection.FlightClient.GetInfo(commandDescripter, headers).ResponseAsync;
         }
 
         /// <summary>

@@ -21,11 +21,11 @@ namespace Apache.Arrow.Adbc.Core
 {
     public struct PartitionDescriptor : IEquatable<PartitionDescriptor>
     {
-        readonly byte[] descriptor;
+        readonly byte[] _descriptor;
 
         public PartitionDescriptor(byte[] descriptor)
         {
-            this.descriptor = descriptor;
+            _descriptor = descriptor;
         }
 
         public override bool Equals(object obj)
@@ -36,13 +36,13 @@ namespace Apache.Arrow.Adbc.Core
 
         public bool Equals(PartitionDescriptor other)
         {
-            if (descriptor.Length != other.descriptor.Length)
+            if (_descriptor.Length != other._descriptor.Length)
             {
                 return false;
             }
-            for (int i = 0; i < descriptor.Length; i++)
+            for (int i = 0; i < _descriptor.Length; i++)
             {
-                if (descriptor[i] != other.descriptor[i])
+                if (_descriptor[i] != other._descriptor[i])
                 {
                     return false;
                 }

@@ -20,20 +20,20 @@ using System.Runtime.InteropServices;
 
 namespace Apache.Arrow.Adbc.Interop
 {
-    struct NativePointer<T>
+    internal readonly struct NativeDelegate<T>
     {
-        readonly T managedDelegate; // For lifetime management
-        readonly IntPtr nativePointer;
+        private readonly T _managedDelegate; // For lifetime management
+        private readonly IntPtr _nativePointer;
 
-        public NativePointer(T managedDelegate)
+        public NativeDelegate(T managedDelegate)
         {
-            this.managedDelegate = managedDelegate;
-            this.nativePointer = Marshal.GetFunctionPointerForDelegate<T>(managedDelegate);
+            _managedDelegate = managedDelegate;
+            _nativePointer = Marshal.GetFunctionPointerForDelegate<T>(managedDelegate);
         }
 
-        public static implicit operator IntPtr(NativePointer<T> thunk)
+        public static implicit operator IntPtr(NativeDelegate<T> thunk)
         {
-            return thunk.nativePointer;
+            return thunk._nativePointer;
         }
     }
 }

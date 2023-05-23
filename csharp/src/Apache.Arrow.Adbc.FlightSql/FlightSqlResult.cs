@@ -28,36 +28,36 @@ namespace Apache.Arrow.Adbc.FlightSql
     /// </summary>
     internal class FlightSqlResult : IArrowArrayStream
     {
-        private FlightClientRecordBatchStreamReader recordBatchStreamReader;
+        private FlightClientRecordBatchStreamReader _recordBatchStreamReader;
 
-        private readonly FlightInfo flightInfo;
-        private readonly FlightSqlConnection flightSqlConnection;
-        private readonly int maxEndPoints = 0;
-        private int currentEndPointIndex = -1;
+        private readonly FlightInfo _flightInfo;
+        private readonly FlightSqlConnection _flightSqlConnection;
+        private readonly int _maxEndPoints = 0;
+        private int _currentEndPointIndex = -1;
 
         public FlightSqlResult(FlightSqlConnection flightSqlConnection, FlightInfo flightInfo)
         {
-            this.flightSqlConnection = flightSqlConnection;
-            this.flightInfo = flightInfo;
-            this.maxEndPoints = flightInfo.Endpoints.Count;
+            _flightSqlConnection = flightSqlConnection;
+            _flightInfo = flightInfo;
+            _maxEndPoints = flightInfo.Endpoints.Count;
         }
 
-        public Schema Schema { get { return this.flightInfo.Schema; } }
+        public Schema Schema { get { return _flightInfo.Schema; } }
 
         public async ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            if(this.recordBatchStreamReader is null)
+            if(_recordBatchStreamReader is null)
             {
                 RefreshRecordBatchStreamReader();
             }
 
-            if (await this.recordBatchStreamReader.MoveNext(cancellationToken))
+            if (await _recordBatchStreamReader.MoveNext(cancellationToken))
             {
-                return this.recordBatchStreamReader.Current;
+                return _recordBatchStreamReader.Current;
             }
-            else if (this.currentEndPointIndex < this.maxEndPoints - 1)
+            else if (_currentEndPointIndex < _maxEndPoints - 1)
             {
-                this.recordBatchStreamReader = default;
+                _recordBatchStreamReader = default;
 
                 return await ReadNextRecordBatchAsync(cancellationToken);
             }
@@ -66,14 +66,14 @@ namespace Apache.Arrow.Adbc.FlightSql
 
         public void Dispose()
         {
-            this.recordBatchStreamReader?.Dispose();
-            this.flightSqlConnection.Dispose();
+            _recordBatchStreamReader?.Dispose();
+            _flightSqlConnection.Dispose();
         }
 
         private void RefreshRecordBatchStreamReader()
         {
-            this.currentEndPointIndex += 1;
-            this.recordBatchStreamReader = this.flightSqlConnection.FlightClient.GetStream(this.flightInfo.Endpoints[currentEndPointIndex].Ticket, this.flightSqlConnection.Metadata).ResponseStream;
+            _currentEndPointIndex += 1;
+            _recordBatchStreamReader = _flightSqlConnection.FlightClient.GetStream(_flightInfo.Endpoints[_currentEndPointIndex].Ticket, _flightSqlConnection.Metadata).ResponseStream;
         }
     }
 }

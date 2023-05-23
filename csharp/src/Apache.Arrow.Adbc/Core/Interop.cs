@@ -32,20 +32,20 @@ namespace Apache.Arrow.Adbc.Core
 {
     public static class AdbcInterop
     {
-        static NativePointer<DriverRelease> releaseDriver = new NativePointer<DriverRelease>(ReleaseDriver);
+        static NativeDelegate<DriverRelease> releaseDriver = new NativeDelegate<DriverRelease>(ReleaseDriver);
 
-        static NativePointer<DatabaseFn> databaseInit = new NativePointer<DatabaseFn>(InitDatabase);
-        static NativePointer<DatabaseFn> databaseRelease = new NativePointer<DatabaseFn>(ReleaseDatabase);
-        static NativePointer<DatabaseSetOption> databaseSetOption = new NativePointer<DatabaseSetOption>(SetDatabaseOption);
-        static NativePointer<ConnectionInit> connectionInit = new NativePointer<ConnectionInit>(InitConnection);
-        static NativePointer<ConnectionFn> connectionRelease = new NativePointer<ConnectionFn>(ReleaseConnection);
-        static NativePointer<ConnectionSetOption> connectionSetOption = new NativePointer<ConnectionSetOption>(SetConnectionOption);
-        static unsafe NativePointer<StatementExecuteQuery> statementExecuteQuery = new NativePointer<StatementExecuteQuery>(ExecuteStatementQuery);
-        static NativePointer<StatementNew> statementNew = new NativePointer<StatementNew>(NewStatement);
-        static NativePointer<StatementFn> statementRelease = new NativePointer<StatementFn>(ReleaseStatement);
-        static NativePointer<StatementSetSqlQuery> statementSetSqlQuery = new NativePointer<StatementSetSqlQuery>(SetStatementSqlQuery);
+        static NativeDelegate<DatabaseFn> databaseInit = new NativeDelegate<DatabaseFn>(InitDatabase);
+        static NativeDelegate<DatabaseFn> databaseRelease = new NativeDelegate<DatabaseFn>(ReleaseDatabase);
+        static NativeDelegate<DatabaseSetOption> databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
+        static NativeDelegate<ConnectionInit> connectionInit = new NativeDelegate<ConnectionInit>(InitConnection);
+        static NativeDelegate<ConnectionFn> connectionRelease = new NativeDelegate<ConnectionFn>(ReleaseConnection);
+        static NativeDelegate<ConnectionSetOption> connectionSetOption = new NativeDelegate<ConnectionSetOption>(SetConnectionOption);
+        static unsafe NativeDelegate<StatementExecuteQuery> statementExecuteQuery = new NativeDelegate<StatementExecuteQuery>(ExecuteStatementQuery);
+        static NativeDelegate<StatementNew> statementNew = new NativeDelegate<StatementNew>(NewStatement);
+        static NativeDelegate<StatementFn> statementRelease = new NativeDelegate<StatementFn>(ReleaseStatement);
+        static NativeDelegate<StatementSetSqlQuery> statementSetSqlQuery = new NativeDelegate<StatementSetSqlQuery>(SetStatementSqlQuery);
 
-        unsafe static IntPtr errorRelease = new NativePointer<ErrorRelease>(ReleaseError);
+        unsafe static IntPtr errorRelease = new NativeDelegate<ErrorRelease>(ReleaseError);
 
         public unsafe static AdbcStatusCode AdbcDriverInit(int version, NativeAdbcDriver* nativeDriver, NativeAdbcError* error, AdbcDriver driver)
         {
@@ -100,12 +100,12 @@ namespace Apache.Arrow.Adbc.Core
 
         sealed class PinnedArray : IDisposable
         {
-            IArrowArray array;
+            IArrowArray _array;
             MemoryHandle[] pinnedHandles;
 
             public PinnedArray(IArrowArray array)
             {
-                this.array = array;
+                _array = array;
                 pinnedHandles = new MemoryHandle[GetHandleCount(array.Data)];
                 int index = 0;
                 PinBuffers(array.Data, pinnedHandles, ref index);
@@ -114,14 +114,14 @@ namespace Apache.Arrow.Adbc.Core
 
             public void Dispose()
             {
-                if (array != null)
+                if (_array != null)
                 {
-                    array.Dispose();
+                    _array.Dispose();
                     foreach (MemoryHandle handle in pinnedHandles)
                     {
                         handle.Dispose();
                     }
-                    array = null;
+                    _array = null;
                 }
             }
 
@@ -431,15 +431,15 @@ namespace Apache.Arrow.Adbc.Core
 
     sealed class DriverStub : IDisposable
     {
-        readonly AdbcDriver driver;
-        public readonly NativePointer<DatabaseFn> newDatabase;
-        public readonly NativePointer<ConnectionFn> newConnection;
+        readonly AdbcDriver _driver;
+        public readonly NativeDelegate<DatabaseFn> newDatabase;
+        public readonly NativeDelegate<ConnectionFn> newConnection;
 
         public DriverStub(AdbcDriver driver)
         {
-            this.driver = driver;
-            newDatabase = new NativePointer<DatabaseFn>(NewDatabase);
-            newConnection = new NativePointer<ConnectionFn>(NewConnection);
+            _driver = driver;
+            newDatabase = new NativeDelegate<DatabaseFn>(NewDatabase);
+            newConnection = new NativeDelegate<ConnectionFn>(NewConnection);
         }
 
         public AdbcStatusCode NewDatabase(ref NativeAdbcDatabase nativeDatabase, ref NativeAdbcError error)
@@ -449,7 +449,7 @@ namespace Apache.Arrow.Adbc.Core
                 return AdbcStatusCode.UnknownError;
             }
 
-            DatabaseStub stub = new DatabaseStub(driver);
+            DatabaseStub stub = new DatabaseStub(_driver);
             GCHandle handle = GCHandle.Alloc(stub);
             nativeDatabase.private_data = GCHandle.ToIntPtr(handle);
 
@@ -463,7 +463,7 @@ namespace Apache.Arrow.Adbc.Core
                 return AdbcStatusCode.UnknownError;
             }
 
-            ConnectionStub stub = new ConnectionStub(driver);
+            ConnectionStub stub = new ConnectionStub(_driver);
             GCHandle handle = GCHandle.Alloc(stub);
             nativeConnection.private_data = GCHandle.ToIntPtr(handle);
 
@@ -472,19 +472,19 @@ namespace Apache.Arrow.Adbc.Core
 
         public void Dispose()
         {
-            driver.Dispose();
+            _driver.Dispose();
         }
     }
 
     sealed class DatabaseStub : IDisposable
     {
-        readonly AdbcDriver driver;
+        readonly AdbcDriver _driver;
         readonly Dictionary<string, string> options;
         AdbcDatabase database;
 
         public DatabaseStub(AdbcDriver driver)
         {
-            this.driver = driver;
+            _driver = driver;
             options = new Dictionary<string, string>();
         }
 
@@ -495,14 +495,12 @@ namespace Apache.Arrow.Adbc.Core
                 return AdbcStatusCode.UnknownError;
             }
 
-            database = driver.Open(options);
+            database = _driver.Open(options);
             return AdbcStatusCode.Success;
         }
 
         public AdbcStatusCode SetOption(IntPtr name, IntPtr value, ref NativeAdbcError error)
         {
-            //this.options[Marshal.PtrToStringUTF8(name)] = Marshal.PtrToStringUTF8(value);
-
 #if NETSTANDARD
             options[MarshalExtensions.PtrToStringUTF8(name)] = MarshalExtensions.PtrToStringUTF8(value);
 #else
@@ -533,13 +531,13 @@ namespace Apache.Arrow.Adbc.Core
 
     sealed class ConnectionStub : IDisposable
     {
-        readonly AdbcDriver driver;
+        readonly AdbcDriver _driver;
         readonly Dictionary<string, string> options;
         AdbcConnection connection;
 
         public ConnectionStub(AdbcDriver driver)
         {
-            this.driver = driver;
+            _driver = driver;
             options = new Dictionary<string, string>();
         }
 
@@ -551,8 +549,6 @@ namespace Apache.Arrow.Adbc.Core
 
             options[Marshal.PtrToStringUTF8(name)] = Marshal.PtrToStringUTF8(value);
 #endif
-
-            //this.options[Marshal.PtrToStringUTF8(name)] = Marshal.PtrToStringUTF8(value);
             return AdbcStatusCode.Success;
         }
 

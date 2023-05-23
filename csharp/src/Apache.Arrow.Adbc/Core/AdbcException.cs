@@ -23,7 +23,7 @@ using Apache.Arrow.Adbc.Core;
 /// </summary>
 public class AdbcException : Exception
 {
-    private AdbcStatusCode statusCode = AdbcStatusCode.UnknownError;
+    private AdbcStatusCode _statusCode = AdbcStatusCode.UnknownError;
 
     public AdbcException()
     {
@@ -37,7 +37,7 @@ public class AdbcException : Exception
     public AdbcException(string message, AdbcStatusCode statusCode)
         : base(message)
     {
-        this.statusCode = statusCode;
+        _statusCode = statusCode;
     }
 
     public AdbcException(string message, AdbcStatusCode statusCode, Exception innerException)
@@ -55,26 +55,32 @@ public class AdbcException : Exception
         return new AdbcException(message, AdbcStatusCode.NotImplemented);
     }
 
-    //
-    // Summary:
-    //     For database providers which support it, contains a standard SQL 5-character
-    //     return code indicating the success or failure of the database operation. The
-    //     first 2 characters represent the class of the return code (e.g. error, success),
-    //     while the last 3 characters represent the subclass, allowing detection of error
-    //     scenarios in a database-portable way.
-    //     For database providers which don't support it, or for inapplicable error scenarios,
-    //     contains null.
-    //
-    // Returns:
-    //     A standard SQL 5-character return code, or null.
+    /// <summary>
+    /// For database providers which support it, contains a standard SQL 5-character
+    /// return code indicating the success or failure of the database operation. The
+    /// first 2 characters represent the class of the return code (e.g. error, success),
+    /// while the last 3 characters represent the subclass, allowing detection of error
+    /// scenarios in a database-portable way.
+    /// For database providers which don't support it, or for inapplicable error scenarios,
+    /// contains null.
+    /// </summary>
     public virtual string SqlState
     {
         get { return null; }
         protected set { throw new NotImplementedException(); }
     }
 
-    public AdbcStatusCode Status => this.statusCode;
-
+    /// <summary>
+    /// Gets or sets the <see cref="AdbcStatusCode"/> for the error.
+    /// </summary>
+    public AdbcStatusCode Status
+    {
+        get => _statusCode;
+    }
+    
+    /// <summary>
+    /// Gets a native error number.
+    /// </summary>
     public virtual int NativeError
     {
         get { return 0; }

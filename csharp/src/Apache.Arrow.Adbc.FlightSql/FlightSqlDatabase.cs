@@ -26,11 +26,11 @@ namespace Apache.Arrow.Adbc.FlightSql
     /// </summary>
     public class FlightSqlDatabase : AdbcDatabase
     {
-        readonly Dictionary<string, string> metadata;
+        private readonly Dictionary<string, string> _metadata;
 
         public FlightSqlDatabase(Dictionary<string, string> metadata)
         {
-            this.metadata = metadata;
+            _metadata = metadata;
         }
 
         public override AdbcConnection Connect(Dictionary<string, string> options)
@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.FlightSql
             if (!options.ContainsKey(FlightSqlParameters.ServerAddress))
                 throw new ArgumentException($"Options must include the {FlightSqlParameters.ServerAddress} parameter");
 
-            FlightSqlConnection connection = new FlightSqlConnection(this.metadata);
+            FlightSqlConnection connection = new FlightSqlConnection(_metadata);
             connection.Open(options[FlightSqlParameters.ServerAddress]);
             return connection;
         }

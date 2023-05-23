@@ -22,23 +22,23 @@ namespace Apache.Arrow.Adbc.Interop
 {
     unsafe class NativeMemoryManager : MemoryManager<byte>
     {
-        readonly byte * pointer;
-        readonly int length;
+        private readonly byte * _pointer;
+        private readonly int _length;
 
         public NativeMemoryManager(byte * pointer, int length)
         {
-            this.pointer = pointer;
-            this.length = length;
+            _pointer = pointer;
+            _length = length;
         }
 
         unsafe public override Span<byte> GetSpan()
         {
-            return new Span<byte>(this.pointer, this.length);
+            return new Span<byte>(_pointer, _length);
         }
 
         public override MemoryHandle Pin(int elementIndex = 0)
         {
-            return new MemoryHandle(this.pointer + elementIndex);
+            return new MemoryHandle(_pointer + elementIndex);
         }
 
         public override void Unpin()

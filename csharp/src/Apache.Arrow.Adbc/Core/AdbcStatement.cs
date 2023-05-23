@@ -39,6 +39,9 @@ namespace Apache.Arrow.Adbc.Core
         /// </summary>
         public virtual string SqlQuery { get; set; }
 
+        /// <summary>
+        /// Gets or sets the Substrait plan.
+        /// </summary>
         public virtual byte[] SubstraitPlan
         {
             get { throw new NotImplementedException(); }
@@ -97,11 +100,19 @@ namespace Apache.Arrow.Adbc.Core
             throw AdbcException.NotImplemented("Statement does not support executePartitioned");
         }
 
+        /// <summary>
+        /// Get the schema for bound parameters.
+        /// </summary>
+        /// <returns><see cref="Schema"/></returns>
         public virtual Schema GetParameterSchema()
         {
             throw AdbcException.NotImplemented("Statement does not support GetParameterSchema");
         }
 
+        /// <summary>
+        ///  Turn this statement into a prepared statement to be
+        ///  executed multiple times.
+        /// </summary>
         public virtual void Prepare()
         {
             throw AdbcException.NotImplemented("Statement does not support Prepare");
@@ -114,7 +125,7 @@ namespace Apache.Arrow.Adbc.Core
         /// <summary>
         /// Gets the .NET type based on the Arrow field metadata
         /// </summary>
-        /// <param name="f"></param>
+        /// <param name="f">Field from Arrow Schema</param>
         /// <returns></returns>
         public virtual Type ConvertArrowType(Field f)
         {
@@ -186,7 +197,7 @@ namespace Apache.Arrow.Adbc.Core
         /// <summary>
         /// Converts a .NET type to an IArrowType
         /// </summary>
-        /// <param name="type"></param>
+        /// <param name="type">The current type</param>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
         public virtual IArrowType ConvertNetType(Type type)

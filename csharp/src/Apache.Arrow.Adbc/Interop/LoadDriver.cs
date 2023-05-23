@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Interop
     /// </summary>
     public static class LoadDriver
     {
-        const string driverInit = "AdbcDriverInit";
+        private const string driverInit = "AdbcDriverInit";
 
         class NativeDriver
         {
@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Interop
 
                 protected override bool ReleaseHandle()
                 {
-                    return dlclose(this.handle) == 0;
+                    return dlclose(handle) == 0;
                 }
             }
 
@@ -110,7 +110,7 @@ namespace Apache.Arrow.Adbc.Interop
 
                 protected override bool ReleaseHandle()
                 {
-                    return FreeLibrary(this.handle);
+                    return FreeLibrary(handle);
                 }
             }
 
@@ -148,11 +148,11 @@ namespace Apache.Arrow.Adbc.Interop
         /// </summary>
         sealed class AdbcDriverNative : AdbcDriver
         {
-            NativeAdbcDriver nativeDriver;
+            private NativeAdbcDriver _nativeDriver;
 
             public AdbcDriverNative(NativeAdbcDriver nativeDriver)
             {
-                this.nativeDriver = nativeDriver;
+                _nativeDriver = nativeDriver;
             }
 
             /// <summary>
@@ -166,10 +166,10 @@ namespace Apache.Arrow.Adbc.Interop
                 using (ErrorHelper error = new ErrorHelper())
                 {
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<DatabaseFn>(this.nativeDriver.DatabaseNew),
+                        Marshal.GetDelegateForFunctionPointer<DatabaseFn>(_nativeDriver.DatabaseNew),
                         ref nativeDatabase);
 
-                    DatabaseSetOption setOption = Marshal.GetDelegateForFunctionPointer<DatabaseSetOption>(this.nativeDriver.DatabaseSetOption);
+                    DatabaseSetOption setOption = Marshal.GetDelegateForFunctionPointer<DatabaseSetOption>(_nativeDriver.DatabaseSetOption);
                     if (parameters != null)
                     {
                         foreach (KeyValuePair<string, string> pair in parameters)
@@ -177,25 +177,25 @@ namespace Apache.Arrow.Adbc.Interop
                             error.Call(setOption, ref nativeDatabase, pair.Key, pair.Value);
                         }
                     }
-                    error.Call(Marshal.GetDelegateForFunctionPointer<DatabaseFn>(this.nativeDriver.DatabaseInit), ref nativeDatabase);
+                    error.Call(Marshal.GetDelegateForFunctionPointer<DatabaseFn>(_nativeDriver.DatabaseInit), ref nativeDatabase);
                 }
 
-                return new AdbcDatabaseNative(this.nativeDriver, nativeDatabase);
+                return new AdbcDatabaseNative(_nativeDriver, nativeDatabase);
             }
 
             public override void Dispose()
             {
-                if (this.nativeDriver.release != IntPtr.Zero)
+                if (_nativeDriver.release != IntPtr.Zero)
                 {
                     using (ErrorHelper error = new ErrorHelper())
                     {
                         try
                         {
-                            error.Call(Marshal.GetDelegateForFunctionPointer<DriverRelease>(this.nativeDriver.release), ref this.nativeDriver);
+                            error.Call(Marshal.GetDelegateForFunctionPointer<DriverRelease>(_nativeDriver.release), ref _nativeDriver);
                         }
                         finally
                         {
-                            this.nativeDriver.release = IntPtr.Zero;
+                            _nativeDriver.release = IntPtr.Zero;
                         }
                     }
                     base.Dispose();
@@ -208,13 +208,13 @@ namespace Apache.Arrow.Adbc.Interop
         /// </summary>
         internal sealed class AdbcDatabaseNative : AdbcDatabase
         {
-            NativeAdbcDriver nativeDriver;
-            NativeAdbcDatabase nativeDatabase;
+            private NativeAdbcDriver _nativeDriver;
+            private NativeAdbcDatabase _nativeDatabase;
 
             public AdbcDatabaseNative(NativeAdbcDriver nativeDriver, NativeAdbcDatabase nativeDatabase)
             {
-                this.nativeDriver = nativeDriver;
-                this.nativeDatabase = nativeDatabase;
+                _nativeDriver = nativeDriver;
+                _nativeDatabase = nativeDatabase;
             }
 
             public override AdbcConnection Connect(Dictionary<string, string> options)
@@ -223,9 +223,9 @@ namespace Apache.Arrow.Adbc.Interop
                 using (ErrorHelper error = new ErrorHelper())
                 {
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<ConnectionFn>(this.nativeDriver.ConnectionNew),
+                        Marshal.GetDelegateForFunctionPointer<ConnectionFn>(_nativeDriver.ConnectionNew),
                         ref nativeConnection);
-                    ConnectionSetOption setOption = Marshal.GetDelegateForFunctionPointer<ConnectionSetOption>(this.nativeDriver.ConnectionSetOption);
+                    ConnectionSetOption setOption = Marshal.GetDelegateForFunctionPointer<ConnectionSetOption>(_nativeDriver.ConnectionSetOption);
                     if (options != null)
                     {
                         foreach (KeyValuePair<string, string> pair in options)
@@ -233,10 +233,10 @@ namespace Apache.Arrow.Adbc.Interop
                             error.Call(setOption, ref nativeConnection, pair.Key, pair.Value);
                         }
                     }
-                    error.Call(Marshal.GetDelegateForFunctionPointer<ConnectionInit>(this.nativeDriver.ConnectionInit), ref nativeConnection, ref this.nativeDatabase);
+                    error.Call(Marshal.GetDelegateForFunctionPointer<ConnectionInit>(_nativeDriver.ConnectionInit), ref nativeConnection, ref _nativeDatabase);
                 }
 
-                return new AdbcConnectionNative(this.nativeDriver, nativeConnection);
+                return new AdbcConnectionNative(_nativeDriver, nativeConnection);
             }
 
             public override void Dispose()
@@ -250,13 +250,13 @@ namespace Apache.Arrow.Adbc.Interop
         /// </summary>
         internal sealed class AdbcConnectionNative : AdbcConnection
         {
-            NativeAdbcDriver nativeDriver;
-            NativeAdbcConnection nativeConnection;
+            private NativeAdbcDriver _nativeDriver;
+            private NativeAdbcConnection _nativeConnection;
 
             public AdbcConnectionNative(NativeAdbcDriver nativeDriver, NativeAdbcConnection nativeConnection)
             {
-                this.nativeDriver = nativeDriver;
-                this.nativeConnection = nativeConnection;
+                _nativeDriver = nativeDriver;
+                _nativeConnection = nativeConnection;
             }
 
             public override AdbcStatement CreateStatement()
@@ -265,12 +265,12 @@ namespace Apache.Arrow.Adbc.Interop
                 using (ErrorHelper error = new ErrorHelper())
                 {
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<StatementNew>(this.nativeDriver.StatementNew),
-                        ref this.nativeConnection,
+                        Marshal.GetDelegateForFunctionPointer<StatementNew>(_nativeDriver.StatementNew),
+                        ref _nativeConnection,
                         ref nativeStatement);
                 }
 
-                return new AdbcStatementNative(this.nativeDriver, nativeStatement);
+                return new AdbcStatementNative(_nativeDriver, nativeStatement);
             }
 
         }
@@ -280,13 +280,13 @@ namespace Apache.Arrow.Adbc.Interop
         /// </summary>
         sealed class AdbcStatementNative : AdbcStatement
         {
-            NativeAdbcDriver nativeDriver;
-            NativeAdbcStatement nativeStatement;
+            private NativeAdbcDriver _nativeDriver;
+            private NativeAdbcStatement _nativeStatement;
 
             public AdbcStatementNative(NativeAdbcDriver nativeDriver, NativeAdbcStatement nativeStatement)
             {
-                this.nativeDriver = nativeDriver;
-                this.nativeStatement = nativeStatement;
+                _nativeDriver = nativeDriver;
+                _nativeStatement = nativeStatement;
             }
 
             public unsafe override QueryResult ExecuteQuery()
@@ -295,14 +295,14 @@ namespace Apache.Arrow.Adbc.Interop
                 using (ErrorHelper error = new ErrorHelper())
                 {
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<StatementSetSqlQuery>(this.nativeDriver.StatementSetSqlQuery),
-                        ref this.nativeStatement,
-                        this.SqlQuery);
+                        Marshal.GetDelegateForFunctionPointer<StatementSetSqlQuery>(_nativeDriver.StatementSetSqlQuery),
+                        ref _nativeStatement,
+                        SqlQuery);
 
                     long rows = 0;
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<StatementExecuteQuery>(this.nativeDriver.StatementExecuteQuery),
-                        ref this.nativeStatement,
+                        Marshal.GetDelegateForFunctionPointer<StatementExecuteQuery>(_nativeDriver.StatementExecuteQuery),
+                        ref _nativeStatement,
                         nativeArrayStream,
                         ref rows);
 
@@ -326,19 +326,19 @@ namespace Apache.Arrow.Adbc.Interop
         /// </summary>
         struct Utf8Helper : IDisposable
         {
-            IntPtr s;
+            private IntPtr _s;
 
             public Utf8Helper(string s) 
             {
                 #if NETSTANDARD
-                    this.s = MarshalExtensions.StringToCoTaskMemUTF8(s);
+                    _s = MarshalExtensions.StringToCoTaskMemUTF8(s);
                 #else
-                    this.s = Marshal.StringToCoTaskMemUTF8(s); 
+                    _s = Marshal.StringToCoTaskMemUTF8(s); 
                 #endif
             }
 
-            public static implicit operator IntPtr(Utf8Helper s) { return s.s; }
-            public void Dispose() { Marshal.FreeCoTaskMem(this.s); }
+            public static implicit operator IntPtr(Utf8Helper s) { return s._s; }
+            public void Dispose() { Marshal.FreeCoTaskMem(_s); }
         }
 
         /// <summary>
@@ -346,11 +346,11 @@ namespace Apache.Arrow.Adbc.Interop
         /// </summary>
         struct ErrorHelper : IDisposable
         {
-            NativeAdbcError error;
+            private NativeAdbcError _error;
 
             public unsafe void Call<T1>(Func<T1, IntPtr, AdbcStatusCode> fn, T1 arg1)
             {
-                fixed (void* err = &this.error)
+                fixed (void* err = &_error)
                 {
                     fn(arg1, (IntPtr)err);
                 }
@@ -358,12 +358,12 @@ namespace Apache.Arrow.Adbc.Interop
 
             public void Call(DriverRelease fn, ref NativeAdbcDriver nativeDriver)
             {
-                TranslateError(fn(ref nativeDriver, ref this.error));
+                TranslateError(fn(ref nativeDriver, ref _error));
             }
 
             public void Call(DatabaseFn fn, ref NativeAdbcDatabase nativeDatabase)
             {
-                TranslateError(fn(ref nativeDatabase, ref this.error));
+                TranslateError(fn(ref nativeDatabase, ref _error));
             }
 
             public void Call(DatabaseSetOption fn, ref NativeAdbcDatabase nativeDatabase, string key, string value)
@@ -371,13 +371,13 @@ namespace Apache.Arrow.Adbc.Interop
                 using (Utf8Helper utf8Key = new Utf8Helper(key))
                 using (Utf8Helper utf8Value = new Utf8Helper(value))
                 {
-                    TranslateError(fn(ref nativeDatabase, utf8Key, utf8Value, ref this.error));
+                    TranslateError(fn(ref nativeDatabase, utf8Key, utf8Value, ref _error));
                 }
             }
 
             public void Call(ConnectionFn fn, ref NativeAdbcConnection nativeConnection)
             {
-                TranslateError(fn(ref nativeConnection, ref this.error));
+                TranslateError(fn(ref nativeConnection, ref _error));
             }
 
             public void Call(ConnectionSetOption fn, ref NativeAdbcConnection nativeConnection, string key, string value)
@@ -385,30 +385,30 @@ namespace Apache.Arrow.Adbc.Interop
                 using (Utf8Helper utf8Key = new Utf8Helper(key))
                 using (Utf8Helper utf8Value = new Utf8Helper(value))
                 {
-                    TranslateError(fn(ref nativeConnection, utf8Key, utf8Value, ref this.error));
+                    TranslateError(fn(ref nativeConnection, utf8Key, utf8Value, ref _error));
                 }
             }
 
             public void Call(ConnectionInit fn, ref NativeAdbcConnection nativeConnection, ref NativeAdbcDatabase database)
             {
-                TranslateError(fn(ref nativeConnection, ref database, ref this.error));
+                TranslateError(fn(ref nativeConnection, ref database, ref _error));
             }
 
             public void Call(StatementNew fn, ref NativeAdbcConnection nativeConnection, ref NativeAdbcStatement nativeStatement)
             {
-                TranslateError(fn(ref nativeConnection, ref nativeStatement, ref this.error));
+                TranslateError(fn(ref nativeConnection, ref nativeStatement, ref _error));
             }
 
             public void Call(StatementFn fn, ref NativeAdbcStatement nativeStatement)
             {
-                TranslateError(fn(ref nativeStatement, ref this.error));
+                TranslateError(fn(ref nativeStatement, ref _error));
             }
 
             public void Call(StatementSetSqlQuery fn, ref NativeAdbcStatement nativeStatement, string sqlQuery)
             {
                 using (Utf8Helper query = new Utf8Helper(sqlQuery))
                 {
-                    TranslateError(fn(ref nativeStatement, query, ref this.error));
+                    TranslateError(fn(ref nativeStatement, query, ref _error));
                 }
             }
 
@@ -416,18 +416,18 @@ namespace Apache.Arrow.Adbc.Interop
             {
                 fixed (long* rows = &nRows)
                 {
-                    TranslateError(fn(ref nativeStatement, arrowStream, rows, ref this.error));
+                    TranslateError(fn(ref nativeStatement, arrowStream, rows, ref _error));
                 }
             }
 
             public unsafe void Dispose()
             {
-                if (error.release != IntPtr.Zero)
+                if (_error.release != IntPtr.Zero)
                 {
-                    fixed (NativeAdbcError* err = &this.error)
+                    fixed (NativeAdbcError* err = &_error)
                     {
-                        Marshal.GetDelegateForFunctionPointer<ErrorRelease>(error.release)(err);
-                        error.release = IntPtr.Zero;
+                        Marshal.GetDelegateForFunctionPointer<ErrorRelease>(_error.release)(err);
+                        _error.release = IntPtr.Zero;
                     }
                 }
             }
@@ -437,12 +437,12 @@ namespace Apache.Arrow.Adbc.Interop
                 if (statusCode != AdbcStatusCode.Success)
                 {
                     string message = "Undefined error";
-                    if (this.error.message != IntPtr.Zero)
+                    if (_error.message != IntPtr.Zero)
                     {
                         #if NETSTANDARD
-                            message = MarshalExtensions.PtrToStringUTF8(this.error.message);
+                            message = MarshalExtensions.PtrToStringUTF8(_error.message);
                         #else
-                            message = Marshal.PtrToStringUTF8(this.error.message);
+                            message = Marshal.PtrToStringUTF8(_error.message);
                         #endif
                     }
                     Dispose();
