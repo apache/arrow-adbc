@@ -897,7 +897,7 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
 /// \param[out] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
                                      const char** value, struct AdbcError* error);
 
@@ -920,7 +920,7 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
 /// \param[out] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
                                         int64_t* value, struct AdbcError* error);
 
@@ -943,7 +943,7 @@ AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const cha
 /// \param[out] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
                                            double* value, struct AdbcError* error);
 
@@ -1285,7 +1285,7 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 /// \param[out] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
                                        const char** value, struct AdbcError* error);
 
@@ -1308,7 +1308,7 @@ AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const 
 /// \param[out] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
                                           const char* key, int64_t* value,
                                           struct AdbcError* error);
@@ -1332,7 +1332,7 @@ AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
 /// \param[out] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
                                              const char* key, double* value,
                                              struct AdbcError* error);
@@ -1620,7 +1620,7 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
 /// \param[out] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
                                       const char** value, struct AdbcError* error);
 
@@ -1643,7 +1643,7 @@ AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const cha
 /// \param[out] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const char* key,
                                          int64_t* value, struct AdbcError* error);
 
@@ -1666,7 +1666,7 @@ AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const 
 /// \param[out] value The option value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
                                             const char* key, double* value,
                                             struct AdbcError* error);
