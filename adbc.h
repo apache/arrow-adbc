@@ -809,7 +809,7 @@ struct ADBC_EXPORT AdbcDriver {
   ///
   /// @{
 
-  AdbcStatusCode (*DatabaseGetOption)(struct AdbcDatabase*, const char*, char**,
+  AdbcStatusCode (*DatabaseGetOption)(struct AdbcDatabase*, const char*, const char**,
                                       struct AdbcError*);
   AdbcStatusCode (*DatabaseGetOptionInt)(struct AdbcDatabase*, const char*, int64_t*,
                                          struct AdbcError*);
@@ -820,7 +820,7 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*DatabaseSetOptionDouble)(struct AdbcDatabase*, const char*, double,
                                             struct AdbcError*);
 
-  AdbcStatusCode (*ConnectionGetOption)(struct AdbcConnection*, const char*, char**,
+  AdbcStatusCode (*ConnectionGetOption)(struct AdbcConnection*, const char*, const char**,
                                         struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOptionInt)(struct AdbcConnection*, const char*, int64_t*,
                                            struct AdbcError*);
@@ -834,7 +834,7 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*StatementCancel)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementExecuteSchema)(struct AdbcStatement*, struct ArrowSchema*,
                                            struct AdbcError*);
-  AdbcStatusCode (*StatementGetOption)(struct AdbcStatement*, const char*, char**,
+  AdbcStatusCode (*StatementGetOption)(struct AdbcStatement*, const char*, const char**,
                                        struct AdbcError*);
   AdbcStatusCode (*StatementGetOptionInt)(struct AdbcStatement*, const char*, int64_t*,
                                           struct AdbcError*);
@@ -899,7 +899,7 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
-                                     char** value, struct AdbcError* error);
+                                     const char** value, struct AdbcError* error);
 
 /// \brief Get an integer option of the database.
 ///
@@ -1287,7 +1287,7 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
 AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
-                                       char** value, struct AdbcError* error);
+                                       const char** value, struct AdbcError* error);
 
 /// \brief Get an integer option of the connection.
 ///
@@ -1622,7 +1622,7 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
 AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
-                                      char** value, struct AdbcError* error);
+                                      const char** value, struct AdbcError* error);
 
 /// \brief Get an integer option of the statement.
 ///
