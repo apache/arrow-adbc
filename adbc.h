@@ -952,6 +952,11 @@ AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const 
 /// Options may be set before AdbcDatabaseInit.  Some drivers may
 /// support setting options after initialization as well.
 ///
+/// \param[in] database The database.
+/// \param[in] key The option to get.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
@@ -961,6 +966,11 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to get.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
@@ -970,6 +980,11 @@ AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const cha
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to get.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
@@ -1011,6 +1026,11 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
 /// Options may be set before AdbcConnectionInit.  Some drivers may
 /// support setting options after initialization as well.
 ///
+/// \param[in] connection The database connection.
+/// \param[in] key The option to get.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
@@ -1023,6 +1043,11 @@ AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const 
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
+/// \param[in] connection The database connection.
+/// \param[in] key The option to get.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
@@ -1036,6 +1061,11 @@ AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
+/// \param[in] connection The database connection.
+/// \param[in] key The option to get.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
@@ -1661,6 +1691,12 @@ AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
                                                struct AdbcError* error);
 
 /// \brief Set a string option on a statement.
+/// \param[in] statement The statement.
+/// \param[in] key The option to get.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
                                       const char* value, struct AdbcError* error);
@@ -1669,6 +1705,11 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
+/// \param[in] statement The statement.
+/// \param[in] key The option to get.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const char* key,
@@ -1678,6 +1719,11 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const 
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
+/// \param[in] statement The statement.
+/// \param[in] key The option to get.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
