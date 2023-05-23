@@ -1580,7 +1580,8 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
 /// This can be called during AdbcStatementExecuteQuery (or similar),
 /// or while consuming an ArrowArrayStream returned from such.
 /// Calling this function should make the other functions return
-/// ADBC_STATUS_CANCELLED or ECANCELED (for ArrowArrayStream).
+/// ADBC_STATUS_CANCELLED (from ADBC functions) or ECANCELED (from
+/// methods of ArrowArrayStream).
 ///
 /// This must always be thread-safe (other operations are not).
 ///
