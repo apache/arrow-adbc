@@ -247,7 +247,8 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
           }
         }
       } else {
-        ASSERT_TRUE(ArrowArrayViewIsNull(catalog_db_schemas_list, catalog_idx));
+        // TODO: check that schema struct for this catalog is empty
+        ASSERT_EQ(catalog_db_schemas_list->array->length, 0);
       }
     }
     ASSERT_NO_FATAL_FAILURE(reader.Next());
