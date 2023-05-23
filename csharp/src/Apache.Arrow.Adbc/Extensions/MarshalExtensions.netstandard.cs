@@ -21,13 +21,13 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Apache.Arrow.Adbc.Extensions 
+namespace Apache.Arrow.Adbc.Extensions
 {
     public static class MarshalExtensions
     {
         public static unsafe string PtrToStringUTF8(IntPtr intPtr)
         {
-            if (intPtr == null) // IsNullOrWin32Atom(intPtr))
+            if (intPtr == null) 
             {
                 return null;
             }

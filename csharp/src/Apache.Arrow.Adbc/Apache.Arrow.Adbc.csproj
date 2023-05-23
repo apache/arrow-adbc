@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Extensions\MatchCollectionExtensions.netstandard.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj" />
   </ItemGroup>
 

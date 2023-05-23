@@ -22,7 +22,7 @@ namespace Apache.Arrow.Adbc.FlightSql
     /// </summary>
     public class FlightSqlParameters
     {
-        public const string ServerAddress = "FLIGHT_SQL_SERVER_ADRESS";
+        public const string ServerAddress = "FLIGHT_SQL_SERVER_ADDRESS";
         public const string RoutingTag = "routing_tag";
         public const string RoutingQueue = "routing_queue";
         public const string Authorization = "authorization"; 

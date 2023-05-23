@@ -273,12 +273,12 @@ namespace Apache.Arrow.Adbc.Core
 
             var matches = regex.Matches(oex.Message);
 
-            var nonEmptyMatches = matches.Where(x => !string.IsNullOrEmpty(x.Value));
-
-            if (nonEmptyMatches.Count() > 0)
+            foreach(Match match in matches)
             {
-                var result = nonEmptyMatches.First().Value;
-                return result;
+                string value = match.Value;
+
+                if (!string.IsNullOrEmpty(value))
+                    return value;
             }
 
             throw oex;
