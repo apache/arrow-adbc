@@ -1521,7 +1521,7 @@ AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError*
   }
 
   struct AdbcDriver* driver = (struct AdbcDriver*)raw_driver;
-  memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE(driver));
+  memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
   driver->DatabaseInit = SqliteDatabaseInit;
   driver->DatabaseNew = SqliteDatabaseNew;
   driver->DatabaseRelease = SqliteDatabaseRelease;

@@ -470,7 +470,7 @@ AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* e
   if (!raw_driver) return ADBC_STATUS_INVALID_ARGUMENT;
 
   auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
-  std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE(driver));
+  std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
   driver->DatabaseInit = PostgresDatabaseInit;
   driver->DatabaseNew = PostgresDatabaseNew;
   driver->DatabaseRelease = PostgresDatabaseRelease;
