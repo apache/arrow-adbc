@@ -845,9 +845,8 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*StatementSetOptionDouble)(struct AdbcStatement*, const char*, double,
                                              struct AdbcError*);
 
-  /// Pad the struct to have 64 pointers.  Space reserved for future
-  /// growth.
-  void* reserved[18];
+  /// Pad the struct to have 96 pointers.  Space reserved for future growth.
+  void* reserved[50];
 
   /// @}
 };
