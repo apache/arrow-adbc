@@ -42,6 +42,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // ---- Common Infra --------------------
@@ -93,6 +94,14 @@ func (suite *ServerBasedTests) TearDownSuite() {
 
 func TestAuthn(t *testing.T) {
 	suite.Run(t, &AuthnTests{})
+}
+
+func TestErrorDetails(t *testing.T) {
+	suite.Run(t, &ErrorDetailsTests{})
+}
+
+func TestExecuteSchema(t *testing.T) {
+	suite.Run(t, &ExecuteSchemaTests{})
 }
 
 func TestTimeout(t *testing.T) {
@@ -200,6 +209,204 @@ func (suite *AuthnTests) TestBearerTokenUpdated() {
 	reader, _, err := stmt.ExecuteQuery(context.Background())
 	suite.NoError(err)
 	defer reader.Release()
+}
+
+// ---- Error Details Tests --------------------
+
+type ErrorDetailsTestServer struct {
+	flightsql.BaseServer
+}
+
+func (srv *ErrorDetailsTestServer) GetFlightInfoStatement(ctx context.Context, query flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	if query.GetQuery() == "details" {
+		detail := wrapperspb.Int32Value{Value: 42}
+		st, err := status.New(codes.Unknown, "details").WithDetails(&detail)
+		if err != nil {
+			return nil, err
+		}
+		return nil, st.Err()
+	} else if query.GetQuery() == "query" {
+		tkt, err := flightsql.CreateStatementQueryTicket([]byte("fetch"))
+		if err != nil {
+			panic(err)
+		}
+		return &flight.FlightInfo{Endpoint: []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: tkt}}}}, nil
+	}
+	return nil, status.Errorf(codes.Unimplemented, "GetSchemaStatement not implemented")
+}
+
+func (ts *ErrorDetailsTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	sc := arrow.NewSchema([]arrow.Field{}, nil)
+	detail := wrapperspb.Int32Value{Value: 42}
+	st, err := status.New(codes.Unknown, "details").WithDetails(&detail)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ch := make(chan flight.StreamChunk)
+	go func() {
+		defer close(ch)
+		ch <- flight.StreamChunk{
+			Data: nil,
+			Desc: nil,
+			Err:  st.Err(),
+		}
+	}()
+	return sc, ch, nil
+}
+
+type ErrorDetailsTests struct {
+	ServerBasedTests
+}
+
+func (suite *ErrorDetailsTests) SetupSuite() {
+	srv := ErrorDetailsTestServer{}
+	srv.Alloc = memory.DefaultAllocator
+	suite.DoSetupSuite(&srv, nil, nil)
+}
+
+func (ts *ErrorDetailsTests) TestGetFlightInfo() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+
+	ts.NoError(stmt.SetSqlQuery("details"))
+
+	_, _, err = stmt.ExecuteQuery(context.Background())
+	var adbcErr adbc.Error
+	ts.ErrorAs(err, &adbcErr)
+
+	ts.Equal(1, len(adbcErr.Details))
+
+	wrapper, ok := adbcErr.Details[0].(*adbc.ProtobufErrorDetail)
+	ts.True(ok, "Got message: %#v", wrapper)
+	ts.Equal("grpc-status-details-bin", wrapper.Key())
+
+	message, ok := wrapper.Message.(*wrapperspb.Int32Value)
+	ts.True(ok, "Got message: %#v", message)
+	ts.Equal(int32(42), message.Value)
+}
+
+func (ts *ErrorDetailsTests) TestDoGet() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+
+	ts.NoError(stmt.SetSqlQuery("query"))
+
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	ts.NoError(err)
+
+	defer reader.Release()
+
+	for reader.Next() {
+	}
+	err = reader.Err()
+
+	ts.Error(err)
+
+	var adbcErr adbc.Error
+	ts.ErrorAs(err, &adbcErr, "Error was: %#v", err)
+
+	ts.Equal(1, len(adbcErr.Details))
+
+	wrapper, ok := adbcErr.Details[0].(*adbc.ProtobufErrorDetail)
+	ts.True(ok, "Got message: %#v", wrapper)
+	ts.Equal("grpc-status-details-bin", wrapper.Key())
+
+	message, ok := wrapper.Message.(*wrapperspb.Int32Value)
+	ts.True(ok, "Got message: %#v", message)
+	ts.Equal(int32(42), message.Value)
+}
+
+// ---- ExecuteSchema Tests --------------------
+
+type ExecuteSchemaTestServer struct {
+	flightsql.BaseServer
+}
+
+func (srv *ExecuteSchemaTestServer) GetSchemaStatement(ctx context.Context, query flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.SchemaResult, error) {
+	if query.GetQuery() == "sample query" {
+		return &flight.SchemaResult{
+			Schema: flight.SerializeSchema(arrow.NewSchema([]arrow.Field{
+				{Name: "ints", Type: arrow.PrimitiveTypes.Int32},
+			}, nil), srv.Alloc),
+		}, nil
+	}
+	return nil, status.Errorf(codes.Unimplemented, "GetSchemaStatement not implemented")
+}
+
+func (srv *ExecuteSchemaTestServer) CreatePreparedStatement(ctx context.Context, req flightsql.ActionCreatePreparedStatementRequest) (res flightsql.ActionCreatePreparedStatementResult, err error) {
+	if req.GetQuery() == "sample query" {
+		return flightsql.ActionCreatePreparedStatementResult{
+			DatasetSchema: arrow.NewSchema([]arrow.Field{
+				{Name: "ints", Type: arrow.PrimitiveTypes.Int32},
+			}, nil),
+		}, nil
+	}
+	return flightsql.ActionCreatePreparedStatementResult{}, status.Error(codes.Unimplemented, "CreatePreparedStatement not implemented")
+}
+
+type ExecuteSchemaTests struct {
+	ServerBasedTests
+}
+
+func (suite *ExecuteSchemaTests) SetupSuite() {
+	srv := ExecuteSchemaTestServer{}
+	srv.Alloc = memory.DefaultAllocator
+	suite.DoSetupSuite(&srv, nil, nil)
+}
+
+func (ts *ExecuteSchemaTests) TestNoQuery() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+
+	es := stmt.(adbc.StatementExecuteSchema)
+	_, err = es.ExecuteSchema(context.Background())
+
+	var adbcErr adbc.Error
+	ts.ErrorAs(err, &adbcErr)
+	ts.Equal(adbc.StatusInvalidState, adbcErr.Code, adbcErr.Error())
+}
+
+func (ts *ExecuteSchemaTests) TestPreparedQuery() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+
+	ts.NoError(stmt.SetSqlQuery("sample query"))
+	ts.NoError(stmt.Prepare(context.Background()))
+
+	es := stmt.(adbc.StatementExecuteSchema)
+	schema, err := es.ExecuteSchema(context.Background())
+	ts.NoError(err)
+	ts.NotNil(schema)
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{Name: "ints", Type: arrow.PrimitiveTypes.Int32},
+	}, nil)
+
+	ts.True(expectedSchema.Equal(schema), schema.String())
+}
+
+func (ts *ExecuteSchemaTests) TestQuery() {
+	stmt, err := ts.cnxn.NewStatement()
+	ts.NoError(err)
+	defer stmt.Close()
+
+	ts.NoError(stmt.SetSqlQuery("sample query"))
+
+	es := stmt.(adbc.StatementExecuteSchema)
+	schema, err := es.ExecuteSchema(context.Background())
+	ts.NoError(err)
+	ts.NotNil(schema)
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{
+		{Name: "ints", Type: arrow.PrimitiveTypes.Int32},
+	}, nil)
+
+	ts.True(expectedSchema.Equal(schema), schema.String())
 }
 
 // ---- Timeout Tests --------------------
@@ -319,6 +526,67 @@ func (ts *TimeoutTests) TestRemoveTimeout() {
 			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(k, "0"))
 		})
 	}
+}
+
+func (ts *TimeoutTests) TestGetSet() {
+	keys := []string{
+		"adbc.flight.sql.rpc.timeout_seconds.fetch",
+		"adbc.flight.sql.rpc.timeout_seconds.query",
+		"adbc.flight.sql.rpc.timeout_seconds.update",
+	}
+	stmt, err := ts.cnxn.NewStatement()
+	ts.Require().NoError(err)
+	defer stmt.Close()
+
+	for _, v := range []interface{}{ts.db, ts.cnxn, stmt} {
+		getset := v.(adbc.GetSetOptions)
+
+		for _, k := range keys {
+			strval, err := getset.GetOption(k)
+			ts.NoError(err)
+			ts.Equal("0s", strval)
+
+			intval, err := getset.GetOptionInt(k)
+			ts.NoError(err)
+			ts.Equal(int64(0), intval)
+
+			floatval, err := getset.GetOptionDouble(k)
+			ts.NoError(err)
+			ts.Equal(0.0, floatval)
+
+			err = getset.SetOptionInt(k, 1)
+			ts.NoError(err)
+
+			strval, err = getset.GetOption(k)
+			ts.NoError(err)
+			ts.Equal("1s", strval)
+
+			intval, err = getset.GetOptionInt(k)
+			ts.NoError(err)
+			ts.Equal(int64(1), intval)
+
+			floatval, err = getset.GetOptionDouble(k)
+			ts.NoError(err)
+			ts.Equal(1.0, floatval)
+
+			err = getset.SetOptionDouble(k, 0.1)
+			ts.NoError(err)
+
+			strval, err = getset.GetOption(k)
+			ts.NoError(err)
+			ts.Equal("100ms", strval)
+
+			intval, err = getset.GetOptionInt(k)
+			ts.NoError(err)
+			// truncated
+			ts.Equal(int64(0), intval)
+
+			floatval, err = getset.GetOptionDouble(k)
+			ts.NoError(err)
+			ts.Equal(0.1, floatval)
+		}
+	}
+
 }
 
 func (ts *TimeoutTests) TestDoActionTimeout() {

@@ -1612,7 +1612,7 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
 /// | Field Name               | Field Type                       |
 /// |--------------------------|----------------------------------|
 /// | db_schema_name           | utf8                             |
-/// | db_schema_functions      | list<STATISTICS_SCHEMA>          |
+/// | db_schema_statistics     | list<STATISTICS_SCHEMA>          |
 ///
 /// STATISTICS_SCHEMA is a Struct with fields:
 ///

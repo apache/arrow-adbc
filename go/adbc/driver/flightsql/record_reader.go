@@ -104,7 +104,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				rec.Retain()
 				ch <- rec
 			}
-			return rdr.Err()
+			return adbcFromFlightStatus(rdr.Err())
 		})
 
 		endpoints = endpoints[1:]
@@ -135,7 +135,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 
 			rdr, err := doGet(ctx, cl, endpoint, clCache, opts...)
 			if err != nil {
-				return err
+				return adbcFromFlightStatus(err)
 			}
 			defer rdr.Release()
 
@@ -150,7 +150,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				chs[endpointIndex] <- rec
 			}
 
-			return rdr.Err()
+			return adbcFromFlightStatus(rdr.Err())
 		})
 	}
 

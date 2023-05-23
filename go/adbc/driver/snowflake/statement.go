@@ -43,7 +43,7 @@ type statement struct {
 
 	query       string
 	targetTable string
-	append      bool
+	ingestMode  string
 
 	bound      arrow.Record
 	streamBind array.RecordReader
@@ -71,6 +71,35 @@ func (st *statement) Close() error {
 	return nil
 }
 
+func (st *statement) GetOption(key string) (string, error) {
+	return "", adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (st *statement) GetOptionBytes(key string) ([]byte, error) {
+	return nil, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (st *statement) GetOptionInt(key string) (int64, error) {
+	switch key {
+	case OptionStatementQueueSize:
+		return int64(st.queueSize), nil
+	}
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (st *statement) GetOptionDouble(key string) (float64, error) {
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+
 // SetOption sets a string option on this statement
 func (st *statement) SetOption(key string, val string) error {
 	switch key {
@@ -80,9 +109,13 @@ func (st *statement) SetOption(key string, val string) error {
 	case adbc.OptionKeyIngestMode:
 		switch val {
 		case adbc.OptionValueIngestModeAppend:
-			st.append = true
+			fallthrough
 		case adbc.OptionValueIngestModeCreate:
-			st.append = false
+			fallthrough
+		case adbc.OptionValueIngestModeReplace:
+			fallthrough
+		case adbc.OptionValueIngestModeCreateAppend:
+			st.ingestMode = val
 		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),
@@ -97,7 +130,7 @@ func (st *statement) SetOption(key string, val string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		st.queueSize = sz
+		return st.SetOptionInt(key, int64(sz))
 	default:
 		return adbc.Error{
 			Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),
@@ -105,6 +138,38 @@ func (st *statement) SetOption(key string, val string) error {
 		}
 	}
 	return nil
+}
+
+func (st *statement) SetOptionBytes(key string, value []byte) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (st *statement) SetOptionInt(key string, value int64) error {
+	switch key {
+	case OptionStatementQueueSize:
+		if value <= 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Snowflake] Invalid value for statement option '%s': '%d' is not a positive integer", OptionStatementQueueSize, value),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		st.queueSize = int(value)
+		return nil
+	}
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (st *statement) SetOptionDouble(key string, value float64) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -173,6 +238,9 @@ func (st *statement) initIngest(ctx context.Context) (string, error) {
 	)
 
 	createBldr.WriteString("CREATE TABLE ")
+	if st.ingestMode == adbc.OptionValueIngestModeCreateAppend {
+		createBldr.WriteString(" IF NOT EXISTS ")
+	}
 	createBldr.WriteString(st.targetTable)
 	createBldr.WriteString(" (")
 
@@ -214,7 +282,22 @@ func (st *statement) initIngest(ctx context.Context) (string, error) {
 	createBldr.WriteString(")")
 	insertBldr.WriteString(")")
 
-	if !st.append {
+	switch st.ingestMode {
+	case adbc.OptionValueIngestModeAppend:
+		// Do nothing
+	case adbc.OptionValueIngestModeReplace:
+		replaceQuery := "DROP TABLE IF EXISTS " + st.targetTable
+		_, err := st.cnxn.cn.ExecContext(ctx, replaceQuery, nil)
+		if err != nil {
+			return "", errToAdbcErr(adbc.StatusInternal, err)
+		}
+
+		fallthrough
+	case adbc.OptionValueIngestModeCreate:
+		fallthrough
+	case adbc.OptionValueIngestModeCreateAppend:
+		fallthrough
+	default:
 		// create the table!
 		createQuery := createBldr.String()
 		_, err := st.cnxn.cn.ExecContext(ctx, createQuery, nil)
