@@ -290,24 +290,36 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
     return ADBC_STATUS_INTERNAL;
   }
 
+  if (catalog != NULL) {
+    char* catalog_name = PQescapeIdentifier(conn, catalog, strlen(catalog));
+    if (catalog_name == NULL) {
+      SetError(error, "%s%s", "Failed to escape catalog: ", PQerrorMessage(conn));
+      StringBuilderReset(&query);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    int res =
+        StringBuilderAppend(&query, "%s%s%s", " WHERE datname = '", catalog_name, "'");
+    PQfreemem(catalog_name);
+    if (res) {
+      return ADBC_STATUS_INTERNAL;
+    }
+  }
+
   PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
   StringBuilderReset(&query);
 
   if (result_helper.Status() == PGRES_TUPLES_OK) {
     for (PqResultRow row : result_helper) {
       const char* db_name = row[0].data;
-
-      if (catalog == NULL || !strcmp(db_name, catalog)) {
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
-
-        if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
-          CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
-        } else {
-          // postgres only allows you to list schemas for the currently connected db
-          RAISE_ADBC(PostgresConnectionGetSchemasImpl(conn, depth, db_name,
-                                                      catalog_db_schemas_col, error));
-        }
+      CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)),
+               error);
+      if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
+      } else {
+        // postgres only allows you to list schemas for the currently connected db
+        RAISE_ADBC(PostgresConnectionGetSchemasImpl(conn, depth, db_name,
+                                                    catalog_db_schemas_col, error));
       }
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
     }
