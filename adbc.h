@@ -859,10 +859,7 @@ struct ADBC_EXPORT AdbcDriver {
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
-#define ADBC_DRIVER_1_0_0_SIZE(DRIVER)                               \
-  (((size_t)(((uintptr_t)(&((DRIVER)->StatementSetSubstraitPlan))) - \
-             ((uintptr_t)(DRIVER)))) +                               \
-   sizeof(void*))
+#define ADBC_DRIVER_1_0_0_SIZE (offsetof(struct AdbcDriver, DatabaseGetOption))
 
 /// @}
 
@@ -914,7 +911,7 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
 /// the type specified in the option.  (For example, an option set via
 /// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
 /// may also support getting a converted option value via other
-/// getters if needed.  (For example, getting the string
+/// getters if needed.  (For example, getting the integer
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
@@ -937,8 +934,8 @@ AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const cha
 /// the type specified in the option.  (For example, an option set via
 /// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
 /// may also support getting a converted option value via other
-/// getters if needed.  (For example, getting the string
-/// representation of a double option.)
+/// getters if needed.  (For example, getting the double
+/// representation of an integer option.)
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
