@@ -1,4 +1,4 @@
 [submodule "arrow"]
 	path = arrow
-	url = https://github.com/CurtHagenlocher/arrow
-	branch = CSharp_CAPI
+	url = https://github.com/apache/arrow
+	branch = main
