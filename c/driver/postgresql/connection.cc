@@ -216,6 +216,85 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
   return BatchToArrayStream(&array, &schema, out, error);
 }
 
+AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
+                                                const char* db_name,
+                                                const char* db_schema,
+                                                struct ArrowArray* db_schemas_list,
+                                                struct AdbcError* error) {
+  struct ArrowArray* db_schema_items = db_schemas_list->children[0];
+  struct ArrowArray* db_schema_names = db_schema_items->children[0];
+  struct ArrowArray* db_schema_tables_list = db_schema_items->children[1];
+
+  // inefficient to place here but better localized until we do a class-based refactor
+  std::string curr_db;
+  PqResultHelper curr_db_helper = PqResultHelper{conn, "SELECT current_database()"};
+  if (curr_db_helper.Status() == PGRES_TUPLES_OK) {
+    assert(curr_db_helper.NumRows() == 1);
+    auto curr_iter = curr_db_helper.begin();
+    PqResultRow db_row = *curr_iter;
+    curr_db = std::string(db_row[0].data);
+  } else {
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  // postgres only allows you to list schemas for the currently connected db
+  if (strcmp(db_name, curr_db.c_str()) == 0) {
+    struct StringBuilder query = {0};
+    if (StringBuilderInit(&query, /*initial_size*/ 256)) {
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    const char* stmt =
+        "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
+        "nspname !~ '^pg_' AND nspname <> 'information_schema'";
+
+    if (StringBuilderAppend(&query, "%s", stmt)) {
+      StringBuilderReset(&query);
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    if (db_schema != NULL) {
+      char* schema_name = PQescapeIdentifier(conn, db_schema, strlen(db_schema));
+      if (schema_name == NULL) {
+        SetError(error, "%s%s", "Failed to escape schema: ", PQerrorMessage(conn));
+        StringBuilderReset(&query);
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      int res =
+          StringBuilderAppend(&query, "%s%s%s", " AND nspname ='", schema_name, "'");
+      PQfreemem(schema_name);
+      if (res) {
+        return ADBC_STATUS_INTERNAL;
+      }
+    }
+
+    auto result_helper = PqResultHelper{conn, query.buffer};
+    StringBuilderReset(&query);
+
+    if (result_helper.Status() == PGRES_TUPLES_OK) {
+      for (PqResultRow row : result_helper) {
+        const char* schema_name = row[0].data;
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(db_schema_names, ArrowCharView(schema_name)),
+                 error);
+        if (depth >= ADBC_OBJECT_DEPTH_TABLES) {
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+        } else {
+          CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_list, 1), error);
+        }
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_items), error);
+      }
+    } else {
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+  }
+
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schemas_list), error);
+
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode PostgresConnectionGetObjectsImpl(
     PGconn* conn, int depth, const char* catalog, const char* db_schema,
     const char* table_name, const char** table_types, const char* column_name,
@@ -230,33 +309,51 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
   struct ArrowArray* catalog_name_col = array->children[0];
   struct ArrowArray* catalog_db_schemas_col = array->children[1];
 
-  // TODO: support proper filters
-  if (!catalog) {
-    struct StringBuilder query = {0};
-    if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
+  struct ArrowArray* catalog_db_schemas_items = catalog_db_schemas_col->children[0];
+  struct ArrowArray* db_schema_name_col = catalog_db_schemas_items->children[0];
+  struct ArrowArray* db_schema_tables_col = catalog_db_schemas_items->children[1];
 
-    if (StringBuilderAppend(&query, "%s", "SELECT datname FROM pg_catalog.pg_database")) {
+  struct StringBuilder query = {0};
+  if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
+
+  if (StringBuilderAppend(&query, "%s", "SELECT datname FROM pg_catalog.pg_database")) {
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  if (catalog != NULL) {
+    char* catalog_name = PQescapeIdentifier(conn, catalog, strlen(catalog));
+    if (catalog_name == NULL) {
+      SetError(error, "%s%s", "Failed to escape catalog: ", PQerrorMessage(conn));
+      StringBuilderReset(&query);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    int res =
+        StringBuilderAppend(&query, "%s%s%s", " WHERE datname = '", catalog_name, "'");
+    PQfreemem(catalog_name);
+    if (res) {
       return ADBC_STATUS_INTERNAL;
     }
+  }
 
-    PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
-    StringBuilderReset(&query);
+  PqResultHelper result_helper = PqResultHelper{conn, query.buffer};
+  StringBuilderReset(&query);
 
-    if (result_helper.Status() == PGRES_TUPLES_OK) {
-      for (PqResultRow row : result_helper) {
-        const char* db_name = row[0].data;
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)), error);
-        if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
-          CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
-        } else {
-          return ADBC_STATUS_NOT_IMPLEMENTED;
-        }
-        CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  if (result_helper.Status() == PGRES_TUPLES_OK) {
+    for (PqResultRow row : result_helper) {
+      const char* db_name = row[0].data;
+      CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, ArrowCharView(db_name)),
+               error);
+      if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
+      } else {
+        RAISE_ADBC(PostgresConnectionGetSchemasImpl(conn, depth, db_name, db_schema,
+                                                    catalog_db_schemas_col, error));
       }
-    } else {
-      return ADBC_STATUS_NOT_IMPLEMENTED;
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
     }
+  } else {
+    return ADBC_STATUS_INTERNAL;
   }
 
   CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array, &na_error), &na_error,
