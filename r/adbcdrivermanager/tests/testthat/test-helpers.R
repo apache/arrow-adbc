@@ -15,6 +15,30 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("default read/write/execute_adbc() performs the correct calls", {
+  # We can't properly test this in the driver manager because we don't
+  # have a driver that implements all the methods. Instead, we test this
+  # in the sqlite driver and just do a basic log driver snapshot here
+  expect_snapshot({
+    db <- adbc_database_init(adbc_driver_log())
+    try(read_adbc(db, "some sql"))
+    try(execute_adbc(db, "some sql"))
+    try(write_adbc(mtcars, db, "some_table"))
+    adbc_database_release(db)
+  })
+
+  expect_snapshot({
+    db <- adbc_database_init(adbc_driver_log())
+    con <- adbc_connection_init(db)
+    try(read_adbc(con, "some sql"))
+    try(execute_adbc(con, "some sql"))
+    try(write_adbc(mtcars, con, "some_table"))
+    adbc_connection_release(con)
+    adbc_database_release(db)
+  })
+})
+
+
 test_that("with_adbc() and local_adbc() release databases", {
   db <- adbc_database_init(adbc_driver_void())
   expect_identical(with_adbc(db, "value"), "value")
