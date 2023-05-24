@@ -15,6 +15,126 @@
 # specific language governing permissions and limitations
 # under the License.
 
+#' Read, write, and execute on ADBC connections
+#'
+#' These are convenience methods useful for testing connections. Note that
+#' S3 dispatch is always on `db_or_con` (i.e., drivers may provide their own
+#' implementations).
+#'
+#' @param db_or_con An adbc_database or adbc_connection. If a database, a
+#'   connection will be opened. For `read_adbc()`, this connection will
+#'   be closed when the resulting stream has been released.
+#' @param tbl A data.frame, [nanoarrow_array][nanoarrow::as_nanoarrow_array],
+#'   or  [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream].
+#' @param target_table A target table name to which `tbl` should be written.
+#' @param mode One of "create", "append", or "default" (error if the schema
+#'   is not compatible or append otherwise).
+#' @param query An SQL query
+#' @param bind A data.frame, nanoarrow_array, or nanoarrow_array_stream of
+#'   bind parameters or NULL to skip the bind/prepare step.
+#' @param ... Passed to S3 methods.
+#'
+#' @return
+#'   - `read_adbc()`: A [nanoarrow_array_stream][as_nanoarrow_array_stream]
+#'   - `execute_adbc()`: `db_or_con`, invisibly.
+#'   - `write_adbc()`: `tbl`, invisibly.
+#' @export
+#'
+#' @examples
+#' # On a database, connections are opened and closed
+#' db <- adbc_database_init(adbc_driver_log())
+#' try(read_adbc(db, "some sql"))
+#' try(execute_adbc(db, "some sql"))
+#' try(write_adbc(mtcars, db, "some_table"))
+#'
+#' # Also works on a connection
+#' con <- adbc_connection_init(db)
+#' try(read_adbc(con, "some sql"))
+#' try(execute_adbc(con, "some sql"))
+#' try(write_adbc(mtcars, con, "some_table"))
+#'
+read_adbc <- function(db_or_con, query, ..., bind = NULL) {
+  UseMethod("read_adbc")
+}
+
+#' @rdname read_adbc
+#' @export
+execute_adbc <- function(db_or_con, query, ..., bind = NULL) {
+  UseMethod("execute_adbc")
+}
+
+#' @rdname read_adbc
+#' @export
+write_adbc <- function(tbl, db_or_con, target_table, ..., mode = c("default", "create", "append")) {
+  UseMethod("write_adbc", db_or_con)
+}
+
+
+#' @export
+read_adbc.default <- function(db_or_con, query, ..., bind = NULL) {
+  stream <- nanoarrow::nanoarrow_allocate_array_stream()
+  execute_adbc(db_or_con, query, ..., bind = bind, stream = stream)
+  stream
+}
+
+#' @export
+execute_adbc.default <- function(db_or_con, query, ..., bind = NULL, stream = NULL) {
+  assert_adbc(db_or_con, c("adbc_database", "adbc_connection"))
+
+  if (inherits(db_or_con, "adbc_database")) {
+    con <- adbc_connection_init(db_or_con)
+    on.exit(adbc_connection_release(con))
+
+    stmt <- adbc_statement_init(con)
+    adbc_statement_join(stmt, con)
+
+  } else {
+    con <- db_or_con
+    stmt <- adbc_statement_init(con)
+  }
+
+  on.exit(adbc_release_non_null(stmt))
+  adbc_statement_set_sql_query(stmt, query)
+
+  if (!is.null(bind)) {
+    adbc_statement_bind_stream(stmt, bind)
+    adbc_statement_prepare(stmt)
+  }
+
+  adbc_statement_execute_query(stmt, stream)
+
+  if (!is.null(stream)) {
+    adbc_stream_join(stream, stmt)
+  }
+
+  invisible(db_or_con)
+}
+
+#' @export
+write_adbc.default <- function(tbl, db_or_con, target_table, ..., mode = c("default", "create", "append")) {
+  assert_adbc(db_or_con, c("adbc_database", "adbc_connection"))
+  mode <- match.arg(mode)
+
+  if (inherits(db_or_con, "adbc_database")) {
+    con <- adbc_connection_init(db_or_con)
+    on.exit(adbc_connection_release(con))
+  } else {
+    con <- db_or_con
+  }
+
+  stmt <- adbc_statement_init(
+    con,
+    adbc.ingest.target_table = target_table,
+    adbc.ingest.mode = if (!identical(mode, "default")) paste0("adbc.ingest.mode.", mode)
+  )
+  on.exit(adbc_statement_release(stmt), add = TRUE, after = FALSE)
+
+  adbc_statement_bind_stream(stmt, tbl)
+  adbc_statement_execute_query(stmt)
+  invisible(tbl)
+}
+
+
 #' Cleanup helpers
 #'
 #' Managing the lifecycle of databases, connections, and statements can

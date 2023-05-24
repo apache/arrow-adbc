@@ -17,6 +17,8 @@
 
 key_value_options <- function(options) {
   if (!is.character(options)) {
+    options <- as.list(options)
+    options <- options[!vapply(options, is.null, logical(1))]
     options <- vapply(options, as.character, character(1))
   }
 

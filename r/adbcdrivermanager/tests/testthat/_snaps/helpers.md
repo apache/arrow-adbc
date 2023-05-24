@@ -1,3 +1,97 @@
+# default read/write/execute_adbc() performs the correct calls
+
+    Code
+      db <- adbc_database_init(adbc_driver_log())
+    Output
+      LogDatabaseNew()
+      LogDatabaseInit()
+    Code
+      try(read_adbc(db, "some sql"))
+    Output
+      LogConnectionNew()
+      LogConnectionInit()
+      LogStatementNew()
+      LogStatementSetSqlQuery()
+      LogStatementRelease()
+      LogConnectionRelease()
+      Error in adbc_statement_set_sql_query(stmt, query) : 
+        ADBC_STATUS_NOT_IMPLEMENTED (2)
+    Code
+      try(execute_adbc(db, "some sql"))
+    Output
+      LogConnectionNew()
+      LogConnectionInit()
+      LogStatementNew()
+      LogStatementSetSqlQuery()
+      LogStatementRelease()
+      LogConnectionRelease()
+      Error in adbc_statement_set_sql_query(stmt, query) : 
+        ADBC_STATUS_NOT_IMPLEMENTED (2)
+    Code
+      try(write_adbc(mtcars, db, "some_table"))
+    Output
+      LogConnectionNew()
+      LogConnectionInit()
+      LogStatementNew()
+      LogStatementSetOption()
+      LogStatementBindStream()
+      LogStatementRelease()
+      LogConnectionRelease()
+      Error in adbc_statement_bind_stream(stmt, tbl) : 
+        ADBC_STATUS_NOT_IMPLEMENTED (2)
+    Code
+      adbc_database_release(db)
+    Output
+      LogDatabaseRelease()
+      LogDriverRelease()
+
+---
+
+    Code
+      db <- adbc_database_init(adbc_driver_log())
+    Output
+      LogDatabaseNew()
+      LogDatabaseInit()
+    Code
+      con <- adbc_connection_init(db)
+    Output
+      LogConnectionNew()
+      LogConnectionInit()
+    Code
+      try(read_adbc(con, "some sql"))
+    Output
+      LogStatementNew()
+      LogStatementSetSqlQuery()
+      LogStatementRelease()
+      Error in adbc_statement_set_sql_query(stmt, query) : 
+        ADBC_STATUS_NOT_IMPLEMENTED (2)
+    Code
+      try(execute_adbc(con, "some sql"))
+    Output
+      LogStatementNew()
+      LogStatementSetSqlQuery()
+      LogStatementRelease()
+      Error in adbc_statement_set_sql_query(stmt, query) : 
+        ADBC_STATUS_NOT_IMPLEMENTED (2)
+    Code
+      try(write_adbc(mtcars, con, "some_table"))
+    Output
+      LogStatementNew()
+      LogStatementSetOption()
+      LogStatementBindStream()
+      LogStatementRelease()
+      Error in adbc_statement_bind_stream(stmt, tbl) : 
+        ADBC_STATUS_NOT_IMPLEMENTED (2)
+    Code
+      adbc_connection_release(con)
+    Output
+      LogConnectionRelease()
+    Code
+      adbc_database_release(db)
+    Output
+      LogDatabaseRelease()
+      LogDriverRelease()
+
 # joiners work for databases, connections, and statements
 
     Code
