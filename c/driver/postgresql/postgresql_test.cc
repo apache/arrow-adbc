@@ -232,13 +232,15 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
           ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], catalog_idx);
       auto db_str = std::string(db_name.data, db_name.size_bytes);
 
+      auto schema_list_start =
+          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx);
+      auto schema_list_end =
+          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx + 1);
+
       if (db_str == "postgres") {
         ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, catalog_idx));
-        for (auto db_schemas_index =
-                 ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx);
-             db_schemas_index <
-             ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx + 1);
-             db_schemas_index++) {
+        for (auto db_schemas_index = schema_list_start;
+             db_schemas_index < schema_list_end; db_schemas_index++) {
           ArrowStringView schema_name = ArrowArrayViewGetStringUnsafe(
               catalog_db_schema_names->children[0], db_schemas_index);
           auto schema_str = std::string(schema_name.data, schema_name.size_bytes);
@@ -247,8 +249,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
           }
         }
       } else {
-        // TODO: check that schema struct for this catalog is empty
-        ASSERT_EQ(catalog_db_schemas_list->array->length, 0);
+        ASSERT_EQ(schema_list_start, schema_list_end);
       }
     }
     ASSERT_NO_FATAL_FAILURE(reader.Next());
