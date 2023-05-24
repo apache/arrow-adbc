@@ -93,7 +93,7 @@ execute_adbc.default <- function(db_or_con, query, ..., bind = NULL, stream = NU
     stmt <- adbc_statement_init(con)
   }
 
-  on.exit(adbc_statement_release(stmt))
+  on.exit(adbc_release_non_null(stmt))
   adbc_statement_set_sql_query(stmt, query)
 
   if (!is.null(bind)) {
