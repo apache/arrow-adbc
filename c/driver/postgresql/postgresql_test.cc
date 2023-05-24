@@ -275,6 +275,64 @@ class PostgresStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(PostgresStatementTest)
 
+TEST_F(PostgresStatementTest, UpdateInExecuteQuery) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement,
+                    "CREATE TABLE adbc_test (ints INT, id SERIAL PRIMARY KEY)", &error),
+                IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
+  {
+    // Use INSERT INTO
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement, "INSERT INTO adbc_test (ints) VALUES (1), (2)", &error),
+                IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
+  {
+    // Use INSERT INTO ... RETURNING
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement,
+                    "INSERT INTO adbc_test (ints) VALUES (3), (4) RETURNING id", &error),
+                IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(reader.rows_affected, -1);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(reader.array->release, nullptr);
+    ASSERT_EQ(reader.array->n_children, 1);
+    ASSERT_EQ(reader.array->length, 2);
+    ASSERT_EQ(reader.array_view->children[0]->buffer_views[1].data.as_int32[0], 3);
+    ASSERT_EQ(reader.array_view->children[0]->buffer_views[1].data.as_int32[1], 4);
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+}
+
 struct TypeTestCase {
   std::string name;
   std::string sql_type;

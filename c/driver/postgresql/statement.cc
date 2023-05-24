@@ -649,17 +649,27 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     return ADBC_STATUS_INVALID_STATE;
   }
 
-  // 1. Execute the query with LIMIT 0 to get the schema
+  // 1. Prepare the query to get the schema
   {
     // TODO: we should pipeline here and assume this will succeed
-    std::string schema_query = "SELECT * FROM (" + query_ + ") AS ignored LIMIT 0";
-    PGresult* result =
-        PQexecParams(connection_->conn(), query_.c_str(), /*nParams=*/0,
-                     /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
-                     /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
-    if (PQresultStatus(result) != PGRES_TUPLES_OK) {
-      SetError(error, "%s%s", "[libpq] Query was: ", schema_query.c_str());
-      SetError(error, "%s%s", "[libpq] Failed to execute query: could not infer schema: ",
+    PGresult* result = PQprepare(connection_->conn(), /*stmtName=*/"", query_.c_str(),
+                                 /*nParams=*/0, nullptr);
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      SetError(error, "%s%s", "[libpq] Query was: ", query_.c_str());
+      SetError(error, "%s%s",
+               "[libpq] Failed to execute query: could not infer schema: failed to "
+               "prepare query: ",
+               PQerrorMessage(connection_->conn()));
+      PQclear(result);
+      return ADBC_STATUS_IO;
+    }
+    PQclear(result);
+    result = PQdescribePrepared(connection_->conn(), /*stmtName=*/"");
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      SetError(error, "%s%s", "[libpq] Query was: ", query_.c_str());
+      SetError(error, "%s%s",
+               "[libpq] Failed to execute query: could not infer schema: failed to "
+               "describe prepared statement: ",
                PQerrorMessage(connection_->conn()));
       PQclear(result);
       return ADBC_STATUS_IO;
@@ -681,6 +691,17 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     if (na_res != NANOARROW_OK) {
       SetError(error, "[libpq] Failed to infer output schema: %s", na_error.message);
       return na_res;
+    }
+
+    // If there are no output columns (e.g. a CREATE or UPDATE), then
+    // don't use COPY (which would fail anyways)
+    if (root_type.n_children() == 0) {
+      RAISE_ADBC(ExecuteUpdateQuery(rows_affected, error));
+      struct ArrowSchema schema;
+      std::memset(&schema, 0, sizeof(schema));
+      RAISE_NA(reader_.copy_reader_->GetSchema(&schema));
+      nanoarrow::EmptyArrayStream::MakeUnique(&schema).move(stream);
+      return ADBC_STATUS_OK;
     }
 
     // This resolves the reader specific to each PostgresType -> ArrowSchema
