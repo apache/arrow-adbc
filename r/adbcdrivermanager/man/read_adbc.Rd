@@ -30,6 +30,9 @@ be closed when the resulting stream has been released.}
 \item{bind}{A data.frame, nanoarrow_array, or nanoarrow_array_stream of
 bind parameters or NULL to skip the bind/prepare step.}
 
+\item{tbl}{A data.frame, \link[nanoarrow:as_nanoarrow_array]{nanoarrow_array},
+or  \link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow_array_stream}.}
+
 \item{target_table}{A target table name to which \code{tbl} should be written.}
 
 \item{mode}{One of "create", "append", or "default" (error if the schema
@@ -48,7 +51,16 @@ S3 dispatch is always on \code{db_or_con} (i.e., drivers may provide their own
 implementations).
 }
 \examples{
-db <- adbc_database_init(adbc_driver_void())
+# On a database, connections are opened and closed
+db <- adbc_database_init(adbc_driver_log())
+try(read_adbc(db, "some sql"))
 try(execute_adbc(db, "some sql"))
+try(write_adbc(mtcars, db, "some_table"))
+
+# Also works on a connection
+con <- adbc_connection_init(db)
+try(read_adbc(con, "some sql"))
+try(execute_adbc(con, "some sql"))
+try(write_adbc(mtcars, con, "some_table"))
 
 }

@@ -31,6 +31,11 @@ test_that("key_value_options works", {
     c("key" = "value")
   )
 
+  expect_identical(
+    key_value_options(list("key" = "value", "key2" = NULL)),
+    c("key" = "value")
+  )
+
   expect_error(
     key_value_options(list("value")),
     "must be named"

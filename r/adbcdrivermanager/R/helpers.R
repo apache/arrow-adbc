@@ -24,6 +24,8 @@
 #' @param db_or_con An adbc_database or adbc_connection. If a database, a
 #'   connection will be opened. For `read_adbc()`, this connection will
 #'   be closed when the resulting stream has been released.
+#' @param tbl A data.frame, [nanoarrow_array][nanoarrow::as_nanoarrow_array],
+#'   or  [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream].
 #' @param target_table A target table name to which `tbl` should be written.
 #' @param mode One of "create", "append", or "default" (error if the schema
 #'   is not compatible or append otherwise).
@@ -39,8 +41,17 @@
 #' @export
 #'
 #' @examples
-#' db <- adbc_database_init(adbc_driver_void())
+#' # On a database, connections are opened and closed
+#' db <- adbc_database_init(adbc_driver_log())
+#' try(read_adbc(db, "some sql"))
 #' try(execute_adbc(db, "some sql"))
+#' try(write_adbc(mtcars, db, "some_table"))
+#'
+#' # Also works on a connection
+#' con <- adbc_connection_init(db)
+#' try(read_adbc(con, "some sql"))
+#' try(execute_adbc(con, "some sql"))
+#' try(write_adbc(mtcars, con, "some_table"))
 #'
 read_adbc <- function(db_or_con, query, ..., bind = NULL) {
   UseMethod("read_adbc")
