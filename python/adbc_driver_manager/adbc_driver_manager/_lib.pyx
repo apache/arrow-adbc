@@ -25,6 +25,7 @@ import typing
 from typing import List, Tuple
 
 import cython
+cimport cpython
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
 from libc.string cimport memset
@@ -41,7 +42,7 @@ cdef extern from "adbc.h" nogil:
     cdef struct CArrowArray"ArrowArray":
         pass
     cdef struct CArrowArrayStream"ArrowArrayStream":
-        pass
+        void (*release)(CArrowArrayStream*)
 
     # ADBC
     ctypedef uint8_t CAdbcStatusCode"AdbcStatusCode"
@@ -460,6 +461,18 @@ cdef class _AdbcHandle:
                     f"with open {self._child_type}")
 
 
+cdef void pycapsule_stream_deleter(object stream_capsule):
+    cdef:
+        CArrowArrayStream* stream
+    # Do not invoke the deleter on a used/moved capsule
+    stream = <CArrowArrayStream*>cpython.PyCapsule_GetPointer(
+        stream_capsule, 'arrowarraystream'
+    )
+    if stream.release != NULL:
+        print("calling the release")
+        stream.release(stream)
+
+
 cdef class ArrowSchemaHandle:
     """
     A wrapper for an allocated ArrowSchema.
@@ -497,6 +510,11 @@ cdef class ArrowArrayStreamHandle:
     def address(self) -> int:
         """The address of the ArrowArrayStream."""
         return <uintptr_t> &self.stream
+
+    def _to_capsule(self):
+        return cpython.PyCapsule_New(
+            &self.stream, 'arrowarraystream', pycapsule_stream_deleter
+        )
 
 
 class GetObjectsDepth(enum.IntEnum):
