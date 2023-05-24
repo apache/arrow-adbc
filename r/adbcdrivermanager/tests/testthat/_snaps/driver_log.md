@@ -21,7 +21,7 @@
       try(adbc_statement_execute_query(stmt))
     Output
       LogStatementExecuteQuery()
-      Error in stop_for_error(result$status, error) : 
+      Error in adbc_statement_execute_query(stmt) : 
         ADBC_STATUS_NOT_IMPLEMENTED (2)
     Code
       adbc_statement_release(stmt)
