@@ -237,6 +237,7 @@ AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
+  // postgres only allows you to list schemas for the currently connected db
   if (strcmp(db_name, curr_db) == 0) {
     struct StringBuilder query = {0};
     if (StringBuilderInit(&query, /*initial_size*/ 256)) {
@@ -346,7 +347,6 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
       if (depth == ADBC_OBJECT_DEPTH_CATALOGS) {
         CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
       } else {
-        // postgres only allows you to list schemas for the currently connected db
         RAISE_ADBC(PostgresConnectionGetSchemasImpl(conn, depth, db_name, db_schema,
                                                     catalog_db_schemas_col, error));
       }
