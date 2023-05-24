@@ -104,6 +104,4 @@ require (
 	modernc.org/token v1.1.0 // indirect
 )
 
-replace github.com/snowflakedb/gosnowflake v1.6.21 => github.com/snowflakedb/gosnowflake v1.6.21-0.20230510151847-61ad7b87c8f9
-
 replace github.com/apache/arrow/go/v12 v12.0.0 => github.com/apache/arrow/go/v12 v12.0.0-20230428025921-06d49ee63e26
