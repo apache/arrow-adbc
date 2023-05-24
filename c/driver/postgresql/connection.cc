@@ -218,6 +218,7 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
 
 AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
                                                 const char* db_name,
+                                                const char* db_schema,
                                                 struct ArrowArray* db_schemas_list,
                                                 struct AdbcError* error) {
   struct ArrowArray* db_schema_items = db_schemas_list->children[0];
@@ -237,10 +238,38 @@ AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
   }
 
   if (strcmp(db_name, curr_db) == 0) {
+    struct StringBuilder query = {0};
+    if (StringBuilderInit(&query, /*initial_size*/ 256)) {
+      return ADBC_STATUS_INTERNAL;
+    }
+
     const char* stmt =
         "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
         "nspname !~ '^pg_' AND nspname <> 'information_schema'";
-    auto result_helper = PqResultHelper(conn, stmt);
+
+    if (StringBuilderAppend(&query, "%s", stmt)) {
+      StringBuilderReset(&query);
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    if (db_schema != NULL) {
+      char* schema_name = PQescapeIdentifier(conn, db_schema, strlen(db_schema));
+      if (schema_name == NULL) {
+        SetError(error, "%s%s", "Failed to escape schema: ", PQerrorMessage(conn));
+        StringBuilderReset(&query);
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      int res =
+          StringBuilderAppend(&query, "%s%s%s", " AND nspname ='", schema_name, "'");
+      PQfreemem(schema_name);
+      if (res) {
+        return ADBC_STATUS_INTERNAL;
+      }
+    }
+
+    auto result_helper = PqResultHelper{conn, query.buffer};
+    StringBuilderReset(&query);
 
     if (result_helper.Status() == PGRES_TUPLES_OK) {
       for (PqResultRow row : result_helper) {
@@ -318,7 +347,7 @@ AdbcStatusCode PostgresConnectionGetObjectsImpl(
         CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col, 1), error);
       } else {
         // postgres only allows you to list schemas for the currently connected db
-        RAISE_ADBC(PostgresConnectionGetSchemasImpl(conn, depth, db_name,
+        RAISE_ADBC(PostgresConnectionGetSchemasImpl(conn, depth, db_name, db_schema,
                                                     catalog_db_schemas_col, error));
       }
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
