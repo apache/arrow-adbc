@@ -226,19 +226,19 @@ AdbcStatusCode PostgresConnectionGetSchemasImpl(PGconn* conn, int depth,
   struct ArrowArray* db_schema_tables_list = db_schema_items->children[1];
 
   // inefficient to place here but better localized until we do a class-based refactor
-  const char* curr_db;
+  std::string curr_db;
   PqResultHelper curr_db_helper = PqResultHelper{conn, "SELECT current_database()"};
   if (curr_db_helper.Status() == PGRES_TUPLES_OK) {
     assert(curr_db_helper.NumRows() == 1);
     auto curr_iter = curr_db_helper.begin();
     PqResultRow db_row = *curr_iter;
-    curr_db = db_row[0].data;
+    curr_db = std::string(db_row[0].data);
   } else {
-    return ADBC_STATUS_NOT_IMPLEMENTED;
+    return ADBC_STATUS_INTERNAL;
   }
 
   // postgres only allows you to list schemas for the currently connected db
-  if (strcmp(db_name, curr_db) == 0) {
+  if (strcmp(db_name, curr_db.c_str()) == 0) {
     struct StringBuilder query = {0};
     if (StringBuilderInit(&query, /*initial_size*/ 256)) {
       return ADBC_STATUS_INTERNAL;
