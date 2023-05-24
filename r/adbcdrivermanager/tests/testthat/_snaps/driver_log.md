@@ -3,8 +3,6 @@
     Code
       db <- adbc_database_init(adbc_driver_log(), key = "value")
     Output
-      LogDriverInitFunc()
-      LogDriverInitFunc()
       LogDatabaseNew()
       LogDatabaseSetOption()
       LogDatabaseInit()
@@ -12,8 +10,8 @@
       con <- adbc_connection_init(db, key = "value")
     Output
       LogConnectionNew()
-      LogConnectionInit()
       LogConnectionSetOption()
+      LogConnectionInit()
     Code
       stmt <- adbc_statement_init(con, key = "value")
     Output

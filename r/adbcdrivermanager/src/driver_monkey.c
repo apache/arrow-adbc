@@ -333,7 +333,7 @@ static AdbcStatusCode MonkeyDriverInitFunc(int version, void* raw_driver,
   return ADBC_STATUS_OK;
 }
 
-SEXP RAdbcMonkeyDriverInitFunc() {
+SEXP RAdbcMonkeyDriverInitFunc(void) {
   SEXP xptr =
       PROTECT(R_MakeExternalPtrFn((DL_FUNC)MonkeyDriverInitFunc, R_NilValue, R_NilValue));
   Rf_setAttrib(xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
