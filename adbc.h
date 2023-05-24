@@ -1102,6 +1102,8 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 /// concurrent active statements and it must execute a SQL query
 /// internally in order to implement the metadata function).
 ///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
+///
 /// Some functions accept "search pattern" arguments, which are
 /// strings that can contain the special character "%" to match zero
 /// or more characters, or "_" to match exactly one character.  (See
@@ -1232,6 +1234,8 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 /// | fk_table                 | utf8 not null           |
 /// | fk_column_name           | utf8 not null           |
 ///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
+///
 /// \param[in] connection The database connection.
 /// \param[in] depth The level of nesting to display. If 0, display
 ///   all levels. If 1, display only catalogs (i.e.  catalog_schemas
@@ -1360,6 +1364,8 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 /// ---------------|--------------
 /// table_type     | utf8 not null
 ///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
+///
 /// \param[in] connection The database connection.
 /// \param[out] out The result set.
 /// \param[out] error Error details, if an error occurs.
@@ -1387,6 +1393,8 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
 ///   results can then be read independently.
 ///
 /// A partition can be retrieved from AdbcPartitions.
+///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
 /// \param[in] connection The connection to use.  This does not have
 ///   to be the same connection that the partition was created on.
@@ -1457,7 +1465,8 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 
 /// \brief Execute a statement and get the results.
 ///
-/// This invalidates any prior result sets.
+/// This invalidates any prior result sets.  This AdbcStatement must
+/// outlive the returned ArrowArrayStream.
 ///
 /// Since ADBC 1.1.0: releasing the returned ArrowArrayStream without
 /// consuming it fully is equivalent to calling AdbcStatementCancel.
