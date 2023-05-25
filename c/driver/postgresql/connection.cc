@@ -151,7 +151,6 @@ class PqGetObjectsHelper {
                     &na_error_, error_);
     CHECK_NA(INTERNAL, ArrowArrayStartAppending(array_), error_);
 
-    // TODO: maybe make these getters? Or move to Init and abort if unable to construct?
     catalog_name_col_ = array_->children[0];
     catalog_db_schemas_col_ = array_->children[1];
 
