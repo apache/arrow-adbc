@@ -30,3 +30,18 @@ def test_query_trivial(postgres: dbapi.Connection):
     with postgres.cursor() as cur:
         cur.execute("SELECT 1")
         assert cur.fetchone() == (1,)
+
+
+def test_ddl(postgres: dbapi.Connection):
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_ddl")
+        assert cur.fetchone() is None
+
+        cur.execute("CREATE TABLE test_ddl (ints INT)")
+        assert cur.fetchone() is None
+
+        cur.execute("INSERT INTO test_ddl VALUES (1) RETURNING ints")
+        assert cur.fetchone() == (1,)
+
+        cur.execute("SELECT * FROM test_ddl")
+        assert cur.fetchone() == (1,)

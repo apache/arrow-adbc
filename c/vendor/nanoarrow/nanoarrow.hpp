@@ -250,6 +250,8 @@ class EmptyArrayStream {
 
   static void release_wrapper(struct ArrowArrayStream* stream) {
     delete reinterpret_cast<EmptyArrayStream*>(stream->private_data);
+    stream->release = nullptr;
+    stream->private_data = nullptr;
   }
 };
 
