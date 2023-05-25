@@ -86,5 +86,11 @@ repos:
       language: script
       pass_filenames: false
       entry: "./ci/scripts/run_rat_local.sh"
+    - id: check-cgo-adbc-header
+      name: Ensure CGO adbc.h is sync'd
+      language: script
+      pass_filenames: true
+      files: '(c/driver_manager/adbc_driver_manager\.)|(^adbc\.h)'
+      entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
 
 exclude: "^c/vendor/.*"
