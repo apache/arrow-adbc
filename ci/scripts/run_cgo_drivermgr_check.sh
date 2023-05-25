@@ -30,20 +30,14 @@ main() {
 
   pushd "${source_top_dir}"
 
-  if ! diff -q "adbc.h" "go/adbc/drivermgr/adbc.h" &>/dev/null; then
-    >&2 echo "OUT OF SYNC: adbc.h differs from go/adbc/drivermgr/adbc.h"
-    return 1
-  fi
-
-  if ! diff -q "c/driver_manager/adbc_driver_manager.h" "go/adbc/drivermgr/adbc_driver_manager.h" &>/dev/null; then
-    >&2 echo "OUT OF SYNC: adbc_driver_manager.h differs from go/adbc/drivermgmr/adbc_driver_manager.h"
-    return 1
-  fi
-
-  if ! diff -q "c/driver_manager/adbc_driver_manager.cc" "go/adbc/drivermgr/adbc_driver_manager.cc" &>/dev/null; then
-    >&2 echo "OUT OF SYNC: adbc_driver_manager.cc differs from go/adbc/drivermgmr/adbc_driver_manager.cc"
-    return 1
-  fi
+  for f in "$@"; do
+    fn=$(basename $f)
+    if ! diff -q "$f" "go/adbc/drivermgr/$fn" &>/dev/null; then
+      >&2 echo "OUT OF SYNC: $f differs from go/adbc/drivermgr/$fn"
+      popd
+      return 1
+    fi
+  done
 
   popd
 }
