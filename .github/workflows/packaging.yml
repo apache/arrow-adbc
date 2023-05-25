@@ -575,7 +575,7 @@ jobs:
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}" >> $GITHUB_ENV
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
