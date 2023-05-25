@@ -636,11 +636,8 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     // and https://stackoverflow.com/questions/69233792 suggests that
     // you can't PREPARE a query containing COPY.
   }
-  if (!stream) {
-    if (!ingest_.target.empty()) {
-      return ExecuteUpdateBulk(rows_affected, error);
-    }
-    return ExecuteUpdateQuery(rows_affected, error);
+  if (!stream && !ingest_.target.empty()) {
+    return ExecuteUpdateBulk(rows_affected, error);
   }
 
   if (query_.empty()) {
@@ -690,14 +687,17 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
       return na_res;
     }
 
-    // If there are no output columns (e.g. a CREATE or UPDATE), then
-    // don't use COPY (which would fail anyways)
-    if (root_type.n_children() == 0) {
+    // If the caller did not request a result set or if there are no
+    // inferred output columns (e.g. a CREATE or UPDATE), then don't
+    // use COPY (which would fail anyways)
+    if (!stream || root_type.n_children() == 0) {
       RAISE_ADBC(ExecuteUpdateQuery(rows_affected, error));
-      struct ArrowSchema schema;
-      std::memset(&schema, 0, sizeof(schema));
-      RAISE_NA(reader_.copy_reader_->GetSchema(&schema));
-      nanoarrow::EmptyArrayStream::MakeUnique(&schema).move(stream);
+      if (stream) {
+        struct ArrowSchema schema;
+        std::memset(&schema, 0, sizeof(schema));
+        RAISE_NA(reader_.copy_reader_->GetSchema(&schema));
+        nanoarrow::EmptyArrayStream::MakeUnique(&schema).move(stream);
+      }
       return ADBC_STATUS_OK;
     }
 
@@ -771,23 +771,11 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
 
 AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
                                                      struct AdbcError* error) {
-  if (query_.empty()) {
-    SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-
-  PGresult* result = nullptr;
-
-  if (prepared_) {
-    result = PQexecPrepared(connection_->conn(), /*stmtName=*/"", /*nParams=*/0,
-                            /*paramValues=*/nullptr, /*paramLengths=*/nullptr,
-                            /*paramFormats=*/nullptr, /*resultFormat=*/kPgBinaryFormat);
-  } else {
-    result = PQexecParams(connection_->conn(), query_.c_str(), /*nParams=*/0,
-                          /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
-                          /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
-                          /*resultFormat=*/kPgBinaryFormat);
-  }
+  // NOTE: must prepare first (used in ExecuteQuery)
+  PGresult* result =
+      PQexecPrepared(connection_->conn(), /*stmtName=*/"", /*nParams=*/0,
+                     /*paramValues=*/nullptr, /*paramLengths=*/nullptr,
+                     /*paramFormats=*/nullptr, /*resultFormat=*/kPgBinaryFormat);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     SetError(error, "[libpq] Failed to execute query: %s\nQuery was:%s",
              PQerrorMessage(connection_->conn()), query_.c_str());
