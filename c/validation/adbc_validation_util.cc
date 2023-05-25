@@ -64,20 +64,6 @@ std::string ToString(struct ArrowArrayStream* stream) {
   return "";
 }
 
-int64_t ArrowArrayViewGetOffsetUnsafe(struct ArrowArrayView* array_view, int64_t i) {
-  struct ArrowBufferView* data_view = &array_view->buffer_views[1];
-  i += array_view->array->offset;
-  switch (array_view->storage_type) {
-    case NANOARROW_TYPE_LIST:
-    case NANOARROW_TYPE_MAP:
-      return data_view->data.as_int32[i];
-    case NANOARROW_TYPE_LARGE_LIST:
-      return data_view->data.as_int64[i];
-    default:
-      return INT64_MAX;
-  }
-}
-
 IsErrno::IsErrno(int expected, struct ArrowArrayStream* stream, struct ArrowError* error)
     : expected_(expected), stream_(stream), error_(error) {}
 
@@ -251,7 +237,7 @@ void CompareSchema(
               (schema->children[i]->flags & ARROW_FLAG_NULLABLE) != 0)
         << "Nullability mismatch";
     if (std::get<0>(fields[i]).has_value()) {
-      ASSERT_EQ(*std::get<0>(fields[i]), schema->children[i]->name);
+      ASSERT_STRCASEEQ(std::get<0>(fields[i])->c_str(), schema->children[i]->name);
     }
   }
 }

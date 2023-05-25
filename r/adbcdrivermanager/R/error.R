@@ -21,8 +21,26 @@ adbc_allocate_error <- function(shelter = NULL) {
 
 stop_for_error <- function(status, error) {
   if (!identical(status, 0L)) {
-    msg <- if (!is.null(error$message)) error$message else .Call(RAdbcStatusCodeMessage, status)
-    stop(msg)
+    error <- .Call(RAdbcErrorProxy, error)
+    error$status <- status
+    error$status_code_message <- .Call(RAdbcStatusCodeMessage, status)
+    msg <- if (!is.null(error$message)) error$message else error$status_code_message
+
+    # Gives an error class like "adbc_status_invalid_state", "adbc_status",
+    # "simpleError", ...
+    cnd_class <- c(
+      tolower(gsub("\\s+.*", "", error$status_code_message)),
+      "adbc_status"
+    )
+
+    # Strips stop_for_error() call from the error output
+    cnd <- simpleError(msg, call = sys.call(-1))
+    class(cnd) <- union(cnd_class, class(cnd))
+
+    # Store the listified error information
+    cnd$error <- error
+
+    stop(cnd)
   }
 }
 

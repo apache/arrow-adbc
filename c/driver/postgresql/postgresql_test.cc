@@ -86,11 +86,6 @@ class PostgresConnectionTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestMetadataGetInfo() { GTEST_SKIP() << "Not yet implemented"; }
-  void TestMetadataGetTableTypes() { GTEST_SKIP() << "Not yet implemented"; }
-
-  void TestMetadataGetObjectsCatalogs() { GTEST_SKIP() << "Not yet implemented"; }
-  void TestMetadataGetObjectsDbSchemas() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsTables() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Not yet implemented"; }
   void TestMetadataGetObjectsColumns() { GTEST_SKIP() << "Not yet implemented"; }
@@ -98,6 +93,170 @@ class PostgresConnectionTest : public ::testing::Test,
  protected:
   PostgresQuirks quirks_;
 };
+
+TEST_F(PostgresConnectionTest, GetInfoMetadata) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  std::vector<uint32_t> info = {
+      ADBC_INFO_DRIVER_NAME,
+      ADBC_INFO_DRIVER_VERSION,
+      ADBC_INFO_VENDOR_NAME,
+      ADBC_INFO_VENDOR_VERSION,
+  };
+  ASSERT_THAT(AdbcConnectionGetInfo(&connection, info.data(), info.size(),
+                                    &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  std::vector<uint32_t> seen;
+  while (true) {
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    if (!reader.array->release) break;
+
+    for (int64_t row = 0; row < reader.array->length; row++) {
+      ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], row));
+      const uint32_t code =
+          reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
+      seen.push_back(code);
+
+      int str_child_index = 0;
+      struct ArrowArrayView* str_child =
+          reader.array_view->children[1]->children[str_child_index];
+      switch (code) {
+        case ADBC_INFO_DRIVER_NAME: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 0);
+          EXPECT_EQ("ADBC PostgreSQL Driver", std::string(val.data, val.size_bytes));
+          break;
+        }
+        case ADBC_INFO_DRIVER_VERSION: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 1);
+          EXPECT_EQ("(unknown)", std::string(val.data, val.size_bytes));
+          break;
+        }
+        case ADBC_INFO_VENDOR_NAME: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 2);
+          EXPECT_EQ("PostgreSQL", std::string(val.data, val.size_bytes));
+          break;
+        }
+        case ADBC_INFO_VENDOR_VERSION: {
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 3);
+#ifdef __WIN32
+          const char* pater = "\\d\\d\\d\\d\\d\\d";
+#else
+          const char* pater = "[0-9]{6}";
+#endif
+          EXPECT_THAT(std::string(val.data, val.size_bytes),
+                      ::testing::MatchesRegex(pater));
+          break;
+        }
+        default:
+          // Ignored
+          break;
+      }
+    }
+  }
+  ASSERT_THAT(seen, ::testing::UnorderedElementsAreArray(info));
+}
+
+TEST_F(PostgresConnectionTest, GetObjectsGetCatalogs) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, &reader.stream.value, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_GT(reader.array->length, 0);
+
+  bool seen_postgres_db = false;
+  bool seen_template0_db = false;
+  bool seen_tempalte1_db = false;
+
+  do {
+    for (int64_t row = 0; row < reader.array->length; row++) {
+      ArrowStringView val =
+          ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], row);
+      auto val_str = std::string(val.data, val.size_bytes);
+      if (val_str == "postgres") {
+        seen_postgres_db = true;
+      } else if (val_str == "template0") {
+        seen_template0_db = true;
+      } else if (val_str == "template1") {
+        seen_tempalte1_db = true;
+      }
+    }
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+  } while (reader.array->release);
+
+  EXPECT_TRUE(seen_postgres_db) << "postgres database does not exist";
+  EXPECT_TRUE(seen_template0_db) << "template0 database does not exist";
+  EXPECT_TRUE(seen_tempalte1_db) << "template1 database does not exist";
+}
+
+TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
+                                       nullptr, nullptr, nullptr, nullptr,
+                                       &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_GT(reader.array->length, 0);
+
+  bool seen_public = false;
+
+  struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
+  struct ArrowArrayView* catalog_db_schema_names = catalog_db_schemas_list->children[0];
+
+  do {
+    for (int64_t catalog_idx = 0; catalog_idx < reader.array->length; catalog_idx++) {
+      ArrowStringView db_name =
+          ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], catalog_idx);
+      auto db_str = std::string(db_name.data, db_name.size_bytes);
+
+      auto schema_list_start =
+          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx);
+      auto schema_list_end =
+          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx + 1);
+
+      if (db_str == "postgres") {
+        ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, catalog_idx));
+        for (auto db_schemas_index = schema_list_start;
+             db_schemas_index < schema_list_end; db_schemas_index++) {
+          ArrowStringView schema_name = ArrowArrayViewGetStringUnsafe(
+              catalog_db_schema_names->children[0], db_schemas_index);
+          auto schema_str = std::string(schema_name.data, schema_name.size_bytes);
+          if (schema_str == "public") {
+            seen_public = true;
+          }
+        }
+      } else {
+        ASSERT_EQ(schema_list_start, schema_list_end);
+      }
+    }
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+  } while (reader.array->release);
+
+  ASSERT_TRUE(seen_public) << "public schema does not exist";
+}
 
 TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
   if (!quirks()->supports_bulk_ingest()) {

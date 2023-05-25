@@ -70,3 +70,59 @@ test_that("default options can open a database and execute a query", {
   adbcdrivermanager::adbc_connection_release(con)
   adbcdrivermanager::adbc_database_release(db)
 })
+
+test_that("read/write/execute SQL work with sqlite connections", {
+  skip_if_not(packageVersion("nanoarrow") >= "0.1.0.9000")
+
+  db <- adbc_database_init(adbcsqlite())
+  con <- adbc_connection_init(db)
+
+  df <- data.frame(x = as.double(1:10))
+  expect_identical(adbcdrivermanager::write_adbc(df, con, "df"), df)
+
+  stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
+  expect_identical(as.data.frame(stream), df)
+  stream$release()
+
+  expect_identical(
+    adbcdrivermanager::execute_adbc(
+      con,
+      "UPDATE df SET x = x + ?",
+      bind = data.frame(2)
+    ),
+    con
+  )
+
+  stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
+  expect_identical(as.data.frame(stream), data.frame(x = as.double(3:12)))
+  stream$release()
+})
+
+test_that("read/write/execute SQL work with sqlite databases", {
+  skip_if_not(packageVersion("nanoarrow") >= "0.1.0.9000")
+
+  temp_db <- tempfile()
+  on.exit(unlink(temp_db))
+
+  db <- adbc_database_init(adbcsqlite(), uri = temp_db)
+
+  df <- data.frame(x = as.double(1:10))
+  expect_identical(adbcdrivermanager::write_adbc(df, db, "df"), df)
+
+  stream <- adbcdrivermanager::read_adbc(db, "SELECT * from df")
+  expect_identical(as.data.frame(stream), df)
+  stream$release()
+
+  expect_identical(
+    adbcdrivermanager::execute_adbc(
+      db,
+      "UPDATE df SET x = x + ?",
+      bind = data.frame(2)
+    ),
+    db
+  )
+
+  stream <- adbcdrivermanager::read_adbc(db, "SELECT * from df")
+  expect_identical(as.data.frame(stream), data.frame(x = as.double(3:12)))
+  stream$release()
+})

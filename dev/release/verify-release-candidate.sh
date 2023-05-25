@@ -434,7 +434,7 @@ test_cpp() {
   export BUILD_DRIVER_POSTGRESQL=0
   # Snowflake driver requires snowflake creds for testing
   export BUILD_DRIVER_SNOWFLAKE=0
-  "${ADBC_DIR}/ci/scripts/cpp_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
+  "${ADBC_DIR}/ci/scripts/cpp_test.sh" "${ARROW_TMPDIR}/cpp-build" "${install_prefix}"
   export BUILD_DRIVER_FLIGHTSQL=1
   export BUILD_DRIVER_POSTGRESQL=1
   export BUILD_DRIVER_SNOWFLAKE=1
@@ -653,7 +653,7 @@ test_source_distribution() {
 }
 
 test_binary_distribution() {
-  if [ ${TEST_BINARIES} -gt 0 ]; then
+  if [ $((${TEST_BINARY} + ${TEST_JARS} + ${TEST_WHEELS})) -gt 0 ]; then
     show_header "Downloading binary artifacts"
     export BINARY_DIR="${ARROW_TMPDIR}/binaries"
     mkdir -p "${BINARY_DIR}"

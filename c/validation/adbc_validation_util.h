@@ -43,12 +43,6 @@ std::string ToString(struct ArrowError* error);
 std::string ToString(struct ArrowArrayStream* stream);
 
 // ------------------------------------------------------------
-// Nanoarrow helpers
-
-/// \brief Get the array offset for a particular index
-int64_t ArrowArrayViewGetOffsetUnsafe(struct ArrowArrayView* array_view, int64_t i);
-
-// ------------------------------------------------------------
 // Helper to manage C Data Interface/Nanoarrow resources with RAII
 
 template <typename T>

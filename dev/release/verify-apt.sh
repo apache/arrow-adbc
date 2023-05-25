@@ -45,9 +45,21 @@ echo "::group::Prepare repository"
 
 export DEBIAN_FRONTEND=noninteractive
 
-APT_INSTALL="apt install -y -V --no-install-recommends"
+retry() {
+  local n_tries=2
+  while [ ${n_tries} -gt 0 ]; do
+    if "$@"; then
+      return
+    fi
+    n_tries=$((${n_tries} - 1))
+  done
+  "$@"
+}
 
-apt update
+APT_UPDATE="retry apt update --error-on=any"
+APT_INSTALL="retry apt install -y -V --no-install-recommends"
+
+${APT_UPDATE}
 ${APT_INSTALL} \
   ca-certificates \
   curl \
@@ -127,7 +139,7 @@ else
   esac
 fi
 
-apt update
+${APT_UPDATE}
 
 echo "::endgroup::"
 

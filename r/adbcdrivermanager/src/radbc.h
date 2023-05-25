@@ -111,6 +111,26 @@ static inline void adbc_xptr_default_finalize(SEXP xptr) {
   }
 }
 
+static inline void adbc_xptr_move_attrs(SEXP xptr_old, SEXP xptr_new) {
+  SEXP cls_old = PROTECT(Rf_getAttrib(xptr_old, R_ClassSymbol));
+  SEXP tag_old = PROTECT(R_ExternalPtrTag(xptr_old));
+  SEXP prot_old = PROTECT(R_ExternalPtrProtected(xptr_old));
+
+  SEXP tag_new = PROTECT(R_ExternalPtrTag(xptr_new));
+  SEXP prot_new = PROTECT(R_ExternalPtrProtected(xptr_new));
+
+  Rf_setAttrib(xptr_new, R_ClassSymbol, cls_old);
+  R_SetExternalPtrTag(xptr_new, tag_old);
+  R_SetExternalPtrProtected(xptr_new, prot_old);
+
+  // Don't change the class of the original object...not necessary for
+  // lifecycle management and potentially very confusing
+  R_SetExternalPtrTag(xptr_old, tag_new);
+  R_SetExternalPtrProtected(xptr_old, prot_new);
+
+  UNPROTECT(5);
+}
+
 static inline const char* adbc_as_const_char(SEXP sexp) {
   if (TYPEOF(sexp) != STRSXP || Rf_length(sexp) != 1) {
     Rf_error("Expected character(1) for conversion to const char*");

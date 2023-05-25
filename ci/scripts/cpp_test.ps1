@@ -18,9 +18,8 @@
 
 $ErrorActionPreference = "Stop"
 
-$SourceDir = $Args[0]
-$BuildDir = $Args[1]
-$InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "local/" }
+$BuildDir = $Args[0]
+$InstallDir = if ($Args[1] -ne $null) { $Args[1] } else { Join-Path $BuildDir "local/" }
 
 $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
@@ -36,7 +35,7 @@ $env:PATH += ";$($InstallDir)"
 $env:PATH += ";$($InstallDir)\bin"
 $env:PATH += ";$($InstallDir)\lib"
 
-function Build-Subproject {
+function Test-Project {
     Push-Location $BuildDir
 
     $labels = "driver-common"
@@ -63,4 +62,4 @@ function Build-Subproject {
     Pop-Location
 }
 
-Build-Subproject
+Test-Project
