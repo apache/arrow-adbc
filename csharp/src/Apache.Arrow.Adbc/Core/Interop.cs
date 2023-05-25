@@ -30,21 +30,21 @@ using Apache.Arrow.Adbc.Extensions;
 
 namespace Apache.Arrow.Adbc.Core
 {
-    public static class AdbcInterop
+    internal static class AdbcInterop
     {
-        private static unsafe NativeDelegate<ErrorRelease> releaseError = new NativeDelegate<ErrorRelease>(ReleaseError);
-        private static NativeDelegate<DriverRelease> releaseDriver = new NativeDelegate<DriverRelease>(ReleaseDriver);
+        private static unsafe readonly NativeDelegate<ErrorRelease> releaseError = new NativeDelegate<ErrorRelease>(ReleaseError);
+        private static readonly NativeDelegate<DriverRelease> releaseDriver = new NativeDelegate<DriverRelease>(ReleaseDriver);
 
-        private static NativeDelegate<DatabaseFn> databaseInit = new NativeDelegate<DatabaseFn>(InitDatabase);
-        private static NativeDelegate<DatabaseFn> databaseRelease = new NativeDelegate<DatabaseFn>(ReleaseDatabase);
-        private static NativeDelegate<DatabaseSetOption> databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
-        private static NativeDelegate<ConnectionInit> connectionInit = new NativeDelegate<ConnectionInit>(InitConnection);
-        private static NativeDelegate<ConnectionFn> connectionRelease = new NativeDelegate<ConnectionFn>(ReleaseConnection);
-        private static NativeDelegate<ConnectionSetOption> connectionSetOption = new NativeDelegate<ConnectionSetOption>(SetConnectionOption);
-        private static unsafe NativeDelegate<StatementExecuteQuery> statementExecuteQuery = new NativeDelegate<StatementExecuteQuery>(ExecuteStatementQuery);
-        private static NativeDelegate<StatementNew> statementNew = new NativeDelegate<StatementNew>(NewStatement);
-        private static NativeDelegate<StatementFn> statementRelease = new NativeDelegate<StatementFn>(ReleaseStatement);
-        private static NativeDelegate<StatementSetSqlQuery> statementSetSqlQuery = new NativeDelegate<StatementSetSqlQuery>(SetStatementSqlQuery);
+        private static readonly NativeDelegate<DatabaseFn> databaseInit = new NativeDelegate<DatabaseFn>(InitDatabase);
+        private static readonly NativeDelegate<DatabaseFn> databaseRelease = new NativeDelegate<DatabaseFn>(ReleaseDatabase);
+        private static readonly NativeDelegate<DatabaseSetOption> databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
+        private static readonly NativeDelegate<ConnectionInit> connectionInit = new NativeDelegate<ConnectionInit>(InitConnection);
+        private static readonly NativeDelegate<ConnectionFn> connectionRelease = new NativeDelegate<ConnectionFn>(ReleaseConnection);
+        private static readonly NativeDelegate<ConnectionSetOption> connectionSetOption = new NativeDelegate<ConnectionSetOption>(SetConnectionOption);
+        private static unsafe readonly NativeDelegate<StatementExecuteQuery> statementExecuteQuery = new NativeDelegate<StatementExecuteQuery>(ExecuteStatementQuery);
+        private static readonly NativeDelegate<StatementNew> statementNew = new NativeDelegate<StatementNew>(NewStatement);
+        private static readonly NativeDelegate<StatementFn> statementRelease = new NativeDelegate<StatementFn>(ReleaseStatement);
+        private static readonly NativeDelegate<StatementSetSqlQuery> statementSetSqlQuery = new NativeDelegate<StatementSetSqlQuery>(SetStatementSqlQuery);
 
         public unsafe static AdbcStatusCode AdbcDriverInit(int version, NativeAdbcDriver* nativeDriver, NativeAdbcError* error, AdbcDriver driver)
         {
@@ -69,7 +69,7 @@ namespace Apache.Arrow.Adbc.Core
 
         private unsafe static void ReleaseError(NativeAdbcError* error)
         {
-            if (error != null && (*error).message != IntPtr.Zero)
+            if (error != null && error->message != IntPtr.Zero)
             {
                 Marshal.FreeCoTaskMem((*error).message);
             }
@@ -92,7 +92,7 @@ namespace Apache.Arrow.Adbc.Core
             error->sqlstate4 = (char)0;
             error->vendor_code = 0;
             error->vendor_code = 0;
-            error->release = (delegate* unmanaged[Stdcall]<NativeAdbcError*, void>)(IntPtr)releaseError.Pointer;
+            error->release = (delegate* unmanaged[Stdcall]<NativeAdbcError*, void>)releaseError.Pointer;
             
             return AdbcStatusCode.UnknownError;
         }
@@ -188,7 +188,7 @@ namespace Apache.Arrow.Adbc.Core
 
         private unsafe static AdbcStatusCode ReleaseDatabase(ref NativeAdbcDatabase nativeDatabase, ref NativeAdbcError error)
         {
-            if ((IntPtr)nativeDatabase.private_data == IntPtr.Zero)
+            if (nativeDatabase.private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
@@ -197,7 +197,7 @@ namespace Apache.Arrow.Adbc.Core
             DatabaseStub stub = (DatabaseStub)gch.Target;
             stub.Dispose();
             gch.Free();
-            nativeDatabase.private_data = null;//IntPtr.Zero;
+            nativeDatabase.private_data = null;
             return AdbcStatusCode.Success;
         }
 
@@ -217,7 +217,7 @@ namespace Apache.Arrow.Adbc.Core
 
         private unsafe static AdbcStatusCode ReleaseConnection(ref NativeAdbcConnection nativeConnection, ref NativeAdbcError error)
         {
-            if ((IntPtr)nativeConnection.private_data == IntPtr.Zero)
+            if (nativeConnection.private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
@@ -276,7 +276,7 @@ namespace Apache.Arrow.Adbc.Core
 
         private unsafe static AdbcStatusCode ReleaseStatement(ref NativeAdbcStatement nativeStatement, ref NativeAdbcError error)
         {
-            if ((IntPtr)nativeStatement.private_data == IntPtr.Zero)
+            if (nativeStatement.private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
@@ -461,7 +461,7 @@ namespace Apache.Arrow.Adbc.Core
 
         public unsafe AdbcStatusCode NewDatabase(ref NativeAdbcDatabase nativeDatabase, ref NativeAdbcError error)
         {
-            if ((IntPtr)nativeDatabase.private_data != IntPtr.Zero)
+            if (nativeDatabase.private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
@@ -475,7 +475,7 @@ namespace Apache.Arrow.Adbc.Core
 
         public unsafe AdbcStatusCode NewConnection(ref NativeAdbcConnection nativeConnection, ref NativeAdbcError error)
         {
-            if ((IntPtr)nativeConnection.private_data != IntPtr.Zero)
+            if (nativeConnection.private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
@@ -577,7 +577,7 @@ namespace Apache.Arrow.Adbc.Core
 
         public unsafe AdbcStatusCode InitConnection(ref NativeAdbcDatabase nativeDatabase, ref NativeAdbcError error)
         {
-            if ((IntPtr)nativeDatabase.private_data == IntPtr.Zero)
+            if (nativeDatabase.private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
@@ -593,7 +593,7 @@ namespace Apache.Arrow.Adbc.Core
             {
                 return AdbcStatusCode.UnknownError;
             }
-            if ((IntPtr)nativeStatement.private_data != IntPtr.Zero)
+            if (nativeStatement.private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
