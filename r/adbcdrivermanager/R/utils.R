@@ -32,14 +32,6 @@ key_value_options <- function(options) {
   options
 }
 
-xptr_add_option <- function(xptr, key, value) {
-  if (is.null(xptr$options)) {
-    xptr$options <- new.env(parent = emptyenv())
-  }
-
-  xptr$options[[key]] <- unname(value)
-}
-
 new_env <- function() {
   new.env(parent = emptyenv())
 }

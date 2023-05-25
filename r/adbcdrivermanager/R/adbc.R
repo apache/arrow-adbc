@@ -82,7 +82,6 @@ adbc_database_set_options <- function(database, options) {
       error
     )
     stop_for_error(status, error)
-    xptr_add_option(database, key, value)
   }
   invisible(database)
 }
@@ -152,7 +151,6 @@ adbc_connection_set_options <- function(connection, options) {
       error
     )
     stop_for_error(status, error)
-    xptr_add_option(connection, key, value)
   }
   invisible(connection)
 }
@@ -346,7 +344,6 @@ adbc_statement_set_options <- function(statement, options) {
       error
     )
     stop_for_error(status, error)
-    xptr_add_option(statement, key, value)
   }
   invisible(statement)
 }
