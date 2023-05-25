@@ -35,5 +35,7 @@ namespace Apache.Arrow.Adbc.Interop
         {
             return thunk._nativePointer;
         }
+
+        public IntPtr Pointer { get { return _nativePointer; } }
     }
 }

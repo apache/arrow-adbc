@@ -422,12 +422,12 @@ namespace Apache.Arrow.Adbc.Interop
 
             public unsafe void Dispose()
             {
-                if (_error.release != IntPtr.Zero)
+                if (_error.release != null) //IntPtr.Zero)
                 {
                     fixed (NativeAdbcError* err = &_error)
                     {
-                        Marshal.GetDelegateForFunctionPointer<ErrorRelease>(_error.release)(err);
-                        _error.release = IntPtr.Zero;
+                        Marshal.GetDelegateForFunctionPointer<ErrorRelease>((IntPtr)_error.release)(err);
+                        _error.release = null; // IntPtr.Zero;
                     }
                 }
             }
