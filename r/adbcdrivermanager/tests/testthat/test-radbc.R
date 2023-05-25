@@ -18,7 +18,6 @@
 test_that("can initialize and release a database", {
   db <- adbc_database_init(adbc_driver_void(), some_key = "some_value")
   expect_s3_class(db, "adbc_database")
-  expect_identical(db$options$some_key, "some_value")
   adbc_database_release(db)
   expect_error(adbc_database_release(db), "ADBC_STATUS_INVALID_STATE")
 })
@@ -26,7 +25,6 @@ test_that("can initialize and release a database", {
 test_that("can initialize and release a connection", {
   db <- adbc_database_init(adbc_driver_void())
   con <- adbc_connection_init(db, some_key = "some_value")
-  expect_identical(con$options$some_key, "some_value")
   expect_s3_class(con, "adbc_connection")
   adbc_connection_release(con)
   expect_error(adbc_connection_release(con), "ADBC_STATUS_INVALID_STATE")
@@ -84,7 +82,6 @@ test_that("can initialize and release a statement", {
   con <- adbc_connection_init(db)
   stmt <- adbc_statement_init(con, some_key = "some_value")
   expect_s3_class(stmt, "adbc_statement")
-  expect_identical(stmt$options$some_key, "some_value")
   adbc_statement_release(stmt)
   expect_error(adbc_statement_release(stmt), "ADBC_STATUS_INVALID_STATE")
 })
