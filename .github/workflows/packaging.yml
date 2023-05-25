@@ -99,6 +99,7 @@ jobs:
             esac
             VERSION="${VERSION}.dev${distance}"
           fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Create archive
@@ -130,6 +131,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
@@ -249,6 +251,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Extract source archive
@@ -358,6 +361,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
@@ -424,6 +428,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
@@ -496,6 +501,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
@@ -684,6 +690,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
@@ -778,6 +785,7 @@ jobs:
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
           VERSION=${source_archive#apache-arrow-adbc-}
           VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
