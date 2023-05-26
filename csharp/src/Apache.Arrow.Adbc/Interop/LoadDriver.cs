@@ -160,16 +160,16 @@ namespace Apache.Arrow.Adbc.Interop
             /// </summary>
             /// <param name="parameters"></param>
             /// <returns></returns>
-            public override AdbcDatabase Open(Dictionary<string, string> parameters)
+            public unsafe override AdbcDatabase Open(Dictionary<string, string> parameters)
             {
                 NativeAdbcDatabase nativeDatabase = new NativeAdbcDatabase();
                 using (ErrorHelper error = new ErrorHelper())
                 {
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<DatabaseFn>(_nativeDriver.DatabaseNew),
+                        Marshal.GetDelegateForFunctionPointer<DatabaseFn>((IntPtr)_nativeDriver.DatabaseNew),
                         ref nativeDatabase);
 
-                    DatabaseSetOption setOption = Marshal.GetDelegateForFunctionPointer<DatabaseSetOption>(_nativeDriver.DatabaseSetOption);
+                    DatabaseSetOption setOption = Marshal.GetDelegateForFunctionPointer<DatabaseSetOption>((IntPtr)_nativeDriver.DatabaseSetOption);
                     if (parameters != null)
                     {
                         foreach (KeyValuePair<string, string> pair in parameters)
@@ -177,25 +177,25 @@ namespace Apache.Arrow.Adbc.Interop
                             error.Call(setOption, ref nativeDatabase, pair.Key, pair.Value);
                         }
                     }
-                    error.Call(Marshal.GetDelegateForFunctionPointer<DatabaseFn>(_nativeDriver.DatabaseInit), ref nativeDatabase);
+                    error.Call(Marshal.GetDelegateForFunctionPointer<DatabaseFn>((IntPtr)_nativeDriver.DatabaseInit), ref nativeDatabase);
                 }
 
                 return new AdbcDatabaseNative(_nativeDriver, nativeDatabase);
             }
 
-            public override void Dispose()
+            public unsafe override void Dispose()
             {
-                if (_nativeDriver.release != IntPtr.Zero)
+                if (_nativeDriver.release != null)
                 {
                     using (ErrorHelper error = new ErrorHelper())
                     {
                         try
                         {
-                            error.Call(Marshal.GetDelegateForFunctionPointer<DriverRelease>(_nativeDriver.release), ref _nativeDriver);
+                            error.Call(Marshal.GetDelegateForFunctionPointer<DriverRelease>((IntPtr)_nativeDriver.release), ref _nativeDriver);
                         }
                         finally
                         {
-                            _nativeDriver.release = IntPtr.Zero;
+                            _nativeDriver.release = null;
                         }
                     }
                     base.Dispose();
@@ -217,15 +217,15 @@ namespace Apache.Arrow.Adbc.Interop
                 _nativeDatabase = nativeDatabase;
             }
 
-            public override AdbcConnection Connect(Dictionary<string, string> options)
+            public unsafe override AdbcConnection Connect(Dictionary<string, string> options)
             {
                 NativeAdbcConnection nativeConnection = new NativeAdbcConnection();
                 using (ErrorHelper error = new ErrorHelper())
                 {
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<ConnectionFn>(_nativeDriver.ConnectionNew),
+                        Marshal.GetDelegateForFunctionPointer<ConnectionFn>((IntPtr)_nativeDriver.ConnectionNew),
                         ref nativeConnection);
-                    ConnectionSetOption setOption = Marshal.GetDelegateForFunctionPointer<ConnectionSetOption>(_nativeDriver.ConnectionSetOption);
+                    ConnectionSetOption setOption = Marshal.GetDelegateForFunctionPointer<ConnectionSetOption>((IntPtr)_nativeDriver.ConnectionSetOption);
                     if (options != null)
                     {
                         foreach (KeyValuePair<string, string> pair in options)
@@ -233,7 +233,7 @@ namespace Apache.Arrow.Adbc.Interop
                             error.Call(setOption, ref nativeConnection, pair.Key, pair.Value);
                         }
                     }
-                    error.Call(Marshal.GetDelegateForFunctionPointer<ConnectionInit>(_nativeDriver.ConnectionInit), ref nativeConnection, ref _nativeDatabase);
+                    error.Call(Marshal.GetDelegateForFunctionPointer<ConnectionInit>((IntPtr)_nativeDriver.ConnectionInit), ref nativeConnection, ref _nativeDatabase);
                 }
 
                 return new AdbcConnectionNative(_nativeDriver, nativeConnection);
@@ -259,13 +259,13 @@ namespace Apache.Arrow.Adbc.Interop
                 _nativeConnection = nativeConnection;
             }
 
-            public override AdbcStatement CreateStatement()
+            public unsafe override AdbcStatement CreateStatement()
             {
                 NativeAdbcStatement nativeStatement = new NativeAdbcStatement();
                 using (ErrorHelper error = new ErrorHelper())
                 {
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<StatementNew>(_nativeDriver.StatementNew),
+                        Marshal.GetDelegateForFunctionPointer<StatementNew>((IntPtr)_nativeDriver.StatementNew),
                         ref _nativeConnection,
                         ref nativeStatement);
                 }
@@ -295,13 +295,13 @@ namespace Apache.Arrow.Adbc.Interop
                 using (ErrorHelper error = new ErrorHelper())
                 {
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<StatementSetSqlQuery>(_nativeDriver.StatementSetSqlQuery),
+                        Marshal.GetDelegateForFunctionPointer<StatementSetSqlQuery>((IntPtr)_nativeDriver.StatementSetSqlQuery),
                         ref _nativeStatement,
                         SqlQuery);
 
                     long rows = 0;
                     error.Call(
-                        Marshal.GetDelegateForFunctionPointer<StatementExecuteQuery>(_nativeDriver.StatementExecuteQuery),
+                        Marshal.GetDelegateForFunctionPointer<StatementExecuteQuery>((IntPtr)_nativeDriver.StatementExecuteQuery),
                         ref _nativeStatement,
                         nativeArrayStream,
                         ref rows);
@@ -432,17 +432,17 @@ namespace Apache.Arrow.Adbc.Interop
                 }
             }
 
-            void TranslateError(AdbcStatusCode statusCode)
+            private unsafe void TranslateError(AdbcStatusCode statusCode)
             {
                 if (statusCode != AdbcStatusCode.Success)
                 {
                     string message = "Undefined error";
-                    if (_error.message != IntPtr.Zero)
+                    if ((IntPtr)_error.message != IntPtr.Zero)
                     {
                         #if NETSTANDARD
-                            message = MarshalExtensions.PtrToStringUTF8(_error.message);
+                            message = MarshalExtensions.PtrToStringUTF8((IntPtr)_error.message);
                         #else
-                            message = Marshal.PtrToStringUTF8(_error.message);
+                            message = Marshal.PtrToStringUTF8((IntPtr)_error.message);
                         #endif
                     }
                     Dispose();
