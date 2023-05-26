@@ -311,6 +311,16 @@ class PqGetObjectsHelper {
       return ADBC_STATUS_INTERNAL;
     }
 
+    // TODO: we should replace this with a parametrized query
+    // Currently liable for SQL injection
+    if (table_name_ != NULL) {
+      int res = StringBuilderAppend(&query, "%s%s%s", " AND c.relname LIKE '",
+                                    table_name_, "'");
+      if (res) {
+        return ADBC_STATUS_INTERNAL;
+      }
+    }
+
     // We assume schema_name does not need to be escaped as this method
     // is private to the class and called from other private methods that have
     // already escaped
