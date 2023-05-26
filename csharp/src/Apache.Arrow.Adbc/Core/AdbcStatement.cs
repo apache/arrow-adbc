@@ -185,7 +185,6 @@ namespace Apache.Arrow.Adbc.Core
                 case ArrowTypeId.UInt64:
                     return typeof(ulong);
 
-
                 case ArrowTypeId.Null:
                     return null;
 

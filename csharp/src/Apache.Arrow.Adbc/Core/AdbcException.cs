@@ -66,8 +66,7 @@ public class AdbcException : Exception
     /// </summary>
     public virtual string SqlState
     {
-        get { return null; }
-        protected set { throw new NotImplementedException(); }
+        get => null; 
     }
 
     /// <summary>
@@ -83,7 +82,6 @@ public class AdbcException : Exception
     /// </summary>
     public virtual int NativeError
     {
-        get { return 0; }
-        protected set {  throw new NotImplementedException(); }
+        get => 0; 
     }
 }
