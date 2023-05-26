@@ -141,23 +141,11 @@ class PqGetObjectsHelper {
         column_name_(column_name),
         schema_(schema),
         array_(array),
-        error_(error) {}
+        error_(error) {
+    na_error_ = {0};
+  }
 
   AdbcStatusCode GetObjects() {
-    RAISE_ADBC(AdbcInitConnectionObjectsSchema(schema_, error_));
-
-    na_error_ = {0};
-    CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array_, schema_, &na_error_),
-                    &na_error_, error_);
-    CHECK_NA(INTERNAL, ArrowArrayStartAppending(array_), error_);
-
-    catalog_name_col_ = array_->children[0];
-    catalog_db_schemas_col_ = array_->children[1];
-
-    catalog_db_schemas_items_ = catalog_db_schemas_col_->children[0];
-    db_schema_name_col_ = catalog_db_schemas_items_->children[0];
-    db_schema_tables_col_ = catalog_db_schemas_items_->children[1];
-
     PqResultHelper curr_db_helper = PqResultHelper{conn_, "SELECT current_database()"};
     if (curr_db_helper.Status() == PGRES_TUPLES_OK) {
       assert(curr_db_helper.NumRows() == 1);
@@ -168,11 +156,29 @@ class PqGetObjectsHelper {
       return ADBC_STATUS_INTERNAL;
     }
 
+    RAISE_ADBC(InitArrowSchema());
+
+    catalog_name_col_ = array_->children[0];
+    catalog_db_schemas_col_ = array_->children[1];
+    catalog_db_schemas_items_ = catalog_db_schemas_col_->children[0];
+    db_schema_name_col_ = catalog_db_schemas_items_->children[0];
+    db_schema_tables_col_ = catalog_db_schemas_items_->children[1];
+
     RAISE_ADBC(AppendCatalogs());
     return ADBC_STATUS_OK;
   }
 
  private:
+  AdbcStatusCode InitArrowSchema() {
+    RAISE_ADBC(AdbcInitConnectionObjectsSchema(schema_, error_));
+
+    CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array_, schema_, &na_error_),
+                    &na_error_, error_);
+
+    CHECK_NA(INTERNAL, ArrowArrayStartAppending(array_), error_);
+    return ADBC_STATUS_OK;
+  }
+
   AdbcStatusCode AppendSchemas(std::string db_name) {
     // postgres only allows you to list schemas for the currently connected db
     if (db_name == current_db_) {
