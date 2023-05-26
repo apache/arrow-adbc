@@ -860,6 +860,15 @@ struct ADBC_EXPORT AdbcDriver {
 /// \addtogroup adbc-1.1.0
 #define ADBC_DRIVER_1_0_0_SIZE (offsetof(struct AdbcDriver, DatabaseGetOption))
 
+/// \brief The size of the AdbcDriver structure in ADBC 1.1.0.
+/// Drivers written for ADBC 1.1.0 and later should never touch more
+/// than this portion of an AdbcDriver struct when given
+/// ADBC_VERSION_1_1_0.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_DRIVER_1_1_0_SIZE (sizeof(struct AdbcDriver))
+
 /// @}
 
 /// \addtogroup adbc-database

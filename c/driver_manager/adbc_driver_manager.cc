@@ -800,6 +800,20 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
       ADBC_VERSION_1_0_0,
   };
 
+  if (!raw_driver) {
+    SetError(error, "Must provide non-NULL raw_driver");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  switch (version) {
+    case ADBC_VERSION_1_0_0:
+    case ADBC_VERSION_1_1_0:
+      break;
+    default:
+      SetError(error, "Only ADBC 1.0.0 and 1.1.0 are supported");
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
 #define FILL_DEFAULT(DRIVER, STUB) \
   if (!DRIVER->STUB) {             \
     DRIVER->STUB = &STUB;          \
@@ -810,6 +824,9 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     return ADBC_STATUS_INTERNAL;                                               \
   }
 
+  // Starting from the passed version, try each (older) version in
+  // succession with the underlying driver until we find one that's
+  // accepted.
   AdbcStatusCode result = ADBC_STATUS_NOT_IMPLEMENTED;
   for (const int try_version : kSupportedVersions) {
     if (try_version > version) continue;
