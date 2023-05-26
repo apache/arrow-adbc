@@ -156,7 +156,7 @@ class PqGetObjectsHelper {
       return ADBC_STATUS_INTERNAL;
     }
 
-    RAISE_ADBC(InitArrowSchema());
+    RAISE_ADBC(InitArrowArray());
 
     catalog_name_col_ = array_->children[0];
     catalog_db_schemas_col_ = array_->children[1];
@@ -165,11 +165,12 @@ class PqGetObjectsHelper {
     db_schema_tables_col_ = catalog_db_schemas_items_->children[1];
 
     RAISE_ADBC(AppendCatalogs());
+    RAISE_ADBC(FinishArrowArray());
     return ADBC_STATUS_OK;
   }
 
  private:
-  AdbcStatusCode InitArrowSchema() {
+  AdbcStatusCode InitArrowArray() {
     RAISE_ADBC(AdbcInitConnectionObjectsSchema(schema_, error_));
 
     CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array_, schema_, &na_error_),
@@ -282,6 +283,10 @@ class PqGetObjectsHelper {
       return ADBC_STATUS_INTERNAL;
     }
 
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode FinishArrowArray() {
     CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array_, &na_error_),
                     &na_error_, error_);
 
