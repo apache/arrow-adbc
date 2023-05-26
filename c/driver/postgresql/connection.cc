@@ -322,7 +322,7 @@ class PqGetObjectsHelper {
         const char* table_name = row[0].data;
         const char* table_type = row[1].data;
 
-        if (depth_ >= ADBC_OBJECT_DEPTH_COLUMNS) {
+        if (depth_ > ADBC_OBJECT_DEPTH_TABLES) {
           return ADBC_STATUS_NOT_IMPLEMENTED;
         } else {
           CHECK_NA(INTERNAL,
@@ -334,11 +334,13 @@ class PqGetObjectsHelper {
           CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col_, 1), error_);
           CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col_, 1), error_);
         }
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(schema_table_items_), error_);
       }
     } else {
       return ADBC_STATUS_INTERNAL;
     }
 
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_tables_col_), error_);
     return ADBC_STATUS_OK;
   }
 
