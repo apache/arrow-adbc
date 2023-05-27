@@ -468,7 +468,8 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
     params.push_back(db_schema);
   }
 
-  if (StringBuilderAppend(&query, "%s%zu%s", "$", params.size() + 1, "::regclass::oid")) {
+  if (StringBuilderAppend(&query, "%s%" PRIu64 "%s", "$",
+                          static_cast<uint64_t>(params.size() + 1), "::regclass::oid")) {
     StringBuilderReset(&query);
     return ADBC_STATUS_INTERNAL;
   }
