@@ -76,9 +76,6 @@ class PqResultHelper {
                  struct AdbcError* error)
       : conn_(conn), param_values_(param_values), error_(error) {
     query_ = std::string(query);
-    for (auto data : param_values) {
-      param_lengths_.push_back(data.length());
-    }
   }
 
   AdbcStatusCode Prepare() {
@@ -103,8 +100,8 @@ class PqResultHelper {
       param_c_strs.push_back(param_values_[index].c_str());
     }
 
-    result_ = PQexecPrepared(conn_, "", param_values_.size(), param_c_strs.data(),
-                             param_lengths_.data(), NULL, 0);
+    result_ = PQexecPrepared(conn_, "", param_values_.size(), param_c_strs.data(), NULL,
+                             NULL, 0);
 
     if (PQresultStatus(result_) != PGRES_TUPLES_OK) {
       SetError(error_, "[libpq] Failed to execute query: %s", PQerrorMessage(conn_));
@@ -160,7 +157,6 @@ class PqResultHelper {
   PGconn* conn_;
   std::string query_;
   std::vector<std::string> param_values_;
-  std::vector<int> param_lengths_;
   struct AdbcError* error_;
 };
 
