@@ -72,12 +72,42 @@ class PqResultRow {
 // as expected prior to iterating
 class PqResultHelper {
  public:
-  PqResultHelper(PGconn* conn, const char* query) : conn_(conn) {
+  PqResultHelper(PGconn* conn, const char* query, std::vector<std::string> param_values,
+                 struct AdbcError* error)
+      : conn_(conn), param_values_(param_values), error_(error) {
     query_ = std::string(query);
     result_ = PQexec(conn_, query_.c_str());
+    for (auto data : param_values) {
+      param_lengths_.push_back(data.length());
+    }
   }
 
-  ExecStatusType Status() { return PQresultStatus(result_); }
+  AdbcStatusCode Prepare() {
+    // TODO: make a unique stmtName per class invocation
+    PGresult* result =
+        PQprepare(conn_, /*stmtName=*/"", query_.c_str(), param_values_.size(), NULL);
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      SetError(error_, "[libpq] Failed to prepare query: %s\nQuery was:%s",
+               PQerrorMessage(conn_), query_.c_str());
+      PQclear(result);
+      return ADBC_STATUS_IO;
+    }
+
+    PQclear(result);
+    return ADBC_STATUS_OK;
+  }
+
+  PGresult* Execute() {
+    std::vector<const char*> param_c_strs;
+    for (auto data : param_values_) {
+      param_c_strs.push_back(data.c_str());
+    }
+
+    result_ = PQexecPrepared(conn_, "", param_values_.size(), param_c_strs.data(),
+                             param_lengths_.data(), NULL, 0);
+
+    return result_;
+  }
 
   ~PqResultHelper() {
     if (result_ != nullptr) {
@@ -124,6 +154,9 @@ class PqResultHelper {
   pg_result* result_ = nullptr;
   PGconn* conn_;
   std::string query_;
+  std::vector<std::string> param_values_;
+  std::vector<int> param_lengths_;
+  struct AdbcError* error_;
 };
 
 class PqGetObjectsHelper {
@@ -146,8 +179,13 @@ class PqGetObjectsHelper {
   }
 
   AdbcStatusCode GetObjects() {
-    PqResultHelper curr_db_helper = PqResultHelper{conn_, "SELECT current_database()"};
-    if (curr_db_helper.Status() == PGRES_TUPLES_OK) {
+    std::vector<std::string> _;
+    PqResultHelper curr_db_helper =
+        PqResultHelper{conn_, "SELECT current_database()", _, error_};
+
+    RAISE_ADBC(curr_db_helper.Prepare());
+
+    if (PQresultStatus(curr_db_helper.Execute()) == PGRES_TUPLES_OK) {
       assert(curr_db_helper.NumRows() == 1);
       auto curr_iter = curr_db_helper.begin();
       PqResultRow db_row = *curr_iter;
@@ -197,26 +235,21 @@ class PqGetObjectsHelper {
         return ADBC_STATUS_INTERNAL;
       }
 
+      std::vector<std::string> params;
       if (db_schema_ != NULL) {
-        char* schema_name = PQescapeIdentifier(conn_, db_schema_, strlen(db_schema_));
-        if (schema_name == NULL) {
-          SetError(error_, "%s%s", "Failed to escape schema: ", PQerrorMessage(conn_));
+        if (StringBuilderAppend(&query, "%s", " AND nspname =$1")) {
           StringBuilderReset(&query);
-          return ADBC_STATUS_INVALID_ARGUMENT;
-        }
-
-        int res =
-            StringBuilderAppend(&query, "%s%s%s", " AND nspname ='", schema_name, "'");
-        PQfreemem(schema_name);
-        if (res) {
           return ADBC_STATUS_INTERNAL;
         }
+        params.push_back(db_schema_);
       }
 
-      auto result_helper = PqResultHelper{conn_, query.buffer};
+      auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
       StringBuilderReset(&query);
 
-      if (result_helper.Status() == PGRES_TUPLES_OK) {
+      RAISE_ADBC(result_helper.Prepare());
+
+      if (PQresultStatus(result_helper.Execute()) == PGRES_TUPLES_OK) {
         for (PqResultRow row : result_helper) {
           const char* schema_name = row[0].data;
           CHECK_NA(
@@ -247,26 +280,21 @@ class PqGetObjectsHelper {
       return ADBC_STATUS_INTERNAL;
     }
 
+    std::vector<std::string> params;
     if (catalog_ != NULL) {
-      char* catalog_name = PQescapeIdentifier(conn_, catalog_, strlen(catalog_));
-      if (catalog_name == NULL) {
-        SetError(error_, "%s%s", "Failed to escape catalog: ", PQerrorMessage(conn_));
+      if (StringBuilderAppend(&query, "%s", " WHERE datname = $1")) {
         StringBuilderReset(&query);
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      int res =
-          StringBuilderAppend(&query, "%s%s%s", " WHERE datname = '", catalog_name, "'");
-      PQfreemem(catalog_name);
-      if (res) {
         return ADBC_STATUS_INTERNAL;
       }
+      params.push_back(catalog_);
     }
 
-    PqResultHelper result_helper = PqResultHelper{conn_, query.buffer};
+    PqResultHelper result_helper = PqResultHelper{conn_, query.buffer, params, error_};
     StringBuilderReset(&query);
 
-    if (result_helper.Status() == PGRES_TUPLES_OK) {
+    RAISE_ADBC(result_helper.Prepare());
+
+    if (PQresultStatus(result_helper.Execute()) == PGRES_TUPLES_OK) {
       for (PqResultRow row : result_helper) {
         const char* db_name = row[0].data;
         CHECK_NA(INTERNAL,
@@ -430,6 +458,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   struct AdbcError* error) {
   AdbcStatusCode final_status = ADBC_STATUS_OK;
   struct StringBuilder query = {0};
+  std::vector<std::string> params;
   if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
 
   if (StringBuilderAppend(
@@ -438,37 +467,29 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
           "FROM pg_catalog.pg_class AS cls "
           "INNER JOIN pg_catalog.pg_attribute AS attr ON cls.oid = attr.attrelid "
           "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
-          "WHERE attr.attnum >= 0 AND cls.oid = '") != 0)
+          "WHERE attr.attnum >= 0 AND cls.oid = ") != 0)
     return ADBC_STATUS_INTERNAL;
 
   if (db_schema != nullptr) {
-    char* schema = PQescapeIdentifier(conn_, db_schema, strlen(db_schema));
-    if (schema == NULL) {
-      SetError(error, "%s%s", "Faled to escape schema: ", PQerrorMessage(conn_));
-      return ADBC_STATUS_INVALID_ARGUMENT;
+    if (StringBuilderAppend(&query, "%s", "$1.")) {
+      StringBuilderReset(&query);
+      return ADBC_STATUS_INTERNAL;
     }
-
-    int ret = StringBuilderAppend(&query, "%s%s", schema, ".");
-    PQfreemem(schema);
-
-    if (ret != 0) return ADBC_STATUS_INTERNAL;
+    params.push_back(db_schema);
   }
 
-  char* table = PQescapeIdentifier(conn_, table_name, strlen(table_name));
-  if (table == NULL) {
-    SetError(error, "%s%s", "Failed to escape table: ", PQerrorMessage(conn_));
-    return ADBC_STATUS_INVALID_ARGUMENT;
+  if (StringBuilderAppend(&query, "%s%lu%s", "$", params.size() + 1, "::regclass::oid")) {
+    StringBuilderReset(&query);
+    return ADBC_STATUS_INTERNAL;
   }
+  params.push_back(table_name);
 
-  int ret = StringBuilderAppend(&query, "%s%s", table, "'::regclass::oid");
-  PQfreemem(table);
-
-  if (ret != 0) return ADBC_STATUS_INTERNAL;
-
-  PqResultHelper result_helper = PqResultHelper{conn_, query.buffer};
+  PqResultHelper result_helper = PqResultHelper{conn_, query.buffer, params, error};
   StringBuilderReset(&query);
 
-  if (result_helper.Status() != PGRES_TUPLES_OK) {
+  RAISE_ADBC(result_helper.Prepare());
+
+  if (PQresultStatus(result_helper.Execute()) != PGRES_TUPLES_OK) {
     SetError(error, "%s%s", "Failed to get table schema: ", PQerrorMessage(conn_));
     final_status = ADBC_STATUS_IO;
   } else {
