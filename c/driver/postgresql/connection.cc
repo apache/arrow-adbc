@@ -237,7 +237,7 @@ class PqGetObjectsHelper {
 
       std::vector<std::string> params;
       if (db_schema_ != NULL) {
-        if (StringBuilderAppend(&query, "%s", " AND nspname =$1")) {
+        if (StringBuilderAppend(&query, "%s", " AND nspname = $1")) {
           StringBuilderReset(&query);
           return ADBC_STATUS_INTERNAL;
         }
