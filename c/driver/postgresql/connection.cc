@@ -28,7 +28,6 @@
 #include <libpq-fe.h>
 
 #include "database.h"
-#include "postgres_type.h"
 #include "utils.h"
 
 namespace {
