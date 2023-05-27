@@ -76,7 +76,6 @@ class PqResultHelper {
                  struct AdbcError* error)
       : conn_(conn), param_values_(param_values), error_(error) {
     query_ = std::string(query);
-    result_ = PQexec(conn_, query_.c_str());
     for (auto data : param_values) {
       param_lengths_.push_back(data.length());
     }
