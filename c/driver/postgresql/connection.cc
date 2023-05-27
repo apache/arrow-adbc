@@ -468,7 +468,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
     params.push_back(db_schema);
   }
 
-  if (StringBuilderAppend(&query, "%s%lu%s", "$", params.size() + 1, "::regclass::oid")) {
+  if (StringBuilderAppend(&query, "%s%zu%s", "$", params.size() + 1, "::regclass::oid")) {
     StringBuilderReset(&query);
     return ADBC_STATUS_INTERNAL;
   }
