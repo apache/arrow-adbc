@@ -287,7 +287,7 @@ class PqGetObjectsHelper {
     StringBuilderReset(&query);
 
     RAISE_ADBC(result_helper.Prepare());
-    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
 
     for (PqResultRow row : result_helper) {
       const char* db_name = row[0].data;
