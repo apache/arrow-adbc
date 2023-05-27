@@ -28,6 +28,7 @@
 #include <libpq-fe.h>
 
 #include "database.h"
+#include "postgres_type.h"
 #include "utils.h"
 
 namespace {
@@ -83,7 +84,7 @@ class PqResultHelper {
   }
 
   AdbcStatusCode Prepare() {
-    // TODO: make a unique stmtName per class invocation
+    // TODO: make stmtName a unique identifier?
     PGresult* result =
         PQprepare(conn_, /*stmtName=*/"", query_.c_str(), param_values_.size(), NULL);
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
@@ -99,8 +100,9 @@ class PqResultHelper {
 
   PGresult* Execute() {
     std::vector<const char*> param_c_strs;
-    for (auto data : param_values_) {
-      param_c_strs.push_back(data.c_str());
+
+    for (auto index = 0; index < param_values_.size(); index++) {
+      param_c_strs.push_back(param_values_[index].c_str());
     }
 
     result_ = PQexecPrepared(conn_, "", param_values_.size(), param_c_strs.data(),
@@ -264,7 +266,8 @@ class PqGetObjectsHelper {
           CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_items_), error_);
         }
       } else {
-        return ADBC_STATUS_NOT_IMPLEMENTED;
+        SetError(error_, "[libpq] Failed to execute query: %s", PQerrorMessage(conn_));
+        return ADBC_STATUS_INTERNAL;
       }
     }
 
