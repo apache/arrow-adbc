@@ -98,7 +98,7 @@ class PqResultHelper {
     return ADBC_STATUS_OK;
   }
 
-  PGresult* Execute() {
+  AdbcStatusCode Execute() {
     std::vector<const char*> param_c_strs;
 
     for (auto index = 0; index < param_values_.size(); index++) {
@@ -108,7 +108,12 @@ class PqResultHelper {
     result_ = PQexecPrepared(conn_, "", param_values_.size(), param_c_strs.data(),
                              param_lengths_.data(), NULL, 0);
 
-    return result_;
+    if (PQresultStatus(result_) != PGRES_TUPLES_OK) {
+      SetError(error_, "[libpq] Failed to execute query: %s", PQerrorMessage(conn_));
+      return ADBC_STATUS_IO;
+    }
+
+    return ADBC_STATUS_OK;
   }
 
   ~PqResultHelper() {
@@ -186,15 +191,12 @@ class PqGetObjectsHelper {
         PqResultHelper{conn_, "SELECT current_database()", _, error_};
 
     RAISE_ADBC(curr_db_helper.Prepare());
+    RAISE_ADBC(curr_db_helper.Execute());
 
-    if (PQresultStatus(curr_db_helper.Execute()) == PGRES_TUPLES_OK) {
-      assert(curr_db_helper.NumRows() == 1);
-      auto curr_iter = curr_db_helper.begin();
-      PqResultRow db_row = *curr_iter;
-      current_db_ = std::string(db_row[0].data);
-    } else {
-      return ADBC_STATUS_INTERNAL;
-    }
+    assert(curr_db_helper.NumRows() == 1);
+    auto curr_iter = curr_db_helper.begin();
+    PqResultRow db_row = *curr_iter;
+    current_db_ = std::string(db_row[0].data);
 
     RAISE_ADBC(InitArrowArray());
 
@@ -250,24 +252,19 @@ class PqGetObjectsHelper {
       StringBuilderReset(&query);
 
       RAISE_ADBC(result_helper.Prepare());
+      RAISE_ADBC(result_helper.Execute());
 
-      if (PQresultStatus(result_helper.Execute()) == PGRES_TUPLES_OK) {
-        for (PqResultRow row : result_helper) {
-          const char* schema_name = row[0].data;
-          CHECK_NA(
-              INTERNAL,
-              ArrowArrayAppendString(db_schema_name_col_, ArrowCharView(schema_name)),
-              error_);
-          if (depth_ >= ADBC_OBJECT_DEPTH_TABLES) {
-            return ADBC_STATUS_NOT_IMPLEMENTED;
-          } else {
-            CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_col_, 1), error_);
-          }
-          CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_items_), error_);
+      for (PqResultRow row : result_helper) {
+        const char* schema_name = row[0].data;
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(db_schema_name_col_, ArrowCharView(schema_name)),
+                 error_);
+        if (depth_ >= ADBC_OBJECT_DEPTH_TABLES) {
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+        } else {
+          CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_col_, 1), error_);
         }
-      } else {
-        SetError(error_, "[libpq] Failed to execute query: %s", PQerrorMessage(conn_));
-        return ADBC_STATUS_INTERNAL;
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_items_), error_);
       }
     }
 
@@ -296,22 +293,18 @@ class PqGetObjectsHelper {
     StringBuilderReset(&query);
 
     RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Prepare());
 
-    if (PQresultStatus(result_helper.Execute()) == PGRES_TUPLES_OK) {
-      for (PqResultRow row : result_helper) {
-        const char* db_name = row[0].data;
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(catalog_name_col_, ArrowCharView(db_name)),
-                 error_);
-        if (depth_ == ADBC_OBJECT_DEPTH_CATALOGS) {
-          CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col_, 1), error_);
-        } else {
-          RAISE_ADBC(AppendSchemas(std::string(db_name)));
-        }
-        CHECK_NA(INTERNAL, ArrowArrayFinishElement(array_), error_);
+    for (PqResultRow row : result_helper) {
+      const char* db_name = row[0].data;
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(catalog_name_col_, ArrowCharView(db_name)), error_);
+      if (depth_ == ADBC_OBJECT_DEPTH_CATALOGS) {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(catalog_db_schemas_col_, 1), error_);
+      } else {
+        RAISE_ADBC(AppendSchemas(std::string(db_name)));
       }
-    } else {
-      return ADBC_STATUS_INTERNAL;
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(array_), error_);
     }
 
     return ADBC_STATUS_OK;
@@ -491,38 +484,33 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   StringBuilderReset(&query);
 
   RAISE_ADBC(result_helper.Prepare());
+  RAISE_ADBC(result_helper.Execute());
 
-  if (PQresultStatus(result_helper.Execute()) != PGRES_TUPLES_OK) {
-    SetError(error, "%s%s", "Failed to get table schema: ", PQerrorMessage(conn_));
-    final_status = ADBC_STATUS_IO;
-  } else {
-    auto uschema = nanoarrow::UniqueSchema();
-    ArrowSchemaInit(uschema.get());
-    CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema.get(), result_helper.NumRows()),
-             error);
+  auto uschema = nanoarrow::UniqueSchema();
+  ArrowSchemaInit(uschema.get());
+  CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema.get(), result_helper.NumRows()),
+           error);
 
-    ArrowError na_error;
-    int row_counter = 0;
-    for (auto row : result_helper) {
-      const char* colname = row[0].data;
-      const Oid pg_oid = static_cast<uint32_t>(
-          std::strtol(row[1].data, /*str_end=*/nullptr, /*base=*/10));
+  ArrowError na_error;
+  int row_counter = 0;
+  for (auto row : result_helper) {
+    const char* colname = row[0].data;
+    const Oid pg_oid =
+        static_cast<uint32_t>(std::strtol(row[1].data, /*str_end=*/nullptr, /*base=*/10));
 
-      PostgresType pg_type;
-      if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-        SetError(error, "%s%d%s%s%s%" PRIu32, "Column #", row_counter + 1, " (\"",
-                 colname, "\") has unknown type code ", pg_oid);
-        final_status = ADBC_STATUS_NOT_IMPLEMENTED;
-        goto loopExit;
-      }
-      CHECK_NA(INTERNAL,
-               pg_type.WithFieldName(colname).SetSchema(uschema->children[row_counter]),
-               error);
-      row_counter++;
+    PostgresType pg_type;
+    if (type_resolver_->Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
+      SetError(error, "%s%d%s%s%s%" PRIu32, "Column #", row_counter + 1, " (\"", colname,
+               "\") has unknown type code ", pg_oid);
+      final_status = ADBC_STATUS_NOT_IMPLEMENTED;
+      break;
     }
-    uschema.move(schema);
+    CHECK_NA(INTERNAL,
+             pg_type.WithFieldName(colname).SetSchema(uschema->children[row_counter]),
+             error);
+    row_counter++;
   }
-loopExit:
+  uschema.move(schema);
 
   return final_status;
 }
