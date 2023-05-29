@@ -22,6 +22,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <adbc.h>
@@ -72,15 +73,15 @@ class PqResultRow {
 // prior to iterating
 class PqResultHelper {
  public:
-  PqResultHelper(PGconn* conn, const char* query, struct AdbcError* error)
+  explicit PqResultHelper(PGconn* conn, const char* query, struct AdbcError* error)
       : conn_(conn), error_(error) {
     query_ = std::string(query);
     param_values_ = {};
   }
 
-  PqResultHelper(PGconn* conn, const char* query, std::vector<std::string> param_values,
-                 struct AdbcError* error)
-      : conn_(conn), param_values_(param_values), error_(error) {
+  explicit PqResultHelper(PGconn* conn, const char* query,
+                          std::vector<std::string> param_values, struct AdbcError* error)
+      : conn_(conn), param_values_(std::move(param_values)), error_(error) {
     query_ = std::string(query);
   }
 
