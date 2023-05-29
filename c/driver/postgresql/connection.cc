@@ -68,10 +68,16 @@ class PqResultRow {
 
 // Helper to manager the lifecycle of a PQResult. The query argument
 // will be evaluated as part of the constructor, with the desctructor handling cleanup
-// Caller is responsible for calling the `Status()` method to ensure results are
-// as expected prior to iterating
+// Caller must call Prepare then Execute, checking both for an OK AdbcStatusCode
+// prior to iterating
 class PqResultHelper {
  public:
+  PqResultHelper(PGconn* conn, const char* query, struct AdbcError* error)
+      : conn_(conn), error_(error) {
+    query_ = std::string(query);
+    param_values_ = {};
+  }
+
   PqResultHelper(PGconn* conn, const char* query, std::vector<std::string> param_values,
                  struct AdbcError* error)
       : conn_(conn), param_values_(param_values), error_(error) {
@@ -180,9 +186,8 @@ class PqGetObjectsHelper {
   }
 
   AdbcStatusCode GetObjects() {
-    std::vector<std::string> _;
     PqResultHelper curr_db_helper =
-        PqResultHelper{conn_, "SELECT current_database()", _, error_};
+        PqResultHelper{conn_, "SELECT current_database()", error_};
 
     RAISE_ADBC(curr_db_helper.Prepare());
     RAISE_ADBC(curr_db_helper.Execute());
