@@ -30,6 +30,7 @@ from cpython.bytes cimport PyBytes_FromStringAndSize
 from libc.stdint cimport int32_t, int64_t, uint8_t, uint32_t, uintptr_t
 from libc.string cimport memset
 from libcpp.vector cimport vector as c_vector
+from libc.stdlib cimport malloc, free
 
 if typing.TYPE_CHECKING:
     from typing import Self
@@ -469,8 +470,10 @@ cdef void pycapsule_stream_deleter(object stream_capsule):
         stream_capsule, 'arrowarraystream'
     )
     if stream.release != NULL:
-        print("calling the release")
+        print("calling the release callback")
         stream.release(stream)
+
+    free(stream)
 
 
 cdef class ArrowSchemaHandle:
@@ -499,6 +502,26 @@ cdef class ArrowArrayHandle:
         return <uintptr_t> &self.array
 
 
+def _create_stream_capsule():
+    """
+    Create PyCapsule holding a newly allocated (blank) ArrowArrayStream
+    """
+    cdef CArrowArrayStream* stream = <CArrowArrayStream*>malloc(
+        cython.sizeof(CArrowArrayStream)
+    )
+    memset(stream, 0, cython.sizeof(CArrowArrayStream))
+
+    return cpython.PyCapsule_New(
+        stream, 'arrowarraystream', pycapsule_stream_deleter
+    )
+
+
+cdef CArrowArrayStream* _get_stream_pointer(stream_capsule):
+    return <CArrowArrayStream*>cpython.PyCapsule_GetPointer(
+        stream_capsule, 'arrowarraystream'
+    )
+
+
 cdef class ArrowArrayStreamHandle:
     """
     A wrapper for an allocated ArrowArrayStream.
@@ -510,11 +533,6 @@ cdef class ArrowArrayStreamHandle:
     def address(self) -> int:
         """The address of the ArrowArrayStream."""
         return <uintptr_t> &self.stream
-
-    def _to_capsule(self):
-        return cpython.PyCapsule_New(
-            &self.stream, 'arrowarraystream', pycapsule_stream_deleter
-        )
 
 
 class GetObjectsDepth(enum.IntEnum):
@@ -986,28 +1004,31 @@ cdef class AdbcStatement(_AdbcHandle):
                 status = AdbcStatementRelease(&self.statement, &c_error)
             check_error(status, &c_error)
 
-    def execute_query(self) -> Tuple[ArrowArrayStreamHandle, int]:
+    def execute_query(self) -> Tuple["PyCapsule", int]:
         """
         Execute the query and get the result set.
 
         Returns
         -------
-        ArrowArrayStreamHandle
+        PyCapsule holding an ArrowArrayStream
             The result set.
         int
             The number of rows if known, else -1.
         """
         cdef CAdbcError c_error = empty_error()
-        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
         cdef int64_t rows_affected = 0
+
+        stream_capsule = _create_stream_capsule()
+        cdef CArrowArrayStream* stream = _get_stream_pointer(stream_capsule)
+
         with nogil:
             status = AdbcStatementExecuteQuery(
                 &self.statement,
-                &stream.stream,
+                stream,
                 &rows_affected,
                 &c_error)
         check_error(status, &c_error)
-        return (stream, rows_affected)
+        return (stream_capsule, rows_affected)
 
     def execute_partitions(self) -> Tuple[List[bytes], ArrowSchemaHandle, int]:
         """
