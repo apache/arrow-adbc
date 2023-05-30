@@ -346,6 +346,7 @@ class PqGetObjectsHelper {
     }
 
     auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    StringBuilderReset(&query);
 
     RAISE_ADBC(result_helper.Prepare());
     RAISE_ADBC(result_helper.Execute());
