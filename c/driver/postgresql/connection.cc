@@ -73,17 +73,15 @@ class PqResultRow {
 // prior to iterating
 class PqResultHelper {
  public:
-  explicit PqResultHelper(PGconn* conn, const char* query, struct AdbcError* error)
-      : conn_(conn), error_(error) {
-    query_ = std::string(query);
-    param_values_ = {};
-  }
+  explicit PqResultHelper(PGconn* conn, std::string query, struct AdbcError* error)
+      : conn_(conn), query_(std::move(query)), error_(error) {}
 
-  explicit PqResultHelper(PGconn* conn, const char* query,
+  explicit PqResultHelper(PGconn* conn, std::string query,
                           std::vector<std::string> param_values, struct AdbcError* error)
-      : conn_(conn), param_values_(std::move(param_values)), error_(error) {
-    query_ = std::string(query);
-  }
+      : conn_(conn),
+        query_(std::move(query)),
+        param_values_(param_values),
+        error_(error) {}
 
   AdbcStatusCode Prepare() {
     // TODO: make stmtName a unique identifier?
@@ -188,7 +186,7 @@ class PqGetObjectsHelper {
 
   AdbcStatusCode GetObjects() {
     PqResultHelper curr_db_helper =
-        PqResultHelper{conn_, "SELECT current_database()", error_};
+        PqResultHelper{conn_, std::string("SELECT current_database()"), error_};
 
     RAISE_ADBC(curr_db_helper.Prepare());
     RAISE_ADBC(curr_db_helper.Execute());
@@ -248,7 +246,8 @@ class PqGetObjectsHelper {
         params.push_back(db_schema_);
       }
 
-      auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+      auto result_helper =
+          PqResultHelper{conn_, std::string(query.buffer), params, error_};
       StringBuilderReset(&query);
 
       RAISE_ADBC(result_helper.Prepare());
@@ -289,7 +288,8 @@ class PqGetObjectsHelper {
       params.push_back(catalog_);
     }
 
-    PqResultHelper result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    PqResultHelper result_helper =
+        PqResultHelper{conn_, std::string(query.buffer), params, error_};
     StringBuilderReset(&query);
 
     RAISE_ADBC(result_helper.Prepare());
@@ -481,7 +481,8 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   }
   params.push_back(table_name);
 
-  PqResultHelper result_helper = PqResultHelper{conn_, query.buffer, params, error};
+  PqResultHelper result_helper =
+      PqResultHelper{conn_, std::string(query.buffer), params, error};
   StringBuilderReset(&query);
 
   RAISE_ADBC(result_helper.Prepare());
