@@ -317,10 +317,11 @@ class PqGetObjectsHelper {
 
   AdbcStatusCode AppendTables(std::string schema_name) {
     struct StringBuilder query = {0};
-    if (StringBuilderInit(&query, /*initial_size*/ 256)) {
+    if (StringBuilderInit(&query, /*initial_size*/ 512)) {
       return ADBC_STATUS_INTERNAL;
     }
 
+    std::vector<std::string> params = {schema_name};
     const char* stmt =
         "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
         "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
@@ -328,50 +329,43 @@ class PqGetObjectsHelper {
         "AS reltype FROM pg_catalog.pg_class c "
         "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
         "WHERE c.relkind IN ('r','v','m','t','f','p') "
-        "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = '";
+        "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1";
 
-    if (StringBuilderAppend(&query, "%s%s%s", stmt, schema_name.c_str(), "'")) {
+    if (StringBuilderAppend(&query, "%s", stmt)) {
       StringBuilderReset(&query);
       return ADBC_STATUS_INTERNAL;
     }
 
-    // TODO: we should replace this with a parametrized query
-    // Currently liable for SQL injection
     if (table_name_ != NULL) {
-      int res = StringBuilderAppend(&query, "%s%s%s", " AND c.relname LIKE '",
-                                    table_name_, "'");
-      if (res) {
+      if (StringBuilderAppend(&query, "%s", " AND c.relname LIKE $2")) {
+        StringBuilderReset(&query);
         return ADBC_STATUS_INTERNAL;
       }
+
+      params.push_back(std::string(table_name_));
     }
 
-    // We assume schema_name does not need to be escaped as this method
-    // is private to the class and called from other private methods that have
-    // already escaped
-    auto result_helper = PqResultHelper{conn_, query.buffer};
-    StringBuilderReset(&query);
+    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
 
-    if (result_helper.Status() == PGRES_TUPLES_OK) {
-      for (PqResultRow row : result_helper) {
-        const char* table_name = row[0].data;
-        const char* table_type = row[1].data;
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+    for (PqResultRow row : result_helper) {
+      const char* table_name = row[0].data;
+      const char* table_type = row[1].data;
 
-        if (depth_ > ADBC_OBJECT_DEPTH_TABLES) {
-          return ADBC_STATUS_NOT_IMPLEMENTED;
-        } else {
-          CHECK_NA(INTERNAL,
-                   ArrowArrayAppendString(table_name_col_, ArrowCharView(table_name)),
-                   error_);
-          CHECK_NA(INTERNAL,
-                   ArrowArrayAppendString(table_type_col_, ArrowCharView(table_type)),
-                   error_);
-          CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col_, 1), error_);
-          CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col_, 1), error_);
-        }
-        CHECK_NA(INTERNAL, ArrowArrayFinishElement(schema_table_items_), error_);
+      if (depth_ > ADBC_OBJECT_DEPTH_TABLES) {
+        return ADBC_STATUS_NOT_IMPLEMENTED;
+      } else {
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(table_name_col_, ArrowCharView(table_name)),
+                 error_);
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(table_type_col_, ArrowCharView(table_type)),
+                 error_);
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col_, 1), error_);
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col_, 1), error_);
       }
-    } else {
-      return ADBC_STATUS_INTERNAL;
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(schema_table_items_), error_);
     }
 
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_tables_col_), error_);
