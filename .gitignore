@@ -119,4 +119,3 @@ target/
 /ci/linux-packages/yum/merged/
 /ci/linux-packages/yum/repositories/
 /ci/linux-packages/yum/tmp/
-/csharp/test/Apache.Arrow.Adbc.FlightSql.Tests/flightsqlconfig.pass
