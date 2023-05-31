@@ -17,6 +17,7 @@
 
 #include "connection.h"
 
+#include <arpa/inet.h>
 #include <cassert>
 #include <cinttypes>
 #include <cstring>
@@ -354,15 +355,17 @@ class PqGetObjectsHelper {
       const char* table_name = row[0].data;
       const char* table_type = row[1].data;
 
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(table_name_col_, ArrowCharView(table_name)),
+               error_);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(table_type_col_, ArrowCharView(table_type)),
+               error_);
       if (depth_ > ADBC_OBJECT_DEPTH_TABLES) {
-        return ADBC_STATUS_NOT_IMPLEMENTED;
+        auto table_name_s = std::string(table_name);
+        RAISE_ADBC(AppendColumns(schema_name, table_name_s));
+        RAISE_ADBC(AppendConstraints(schema_name, table_name_s));
       } else {
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(table_name_col_, ArrowCharView(table_name)),
-                 error_);
-        CHECK_NA(INTERNAL,
-                 ArrowArrayAppendString(table_type_col_, ArrowCharView(table_type)),
-                 error_);
         CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col_, 1), error_);
         CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col_, 1), error_);
       }
@@ -370,6 +373,72 @@ class PqGetObjectsHelper {
     }
 
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_tables_col_), error_);
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode AppendColumns(std::string schema_name, std::string table_name) {
+    struct StringBuilder query = {0};
+    if (StringBuilderInit(&query, /*initial_size*/ 512)) {
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    std::vector<std::string> params = {schema_name, table_name};
+    const char* stmt =
+        "SELECT attr.attname, attr.attnum, "
+        "pg_catalog.col_description(cls.oid, attr.attnum) "
+        "FROM pg_catalog.pg_attribute AS attr "
+        "INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid "
+        "INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
+        "WHERE attr.attrnum > 0 AND NOT attr.attisdropped "
+        "AND nsp.nspname LIKE $1 AND cls.relname LIKE $2";
+
+    if (StringBuilderAppend(&query, "%s", stmt)) {
+      StringBuilderReset(&query);
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    if (column_name_ != NULL) {
+      if (StringBuilderAppend(&query, "%s", " AND attr.attname LIKE $3")) {
+        StringBuilderReset(&query);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      params.push_back(std::string(column_name_));
+    }
+
+    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    StringBuilderReset(&query);
+
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+
+    for (PqResultRow row : result_helper) {
+      const char* column_name = row[0].data;
+      const char* position = row[1].data;
+
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(column_name_col_, ArrowCharView(column_name)),
+               error_);
+      int ival = ntohl(*((uint32_t*)position));
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendInt(column_position_col_, static_cast<int32_t>(ival)),
+               error_);
+      if (row[2].is_null) {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(column_remarks_col_, 1), error_);
+      } else {
+        const char* remarks = row[2].data;
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(column_remarks_col_, ArrowCharView(remarks)),
+                 error_);
+      }
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_columns_items_), error_);
+    }
+
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_columns_col_), error_);
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode AppendConstraints(std::string schema_name, std::string table_name) {
     return ADBC_STATUS_OK;
   }
 
@@ -401,6 +470,10 @@ class PqGetObjectsHelper {
   struct ArrowArray* table_name_col_;
   struct ArrowArray* table_type_col_;
   struct ArrowArray* table_columns_col_;
+  struct ArrowArray* table_columns_items_;
+  struct ArrowArray* column_name_col_;
+  struct ArrowArray* column_position_col_;
+  struct ArrowArray* column_remarks_col_;
   struct ArrowArray* table_constraints_col_;
 };
 

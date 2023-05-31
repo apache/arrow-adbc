@@ -87,7 +87,6 @@ class PostgresConnectionTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
   void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Not yet implemented"; }
-  void TestMetadataGetObjectsColumns() { GTEST_SKIP() << "Not yet implemented"; }
 
  protected:
   PostgresQuirks quirks_;
