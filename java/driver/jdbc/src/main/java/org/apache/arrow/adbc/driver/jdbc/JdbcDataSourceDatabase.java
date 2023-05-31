@@ -25,6 +25,7 @@ import javax.sql.DataSource;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
+import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverter;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 
@@ -37,19 +38,22 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
   private final SqlQuirks quirks;
   private final Connection connection;
   private final AtomicInteger counter;
+  private final JdbcToArrowTypeConverter typeConverter;
 
   JdbcDataSourceDatabase(
       BufferAllocator allocator,
       DataSource dataSource,
       String username,
       String password,
-      SqlQuirks quirks)
+      SqlQuirks quirks,
+      JdbcToArrowTypeConverter typeConverter)
       throws AdbcException {
     this.allocator = Objects.requireNonNull(allocator);
     this.dataSource = Objects.requireNonNull(dataSource);
     this.username = username;
     this.password = password;
     this.quirks = Objects.requireNonNull(quirks);
+    this.typeConverter = typeConverter;
     try {
       this.connection = dataSource.getConnection();
     } catch (SQLException e) {
@@ -75,7 +79,8 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
         allocator.newChildAllocator(
             "adbc-jdbc-datasource-connection-" + count, 0, allocator.getLimit()),
         connection,
-        quirks);
+        quirks,
+        typeConverter);
   }
 
   @Override

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.adbc.driver.jdbc.postgresql;
+package org.apache.arrow.adbc.driver.jdbc.mssqlserver;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -29,26 +29,23 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
 import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverters;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
-import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.types.TimeUnit;
-import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.junit.jupiter.api.Assumptions;
 
-public class PostgresqlQuirks extends SqlValidationQuirks {
-  static final String POSTGRESQL_URL_ENV_VAR = "ADBC_JDBC_POSTGRESQL_URL";
-  static final String POSTGRESQL_USER_ENV_VAR = "ADBC_JDBC_POSTGRESQL_USER";
-  static final String POSTGRESQL_PASSWORD_ENV_VAR = "ADBC_JDBC_POSTGRESQL_PASSWORD";
+public class MsSqlServerQuirks extends SqlValidationQuirks {
+  static final String URL_ENV_VAR = "ADBC_JDBC_MSSQL_URL";
+  static final String USER_ENV_VAR = "ADBC_JDBC_MSSQL_USER";
+  static final String PASSWORD_ENV_VAR = "ADBC_JDBC_MSSQL_PASSWORD";
 
   static String makeJdbcUrl() {
-    final String postgresUrl = System.getenv(POSTGRESQL_URL_ENV_VAR);
-    final String user = System.getenv(POSTGRESQL_USER_ENV_VAR);
-    final String password = System.getenv(POSTGRESQL_PASSWORD_ENV_VAR);
-    Assumptions.assumeFalse(
-        postgresUrl == null, "PostgreSQL not found, set " + POSTGRESQL_URL_ENV_VAR);
-    Assumptions.assumeFalse(
-        postgresUrl.isEmpty(), "PostgreSQL not found, set " + POSTGRESQL_URL_ENV_VAR);
-    return String.format("jdbc:postgresql://%s?user=%s&password=%s", postgresUrl, user, password);
+    final String url = System.getenv(URL_ENV_VAR);
+    final String user = System.getenv(USER_ENV_VAR);
+    final String password = System.getenv(PASSWORD_ENV_VAR);
+    Assumptions.assumeFalse(url == null, "Microsoft SQL Server not found, set " + URL_ENV_VAR);
+    Assumptions.assumeFalse(url.isEmpty(), "Microsoft SQL Server not found, set " + URL_ENV_VAR);
+    return String.format(
+        "jdbc:sqlserver://%s;user=%s;password=%s;trustServerCertificate=true", url, user, password);
   }
 
   @Override
@@ -58,17 +55,7 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
     final Map<String, Object> parameters = new HashMap<>();
     parameters.put(AdbcDriver.PARAM_URL, url);
     parameters.put(
-        AdbcDriver.PARAM_SQL_QUIRKS,
-        SqlQuirks.builder()
-            .arrowToSqlTypeNameMapping(
-                (arrowType -> {
-                  if (arrowType.getTypeID() == ArrowType.ArrowTypeID.Utf8) {
-                    return "TEXT";
-                  }
-                  return SqlQuirks.DEFAULT_ARROW_TYPE_TO_SQL_TYPE_NAME_MAPPING.apply(arrowType);
-                }))
-            .build());
-    parameters.put(JdbcDriver.PARAM_JDBC_TO_ARROW_TYPE, JdbcToArrowTypeConverters.POSTGRESQL);
+        JdbcDriver.PARAM_JDBC_TO_ARROW_TYPE, JdbcToArrowTypeConverters.MICROSOFT_SQL_SERVER);
     return new JdbcDriver(allocator).open(parameters);
   }
 
@@ -85,7 +72,7 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
   @Override
   public String defaultCatalog() {
     // XXX: this should really come from configuration
-    return "postgres";
+    return "msdb";
   }
 
   @Override
@@ -100,6 +87,6 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
 
   @Override
   public TimeUnit defaultTimestampUnit() {
-    return TimeUnit.MICROSECOND;
+    return TimeUnit.NANOSECOND;
   }
 }
