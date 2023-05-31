@@ -469,11 +469,15 @@ class PqGetObjectsHelper {
     const char* stmt =
         "SELECT con.conname, CASE con.contype WHEN 'c' THEN 'CHECK' WHEN 'u' THEN "
         "'UNIQUE' WHEN 'p' THEN 'PRIMARY KEY' WHEN 'f' THEN 'FOREIGN KEY' "
-        "END AS contype, con.conkey, con.confkey "
+        "END AS contype, ARRAY(SELECT attr.attname) AS colnames, con.confkey "
         "FROM pg_catalog.pg_constraint AS con "
+        "CROSS JOIN UNNEST(conkey) AS conkeys "
         "INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = con.conrelid "
         "INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
-        "WHERE nsp.nspname LIKE $1 AND cls.relname LIKE $2";
+        "INNER JOIN pg_catalog.pg_attribute AS attr ON attr.attnum = conkeys "
+        "AND cls.oid = attr.attrelid "
+        "WHERE con.contype IN ('c', 'u', 'p', 'f') AND nsp.nspname LIKE $1 "
+        "AND cls.relname LIKE $2";
 
     if (StringBuilderAppend(&query, "%s", stmt)) {
       StringBuilderReset(&query);
@@ -511,10 +515,11 @@ class PqGetObjectsHelper {
 
       for (auto i = 0; i < row[2].len; i++) {
         // TODO: get actual name in here
-        CHECK_NA(
-            INTERNAL,
-            ArrowArrayAppendString(constraint_column_name_col_, ArrowCharView("foo")),
-            error_);
+        const char* data = row[2].data;
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(constraint_column_name_col_,
+                                        ArrowCharView("IMPLEMENT_ME")),
+                 error_);
       }
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col_), error_);
 
