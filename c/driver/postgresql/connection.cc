@@ -203,6 +203,11 @@ class PqGetObjectsHelper {
     catalog_db_schemas_items_ = catalog_db_schemas_col_->children[0];
     db_schema_name_col_ = catalog_db_schemas_items_->children[0];
     db_schema_tables_col_ = catalog_db_schemas_items_->children[1];
+    schema_table_items_ = db_schema_tables_col_->children[0];
+    table_name_col_ = schema_table_items_->children[0];
+    table_type_col_ = schema_table_items_->children[1];
+    table_columns_col_ = schema_table_items_->children[2];
+    table_constraints_col_ = schema_table_items_->children[3];
 
     RAISE_ADBC(AppendCatalogs());
     RAISE_ADBC(FinishArrowArray());
@@ -259,7 +264,7 @@ class PqGetObjectsHelper {
                  ArrowArrayAppendString(db_schema_name_col_, ArrowCharView(schema_name)),
                  error_);
         if (depth_ >= ADBC_OBJECT_DEPTH_TABLES) {
-          return ADBC_STATUS_NOT_IMPLEMENTED;
+          RAISE_ADBC(AppendTables(std::string(schema_name)));
         } else {
           CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_col_, 1), error_);
         }
@@ -310,6 +315,64 @@ class PqGetObjectsHelper {
     return ADBC_STATUS_OK;
   }
 
+  AdbcStatusCode AppendTables(std::string schema_name) {
+    struct StringBuilder query = {0};
+    if (StringBuilderInit(&query, /*initial_size*/ 512)) {
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    std::vector<std::string> params = {schema_name};
+    const char* stmt =
+        "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
+        "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
+        "WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' END "
+        "AS reltype FROM pg_catalog.pg_class c "
+        "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE c.relkind IN ('r','v','m','t','f','p') "
+        "AND pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1";
+
+    if (StringBuilderAppend(&query, "%s", stmt)) {
+      StringBuilderReset(&query);
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    if (table_name_ != NULL) {
+      if (StringBuilderAppend(&query, "%s", " AND c.relname LIKE $2")) {
+        StringBuilderReset(&query);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      params.push_back(std::string(table_name_));
+    }
+
+    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    StringBuilderReset(&query);
+
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+    for (PqResultRow row : result_helper) {
+      const char* table_name = row[0].data;
+      const char* table_type = row[1].data;
+
+      if (depth_ > ADBC_OBJECT_DEPTH_TABLES) {
+        return ADBC_STATUS_NOT_IMPLEMENTED;
+      } else {
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(table_name_col_, ArrowCharView(table_name)),
+                 error_);
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(table_type_col_, ArrowCharView(table_type)),
+                 error_);
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col_, 1), error_);
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col_, 1), error_);
+      }
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(schema_table_items_), error_);
+    }
+
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_tables_col_), error_);
+    return ADBC_STATUS_OK;
+  }
+
   AdbcStatusCode FinishArrowArray() {
     CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array_, &na_error_),
                     &na_error_, error_);
@@ -334,6 +397,11 @@ class PqGetObjectsHelper {
   struct ArrowArray* catalog_db_schemas_items_;
   struct ArrowArray* db_schema_name_col_;
   struct ArrowArray* db_schema_tables_col_;
+  struct ArrowArray* schema_table_items_;
+  struct ArrowArray* table_name_col_;
+  struct ArrowArray* table_type_col_;
+  struct ArrowArray* table_columns_col_;
+  struct ArrowArray* table_constraints_col_;
 };
 
 }  // namespace
