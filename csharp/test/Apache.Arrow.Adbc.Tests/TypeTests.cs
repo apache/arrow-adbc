@@ -7,9 +7,9 @@ using System.Linq;
 namespace Apache.Arrow.Adbc.Tests
 {
     /// <summary>
-    /// Abstract class for the ADBC connection tests.
+    /// Performs verification for data types and values.
     /// </summary>
-    public class AdbcDriverTypeTests
+    public class TypeTests
     {
         /// <summary>
         /// Verifies that the arrays passed as actual match the expected and 

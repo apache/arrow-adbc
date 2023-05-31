@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Apache.Arrow.Adbc.FlightSql.Tests;
+using Apache.Arrow.Adbc.Tests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Apache.Arrow.Adbc.Tests
+namespace Apache.Arrow.Adbc.FlightSql.Tests
 {
     [TestClass]
-    public class FlightSqlDriverTypeTests
+    public class TypeTests
     {
         /// <summary>
         /// Verify the types and values for the arrays
@@ -16,12 +16,7 @@ namespace Apache.Arrow.Adbc.Tests
         [TestMethod]
         public void VerifyTypesAndValues()
         {
-            // this file was generated from the Flight SQL data source
-            string file = "flightsql.parquet";
-
-            Assert.IsTrue(File.Exists(file), $"Cannot find {file}");
-
-            List<RecordBatch> recordBatches = ParquetParser.ParseParquetFile(file);
+            List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches();
 
             RecordBatch recordBatch = recordBatches[0];
 
@@ -60,7 +55,7 @@ namespace Apache.Arrow.Adbc.Tests
                 8d
             };
 
-            AdbcDriverTypeTests.VerifyTypesAndValues(actualArrays, expectedArrayTypes, actualValues, expectedValues);
+            Adbc.Tests.TypeTests.VerifyTypesAndValues(actualArrays, expectedArrayTypes, actualValues, expectedValues);
         }
     }
 }
