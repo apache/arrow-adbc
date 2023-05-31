@@ -17,7 +17,6 @@
 
 #include "connection.h"
 
-#include <arpa/inet.h>
 #include <cassert>
 #include <cinttypes>
 #include <cstring>
@@ -279,10 +278,10 @@ class PqGetObjectsHelper {
         CHECK_NA(INTERNAL,
                  ArrowArrayAppendString(db_schema_name_col_, ArrowCharView(schema_name)),
                  error_);
-        if (depth_ >= ADBC_OBJECT_DEPTH_TABLES) {
-          RAISE_ADBC(AppendTables(std::string(schema_name)));
-        } else {
+        if (depth_ == ADBC_OBJECT_DEPTH_DB_SCHEMAS) {
           CHECK_NA(INTERNAL, ArrowArrayAppendNull(db_schema_tables_col_, 1), error_);
+        } else {
+          RAISE_ADBC(AppendTables(std::string(schema_name)));
         }
         CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_items_), error_);
       }
@@ -376,13 +375,13 @@ class PqGetObjectsHelper {
       CHECK_NA(INTERNAL,
                ArrowArrayAppendString(table_type_col_, ArrowCharView(table_type)),
                error_);
-      if (depth_ > ADBC_OBJECT_DEPTH_TABLES) {
+      if (depth_ == ADBC_OBJECT_DEPTH_TABLES) {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col_, 1), error_);
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col_, 1), error_);
+      } else {
         auto table_name_s = std::string(table_name);
         RAISE_ADBC(AppendColumns(schema_name, table_name_s));
         RAISE_ADBC(AppendConstraints(schema_name, table_name_s));
-      } else {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_col_, 1), error_);
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_constraints_col_, 1), error_);
       }
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(schema_table_items_), error_);
     }
@@ -404,7 +403,7 @@ class PqGetObjectsHelper {
         "FROM pg_catalog.pg_attribute AS attr "
         "INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid "
         "INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
-        "WHERE attr.attrnum > 0 AND NOT attr.attisdropped "
+        "WHERE attr.attnum > 0 AND NOT attr.attisdropped "
         "AND nsp.nspname LIKE $1 AND cls.relname LIKE $2";
 
     if (StringBuilderAppend(&query, "%s", stmt)) {
@@ -434,9 +433,9 @@ class PqGetObjectsHelper {
       CHECK_NA(INTERNAL,
                ArrowArrayAppendString(column_name_col_, ArrowCharView(column_name)),
                error_);
-      int ival = ntohl(*((uint32_t*)position));
+      int ival = atol(position);
       CHECK_NA(INTERNAL,
-               ArrowArrayAppendInt(column_position_col_, static_cast<int32_t>(ival)),
+               ArrowArrayAppendInt(column_position_col_, static_cast<int64_t>(ival)),
                error_);
       if (row[2].is_null) {
         CHECK_NA(INTERNAL, ArrowArrayAppendNull(column_remarks_col_, 1), error_);
@@ -446,6 +445,13 @@ class PqGetObjectsHelper {
                  ArrowArrayAppendString(column_remarks_col_, ArrowCharView(remarks)),
                  error_);
       }
+
+      // no xdbc_ values for now
+      for (auto i = 3; i < 19; i++) {
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(table_columns_items_->children[i], 1),
+                 error_);
+      }
+
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_columns_items_), error_);
     }
 
@@ -509,8 +515,8 @@ class PqGetObjectsHelper {
             INTERNAL,
             ArrowArrayAppendString(constraint_column_name_col_, ArrowCharView("foo")),
             error_);
-        CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col_), error_);
       }
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col_), error_);
 
       if (row[3].is_null) {
         CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_column_usage_items_, 1),
@@ -520,6 +526,7 @@ class PqGetObjectsHelper {
         // need to unpack binary data from libpq
         return ADBC_STATUS_NOT_IMPLEMENTED;
       }
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usages_col_), error_);
 
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_items_), error_);
     }
