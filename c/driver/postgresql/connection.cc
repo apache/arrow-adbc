@@ -219,6 +219,12 @@ class PqGetObjectsHelper {
     constraint_name_col_ = table_constraints_items_->children[0];
     constraint_type_col_ = table_constraints_items_->children[1];
 
+    constraint_column_names_col_ = table_constraints_items_->children[2];
+    constraint_column_name_col_ = constraint_column_names_col_->children[0];
+
+    constraint_column_usages_col_ = table_constraints_items_->children[3];
+    constraint_column_usage_items_ = constraint_column_usages_col_->children[0];
+
     RAISE_ADBC(AppendCatalogs());
     RAISE_ADBC(FinishArrowArray());
     return ADBC_STATUS_OK;
@@ -497,10 +503,22 @@ class PqGetObjectsHelper {
           ArrowArrayAppendString(constraint_type_col_, ArrowCharView(constraint_type)),
           error_);
 
+      for (auto i = 0; i < row[2].len; i++) {
+        // TODO: get actual name in here
+        CHECK_NA(
+            INTERNAL,
+            ArrowArrayAppendString(constraint_column_name_col_, ArrowCharView("foo")),
+            error_);
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col_), error_);
+      }
+
       if (row[3].is_null) {
-        // Append NULL to constraint_column_usage
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_column_usage_items_, 1),
+                 error_);
       } else {
-        // Fill out usage_schema
+        // TODO: some kind of for loop here over each usage
+        // need to unpack binary data from libpq
+        return ADBC_STATUS_NOT_IMPLEMENTED;
       }
 
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_items_), error_);
@@ -546,6 +564,10 @@ class PqGetObjectsHelper {
   struct ArrowArray* table_constraints_items_;
   struct ArrowArray* constraint_name_col_;
   struct ArrowArray* constraint_type_col_;
+  struct ArrowArray* constraint_column_names_col_;
+  struct ArrowArray* constraint_column_name_col_;
+  struct ArrowArray* constraint_column_usages_col_;
+  struct ArrowArray* constraint_column_usage_items_;
 };
 
 }  // namespace
