@@ -44,9 +44,13 @@ namespace Apache.Arrow.Adbc.Tests
 
             Assert.AreEqual(expectedNumberOfResults, count, "The parsed records differ from the specified amount");
 
-            Assert.AreEqual(queryResult.RowCount, expectedNumberOfResults, "The RowCount value does not match the expected results");
-            
-            Assert.AreEqual(queryResult.RowCount, count, "The RowCount value does not match the counted records");
+            // if the values were set, make sure they are correct
+            if (queryResult.RowCount != -1)
+            {
+                Assert.AreEqual(queryResult.RowCount, expectedNumberOfResults, "The RowCount value does not match the expected results");
+
+                Assert.AreEqual(queryResult.RowCount, count, "The RowCount value does not match the counted records");
+            }
         }
 
         /// <summary>
