@@ -371,7 +371,13 @@ namespace Apache.Arrow.Adbc.Interop
                 using (Utf8Helper utf8Key = new Utf8Helper(key))
                 using (Utf8Helper utf8Value = new Utf8Helper(value))
                 {
-                    TranslateError(fn(ref nativeDatabase, utf8Key, utf8Value, ref _error));
+                    unsafe
+                    {
+                        IntPtr keyPtr = utf8Key;
+                        IntPtr valuePtr = utf8Value;
+
+                        TranslateError(fn(ref nativeDatabase, (byte*)keyPtr, (byte*)valuePtr, ref _error));
+                    }
                 }
             }
 
@@ -385,7 +391,13 @@ namespace Apache.Arrow.Adbc.Interop
                 using (Utf8Helper utf8Key = new Utf8Helper(key))
                 using (Utf8Helper utf8Value = new Utf8Helper(value))
                 {
-                    TranslateError(fn(ref nativeConnection, utf8Key, utf8Value, ref _error));
+                    unsafe
+                    {
+                        IntPtr keyPtr = utf8Key;
+                        IntPtr valuePtr = utf8Value;
+
+                        TranslateError(fn(ref nativeConnection, (byte*)keyPtr, (byte*)valuePtr, ref _error));
+                    }
                 }
             }
 

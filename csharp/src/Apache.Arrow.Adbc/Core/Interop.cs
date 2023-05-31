@@ -37,12 +37,13 @@ namespace Apache.Arrow.Adbc.Core
 
         private static readonly NativeDelegate<DatabaseFn> databaseInit = new NativeDelegate<DatabaseFn>(InitDatabase);
         private static readonly NativeDelegate<DatabaseFn> databaseRelease = new NativeDelegate<DatabaseFn>(ReleaseDatabase);
-        private static readonly NativeDelegate<DatabaseSetOption> databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
+
+        private static unsafe readonly NativeDelegate<DatabaseSetOption> databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
 
         private static readonly NativeDelegate<ConnectionInit> connectionInit = new NativeDelegate<ConnectionInit>(InitConnection);
         private static readonly NativeDelegate<ConnectionFn> connectionRelease = new NativeDelegate<ConnectionFn>(ReleaseConnection);
         private static readonly NativeDelegate<ConnectionGetInfo> connectionGetInfo = new NativeDelegate<ConnectionGetInfo>(GetConnectionInfo);
-        private static readonly NativeDelegate<ConnectionSetOption> connectionSetOption = new NativeDelegate<ConnectionSetOption>(SetConnectionOption);
+        private static unsafe readonly NativeDelegate<ConnectionSetOption> connectionSetOption = new NativeDelegate<ConnectionSetOption>(SetConnectionOption);
         
         private static unsafe readonly NativeDelegate<StatementExecuteQuery> statementExecuteQuery = new NativeDelegate<StatementExecuteQuery>(ExecuteStatementQuery);
         private static readonly NativeDelegate<StatementNew> statementNew = new NativeDelegate<StatementNew>(NewStatement);
@@ -58,7 +59,7 @@ namespace Apache.Arrow.Adbc.Core
 
             nativeDriver->DatabaseInit = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode>)databaseInit.Pointer;
             nativeDriver->DatabaseNew = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode>)stub.newDatabase.Pointer;
-            nativeDriver->DatabaseSetOption = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, char*, char*, NativeAdbcError*, AdbcStatusCode>) databaseSetOption.Pointer;
+            nativeDriver->DatabaseSetOption = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, byte*, byte*, NativeAdbcError*, AdbcStatusCode>) databaseSetOption.Pointer;
             nativeDriver->DatabaseRelease = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode>)databaseRelease.Pointer;
 
             nativeDriver->ConnectionCommit = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode>)connectionRelease.Pointer;
@@ -67,7 +68,7 @@ namespace Apache.Arrow.Adbc.Core
             //nativeDriver->ConnectionGetTableTypes = null;
             nativeDriver->ConnectionInit = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode>)connectionInit.Pointer;
             nativeDriver->ConnectionNew = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode>)stub.newConnection.Pointer;
-            nativeDriver->ConnectionSetOption = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, char*, char*, NativeAdbcError*, AdbcStatusCode>)connectionSetOption.Pointer;
+            nativeDriver->ConnectionSetOption = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, byte*, NativeAdbcError*, AdbcStatusCode>)connectionSetOption.Pointer;
             //nativeDriver->ConnectionReadPartition = null;
             nativeDriver->ConnectionRelease = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode>)connectionRelease.Pointer;
             //nativeDriver->ConnectionRollback = null;
@@ -216,17 +217,18 @@ namespace Apache.Arrow.Adbc.Core
             return AdbcStatusCode.Success;
         }
 
-        private static unsafe AdbcStatusCode SetConnectionOption(ref NativeAdbcConnection nativeConnection, IntPtr name, IntPtr value, ref NativeAdbcError error)
+        private static unsafe AdbcStatusCode SetConnectionOption(ref NativeAdbcConnection nativeConnection, byte* name, byte* value, ref NativeAdbcError error)
         {
             GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection.private_data);
             ConnectionStub stub = (ConnectionStub)gch.Target;
             return stub.SetOption(name, value, ref error);
         }
 
-        private static unsafe AdbcStatusCode SetDatabaseOption(ref NativeAdbcDatabase nativeDatabase, IntPtr name, IntPtr value, ref NativeAdbcError error)
+        private static unsafe AdbcStatusCode SetDatabaseOption(ref NativeAdbcDatabase nativeDatabase, byte* name, byte* value, ref NativeAdbcError error)
         {
             GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase.private_data);
             DatabaseStub stub = (DatabaseStub)gch.Target;
+
             return stub.SetOption(name, value, ref error);
         }
 
@@ -429,7 +431,7 @@ namespace Apache.Arrow.Adbc.Core
 
         public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseInit; 
         public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseNew; 
-        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, char*, char*, NativeAdbcError*, AdbcStatusCode> DatabaseSetOption;
+        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> DatabaseSetOption;
         public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseRelease; 
 
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionCommit; // ConnectionFn
@@ -439,7 +441,7 @@ namespace Apache.Arrow.Adbc.Core
         public IntPtr ConnectionGetTableTypes;
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> ConnectionInit;
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionNew; // ConnectionFn
-        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, char*, char*, NativeAdbcError*, AdbcStatusCode> ConnectionSetOption;
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> ConnectionSetOption;
         public IntPtr ConnectionReadPartition;
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionRelease; // ConnectionFn
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionRollback; // ConnectionFn
@@ -461,7 +463,7 @@ namespace Apache.Arrow.Adbc.Core
     delegate AdbcStatusCode DriverRelease(ref NativeAdbcDriver driver, ref NativeAdbcError error);
 
     delegate AdbcStatusCode DatabaseFn(ref NativeAdbcDatabase database, ref NativeAdbcError error);
-    delegate AdbcStatusCode DatabaseSetOption(ref NativeAdbcDatabase database, IntPtr name, IntPtr value, ref NativeAdbcError error);
+    unsafe delegate AdbcStatusCode DatabaseSetOption(ref NativeAdbcDatabase database, byte* name, byte* value, ref NativeAdbcError error);
 
     delegate AdbcStatusCode ConnectionFn(ref NativeAdbcConnection connection, ref NativeAdbcError error);
     delegate AdbcStatusCode ConnectionGetInfo(ref NativeAdbcConnection connection, uint x, IntPtr y, ref CArrowArrayStream stream, ref NativeAdbcError error);
@@ -469,7 +471,7 @@ namespace Apache.Arrow.Adbc.Core
     delegate AdbcStatusCode ConnectionGetTableSchema(ref NativeAdbcConnection connection, IntPtr x, IntPtr y, IntPtr z, ref CArrowArrayStream stream, ref NativeAdbcError error);
     delegate AdbcStatusCode ConnectionGetTableTypes(ref NativeAdbcConnection connection, ref CArrowArrayStream stream, ref NativeAdbcError error);
     delegate AdbcStatusCode ConnectionInit(ref NativeAdbcConnection connection, ref NativeAdbcDatabase database, ref NativeAdbcError error);
-    delegate AdbcStatusCode ConnectionSetOption(ref NativeAdbcConnection connection, IntPtr name, IntPtr value, ref NativeAdbcError error);
+    unsafe delegate AdbcStatusCode ConnectionSetOption(ref NativeAdbcConnection connection, byte* name, byte* value, ref NativeAdbcError error);
     delegate AdbcStatusCode ConnectionReadPartition(ref NativeAdbcConnection connection, IntPtr x, IntPtr y, ref CArrowArrayStream stream, ref NativeAdbcError error);
 
     delegate AdbcStatusCode StatementBind(ref NativeAdbcStatement statement, ref CArrowArray array, ref CArrowSchema schema, ref NativeAdbcError error);
@@ -555,12 +557,15 @@ namespace Apache.Arrow.Adbc.Core
             return AdbcStatusCode.Success;
         }
 
-        public AdbcStatusCode SetOption(IntPtr name, IntPtr value, ref NativeAdbcError error)
+        public unsafe AdbcStatusCode SetOption(byte* name, byte* value, ref NativeAdbcError error)
         {
+            IntPtr namePtr = (IntPtr)name;
+            IntPtr valuePtr = (IntPtr)value;
+
             #if NETSTANDARD
-                options[MarshalExtensions.PtrToStringUTF8(name)] = MarshalExtensions.PtrToStringUTF8(value);
+                options[MarshalExtensions.PtrToStringUTF8(namePtr)] = MarshalExtensions.PtrToStringUTF8(valuePtr);
             #else
-                options[Marshal.PtrToStringUTF8(name)] = Marshal.PtrToStringUTF8(value);
+                options[Marshal.PtrToStringUTF8(namePtr)] = Marshal.PtrToStringUTF8(valuePtr);
             #endif
 
             return AdbcStatusCode.Success;
@@ -597,12 +602,15 @@ namespace Apache.Arrow.Adbc.Core
             options = new Dictionary<string, string>();
         }
 
-        public AdbcStatusCode SetOption(IntPtr name, IntPtr value, ref NativeAdbcError error)
+        public unsafe AdbcStatusCode SetOption(byte* name, byte* value, ref NativeAdbcError error)
         {
+            IntPtr namePtr = (IntPtr)name;
+            IntPtr valuePtr = (IntPtr)value;
+
             #if NETSTANDARD
-                options[MarshalExtensions.PtrToStringUTF8(name)] = MarshalExtensions.PtrToStringUTF8(value);
+                options[MarshalExtensions.PtrToStringUTF8(namePtr)] = MarshalExtensions.PtrToStringUTF8(valuePtr);
             #else
-                options[Marshal.PtrToStringUTF8(name)] = Marshal.PtrToStringUTF8(value);
+                options[Marshal.PtrToStringUTF8(namePtr)] = Marshal.PtrToStringUTF8(valuePtr);
             #endif
 
             return AdbcStatusCode.Success;
