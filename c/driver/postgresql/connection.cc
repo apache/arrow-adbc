@@ -207,8 +207,17 @@ class PqGetObjectsHelper {
     schema_table_items_ = db_schema_tables_col_->children[0];
     table_name_col_ = schema_table_items_->children[0];
     table_type_col_ = schema_table_items_->children[1];
+
     table_columns_col_ = schema_table_items_->children[2];
+    table_columns_items_ = table_columns_col_->children[0];
+    column_name_col_ = table_columns_items_->children[0];
+    column_position_col_ = table_columns_items_->children[1];
+    column_remarks_col_ = table_columns_items_->children[2];
+
     table_constraints_col_ = schema_table_items_->children[3];
+    table_constraints_items_ = table_constraints_col_->children[0];
+    constraint_name_col_ = table_constraints_items_->children[0];
+    constraint_type_col_ = table_constraints_items_->children[1];
 
     RAISE_ADBC(AppendCatalogs());
     RAISE_ADBC(FinishArrowArray());
@@ -439,6 +448,65 @@ class PqGetObjectsHelper {
   }
 
   AdbcStatusCode AppendConstraints(std::string schema_name, std::string table_name) {
+    struct StringBuilder query = {0};
+    if (StringBuilderInit(&query, /*initial_size*/ 512)) {
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    std::vector<std::string> params = {schema_name, table_name};
+    const char* stmt =
+        "SELECT con.conname, CASE con.contype WHEN 'c' THEN 'CHECK' WHEN 'u' THEN "
+        "'UNIQUE' WHEN 'p' THEN 'PRIMARY KEY' WHEN 'f' THEN 'FOREIGN KEY' "
+        "END AS contype, con.conkey, con.confkey "
+        "FROM pg_catalog.pg_constraint AS con "
+        "INNER JOIN pg_catalog.pg_class AS cls ON cls.oid = con.conrelid "
+        "INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
+        "WHERE nsp.nspname LIKE $1 AND cls.relname LIKE $2";
+
+    if (StringBuilderAppend(&query, "%s", stmt)) {
+      StringBuilderReset(&query);
+      return ADBC_STATUS_INTERNAL;
+    }
+
+    if (column_name_ != NULL) {
+      if (StringBuilderAppend(&query, "%s", " AND con.conname LIKE $3")) {
+        StringBuilderReset(&query);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      params.push_back(std::string(column_name_));
+    }
+
+    auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
+    StringBuilderReset(&query);
+
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+
+    for (PqResultRow row : result_helper) {
+      const char* constraint_name = row[0].data;
+      const char* constraint_type = row[1].data;
+
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayAppendString(constraint_name_col_, ArrowCharView(constraint_name)),
+          error_);
+
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayAppendString(constraint_type_col_, ArrowCharView(constraint_type)),
+          error_);
+
+      if (row[3].is_null) {
+        // Append NULL to constraint_column_usage
+      } else {
+        // Fill out usage_schema
+      }
+
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_items_), error_);
+    }
+
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_col_), error_);
     return ADBC_STATUS_OK;
   }
 
@@ -475,6 +543,9 @@ class PqGetObjectsHelper {
   struct ArrowArray* column_position_col_;
   struct ArrowArray* column_remarks_col_;
   struct ArrowArray* table_constraints_col_;
+  struct ArrowArray* table_constraints_items_;
+  struct ArrowArray* constraint_name_col_;
+  struct ArrowArray* constraint_type_col_;
 };
 
 }  // namespace
