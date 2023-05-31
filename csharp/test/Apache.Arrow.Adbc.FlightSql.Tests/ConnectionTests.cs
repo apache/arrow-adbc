@@ -1,5 +1,4 @@
-﻿
-/*
+﻿/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -21,7 +20,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Apache.Arrow.Adbc.Core;
-using Apache.Arrow.Adbc.FlightSql;
 using Apache.Arrow.Adbc.Tests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -35,7 +33,9 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
     [TestClass]
     public class ConnectionTests
     {
-
+        /// <summary>
+        /// Validates if the driver behaves as it should with missing values and parsing mock results.
+        /// </summary>
         [TestMethod]
         public void CanMockDriverConnect()
         {
@@ -52,6 +52,9 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
             Adbc.Tests.ConnectionTests.CanDriverConnect(queryResult, 50);
         }
 
+        /// <summary>
+        /// Validates if the driver can connect to a live server and parse the results.
+        /// </summary>
         [TestMethod]
         public void CanDriverConnect()
         {
@@ -80,7 +83,9 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
 
             Adbc.Tests.ConnectionTests.CanDriverConnect(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
         }
-
+        /// <summary>
+        /// Validates exceptions thrown are ADBC exceptions
+        /// </summary>
         [TestMethod]
         public void VerifyBadQueryGeneratesError()
         {
@@ -98,6 +103,10 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
             }
         }
 
+        /// <summary>
+        /// Loads a FlightSqlStatement with mocked results. 
+        /// </summary>
+        /// <returns></returns>
         private Mock<FlightSqlStatement> GetMockSqlStatement()
         {
             List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches();
@@ -112,17 +121,13 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
             return mockFlightSqlStatement;
         }
 
+        /// <summary>
+        /// Gets the configuration for connecting to a live Flight SQL server.
+        /// </summary>
+        /// <returns></returns>
         private FlightSqlTestConfiguration GetFlightSqlTestConfiguration()
         {
-            // use a JSON file that can be excluded vs. setting up environment variables
-            string flightSqlEnvironmentFile = "flightsqlconfig.pass";
-            string flightSqlSettingsFile = "flightsqlconfig.json";
-
-            if (File.Exists(flightSqlEnvironmentFile))
-            {
-                File.Copy(flightSqlEnvironmentFile, flightSqlSettingsFile, true);
-            }
-
+            // use a JSON file vs. setting up environment variables
             string json = File.ReadAllText("flightsqlconfig.json");
 
             FlightSqlTestConfiguration flightSqlTestConfiguration = JsonConvert.DeserializeObject<FlightSqlTestConfiguration>(json);
