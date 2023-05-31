@@ -65,6 +65,8 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
   std::string BindParameter(int index) const override {
     return "$" + std::to_string(index + 1);
   }
+
+  std::string db_schema() const override { return "public"; }
 };
 
 class PostgresDatabaseTest : public ::testing::Test,
