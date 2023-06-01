@@ -356,90 +356,132 @@ namespace Apache.Arrow.Adbc.Interop
                 }
             }
 
-            public void Call(DriverRelease fn, ref NativeAdbcDriver nativeDriver)
+            public unsafe void Call(DriverRelease fn, ref NativeAdbcDriver nativeDriver)
             {
-                TranslateError(fn(ref nativeDriver, ref _error));
-            }
-
-            public void Call(DatabaseFn fn, ref NativeAdbcDatabase nativeDatabase)
-            {
-                TranslateError(fn(ref nativeDatabase, ref _error));
-            }
-
-            public void Call(DatabaseSetOption fn, ref NativeAdbcDatabase nativeDatabase, string key, string value)
-            {
-                using (Utf8Helper utf8Key = new Utf8Helper(key))
-                using (Utf8Helper utf8Value = new Utf8Helper(value))
+                fixed (NativeAdbcDriver* driver = &nativeDriver)
+                fixed (NativeAdbcError* e = &_error)
                 {
-                    unsafe
-                    {
-                        IntPtr keyPtr = utf8Key;
-                        IntPtr valuePtr = utf8Value;
+                    TranslateError(fn(driver, e));
+                }
+            }
 
-                        TranslateError(fn(ref nativeDatabase, (byte*)keyPtr, (byte*)valuePtr, ref _error));
+            public unsafe void Call(DatabaseFn fn, ref NativeAdbcDatabase nativeDatabase)
+            {
+                fixed (NativeAdbcDatabase* db = &nativeDatabase)
+                fixed (NativeAdbcError* e = &_error)
+                {
+                    TranslateError(fn(db, e));
+                }
+            }
+
+            public unsafe void Call(DatabaseSetOption fn, ref NativeAdbcDatabase nativeDatabase, string key, string value)
+            {
+                fixed (NativeAdbcDatabase* db = &nativeDatabase)
+                fixed (NativeAdbcError* e = &_error)
+                {
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (Utf8Helper utf8Value = new Utf8Helper(value))
+                    {
+                        unsafe
+                        {
+                            IntPtr keyPtr = utf8Key;
+                            IntPtr valuePtr = utf8Value;
+
+                            TranslateError(fn(db, (byte*)keyPtr, (byte*)valuePtr, e));
+                        }
                     }
                 }
             }
 
-            public void Call(ConnectionFn fn, ref NativeAdbcConnection nativeConnection)
+            public unsafe void Call(ConnectionFn fn, ref NativeAdbcConnection nativeConnection)
             {
-                TranslateError(fn(ref nativeConnection, ref _error));
+                fixed (NativeAdbcConnection* cn = &nativeConnection)
+                fixed (NativeAdbcError* e = &_error)
+                {
+                    TranslateError(fn(cn, e));
+                }
             }
 
-            public void Call(ConnectionSetOption fn, ref NativeAdbcConnection nativeConnection, string key, string value)
+            public unsafe void Call(ConnectionSetOption fn, ref NativeAdbcConnection nativeConnection, string key, string value)
             {
-                using (Utf8Helper utf8Key = new Utf8Helper(key))
-                using (Utf8Helper utf8Value = new Utf8Helper(value))
+                fixed (NativeAdbcConnection* cn = &nativeConnection)
+                fixed (NativeAdbcError* e = &_error)
                 {
-                    unsafe
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (Utf8Helper utf8Value = new Utf8Helper(value))
                     {
-                        IntPtr keyPtr = utf8Key;
-                        IntPtr valuePtr = utf8Value;
+                        unsafe
+                        {
+                            IntPtr keyPtr = utf8Key;
+                            IntPtr valuePtr = utf8Value;
 
-                        TranslateError(fn(ref nativeConnection, (byte*)keyPtr, (byte*)valuePtr, ref _error));
+                            TranslateError(fn(cn, (byte*)keyPtr, (byte*)valuePtr, e));
+                        }
                     }
                 }
             }
 
-            public void Call(ConnectionInit fn, ref NativeAdbcConnection nativeConnection, ref NativeAdbcDatabase database)
+            public unsafe void Call(ConnectionInit fn, ref NativeAdbcConnection nativeConnection, ref NativeAdbcDatabase database)
             {
-                TranslateError(fn(ref nativeConnection, ref database, ref _error));
-            }
-
-            public void Call(StatementNew fn, ref NativeAdbcConnection nativeConnection, ref NativeAdbcStatement nativeStatement)
-            {
-                TranslateError(fn(ref nativeConnection, ref nativeStatement, ref _error));
-            }
-
-            public void Call(StatementFn fn, ref NativeAdbcStatement nativeStatement)
-            {
-                TranslateError(fn(ref nativeStatement, ref _error));
-            }
-
-            public void Call(StatementSetSqlQuery fn, ref NativeAdbcStatement nativeStatement, string sqlQuery)
-            {
-                using (Utf8Helper query = new Utf8Helper(sqlQuery))
+                fixed (NativeAdbcConnection* cn = &nativeConnection) 
+                fixed (NativeAdbcDatabase* db = &database)
+                fixed (NativeAdbcError* e = &_error)
                 {
-                    TranslateError(fn(ref nativeStatement, query, ref _error));
+                    TranslateError(fn(cn, db, e));
+                }
+            }
+
+            public unsafe void Call(StatementNew fn, ref NativeAdbcConnection nativeConnection, ref NativeAdbcStatement nativeStatement)
+            {
+                fixed (NativeAdbcConnection* cn = &nativeConnection)
+                fixed (NativeAdbcStatement* stmt = &nativeStatement)
+                fixed (NativeAdbcError* e = &_error)
+                {
+                    TranslateError(fn(cn, stmt, e));
+                }
+            }
+
+            public unsafe void Call(StatementFn fn, ref NativeAdbcStatement nativeStatement)
+            {
+                fixed (NativeAdbcStatement* stmt = &nativeStatement)
+                fixed (NativeAdbcError* e = &_error)
+                {
+                    TranslateError(fn(stmt, e));
+                }
+            }
+
+            public unsafe void Call(StatementSetSqlQuery fn, ref NativeAdbcStatement nativeStatement, string sqlQuery)
+            {
+                fixed (NativeAdbcStatement* stmt = &nativeStatement)
+                fixed (NativeAdbcError* e = &_error)
+                {
+                    using (Utf8Helper query = new Utf8Helper(sqlQuery))
+                    {
+                        IntPtr bQuery = (IntPtr)(query);
+
+                        TranslateError(fn(stmt, (byte*)bQuery, e));
+                    }
                 }
             }
 
             public unsafe void Call(StatementExecuteQuery fn, ref NativeAdbcStatement nativeStatement, CArrowArrayStream* arrowStream, ref long nRows)
             {
+                fixed (NativeAdbcStatement* stmt = &nativeStatement)
                 fixed (long* rows = &nRows)
+                fixed (NativeAdbcError* e = &_error)
                 {
-                    TranslateError(fn(ref nativeStatement, arrowStream, rows, ref _error));
+                    TranslateError(fn(stmt, arrowStream, rows, e));
                 }
             }
 
             public unsafe void Dispose()
             {
-                if (_error.release != null) //IntPtr.Zero)
+                if (_error.release != null) 
                 {
                     fixed (NativeAdbcError* err = &_error)
                     {
                         Marshal.GetDelegateForFunctionPointer<ErrorRelease>((IntPtr)_error.release)(err);
-                        _error.release = null; // IntPtr.Zero;
+                        _error.release = null;
                     }
                 }
             }

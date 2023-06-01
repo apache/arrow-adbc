@@ -32,25 +32,24 @@ namespace Apache.Arrow.Adbc.Core
 {
     internal static class AdbcInterop
     {
-        private static unsafe readonly NativeDelegate<ErrorRelease> releaseError = new NativeDelegate<ErrorRelease>(ReleaseError);
-        private static readonly NativeDelegate<DriverRelease> releaseDriver = new NativeDelegate<DriverRelease>(ReleaseDriver);
+        private unsafe static readonly NativeDelegate<ErrorRelease> releaseError = new NativeDelegate<ErrorRelease>(ReleaseError);
+        private unsafe static readonly NativeDelegate<DriverRelease> releaseDriver = new NativeDelegate<DriverRelease>(ReleaseDriver);
 
-        private static readonly NativeDelegate<DatabaseFn> databaseInit = new NativeDelegate<DatabaseFn>(InitDatabase);
-        private static readonly NativeDelegate<DatabaseFn> databaseRelease = new NativeDelegate<DatabaseFn>(ReleaseDatabase);
+        private unsafe static readonly NativeDelegate<DatabaseFn> databaseInit = new NativeDelegate<DatabaseFn>(InitDatabase);
+        private unsafe static readonly NativeDelegate<DatabaseFn> databaseRelease = new NativeDelegate<DatabaseFn>(ReleaseDatabase);
+        private unsafe static readonly NativeDelegate<DatabaseSetOption> databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
 
-        private static unsafe readonly NativeDelegate<DatabaseSetOption> databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
-
-        private static readonly NativeDelegate<ConnectionInit> connectionInit = new NativeDelegate<ConnectionInit>(InitConnection);
-        private static readonly NativeDelegate<ConnectionFn> connectionRelease = new NativeDelegate<ConnectionFn>(ReleaseConnection);
-        private static readonly NativeDelegate<ConnectionGetInfo> connectionGetInfo = new NativeDelegate<ConnectionGetInfo>(GetConnectionInfo);
-        private static unsafe readonly NativeDelegate<ConnectionSetOption> connectionSetOption = new NativeDelegate<ConnectionSetOption>(SetConnectionOption);
+        private unsafe static readonly NativeDelegate<ConnectionInit> connectionInit = new NativeDelegate<ConnectionInit>(InitConnection);
+        private unsafe static readonly NativeDelegate<ConnectionFn> connectionRelease = new NativeDelegate<ConnectionFn>(ReleaseConnection);
+        private unsafe static readonly NativeDelegate<ConnectionGetInfo> connectionGetInfo = new NativeDelegate<ConnectionGetInfo>(GetConnectionInfo);
+        private unsafe static readonly NativeDelegate<ConnectionSetOption> connectionSetOption = new NativeDelegate<ConnectionSetOption>(SetConnectionOption);
         
-        private static unsafe readonly NativeDelegate<StatementExecuteQuery> statementExecuteQuery = new NativeDelegate<StatementExecuteQuery>(ExecuteStatementQuery);
-        private static readonly NativeDelegate<StatementNew> statementNew = new NativeDelegate<StatementNew>(NewStatement);
-        private static readonly NativeDelegate<StatementFn> statementRelease = new NativeDelegate<StatementFn>(ReleaseStatement);
-        private static readonly NativeDelegate<StatementSetSqlQuery> statementSetSqlQuery = new NativeDelegate<StatementSetSqlQuery>(SetStatementSqlQuery);
+        private unsafe static readonly NativeDelegate<StatementExecuteQuery> statementExecuteQuery = new NativeDelegate<StatementExecuteQuery>(ExecuteStatementQuery);
+        private unsafe static readonly NativeDelegate<StatementNew> statementNew = new NativeDelegate<StatementNew>(NewStatement);
+        private unsafe static readonly NativeDelegate<StatementFn> statementRelease = new NativeDelegate<StatementFn>(ReleaseStatement);
+        private unsafe static readonly NativeDelegate<StatementSetSqlQuery> statementSetSqlQuery = new NativeDelegate<StatementSetSqlQuery>(SetStatementSqlQuery);
 
-        public static unsafe AdbcStatusCode AdbcDriverInit(int version, NativeAdbcDriver* nativeDriver, NativeAdbcError* error, AdbcDriver driver)
+        public unsafe static AdbcStatusCode AdbcDriverInit(int version, NativeAdbcDriver* nativeDriver, NativeAdbcError* error, AdbcDriver driver)
         {
             DriverStub stub = new DriverStub(driver);
             GCHandle handle = GCHandle.Alloc(stub);
@@ -75,7 +74,7 @@ namespace Apache.Arrow.Adbc.Core
 
            // nativeDriver->StatementBind = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArray*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode>)
             nativeDriver->StatementNew = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode>)statementNew.Pointer;
-            nativeDriver->StatementSetSqlQuery = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, char*, AdbcStatusCode>)statementSetSqlQuery.Pointer;
+            nativeDriver->StatementSetSqlQuery = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, AdbcStatusCode>)statementSetSqlQuery.Pointer;
             nativeDriver->StatementExecuteQuery = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, long*, NativeAdbcError*, AdbcStatusCode>)statementExecuteQuery.Pointer;
             nativeDriver->StatementPrepare = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode>)statementRelease.Pointer;
             nativeDriver->StatementRelease = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode>)statementRelease.Pointer;
@@ -83,7 +82,7 @@ namespace Apache.Arrow.Adbc.Core
             return 0;
         }
 
-        private static unsafe void ReleaseError(NativeAdbcError* error)
+        private unsafe static void ReleaseError(NativeAdbcError* error)
         {
             if (error != null && ((IntPtr)error->message) != IntPtr.Zero)
             {
@@ -91,7 +90,7 @@ namespace Apache.Arrow.Adbc.Core
             }
         }
 
-        private static unsafe AdbcStatusCode SetError(NativeAdbcError* error, Exception exception)
+        private unsafe static AdbcStatusCode SetError(NativeAdbcError* error, Exception exception)
         {
             ReleaseError(error);
 
@@ -185,99 +184,99 @@ namespace Apache.Arrow.Adbc.Core
             p = IntPtr.Zero;
         }
 
-        private static unsafe AdbcStatusCode ReleaseDriver(ref NativeAdbcDriver nativeDriver, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode ReleaseDriver(NativeAdbcDriver* nativeDriver, NativeAdbcError* error)
         {
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDriver.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDriver->private_data);
             DriverStub stub = (DriverStub)gch.Target;
             stub.Dispose();
             gch.Free();
-            nativeDriver.private_data = null;
+            nativeDriver->private_data = null;
             return 0;
         }
 
-        private static unsafe AdbcStatusCode InitDatabase(ref NativeAdbcDatabase nativeDatabase, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode InitDatabase(NativeAdbcDatabase* nativeDatabase, NativeAdbcError* error)
         {
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase->private_data);
             DatabaseStub stub = (DatabaseStub)gch.Target;
-            return stub.Init(ref error);
+            return stub.Init(ref *error);
         }
 
-        private static unsafe AdbcStatusCode ReleaseDatabase(ref NativeAdbcDatabase nativeDatabase, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode ReleaseDatabase(NativeAdbcDatabase* nativeDatabase, NativeAdbcError* error)
         {
-            if (nativeDatabase.private_data == null)
+            if (nativeDatabase->private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
 
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase->private_data);
             DatabaseStub stub = (DatabaseStub)gch.Target;
             stub.Dispose();
             gch.Free();
-            nativeDatabase.private_data = null;
+            nativeDatabase->private_data = null;
             return AdbcStatusCode.Success;
         }
 
-        private static unsafe AdbcStatusCode SetConnectionOption(ref NativeAdbcConnection nativeConnection, byte* name, byte* value, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode SetConnectionOption(NativeAdbcConnection* nativeConnection, byte* name, byte* value, NativeAdbcError* error)
         {
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
             ConnectionStub stub = (ConnectionStub)gch.Target;
-            return stub.SetOption(name, value, ref error);
+            return stub.SetOption(name, value, ref *error);
         }
 
-        private static unsafe AdbcStatusCode SetDatabaseOption(ref NativeAdbcDatabase nativeDatabase, byte* name, byte* value, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode SetDatabaseOption(NativeAdbcDatabase* nativeDatabase, byte* name, byte* value, NativeAdbcError* error)
         {
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeDatabase->private_data);
             DatabaseStub stub = (DatabaseStub)gch.Target;
 
-            return stub.SetOption(name, value, ref error);
+            return stub.SetOption(name, value, ref *error);
         }
 
-        private static unsafe AdbcStatusCode InitConnection(ref NativeAdbcConnection nativeConnection, ref NativeAdbcDatabase database, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode InitConnection(NativeAdbcConnection* nativeConnection, NativeAdbcDatabase* database, NativeAdbcError* error)
         {
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
             ConnectionStub stub = (ConnectionStub)gch.Target;
-            return stub.InitConnection(ref database, ref error);
+            return stub.InitConnection(ref *database, ref *error);
         }
 
-        private static unsafe AdbcStatusCode ReleaseConnection(ref NativeAdbcConnection nativeConnection, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode ReleaseConnection(NativeAdbcConnection* nativeConnection, NativeAdbcError* error)
         {
-            if (nativeConnection.private_data == null)
+            if (nativeConnection->private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
 
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
             ConnectionStub stub = (ConnectionStub)gch.Target;
             stub.Dispose();
             gch.Free();
-            nativeConnection.private_data = null;
+            nativeConnection->private_data = null;
             return AdbcStatusCode.Success;
         }
 
-        private static unsafe AdbcStatusCode GetConnectionInfo(ref NativeAdbcConnection nativeConnection, uint x, IntPtr y, ref CArrowArrayStream stream, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode GetConnectionInfo(NativeAdbcConnection* nativeConnection, uint* info_codes, int info_codes_length, CArrowArrayStream* stream, NativeAdbcError* error)
         {
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
             ConnectionStub stub = (ConnectionStub)gch.Target;
-            return stub.GetConnectionInfo(ref nativeConnection, x, y, ref stream, ref error);
+            return stub.GetConnectionInfo(ref *nativeConnection, *info_codes, info_codes_length, ref *stream, ref *error);
         }
 
-        private static unsafe AdbcStatusCode SetStatementSqlQuery(ref NativeAdbcStatement nativeStatement, IntPtr text, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode SetStatementSqlQuery(NativeAdbcStatement* nativeStatement, byte* text, NativeAdbcError* error)
         {
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
             AdbcStatement stub = (AdbcStatement)gch.Target;
 
-#if NETSTANDARD
-            stub.SqlQuery = MarshalExtensions.PtrToStringUTF8(text);
-#else
-            stub.SqlQuery = Marshal.PtrToStringUTF8(text);
-#endif
+            #if NETSTANDARD
+                stub.SqlQuery = MarshalExtensions.PtrToStringUTF8((IntPtr)text);
+            #else
+                stub.SqlQuery = Marshal.PtrToStringUTF8((IntPtr)text);
+            #endif
 
             return AdbcStatusCode.Success;
         }
 
-        private static unsafe AdbcStatusCode ExecuteStatementQuery(ref NativeAdbcStatement nativeStatement, CArrowArrayStream* stream, long* rows, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode ExecuteStatementQuery(NativeAdbcStatement* nativeStatement, CArrowArrayStream* stream, long* rows, NativeAdbcError* error)
         {
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
             AdbcStatement stub = (AdbcStatement)gch.Target;
             var result = stub.ExecuteQuery();
             if (rows != null)
@@ -291,25 +290,25 @@ namespace Apache.Arrow.Adbc.Core
             return 0;
         }
 
-        private static unsafe AdbcStatusCode NewStatement(ref NativeAdbcConnection nativeConnection, ref NativeAdbcStatement nativeStatement, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode NewStatement(NativeAdbcConnection* nativeConnection, NativeAdbcStatement* nativeStatement, NativeAdbcError* error)
         {
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
             ConnectionStub stub = (ConnectionStub)gch.Target;
-            return stub.NewStatement(ref nativeStatement, ref error);
+            return stub.NewStatement(ref *nativeStatement, ref *error);
         }
 
-        private static unsafe AdbcStatusCode ReleaseStatement(ref NativeAdbcStatement nativeStatement, ref NativeAdbcError error)
+        private unsafe static AdbcStatusCode ReleaseStatement(NativeAdbcStatement* nativeStatement, NativeAdbcError* error)
         {
-            if (nativeStatement.private_data == null)
+            if (nativeStatement->private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
 
-            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement.private_data);
+            GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
             AdbcStatement stub = (AdbcStatement)gch.Target;
             stub.Dispose();
             gch.Free();
-            nativeStatement.private_data = null;
+            nativeStatement->private_data = null;
             return AdbcStatusCode.Success;
         }
     }
@@ -436,94 +435,99 @@ namespace Apache.Arrow.Adbc.Core
 
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionCommit; // ConnectionFn
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, int*, int, CArrowArrayStream*,NativeAdbcError*, AdbcStatusCode> ConnectionGetInfo;
-        public IntPtr ConnectionGetObjects;
-        public IntPtr ConnectionGetTableSchema;
-        public IntPtr ConnectionGetTableTypes;
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> ConnectionGetObjects;
+
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, byte*, byte*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> ConnectionGetTableSchema;
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> ConnectionGetTableTypes;
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> ConnectionInit;
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionNew; // ConnectionFn
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> ConnectionSetOption;
-        public IntPtr ConnectionReadPartition;
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, uint*, int, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>  ConnectionReadPartition;
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionRelease; // ConnectionFn
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionRollback; // ConnectionFn
 
-        public IntPtr StatementBind;
-        public IntPtr StatementBindStream;
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArray*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> StatementBind;
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> StatementBindStream;
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, long*, NativeAdbcError*, AdbcStatusCode> StatementExecuteQuery;
-        public IntPtr StatementExecutePartitions;
-        public IntPtr StatementGetParameterSchema;
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowSchema*, NativeAdbcPartitions*, long*, NativeAdbcError*, AdbcStatusCode> StatementExecutePartitions;
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> StatementGetParameterSchema;
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementNew;
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementPrepare; // StatementFn
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementRelease; // StatementFn
-        public IntPtr StatementSetOption;
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, char*, AdbcStatusCode> StatementSetSqlQuery;
-        public IntPtr StatementSetSubstraitPlan;
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> StatementSetOption;
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, AdbcStatusCode> StatementSetSqlQuery;
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, sbyte*, int, NativeAdbcError*, AdbcStatusCode>  StatementSetSubstraitPlan;
     }
 
 
-    delegate AdbcStatusCode DriverRelease(ref NativeAdbcDriver driver, ref NativeAdbcError error);
+    unsafe delegate AdbcStatusCode DriverRelease(NativeAdbcDriver* driver, NativeAdbcError* error);
 
-    delegate AdbcStatusCode DatabaseFn(ref NativeAdbcDatabase database, ref NativeAdbcError error);
-    unsafe delegate AdbcStatusCode DatabaseSetOption(ref NativeAdbcDatabase database, byte* name, byte* value, ref NativeAdbcError error);
+    unsafe delegate AdbcStatusCode DatabaseFn(NativeAdbcDatabase* database, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode DatabaseSetOption(NativeAdbcDatabase* database, byte* name, byte* value, NativeAdbcError* error);
 
-    delegate AdbcStatusCode ConnectionFn(ref NativeAdbcConnection connection, ref NativeAdbcError error);
-    delegate AdbcStatusCode ConnectionGetInfo(ref NativeAdbcConnection connection, uint x, IntPtr y, ref CArrowArrayStream stream, ref NativeAdbcError error);
-    delegate AdbcStatusCode ConnectionGetObjects(ref NativeAdbcConnection connection, int x, IntPtr y, IntPtr z, IntPtr a, IntPtr b, IntPtr c, ref CArrowArrayStream stream, ref NativeAdbcError error);
-    delegate AdbcStatusCode ConnectionGetTableSchema(ref NativeAdbcConnection connection, IntPtr x, IntPtr y, IntPtr z, ref CArrowArrayStream stream, ref NativeAdbcError error);
-    delegate AdbcStatusCode ConnectionGetTableTypes(ref NativeAdbcConnection connection, ref CArrowArrayStream stream, ref NativeAdbcError error);
-    delegate AdbcStatusCode ConnectionInit(ref NativeAdbcConnection connection, ref NativeAdbcDatabase database, ref NativeAdbcError error);
-    unsafe delegate AdbcStatusCode ConnectionSetOption(ref NativeAdbcConnection connection, byte* name, byte* value, ref NativeAdbcError error);
-    delegate AdbcStatusCode ConnectionReadPartition(ref NativeAdbcConnection connection, IntPtr x, IntPtr y, ref CArrowArrayStream stream, ref NativeAdbcError error);
+    unsafe delegate AdbcStatusCode ConnectionFn(NativeAdbcConnection* connection, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode ConnectionGetInfo(NativeAdbcConnection* connection, uint* info_codes, int info_codes_length, CArrowArrayStream* stream, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode ConnectionGetObjects(NativeAdbcConnection* connection, int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte column_name, CArrowArrayStream* stream, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode ConnectionGetTableSchema(NativeAdbcConnection* connection, byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* schema, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode ConnectionGetTableTypes(NativeAdbcConnection* connection, CArrowArrayStream* stream, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode ConnectionInit(NativeAdbcConnection* connection, NativeAdbcDatabase* database, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode ConnectionSetOption(NativeAdbcConnection* connection, byte* name, byte* value, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode ConnectionReadPartition(NativeAdbcConnection* connection, uint* serialized_partition, int serialized_length, CArrowArrayStream* stream, NativeAdbcError* error);
 
-    delegate AdbcStatusCode StatementBind(ref NativeAdbcStatement statement, ref CArrowArray array, ref CArrowSchema schema, ref NativeAdbcError error);
-    delegate AdbcStatusCode StatementBindStream(ref NativeAdbcStatement statement, ref CArrowArrayStream stream, ref NativeAdbcError error);
-    unsafe delegate AdbcStatusCode StatementExecuteQuery(ref NativeAdbcStatement statement, CArrowArrayStream* stream, long* rows, ref NativeAdbcError error);
-    delegate AdbcStatusCode StatementExecutePartitions(ref NativeAdbcStatement statement, ref CArrowSchema schema, ref NativeAdbcPartitions partitions, ref long rows, ref NativeAdbcError error);
-    delegate AdbcStatusCode StatementGetParameterSchema(ref NativeAdbcStatement statement, ref CArrowSchema schema, ref NativeAdbcError error);
-    delegate AdbcStatusCode StatementNew(ref NativeAdbcConnection connection, ref NativeAdbcStatement statement, ref NativeAdbcError error);
-    delegate AdbcStatusCode StatementFn(ref NativeAdbcStatement statement, ref NativeAdbcError error);
-    delegate AdbcStatusCode StatementSetOption(ref NativeAdbcStatement statement, IntPtr name, IntPtr value, ref NativeAdbcError error);
-    delegate AdbcStatusCode StatementSetSqlQuery(ref NativeAdbcStatement statement, IntPtr text, ref NativeAdbcError error);
-    delegate AdbcStatusCode StatementSetSubstraitPlan(ref NativeAdbcStatement statement, IntPtr plan, IntPtr length, ref NativeAdbcError error);
+    unsafe delegate AdbcStatusCode StatementBind(NativeAdbcStatement* statement, CArrowArray* array, CArrowSchema* schema, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode StatementBindStream(NativeAdbcStatement* statement, CArrowArrayStream* stream, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode StatementExecuteQuery(NativeAdbcStatement* statement, CArrowArrayStream* stream, long* rows, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode StatementExecutePartitions(NativeAdbcStatement* statement, CArrowSchema* schema, NativeAdbcPartitions* partitions, long* rows_affected, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode StatementGetParameterSchema(NativeAdbcStatement* statement, CArrowSchema* schema, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode StatementNew(NativeAdbcConnection* connection, NativeAdbcStatement* statement, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode StatementFn(NativeAdbcStatement* statement, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode StatementSetOption(NativeAdbcStatement* statement, byte* name, byte* value, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode StatementSetSqlQuery(NativeAdbcStatement* statement, byte* text, NativeAdbcError* error);
+    unsafe delegate AdbcStatusCode StatementSetSubstraitPlan(NativeAdbcStatement statement, sbyte* plan, int length, NativeAdbcError error);
 
     unsafe delegate void ErrorRelease(NativeAdbcError* error);
 
     sealed class DriverStub : IDisposable
     {
         readonly AdbcDriver _driver;
-        public readonly NativeDelegate<DatabaseFn> newDatabase;
-        public readonly NativeDelegate<ConnectionFn> newConnection;
+        public unsafe readonly NativeDelegate<DatabaseFn> newDatabase;
+        public unsafe readonly NativeDelegate<ConnectionFn> newConnection;
 
         public DriverStub(AdbcDriver driver)
         {
             _driver = driver;
-            newDatabase = new NativeDelegate<DatabaseFn>(NewDatabase);
-            newConnection = new NativeDelegate<ConnectionFn>(NewConnection);
+
+            unsafe
+            {
+                newDatabase = new NativeDelegate<DatabaseFn>(NewDatabase);
+                newConnection = new NativeDelegate<ConnectionFn>(NewConnection);
+            }
         }
 
-        public unsafe AdbcStatusCode NewDatabase(ref NativeAdbcDatabase nativeDatabase, ref NativeAdbcError error)
+        public unsafe AdbcStatusCode NewDatabase(NativeAdbcDatabase* nativeDatabase, NativeAdbcError* error)
         {
-            if (nativeDatabase.private_data == null)
+            if (nativeDatabase->private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
 
             DatabaseStub stub = new DatabaseStub(_driver);
             GCHandle handle = GCHandle.Alloc(stub);
-            nativeDatabase.private_data = (void*)GCHandle.ToIntPtr(handle);
+            nativeDatabase->private_data = (void*)GCHandle.ToIntPtr(handle);
 
             return AdbcStatusCode.Success;
         }
 
-        public unsafe AdbcStatusCode NewConnection(ref NativeAdbcConnection nativeConnection, ref NativeAdbcError error)
+        public unsafe AdbcStatusCode NewConnection(NativeAdbcConnection* nativeConnection, NativeAdbcError* error)
         {
-            if (nativeConnection.private_data == null)
+            if (nativeConnection->private_data == null)
             {
                 return AdbcStatusCode.UnknownError;
             }
 
             ConnectionStub stub = new ConnectionStub(_driver);
             GCHandle handle = GCHandle.Alloc(stub);
-            nativeConnection.private_data = (void*) GCHandle.ToIntPtr(handle);
+            nativeConnection->private_data = (void*) GCHandle.ToIntPtr(handle);
 
             return AdbcStatusCode.Success;
         }
@@ -622,7 +626,7 @@ namespace Apache.Arrow.Adbc.Core
             connection = null;
         }
 
-        public unsafe AdbcStatusCode GetConnectionInfo(ref NativeAdbcConnection connection, uint x, IntPtr y, ref CArrowArrayStream stream, ref NativeAdbcError error)
+        public unsafe AdbcStatusCode GetConnectionInfo(ref NativeAdbcConnection connection, uint info_codes, int info_codes_length, ref CArrowArrayStream stream, ref NativeAdbcError error)
         {
             if (connection.private_data == null)
             {
