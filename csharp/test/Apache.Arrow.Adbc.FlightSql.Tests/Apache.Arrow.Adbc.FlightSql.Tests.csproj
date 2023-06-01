@@ -13,7 +13,6 @@
     <PackageReference Include="MSTest.TestAdapter" Version="3.0.3" />
     <PackageReference Include="MSTest.TestFramework" Version="3.0.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="ParquetSharp" Version="10.0.1" />
   </ItemGroup>
   
   <ItemGroup>
@@ -21,9 +20,9 @@
     <ProjectReference Include="..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
     <ProjectReference Include="..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
   </ItemGroup>
-
+  
   <ItemGroup>
-    <None Update="flightsql.parquet">
+    <None Update="flightsql.arrow">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

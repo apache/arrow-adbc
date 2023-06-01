@@ -17,6 +17,7 @@
 
 using System.Collections.Generic;
 using System.IO;
+using Apache.Arrow.Ipc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Apache.Arrow.Adbc.FlightSql.Tests
@@ -24,17 +25,28 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
     internal class Utils
     {
         /// <summary>
-        /// Loads record patches from a parquet file.
+        /// Loads record batches from an arrow file.
         /// </summary>
         /// <returns></returns>
         public static List<RecordBatch> LoadTestRecordBatches()
         {
             // this file was generated from the Flight SQL data source
-            string file = "flightsql.parquet";
+            string file = "flightsql.arrow";
 
             Assert.IsTrue(File.Exists(file), $"Cannot find {file}");
 
-            List<RecordBatch> recordBatches = ParquetParser.ParseParquetFile(file);
+            List<RecordBatch> recordBatches = new List<RecordBatch>();
+
+            using (FileStream fs = new FileStream(file, FileMode.Open))
+            using (ArrowFileReader reader = new ArrowFileReader(fs))
+            {
+                int batches = reader.RecordBatchCountAsync().Result;
+
+                for(int i = 0; i < batches; i++) 
+                {
+                    recordBatches.Add(reader.ReadNextRecordBatch());
+                }
+            }
 
             return recordBatches;
         }

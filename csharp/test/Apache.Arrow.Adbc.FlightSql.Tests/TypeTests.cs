@@ -42,7 +42,7 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
 
             List<Type> expectedArrayTypes = new List<Type>()
             {
-                typeof(Int64Array),
+                typeof(TimestampArray),
                 typeof(Int64Array),
                 typeof(DoubleArray),
                 typeof(DoubleArray),
@@ -52,7 +52,7 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
 
             List<object> actualValues = new List<object>()
             {
-                ((Int64Array)actualArrays[0]).GetValue(0),
+                ((TimestampArray)actualArrays[0]).GetValue(0),
                 ((Int64Array)actualArrays[1]).GetValue(0),
                 ((DoubleArray)actualArrays[2]).GetValue(0),
                 ((DoubleArray)actualArrays[3]).GetValue(0),
