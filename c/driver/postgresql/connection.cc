@@ -464,11 +464,9 @@ class PqGetObjectsHelper {
   // For now we are using text transfer internally, so arrays are sent
   // back like {element1, element2} within a const char*
   std::vector<std::string> PqTextArrayToVector(std::string text_array) {
-    // remove leading { and trailing }
     text_array.erase(0, 1);
     text_array.erase(text_array.size() - 1);
 
-    // split at each comma into a vector
     std::vector<std::string> elements;
     std::stringstream ss(text_array);
     std::string tmp;
