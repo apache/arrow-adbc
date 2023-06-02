@@ -258,7 +258,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
   ASSERT_TRUE(seen_public) << "public schema does not exist";
 }
 
-TEST_F(PostgresConnectionTest, GetObjectsGetAll) {
+TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
@@ -297,6 +297,8 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAll) {
   struct ArrowArrayView* table_constraints_items = table_constraints_col->children[0];
   struct ArrowArrayView* constraint_name_col = table_constraints_items->children[0];
   struct ArrowArrayView* constraint_type_col = table_constraints_items->children[1];
+  struct ArrowArrayView* constraint_column_names_col =
+      table_constraints_items->children[2];
 
   do {
     for (int64_t catalog_idx = 0; catalog_idx < reader.array->length; catalog_idx++) {
@@ -351,9 +353,22 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAll) {
                     ArrowArrayViewGetStringUnsafe(constraint_type_col, constraints_index);
                 auto constraint_type_str =
                     std::string(constraint_type.data, constraint_type.size_bytes);
-                if ((constraint_name_str == "adbc_test_pkey") &
-                    (constraint_type_str == "PRIMARY KEY")) {
-                  seen_primary_key = true;
+
+                for (auto constraint_names_index = ArrowArrayViewListChildOffset(
+                         constraint_column_names_col, constraints_index);
+                     constraint_names_index <
+                     ArrowArrayViewListChildOffset(constraint_column_names_col,
+                                                   constraints_index + 1);
+                     constraint_names_index++) {
+                  ArrowStringView constraint_column_name = ArrowArrayViewGetStringUnsafe(
+                      constraint_column_names_col->children[0], constraint_names_index);
+                  auto constraint_column_name_str = std::string(
+                      constraint_column_name.data, constraint_column_name.size_bytes);
+                  if ((constraint_column_name_str == "id") &
+                      (constraint_name_str == "adbc_test_pkey") &
+                      (constraint_type_str == "PRIMARY KEY")) {
+                    seen_primary_key = true;
+                  }
                 }
               }
             }

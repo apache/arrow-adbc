@@ -21,6 +21,7 @@
 #include <cinttypes>
 #include <cstring>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -459,6 +460,26 @@ class PqGetObjectsHelper {
     return ADBC_STATUS_OK;
   }
 
+  // libpq PQexecParams can use either text or binary transfers
+  // For now we are using text transfer internally, so arrays are sent
+  // back like {element1, element2} within a const char*
+  std::vector<std::string> PqTextArrayToVector(std::string text_array) {
+    // remove leading { and trailing }
+    text_array.erase(0, 1);
+    text_array.erase(text_array.size() - 1);
+
+    // split at each comma into a vector
+    std::vector<std::string> elements;
+    std::stringstream ss(text_array);
+    std::string tmp;
+
+    while (getline(ss, tmp, ',')) {
+      elements.push_back(tmp);
+    }
+
+    return elements;
+  }
+
   AdbcStatusCode AppendConstraints(std::string schema_name, std::string table_name) {
     struct StringBuilder query = {0};
     if (StringBuilderInit(&query, /*initial_size*/ 512)) {
@@ -513,12 +534,11 @@ class PqGetObjectsHelper {
           ArrowArrayAppendString(constraint_type_col_, ArrowCharView(constraint_type)),
           error_);
 
-      for (auto i = 0; i < row[2].len; i++) {
-        // TODO: get actual name in here
-        const char* data = row[2].data;
+      auto constraint_column_names = PqTextArrayToVector(row[2].data);
+      for (auto constraint_column_name : constraint_column_names) {
         CHECK_NA(INTERNAL,
                  ArrowArrayAppendString(constraint_column_name_col_,
-                                        ArrowCharView("IMPLEMENT_ME")),
+                                        ArrowCharView(constraint_column_name.c_str())),
                  error_);
       }
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col_), error_);
