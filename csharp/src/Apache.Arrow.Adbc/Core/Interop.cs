@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc.Core
 
            // nativeDriver->StatementBind = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArray*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode>)
             nativeDriver->StatementNew = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode>)statementNew.Pointer;
-            nativeDriver->StatementSetSqlQuery = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, AdbcStatusCode>)statementSetSqlQuery.Pointer;
+            nativeDriver->StatementSetSqlQuery = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, NativeAdbcError *, AdbcStatusCode >)statementSetSqlQuery.Pointer;
             nativeDriver->StatementExecuteQuery = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, long*, NativeAdbcError*, AdbcStatusCode>)statementExecuteQuery.Pointer;
             nativeDriver->StatementPrepare = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode>)statementRelease.Pointer;
             nativeDriver->StatementRelease = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode>)statementRelease.Pointer;
@@ -318,6 +318,27 @@ namespace Apache.Arrow.Adbc.Core
     {
         public void* private_data;
         public NativeAdbcDriver* private_driver;
+
+        public static NativeAdbcDatabase* Create()
+        {
+            var ptr = (NativeAdbcDatabase*)Marshal.AllocHGlobal(sizeof(NativeAdbcDatabase));
+
+            ptr->private_data = null;
+            ptr->private_driver = null;
+            
+            return ptr;
+        }
+
+        /// <summary>
+        /// Free a pointer that was allocated in <see cref="Create"/>.
+        /// </summary>
+        /// <remarks>
+        /// Do not call this on a pointer that was allocated elsewhere.
+        /// </remarks>
+        public static void Free(NativeAdbcDatabase* database)
+        {
+            Marshal.FreeHGlobal((IntPtr)database);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -455,7 +476,7 @@ namespace Apache.Arrow.Adbc.Core
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementPrepare; // StatementFn
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementRelease; // StatementFn
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> StatementSetOption;
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, AdbcStatusCode> StatementSetSqlQuery;
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, NativeAdbcError*, AdbcStatusCode> StatementSetSqlQuery;
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, sbyte*, int, NativeAdbcError*, AdbcStatusCode>  StatementSetSubstraitPlan;
     }
 
