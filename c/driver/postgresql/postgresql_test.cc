@@ -65,6 +65,8 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
   std::string BindParameter(int index) const override {
     return "$" + std::to_string(index + 1);
   }
+
+  std::string db_schema() const override { return "public"; }
 };
 
 class PostgresDatabaseTest : public ::testing::Test,
@@ -87,7 +89,6 @@ class PostgresConnectionTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
   void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Not yet implemented"; }
-  void TestMetadataGetObjectsColumns() { GTEST_SKIP() << "Not yet implemented"; }
 
  protected:
   PostgresQuirks quirks_;
