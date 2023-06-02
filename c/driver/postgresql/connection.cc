@@ -532,7 +532,8 @@ class PqGetObjectsHelper {
           ArrowArrayAppendString(constraint_type_col_, ArrowCharView(constraint_type)),
           error_);
 
-      auto constraint_column_names = PqTextArrayToVector(row[2].data);
+      auto constraint_column_names =
+          PqTextArrayToVector(std::move(std::string(row[2].data)));
       for (auto constraint_column_name : constraint_column_names) {
         CHECK_NA(INTERNAL,
                  ArrowArrayAppendString(constraint_column_name_col_,
