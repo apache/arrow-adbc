@@ -95,16 +95,16 @@ namespace Apache.Arrow.Adbc.Core
             ReleaseError(error);
 
             #if NETSTANDARD
-                error->message = (char*)MarshalExtensions.StringToCoTaskMemUTF8(exception.Message);
+                error->message = (byte*)MarshalExtensions.StringToCoTaskMemUTF8(exception.Message);
             #else
-                error->message = (char*)Marshal.StringToCoTaskMemUTF8(exception.Message);
+                error->message = (byte*)Marshal.StringToCoTaskMemUTF8(exception.Message);
             #endif
 
-            error->sqlstate0 = (char)0;
-            error->sqlstate1 = (char)0;
-            error->sqlstate2 = (char)0;
-            error->sqlstate3 = (char)0;
-            error->sqlstate4 = (char)0;
+            error->sqlstate0 = (byte)0;
+            error->sqlstate1 = (byte)0;
+            error->sqlstate2 = (byte)0;
+            error->sqlstate3 = (byte)0;
+            error->sqlstate4 = (byte)0;
             error->vendor_code = 0;
             error->vendor_code = 0;
             error->release = (delegate* unmanaged[Stdcall]<NativeAdbcError*, void>)releaseError.Pointer;
@@ -368,12 +368,12 @@ namespace Apache.Arrow.Adbc.Core
         /// num_partitions entries) is an opaque identifier that can be
         /// passed to AdbcConnectionReadPartition.
         /// </summary>
-        public sbyte** partitions;
+        public byte** partitions;
 
         /// <summary>
         /// The length of each corresponding entry in partitions.
         /// </summary>
-        public int* partition_lengths;
+        public nuint* partition_lengths;
 
         /// <summary>
         /// Opaque implementation-defined state.
@@ -396,7 +396,7 @@ namespace Apache.Arrow.Adbc.Core
         /// <summary>
         /// The error message.
         /// </summary>
-        public char* message;
+        public byte* message;
 
         /// <summary>
         /// A vendor-specific error code, if applicable.
@@ -408,11 +408,11 @@ namespace Apache.Arrow.Adbc.Core
         ///   SQL:2003 standard.  If not set, it should be set to
         ///   "\0\0\0\0\0".
         ///</summary>
-        public char sqlstate0;
-        public char sqlstate1;
-        public char sqlstate2;
-        public char sqlstate3;
-        public char sqlstate4;
+        public byte sqlstate0;
+        public byte sqlstate1;
+        public byte sqlstate2;
+        public byte sqlstate3;
+        public byte sqlstate4;
 
         /// <summary>
         /// Release the contained error.

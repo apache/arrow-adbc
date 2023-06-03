@@ -15,28 +15,29 @@
 * limitations under the License.
 */
 
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.FlightSql.Tests
 {
     internal class FlightSqlTestConfiguration
     {
-        [JsonProperty(PropertyName="serverAddress")]
+        [JsonPropertyName("serverAddress")]
         public string ServerAddress { get; set; }
 
-        [JsonProperty(PropertyName ="routing_tag", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonPropertyName("routing_tag"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string RoutingTag { get; set; }
 
-        [JsonProperty(PropertyName = "routing_queue", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonPropertyName("routing_queue"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	    public string RoutingQueue { get; set; }
 
-        [JsonProperty(PropertyName = "authorization")]
+        [JsonPropertyName("authorization")]
         public string Authorization { get; set; }
 
-        [JsonProperty(PropertyName = "query")]
+        [JsonPropertyName("query")]
         public string Query { get; set; }
 
-        [JsonProperty(PropertyName = "expectedResults")]
+        [JsonPropertyName("expectedResults")]
         public long ExpectedResultsCount { get; set; }
     }
 }

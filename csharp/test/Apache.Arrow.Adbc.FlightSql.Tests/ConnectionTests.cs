@@ -19,11 +19,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using Apache.Arrow.Adbc.Core;
 using Apache.Arrow.Adbc.Tests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Newtonsoft.Json;
 
 namespace Apache.Arrow.Adbc.FlightSql.Tests
 {
@@ -130,7 +130,7 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
             // use a JSON file vs. setting up environment variables
             string json = File.ReadAllText("flightsqlconfig.json");
 
-            FlightSqlTestConfiguration flightSqlTestConfiguration = JsonConvert.DeserializeObject<FlightSqlTestConfiguration>(json);
+            FlightSqlTestConfiguration flightSqlTestConfiguration = JsonSerializer.Deserialize<FlightSqlTestConfiguration>(json);
 
             return flightSqlTestConfiguration;
         }

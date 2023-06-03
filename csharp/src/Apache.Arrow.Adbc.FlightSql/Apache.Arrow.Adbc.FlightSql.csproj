@@ -2,9 +2,6 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
-    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
-    <RootNamespace>Apache.Arrow.Adbc.FlightSql</RootNamespace>
-    <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
