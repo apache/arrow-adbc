@@ -147,7 +147,7 @@ import $component.dbapi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
         if [[ "${component}" = "adbc_driver_manager" ]]; then
-            export PYTEST_ADDOPTS="-k 'not sqlite'"
+            export PYTEST_ADDOPTS="-k 'not duckdb and not sqlite'"
         elif [[ "${component}" = "adbc_driver_postgresql" ]]; then
             export PYTEST_ADDOPTS="-k 'not polars'"
         fi

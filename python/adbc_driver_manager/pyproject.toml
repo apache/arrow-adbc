@@ -25,7 +25,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dbapi = ["pandas", "pyarrow>=8.0.0"]
-test = ["pandas", "pyarrow>=8.0.0", "pytest"]
+test = ["duckdb", "pandas", "pyarrow>=8.0.0", "pytest"]
 
 [project.urls]
 homepage = "https://arrow.apache.org"
@@ -37,6 +37,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 markers = [
+    "duckdb: tests that require DuckDB",
     "sqlite: tests that require the SQLite driver",
 ]
 
