@@ -156,7 +156,7 @@ namespace Apache.Arrow.Adbc.Core
         /// </summary>
         /// <param name="partition"></param>
         /// <returns></returns>
-        public virtual IArrowReader ReadPartition(PartitionDescriptor partition)
+        public virtual IArrowArrayStream ReadPartition(PartitionDescriptor partition)
         {
             throw AdbcException.NotImplemented("Connection does not support partitions");
         }

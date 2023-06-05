@@ -19,6 +19,7 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 
@@ -48,9 +49,9 @@ namespace Apache.Arrow.Adbc.Core
             set { throw new NotImplementedException(); }
         }
 
-        public virtual void Bind()
+        public virtual void Bind(RecordBatch batch,Schema schema)
         {
-            throw new NotImplementedException();
+            throw AdbcException.NotImplemented("Statement does not support Bind");
         }
 
         /// <summary>
@@ -97,7 +98,7 @@ namespace Apache.Arrow.Adbc.Core
         /// <returns><see cref="PartitionedResult"/></returns>
         public virtual PartitionedResult ExecutePartitioned()
         {
-            throw AdbcException.NotImplemented("Statement does not support executePartitioned");
+            throw AdbcException.NotImplemented("Statement does not support ExecutePartitioned");
         }
 
         /// <summary>
