@@ -335,7 +335,6 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
                   ArrowStringView column_name =
                       ArrowArrayViewGetStringUnsafe(column_name_col, columns_index);
                   auto column_str = std::string(column_name.data, column_name.size_bytes);
-                  std::cout << "The column name is " << column_str << std::endl;
                   if (column_str == "id") {
                     seen_id_column = true;
                   }
