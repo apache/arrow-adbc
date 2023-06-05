@@ -313,10 +313,29 @@ namespace Apache.Arrow.Adbc.Core
         }
     }
 
+    /// <summary>
+    /// Clients first initialize a database, then create a connection.  
+    /// This gives the implementation a place to initialize and
+    /// own any common connection state.  For example, in-memory databases
+    /// can place ownership of the actual database in this object.
+    /// </summary>
+    /// <remarks>
+    /// An instance of a database.
+    ///
+    /// Must be kept alive as long as any connections exist.
+    /// </remarks>
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct NativeAdbcDatabase
     {
+        /// <summary>
+        /// Opaque implementation-defined state.
+        /// This field is NULLPTR iff the connection is unintialized/freed.
+        /// </summary>
         public void* private_data;
+
+        /// <summary>
+        /// The associated driver (used by the driver manager to help track state).
+        /// </summary>
         public NativeAdbcDriver* private_driver;
 
         public static NativeAdbcDatabase* Create()
@@ -341,20 +360,85 @@ namespace Apache.Arrow.Adbc.Core
         }
     }
 
+    /// <summary>
+    /// An active database connection.
+    ///
+    /// Provides methods for query execution, managing prepared
+    /// statements, using transactions, and so on.
+    ///
+    /// Connections are not required to be thread-safe, but they can be
+    /// used from multiple threads so long as clients take care to
+    /// serialize accesses to a connection.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct NativeAdbcConnection
     {
+        /// <summary>
+        /// Opaque implementation-defined state.
+        /// This field is NULLPTR iff the connection is unintialized/freed.
+        /// </summary>
         public void* private_data;
+
+        /// <summary>
+        /// The associated driver (used by the driver manager to help
+        ///   track state).
+        /// </summary>
         public NativeAdbcDriver* private_driver;
     }
 
+    /// <summary>
+    /// A container for all state needed to execute a database
+    /// query, such as the query itself, parameters for prepared
+    /// statements, driver parameters, etc.
+    ///
+    /// Statements may represent queries or prepared statements.
+    ///
+    /// Statements may be used multiple times and can be reconfigured
+    /// (e.g. they can be reused to execute multiple different queries).
+    /// However, executing a statement (and changing certain other state)
+    /// will invalidate result sets obtained prior to that execution.
+    ///
+    /// Multiple statements may be created from a single connection.
+    /// However, the driver may block or error if they are used
+    /// concurrently (whether from a single thread or multiple threads).
+    ///
+    /// Statements are not required to be thread-safe, but they can be
+    /// used from multiple threads so long as clients take care to
+    /// serialize accesses to a statement.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct NativeAdbcStatement
     {
+        /// <summary>
+        /// Opaque implementation-defined state.
+        /// This field is NULLPTR iff the connection is unintialized/freed.
+        /// </summary>
         public void* private_data;
+
+        /// <summary>
+        /// The associated driver (used by the driver manager to help track state).
+        /// </summary>
         public NativeAdbcDriver* private_driver;
     }
 
+    /// <summary>
+    /// The partitions of a distributed/partitioned result set.
+    /// </summary>
+    /// <remarks>
+    /// Some backends may internally partition the results. These
+    /// partitions are exposed to clients who may wish to integrate them
+    /// with a threaded or distributed execution model, where partitions
+    /// can be divided among threads or machines and fetched in parallel.
+    ///
+    /// To use partitioning, execute the statement with
+    /// AdbcStatementExecutePartitions to get the partition descriptors.
+    /// Call AdbcConnectionReadPartition to turn the individual
+    /// descriptors into ArrowArrayStream instances.  This may be done on
+    /// a different connection than the one the partition was created
+    /// with, or even in a different process on another machine.
+    ///
+    /// Drivers are not required to support partitioning.
+    /// </remarks>
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct NativeAdbcPartitions
     {
@@ -390,6 +474,9 @@ namespace Apache.Arrow.Adbc.Core
         public delegate* unmanaged[Stdcall]<NativeAdbcPartitions*, void> release; 
     }
 
+    /// <summary>
+    /// A detailed error message for an operation.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct NativeAdbcError
     {
@@ -407,11 +494,45 @@ namespace Apache.Arrow.Adbc.Core
         /// A SQLSTATE error code, if provided, as defined by the
         ///   SQL:2003 standard.  If not set, it should be set to
         ///   "\0\0\0\0\0".
+        ///   
+        /// This is the first value.
         ///</summary>
         public byte sqlstate0;
+
+        /// <summary>
+        /// A SQLSTATE error code, if provided, as defined by the
+        ///   SQL:2003 standard.  If not set, it should be set to
+        ///   "\0\0\0\0\0".
+        ///   
+        /// This is the second value.
+        ///</summary>
         public byte sqlstate1;
+
+        /// <summary>
+        /// A SQLSTATE error code, if provided, as defined by the
+        ///   SQL:2003 standard.  If not set, it should be set to
+        ///   "\0\0\0\0\0".
+        ///   
+        /// This is the third value.
+        ///</summary>
         public byte sqlstate2;
+
+        /// <summary>
+        /// A SQLSTATE error code, if provided, as defined by the
+        ///   SQL:2003 standard.  If not set, it should be set to
+        ///   "\0\0\0\0\0".
+        ///   
+        /// This is the fourth value.
+        ///</summary>
         public byte sqlstate3;
+
+        /// <summary>
+        /// A SQLSTATE error code, if provided, as defined by the
+        ///   SQL:2003 standard.  If not set, it should be set to
+        ///   "\0\0\0\0\0".
+        ///   
+        /// This is the last value.
+        ///</summary>
         public byte sqlstate4;
 
         /// <summary>
@@ -423,7 +544,15 @@ namespace Apache.Arrow.Adbc.Core
         public delegate* unmanaged[Stdcall]<NativeAdbcError*, void> release; 
     };
 
-
+    /// <summary>
+    /// An instance of an initialized database driver.
+    /// </summary>
+    /// <remarks>
+    /// This provides a common interface for vendor-specific driver
+    /// initialization routines. Drivers should populate this struct, and
+    /// applications can call ADBC functions through this struct, without
+    /// worrying about multiple definitions of the same symbol.
+    /// </remarks>
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct NativeAdbcDriver
     {
@@ -449,37 +578,253 @@ namespace Apache.Arrow.Adbc.Core
         /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcDriver*, NativeAdbcError*, AdbcStatusCode> release;
 
-        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseInit; 
-        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseNew; 
-        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> DatabaseSetOption;
-        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseRelease; 
+        /// <summary>
+        /// Finish setting options and initialize the database.
+        ///
+        /// Some drivers may support setting options after initialization
+        /// as well.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseInit;
 
+        /// <summary>
+        /// Allocate a new (but uninitialized) database.
+        ///
+        /// Callers pass in a zero-initialized AdbcDatabase.
+        ///
+        /// Drivers should allocate their internal data structure and set the private_data
+        /// field to point to the newly allocated struct. This struct should be released
+        /// when AdbcDatabaseRelease is called.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseNew;
+
+        /// <summary>
+        /// Set a byte* option.
+        ///
+        /// Options may be set before AdbcDatabaseInit.  Some drivers may
+        /// support setting options after initialization as well.
+        ///
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> DatabaseSetOption;
+
+        /// <summary>
+        /// Destroy this database. No connections may exist.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseRelease;
+
+        /// <summary>
+        /// Commit any pending transactions. Only used if autocommit is disabled.
+        ///
+        /// Behavior is undefined if this is mixed with SQL transaction statements.
+        /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionCommit; // ConnectionFn
-        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, int*, int, CArrowArrayStream*,NativeAdbcError*, AdbcStatusCode> ConnectionGetInfo;
+
+        /// <summary>
+        /// Get metadata about the database/driver.
+        ///
+        /// The result is an Arrow dataset with the following schema:
+        ///
+        /// Field Name                  | Field Type
+        /// ----------------------------|------------------------
+        /// info_name                   | uint32 not null
+        /// info_value                  | INFO_SCHEMA
+        ///
+        /// INFO_SCHEMA is a dense union with members:
+        ///
+        /// Field Name (Type Code)      | Field Type
+        /// ----------------------------|------------------------
+        /// string_value (0)            | utf8
+        /// bool_value (1)              | bool
+        /// int64_value (2)             | int64
+        /// int32_bitmask (3)           | int32
+        /// string_list (4)             | list<utf8>
+        /// int32_to_int32_list_map (5) | map<int32, list<int32>>
+        ///
+        /// Each metadatum is identified by an integer code.  The recognized
+        /// codes are defined as constants.  Codes [0, 10_000) are reserved
+        /// for ADBC usage.  Drivers/vendors will ignore requests for
+        /// unrecognized codes (the row will be omitted from the result).
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, int, CArrowArrayStream*,NativeAdbcError*, AdbcStatusCode> ConnectionGetInfo;
+
+        /// <summary>
+        ///  Get a hierarchical view of all catalogs, database schemas,
+        ///   tables, and columns.
+        ///
+        /// The result is an Arrow dataset with the following schema:
+        ///
+        /// | Field Name               | Field Type              |
+        /// |--------------------------|-------------------------|
+        /// | catalog_name             | utf8                    |
+        /// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
+        ///
+        /// DB_SCHEMA_SCHEMA is a Struct with fields:
+        ///
+        /// | Field Name               | Field Type              |
+        /// |--------------------------|-------------------------|
+        /// | db_schema_name           | utf8                    |
+        /// | db_schema_tables         | list<TABLE_SCHEMA>      |
+        ///
+        /// TABLE_SCHEMA is a Struct with fields:
+        ///
+        /// | Field Name               | Field Type              |
+        /// |--------------------------|-------------------------|
+        /// | table_name               | utf8 not null           |
+        /// | table_type               | utf8 not null           |
+        /// | table_columns            | list<COLUMN_SCHEMA>     |
+        /// | table_constraints        | list<CONSTRAINT_SCHEMA> |
+        /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> ConnectionGetObjects;
 
-        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, byte*, byte*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> ConnectionGetTableSchema;
+        /// <summary>
+        /// Get the Arrow schema of a table.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*,  byte*, byte*, byte*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> ConnectionGetTableSchema;
+
+        /// <summary>
+        /// Get a list of table types in the database.
+        ///
+        /// The result is an Arrow dataset with the following schema:
+        ///
+        /// Field Name     | Field Type
+        /// ---------------|--------------
+        /// table_type     | utf8 not null
+        /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> ConnectionGetTableTypes;
+
+        /// <summary>
+        /// Finish setting options and initialize the connection.
+        ///
+        /// Some drivers may support setting options after initialization
+        /// as well.
+        /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> ConnectionInit;
+
+        /// <summary>
+        /// Allocate a new (but uninitialized) connection.
+        ///
+        /// Callers pass in a zero-initialized AdbcConnection.
+        ///
+        /// Drivers should allocate their internal data structure and set the private_data
+        /// field to point to the newly allocated struct. This struct should be released
+        /// when AdbcConnectionRelease is called.
+        /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionNew; // ConnectionFn
+
+        /// <summary>
+        /// Set a byte* option.
+        ///
+        /// Options may be set before AdbcConnectionInit.  Some  drivers may
+        /// support setting options after initialization as well.
+        /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> ConnectionSetOption;
-        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, uint*, int, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>  ConnectionReadPartition;
+
+        /// <summary>
+        /// Construct a statement for a partition of a query. The
+        ///   results can then be read independently.
+        ///
+        /// A partition can be retrieved from AdbcPartitions.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, int, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>  ConnectionReadPartition;
+
+        /// <summary>
+        /// Destroy this connection.
+        /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionRelease; // ConnectionFn
+
+        /// <summary>
+        /// Roll back any pending transactions. Only used if autocommit is disabled.
+        ///
+        /// Behavior is undefined if this is mixed with SQL transaction
+        /// statements.
+        /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionRollback; // ConnectionFn
 
+        /// <summary>
+        /// Bind Arrow data. This can be used for bulk inserts or prepared statements.
+        /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArray*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> StatementBind;
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> StatementBindStream;
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, long*, NativeAdbcError*, AdbcStatusCode> StatementExecuteQuery;
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowSchema*, NativeAdbcPartitions*, long*, NativeAdbcError*, AdbcStatusCode> StatementExecutePartitions;
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> StatementGetParameterSchema;
-        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementNew;
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementPrepare; // StatementFn
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementRelease; // StatementFn
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> StatementSetOption;
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, NativeAdbcError*, AdbcStatusCode> StatementSetSqlQuery;
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, sbyte*, int, NativeAdbcError*, AdbcStatusCode>  StatementSetSubstraitPlan;
-    }
 
+        /// <summary>
+        /// Bind Arrow data. This can be used for bulk inserts or prepared statements.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> StatementBindStream;
+
+        /// <summary>
+        /// Execute a statement and get the results.
+        ///
+        /// This invalidates any prior result sets.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, long*, NativeAdbcError*, AdbcStatusCode> StatementExecuteQuery;
+
+        /// <summary>
+        /// Execute a statement and get the results as a partitioned result set.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowSchema*, NativeAdbcPartitions*, long*, NativeAdbcError*, AdbcStatusCode> StatementExecutePartitions;
+
+        /// <summary>
+        /// Get the schema for bound parameters.
+        ///
+        /// This retrieves an Arrow schema describing the number, names, and
+        /// types of the parameters in a parameterized statement.  The fields
+        /// of the schema should be in order of the ordinal position of the
+        /// parameters; named parameters should appear only once.
+        ///
+        /// If the parameter does not have a name, or the name cannot be
+        /// determined, the name of the corresponding field in the schema will
+        /// be an empty string.  If the type cannot be determined, the type of
+        /// the corresponding field will be NA (NullType).
+        ///
+        /// This should be called after AdbcStatementPrepare.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> StatementGetParameterSchema;
+
+        /// <summary>
+        /// Create a new statement for a given connection.
+        ///
+        /// Callers pass in a zero-initialized AdbcStatement.
+        ///
+        /// Drivers should allocate their internal data structure and set the private_data
+        /// field to point to the newly allocated struct. This struct should be released
+        /// when AdbcStatementRelease is called.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementNew;
+
+        /// <summary>
+        /// Turn this statement into a prepared statement to be
+        ///   executed multiple times.
+        ///
+        /// This invalidates any prior result sets.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementPrepare; // StatementFn
+
+        /// <summary>
+        /// Destroy a statement.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementRelease; // StatementFn
+
+        /// <summary>
+        /// Set a string option on a statement.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, byte*, NativeAdbcError*, AdbcStatusCode> StatementSetOption;
+
+        /// <summary>
+        /// Set the SQL query to execute.
+        ///
+        /// The query can then be executed with StatementExecute.  For
+        /// queries expected to be executed repeatedly, StatementPrepare
+        /// the statement first.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, NativeAdbcError*, AdbcStatusCode> StatementSetSqlQuery;
+
+        /// <summary>
+        /// Set the Substrait plan to execute.
+        ///
+        /// The query can then be executed with AdbcStatementExecute.  For
+        /// queries expected to be executed repeatedly, AdbcStatementPrepare
+        /// the statement first.
+        /// </summary>
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, int, NativeAdbcError*, AdbcStatusCode>  StatementSetSubstraitPlan;
+    }
 
     unsafe delegate AdbcStatusCode DriverRelease(NativeAdbcDriver* driver, NativeAdbcError* error);
 
@@ -504,7 +849,7 @@ namespace Apache.Arrow.Adbc.Core
     unsafe delegate AdbcStatusCode StatementFn(NativeAdbcStatement* statement, NativeAdbcError* error);
     unsafe delegate AdbcStatusCode StatementSetOption(NativeAdbcStatement* statement, byte* name, byte* value, NativeAdbcError* error);
     unsafe delegate AdbcStatusCode StatementSetSqlQuery(NativeAdbcStatement* statement, byte* text, NativeAdbcError* error);
-    unsafe delegate AdbcStatusCode StatementSetSubstraitPlan(NativeAdbcStatement statement, sbyte* plan, int length, NativeAdbcError error);
+    unsafe delegate AdbcStatusCode StatementSetSubstraitPlan(NativeAdbcStatement statement, byte* plan, int length, NativeAdbcError error);
 
     unsafe delegate void ErrorRelease(NativeAdbcError* error);
 
