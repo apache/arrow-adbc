@@ -335,6 +335,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
                   ArrowStringView column_name =
                       ArrowArrayViewGetStringUnsafe(column_name_col, columns_index);
                   auto column_str = std::string(column_name.data, column_name.size_bytes);
+                  std::cout << "The column name is " << column_str << std::endl;
                   if (column_str == "id") {
                     seen_id_column = true;
                   }
@@ -379,7 +380,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
   } while (reader.array->release);
 
-  ASSERT_TRUE(seen_id_column) << "cloud not find column 'id' on table adbc_test";
+  ASSERT_TRUE(seen_id_column) << "could not find column 'id' on table adbc_test";
   ASSERT_TRUE(seen_primary_key) << "could not find primary key for adbc_test";
 }
 
