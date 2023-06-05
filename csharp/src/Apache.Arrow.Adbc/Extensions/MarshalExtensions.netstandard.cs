@@ -35,9 +35,17 @@ namespace Apache.Arrow.Adbc.Extensions
             unsafe
             {
                 byte* source = (byte*)intPtr;
-                int nbBytes =  source[0];
+                int length = 0;
 
-                return Encoding.UTF8.GetString(source, nbBytes);
+                while (source[length] != 0) 
+                {
+                    length++;
+                }
+
+                byte[] bytes = new byte[length];
+                Marshal.Copy(intPtr, bytes, 0, length);
+
+                return Encoding.UTF8.GetString(bytes);
             }
         }
 
