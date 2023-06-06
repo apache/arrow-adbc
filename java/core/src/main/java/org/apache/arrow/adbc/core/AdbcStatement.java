@@ -19,6 +19,7 @@ package org.apache.arrow.adbc.core;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
@@ -40,8 +41,23 @@ import org.apache.arrow.vector.types.pojo.Schema;
  * <p>Statements are not required to be thread-safe, but they can be used from multiple threads so
  * long as clients take care to serialize accesses to a statement.
  */
-public interface AdbcStatement extends AutoCloseable {
-  /** Set a generic query option. */
+public interface AdbcStatement extends AutoCloseable, AdbcOptions {
+  /**
+   * Cancel execution of a query.
+   *
+   * <p>This method must be thread-safe (other method are not necessarily thread-safe).
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default void cancel() throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support cancel");
+  }
+
+  /**
+   * Set a generic query option.
+   *
+   * @deprecated Prefer {@link #setOption(AdbcOptionKey, Object)}.
+   */
   default void setOption(String key, Object value) throws AdbcException {
     throw AdbcException.notImplemented("Unsupported option " + key);
   }
@@ -92,6 +108,37 @@ public interface AdbcStatement extends AutoCloseable {
    */
   default PartitionResult executePartitioned() throws AdbcException {
     throw AdbcException.notImplemented("Statement does not support executePartitioned");
+  }
+
+  /**
+   * Get the schema of the result set without executing the query.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default Schema executeSchema() throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support executeSchema");
+  }
+
+  /**
+   * Execute a result set-generating query and get a list of partitions of the result set.
+   *
+   * <p>These can be serialized and deserialized for parallel and/or distributed fetching.
+   *
+   * <p>This may invalidate any prior result sets.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default Iterator<PartitionResult> pollPartitioned() throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support pollPartitioned");
+  }
+
+  /**
+   * Get the progress of executing a query.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default double getProgress() throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support getProgress");
   }
 
   /**

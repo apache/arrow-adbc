@@ -17,14 +17,29 @@
 
 package org.apache.arrow.adbc.core;
 
-/**
- * An instance of a database (e.g. a handle to an in-memory database).
- *
- * <p>A database can have multiple open connections. While this is likely redundant structure for
- * remote/networked databases, for in-memory databases, this object provides an explicit point of
- * ownership.
- */
-public interface AdbcDatabase extends AutoCloseable, AdbcOptions {
-  /** Create a new connection to the database. */
-  AdbcConnection connect() throws AdbcException;
+/** An ADBC object that supports getting/setting generic options. */
+public interface AdbcOptions {
+  /**
+   * Get a generic option.
+   *
+   * @since ADBC API revision 1.1.0
+   * @param key The option to retrieve.
+   * @return The option value.
+   * @param <T> The option value type.
+   */
+  default <T> T getOption(AdbcOptionKey<T> key) throws AdbcException {
+    throw AdbcException.notImplemented("Unsupported option " + key);
+  }
+
+  /**
+   * Set a generic option.
+   *
+   * @since ADBC API revision 1.1.0
+   * @param key The option to set.
+   * @param value The option value.
+   * @param <T> The option value type.
+   */
+  default <T> void setOption(AdbcOptionKey<T> key, T value) throws AdbcException {
+    throw AdbcException.notImplemented("Unsupported option " + key);
+  }
 }
