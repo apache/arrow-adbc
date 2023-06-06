@@ -64,4 +64,20 @@ if(ADBC_BUILD_TESTS)
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-manager-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
+
+  add_test_case(version_100_compatibility_test
+                PREFIX
+                adbc
+                EXTRA_LABELS
+                driver-manager
+                SOURCES
+                adbc_version_100.c
+                adbc_version_100_compatibility_test.cc
+                ../validation/adbc_validation_util.cc
+                EXTRA_LINK_LIBS
+                nanoarrow
+                ${TEST_LINK_LIBS})
+  target_compile_features(adbc-version-100-compatibility-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-version-100-compatibility-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}/c/vendor/nanoarrow/)
 endif()
