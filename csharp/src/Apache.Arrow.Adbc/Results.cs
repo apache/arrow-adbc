@@ -18,7 +18,7 @@
 using System.Collections.Generic;
 using Apache.Arrow.Ipc;
 
-namespace Apache.Arrow.Adbc.Core
+namespace Apache.Arrow.Adbc
 {
     /// <summary>
     /// Represents a query result.

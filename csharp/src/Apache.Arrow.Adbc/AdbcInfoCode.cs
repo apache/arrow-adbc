@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace Apache.Arrow.Adbc.Core
+namespace Apache.Arrow.Adbc
 {
     public enum AdbcInfoCode
     {

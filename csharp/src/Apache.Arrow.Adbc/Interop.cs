@@ -19,20 +19,16 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Reflection.Emit;
 using System.Runtime.InteropServices;
-using System.Xml.Linq;
 using Apache.Arrow.Adbc.Interop;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
-using static System.Net.Mime.MediaTypeNames;
 
 #if NETSTANDARD
 using Apache.Arrow.Adbc.Extensions;
 #endif
 
-namespace Apache.Arrow.Adbc.Core
+namespace Apache.Arrow.Adbc
 {
     internal static class AdbcInterop
     {

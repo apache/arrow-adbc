@@ -16,22 +16,24 @@
  */
 
 using System;
+using System.Collections.Generic;
 
-namespace Apache.Arrow.Adbc.Core
+namespace Apache.Arrow.Adbc
 {
     /// <summary>
-    /// How to handle already-existing/nonexistent tables for bulk ingest operations.
+    /// This provides a common interface for vendor-specific driver initialization routines. 
     /// </summary>
-    public enum BulkIngestMode
+    public abstract class AdbcDriver : IDisposable
     {
         /// <summary>
-        /// Create the table and insert data; error if the table exists.
+        /// Open a database via this driver.
         /// </summary>
-        Create,
+        /// <param name="parameters">Driver-specific parameters.</param>
+        /// <returns></returns>
+        public abstract AdbcDatabase Open(Dictionary<string, string> parameters);
 
-        /// <summary>
-        /// Do not create the table and append data; error if the table does not exist (<see cref="AdbcStatusCode.NotFound"/>) or does not match the schema of the data to append (<see cref="AdbcStatusCode.AlreadyExists"/>). 
-        /// </summary>
-        Append
+        public virtual void Dispose()
+        {
+        }
     }
 }

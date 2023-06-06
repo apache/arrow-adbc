@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Ipc;
 
-namespace Apache.Arrow.Adbc.Core
+namespace Apache.Arrow.Adbc
 {
     /// <summary>
     /// Provides methods for query execution, managing prepared statements, using transactions, and so on.

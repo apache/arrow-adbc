@@ -16,7 +16,7 @@
  */
 
 using System;
-using Apache.Arrow.Adbc.Core;
+using Apache.Arrow.Adbc;
 
 /// <summary>
 /// The root exception when working with Adbc drivers.

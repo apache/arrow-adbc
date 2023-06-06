@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Types;
 
-namespace Apache.Arrow.Adbc.Core
+namespace Apache.Arrow.Adbc
 {
     /// <summary>
     /// The standard schemas

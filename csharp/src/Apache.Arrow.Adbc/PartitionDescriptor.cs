@@ -17,7 +17,7 @@
 
 using System;
 
-namespace Apache.Arrow.Adbc.Core
+namespace Apache.Arrow.Adbc
 {
     public struct PartitionDescriptor : IEquatable<PartitionDescriptor>
     {

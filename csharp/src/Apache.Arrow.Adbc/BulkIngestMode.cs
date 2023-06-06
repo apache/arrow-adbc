@@ -15,25 +15,21 @@
  * limitations under the License.
  */
 
-using System;
-using System.Collections.Generic;
-
-namespace Apache.Arrow.Adbc.Core
+namespace Apache.Arrow.Adbc
 {
     /// <summary>
-    /// This provides a common interface for vendor-specific driver initialization routines. 
+    /// How to handle already-existing/nonexistent tables for bulk ingest operations.
     /// </summary>
-    public abstract class AdbcDriver : IDisposable
+    public enum BulkIngestMode
     {
         /// <summary>
-        /// Open a database via this driver.
+        /// Create the table and insert data; error if the table exists.
         /// </summary>
-        /// <param name="parameters">Driver-specific parameters.</param>
-        /// <returns></returns>
-        public abstract AdbcDatabase Open(Dictionary<string, string> parameters);
+        Create,
 
-        public virtual void Dispose()
-        {
-        }
+        /// <summary>
+        /// Do not create the table and append data; error if the table does not exist (<see cref="AdbcStatusCode.NotFound"/>) or does not match the schema of the data to append (<see cref="AdbcStatusCode.AlreadyExists"/>). 
+        /// </summary>
+        Append
     }
 }

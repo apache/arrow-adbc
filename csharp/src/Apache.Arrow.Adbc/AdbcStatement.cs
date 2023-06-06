@@ -16,14 +16,11 @@
  */
 
 using System;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
-using Apache.Arrow.Types;
 
-namespace Apache.Arrow.Adbc.Core
+namespace Apache.Arrow.Adbc
 {
     /// <summary>
     /// Statements may represent queries or prepared statements. Statements may be used multiple times and can be reconfigured (e.g. they can be reused to execute multiple different queries).
@@ -32,7 +29,7 @@ namespace Apache.Arrow.Adbc.Core
     {
         public AdbcStatement()
         {
-            Timeout = 30;
+            
         }
 
         /// <summary>
@@ -87,12 +84,6 @@ namespace Apache.Arrow.Adbc.Core
         }
 
         /// <summary>
-        /// Timeout (in seconds) for statement execution.
-        /// </summary>
-        /// <remarks>The default is 30 seconds.</remarks>
-        public virtual int Timeout { get; set; }
-
-        /// <summary>
         /// Execute a result set-generating query and get a list of partitions of the result set.
         /// </summary>
         /// <returns><see cref="PartitionedResult"/></returns>
@@ -121,77 +112,6 @@ namespace Apache.Arrow.Adbc.Core
 
         public virtual void Dispose()
         {
-        }
-
-        /// <summary>
-        /// Gets the .NET type based on the Arrow field metadata
-        /// </summary>
-        /// <param name="f">Field from Arrow Schema</param>
-        /// <returns></returns>
-        public virtual Type ConvertArrowType(Field f)
-        {
-            switch (f.DataType.TypeId)
-            {
-                case ArrowTypeId.Binary:
-                    return typeof(byte[]);
-
-                case ArrowTypeId.Boolean:
-                    return typeof(bool);
-
-                case ArrowTypeId.Decimal128:
-                case ArrowTypeId.Decimal256:
-                    return typeof(decimal);
-
-                case ArrowTypeId.Date32:
-                case ArrowTypeId.Date64:
-                    return typeof(DateTime);
-
-                case ArrowTypeId.Double:
-                    return typeof(double);
-
-#if NET5_0_OR_GREATER
-                case ArrowTypeId.HalfFloat:
-                    return typeof(Half);
-#else
-                case ArrowTypeId.HalfFloat:
-                    return typeof(float);
-#endif
-                case ArrowTypeId.Float:
-                    return typeof(float);
-
-                case ArrowTypeId.Int8:
-                    return typeof(sbyte);
-                case ArrowTypeId.Int16:
-                    return typeof(short);
-                case ArrowTypeId.Int32:
-                    return typeof(int);
-                case ArrowTypeId.Int64:
-                    return typeof(long);
-
-                case ArrowTypeId.String:
-                    return typeof(string);
-
-                case ArrowTypeId.Struct:
-                    goto default;
-
-                case ArrowTypeId.Timestamp:
-                    return typeof(DateTime);
-
-                case ArrowTypeId.UInt8:
-                    return typeof(sbyte);
-                case ArrowTypeId.UInt16:
-                    return typeof(ushort);
-                case ArrowTypeId.UInt32:
-                    return typeof(uint);
-                case ArrowTypeId.UInt64:
-                    return typeof(ulong);
-
-                case ArrowTypeId.Null:
-                    return null;
-
-                default:
-                    throw AdbcException.NotImplemented($"Cannot convert {f.DataType.GetType()} to a .NET type");
-            }
         }
 
         /// <summary>
