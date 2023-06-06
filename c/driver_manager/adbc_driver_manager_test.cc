@@ -34,6 +34,8 @@ namespace adbc {
 using adbc_validation::IsOkStatus;
 using adbc_validation::IsStatus;
 
+TEST(Adbc, AdbcDriverSize) { ASSERT_EQ(sizeof(AdbcDriver), 96 * sizeof(void*)); }
+
 class DriverManager : public ::testing::Test {
  public:
   void SetUp() override {
@@ -155,6 +157,38 @@ TEST_F(DriverManager, MultiDriverTest) {
               IsStatus(ADBC_STATUS_IO, &error.value));
   ASSERT_THAT(error->message, ::testing::HasSubstr("[libpq] Failed to connect"));
   error->release(&error.value);
+}
+
+class AdbcVersion : public ::testing::Test {
+ public:
+  void SetUp() override {
+    std::memset(&driver, 0, sizeof(driver));
+    std::memset(&error, 0, sizeof(error));
+  }
+
+  void TearDown() override {
+    if (error.release) {
+      error.release(&error);
+    }
+
+    if (driver.release) {
+      ASSERT_THAT(driver.release(&driver, &error), IsOkStatus(&error));
+      ASSERT_EQ(driver.private_data, nullptr);
+      ASSERT_EQ(driver.private_manager, nullptr);
+    }
+  }
+
+ protected:
+  struct AdbcDriver driver = {};
+  struct AdbcError error = {};
+};
+
+// TODO: set up a dummy driver to test behavior more deterministically
+
+TEST_F(AdbcVersion, ForwardsCompatible) {
+  ASSERT_THAT(
+      AdbcLoadDriver("adbc_driver_sqlite", nullptr, ADBC_VERSION_1_1_0, &driver, &error),
+      IsOkStatus(&error));
 }
 
 class SqliteQuirks : public adbc_validation::DriverQuirks {

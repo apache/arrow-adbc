@@ -27,7 +27,7 @@ import org.apache.arrow.vector.types.pojo.Schema;
  * <p>Connections are not required to be thread-safe, but they can be used from multiple threads so
  * long as clients take care to serialize accesses to a connection.
  */
-public interface AdbcConnection extends AutoCloseable {
+public interface AdbcConnection extends AutoCloseable, AdbcOptions {
   /** Commit the pending transaction. */
   default void commit() throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support transactions");
@@ -283,6 +283,42 @@ public interface AdbcConnection extends AutoCloseable {
   /** Toggle whether autocommit is enabled. */
   default void setAutoCommit(boolean enableAutoCommit) throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support transactions");
+  }
+
+  /**
+   * Get the current catalog.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default String getCurrentCatalog() throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support current catalog");
+  }
+
+  /**
+   * Set the current catalog.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default void setCurrentCatalog(String catalog) throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support current catalog");
+  }
+
+  /**
+   * Get the current schema.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default String getCurrentDbSchema() throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support current catalog");
+  }
+
+  /**
+   * Set the current schema.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default void setCurrentDbSchema(String catalog) throws AdbcException {
+    throw AdbcException.notImplemented("Connection does not support current catalog");
   }
 
   /**

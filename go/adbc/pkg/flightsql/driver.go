@@ -905,7 +905,7 @@ func FlightSQLDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcErr
 	}
 
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
-	C.memset(unsafe.Pointer(driver), 0, C.sizeof_struct_AdbcDriver)
+	C.memset(unsafe.Pointer(driver), 0, C.ADBC_DRIVER_1_0_0_SIZE)
 	driver.DatabaseInit = (*[0]byte)(C.FlightSQLDatabaseInit)
 	driver.DatabaseNew = (*[0]byte)(C.FlightSQLDatabaseNew)
 	driver.DatabaseRelease = (*[0]byte)(C.FlightSQLDatabaseRelease)
