@@ -239,8 +239,8 @@ struct BindStream {
     PGresult* result = PQprepare(conn, /*stmtName=*/"", query.c_str(),
                                  /*nParams=*/bind_schema->n_children, param_types.data());
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      SetError(error, "%s%s", "[libpq] Failed to prepare query: ", PQerrorMessage(conn));
-      SetError(error, "%s%s", "[libpq] Query: ", query.c_str());
+      SetError(error, "[libpq] Failed to prepare query: %s\nQuery was:%s",
+               PQerrorMessage(conn), query.c_str());
       PQclear(result);
       return ADBC_STATUS_IO;
     }
@@ -256,10 +256,10 @@ struct BindStream {
       Handle<struct ArrowArray> array;
       int res = bind->get_next(&bind.value, &array.value);
       if (res != 0) {
-        // TODO: include errno
-        SetError(error, "%s%s",
-                 "[libpq] Failed to read next batch from stream of bind parameters: ",
-                 bind->get_last_error(&bind.value));
+        SetError(error,
+                 "[libpq] Failed to read next batch from stream of bind parameters: "
+                 "(%d) %s %s",
+                 res, std::strerror(res), bind->get_last_error(&bind.value));
         return ADBC_STATUS_IO;
       }
       if (!array->release) break;
@@ -584,9 +584,8 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
                                   /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                   /*resultFormat=*/1 /*(binary)*/);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "%s%s",
-             "[libpq] Failed to create table: ", PQerrorMessage(connection_->conn()));
-    SetError(error, "%s%s", "[libpq] Query: ", create.c_str());
+    SetError(error, "[libpq] Failed to create table: %s\nQuery was: %s",
+             PQerrorMessage(connection_->conn()), create.c_str());
     PQclear(result);
     return ADBC_STATUS_IO;
   }
@@ -637,11 +636,8 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     // and https://stackoverflow.com/questions/69233792 suggests that
     // you can't PREPARE a query containing COPY.
   }
-  if (!stream) {
-    if (!ingest_.target.empty()) {
-      return ExecuteUpdateBulk(rows_affected, error);
-    }
-    return ExecuteUpdateQuery(rows_affected, error);
+  if (!stream && !ingest_.target.empty()) {
+    return ExecuteUpdateBulk(rows_affected, error);
   }
 
   if (query_.empty()) {
@@ -649,18 +645,26 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     return ADBC_STATUS_INVALID_STATE;
   }
 
-  // 1. Execute the query with LIMIT 0 to get the schema
+  // 1. Prepare the query to get the schema
   {
     // TODO: we should pipeline here and assume this will succeed
-    std::string schema_query = "SELECT * FROM (" + query_ + ") AS ignored LIMIT 0";
-    PGresult* result =
-        PQexecParams(connection_->conn(), query_.c_str(), /*nParams=*/0,
-                     /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
-                     /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
-    if (PQresultStatus(result) != PGRES_TUPLES_OK) {
-      SetError(error, "%s%s", "[libpq] Query was: ", schema_query.c_str());
-      SetError(error, "%s%s", "[libpq] Failed to execute query: could not infer schema: ",
-               PQerrorMessage(connection_->conn()));
+    PGresult* result = PQprepare(connection_->conn(), /*stmtName=*/"", query_.c_str(),
+                                 /*nParams=*/0, nullptr);
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      SetError(error,
+               "[libpq] Failed to execute query: could not infer schema: failed to "
+               "prepare query: %s\nQuery was:%s",
+               PQerrorMessage(connection_->conn()), query_.c_str());
+      PQclear(result);
+      return ADBC_STATUS_IO;
+    }
+    PQclear(result);
+    result = PQdescribePrepared(connection_->conn(), /*stmtName=*/"");
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      SetError(error,
+               "[libpq] Failed to execute query: could not infer schema: failed to "
+               "describe prepared statement: %s\nQuery was:%s",
+               PQerrorMessage(connection_->conn()), query_.c_str());
       PQclear(result);
       return ADBC_STATUS_IO;
     }
@@ -683,6 +687,20 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
       return na_res;
     }
 
+    // If the caller did not request a result set or if there are no
+    // inferred output columns (e.g. a CREATE or UPDATE), then don't
+    // use COPY (which would fail anyways)
+    if (!stream || root_type.n_children() == 0) {
+      RAISE_ADBC(ExecuteUpdateQuery(rows_affected, error));
+      if (stream) {
+        struct ArrowSchema schema;
+        std::memset(&schema, 0, sizeof(schema));
+        RAISE_NA(reader_.copy_reader_->GetSchema(&schema));
+        nanoarrow::EmptyArrayStream::MakeUnique(&schema).move(stream);
+      }
+      return ADBC_STATUS_OK;
+    }
+
     // This resolves the reader specific to each PostgresType -> ArrowSchema
     // conversion. It is unlikely that this will fail given that we have just
     // inferred these conversions ourselves.
@@ -701,9 +719,9 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
     if (PQresultStatus(reader_.result_) != PGRES_COPY_OUT) {
-      SetError(error, "%s%s", "[libpq] Query was: ", copy_query.c_str());
-      SetError(error, "%s%s", "[libpq] Failed to execute query: could not begin COPY: ",
-               PQerrorMessage(connection_->conn()));
+      SetError(error,
+               "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
+               PQerrorMessage(connection_->conn()), copy_query.c_str());
       ClearResult();
       return ADBC_STATUS_IO;
     }
@@ -753,27 +771,14 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
 
 AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
                                                      struct AdbcError* error) {
-  if (query_.empty()) {
-    SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-
-  PGresult* result = nullptr;
-
-  if (prepared_) {
-    result = PQexecPrepared(connection_->conn(), /*stmtName=*/"", /*nParams=*/0,
-                            /*paramValues=*/nullptr, /*paramLengths=*/nullptr,
-                            /*paramFormats=*/nullptr, /*resultFormat=*/kPgBinaryFormat);
-  } else {
-    result = PQexecParams(connection_->conn(), query_.c_str(), /*nParams=*/0,
-                          /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
-                          /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
-                          /*resultFormat=*/kPgBinaryFormat);
-  }
+  // NOTE: must prepare first (used in ExecuteQuery)
+  PGresult* result =
+      PQexecPrepared(connection_->conn(), /*stmtName=*/"", /*nParams=*/0,
+                     /*paramValues=*/nullptr, /*paramLengths=*/nullptr,
+                     /*paramFormats=*/nullptr, /*resultFormat=*/kPgBinaryFormat);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "%s%s", "[libpq] Query was: ", query_.c_str());
-    SetError(error, "%s%s",
-             "[libpq] Failed to execute query: ", PQerrorMessage(connection_->conn()));
+    SetError(error, "[libpq] Failed to execute query: %s\nQuery was:%s",
+             PQerrorMessage(connection_->conn()), query_.c_str());
     PQclear(result);
     return ADBC_STATUS_IO;
   }

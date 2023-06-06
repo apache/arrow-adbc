@@ -27,3 +27,19 @@ test_that("error allocator works", {
   expect_identical(err$vendor_code, 0L)
   expect_identical(err$sqlstate, as.raw(c(0x00, 0x00, 0x00, 0x00, 0x00)))
 })
+
+test_that("stop_for_error() gives a custom error class with extra info", {
+  had_error <- FALSE
+  tryCatch({
+    db <- adbc_database_init(adbc_driver_void())
+    adbc_database_release(db)
+    adbc_database_release(db)
+  }, adbc_status = function(e) {
+    had_error <<- TRUE
+    expect_s3_class(e, "adbc_status")
+    expect_s3_class(e, "adbc_status_invalid_state")
+    expect_identical(e$error$status, 6L)
+  })
+
+  expect_true(had_error)
+})

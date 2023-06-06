@@ -20,14 +20,14 @@ module github.com/apache/arrow-adbc/go/adbc
 go 1.18
 
 require (
-	github.com/apache/arrow/go/v12 v12.0.0-20230421000340-388f3a88c647
+	github.com/apache/arrow/go/v12 v12.0.0
 	github.com/bluele/gcache v0.0.2
 	github.com/google/uuid v1.3.0
-	github.com/snowflakedb/gosnowflake v1.6.21-0.20230427202326-79f2d00be7ac
+	github.com/snowflakedb/gosnowflake v1.6.21
 	github.com/stretchr/testify v1.8.2
-	golang.org/x/exp v0.0.0-20230420155640-133eef4313cb
-	golang.org/x/sync v0.1.0
-	golang.org/x/tools v0.8.0
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
+	golang.org/x/sync v0.2.0
+	golang.org/x/tools v0.9.1
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
 )
@@ -35,25 +35,24 @@ require (
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.2 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.5.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.0.0 // indirect
 	github.com/JohnCGriffin/overflow v0.0.0-20211019200055-46fa312c352c // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/apache/arrow/go/v11 v11.0.0 // indirect
-	github.com/apache/thrift v0.17.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.17.8 // indirect
+	github.com/apache/thrift v0.16.0 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.18.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.20 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.63 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.32 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.26 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.24 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.24 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.67 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.33 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.27 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.25 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.27 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.26 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.14.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.32.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.28 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.27 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.14.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.33.1 // indirect
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -65,7 +64,7 @@ require (
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/flatbuffers v23.3.3+incompatible // indirect
+	github.com/google/flatbuffers v23.5.9+incompatible // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
@@ -83,11 +82,11 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
-	golang.org/x/crypto v0.8.0 // indirect
+	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/net v0.9.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
-	golang.org/x/term v0.7.0 // indirect
+	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gonum.org/v1/gonum v0.12.0 // indirect
@@ -104,3 +103,5 @@ require (
 	modernc.org/strutil v1.1.3 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
+
+replace github.com/apache/arrow/go/v12 v12.0.0 => github.com/apache/arrow/go/v12 v12.0.0-20230428025921-06d49ee63e26

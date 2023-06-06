@@ -1110,6 +1110,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	// Pre-populate the map of which schemas are in which catalogs
 	includeSchema := depth == adbc.ObjectDepthAll || depth == adbc.ObjectDepthColumns
 	info, err := c.cl.GetTables(ctx, &flightsql.GetTablesOpts{
+		DbSchemaFilterPattern:  dbSchema,
 		TableNameFilterPattern: tableName,
 		TableTypes:             tableType,
 		IncludeSchema:          includeSchema,

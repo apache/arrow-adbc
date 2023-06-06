@@ -104,6 +104,24 @@ void StringBuilderReset(struct StringBuilder* builder);
     if (adbc_status_code != ADBC_STATUS_OK) return adbc_status_code; \
   } while (0)
 
+/// \defgroup adbc-connection-utils Connection Utilities
+/// Utilities for implementing connection-related functions for drivers
+///
+/// @{
+AdbcStatusCode AdbcInitConnectionGetInfoSchema(const uint32_t* info_codes,
+                                               size_t info_codes_length,
+                                               struct ArrowSchema* schema,
+                                               struct ArrowArray* array,
+                                               struct AdbcError* error);
+AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
+                                                 uint32_t info_code,
+                                                 const char* info_value,
+                                                 struct AdbcError* error);
+
+AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
+                                               struct AdbcError* error);
+/// @}
+
 #ifdef __cplusplus
 }
 #endif

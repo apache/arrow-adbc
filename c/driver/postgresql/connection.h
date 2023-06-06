@@ -32,9 +32,19 @@ class PostgresConnection {
   PostgresConnection() : database_(nullptr), conn_(nullptr), autocommit_(true) {}
 
   AdbcStatusCode Commit(struct AdbcError* error);
+  AdbcStatusCode GetInfo(struct AdbcConnection* connection, uint32_t* info_codes,
+                         size_t info_codes_length, struct ArrowArrayStream* out,
+                         struct AdbcError* error);
+  AdbcStatusCode GetObjects(struct AdbcConnection* connection, int depth,
+                            const char* catalog, const char* db_schema,
+                            const char* table_name, const char** table_types,
+                            const char* column_name, struct ArrowArrayStream* out,
+                            struct AdbcError* error);
   AdbcStatusCode GetTableSchema(const char* catalog, const char* db_schema,
                                 const char* table_name, struct ArrowSchema* schema,
                                 struct AdbcError* error);
+  AdbcStatusCode GetTableTypes(struct AdbcConnection* connection,
+                               struct ArrowArrayStream* out, struct AdbcError* error);
   AdbcStatusCode Init(struct AdbcDatabase* database, struct AdbcError* error);
   AdbcStatusCode Release(struct AdbcError* error);
   AdbcStatusCode Rollback(struct AdbcError* error);

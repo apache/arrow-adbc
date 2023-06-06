@@ -197,6 +197,16 @@ $ pytest -vvx
 
 The Ruby libraries are bindings around the GLib libraries.
 
+### Rust
+
+The Rust components are a standard Rust project.
+
+```shell
+$ cd rust
+# Build and run tests
+$ cargo test
+```
+
 ## Opening a Pull Request
 
 Before opening a pull request, please run the static checks, which are

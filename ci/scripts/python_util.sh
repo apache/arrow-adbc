@@ -51,9 +51,7 @@ function build_drivers {
         if [[ "${VCPKG_ARCH}" = "x64" ]]; then
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=x86_64"
         elif [[ "${VCPKG_ARCH}" = "arm64" ]]; then
-            # Can't build Arrow v11 on non-x64 platforms
             export CMAKE_ARGUMENTS="-DCMAKE_OSX_ARCHITECTURES=arm64"
-            ADBC_DRIVER_SNOWFLAKE=OFF
         else
             echo "Unknown architecture: ${VCPKG_ARCH}"
             exit 1
@@ -96,7 +94,7 @@ function build_drivers {
         -DADBC_DRIVER_FLIGHTSQL=ON \
         -DADBC_DRIVER_POSTGRESQL=ON \
         -DADBC_DRIVER_SQLITE=ON \
-        -DADBC_DRIVER_SNOWFLAKE="${ADBC_DRIVER_SNOWFLAKE}" \
+        -DADBC_DRIVER_SNOWFLAKE=ON \
         ${source_dir}/c
     cmake --build . --target install --verbose -j
     popd
@@ -149,7 +147,7 @@ import $component.dbapi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
         if [[ "${component}" = "adbc_driver_manager" ]]; then
-            export PYTEST_ADDOPTS="-k 'not sqlite'"
+            export PYTEST_ADDOPTS="-k 'not duckdb and not sqlite'"
         elif [[ "${component}" = "adbc_driver_postgresql" ]]; then
             export PYTEST_ADDOPTS="-k 'not polars'"
         fi

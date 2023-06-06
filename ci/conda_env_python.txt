@@ -23,3 +23,4 @@ setuptools
 
 # For integration testing
 polars
+python-duckdb
