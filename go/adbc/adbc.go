@@ -142,20 +142,35 @@ const (
 	StatusUnauthorized // Unauthorized
 )
 
+const (
+	AdbcVersion1_0_0 int64 = 1_000_000
+	AdbcVersion1_1_0 int64 = 1_001_000
+)
+
 // Canonical option values
 const (
-	OptionValueEnabled          = "true"
-	OptionValueDisabled         = "false"
-	OptionKeyAutoCommit         = "adbc.connection.autocommit"
-	OptionKeyIngestTargetTable  = "adbc.ingest.target_table"
-	OptionKeyIngestMode         = "adbc.ingest.mode"
-	OptionKeyIsolationLevel     = "adbc.connection.transaction.isolation_level"
-	OptionKeyReadOnly           = "adbc.connection.readonly"
-	OptionValueIngestModeCreate = "adbc.ingest.mode.create"
-	OptionValueIngestModeAppend = "adbc.ingest.mode.append"
-	OptionKeyURI                = "uri"
-	OptionKeyUsername           = "username"
-	OptionKeyPassword           = "password"
+	OptionValueEnabled  = "true"
+	OptionValueDisabled = "false"
+	OptionKeyAutoCommit = "adbc.connection.autocommit"
+	// The current catalog.
+	OptionKeyCurrentCatalog = "adbc.connection.catalog"
+	// The current schema.
+	OptionKeyCurrentDbSchema = "adbc.connection.db_schema"
+	// Make ExecutePartitions nonblocking.
+	OptionKeyIncremental = "adbc.statement.exec.incremental"
+	// Get the progress
+	OptionKeyProgress                 = "adbc.statement.exec.progress"
+	OptionKeyIngestTargetTable        = "adbc.ingest.target_table"
+	OptionKeyIngestMode               = "adbc.ingest.mode"
+	OptionKeyIsolationLevel           = "adbc.connection.transaction.isolation_level"
+	OptionKeyReadOnly                 = "adbc.connection.readonly"
+	OptionValueIngestModeCreate       = "adbc.ingest.mode.create"
+	OptionValueIngestModeAppend       = "adbc.ingest.mode.append"
+	OptionValueIngestModeReplace      = "adbc.ingest.mode.replace"
+	OptionValueIngestModeCreateAppend = "adbc.ingest.mode.create_append"
+	OptionKeyURI                      = "uri"
+	OptionKeyUsername                 = "username"
+	OptionKeyPassword                 = "password"
 )
 
 type OptionIsolationLevel string
@@ -168,6 +183,11 @@ const (
 	LevelSnapshot        OptionIsolationLevel = "adbc.connection.transaction.isolation.snapshot"
 	LevelSerializable    OptionIsolationLevel = "adbc.connection.transaction.isolation.serializable"
 	LevelLinearizable    OptionIsolationLevel = "adbc.connection.transaction.isolation.linearizable"
+)
+
+// Canonical property values
+const (
+	PropertyProgress = "adbc.statement.exec.progress"
 )
 
 // Driver is the entry point for the interface. It is similar to
@@ -212,6 +232,8 @@ const (
 	InfoDriverVersion InfoCode = 101 // DriverVersion
 	// The driver Arrow library version (type: utf8)
 	InfoDriverArrowVersion InfoCode = 102 // DriverArrowVersion
+	// The driver ADBC API version (type: int64)
+	InfoDriverADBCVersion InfoCode = 103 // DriverADBCVersion
 )
 
 type ObjectDepth int
@@ -275,6 +297,10 @@ type Connection interface {
 	// codes are defined as constants. Codes [0, 10_000) are reserved
 	// for ADBC usage. Drivers/vendors will ignore requests for unrecognized
 	// codes (the row will be omitted from the result).
+	//
+	// Since ADBC 1.1.0: the range [500, 1_000) is reserved for "XDBC"
+	// information, which is the same metadata provided by the same info
+	// code range in the Arrow Flight SQL GetSqlInfo RPC.
 	GetInfo(ctx context.Context, infoCodes []InfoCode) (array.RecordReader, error)
 
 	// GetObjects gets a hierarchical view of all catalogs, database schemas,
@@ -470,6 +496,9 @@ type Statement interface {
 	// of rows affected if known, otherwise it will be -1.
 	//
 	// This invalidates any prior result sets on this statement.
+	//
+	// Since ADBC 1.1.0: releasing the returned RecordReader without
+	// consuming it fully is equivalent to calling AdbcStatementCancel.
 	ExecuteQuery(context.Context) (array.RecordReader, int64, error)
 
 	// ExecuteUpdate executes a statement that does not generate a result
@@ -534,5 +563,45 @@ type Statement interface {
 	//
 	// If the driver does not support partitioned results, this will return
 	// an error with a StatusNotImplemented code.
+	//
+	// When OptionKeyIncremental is set, this should be called
+	// repeatedly until receiving an empty Partitions.
 	ExecutePartitions(context.Context) (*arrow.Schema, Partitions, int64, error)
+}
+
+// StatementCancel is a Statement that also supports Cancel.
+//
+// Since ADBC API revision 1.1.0.
+type StatementCancel interface {
+	// Cancel stops execution of an in-progress query.
+	//
+	// This can be called during ExecuteQuery (or similar), or while
+	// consuming a RecordReader returned from such.  Calling this
+	// function should make the other functions return an error with a
+	// StatusCancelled code.
+	//
+	// This must always be thread-safe (other operations are not
+	// necessarily thread-safe).
+	Cancel() error
+}
+
+// StatementExecuteSchema is a Statement that also supports ExecuteSchema.
+//
+// Since ADBC API revision 1.1.0.
+type StatementExecuteSchema interface {
+	// ExecuteSchema gets the schema of the result set of a query without executing it.
+	ExecuteSchema(context.Context) (*arrow.Schema, error)
+}
+
+// GetSetOptions is a PostInitOptions that also supports getting and setting property values of different types.
+//
+// Since ADBC API revision 1.1.0.
+type GetSetOptions interface {
+	PostInitOptions
+
+	SetOption(key, value string) error
+	SetOptionInt(key, value int64) error
+	SetOptionDouble(key, value float64) error
+	GetOptionInt(key string) (int64, error)
+	GetOptionDouble(key string) (float64, error)
 }
