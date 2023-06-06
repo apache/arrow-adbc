@@ -870,9 +870,6 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
   if (version >= ADBC_VERSION_1_1_0) {
     auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
     FILL_DEFAULT(driver, StatementExecuteSchema);
-
-    // Zero out the padding
-    std::memset(driver->reserved, 0, sizeof(driver->reserved));
   }
 
   return ADBC_STATUS_OK;
