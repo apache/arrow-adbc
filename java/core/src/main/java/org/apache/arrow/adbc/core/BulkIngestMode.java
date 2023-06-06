@@ -24,7 +24,20 @@ public enum BulkIngestMode {
   /**
    * Do not create the table and append data; error if the table does not exist ({@link
    * AdbcStatusCode#NOT_FOUND}) or does not match the schema of the data to append ({@link
-   * AdbcStatusCode#ALREADY_EXISTS}). *
+   * AdbcStatusCode#ALREADY_EXISTS}).
    */
   APPEND,
+  /**
+   * Create the table and insert data; drop the original table if it already exists.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  REPLACE,
+  /**
+   * Insert data; create the table if it does not exist, or error ({@link
+   * AdbcStatusCode#ALREADY_EXISTS}) if the table exists, but the schema does not match the schema
+   * of the data to append.
+   */
+  CREATE_APPEND,
+  ;
 }
