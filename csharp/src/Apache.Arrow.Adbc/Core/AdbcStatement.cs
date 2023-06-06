@@ -190,61 +190,8 @@ namespace Apache.Arrow.Adbc.Core
                     return null;
 
                 default:
-                    return f.DataType.GetType();
+                    throw AdbcException.NotImplemented($"Cannot convert {f.DataType.GetType()} to a .NET type");
             }
-        }
-
-        /// <summary>
-        /// Converts a .NET type to an IArrowType
-        /// </summary>
-        /// <param name="type">The current type</param>
-        /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
-        public virtual IArrowType ConvertNetType(Type type)
-        {
-
-            // these will have different options based on the data source -- get it working for now but may need a more pluggable model
-            // per https://learn.microsoft.com/en-us/dotnet/framework/data/adonet/data-type-mappings-in-ado-net
-
-            if (type == typeof(sbyte))
-                return Int8Type.Default;
-            if (type == typeof(short))
-                return Int16Type.Default;
-            if (type == typeof(int))
-                return Int32Type.Default;
-            if (type == typeof(int))
-                return Int32Type.Default;
-            if (type == typeof(long))
-                return Int64Type.Default;
-#if NET5_0_OR_GREATER
-            if (type == typeof(Half))
-                return HalfFloatType.Default;
-#endif
-            if (type == typeof(float))
-                return FloatType.Default;
-
-            if (type == typeof(double))
-                return DoubleType.Default;
-
-            if (type == typeof(bool))
-                return BooleanType.Default;
-
-            if (type == typeof(string))
-                return StringType.Default;
-
-            if (type == typeof(byte))
-                return BinaryType.Default;
-
-            if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
-                return TimestampType.Default;
-
-            if (type == typeof(byte) || type == typeof(byte[]))
-                return BinaryType.Default;
-
-            //if (type == typeof(decimal))
-            //    return new Decimal256Type(38,0);
-
-            throw new NotImplementedException($"No implementation exists for {type.FullName}");
         }
 
         /// <summary>
