@@ -21,10 +21,41 @@ import java.util.Map;
 
 /** A handle to an ADBC database driver. */
 public interface AdbcDriver {
-  /** The standard parameter name for a connection URL (type String). */
-  String PARAM_URL = "adbc.url";
+  /**
+   * The standard parameter name for a password (type String).
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  AdbcOptionKey<String> PARAM_PASSWORD = new AdbcOptionKey<>("password", String.class);
+
+  /**
+   * The standard parameter name for a connection URI (type String).
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  AdbcOptionKey<String> PARAM_URI = new AdbcOptionKey<>("uri", String.class);
+
+  /**
+   * The standard parameter name for a connection URL (type String).
+   *
+   * @deprecated Prefer {@link #PARAM_URI} instead.
+   */
+  @Deprecated String PARAM_URL = "adbc.url";
+
+  /**
+   * The standard parameter name for a username (type String).
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  AdbcOptionKey<String> PARAM_USERNAME = new AdbcOptionKey<>("username", String.class);
+
   /** The standard parameter name for SQL quirks configuration (type SqlQuirks). */
   String PARAM_SQL_QUIRKS = "adbc.sql.quirks";
+
+  /** ADBC API revision 1.0.0. */
+  long ADBC_VERSION_1_0_0 = 1_000_000;
+  /** ADBC API revision 1.1.0. */
+  long ADBC_VERSION_1_1_0 = 1_001_000;
 
   /**
    * Open a database via this driver.
