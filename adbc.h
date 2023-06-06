@@ -799,7 +799,7 @@ struct ADBC_EXPORT AdbcDriver {
   /// and attempt to have the driver initialize it with
   /// ADBC_VERSION_1_1_0.  This must return an error, after which the
   /// driver will try again with ADBC_VERSION_1_0_0.  The driver must
-  /// not access the new fields.
+  /// not access the new fields, which will carry undefined values.
   ///
   /// For a 1.1.0 driver being loaded by a 1.0.0 driver manager: the
   /// 1.0.0 manager will allocate the old AdbcDriver struct and
@@ -844,9 +844,6 @@ struct ADBC_EXPORT AdbcDriver {
                                           struct AdbcError*);
   AdbcStatusCode (*StatementSetOptionDouble)(struct AdbcStatement*, const char*, double,
                                              struct AdbcError*);
-
-  /// Pad the struct to have 96 pointers.  Space reserved for future growth.
-  void* reserved[50];
 
   /// @}
 };
