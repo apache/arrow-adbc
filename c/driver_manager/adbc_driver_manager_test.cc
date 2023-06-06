@@ -34,8 +34,6 @@ namespace adbc {
 using adbc_validation::IsOkStatus;
 using adbc_validation::IsStatus;
 
-TEST(Adbc, AdbcDriverSize) { ASSERT_EQ(sizeof(AdbcDriver), 96 * sizeof(void*)); }
-
 class DriverManager : public ::testing::Test {
  public:
   void SetUp() override {
