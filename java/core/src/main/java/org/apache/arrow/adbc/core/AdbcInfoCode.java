@@ -16,7 +16,12 @@
  */
 package org.apache.arrow.adbc.core;
 
-/** Integer IDs used for requesting information about the database/driver. */
+/**
+ * Integer IDs used for requesting information about the database/driver.
+ *
+ * <p>Since ADBC 1.1.0: the range [500, 1_000) is reserved for "XDBC" information, which is the same
+ * metadata provided by the same info code range in the Arrow Flight SQL GetSqlInfo RPC.
+ */
 public enum AdbcInfoCode {
   /** The database vendor/product name (e.g. the server name) (type: utf8). */
   VENDOR_NAME(0),
@@ -31,6 +36,16 @@ public enum AdbcInfoCode {
   DRIVER_VERSION(101),
   /** The driver Arrow library version (type: utf8). */
   DRIVER_ARROW_VERSION(102),
+  /**
+   * The ADBC API version (type: int64).
+   *
+   * <p>The value should be one of the ADBC_VERSION constants.
+   *
+   * @see AdbcDriver#ADBC_VERSION_1_0_0
+   * @see AdbcDriver#ADBC_VERSION_1_1_0
+   * @since ADBC API revision 1.1.0
+   */
+  DRIVER_ADBC_VERSION(103),
   ;
 
   private final int value;

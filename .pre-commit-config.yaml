@@ -43,12 +43,12 @@ repos:
     - id: cmake-format
       args: [--in-place]
   - repo: https://github.com/cpplint/cpplint
-    rev: 1.6.0
+    rev: 1.6.1
     hooks:
     - id: cpplint
       args:
         # From Arrow's config
-        - "--filter=-whitespace/comments,-readability/casting,-readability/todo,-readability/alt_tokens,-build/header_guard,-build/c++11,-build/include_order,-build/include_subdir"
+        - "--filter=-whitespace/comments,-whitespace/indent,-readability/braces,-readability/casting,-readability/todo,-readability/alt_tokens,-build/header_guard,-build/c++11,-build/include_order,-build/include_subdir"
         - "--linelength=90"
         - "--verbose=2"
   - repo: https://github.com/golangci/golangci-lint
