@@ -55,7 +55,8 @@ var drv = flightsql.Driver{Alloc: mallocator.NewMallocator()}
 
 // Flag set if any method panic()ed - afterwards all calls to driver will fail
 // since internal state of driver is unknown
-var globalPoison atomic.Bool
+// (Can't use atomic.Bool since that's Go 1.19)
+var globalPoison int32 = 0
 
 const errPrefix = "[FlightSQL] "
 
@@ -90,7 +91,7 @@ func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
 
 // We panicked; make all API functions error and dump stack traces
 func poison(err *C.struct_AdbcError, fname string, e interface{}) C.AdbcStatusCode {
-	if !globalPoison.Swap(true) {
+	if atomic.SwapInt32(&globalPoison, 1) == 0 {
 		// Only print stack traces on the first occurrence
 		buf := make([]byte, 1<<20)
 		length := runtime.Stack(buf, true)
@@ -119,7 +120,7 @@ func getFromHandle[T any](ptr unsafe.Pointer) *T {
 }
 
 func checkDBAlloc(db *C.struct_AdbcDatabase, err *C.struct_AdbcError, fname string) bool {
-	if globalPoison.Load() {
+	if atomic.LoadInt32(&globalPoison) != 0 {
 		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
 		return false
 	}
@@ -154,7 +155,7 @@ type cDatabase struct {
 
 //export FlightSQLDatabaseNew
 func FlightSQLDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
-	if globalPoison.Load() {
+	if atomic.LoadInt32(&globalPoison) != 0 {
 		setErr(err, "AdbcDatabaseNew: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
@@ -250,7 +251,7 @@ type cConn struct {
 }
 
 func checkConnAlloc(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname string) bool {
-	if globalPoison.Load() {
+	if atomic.LoadInt32(&globalPoison) != 0 {
 		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
 		return false
 	}
@@ -280,7 +281,7 @@ func checkConnInit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname
 
 //export FlightSQLConnectionNew
 func FlightSQLConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
-	if globalPoison.Load() {
+	if atomic.LoadInt32(&globalPoison) != 0 {
 		setErr(err, "AdbcConnectionNew: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
@@ -554,7 +555,7 @@ func FlightSQLConnectionRollback(cnxn *C.struct_AdbcConnection, err *C.struct_Ad
 }
 
 func checkStmtInit(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname string) adbc.Statement {
-	if globalPoison.Load() {
+	if atomic.LoadInt32(&globalPoison) != 0 {
 		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
 		return nil
 	}
@@ -573,7 +574,7 @@ func checkStmtInit(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname 
 
 //export FlightSQLStatementNew
 func FlightSQLStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
-	if globalPoison.Load() {
+	if atomic.LoadInt32(&globalPoison) != 0 {
 		setErr(err, "AdbcStatementNew: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
@@ -599,7 +600,7 @@ func FlightSQLStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcSta
 
 //export FlightSQLStatementRelease
 func FlightSQLStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
-	if globalPoison.Load() {
+	if atomic.LoadInt32(&globalPoison) != 0 {
 		setErr(err, "AdbcStatementRelease: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
