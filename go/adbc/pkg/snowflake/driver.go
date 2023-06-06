@@ -37,8 +37,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"runtime/cgo"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -48,7 +50,12 @@ import (
 	"github.com/apache/arrow/go/v12/arrow/memory/mallocator"
 )
 
+// Must use malloc() to respect CGO rules
 var drv = snowflake.Driver{Alloc: mallocator.NewMallocator()}
+
+// Flag set if any method panic()ed - afterwards all calls to driver will fail
+// since internal state of driver is unknown
+var globalPoison atomic.Bool
 
 const errPrefix = "[Snowflake] "
 
@@ -81,6 +88,18 @@ func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
 	return adbc.StatusUnknown
 }
 
+// We panicked; make all API functions error and dump stack traces
+func poison(err *C.struct_AdbcError, fname string, e interface{}) C.AdbcStatusCode {
+	if !globalPoison.Swap(true) {
+		// Only print stack traces on the first occurrence
+		buf := make([]byte, 1<<20)
+		length := runtime.Stack(buf, true)
+		fmt.Fprintf(os.Stderr, "Snowflake driver panicked, stack traces:\n%s", buf[:length])
+	}
+	setErr(err, "%s: Go panic in Snowflake driver (see stderr): %#v", e)
+	return C.ADBC_STATUS_INTERNAL
+}
+
 // Allocate a new cgo.Handle and store its address in a heap-allocated
 // uintptr_t.  Experimentally, this was found to be necessary, else
 // something (the Go runtime?) would corrupt (garbage-collect?) the
@@ -100,6 +119,10 @@ func getFromHandle[T any](ptr unsafe.Pointer) *T {
 }
 
 func checkDBAlloc(db *C.struct_AdbcDatabase, err *C.struct_AdbcError, fname string) bool {
+	if globalPoison.Load() {
+		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
+		return false
+	}
 	if db == nil {
 		setErr(err, "%s: database not allocated", fname)
 		return false
@@ -130,11 +153,20 @@ type cDatabase struct {
 }
 
 //export SnowflakeDatabaseNew
-func SnowflakeDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	if globalPoison.Load() {
+		setErr(err, "AdbcDatabaseNew: Go panicked, driver is in unknown state")
+		return C.ADBC_STATUS_INTERNAL
+	}
 	if db.private_data != nil {
 		setErr(err, "AdbcDatabaseNew: database already allocated")
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseNew", e)
+		}
+	}()
 	dbobj := &cDatabase{opts: make(map[string]string)}
 	hndl := cgo.NewHandle(dbobj)
 	db.private_data = createHandle(hndl)
@@ -142,10 +174,15 @@ func SnowflakeDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.
 }
 
 //export SnowflakeDatabaseSetOption
-func SnowflakeDatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeDatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkDBAlloc(db, err, "AdbcDatabaseSetOption") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseSetOption", e)
+		}
+	}()
 	cdb := getFromHandle[cDatabase](db.private_data)
 
 	k, v := C.GoString(key), C.GoString(value)
@@ -155,10 +192,15 @@ func SnowflakeDatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t
 }
 
 //export SnowflakeDatabaseInit
-func SnowflakeDatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeDatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkDBAlloc(db, err, "AdbcDatabaseInit") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseInit", e)
+		}
+	}()
 	cdb := getFromHandle[cDatabase](db.private_data)
 
 	if cdb.db != nil {
@@ -176,10 +218,15 @@ func SnowflakeDatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C
 }
 
 //export SnowflakeDatabaseRelease
-func SnowflakeDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkDBAlloc(db, err, "AdbcDatabaseRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseInit", e)
+		}
+	}()
 	h := (*(*cgo.Handle)(db.private_data))
 
 	cdb := h.Value().(*cDatabase)
@@ -203,6 +250,10 @@ type cConn struct {
 }
 
 func checkConnAlloc(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname string) bool {
+	if globalPoison.Load() {
+		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
+		return false
+	}
 	if cnxn == nil {
 		setErr(err, "%s: connection not allocated", fname)
 		return false
@@ -228,7 +279,16 @@ func checkConnInit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname
 }
 
 //export SnowflakeConnectionNew
-func SnowflakeConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	if globalPoison.Load() {
+		setErr(err, "AdbcConnectionNew: Go panicked, driver is in unknown state")
+		return C.ADBC_STATUS_INTERNAL
+	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionNew", e)
+		}
+	}()
 	if cnxn.private_data != nil {
 		setErr(err, "AdbcConnectionNew: connection already allocated")
 		return C.ADBC_STATUS_INVALID_STATE
@@ -240,23 +300,33 @@ func SnowflakeConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcErr
 }
 
 //export SnowflakeConnectionSetOption
-func SnowflakeConnectionSetOption(cnxn *C.struct_AdbcConnection, key, val *C.cchar_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionSetOption(cnxn *C.struct_AdbcConnection, key, val *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkConnAlloc(cnxn, err, "AdbcConnectionSetOption") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionSetOption", e)
+		}
+	}()
 	conn := getFromHandle[cConn](cnxn.private_data)
 
-	code := errToAdbcErr(err, conn.cnxn.(adbc.PostInitOptions).SetOption(C.GoString(key), C.GoString(val)))
-	return C.AdbcStatusCode(code)
+	rawCode := errToAdbcErr(err, conn.cnxn.(adbc.PostInitOptions).SetOption(C.GoString(key), C.GoString(val)))
+	return C.AdbcStatusCode(rawCode)
 }
 
 //export SnowflakeConnectionInit
-func SnowflakeConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkConnAlloc(cnxn, err, "AdbcConnectionInit") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
-
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionInit", e)
+		}
+	}()
 	conn := getFromHandle[cConn](cnxn.private_data)
+
 	if conn.cnxn != nil {
 		setErr(err, "AdbcConnectionInit: connection already initialized")
 		return C.ADBC_STATUS_INVALID_STATE
@@ -275,10 +345,15 @@ func SnowflakeConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDat
 }
 
 //export SnowflakeConnectionRelease
-func SnowflakeConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkConnAlloc(cnxn, err, "AdbcConnectionRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionRelease", e)
+		}
+	}()
 	h := (*(*cgo.Handle)(cnxn.private_data))
 
 	conn := h.Value().(*cConn)
@@ -322,11 +397,16 @@ func toCdataArray(ptr *C.struct_ArrowArray) *cdata.CArrowArray {
 }
 
 //export SnowflakeConnectionGetInfo
-func SnowflakeConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionGetInfo")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetInfo", e)
+		}
+	}()
 
 	infoCodes := fromCArr[adbc.InfoCode](codes, int(len))
 	rdr, e := conn.cnxn.GetInfo(context.Background(), infoCodes)
@@ -364,12 +444,16 @@ func toStrSlice(in **C.cchar_t) []string {
 
 //export SnowflakeConnectionGetObjects
 func SnowflakeConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, catalog, dbSchema, tableName *C.cchar_t, tableType **C.cchar_t, columnName *C.cchar_t,
-	out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
-
+	out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionGetObjects")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetObjects", e)
+		}
+	}()
 
 	rdr, e := conn.cnxn.GetObjects(context.Background(), adbc.ObjectDepth(depth), toStrPtr(catalog), toStrPtr(dbSchema), toStrPtr(tableName), toStrPtr(columnName), toStrSlice(tableType))
 	if e != nil {
@@ -380,11 +464,16 @@ func SnowflakeConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, c
 }
 
 //export SnowflakeConnectionGetTableSchema
-func SnowflakeConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog, dbSchema, tableName *C.cchar_t, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog, dbSchema, tableName *C.cchar_t, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionGetTableSchema")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetTableSchema", e)
+		}
+	}()
 
 	sc, e := conn.cnxn.GetTableSchema(context.Background(), toStrPtr(catalog), toStrPtr(dbSchema), C.GoString(tableName))
 	if e != nil {
@@ -395,11 +484,16 @@ func SnowflakeConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog, d
 }
 
 //export SnowflakeConnectionGetTableTypes
-func SnowflakeConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionGetTableTypes")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetTableTypes", e)
+		}
+	}()
 
 	rdr, e := conn.cnxn.GetTableTypes(context.Background())
 	if e != nil {
@@ -410,11 +504,16 @@ func SnowflakeConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.stru
 }
 
 //export SnowflakeConnectionReadPartition
-func SnowflakeConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized *C.cuint8_t, serializedLen C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized *C.cuint8_t, serializedLen C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionReadPartition")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionReadPartition", e)
+		}
+	}()
 
 	rdr, e := conn.cnxn.ReadPartition(context.Background(), fromCArr[byte](serialized, int(serializedLen)))
 	if e != nil {
@@ -425,26 +524,40 @@ func SnowflakeConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized 
 }
 
 //export SnowflakeConnectionCommit
-func SnowflakeConnectionCommit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionCommit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionCommit")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionCommit", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, conn.cnxn.Commit(context.Background())))
 }
 
 //export SnowflakeConnectionRollback
-func SnowflakeConnectionRollback(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeConnectionRollback(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionRollback")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionRollback", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, conn.cnxn.Rollback(context.Background())))
 }
 
 func checkStmtInit(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname string) adbc.Statement {
+	if globalPoison.Load() {
+		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
+		return nil
+	}
 	if stmt == nil {
 		setErr(err, "%s: statement not allocated", fname)
 		return nil
@@ -459,11 +572,20 @@ func checkStmtInit(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname 
 }
 
 //export SnowflakeStatementNew
-func SnowflakeStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	if globalPoison.Load() {
+		setErr(err, "AdbcStatementNew: Go panicked, driver is in unknown state")
+		return C.ADBC_STATUS_INTERNAL
+	}
 	conn := checkConnInit(cnxn, err, "AdbcStatementNew")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementNew", e)
+		}
+	}()
 
 	st, e := conn.cnxn.NewStatement()
 	if e != nil {
@@ -476,11 +598,20 @@ func SnowflakeStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcSta
 }
 
 //export SnowflakeStatementRelease
-func SnowflakeStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	if globalPoison.Load() {
+		setErr(err, "AdbcStatementRelease: Go panicked, driver is in unknown state")
+		return C.ADBC_STATUS_INTERNAL
+	}
 	if stmt == nil {
 		setErr(err, "AdbcStatementRelease: statement not allocated")
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementRelease", e)
+		}
+	}()
 
 	if stmt.private_data == nil {
 		setErr(err, "AdbcStatementRelease: statement not initialized")
@@ -505,21 +636,31 @@ func SnowflakeStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 }
 
 //export SnowflakeStatementPrepare
-func SnowflakeStatementPrepare(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementPrepare(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementPrepare")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementPrepare", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, st.Prepare(context.Background())))
 }
 
 //export SnowflakeStatementExecuteQuery
-func SnowflakeStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_ArrowArrayStream, affected *C.int64_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_ArrowArrayStream, affected *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementExecuteQuery")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementExecuteQuery", e)
+		}
+	}()
 
 	if out == nil {
 		n, e := st.ExecuteUpdate(context.Background())
@@ -546,31 +687,46 @@ func SnowflakeStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_
 }
 
 //export SnowflakeStatementSetSqlQuery
-func SnowflakeStatementSetSqlQuery(stmt *C.struct_AdbcStatement, query *C.cchar_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementSetSqlQuery(stmt *C.struct_AdbcStatement, query *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementSetSqlQuery")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementSetSqlQuery", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, st.SetSqlQuery(C.GoString(query))))
 }
 
 //export SnowflakeStatementSetSubstraitPlan
-func SnowflakeStatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.cuint8_t, length C.size_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.cuint8_t, length C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementSetSubstraitPlan")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementSetSubstraitPlan", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, st.SetSubstraitPlan(fromCArr[byte](plan, int(length)))))
 }
 
 //export SnowflakeStatementBind
-func SnowflakeStatementBind(stmt *C.struct_AdbcStatement, values *C.struct_ArrowArray, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementBind(stmt *C.struct_AdbcStatement, values *C.struct_ArrowArray, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementBind")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementBind", e)
+		}
+	}()
 
 	rec, e := cdata.ImportCRecordBatch(toCdataArray(values), toCdataSchema(schema))
 	if e != nil {
@@ -584,22 +740,32 @@ func SnowflakeStatementBind(stmt *C.struct_AdbcStatement, values *C.struct_Arrow
 }
 
 //export SnowflakeStatementBindStream
-func SnowflakeStatementBindStream(stmt *C.struct_AdbcStatement, stream *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementBindStream(stmt *C.struct_AdbcStatement, stream *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementBindStream")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementBindStream", e)
+		}
+	}()
 
 	rdr := cdata.ImportCArrayStream(toCdataStream(stream), nil)
 	return C.AdbcStatusCode(errToAdbcErr(err, st.BindStream(context.Background(), rdr.(array.RecordReader))))
 }
 
 //export SnowflakeStatementGetParameterSchema
-func SnowflakeStatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementGetParameterSchema")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementGetParameterSchema", e)
+		}
+	}()
 
 	sc, e := st.GetParameterSchema()
 	if e != nil {
@@ -611,11 +777,16 @@ func SnowflakeStatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema *
 }
 
 //export SnowflakeStatementSetOption
-func SnowflakeStatementSetOption(stmt *C.struct_AdbcStatement, key, value *C.cchar_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementSetOption(stmt *C.struct_AdbcStatement, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementSetOption")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementSetOption", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, st.SetOption(C.GoString(key), C.GoString(value))))
 }
@@ -635,11 +806,16 @@ func releasePartitions(partitions *C.struct_AdbcPartitions) {
 }
 
 //export SnowflakeStatementExecutePartitions
-func SnowflakeStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, partitions *C.struct_AdbcPartitions, affected *C.int64_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func SnowflakeStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, partitions *C.struct_AdbcPartitions, affected *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementExecutePartitions")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementExecutePartitions", e)
+		}
+	}()
 
 	sc, part, n, e := st.ExecutePartitions(context.Background())
 	if e != nil {

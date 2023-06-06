@@ -35,8 +35,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"runtime/cgo"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -45,7 +47,11 @@ import (
 	"github.com/apache/arrow/go/v12/arrow/memory/mallocator"
 )
 
+// Must use malloc() to respect CGO rules
 var drv = {{.Driver}}{Alloc: mallocator.NewMallocator()}
+// Flag set if any method panic()ed - afterwards all calls to driver will fail
+// since internal state of driver is unknown
+var globalPoison atomic.Bool
 
 const errPrefix = "[{{.Prefix}}] "
 
@@ -78,6 +84,18 @@ func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
 	return adbc.StatusUnknown
 }
 
+// We panicked; make all API functions error and dump stack traces
+func poison(err *C.struct_AdbcError, fname string, e interface{}) C.AdbcStatusCode {
+	if !globalPoison.Swap(true) {
+		// Only print stack traces on the first occurrence
+		buf := make([]byte, 1<<20)
+		length := runtime.Stack(buf, true)
+		fmt.Fprintf(os.Stderr, "{{.Prefix}} driver panicked, stack traces:\n%s", buf[:length])
+	}
+	setErr(err, "%s: Go panic in {{.Prefix}} driver (see stderr): %#v", e)
+	return C.ADBC_STATUS_INTERNAL
+}
+
 // Allocate a new cgo.Handle and store its address in a heap-allocated
 // uintptr_t.  Experimentally, this was found to be necessary, else
 // something (the Go runtime?) would corrupt (garbage-collect?) the
@@ -97,6 +115,10 @@ func getFromHandle[T any](ptr unsafe.Pointer) *T {
 }
 
 func checkDBAlloc(db *C.struct_AdbcDatabase, err *C.struct_AdbcError, fname string) bool {
+	if globalPoison.Load() {
+		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
+		return false
+	}
 	if db == nil {
 		setErr(err, "%s: database not allocated", fname)
 		return false
@@ -127,11 +149,20 @@ type cDatabase struct {
 }
 
 //export {{.Prefix}}DatabaseNew
-func {{.Prefix}}DatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}DatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	if globalPoison.Load() {
+		setErr(err, "AdbcDatabaseNew: Go panicked, driver is in unknown state")
+		return C.ADBC_STATUS_INTERNAL
+	}
 	if db.private_data != nil {
 		setErr(err, "AdbcDatabaseNew: database already allocated")
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseNew", e)
+		}
+	}()
 	dbobj := &cDatabase{opts: make(map[string]string)}
 	hndl := cgo.NewHandle(dbobj)
 	db.private_data = createHandle(hndl)
@@ -139,10 +170,15 @@ func {{.Prefix}}DatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) 
 }
 
 //export {{.Prefix}}DatabaseSetOption
-func {{.Prefix}}DatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}DatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkDBAlloc(db, err, "AdbcDatabaseSetOption") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseSetOption", e)
+		}
+	}()
 	cdb := getFromHandle[cDatabase](db.private_data)
 
 	k, v := C.GoString(key), C.GoString(value)
@@ -152,10 +188,15 @@ func {{.Prefix}}DatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar
 }
 
 //export {{.Prefix}}DatabaseInit
-func {{.Prefix}}DatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}DatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkDBAlloc(db, err, "AdbcDatabaseInit") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseInit", e)
+		}
+	}()
 	cdb := getFromHandle[cDatabase](db.private_data)
 
 	if cdb.db != nil {
@@ -173,10 +214,15 @@ func {{.Prefix}}DatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError)
 }
 
 //export {{.Prefix}}DatabaseRelease
-func {{.Prefix}}DatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}DatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkDBAlloc(db, err, "AdbcDatabaseRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseInit", e)
+		}
+	}()
 	h := (*(*cgo.Handle)(db.private_data))
 
 	cdb := h.Value().(*cDatabase)
@@ -200,6 +246,10 @@ type cConn struct {
 }
 
 func checkConnAlloc(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname string) bool {
+	if globalPoison.Load() {
+		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
+		return false
+	}
 	if cnxn == nil {
 		setErr(err, "%s: connection not allocated", fname)
 		return false
@@ -225,7 +275,16 @@ func checkConnInit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname
 }
 
 //export {{.Prefix}}ConnectionNew
-func {{.Prefix}}ConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	if globalPoison.Load() {
+		setErr(err, "AdbcConnectionNew: Go panicked, driver is in unknown state")
+		return C.ADBC_STATUS_INTERNAL
+	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionNew", e)
+		}
+	}()
 	if cnxn.private_data != nil {
 		setErr(err, "AdbcConnectionNew: connection already allocated")
 		return C.ADBC_STATUS_INVALID_STATE
@@ -237,23 +296,33 @@ func {{.Prefix}}ConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcE
 }
 
 //export {{.Prefix}}ConnectionSetOption
-func {{.Prefix}}ConnectionSetOption(cnxn *C.struct_AdbcConnection, key, val *C.cchar_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionSetOption(cnxn *C.struct_AdbcConnection, key, val *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkConnAlloc(cnxn, err, "AdbcConnectionSetOption") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionSetOption", e)
+		}
+	}()
 	conn := getFromHandle[cConn](cnxn.private_data)
 
-	code := errToAdbcErr(err, conn.cnxn.(adbc.PostInitOptions).SetOption(C.GoString(key), C.GoString(val)))
-	return C.AdbcStatusCode(code)
+	rawCode := errToAdbcErr(err, conn.cnxn.(adbc.PostInitOptions).SetOption(C.GoString(key), C.GoString(val)))
+	return C.AdbcStatusCode(rawCode)
 }
 
 //export {{.Prefix}}ConnectionInit
-func {{.Prefix}}ConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDatabase, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkConnAlloc(cnxn, err, "AdbcConnectionInit") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
-
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionInit", e)
+		}
+	}()
 	conn := getFromHandle[cConn](cnxn.private_data)
+
 	if conn.cnxn != nil {
 		setErr(err, "AdbcConnectionInit: connection already initialized")
 		return C.ADBC_STATUS_INVALID_STATE
@@ -272,10 +341,15 @@ func {{.Prefix}}ConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcD
 }
 
 //export {{.Prefix}}ConnectionRelease
-func {{.Prefix}}ConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	if !checkConnAlloc(cnxn, err, "AdbcConnectionRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionRelease", e)
+		}
+	}()
 	h := (*(*cgo.Handle)(cnxn.private_data))
 
 	conn := h.Value().(*cConn)
@@ -319,11 +393,16 @@ func toCdataArray(ptr *C.struct_ArrowArray) *cdata.CArrowArray {
 }
 
 //export {{.Prefix}}ConnectionGetInfo
-func {{.Prefix}}ConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionGetInfo")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetInfo", e)
+		}
+	}()
 
 	infoCodes := fromCArr[adbc.InfoCode](codes, int(len))
 	rdr, e := conn.cnxn.GetInfo(context.Background(), infoCodes)
@@ -361,12 +440,16 @@ func toStrSlice(in **C.cchar_t) []string {
 
 //export {{.Prefix}}ConnectionGetObjects
 func {{.Prefix}}ConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, catalog, dbSchema, tableName *C.cchar_t, tableType **C.cchar_t, columnName *C.cchar_t,
-	out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
-
+	out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionGetObjects")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetObjects", e)
+		}
+	}()
 
 	rdr, e := conn.cnxn.GetObjects(context.Background(), adbc.ObjectDepth(depth), toStrPtr(catalog), toStrPtr(dbSchema), toStrPtr(tableName), toStrPtr(columnName), toStrSlice(tableType))
 	if e != nil {
@@ -377,11 +460,16 @@ func {{.Prefix}}ConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int,
 }
 
 //export {{.Prefix}}ConnectionGetTableSchema
-func {{.Prefix}}ConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog, dbSchema, tableName *C.cchar_t, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog, dbSchema, tableName *C.cchar_t, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionGetTableSchema")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetTableSchema", e)
+		}
+	}()
 
 	sc, e := conn.cnxn.GetTableSchema(context.Background(), toStrPtr(catalog), toStrPtr(dbSchema), C.GoString(tableName))
 	if e != nil {
@@ -392,11 +480,16 @@ func {{.Prefix}}ConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog,
 }
 
 //export {{.Prefix}}ConnectionGetTableTypes
-func {{.Prefix}}ConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionGetTableTypes")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetTableTypes", e)
+		}
+	}()
 
 	rdr, e := conn.cnxn.GetTableTypes(context.Background())
 	if e != nil {
@@ -407,11 +500,16 @@ func {{.Prefix}}ConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.st
 }
 
 //export {{.Prefix}}ConnectionReadPartition
-func {{.Prefix}}ConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized *C.cuint8_t, serializedLen C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized *C.cuint8_t, serializedLen C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionReadPartition")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionReadPartition", e)
+		}
+	}()
 
 	rdr, e := conn.cnxn.ReadPartition(context.Background(), fromCArr[byte](serialized, int(serializedLen)))
 	if e != nil {
@@ -422,26 +520,40 @@ func {{.Prefix}}ConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialize
 }
 
 //export {{.Prefix}}ConnectionCommit
-func {{.Prefix}}ConnectionCommit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionCommit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionCommit")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionCommit", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, conn.cnxn.Commit(context.Background())))
 }
 
 //export {{.Prefix}}ConnectionRollback
-func {{.Prefix}}ConnectionRollback(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}ConnectionRollback(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	conn := checkConnInit(cnxn, err, "AdbcConnectionRollback")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionRollback", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, conn.cnxn.Rollback(context.Background())))
 }
 
 func checkStmtInit(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname string) adbc.Statement {
+	if globalPoison.Load() {
+		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
+		return nil
+	}
 	if stmt == nil {
 		setErr(err, "%s: statement not allocated", fname)
 		return nil
@@ -456,11 +568,20 @@ func checkStmtInit(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname 
 }
 
 //export {{.Prefix}}StatementNew
-func {{.Prefix}}StatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	if globalPoison.Load() {
+		setErr(err, "AdbcStatementNew: Go panicked, driver is in unknown state")
+		return C.ADBC_STATUS_INTERNAL
+	}
 	conn := checkConnInit(cnxn, err, "AdbcStatementNew")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementNew", e)
+		}
+	}()
 
 	st, e := conn.cnxn.NewStatement()
 	if e != nil {
@@ -473,11 +594,20 @@ func {{.Prefix}}StatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcS
 }
 
 //export {{.Prefix}}StatementRelease
-func {{.Prefix}}StatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	if globalPoison.Load() {
+		setErr(err, "AdbcStatementRelease: Go panicked, driver is in unknown state")
+		return C.ADBC_STATUS_INTERNAL
+	}
 	if stmt == nil {
 		setErr(err, "AdbcStatementRelease: statement not allocated")
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementRelease", e)
+		}
+	}()
 
 	if stmt.private_data == nil {
 		setErr(err, "AdbcStatementRelease: statement not initialized")
@@ -502,21 +632,31 @@ func {{.Prefix}}StatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_Adb
 }
 
 //export {{.Prefix}}StatementPrepare
-func {{.Prefix}}StatementPrepare(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementPrepare(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementPrepare")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementPrepare", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, st.Prepare(context.Background())))
 }
 
 //export {{.Prefix}}StatementExecuteQuery
-func {{.Prefix}}StatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_ArrowArrayStream, affected *C.int64_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_ArrowArrayStream, affected *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementExecuteQuery")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementExecuteQuery", e)
+		}
+	}()
 
 	if out == nil {
 		n, e := st.ExecuteUpdate(context.Background())
@@ -543,31 +683,46 @@ func {{.Prefix}}StatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struc
 }
 
 //export {{.Prefix}}StatementSetSqlQuery
-func {{.Prefix}}StatementSetSqlQuery(stmt *C.struct_AdbcStatement, query *C.cchar_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementSetSqlQuery(stmt *C.struct_AdbcStatement, query *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementSetSqlQuery")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementSetSqlQuery", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, st.SetSqlQuery(C.GoString(query))))
 }
 
 //export {{.Prefix}}StatementSetSubstraitPlan
-func {{.Prefix}}StatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.cuint8_t, length C.size_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.cuint8_t, length C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementSetSubstraitPlan")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementSetSubstraitPlan", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, st.SetSubstraitPlan(fromCArr[byte](plan, int(length)))))
 }
 
 //export {{.Prefix}}StatementBind
-func {{.Prefix}}StatementBind(stmt *C.struct_AdbcStatement, values *C.struct_ArrowArray, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementBind(stmt *C.struct_AdbcStatement, values *C.struct_ArrowArray, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementBind")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementBind", e)
+		}
+	}()
 
 	rec, e := cdata.ImportCRecordBatch(toCdataArray(values), toCdataSchema(schema))
 	if e != nil {
@@ -581,22 +736,32 @@ func {{.Prefix}}StatementBind(stmt *C.struct_AdbcStatement, values *C.struct_Arr
 }
 
 //export {{.Prefix}}StatementBindStream
-func {{.Prefix}}StatementBindStream(stmt *C.struct_AdbcStatement, stream *C.struct_ArrowArrayStream, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementBindStream(stmt *C.struct_AdbcStatement, stream *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementBindStream")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementBindStream", e)
+		}
+	}()
 
 	rdr := cdata.ImportCArrayStream(toCdataStream(stream), nil)
 	return C.AdbcStatusCode(errToAdbcErr(err, st.BindStream(context.Background(), rdr.(array.RecordReader))))
 }
 
 //export {{.Prefix}}StatementGetParameterSchema
-func {{.Prefix}}StatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementGetParameterSchema")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementGetParameterSchema", e)
+		}
+	}()
 
 	sc, e := st.GetParameterSchema()
 	if e != nil {
@@ -608,11 +773,16 @@ func {{.Prefix}}StatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema
 }
 
 //export {{.Prefix}}StatementSetOption
-func {{.Prefix}}StatementSetOption(stmt *C.struct_AdbcStatement, key, value *C.cchar_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementSetOption(stmt *C.struct_AdbcStatement, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementSetOption")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementSetOption", e)
+		}
+	}()
 
 	return C.AdbcStatusCode(errToAdbcErr(err, st.SetOption(C.GoString(key), C.GoString(value))))
 }
@@ -632,11 +802,16 @@ func releasePartitions(partitions *C.struct_AdbcPartitions) {
 }
 
 //export {{.Prefix}}StatementExecutePartitions
-func {{.Prefix}}StatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, partitions *C.struct_AdbcPartitions, affected *C.int64_t, err *C.struct_AdbcError) C.AdbcStatusCode {
+func {{.Prefix}}StatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, partitions *C.struct_AdbcPartitions, affected *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	st := checkStmtInit(stmt, err, "AdbcStatementExecutePartitions")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementExecutePartitions", e)
+		}
+	}()
 
 	sc, part, n, e := st.ExecutePartitions(context.Background())
 	if e != nil {
