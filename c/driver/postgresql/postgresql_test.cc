@@ -266,6 +266,27 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
     GTEST_SKIP();
   }
 
+  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_pkey_test", &error),
+              IsOkStatus(&error));
+
+  struct AdbcStatement statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  {
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement, "CREATE TABLE adbc_pkey_test (ints INT, id SERIAL PRIMARY KEY)",
+            &error),
+        IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
   adbc_validation::StreamReader reader;
   ASSERT_THAT(
       AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
@@ -276,11 +297,9 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_GT(reader.array->length, 0);
 
-  // should exist on public.adbc_test id column
   bool seen_id_column = false;
   bool seen_primary_key = false;
 
-  // TODO: these are in the PqObjectsHelper.GetObjects method; move to shared location
   struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
   struct ArrowArrayView* catalog_db_schemas_items = catalog_db_schemas_list->children[0];
   struct ArrowArrayView* db_schema_name_col = catalog_db_schemas_items->children[0];
@@ -326,7 +345,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
               ArrowStringView table_name =
                   ArrowArrayViewGetStringUnsafe(table_name_col, tables_index);
               auto table_str = std::string(table_name.data, table_name.size_bytes);
-              if (table_str == "adbc_test") {
+              if (table_str == "adbc_pkey_test") {
                 for (auto columns_index =
                          ArrowArrayViewListChildOffset(table_columns_col, tables_index);
                      columns_index <
@@ -365,7 +384,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
                   auto constraint_column_name_str = std::string(
                       constraint_column_name.data, constraint_column_name.size_bytes);
                   if ((constraint_column_name_str == "id") &
-                      (constraint_name_str == "adbc_test_pkey") &
+                      (constraint_name_str == "adbc_pkey_test_pkey") &
                       (constraint_type_str == "PRIMARY KEY")) {
                     seen_primary_key = true;
                   }
