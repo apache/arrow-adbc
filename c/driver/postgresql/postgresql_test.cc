@@ -398,8 +398,8 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
   } while (reader.array->release);
 
-  ASSERT_TRUE(seen_id_column) << "could not find column 'id' on table adbc_test";
-  ASSERT_TRUE(seen_primary_key) << "could not find primary key for adbc_test";
+  ASSERT_TRUE(seen_id_column) << "could not find column 'id' on table adbc_pkey_test";
+  ASSERT_TRUE(seen_primary_key) << "could not find primary key for adbc_pkey_test";
 }
 
 TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
