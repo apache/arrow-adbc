@@ -401,6 +401,12 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.18.6
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
 
       - uses: actions/download-artifact@v3
         with:
@@ -411,9 +417,22 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Build Panic Dummy
+        shell: bash -l {0}
+        run: |
+          if [[ $(uname) = "Darwin" ]];
+            make -C ./go/adbc/pkg libadbc_driver_panicdummy.dylib
+          else
+            make -C ./go/adbc/pkg libadbc_driver_panicdummy.so
+          fi
       - name: Test Python Driver Manager
         shell: bash -l {0}
         run: |
+          if [[ $(uname) = "Darwin" ]];
+            export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.dylib
+          else
+            export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.so
+          fi
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Python Driver Flight SQL
         shell: bash -l {0}
