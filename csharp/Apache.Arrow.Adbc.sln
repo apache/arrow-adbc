@@ -1,0 +1,58 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33403.182
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc", "src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj", "{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Arrow", "Arrow", "{9ADA26E0-F328-4466-908A-2FA506DBDF7D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow", "src\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj", "{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.FlightSql", "src\Apache.Arrow.Adbc.FlightSql\Apache.Arrow.Adbc.FlightSql.csproj", "{93D7AD3B-D6DC-4123-9796-63DD35A4708F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests", "test\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj", "{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.FlightSql.Tests", "test\Apache.Arrow.Adbc.FlightSql.Tests\Apache.Arrow.Adbc.FlightSql.Tests.csproj", "{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{5BD04C26-CE52-4893-8C1A-479705195CEF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{93D7AD3B-D6DC-4123-9796-63DD35A4708F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{93D7AD3B-D6DC-4123-9796-63DD35A4708F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{93D7AD3B-D6DC-4123-9796-63DD35A4708F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{93D7AD3B-D6DC-4123-9796-63DD35A4708F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C} = {9ADA26E0-F328-4466-908A-2FA506DBDF7D}
+		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8} = {5BD04C26-CE52-4893-8C1A-479705195CEF}
+		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A} = {5BD04C26-CE52-4893-8C1A-479705195CEF}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4795CF16-0FDB-4BE0-9768-5CF31564DC03}
+	EndGlobalSection
+EndGlobal
