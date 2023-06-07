@@ -468,11 +468,11 @@ class PqGetObjectsHelper {
     text_array.erase(text_array.size() - 1);
 
     std::vector<std::string> elements;
-    std::stringstream ss(text_array);
+    std::stringstream ss(std::move(text_array));
     std::string tmp;
 
     while (getline(ss, tmp, ',')) {
-      elements.push_back(tmp);
+      elements.push_back(std::move(tmp));
     }
 
     return elements;
@@ -532,9 +532,8 @@ class PqGetObjectsHelper {
           ArrowArrayAppendString(constraint_type_col_, ArrowCharView(constraint_type)),
           error_);
 
-      auto constraint_column_names =
-          PqTextArrayToVector(std::move(std::string(row[2].data)));
-      for (auto constraint_column_name : constraint_column_names) {
+      auto constraint_column_names = PqTextArrayToVector(std::string(row[2].data));
+      for (const auto& constraint_column_name : constraint_column_names) {
         CHECK_NA(INTERNAL,
                  ArrowArrayAppendString(constraint_column_name_col_,
                                         ArrowCharView(constraint_column_name.c_str())),
