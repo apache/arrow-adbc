@@ -38,6 +38,7 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 markers = [
     "duckdb: tests that require DuckDB",
+    "panicdummy: tests that require the testing-only panicdummy driver",
     "sqlite: tests that require the SQLite driver",
 ]
 
