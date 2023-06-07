@@ -97,7 +97,7 @@ func poison(err *C.struct_AdbcError, fname string, e interface{}) C.AdbcStatusCo
 		length := runtime.Stack(buf, true)
 		fmt.Fprintf(os.Stderr, "Snowflake driver panicked, stack traces:\n%s", buf[:length])
 	}
-	setErr(err, "%s: Go panic in Snowflake driver (see stderr): %#v", e)
+	setErr(err, "%s: Go panic in Snowflake driver (see stderr): %#v", fname, e)
 	return C.ADBC_STATUS_INTERNAL
 }
 

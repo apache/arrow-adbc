@@ -44,21 +44,21 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
+	"github.com/apache/arrow-adbc/go/adbc/driver/panicdummy"
 	"github.com/apache/arrow/go/v12/arrow/array"
 	"github.com/apache/arrow/go/v12/arrow/cdata"
 	"github.com/apache/arrow/go/v12/arrow/memory/mallocator"
 )
 
 // Must use malloc() to respect CGO rules
-var drv = flightsql.Driver{Alloc: mallocator.NewMallocator()}
+var drv = panicdummy.Driver{Alloc: mallocator.NewMallocator()}
 
 // Flag set if any method panic()ed - afterwards all calls to driver will fail
 // since internal state of driver is unknown
 // (Can't use atomic.Bool since that's Go 1.19)
 var globalPoison int32 = 0
 
-const errPrefix = "[FlightSQL] "
+const errPrefix = "[PanicDummy] "
 
 func setErr(err *C.struct_AdbcError, format string, vals ...interface{}) {
 	if err == nil {
@@ -66,12 +66,12 @@ func setErr(err *C.struct_AdbcError, format string, vals ...interface{}) {
 	}
 
 	if err.release != nil {
-		C.FlightSQLerrRelease(err)
+		C.PanicDummyerrRelease(err)
 	}
 
 	msg := errPrefix + fmt.Sprintf(format, vals...)
 	err.message = C.CString(msg)
-	err.release = (*[0]byte)(C.FlightSQL_release_error)
+	err.release = (*[0]byte)(C.PanicDummy_release_error)
 }
 
 func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
@@ -95,9 +95,9 @@ func poison(err *C.struct_AdbcError, fname string, e interface{}) C.AdbcStatusCo
 		// Only print stack traces on the first occurrence
 		buf := make([]byte, 1<<20)
 		length := runtime.Stack(buf, true)
-		fmt.Fprintf(os.Stderr, "FlightSQL driver panicked, stack traces:\n%s", buf[:length])
+		fmt.Fprintf(os.Stderr, "PanicDummy driver panicked, stack traces:\n%s", buf[:length])
 	}
-	setErr(err, "%s: Go panic in FlightSQL driver (see stderr): %#v", fname, e)
+	setErr(err, "%s: Go panic in PanicDummy driver (see stderr): %#v", fname, e)
 	return C.ADBC_STATUS_INTERNAL
 }
 
@@ -153,8 +153,8 @@ type cDatabase struct {
 	db   adbc.Database
 }
 
-//export FlightSQLDatabaseNew
-func FlightSQLDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyDatabaseNew
+func PanicDummyDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcDatabaseNew", e)
@@ -174,8 +174,8 @@ func FlightSQLDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (c
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLDatabaseSetOption
-func FlightSQLDatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyDatabaseSetOption
+func PanicDummyDatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcDatabaseSetOption", e)
@@ -192,8 +192,8 @@ func FlightSQLDatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLDatabaseInit
-func FlightSQLDatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyDatabaseInit
+func PanicDummyDatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcDatabaseInit", e)
@@ -218,8 +218,8 @@ func FlightSQLDatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLDatabaseRelease
-func FlightSQLDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyDatabaseRelease
+func PanicDummyDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcDatabaseInit", e)
@@ -279,8 +279,8 @@ func checkConnInit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname
 	return conn
 }
 
-//export FlightSQLConnectionNew
-func FlightSQLConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionNew
+func PanicDummyConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionNew", e)
@@ -300,8 +300,8 @@ func FlightSQLConnectionNew(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcErr
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLConnectionSetOption
-func FlightSQLConnectionSetOption(cnxn *C.struct_AdbcConnection, key, val *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionSetOption
+func PanicDummyConnectionSetOption(cnxn *C.struct_AdbcConnection, key, val *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionSetOption", e)
@@ -316,8 +316,8 @@ func FlightSQLConnectionSetOption(cnxn *C.struct_AdbcConnection, key, val *C.cch
 	return C.AdbcStatusCode(rawCode)
 }
 
-//export FlightSQLConnectionInit
-func FlightSQLConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionInit
+func PanicDummyConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionInit", e)
@@ -345,8 +345,8 @@ func FlightSQLConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDat
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLConnectionRelease
-func FlightSQLConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionRelease
+func PanicDummyConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionRelease", e)
@@ -397,8 +397,8 @@ func toCdataArray(ptr *C.struct_ArrowArray) *cdata.CArrowArray {
 	return (*cdata.CArrowArray)(unsafe.Pointer(ptr))
 }
 
-//export FlightSQLConnectionGetInfo
-func FlightSQLConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionGetInfo
+func PanicDummyConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionGetInfo", e)
@@ -443,8 +443,8 @@ func toStrSlice(in **C.cchar_t) []string {
 	return out
 }
 
-//export FlightSQLConnectionGetObjects
-func FlightSQLConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, catalog, dbSchema, tableName *C.cchar_t, tableType **C.cchar_t, columnName *C.cchar_t,
+//export PanicDummyConnectionGetObjects
+func PanicDummyConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, catalog, dbSchema, tableName *C.cchar_t, tableType **C.cchar_t, columnName *C.cchar_t,
 	out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -464,8 +464,8 @@ func FlightSQLConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, c
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLConnectionGetTableSchema
-func FlightSQLConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog, dbSchema, tableName *C.cchar_t, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionGetTableSchema
+func PanicDummyConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog, dbSchema, tableName *C.cchar_t, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionGetTableSchema", e)
@@ -484,8 +484,8 @@ func FlightSQLConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog, d
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLConnectionGetTableTypes
-func FlightSQLConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionGetTableTypes
+func PanicDummyConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionGetTableTypes", e)
@@ -504,8 +504,8 @@ func FlightSQLConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.stru
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLConnectionReadPartition
-func FlightSQLConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized *C.cuint8_t, serializedLen C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionReadPartition
+func PanicDummyConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized *C.cuint8_t, serializedLen C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionReadPartition", e)
@@ -524,8 +524,8 @@ func FlightSQLConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized 
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLConnectionCommit
-func FlightSQLConnectionCommit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionCommit
+func PanicDummyConnectionCommit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionCommit", e)
@@ -539,8 +539,8 @@ func FlightSQLConnectionCommit(cnxn *C.struct_AdbcConnection, err *C.struct_Adbc
 	return C.AdbcStatusCode(errToAdbcErr(err, conn.cnxn.Commit(context.Background())))
 }
 
-//export FlightSQLConnectionRollback
-func FlightSQLConnectionRollback(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionRollback
+func PanicDummyConnectionRollback(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcConnectionRollback", e)
@@ -572,8 +572,8 @@ func checkStmtInit(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname 
 	return (*(*cgo.Handle)(stmt.private_data)).Value().(adbc.Statement)
 }
 
-//export FlightSQLStatementNew
-func FlightSQLStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementNew
+func PanicDummyStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementNew", e)
@@ -598,8 +598,8 @@ func FlightSQLStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcSta
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLStatementRelease
-func FlightSQLStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementRelease
+func PanicDummyStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementRelease", e)
@@ -636,8 +636,8 @@ func FlightSQLStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 	return C.AdbcStatusCode(errToAdbcErr(err, e))
 }
 
-//export FlightSQLStatementPrepare
-func FlightSQLStatementPrepare(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementPrepare
+func PanicDummyStatementPrepare(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementPrepare", e)
@@ -651,8 +651,8 @@ func FlightSQLStatementPrepare(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 	return C.AdbcStatusCode(errToAdbcErr(err, st.Prepare(context.Background())))
 }
 
-//export FlightSQLStatementExecuteQuery
-func FlightSQLStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_ArrowArrayStream, affected *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementExecuteQuery
+func PanicDummyStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_ArrowArrayStream, affected *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementExecuteQuery", e)
@@ -687,8 +687,8 @@ func FlightSQLStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLStatementSetSqlQuery
-func FlightSQLStatementSetSqlQuery(stmt *C.struct_AdbcStatement, query *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementSetSqlQuery
+func PanicDummyStatementSetSqlQuery(stmt *C.struct_AdbcStatement, query *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementSetSqlQuery", e)
@@ -702,8 +702,8 @@ func FlightSQLStatementSetSqlQuery(stmt *C.struct_AdbcStatement, query *C.cchar_
 	return C.AdbcStatusCode(errToAdbcErr(err, st.SetSqlQuery(C.GoString(query))))
 }
 
-//export FlightSQLStatementSetSubstraitPlan
-func FlightSQLStatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.cuint8_t, length C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementSetSubstraitPlan
+func PanicDummyStatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.cuint8_t, length C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementSetSubstraitPlan", e)
@@ -717,8 +717,8 @@ func FlightSQLStatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.cu
 	return C.AdbcStatusCode(errToAdbcErr(err, st.SetSubstraitPlan(fromCArr[byte](plan, int(length)))))
 }
 
-//export FlightSQLStatementBind
-func FlightSQLStatementBind(stmt *C.struct_AdbcStatement, values *C.struct_ArrowArray, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementBind
+func PanicDummyStatementBind(stmt *C.struct_AdbcStatement, values *C.struct_ArrowArray, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementBind", e)
@@ -740,8 +740,8 @@ func FlightSQLStatementBind(stmt *C.struct_AdbcStatement, values *C.struct_Arrow
 	return C.AdbcStatusCode(errToAdbcErr(err, st.Bind(context.Background(), rec)))
 }
 
-//export FlightSQLStatementBindStream
-func FlightSQLStatementBindStream(stmt *C.struct_AdbcStatement, stream *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementBindStream
+func PanicDummyStatementBindStream(stmt *C.struct_AdbcStatement, stream *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementBindStream", e)
@@ -756,8 +756,8 @@ func FlightSQLStatementBindStream(stmt *C.struct_AdbcStatement, stream *C.struct
 	return C.AdbcStatusCode(errToAdbcErr(err, st.BindStream(context.Background(), rdr.(array.RecordReader))))
 }
 
-//export FlightSQLStatementGetParameterSchema
-func FlightSQLStatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementGetParameterSchema
+func PanicDummyStatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementGetParameterSchema", e)
@@ -777,8 +777,8 @@ func FlightSQLStatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema *
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLStatementSetOption
-func FlightSQLStatementSetOption(stmt *C.struct_AdbcStatement, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementSetOption
+func PanicDummyStatementSetOption(stmt *C.struct_AdbcStatement, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementSetOption", e)
@@ -806,8 +806,8 @@ func releasePartitions(partitions *C.struct_AdbcPartitions) {
 	partitions.private_data = nil
 }
 
-//export FlightSQLStatementExecutePartitions
-func FlightSQLStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, partitions *C.struct_AdbcPartitions, affected *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyStatementExecutePartitions
+func PanicDummyStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, partitions *C.struct_AdbcPartitions, affected *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
 			code = poison(err, "AdbcStatementExecutePartitions", e)
@@ -861,8 +861,8 @@ func FlightSQLStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 	return C.ADBC_STATUS_OK
 }
 
-//export FlightSQLDriverInit
-func FlightSQLDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export PanicDummyDriverInit
+func PanicDummyDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	if version != C.ADBC_VERSION_1_0_0 {
 		setErr(err, "Only version %d supported, got %d", int(C.ADBC_VERSION_1_0_0), int(version))
 		return C.ADBC_STATUS_NOT_IMPLEMENTED
@@ -870,34 +870,34 @@ func FlightSQLDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcErr
 
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 	C.memset(unsafe.Pointer(driver), 0, C.sizeof_struct_AdbcDriver)
-	driver.DatabaseInit = (*[0]byte)(C.FlightSQLDatabaseInit)
-	driver.DatabaseNew = (*[0]byte)(C.FlightSQLDatabaseNew)
-	driver.DatabaseRelease = (*[0]byte)(C.FlightSQLDatabaseRelease)
-	driver.DatabaseSetOption = (*[0]byte)(C.FlightSQLDatabaseSetOption)
+	driver.DatabaseInit = (*[0]byte)(C.PanicDummyDatabaseInit)
+	driver.DatabaseNew = (*[0]byte)(C.PanicDummyDatabaseNew)
+	driver.DatabaseRelease = (*[0]byte)(C.PanicDummyDatabaseRelease)
+	driver.DatabaseSetOption = (*[0]byte)(C.PanicDummyDatabaseSetOption)
 
-	driver.ConnectionNew = (*[0]byte)(C.FlightSQLConnectionNew)
-	driver.ConnectionInit = (*[0]byte)(C.FlightSQLConnectionInit)
-	driver.ConnectionRelease = (*[0]byte)(C.FlightSQLConnectionRelease)
-	driver.ConnectionSetOption = (*[0]byte)(C.FlightSQLConnectionSetOption)
-	driver.ConnectionGetInfo = (*[0]byte)(C.FlightSQLConnectionGetInfo)
-	driver.ConnectionGetObjects = (*[0]byte)(C.FlightSQLConnectionGetObjects)
-	driver.ConnectionGetTableSchema = (*[0]byte)(C.FlightSQLConnectionGetTableSchema)
-	driver.ConnectionGetTableTypes = (*[0]byte)(C.FlightSQLConnectionGetTableTypes)
-	driver.ConnectionReadPartition = (*[0]byte)(C.FlightSQLConnectionReadPartition)
-	driver.ConnectionCommit = (*[0]byte)(C.FlightSQLConnectionCommit)
-	driver.ConnectionRollback = (*[0]byte)(C.FlightSQLConnectionRollback)
+	driver.ConnectionNew = (*[0]byte)(C.PanicDummyConnectionNew)
+	driver.ConnectionInit = (*[0]byte)(C.PanicDummyConnectionInit)
+	driver.ConnectionRelease = (*[0]byte)(C.PanicDummyConnectionRelease)
+	driver.ConnectionSetOption = (*[0]byte)(C.PanicDummyConnectionSetOption)
+	driver.ConnectionGetInfo = (*[0]byte)(C.PanicDummyConnectionGetInfo)
+	driver.ConnectionGetObjects = (*[0]byte)(C.PanicDummyConnectionGetObjects)
+	driver.ConnectionGetTableSchema = (*[0]byte)(C.PanicDummyConnectionGetTableSchema)
+	driver.ConnectionGetTableTypes = (*[0]byte)(C.PanicDummyConnectionGetTableTypes)
+	driver.ConnectionReadPartition = (*[0]byte)(C.PanicDummyConnectionReadPartition)
+	driver.ConnectionCommit = (*[0]byte)(C.PanicDummyConnectionCommit)
+	driver.ConnectionRollback = (*[0]byte)(C.PanicDummyConnectionRollback)
 
-	driver.StatementNew = (*[0]byte)(C.FlightSQLStatementNew)
-	driver.StatementRelease = (*[0]byte)(C.FlightSQLStatementRelease)
-	driver.StatementSetOption = (*[0]byte)(C.FlightSQLStatementSetOption)
-	driver.StatementSetSqlQuery = (*[0]byte)(C.FlightSQLStatementSetSqlQuery)
-	driver.StatementSetSubstraitPlan = (*[0]byte)(C.FlightSQLStatementSetSubstraitPlan)
-	driver.StatementBind = (*[0]byte)(C.FlightSQLStatementBind)
-	driver.StatementBindStream = (*[0]byte)(C.FlightSQLStatementBindStream)
-	driver.StatementExecuteQuery = (*[0]byte)(C.FlightSQLStatementExecuteQuery)
-	driver.StatementExecutePartitions = (*[0]byte)(C.FlightSQLStatementExecutePartitions)
-	driver.StatementGetParameterSchema = (*[0]byte)(C.FlightSQLStatementGetParameterSchema)
-	driver.StatementPrepare = (*[0]byte)(C.FlightSQLStatementPrepare)
+	driver.StatementNew = (*[0]byte)(C.PanicDummyStatementNew)
+	driver.StatementRelease = (*[0]byte)(C.PanicDummyStatementRelease)
+	driver.StatementSetOption = (*[0]byte)(C.PanicDummyStatementSetOption)
+	driver.StatementSetSqlQuery = (*[0]byte)(C.PanicDummyStatementSetSqlQuery)
+	driver.StatementSetSubstraitPlan = (*[0]byte)(C.PanicDummyStatementSetSubstraitPlan)
+	driver.StatementBind = (*[0]byte)(C.PanicDummyStatementBind)
+	driver.StatementBindStream = (*[0]byte)(C.PanicDummyStatementBindStream)
+	driver.StatementExecuteQuery = (*[0]byte)(C.PanicDummyStatementExecuteQuery)
+	driver.StatementExecutePartitions = (*[0]byte)(C.PanicDummyStatementExecutePartitions)
+	driver.StatementGetParameterSchema = (*[0]byte)(C.PanicDummyStatementGetParameterSchema)
+	driver.StatementPrepare = (*[0]byte)(C.PanicDummyStatementPrepare)
 
 	return C.ADBC_STATUS_OK
 }
