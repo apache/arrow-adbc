@@ -31,7 +31,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v12/arrow/memory"
+	"github.com/apache/arrow/go/v13/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 	"golang.org/x/exp/maps"
 )

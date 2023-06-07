@@ -37,9 +37,9 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v12/arrow"
-	"github.com/apache/arrow/go/v12/arrow/array"
-	"github.com/apache/arrow/go/v12/arrow/cdata"
+	"github.com/apache/arrow/go/v13/arrow"
+	"github.com/apache/arrow/go/v13/arrow/array"
+	"github.com/apache/arrow/go/v13/arrow/cdata"
 )
 
 type option struct {
@@ -176,8 +176,12 @@ func (d *Database) Open(context.Context) (adbc.Connection, error) {
 	return &cnxn{conn: &c}, nil
 }
 
-func getRdr(out *C.struct_ArrowArrayStream) array.RecordReader {
-	return cdata.ImportCArrayStream((*cdata.CArrowArrayStream)(unsafe.Pointer(out)), nil).(array.RecordReader)
+func getRdr(out *C.struct_ArrowArrayStream) (array.RecordReader, error) {
+	rdr, err := cdata.ImportCRecordReader((*cdata.CArrowArrayStream)(unsafe.Pointer(out)), nil)
+	if err != nil {
+		return nil, err
+	}
+	return rdr.(array.RecordReader), nil
 }
 
 type cnxn struct {
@@ -198,7 +202,7 @@ func (c *cnxn) GetInfo(_ context.Context, infoCodes []adbc.InfoCode) (array.Reco
 		return nil, toAdbcError(code, &err)
 	}
 
-	return getRdr(&out), nil
+	return getRdr(&out)
 }
 
 func (c *cnxn) GetObjects(_ context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (array.RecordReader, error) {
@@ -301,7 +305,11 @@ func (s *stmt) ExecuteQuery(context.Context) (array.RecordReader, int64, error) 
 		return nil, 0, toAdbcError(code, &err)
 	}
 
-	return getRdr(&out), int64(affected), nil
+	rdr, goerr := getRdr(&out)
+	if goerr != nil {
+		return nil, int64(affected), goerr
+	}
+	return rdr, int64(affected), nil
 }
 
 func (s *stmt) ExecuteUpdate(context.Context) (int64, error) {

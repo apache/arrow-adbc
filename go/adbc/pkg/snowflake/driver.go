@@ -45,9 +45,9 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
-	"github.com/apache/arrow/go/v12/arrow/array"
-	"github.com/apache/arrow/go/v12/arrow/cdata"
-	"github.com/apache/arrow/go/v12/arrow/memory/mallocator"
+	"github.com/apache/arrow/go/v13/arrow/array"
+	"github.com/apache/arrow/go/v13/arrow/cdata"
+	"github.com/apache/arrow/go/v13/arrow/memory/mallocator"
 )
 
 // Must use malloc() to respect CGO rules
@@ -752,7 +752,10 @@ func SnowflakeStatementBindStream(stmt *C.struct_AdbcStatement, stream *C.struct
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	rdr := cdata.ImportCArrayStream(toCdataStream(stream), nil)
+	rdr, e := cdata.ImportCRecordReader(toCdataStream(stream), nil)
+	if e != nil {
+		return C.AdbcStatusCode(errToAdbcErr(err, e))
+	}
 	return C.AdbcStatusCode(errToAdbcErr(err, st.BindStream(context.Background(), rdr.(array.RecordReader))))
 }
 
