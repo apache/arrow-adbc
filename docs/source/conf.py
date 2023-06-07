@@ -37,6 +37,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_copybutton",
     "sphinx_design",
+    "sphinxcontrib.mermaid",
 ]
 templates_path = ["_templates"]
 
@@ -100,6 +101,10 @@ html_theme_options = {
 intersphinx_mapping = {
     "arrow": ("https://arrow.apache.org/docs/", None),
 }
+
+# -- Options for mermaid -----------------------------------------------------
+
+mermaid_d3_zoom = True
 
 # -- Options for numpydoc ----------------------------------------------------
 
