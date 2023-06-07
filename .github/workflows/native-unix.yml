@@ -420,7 +420,7 @@ jobs:
       - name: Build Panic Dummy
         shell: bash -l {0}
         run: |
-          if [[ $(uname) = "Darwin" ]];
+          if [[ $(uname) = "Darwin" ]]; then
             make -C ./go/adbc/pkg libadbc_driver_panicdummy.dylib
           else
             make -C ./go/adbc/pkg libadbc_driver_panicdummy.so
@@ -428,7 +428,7 @@ jobs:
       - name: Test Python Driver Manager
         shell: bash -l {0}
         run: |
-          if [[ $(uname) = "Darwin" ]];
+          if [[ $(uname) = "Darwin" ]]; then
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.dylib
           else
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.so
