@@ -69,6 +69,13 @@ doing so will invalidate prior result sets from that statement.  (See
 - Go: ``Statement``
 - Java: ``org.apache.arrow.adbc.core.AdbcStatement``
 
+Lifecycle
+---------
+
+.. image:: AdbcStatement.svg
+   :alt: The lifecycle of a statement.
+   :width: 100%
+
 .. _specification-bulk-ingestion:
 
 Bulk Ingestion
