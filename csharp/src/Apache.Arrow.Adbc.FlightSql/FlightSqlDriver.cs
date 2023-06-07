@@ -16,7 +16,6 @@
  */
 
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Core;
 
 namespace Apache.Arrow.Adbc.FlightSql
 {

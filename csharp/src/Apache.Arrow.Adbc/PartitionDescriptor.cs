@@ -19,6 +19,9 @@ using System;
 
 namespace Apache.Arrow.Adbc
 {
+    /// <summary>
+    /// A descriptor for a part of a potentially distributed or partitioned result set.
+    /// </summary>
     public struct PartitionDescriptor : IEquatable<PartitionDescriptor>
     {
         readonly byte[] _descriptor;
@@ -52,7 +55,7 @@ namespace Apache.Arrow.Adbc
 
         public override int GetHashCode()
         {
-            return base.GetHashCode();
+            return _descriptor.GetHashCode();
         }
     }
 }

@@ -42,7 +42,7 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
             {
                 int batches = reader.RecordBatchCountAsync().Result;
 
-                for(int i = 0; i < batches; i++) 
+                for (int i = 0; i < batches; i++) 
                 {
                     recordBatches.Add(reader.ReadNextRecordBatch());
                 }

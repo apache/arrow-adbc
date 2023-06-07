@@ -42,7 +42,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             Assert.IsTrue(expectedArrays.Count == expectedFirstValues.Count, "expectedArrays and expectedFirstValues must be the same length");
 
-            for(int i=0; i<actualArrays.Count; i++) 
+            for (int i=0; i<actualArrays.Count; i++) 
             {
                 IArrowArray actualArray = actualArrays[i];
                 Type expectedArrayType = expectedArrays[i];

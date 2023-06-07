@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Core;
 
 namespace Apache.Arrow.Adbc.FlightSql
 {
@@ -35,14 +34,20 @@ namespace Apache.Arrow.Adbc.FlightSql
 
         public override AdbcConnection Connect(Dictionary<string, string> options)
         {
-            if(options == null) throw new ArgumentNullException("options");
+            if (options == null) throw new ArgumentNullException("options");
 
-            if (!options.ContainsKey(FlightSqlParameters.ServerAddress))
+            string flightSqlServerAddress = string.Empty;
+
+            if (options.TryGetValue(FlightSqlParameters.ServerAddress, out flightSqlServerAddress))
+            {
+                FlightSqlConnection connection = new FlightSqlConnection(_metadata);
+                connection.Open(flightSqlServerAddress);
+                return connection;
+            }
+            else
+            {
                 throw new ArgumentException($"Options must include the {FlightSqlParameters.ServerAddress} parameter");
-
-            FlightSqlConnection connection = new FlightSqlConnection(_metadata);
-            connection.Open(options[FlightSqlParameters.ServerAddress]);
-            return connection;
+            }
         }
     }
 }

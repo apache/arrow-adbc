@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.FlightSql
 
         public async ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            if(_recordBatchStreamReader is null)
+            if (_recordBatchStreamReader is null)
             {
                 RefreshRecordBatchStreamReader();
             }

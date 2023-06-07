@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.FlightSql.Tests

@@ -16,7 +16,6 @@
 */
 
 using System;
-using Apache.Arrow.Adbc.Core;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Apache.Arrow.Adbc.Tests

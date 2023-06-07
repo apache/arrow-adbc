@@ -122,33 +122,5 @@ namespace Apache.Arrow.Adbc
         /// <param name="index">The index in the array to get the value from.</param>
         /// <returns></returns>
         public abstract object GetValue(IArrowArray arrowArray, Field field, int index);
-
-        /// <summary>
-        /// For decimals, Arrow throws an OverflowException if a value is < decimal.min or > decimal.max
-        /// So parse the numeric value and return it as a string, if possible
-        /// </summary>
-        /// <param name="oex"></param>
-        /// <returns>A string value of the decimal that threw the exception or rethrows the OverflowException.</returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        public virtual string ParseDecimalValueFromOverflowException(OverflowException oex)
-        {
-            if (oex == null)
-                throw new ArgumentNullException(nameof(oex));
-
-            // any decimal value, positive or negative, with or without a decimal in place
-            Regex regex = new Regex(" -?\\d*\\.?\\d* ");
-
-            var matches = regex.Matches(oex.Message);
-
-            foreach(Match match in matches)
-            {
-                string value = match.Value;
-
-                if (!string.IsNullOrEmpty(value))
-                    return value;
-            }
-
-            throw oex;
-        }
     }
 }

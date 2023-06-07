@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using Apache.Arrow.Adbc.Core;
 using Apache.Arrow.Adbc.Tests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -83,6 +82,7 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
 
             Adbc.Tests.ConnectionTests.CanDriverConnect(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
         }
+
         /// <summary>
         /// Validates exceptions thrown are ADBC exceptions
         /// </summary>
