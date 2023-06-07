@@ -25,14 +25,14 @@ namespace Apache.Arrow.Adbc.FlightSql
     /// </summary>
     public class FlightSqlDatabase : AdbcDatabase
     {
-        private readonly Dictionary<string, string> _metadata;
+        private readonly IReadOnlyDictionary<string, string> _metadata;
 
-        public FlightSqlDatabase(Dictionary<string, string> metadata)
+        public FlightSqlDatabase(IReadOnlyDictionary<string, string> metadata)
         {
             _metadata = metadata;
         }
 
-        public override AdbcConnection Connect(Dictionary<string, string> options)
+        public override AdbcConnection Connect(IReadOnlyDictionary<string, string> options)
         {
             if (options == null) throw new ArgumentNullException("options");
 

@@ -160,7 +160,7 @@ namespace Apache.Arrow.Adbc.Interop
             /// </summary>
             /// <param name="parameters"></param>
             /// <returns></returns>
-            public unsafe override AdbcDatabase Open(Dictionary<string, string> parameters)
+            public unsafe override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
                 NativeAdbcDatabase nativeDatabase = new NativeAdbcDatabase();
         
@@ -216,7 +216,7 @@ namespace Apache.Arrow.Adbc.Interop
                 _nativeDatabase = nativeDatabase;
             }
 
-            public unsafe override AdbcConnection Connect(Dictionary<string, string> options)
+            public unsafe override AdbcConnection Connect(IReadOnlyDictionary<string, string> options)
             {
                 NativeAdbcConnection nativeConnection = new NativeAdbcConnection();
                

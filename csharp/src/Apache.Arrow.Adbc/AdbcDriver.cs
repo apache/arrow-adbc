@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         /// <param name="parameters">Driver-specific parameters.</param>
         /// <returns></returns>
-        public abstract AdbcDatabase Open(Dictionary<string, string> parameters);
+        public abstract AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters);
 
         public virtual void Dispose()
         {

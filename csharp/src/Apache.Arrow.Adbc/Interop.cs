@@ -1005,7 +1005,7 @@ namespace Apache.Arrow.Adbc
             return AdbcStatusCode.Success;
         }
 
-        public AdbcStatusCode OpenConnection(Dictionary<string, string> options, ref NativeAdbcError error, out AdbcConnection connection)
+        public AdbcStatusCode OpenConnection(IReadOnlyDictionary<string, string> options, ref NativeAdbcError error, out AdbcConnection connection)
         {
             if (database == null)
             {

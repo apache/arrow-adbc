@@ -29,11 +29,11 @@ namespace Apache.Arrow.Adbc.FlightSql
     public class FlightSqlConnection : AdbcConnection
     {
         private FlightClient _flightClientInternal = null;
-        private readonly Dictionary<string, string> _metadata;
+        private readonly IReadOnlyDictionary<string, string> _metadata;
 
         private Metadata headers = null;
 
-        public FlightSqlConnection(Dictionary<string, string> metadata)
+        public FlightSqlConnection(IReadOnlyDictionary<string, string> metadata)
         {
             _metadata = metadata;
         }
