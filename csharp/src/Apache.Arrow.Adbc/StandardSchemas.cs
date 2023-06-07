@@ -25,13 +25,8 @@ namespace Apache.Arrow.Adbc
     /// <summary>
     /// The standard schemas
     /// </summary>
-    public sealed class StandardSchemas
+    public static class StandardSchemas
     {
-        private StandardSchemas()
-        {
-            throw new InvalidOperationException("Do not instantiate this class");
-        }
-
         /// <summary>
         /// The schema of the result set of <see cref="AdbcConnection.GetInfo(int[])"/>}.
         /// </summary>
