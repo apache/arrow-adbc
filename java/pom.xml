@@ -85,6 +85,7 @@
     <module>driver/flight-sql-validation</module>
     <module>driver/jdbc</module>
     <module>driver/jdbc-validation-derby</module>
+    <module>driver/jdbc-validation-mssqlserver</module>
     <module>driver/jdbc-validation-postgresql</module>
     <module>driver/validation</module>
     <module>driver-manager</module>

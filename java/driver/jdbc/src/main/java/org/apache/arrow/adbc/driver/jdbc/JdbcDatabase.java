@@ -66,7 +66,8 @@ public final class JdbcDatabase implements AdbcDatabase {
     return new JdbcConnection(
         allocator.newChildAllocator("adbc-jdbc-connection-" + count, 0, allocator.getLimit()),
         connection,
-        quirks);
+        quirks, /*typeConverter*/
+        null);
   }
 
   @Override

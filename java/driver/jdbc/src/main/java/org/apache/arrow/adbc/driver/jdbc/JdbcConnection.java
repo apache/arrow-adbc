@@ -22,7 +22,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.arrow.adapter.jdbc.JdbcFieldInfo;
 import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
@@ -31,6 +30,8 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.IsolationLevel;
 import org.apache.arrow.adbc.core.StandardSchemas;
+import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcFieldInfoExtra;
+import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverter;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
@@ -45,6 +46,7 @@ public class JdbcConnection implements AdbcConnection {
   private final BufferAllocator allocator;
   private final Connection connection;
   private final SqlQuirks quirks;
+  private final JdbcToArrowTypeConverter typeConverter;
 
   /**
    * Create a new connection.
@@ -53,10 +55,15 @@ public class JdbcConnection implements AdbcConnection {
    * @param connection The JDBC connection.
    * @param quirks Backend-specific quirks to account for.
    */
-  JdbcConnection(BufferAllocator allocator, Connection connection, SqlQuirks quirks) {
+  JdbcConnection(
+      BufferAllocator allocator,
+      Connection connection,
+      SqlQuirks quirks,
+      JdbcToArrowTypeConverter typeConverter) {
     this.allocator = allocator;
     this.connection = connection;
     this.quirks = quirks;
+    this.typeConverter = typeConverter;
   }
 
   @Override
@@ -123,6 +130,8 @@ public class JdbcConnection implements AdbcConnection {
   public Schema getTableSchema(String catalog, String dbSchema, String tableName)
       throws AdbcException {
     // Check for existence
+    // XXX: this is TOC/TOU error, but without an explicit check we just get no fields (possibly we
+    // should just assume it's impossible to have a 0-column table and error there?)
     try (final ResultSet rs =
         connection.getMetaData().getTables(catalog, dbSchema, tableName, /*tableTypes*/ null)) {
       if (!rs.next()) {
@@ -146,19 +155,32 @@ public class JdbcConnection implements AdbcConnection {
             .getColumns(catalog, dbSchema, tableName, /*columnNamePattern*/ null)) {
       while (rs.next()) {
         final String fieldName = rs.getString("COLUMN_NAME");
-        final boolean nullable = rs.getInt("NULLABLE") != DatabaseMetaData.columnNoNulls;
-        final int jdbcType = rs.getInt("DATA_TYPE");
-        final int precision = rs.getInt("COLUMN_SIZE");
-        final int scale = rs.getInt("DECIMAL_DIGITS");
-        final ArrowType arrowType =
-            JdbcToArrowUtils.getArrowTypeFromJdbcType(
-                new JdbcFieldInfo(jdbcType, precision, scale), /*calendar*/ null);
+        final JdbcFieldInfoExtra fieldInfoExtra = new JdbcFieldInfoExtra(rs);
+
+        final ArrowType arrowType;
+        if (typeConverter != null) {
+          arrowType = typeConverter.apply(fieldInfoExtra);
+        } else {
+          arrowType =
+              JdbcToArrowUtils.getArrowTypeFromJdbcType(
+                  fieldInfoExtra.getFieldInfo(), /*calendar*/ null);
+        }
+        if (arrowType == null) {
+          throw AdbcException.notImplemented(
+              JdbcDriverUtil.prefixExceptionMessage(
+                  String.format(
+                      "Column '%s' has unsupported type: %s", fieldName, fieldInfoExtra)));
+        }
+
         final Field field =
             new Field(
                 fieldName,
                 new FieldType(
-                    nullable, arrowType, /*dictionary*/ null, /*metadata*/ null), /*children*/
-                null);
+                    fieldInfoExtra.isNullable() != DatabaseMetaData.columnNoNulls,
+                    arrowType, /*dictionary*/
+                    null, /*metadata*/
+                    null),
+                /*children*/ null);
         fields.add(field);
       }
     } catch (SQLException e) {

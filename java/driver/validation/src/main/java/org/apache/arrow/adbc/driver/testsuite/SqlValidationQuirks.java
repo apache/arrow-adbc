@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.vector.types.TimeUnit;
 
 /** Account for driver/vendor-specific quirks in implementing validation tests. */
 public abstract class SqlValidationQuirks {
@@ -84,5 +85,9 @@ public abstract class SqlValidationQuirks {
         + " ("
         + caseFoldColumnName(referenceColumn)
         + ") ";
+  }
+
+  public TimeUnit defaultTimestampUnit() {
+    return TimeUnit.MILLISECOND;
   }
 }
