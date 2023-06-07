@@ -25,6 +25,6 @@ namespace Apache.Arrow.Adbc.FlightSql
         public const string ServerAddress = "FLIGHT_SQL_SERVER_ADDRESS";
         public const string RoutingTag = "routing_tag";
         public const string RoutingQueue = "routing_queue";
-        public const string Authorization = "authorization"; 
+        public const string Authorization = "authorization";
     }
 }

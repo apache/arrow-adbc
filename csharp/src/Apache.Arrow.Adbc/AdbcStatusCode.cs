@@ -21,7 +21,7 @@ namespace Apache.Arrow.Adbc
     /// ADBC uses integer error codes to signal errors. To provide more
     /// detail about errors, functions may also return an AdbcError via an
     /// optional out parameter, which can be inspected.
-    /// 
+    ///
     /// Generally, error codes may indicate a driver-side or database-side
     /// error.
     /// </summary>
@@ -69,7 +69,7 @@ namespace Apache.Arrow.Adbc
         /// Invalid data was processed (not a programming error). For
         /// instance, a division by zero may have occurred during
         /// query execution.
-        /// 
+        ///
         /// Indicates a database-side error only.
         /// </summary>
         InvalidData = 7,
@@ -78,7 +78,7 @@ namespace Apache.Arrow.Adbc
         /// The database's integrity was affected. For instance, a foreign
         /// key check may have failed, or a uniqueness constraint may have
         /// been violated.
-        /// 
+        ///
         /// Indicates a database-side error only.
         /// </summary>
         IntegrityError = 8,
@@ -106,14 +106,14 @@ namespace Apache.Arrow.Adbc
 
         /// <summary>
         /// Authentication failed.
-        /// 
+        ///
         /// Indicates a database-side error only.
         /// </summary>
         Unauthenticated = 13,
 
         /// <summary>
         /// The client is not authorized to perform the given operation.
-        /// 
+        ///
         /// Indicates a database-side error only.
         /// </summary>
         Unauthorized = 14,

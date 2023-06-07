@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
         public string RoutingTag { get; set; }
 
         [JsonPropertyName("routing_queue"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	    public string RoutingQueue { get; set; }
+        public string RoutingQueue { get; set; }
 
         [JsonPropertyName("authorization")]
         public string Authorization { get; set; }

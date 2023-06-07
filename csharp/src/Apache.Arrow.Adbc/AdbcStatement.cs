@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc
     {
         public AdbcStatement()
         {
-            
+
         }
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace Apache.Arrow.Adbc
             set { throw new NotImplementedException(); }
         }
 
-        public virtual void Bind(RecordBatch batch,Schema schema)
+        public virtual void Bind(RecordBatch batch, Schema schema)
         {
             throw AdbcException.NotImplemented("Statement does not support Bind");
         }
@@ -80,7 +80,6 @@ namespace Apache.Arrow.Adbc
         /// Executes an update command and returns the number of
         /// records effected.
         /// </summary>
-        /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
         public abstract UpdateResult ExecuteUpdate();
 
@@ -88,7 +87,6 @@ namespace Apache.Arrow.Adbc
         /// Executes an update command and returns the number of
         /// records effected.
         /// </summary>
-        /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
         public virtual async Task<UpdateResult> ExecuteUpdateAsync()
         {
@@ -113,8 +111,8 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
-        ///  Turn this statement into a prepared statement to be
-        ///  executed multiple times.
+        /// Turn this statement into a prepared statement to be
+        /// executed multiple times.
         /// </summary>
         public virtual void Prepare()
         {
@@ -129,7 +127,9 @@ namespace Apache.Arrow.Adbc
         /// Gets a value from the Arrow array at the specified index,
         /// using the Field metadata for information.
         /// </summary>
-        /// <param name="arrowArray">The Arrow array.</param>
+        /// <param name="arrowArray">
+        /// The Arrow array.
+        /// </param>
         /// <param name="field">
         /// The <see cref="Field"/> from the <see cref="Schema"/> that can
         /// be used for metadata inspection.

@@ -99,16 +99,15 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
             {
                 mockFlightSqlStatement.Object.ExecuteQuery();
             }
-            catch(AdbcException e)
+            catch (AdbcException e)
             {
                 Adbc.Tests.ConnectionTests.VerifyBadQueryGeneratesError(e);
             }
         }
 
         /// <summary>
-        /// Loads a FlightSqlStatement with mocked results. 
+        /// Loads a FlightSqlStatement with mocked results.
         /// </summary>
-        /// <returns></returns>
         private Mock<FlightSqlStatement> GetMockSqlStatement()
         {
             List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches();
@@ -126,7 +125,6 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
         /// <summary>
         /// Gets the configuration for connecting to a live Flight SQL server.
         /// </summary>
-        /// <returns></returns>
         private FlightSqlTestConfiguration GetFlightSqlTestConfiguration()
         {
             // use a JSON file vs. setting up environment variables

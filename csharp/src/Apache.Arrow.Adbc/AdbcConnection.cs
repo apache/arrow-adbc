@@ -43,15 +43,17 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Create a new statement that can be executed.
         /// </summary>
-        /// <returns></returns>
         public abstract AdbcStatement CreateStatement();
 
         /// <summary>
         /// Create a new statement to bulk insert into a table.
         /// </summary>
-        /// <param name="targetTableName"></param>
-        /// <param name="mode"></param>
-        /// <returns></returns>
+        /// <param name="targetTableName">
+        /// The table name
+        /// </param>
+        /// <param name="mode">
+        /// The ingest mode
+        /// </param>
         public virtual AdbcStatement BulkIngest(string targetTableName, BulkIngestMode mode)
         {
             throw AdbcException.NotImplemented("Connection does not support BulkIngest");
@@ -64,8 +66,12 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get metadata about the driver/database.
         /// </summary>
-        /// <param name="codes">The metadata items to fetch.</param>
-        /// <returns>A statement that can be immediately executed.</returns>
+        /// <param name="codes">
+        /// The metadata items to fetch.
+        /// </param>
+        /// <returns>
+        /// A statement that can be immediately executed.
+        /// </returns>
         public virtual IArrowArrayStream GetInfo(List<int> codes)
         {
             throw AdbcException.NotImplemented("Connection does not support GetInfo");
@@ -74,8 +80,12 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get metadata about the driver/database.
         /// </summary>
-        /// <param name="codes">The metadata items to fetch.</param>
-        /// <returns>A statement that can be immediately executed.</returns>
+        /// <param name="codes">
+        /// The metadata items to fetch.
+        /// </param>
+        /// <returns>
+        /// A statement that can be immediately executed.
+        /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
         public virtual IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
         {
@@ -120,7 +130,6 @@ namespace Apache.Arrow.Adbc
         /// Only show columns with the given name.
         /// If null, do not filter by name.May be a search pattern.
         /// </param>
-        /// <returns></returns>
         public virtual IArrowArrayStream GetObjects(
             GetObjectsDepth depth,
             string catalogPattern,
@@ -159,10 +168,15 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get the Arrow schema of a database table.
         /// </summary>
-        /// <param name="catalog">The catalog of the table (or null).</param>
-        /// <param name="dbSchema">The database schema of the table (or null).</param>
-        /// <param name="tableName">The table name.</param>
-        /// <returns></returns>
+        /// <param name="catalog">
+        /// The catalog of the table (or null).
+        /// </param>
+        /// <param name="dbSchema">
+        /// The database schema of the table (or null).
+        /// </param>
+        /// <param name="tableName">
+        /// The table name.
+        /// </param>
         public virtual Schema GetTableSchema(string catalog, string dbSchema, string tableName)
         {
             throw AdbcException.NotImplemented("Connection does not support GetTableSchema");
@@ -171,7 +185,6 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get a list of table types supported by the database.
         /// </summary>
-        /// <returns></returns>
         public virtual IArrowArrayStream GetTableTypes()
         {
             throw AdbcException.NotImplemented("Connection does not support GetTableTypes");
@@ -180,8 +193,9 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Create a result set from a serialized PartitionDescriptor.
         /// </summary>
-        /// <param name="partition"></param>
-        /// <returns></returns>
+        /// <param name="partition">
+        /// The partition descriptor.
+        /// </param>
         public virtual IArrowArrayStream ReadPartition(PartitionDescriptor partition)
         {
             throw AdbcException.NotImplemented("Connection does not support partitions");

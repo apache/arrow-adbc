@@ -27,7 +27,7 @@ namespace Apache.Arrow.Adbc.Extensions
     {
         public static unsafe string PtrToStringUTF8(IntPtr intPtr)
         {
-            if (intPtr == IntPtr.Zero) 
+            if (intPtr == IntPtr.Zero)
             {
                 return null;
             }
@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Extensions
             byte* source = (byte*)intPtr;
             int length = 0;
 
-            while (source[length] != 0) 
+            while (source[length] != 0)
             {
                 length++;
             }

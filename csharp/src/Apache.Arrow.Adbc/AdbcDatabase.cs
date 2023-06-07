@@ -23,17 +23,18 @@ namespace Apache.Arrow.Adbc
     /// <summary>
     /// Clients first initialize a database, then create a connection.
     /// This gives the implementation a place to initialize and own any
-    /// common connection state.  
+    /// common connection state.
     /// For example, in-memory databases can place ownership of the actual
     /// database in this object.
     /// </summary>
     public abstract class AdbcDatabase : IDisposable
     {
         /// <summary>
-        /// Create a new connection to the database. 
+        /// Create a new connection to the database.
         /// </summary>
-        /// <param name="options">Additional options to use when connecting.</param>
-        /// <returns></returns>
+        /// <param name="options">
+        /// Additional options to use when connecting.
+        /// </param>
         public abstract AdbcConnection Connect(IReadOnlyDictionary<string, string> options);
 
         public virtual void Dispose() { }

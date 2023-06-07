@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
             Assert.AreEqual(1, recordBatches.Count);
             Assert.AreEqual(50, recordBatch.Length);
 
-            var actualArrays =  recordBatch.Arrays.ToList();
+            var actualArrays = recordBatch.Arrays.ToList();
 
             List<Type> expectedArrayTypes = new List<Type>()
             {

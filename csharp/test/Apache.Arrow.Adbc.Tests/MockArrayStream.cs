@@ -23,7 +23,7 @@ using Apache.Arrow.Ipc;
 namespace Apache.Arrow.Adbc.Tests
 {
     /// <summary>
-    /// Provides a mechanism to easily run tests against an array stream
+    /// Provides a mechanism to easily run tests against an array stream.
     /// </summary>
     public class MockArrayStream : IArrowArrayStream
     {
@@ -34,10 +34,14 @@ namespace Apache.Arrow.Adbc.Tests
         private int calls = -1;
 
         /// <summary>
-        /// Initializes the TestArrayStream
+        /// Initializes the TestArrayStream.
         /// </summary>
-        /// <param name="schema">The Arrow schema</param>
-        /// <param name="recordBatches">A list of record batches</param>
+        /// <param name="schema">
+        /// The Arrow schema.
+        /// </param>
+        /// <param name="recordBatches">
+        /// A list of record batches.
+        /// </param>
         public MockArrayStream(Schema schema, List<RecordBatch> recordBatches)
         {
             this.schema = schema;
@@ -46,13 +50,14 @@ namespace Apache.Arrow.Adbc.Tests
 
         public Schema Schema => this.schema;
 
-        public void Dispose() {}
+        public void Dispose() { }
 
         /// <summary>
-        /// Moves through the list of record batches
+        /// Moves through the list of record batches.
         /// </summary>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <param name="cancellationToken">
+        /// Optional cancellation token.
+        /// </param>
         public ValueTask<RecordBatch> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             calls++;

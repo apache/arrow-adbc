@@ -28,7 +28,8 @@ namespace Apache.Arrow.Adbc
     public static class StandardSchemas
     {
         /// <summary>
-        /// The schema of the result set of <see cref="AdbcConnection.GetInfo(int[])"/>}.
+        /// The schema of the result set of
+        /// <see cref="AdbcConnection.GetInfo(int[])"/>}.
         /// </summary>
         public static readonly Schema GetInfoSchema =
             new Schema(
@@ -64,7 +65,7 @@ namespace Apache.Arrow.Adbc
                                     ),
                                     true
                                 )
-                            }, 
+                            },
                             // TBD if this line is the best approach but its a good one-liner
                             new int[] {0, 1, 2, 3, 4, 5}.SelectMany(BitConverter.GetBytes).ToArray(),
                             UnionMode.Dense),

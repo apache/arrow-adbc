@@ -22,15 +22,16 @@ namespace Apache.Arrow.Adbc
 {
     /// <summary>
     /// This provides a common interface for vendor-specific driver
-    /// initialization routines. 
+    /// initialization routines.
     /// </summary>
     public abstract class AdbcDriver : IDisposable
     {
         /// <summary>
         /// Open a database via this driver.
         /// </summary>
-        /// <param name="parameters">Driver-specific parameters.</param>
-        /// <returns></returns>
+        /// <param name="parameters">
+        /// Driver-specific parameters.
+        /// </param>
         public abstract AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters);
 
         public virtual void Dispose()

@@ -27,7 +27,6 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
         /// <summary>
         /// Loads record batches from an arrow file.
         /// </summary>
-        /// <returns></returns>
         public static List<RecordBatch> LoadTestRecordBatches()
         {
             // this file was generated from the Flight SQL data source
@@ -42,7 +41,7 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
             {
                 int batches = reader.RecordBatchCountAsync().Result;
 
-                for (int i = 0; i < batches; i++) 
+                for (int i = 0; i < batches; i++)
                 {
                     recordBatches.Add(reader.ReadNextRecordBatch());
                 }

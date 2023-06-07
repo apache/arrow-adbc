@@ -38,11 +38,11 @@ namespace Apache.Arrow.Adbc.FlightSql
             _metadata = metadata;
         }
 
-        internal FlightClient FlightClient 
-        { 
-            get => _flightClientInternal; 
+        internal FlightClient FlightClient
+        {
+            get => _flightClientInternal;
         }
-        
+
         internal Metadata Metadata
         {
             get => GetMetaData();
@@ -65,23 +65,23 @@ namespace Apache.Arrow.Adbc.FlightSql
 
         public void Open(string uri)
         {
-            #if NETSTANDARD // and Win11 or later --> https://learn.microsoft.com/en-us/aspnet/core/grpc/netstandard?view=aspnetcore-7.0#net-framework
+#if NETSTANDARD // and Win11 or later --> https://learn.microsoft.com/en-us/aspnet/core/grpc/netstandard?view=aspnetcore-7.0#net-framework
 
                 var channel = GrpcChannel.ForAddress(uri, new GrpcChannelOptions
                     {
-                        HttpHandler = new System.Net.Http.WinHttpHandler() 
-                        { 
+                        HttpHandler = new System.Net.Http.WinHttpHandler()
+                        {
                             ReceiveDataTimeout = TimeSpan.FromMinutes(5),
                             SendTimeout = TimeSpan.FromMinutes(5),
                             ReceiveHeadersTimeout = TimeSpan.FromMinutes(5)
                         },
-                        
+
                     });
 
                 _flightClientInternal = new FlightClient(channel);
-            #else
-                _flightClientInternal = new FlightClient(GrpcChannel.ForAddress(uri));
-            #endif
+#else
+            _flightClientInternal = new FlightClient(GrpcChannel.ForAddress(uri));
+#endif
         }
 
         public override AdbcStatement CreateStatement()

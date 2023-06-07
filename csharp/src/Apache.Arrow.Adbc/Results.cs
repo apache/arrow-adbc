@@ -64,7 +64,7 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
-        /// The number of records in the result or -1 if not known. 
+        /// The number of records in the result or -1 if not known.
         /// </summary>
         public long AffectedRows { get => _affectedRows; }
     }
@@ -96,7 +96,7 @@ namespace Apache.Arrow.Adbc
         public long AffectedRows { get => _affectedRows; }
 
         /// <summary>
-        /// Get partitions. 
+        /// Get partitions.
         /// </summary>
         public List<PartitionDescriptor> PartitionDescriptors { get => _partitionDescriptors; }
     }

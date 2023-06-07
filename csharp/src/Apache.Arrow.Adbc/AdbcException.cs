@@ -67,7 +67,7 @@ public class AdbcException : Exception
     /// </summary>
     public virtual string SqlState
     {
-        get => null; 
+        get => null;
     }
 
     /// <summary>
@@ -77,12 +77,12 @@ public class AdbcException : Exception
     {
         get => _statusCode;
     }
-    
+
     /// <summary>
     /// Gets a native error number.
     /// </summary>
     public virtual int NativeError
     {
-        get => 0; 
+        get => 0;
     }
 }

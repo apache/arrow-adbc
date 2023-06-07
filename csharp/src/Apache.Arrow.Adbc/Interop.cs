@@ -63,28 +63,28 @@ namespace Apache.Arrow.Adbc
 
             nativeDriver->DatabaseInit = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode>)databaseInit.Pointer;
             nativeDriver->DatabaseNew = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode>)stub.newDatabase.Pointer;
-            nativeDriver->DatabaseSetOption = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, byte*, byte*, NativeAdbcError*, AdbcStatusCode>) databaseSetOption.Pointer;
+            nativeDriver->DatabaseSetOption = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, byte*, byte*, NativeAdbcError*, AdbcStatusCode>)databaseSetOption.Pointer;
             nativeDriver->DatabaseRelease = (delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode>)databaseRelease.Pointer;
 
             nativeDriver->ConnectionCommit = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode>)connectionRelease.Pointer;
             nativeDriver->ConnectionGetInfo = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, int, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>)connectionGetInfo.Pointer;
             nativeDriver->ConnectionGetObjects = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>)connectionGetObjects.Pointer;
-            nativeDriver->ConnectionGetTableSchema = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*,  byte*, byte*, byte*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode>)connectionGetTableSchema.Pointer;
-            nativeDriver->ConnectionGetTableTypes = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>) connectionGetTableTypes.Pointer;
+            nativeDriver->ConnectionGetTableSchema = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, byte*, byte*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode>)connectionGetTableSchema.Pointer;
+            nativeDriver->ConnectionGetTableTypes = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>)connectionGetTableTypes.Pointer;
             nativeDriver->ConnectionInit = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode>)connectionInit.Pointer;
             nativeDriver->ConnectionNew = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode>)stub.newConnection.Pointer;
             nativeDriver->ConnectionSetOption = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, byte*, NativeAdbcError*, AdbcStatusCode>)connectionSetOption.Pointer;
-            nativeDriver->ConnectionReadPartition = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, int, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>) connectionReadPartition.Pointer;
+            nativeDriver->ConnectionReadPartition = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, int, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>)connectionReadPartition.Pointer;
             nativeDriver->ConnectionRelease = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode>)connectionRelease.Pointer;
             nativeDriver->ConnectionRollback = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode>)connectionRelease.Pointer;
 
             nativeDriver->StatementBind = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArray*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode>)statementBind.Pointer;
             nativeDriver->StatementNew = (delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode>)statementNew.Pointer;
-            nativeDriver->StatementSetSqlQuery = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, NativeAdbcError *, AdbcStatusCode >)statementSetSqlQuery.Pointer;
+            nativeDriver->StatementSetSqlQuery = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, NativeAdbcError*, AdbcStatusCode>)statementSetSqlQuery.Pointer;
             nativeDriver->StatementExecuteQuery = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, long*, NativeAdbcError*, AdbcStatusCode>)statementExecuteQuery.Pointer;
             nativeDriver->StatementPrepare = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode>)statementRelease.Pointer;
             nativeDriver->StatementRelease = (delegate* unmanaged[Stdcall]<NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode>)statementRelease.Pointer;
-            
+
             return 0;
         }
 
@@ -100,11 +100,11 @@ namespace Apache.Arrow.Adbc
         {
             ReleaseError(error);
 
-            #if NETSTANDARD
+#if NETSTANDARD
                 error->message = (byte*)MarshalExtensions.StringToCoTaskMemUTF8(exception.Message);
-            #else
-                error->message = (byte*)Marshal.StringToCoTaskMemUTF8(exception.Message);
-            #endif
+#else
+            error->message = (byte*)Marshal.StringToCoTaskMemUTF8(exception.Message);
+#endif
 
             error->sqlstate0 = (byte)0;
             error->sqlstate1 = (byte)0;
@@ -114,7 +114,7 @@ namespace Apache.Arrow.Adbc
             error->vendor_code = 0;
             error->vendor_code = 0;
             error->release = (delegate* unmanaged[Stdcall]<NativeAdbcError*, void>)releaseError.Pointer;
-            
+
             return AdbcStatusCode.UnknownError;
         }
 
@@ -315,11 +315,11 @@ namespace Apache.Arrow.Adbc
             GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
             AdbcStatement stub = (AdbcStatement)gch.Target;
 
-            #if NETSTANDARD
+#if NETSTANDARD
                 stub.SqlQuery = MarshalExtensions.PtrToStringUTF8((IntPtr)text);
-            #else
-                stub.SqlQuery = Marshal.PtrToStringUTF8((IntPtr)text);
-            #endif
+#else
+            stub.SqlQuery = Marshal.PtrToStringUTF8((IntPtr)text);
+#endif
 
             return AdbcStatusCode.Success;
         }
@@ -378,7 +378,7 @@ namespace Apache.Arrow.Adbc
     }
 
     /// <summary>
-    /// Clients first initialize a database, then create a connection.  
+    /// Clients first initialize a database, then create a connection.
     /// This gives the implementation a place to initialize and
     /// own any common connection state.  For example, in-memory databases
     /// can place ownership of the actual database in this object.
@@ -409,7 +409,7 @@ namespace Apache.Arrow.Adbc
 
             ptr->private_data = null;
             ptr->private_driver = null;
-            
+
             return ptr;
         }
 
@@ -537,7 +537,7 @@ namespace Apache.Arrow.Adbc
         /// Unlike other structures, this is an embedded callback to make it
         /// easier for the driver manager and driver to cooperate.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<NativeAdbcPartitions*, void> release; 
+        public delegate* unmanaged[Stdcall]<NativeAdbcPartitions*, void> release;
     }
 
     /// <summary>
@@ -560,7 +560,7 @@ namespace Apache.Arrow.Adbc
         /// A SQLSTATE error code, if provided, as defined by the
         ///   SQL:2003 standard.  If not set, it should be set to
         ///   "\0\0\0\0\0".
-        ///   
+        ///
         /// This is the first value.
         ///</summary>
         public byte sqlstate0;
@@ -569,7 +569,7 @@ namespace Apache.Arrow.Adbc
         /// A SQLSTATE error code, if provided, as defined by the
         ///   SQL:2003 standard.  If not set, it should be set to
         ///   "\0\0\0\0\0".
-        ///   
+        ///
         /// This is the second value.
         ///</summary>
         public byte sqlstate1;
@@ -578,7 +578,7 @@ namespace Apache.Arrow.Adbc
         /// A SQLSTATE error code, if provided, as defined by the
         ///   SQL:2003 standard.  If not set, it should be set to
         ///   "\0\0\0\0\0".
-        ///   
+        ///
         /// This is the third value.
         ///</summary>
         public byte sqlstate2;
@@ -587,7 +587,7 @@ namespace Apache.Arrow.Adbc
         /// A SQLSTATE error code, if provided, as defined by the
         ///   SQL:2003 standard.  If not set, it should be set to
         ///   "\0\0\0\0\0".
-        ///   
+        ///
         /// This is the fourth value.
         ///</summary>
         public byte sqlstate3;
@@ -596,7 +596,7 @@ namespace Apache.Arrow.Adbc
         /// A SQLSTATE error code, if provided, as defined by the
         ///   SQL:2003 standard.  If not set, it should be set to
         ///   "\0\0\0\0\0".
-        ///   
+        ///
         /// This is the last value.
         ///</summary>
         public byte sqlstate4;
@@ -607,7 +607,7 @@ namespace Apache.Arrow.Adbc
         /// Unlike other structures, this is an embedded callback to make it
         /// easier for the driver manager and driver to cooperate.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<NativeAdbcError*, void> release; 
+        public delegate* unmanaged[Stdcall]<NativeAdbcError*, void> release;
     };
 
     /// <summary>
@@ -712,7 +712,7 @@ namespace Apache.Arrow.Adbc
         /// for ADBC usage.  Drivers/vendors will ignore requests for
         /// unrecognized codes (the row will be omitted from the result).
         /// </summary>
-        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, int, CArrowArrayStream*,NativeAdbcError*, AdbcStatusCode> ConnectionGetInfo;
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, int, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> ConnectionGetInfo;
 
         /// <summary>
         ///  Get a hierarchical view of all catalogs, database schemas,
@@ -746,7 +746,7 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get the Arrow schema of a table.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*,  byte*, byte*, byte*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> ConnectionGetTableSchema;
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, byte*, byte*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> ConnectionGetTableSchema;
 
         /// <summary>
         /// Get a list of table types in the database.
@@ -793,7 +793,7 @@ namespace Apache.Arrow.Adbc
         ///
         /// A partition can be retrieved from AdbcPartitions.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, int, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode>  ConnectionReadPartition;
+        public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, byte*, int, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> ConnectionReadPartition;
 
         /// <summary>
         /// Destroy this connection.
@@ -895,7 +895,7 @@ namespace Apache.Arrow.Adbc
         /// queries expected to be executed repeatedly, AdbcStatementPrepare
         /// the statement first.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, int, NativeAdbcError*, AdbcStatusCode>  StatementSetSubstraitPlan;
+        public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, byte*, int, NativeAdbcError*, AdbcStatusCode> StatementSetSubstraitPlan;
     }
 
     unsafe delegate AdbcStatusCode DriverRelease(NativeAdbcDriver* driver, NativeAdbcError* error);
@@ -965,7 +965,7 @@ namespace Apache.Arrow.Adbc
 
             ConnectionStub stub = new ConnectionStub(_driver);
             GCHandle handle = GCHandle.Alloc(stub);
-            nativeConnection->private_data = (void*) GCHandle.ToIntPtr(handle);
+            nativeConnection->private_data = (void*)GCHandle.ToIntPtr(handle);
 
             return AdbcStatusCode.Success;
         }
@@ -1004,11 +1004,11 @@ namespace Apache.Arrow.Adbc
             IntPtr namePtr = (IntPtr)name;
             IntPtr valuePtr = (IntPtr)value;
 
-            #if NETSTANDARD
+#if NETSTANDARD
                 options[MarshalExtensions.PtrToStringUTF8(namePtr)] = MarshalExtensions.PtrToStringUTF8(valuePtr);
-            #else
-                options[Marshal.PtrToStringUTF8(namePtr)] = Marshal.PtrToStringUTF8(valuePtr);
-            #endif
+#else
+            options[Marshal.PtrToStringUTF8(namePtr)] = Marshal.PtrToStringUTF8(valuePtr);
+#endif
 
             return AdbcStatusCode.Success;
         }
@@ -1049,11 +1049,11 @@ namespace Apache.Arrow.Adbc
             IntPtr namePtr = (IntPtr)name;
             IntPtr valuePtr = (IntPtr)value;
 
-            #if NETSTANDARD
+#if NETSTANDARD
                 options[MarshalExtensions.PtrToStringUTF8(namePtr)] = MarshalExtensions.PtrToStringUTF8(valuePtr);
-            #else
-                options[Marshal.PtrToStringUTF8(namePtr)] = Marshal.PtrToStringUTF8(valuePtr);
-            #endif
+#else
+            options[Marshal.PtrToStringUTF8(namePtr)] = Marshal.PtrToStringUTF8(valuePtr);
+#endif
 
             return AdbcStatusCode.Success;
         }
@@ -1075,18 +1075,18 @@ namespace Apache.Arrow.Adbc
             string dbSchemaPattern = string.Empty;
             string tableNamePattern = string.Empty;
             string columnNamePattern = string.Empty;
-           
-            #if NETSTANDARD
+
+#if NETSTANDARD
                 catalogPattern = MarshalExtensions.PtrToStringUTF8((IntPtr)catalog);
                 dbSchemaPattern = MarshalExtensions.PtrToStringUTF8((IntPtr)db_schema);
                 tableNamePattern = MarshalExtensions.PtrToStringUTF8((IntPtr)table_name);
                 columnNamePattern = MarshalExtensions.PtrToStringUTF8((IntPtr)column_name);
-            #else
-                catalogPattern = Marshal.PtrToStringUTF8((IntPtr)catalog);
-                dbSchemaPattern = Marshal.PtrToStringUTF8((IntPtr)db_schema);
-                tableNamePattern = Marshal.PtrToStringUTF8((IntPtr)table_name);
-                columnNamePattern = Marshal.PtrToStringUTF8((IntPtr)column_name);
-            #endif
+#else
+            catalogPattern = Marshal.PtrToStringUTF8((IntPtr)catalog);
+            dbSchemaPattern = Marshal.PtrToStringUTF8((IntPtr)db_schema);
+            tableNamePattern = Marshal.PtrToStringUTF8((IntPtr)table_name);
+            columnNamePattern = Marshal.PtrToStringUTF8((IntPtr)column_name);
+#endif
 
             GCHandle gch = GCHandle.FromIntPtr((IntPtr)table_type);
             List<string> tableTypes = (List<string>)gch.Target;
@@ -1111,15 +1111,15 @@ namespace Apache.Arrow.Adbc
             string sDbSchema = string.Empty;
             string sTableName = string.Empty;
 
-            #if NETSTANDARD
+#if NETSTANDARD
                 sCatalog = MarshalExtensions.PtrToStringUTF8((IntPtr)catalog);
                 sDbSchema = MarshalExtensions.PtrToStringUTF8((IntPtr)db_schema);
                 sTableName = MarshalExtensions.PtrToStringUTF8((IntPtr)table_name);
-            #else
-                sCatalog = Marshal.PtrToStringUTF8((IntPtr)catalog);
-                sDbSchema = Marshal.PtrToStringUTF8((IntPtr)db_schema);
-                sTableName = Marshal.PtrToStringUTF8((IntPtr)table_name);
-            #endif
+#else
+            sCatalog = Marshal.PtrToStringUTF8((IntPtr)catalog);
+            sDbSchema = Marshal.PtrToStringUTF8((IntPtr)db_schema);
+            sTableName = Marshal.PtrToStringUTF8((IntPtr)table_name);
+#endif
 
             Schema schema = connection.GetTableSchema(sCatalog, sDbSchema, sTableName);
 
@@ -1161,7 +1161,7 @@ namespace Apache.Arrow.Adbc
             {
                 return AdbcStatusCode.UnknownError;
             }
-            
+
             GCHandle gch = GCHandle.FromIntPtr((IntPtr)info_codes);
             List<int> codes = (List<int>)gch.Target;
 

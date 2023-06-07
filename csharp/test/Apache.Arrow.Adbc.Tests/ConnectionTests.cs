@@ -29,8 +29,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// Validates that a <see cref="QueryResult"/> contains a number
         /// of records.
         /// </summary>
-        /// <param name="queryResult">The query result</param>
-        /// <param name="expectedNumberOfResults">The number of records</param>
+        /// <param name="queryResult">
+        /// The query result.
+        /// </param>
+        /// <param name="expectedNumberOfResults">
+        /// The number of records.
+        /// </param>
         public static void CanDriverConnect(QueryResult queryResult, long expectedNumberOfResults)
         {
             long count = 0;
@@ -56,7 +60,9 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Validates if an exception is an AdbcException
         /// </summary>
-        /// <param name="ex">The exception</param>
+        /// <param name="ex">
+        /// The exception
+        /// </param>
         public static void VerifyBadQueryGeneratesError(Exception ex)
         {
             Assert.IsTrue(ex is AdbcException, "Can only validate AdbcException types");

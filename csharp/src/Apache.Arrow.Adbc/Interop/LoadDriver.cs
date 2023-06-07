@@ -129,8 +129,9 @@ namespace Apache.Arrow.Adbc.Interop
         /// <summary>
         /// Loads an <see cref="AdbcDriver"/> from the file system.
         /// </summary>
-        /// <param name="file">The path to the file</param>
-        /// <returns></returns>
+        /// <param name="file">
+        /// The path to the file.
+        /// </param>
         public static AdbcDriver Load(string file)
         {
             if (file[0] == '/')
@@ -158,12 +159,13 @@ namespace Apache.Arrow.Adbc.Interop
             /// <summary>
             /// Opens a database
             /// </summary>
-            /// <param name="parameters"></param>
-            /// <returns></returns>
+            /// <param name="parameters">
+            /// Parameters to use when calling DatabaseNew.
+            /// </param>
             public unsafe override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
                 NativeAdbcDatabase nativeDatabase = new NativeAdbcDatabase();
-        
+
                 using (CallHelper caller = new CallHelper())
                 {
                     caller.Call(_nativeDriver.DatabaseNew, ref nativeDatabase);
@@ -219,8 +221,8 @@ namespace Apache.Arrow.Adbc.Interop
             public unsafe override AdbcConnection Connect(IReadOnlyDictionary<string, string> options)
             {
                 NativeAdbcConnection nativeConnection = new NativeAdbcConnection();
-               
-                using(CallHelper caller = new CallHelper())
+
+                using (CallHelper caller = new CallHelper())
                 {
                     if (options != null)
                     {
@@ -260,7 +262,7 @@ namespace Apache.Arrow.Adbc.Interop
             {
                 NativeAdbcStatement nativeStatement = new NativeAdbcStatement();
 
-                using(CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper())
                 {
                     caller.Call(_nativeDriver.StatementNew, ref _nativeConnection, ref nativeStatement);
                 }
@@ -287,11 +289,11 @@ namespace Apache.Arrow.Adbc.Interop
             public unsafe override QueryResult ExecuteQuery()
             {
                 CArrowArrayStream* nativeArrayStream = CArrowArrayStream.Create();
-                
+
                 using (CallHelper caller = new CallHelper())
                 {
                     caller.Call(_nativeDriver.StatementSetSqlQuery, ref _nativeStatement, SqlQuery);
-                  
+
                     long rows = 0;
 
                     caller.Call(_nativeDriver.StatementExecuteQuery, ref _nativeStatement, nativeArrayStream, ref rows);
@@ -318,13 +320,13 @@ namespace Apache.Arrow.Adbc.Interop
         {
             private IntPtr _s;
 
-            public Utf8Helper(string s) 
+            public Utf8Helper(string s)
             {
-                #if NETSTANDARD
+#if NETSTANDARD
                     _s = MarshalExtensions.StringToCoTaskMemUTF8(s);
-                #else
-                    _s = Marshal.StringToCoTaskMemUTF8(s); 
-                #endif
+#else
+                _s = Marshal.StringToCoTaskMemUTF8(s);
+#endif
             }
 
             public static implicit operator IntPtr(Utf8Helper s) { return s._s; }
@@ -475,11 +477,11 @@ namespace Apache.Arrow.Adbc.Interop
                     string message = "Undefined error";
                     if ((IntPtr)_error.message != IntPtr.Zero)
                     {
-                        #if NETSTANDARD
+#if NETSTANDARD
                             message = MarshalExtensions.PtrToStringUTF8((IntPtr)_error.message);
-                        #else
-                            message = Marshal.PtrToStringUTF8((IntPtr)_error.message);
-                        #endif
+#else
+                        message = Marshal.PtrToStringUTF8((IntPtr)_error.message);
+#endif
                     }
                     Dispose();
                     throw new AdbcException(message);

@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.FlightSql
     public class FlightSqlStatement : AdbcStatement
     {
         private FlightSqlConnection _flightSqlConnection;
-        
+
         public FlightSqlStatement(FlightSqlConnection flightSqlConnection)
         {
             _flightSqlConnection = flightSqlConnection;
@@ -63,10 +63,18 @@ namespace Apache.Arrow.Adbc.FlightSql
         /// Gets a value from the Arrow array at the specified index
         /// using the Arrow field for metadata.
         /// </summary>
-        /// <param name="arrowArray"></param>
-        /// <param name="field"></param>
-        /// <param name="index"></param>
-        /// <returns></returns>
+        /// <param name="arrowArray">
+        /// The array containing the value.
+        /// </param>
+        /// <param name="field">
+        /// The Arrow field.
+        /// </param>
+        /// <param name="index">
+        /// The index of the item.
+        /// </param>
+        /// <returns>
+        /// The item at the index position.
+        /// </returns>
         public override object GetValue(IArrowArray arrowArray, Field field, int index)
         {
             if (arrowArray is BooleanArray)
@@ -91,7 +99,7 @@ namespace Apache.Arrow.Adbc.FlightSql
                 {
                     // the value may be <decimal.min or >decimal.max
                     // then Arrow throws an exception
-                    // no good way to check prior to 
+                    // no good way to check prior to
                     return ((Decimal128Array)arrowArray).GetValue(index);
                 }
                 catch (OverflowException oex)

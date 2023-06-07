@@ -14,13 +14,13 @@
     <PackageReference Include="MSTest.TestFramework" Version="3.0.3" />
     <PackageReference Include="System.Text.Json" Version="7.0.2" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\Apache.Arrow.Adbc.FlightSql\Apache.Arrow.Adbc.FlightSql.csproj" />
     <ProjectReference Include="..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
     <ProjectReference Include="..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <None Update="flightsql.arrow">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

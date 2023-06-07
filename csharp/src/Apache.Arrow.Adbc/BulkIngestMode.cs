@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc
         /// Do not create the table and append data; error if the table
         /// does not exist (<see cref="AdbcStatusCode.NotFound"/>) or
         /// does not match the schema of the data to append
-        /// (<see cref="AdbcStatusCode.AlreadyExists"/>). 
+        /// (<see cref="AdbcStatusCode.AlreadyExists"/>).
         /// </summary>
         Append
     }
