@@ -23,7 +23,9 @@ using Apache.Arrow.Ipc;
 namespace Apache.Arrow.Adbc
 {
     /// <summary>
-    /// Statements may represent queries or prepared statements. Statements may be used multiple times and can be reconfigured (e.g. they can be reused to execute multiple different queries).
+    /// Statements may represent queries or prepared statements. Statements
+    /// may be used multiple times and can be reconfigured (e.g. they can
+    /// be reused to execute multiple different queries).
     /// </summary>
     public abstract class AdbcStatement : IDisposable
     {
@@ -52,29 +54,39 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
-        /// Executes the statement and returns a tuple containing the number of records and the <see cref="IArrowArrayStream"/>..
+        /// Executes the statement and returns a tuple containing the number
+        /// of records and the <see cref="IArrowArrayStream"/>.
         /// </summary>
-        /// <returns>A <see cref="ValueTuple"/> where the first item is the number of records and the second is the <see cref="IArrowArrayStream"/>.</returns>
+        /// <returns>
+        /// A <see cref="ValueTuple"/> where the first item is the number
+        /// of records and the second is the <see cref="IArrowArrayStream"/>.
+        /// </returns>
         public abstract QueryResult ExecuteQuery();
 
         /// <summary>
-        /// Executes the statement and returns a tuple containing the number of records and the <see cref="IArrowArrayStream"/>..
+        /// Executes the statement and returns a tuple containing the number
+        /// of records and the <see cref="IArrowArrayStream"/>.
         /// </summary>
-        /// <returns>A <see cref="ValueTuple"/> where the first item is the number of records and the second is the <see cref="IArrowArrayStream"/>.</returns>
+        /// <returns>
+        /// A <see cref="ValueTuple"/> where the first item is the number
+        /// of records and the second is the <see cref="IArrowArrayStream"/>.
+        /// </returns>
         public virtual async ValueTask<QueryResult> ExecuteQueryAsync()
         {
             return await Task.Run(() => ExecuteQuery());
         }
 
         /// <summary>
-        /// Executes an update command and returns the number of records effected.
+        /// Executes an update command and returns the number of
+        /// records effected.
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
         public abstract UpdateResult ExecuteUpdate();
 
-        // <summary>
-        /// Executes an update command and returns the number of records effected.
+        /// <summary>
+        /// Executes an update command and returns the number of
+        /// records effected.
         /// </summary>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
@@ -84,9 +96,9 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
-        /// Execute a result set-generating query and get a list of partitions of the result set.
+        /// Execute a result set-generating query and get a list of
+        /// partitions of the result set.
         /// </summary>
-        /// <returns><see cref="PartitionedResult"/></returns>
         public virtual PartitionedResult ExecutePartitioned()
         {
             throw AdbcException.NotImplemented("Statement does not support ExecutePartitioned");
@@ -95,7 +107,6 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get the schema for bound parameters.
         /// </summary>
-        /// <returns><see cref="Schema"/></returns>
         public virtual Schema GetParameterSchema()
         {
             throw AdbcException.NotImplemented("Statement does not support GetParameterSchema");
@@ -115,12 +126,17 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
-        /// Gets a value from the Arrow array at the specified index, using the Field metadata for information.
+        /// Gets a value from the Arrow array at the specified index,
+        /// using the Field metadata for information.
         /// </summary>
         /// <param name="arrowArray">The Arrow array.</param>
-        /// <param name="field">The <see cref="Field"/> from the <see cref="Schema"/> that can be used for metadata inspection.</param>
-        /// <param name="index">The index in the array to get the value from.</param>
-        /// <returns></returns>
+        /// <param name="field">
+        /// The <see cref="Field"/> from the <see cref="Schema"/> that can
+        /// be used for metadata inspection.
+        /// </param>
+        /// <param name="index">
+        /// The index in the array to get the value from.
+        /// </param>
         public abstract object GetValue(IArrowArray arrowArray, Field field, int index);
     }
 }

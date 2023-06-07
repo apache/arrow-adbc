@@ -23,7 +23,8 @@ using Apache.Arrow.Ipc;
 namespace Apache.Arrow.Adbc
 {
     /// <summary>
-    /// Provides methods for query execution, managing prepared statements, using transactions, and so on.
+    /// Provides methods for query execution, managing prepared statements,
+    /// using transactions, and so on.
     /// </summary>
     public abstract class AdbcConnection : IDisposable
     {
@@ -87,14 +88,38 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
-        /// Get a hierarchical view of all catalogs, database schemas, tables, and columns.
+        /// Get a hierarchical view of all catalogs, database schemas, tables,
+        /// and columns.
         /// </summary>
-        /// <param name="depth">The level of nesting to display. If ALL, display all levels (up through columns). If CATALOGS, display only catalogs (i.e., catalog_schemas will be null), and so on. May be a* search pattern(see class documentation).</param>
-        /// <param name="catalogPattern">Only show tables in the given catalog. If null, do not filter by catalog.If an empty string, only show tables without a catalog.May be a search pattern (see class documentation).</param>
-        /// <param name="dbSchemaPattern">Only show tables in the given database schema. If null, do not filter by database schema.If an empty string, only show tables without a database schema.May be a search pattern (see class documentation).</param>
-        /// <param name="tableNamePattern"> Only show tables with the given name. If an empty string, only show tables without a catalog. May be a search pattern (see class documentation).</param>
-        /// <param name="tableTypes">Only show tables matching one of the given table types. If null, show tables of any type. Valid table types can be fetched from <see cref="GetTableTypes"/>}.</param>
-        /// <param name="columnNamePattern"> Only show columns with the given name. If null, do not filter by name.May be a search pattern (see class documentation).</param>
+        /// <param name="depth">
+        /// The level of nesting to display.
+        /// If ALL, display all levels (up through columns).
+        /// If CATALOGS, display only catalogs (i.e., catalog_schemas will be
+        /// null), and so on. May be a* search pattern.
+        /// </param>
+        /// <param name="catalogPattern">
+        /// Only show tables in the given catalog.
+        /// If null, do not filter by catalog.If an empty string, only show tables
+        /// without a catalog. May be a search pattern.
+        /// </param>
+        /// <param name="dbSchemaPattern">
+        /// Only show tables in the given database schema. If null, do not
+        /// filter by database schema.If an empty string, only show tables
+        /// without a database schema. May be a search pattern.
+        /// </param>
+        /// <param name="tableNamePattern">
+        /// Only show tables with the given name. If an empty string, only
+        /// show tables without a catalog. May be a search pattern.
+        /// </param>
+        /// <param name="tableTypes">
+        /// Only show tables matching one of the given table types.
+        /// If null, show tables of any type. Valid table types can be
+        /// fetched from <see cref="GetTableTypes"/>}.
+        /// </param>
+        /// <param name="columnNamePattern">
+        /// Only show columns with the given name.
+        /// If null, do not filter by name.May be a search pattern.
+        /// </param>
         /// <returns></returns>
         public virtual IArrowArrayStream GetObjects(
             GetObjectsDepth depth,
@@ -110,7 +135,8 @@ namespace Apache.Arrow.Adbc
         public enum GetObjectsDepth
         {
             /// <summary>
-            /// Display ALL objects (catalog, database schemas, tables, and columns).
+            /// Display ALL objects (catalog, database schemas, tables,
+            /// and columns).
             /// </summary>
             All,
 
@@ -120,12 +146,12 @@ namespace Apache.Arrow.Adbc
             Catalogs,
 
             /// <summary>
-            /// Display catalogs and database schemas. 
+            /// Display catalogs and database schemas.
             /// </summary>
             DbSchemas,
 
             /// <summary>
-            /// Display catalogs, database schemas, and tables. 
+            /// Display catalogs, database schemas, and tables.
             /// </summary>
             Tables
         }

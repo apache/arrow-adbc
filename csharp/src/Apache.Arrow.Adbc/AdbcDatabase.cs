@@ -21,7 +21,11 @@ using System.Collections.Generic;
 namespace Apache.Arrow.Adbc
 {
     /// <summary>
-    /// Clients first initialize a database, then create a connection. This gives the implementation a place to initialize and own any common connection state.  For example, in-memory databases can place ownership of the actual database in this object.
+    /// Clients first initialize a database, then create a connection.
+    /// This gives the implementation a place to initialize and own any
+    /// common connection state.  
+    /// For example, in-memory databases can place ownership of the actual
+    /// database in this object.
     /// </summary>
     public abstract class AdbcDatabase : IDisposable
     {

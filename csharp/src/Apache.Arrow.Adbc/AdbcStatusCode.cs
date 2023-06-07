@@ -22,7 +22,8 @@ namespace Apache.Arrow.Adbc
     /// detail about errors, functions may also return an AdbcError via an
     /// optional out parameter, which can be inspected.
     /// 
-    /// Generally, error codes may indicate a driver-side or database-side error.
+    /// Generally, error codes may indicate a driver-side or database-side
+    /// error.
     /// </summary>
     public enum AdbcStatusCode : byte
     {
@@ -65,16 +66,18 @@ namespace Apache.Arrow.Adbc
         InvalidState = 6,
 
         /// <summary>
-        /// Invalid data was processed (not a programming error). For instance,
-        /// a division by zero may have occurred during query execution.
+        /// Invalid data was processed (not a programming error). For
+        /// instance, a division by zero may have occurred during
+        /// query execution.
         /// 
         /// Indicates a database-side error only.
         /// </summary>
         InvalidData = 7,
 
         /// <summary>
-        /// The database's integrity was affected. For instance, a foreign key
-        /// check may have failed, or a uniqueness constraint may have been violated.
+        /// The database's integrity was affected. For instance, a foreign
+        /// key check may have failed, or a uniqueness constraint may have
+        /// been violated.
         /// 
         /// Indicates a database-side error only.
         /// </summary>
@@ -86,7 +89,8 @@ namespace Apache.Arrow.Adbc
         InternalError = 9,
 
         /// <summary>
-        /// An I/O error occurred. For instance, a remote service may be unavailable.
+        /// An I/O error occurred. For instance, a remote service may be
+        /// unavailable.
         /// </summary>
         IOError = 10,
 

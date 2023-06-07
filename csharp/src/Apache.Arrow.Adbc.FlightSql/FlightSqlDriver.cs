@@ -20,8 +20,8 @@ using System.Collections.Generic;
 namespace Apache.Arrow.Adbc.FlightSql
 {
     /// <summary>
-    /// Represents an Arrpw Flight SQL driver for connecting to data sources that support
-    /// Arrow Flight SQL.
+    /// Represents an Arrpw Flight SQL driver for connecting to
+    /// data sources that support Arrow Flight SQL.
     /// </summary>
     public class FlightSqlDriver : AdbcDriver
     {

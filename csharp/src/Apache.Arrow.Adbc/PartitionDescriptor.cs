@@ -20,7 +20,8 @@ using System;
 namespace Apache.Arrow.Adbc
 {
     /// <summary>
-    /// A descriptor for a part of a potentially distributed or partitioned result set.
+    /// A descriptor for a part of a potentially distributed or
+    /// partitioned result set.
     /// </summary>
     public struct PartitionDescriptor : IEquatable<PartitionDescriptor>
     {

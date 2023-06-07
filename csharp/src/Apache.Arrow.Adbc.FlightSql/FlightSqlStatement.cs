@@ -60,7 +60,8 @@ namespace Apache.Arrow.Adbc.FlightSql
         }
 
         /// <summary>
-        /// Gets a value from the Arrow array at the specified index using the Arrow field for metadata.
+        /// Gets a value from the Arrow array at the specified index
+        /// using the Arrow field for metadata.
         /// </summary>
         /// <param name="arrowArray"></param>
         /// <param name="field"></param>
@@ -189,11 +190,16 @@ namespace Apache.Arrow.Adbc.FlightSql
         }
 
         /// <summary>
-        /// For decimals, Arrow throws an OverflowException if a value is < decimal.min or > decimal.max
-        /// So parse the numeric value and return it as a string, if possible
+        /// For decimals, Arrow throws an OverflowException if a value
+        /// is < decimal.min or > decimal.max
+        /// So parse the numeric value and return it as a string,
+        /// if possible
         /// </summary>
-        /// <param name="oex"></param>
-        /// <returns>A string value of the decimal that threw the exception or rethrows the OverflowException.</returns>
+        /// <param name="oex">The OverflowException</param>
+        /// <returns>
+        /// A string value of the decimal that threw the exception
+        /// or rethrows the OverflowException.
+        /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
         private string ParseDecimalValueFromOverflowException(OverflowException oex)
         {

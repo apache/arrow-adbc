@@ -17,14 +17,39 @@
 
 namespace Apache.Arrow.Adbc
 {
+    /// <summary>
+    /// Info codes used for GetInfo
+    /// </summary>
     public enum AdbcInfoCode
     {
+        /// <summary>
+        /// The database vendor/product name (e.g. the server name).
+        /// </summary>
         VendorName = 0,
+
+        /// <summary>
+        /// The database vendor/product version
+        /// </summary>
         VendorVersion = 1,
+
+        /// <summary>
+        /// The database vendor/product Arrow library version
+        /// </summary>
         VendorArrowVersion = 2,
 
+        /// <summary>
+        /// The driver name
+        /// </summary>
         DriverName = 100,
+
+        /// <summary>
+        /// The driver version
+        /// </summary>
         DriverVersion = 101,
+
+        /// <summary>
+        /// The driver Arrow library version
+        /// </summary>
         DriverArrowVersion = 102
     }
 }

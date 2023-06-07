@@ -398,7 +398,8 @@ namespace Apache.Arrow.Adbc
         public void* private_data;
 
         /// <summary>
-        /// The associated driver (used by the driver manager to help track state).
+        /// The associated driver (used by the driver manager to help track
+        /// state).
         /// </summary>
         public NativeAdbcDriver* private_driver;
 
@@ -480,7 +481,8 @@ namespace Apache.Arrow.Adbc
         public void* private_data;
 
         /// <summary>
-        /// The associated driver (used by the driver manager to help track state).
+        /// The associated driver (used by the driver manager to help
+        /// track state).
         /// </summary>
         public NativeAdbcDriver* private_driver;
     }
@@ -655,9 +657,9 @@ namespace Apache.Arrow.Adbc
         ///
         /// Callers pass in a zero-initialized AdbcDatabase.
         ///
-        /// Drivers should allocate their internal data structure and set the private_data
-        /// field to point to the newly allocated struct. This struct should be released
-        /// when AdbcDatabaseRelease is called.
+        /// Drivers should allocate their internal data structure and set
+        /// the private_data field to point to the newly allocated struct.
+        /// This struct should be released when AdbcDatabaseRelease is called.
         /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseNew;
 
@@ -676,9 +678,11 @@ namespace Apache.Arrow.Adbc
         public delegate* unmanaged[Stdcall]<NativeAdbcDatabase*, NativeAdbcError*, AdbcStatusCode> DatabaseRelease;
 
         /// <summary>
-        /// Commit any pending transactions. Only used if autocommit is disabled.
+        /// Commit any pending transactions. Only used if autocommit is
+        /// disabled.
         ///
-        /// Behavior is undefined if this is mixed with SQL transaction statements.
+        /// Behavior is undefined if this is mixed with SQL transaction
+        /// statements.
         /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionCommit; // ConnectionFn
 
@@ -768,9 +772,10 @@ namespace Apache.Arrow.Adbc
         ///
         /// Callers pass in a zero-initialized AdbcConnection.
         ///
-        /// Drivers should allocate their internal data structure and set the private_data
-        /// field to point to the newly allocated struct. This struct should be released
-        /// when AdbcConnectionRelease is called.
+        /// Drivers should allocate their internal data structure and set
+        /// the private_data field to point to the newly allocated struct.
+        /// This struct should be released when AdbcConnectionRelease is
+        /// called.
         /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionNew; // ConnectionFn
 
@@ -804,12 +809,14 @@ namespace Apache.Arrow.Adbc
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcError*, AdbcStatusCode> ConnectionRollback; // ConnectionFn
 
         /// <summary>
-        /// Bind Arrow data. This can be used for bulk inserts or prepared statements.
+        /// Bind Arrow data. This can be used for bulk inserts or prepared
+        /// statements.
         /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArray*, CArrowSchema*, NativeAdbcError*, AdbcStatusCode> StatementBind;
 
         /// <summary>
-        /// Bind Arrow data. This can be used for bulk inserts or prepared statements.
+        /// Bind Arrow data. This can be used for bulk inserts or prepared
+        /// statements.
         /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, NativeAdbcError*, AdbcStatusCode> StatementBindStream;
 
@@ -821,7 +828,8 @@ namespace Apache.Arrow.Adbc
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowArrayStream*, long*, NativeAdbcError*, AdbcStatusCode> StatementExecuteQuery;
 
         /// <summary>
-        /// Execute a statement and get the results as a partitioned result set.
+        /// Execute a statement and get the results as a partitioned result
+        /// set.
         /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcStatement*, CArrowSchema*, NativeAdbcPartitions*, long*, NativeAdbcError*, AdbcStatusCode> StatementExecutePartitions;
 
@@ -834,9 +842,9 @@ namespace Apache.Arrow.Adbc
         /// parameters; named parameters should appear only once.
         ///
         /// If the parameter does not have a name, or the name cannot be
-        /// determined, the name of the corresponding field in the schema will
-        /// be an empty string.  If the type cannot be determined, the type of
-        /// the corresponding field will be NA (NullType).
+        /// determined, the name of the corresponding field in the schema
+        /// will be an empty string.  If the type cannot be determined,
+        /// the type of the corresponding field will be NA (NullType).
         ///
         /// This should be called after AdbcStatementPrepare.
         /// </summary>
@@ -847,15 +855,15 @@ namespace Apache.Arrow.Adbc
         ///
         /// Callers pass in a zero-initialized AdbcStatement.
         ///
-        /// Drivers should allocate their internal data structure and set the private_data
-        /// field to point to the newly allocated struct. This struct should be released
-        /// when AdbcStatementRelease is called.
+        /// Drivers should allocate their internal data structure and set
+        /// the private_data field to point to the newly allocated struct.
+        /// This struct should be released when AdbcStatementRelease is called.
         /// </summary>
         public delegate* unmanaged[Stdcall]<NativeAdbcConnection*, NativeAdbcStatement*, NativeAdbcError*, AdbcStatusCode> StatementNew;
 
         /// <summary>
         /// Turn this statement into a prepared statement to be
-        ///   executed multiple times.
+        /// executed multiple times.
         ///
         /// This invalidates any prior result sets.
         /// </summary>

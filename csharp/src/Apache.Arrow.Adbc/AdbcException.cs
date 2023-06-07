@@ -56,13 +56,14 @@ public class AdbcException : Exception
     }
 
     /// <summary>
-    /// For database providers which support it, contains a standard SQL 5-character
-    /// return code indicating the success or failure of the database operation. The
-    /// first 2 characters represent the class of the return code (e.g. error, success),
-    /// while the last 3 characters represent the subclass, allowing detection of error
-    /// scenarios in a database-portable way.
-    /// For database providers which don't support it, or for inapplicable error scenarios,
-    /// contains null.
+    /// For database providers which support it, contains a standard
+    /// SQL 5-character return code indicating the success or failure
+    /// of the database operation. The first 2 characters represent the
+    /// class of the return code (e.g. error, success), while the
+    /// last 3 characters represent the subclass, allowing detection
+    /// of error scenarios in a database-portable way.
+    /// For database providers which don't support it, or for
+    /// inapplicable error scenarios, contains null.
     /// </summary>
     public virtual string SqlState
     {

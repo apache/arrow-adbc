@@ -28,8 +28,12 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Initializes an AdbcQueryResult
         /// </summary>
-        /// <param name="rowCount">The number of records in the result</param>
-        /// <param name="stream">The <see cref="IArrowArrayStream"/> for reading</param>
+        /// <param name="rowCount">
+        /// The number of records in the result
+        /// </param>
+        /// <param name="stream">
+        /// The <see cref="IArrowArrayStream"/> for reading
+        /// </param>
         public QueryResult(long rowCount, IArrowArrayStream stream)
         {
             RowCount = rowCount;

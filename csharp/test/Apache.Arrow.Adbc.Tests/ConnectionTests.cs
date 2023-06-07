@@ -26,7 +26,8 @@ namespace Apache.Arrow.Adbc.Tests
     public class ConnectionTests
     {
         /// <summary>
-        /// Validates that a <see cref="QueryResult"/> contains a number of records.
+        /// Validates that a <see cref="QueryResult"/> contains a number
+        /// of records.
         /// </summary>
         /// <param name="queryResult">The query result</param>
         /// <param name="expectedNumberOfResults">The number of records</param>

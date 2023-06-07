@@ -21,7 +21,8 @@ using System.Collections.Generic;
 namespace Apache.Arrow.Adbc
 {
     /// <summary>
-    /// This provides a common interface for vendor-specific driver initialization routines. 
+    /// This provides a common interface for vendor-specific driver
+    /// initialization routines. 
     /// </summary>
     public abstract class AdbcDriver : IDisposable
     {

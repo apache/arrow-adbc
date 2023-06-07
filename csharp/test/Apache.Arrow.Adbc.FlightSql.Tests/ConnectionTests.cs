@@ -33,7 +33,8 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
     public class ConnectionTests
     {
         /// <summary>
-        /// Validates if the driver behaves as it should with missing values and parsing mock results.
+        /// Validates if the driver behaves as it should with missing
+        /// values and parsing mock results.
         /// </summary>
         [TestMethod]
         public void CanMockDriverConnect()
@@ -52,7 +53,8 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
         }
 
         /// <summary>
-        /// Validates if the driver can connect to a live server and parse the results.
+        /// Validates if the driver can connect to a live server and
+        /// parse the results.
         /// </summary>
         [TestMethod]
         public void CanDriverConnect()

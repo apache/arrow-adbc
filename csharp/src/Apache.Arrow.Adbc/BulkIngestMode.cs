@@ -18,7 +18,8 @@
 namespace Apache.Arrow.Adbc
 {
     /// <summary>
-    /// How to handle already-existing/nonexistent tables for bulk ingest operations.
+    /// How to handle already-existing/nonexistent tables for bulk ingest
+    /// operations.
     /// </summary>
     public enum BulkIngestMode
     {
@@ -28,7 +29,10 @@ namespace Apache.Arrow.Adbc
         Create,
 
         /// <summary>
-        /// Do not create the table and append data; error if the table does not exist (<see cref="AdbcStatusCode.NotFound"/>) or does not match the schema of the data to append (<see cref="AdbcStatusCode.AlreadyExists"/>). 
+        /// Do not create the table and append data; error if the table
+        /// does not exist (<see cref="AdbcStatusCode.NotFound"/>) or
+        /// does not match the schema of the data to append
+        /// (<see cref="AdbcStatusCode.AlreadyExists"/>). 
         /// </summary>
         Append
     }
