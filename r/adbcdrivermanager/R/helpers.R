@@ -259,7 +259,7 @@ adbc_statement_join <- function(statement, connection) {
 #' @rdname adbc_connection_join
 #' @export
 adbc_stream_join <- function(stream, x) {
-  if (utils::packageVersion("nanoarrow") >= "0.1.0.9000") {
+  if (utils::packageVersion("nanoarrow") < "0.1.0.9000") {
     stop("adbc_stream_join_statement() requires nanoarrow >= 0.2.0")
   }
 
