@@ -30,3 +30,8 @@ c/vendor/sqlite3/sqlite3.c
 c/vendor/sqlite3/sqlite3.h
 *.Rproj
 *.Rd
+csharp/Apache.Arrow.Adbc.sln
+csharp/src/Apache.Arrow.Adbc.FlightSql/Apache.Arrow.Adbc.FlightSql.csproj
+csharp/src/Apache.Arrow.Adbc/Apache.Arrow.Adbc.csproj
+csharp/test/Apache.Arrow.Adbc.FlightSql.Tests/Apache.Arrow.Adbc.FlightSql.Tests.csproj
+csharp/test/Apache.Arrow.Adbc.Tests/Apache.Arrow.Adbc.Tests.csproj
