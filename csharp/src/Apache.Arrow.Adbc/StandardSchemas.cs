@@ -32,11 +32,6 @@ namespace Apache.Arrow.Adbc
             throw new InvalidOperationException("Do not instantiate this class");
         }
 
-        private static readonly ArrowType INT16 = new Int16Type();
-        private static readonly ArrowType INT32 = new Int32Type();
-        private static readonly ArrowType INT64 = new Int64Type();
-        private static readonly ArrowType UINT32 = new UInt32Type();
-
         /// <summary>
         /// The schema of the result set of <see cref="AdbcConnection.GetInfo(int[])"/>}.
         /// </summary>
@@ -172,7 +167,7 @@ namespace Apache.Arrow.Adbc
             )
         };
 
-        public static readonly Schema GET_OBJECTS_SCHEMA = new Schema(
+        public static readonly Schema GetObjectsSchema = new Schema(
             new List<Field>()
             {
                 new Field("catalog_name", StringType.Default, false),

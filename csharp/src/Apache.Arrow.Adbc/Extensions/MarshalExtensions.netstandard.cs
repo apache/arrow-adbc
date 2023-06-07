@@ -16,8 +16,8 @@
  */
 
 #if NETSTANDARD
+
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -27,26 +27,23 @@ namespace Apache.Arrow.Adbc.Extensions
     {
         public static unsafe string PtrToStringUTF8(IntPtr intPtr)
         {
-            if (intPtr == null) 
+            if (intPtr == IntPtr.Zero) 
             {
                 return null;
             }
 
-            unsafe
+            byte* source = (byte*)intPtr;
+            int length = 0;
+
+            while (source[length] != 0) 
             {
-                byte* source = (byte*)intPtr;
-                int length = 0;
-
-                while (source[length] != 0) 
-                {
-                    length++;
-                }
-
-                byte[] bytes = new byte[length];
-                Marshal.Copy(intPtr, bytes, 0, length);
-
-                return Encoding.UTF8.GetString(bytes);
+                length++;
             }
+
+            byte[] bytes = new byte[length];
+            Marshal.Copy(intPtr, bytes, 0, length);
+
+            return Encoding.UTF8.GetString(bytes);
         }
 
         public static TDelegate GetDelegateForFunctionPointer<TDelegate>(IntPtr ptr)
@@ -79,4 +76,5 @@ namespace Apache.Arrow.Adbc.Extensions
         }
     }
 }
+
 #endif
