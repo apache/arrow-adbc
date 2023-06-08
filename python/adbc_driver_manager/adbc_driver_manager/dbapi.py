@@ -920,7 +920,10 @@ class _RowIterator(_Closeable):
     def fetchone(self):
         if self._current_batch is None or self._next_row >= len(self._current_batch):
             try:
-                self._current_batch = self._reader.read_next_batch()
+                while True:
+                    self._current_batch = self._reader.read_next_batch()
+                    if self._current_batch.num_rows > 0:
+                        break
                 self._next_row = 0
             except StopIteration:
                 self._current_batch = None
