@@ -17,8 +17,11 @@ DROP TABLE IF EXISTS adbc_alltypes;
 
 CREATE TABLE adbc_alltypes (
     bigint_t BIGINT,
+    blob_t BYTEA,
+    boolean_t BOOLEAN,
     date_t DATE,
     int_t INT,
+    smallint_t SMALLINT,
     text_t TEXT,
     time_without_time_zone_t TIME WITHOUT TIME ZONE,
     time_with_time_zone_t TIME WITH TIME ZONE,
@@ -35,7 +38,10 @@ CREATE TABLE adbc_alltypes (
 
 INSERT INTO adbc_alltypes VALUES (
     42,
+    'abcd',
+    true,
     '2000-01-01',
+    42,
     42,
     'foo',
     '04:05:06.789012',
@@ -50,6 +56,9 @@ INSERT INTO adbc_alltypes VALUES (
     TIMESTAMP (0) '2000-01-02 03:04:05',
     TIMESTAMP WITH TIME ZONE '2000-01-02 03:04:05.123456+06'
 ), (
+    NULL,
+    NULL,
+    NULL,
     NULL,
     NULL,
     NULL,

@@ -30,21 +30,23 @@ import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.util.Preconditions;
 import org.apache.arrow.vector.BigIntVector;
+import org.apache.arrow.vector.BitVector;
 import org.apache.arrow.vector.DateDayVector;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.IntVector;
+import org.apache.arrow.vector.SmallIntVector;
 import org.apache.arrow.vector.TimeStampMicroTZVector;
 import org.apache.arrow.vector.TimeStampMilliTZVector;
 import org.apache.arrow.vector.TimeStampNanoTZVector;
 import org.apache.arrow.vector.TimeStampSecTZVector;
 import org.apache.arrow.vector.TimeStampVector;
+import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
-import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -113,15 +115,34 @@ public class AbstractSqlTypeTest {
   @Test
   protected void bigintType() throws Exception {
     final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
-    assertThat(schema.findField("bigint_t").getType())
-        .asInstanceOf(InstanceOfAssertFactories.type(ArrowType.Int.class))
-        .extracting(ArrowType.Int::getBitWidth, ArrowType.Int::getIsSigned)
-        .containsExactly(64, true);
+    assertThat(schema.findField("bigint_t").getType()).isEqualTo(new ArrowType.Int(64, true));
   }
 
   @Test
   protected void bigintValue() throws Exception {
     assertValue("bigint_t", BigIntVector.class, 42L);
+  }
+
+  @Test
+  protected void blobType() throws Exception {
+    final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
+    assertThat(schema.findField("blob_t").getType()).isEqualTo(new ArrowType.Binary());
+  }
+
+  @Test
+  protected void blobValue() throws Exception {
+    assertValue("blob_t", VarBinaryVector.class, new byte[] {'a', 'b', 'c', 'd'});
+  }
+
+  @Test
+  protected void booleanType() throws Exception {
+    final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
+    assertThat(schema.findField("boolean_t").getType()).isEqualTo(new ArrowType.Bool());
+  }
+
+  @Test
+  protected void booleanValue() throws Exception {
+    assertValue("boolean_t", BitVector.class, true);
   }
 
   @Test
@@ -138,15 +159,23 @@ public class AbstractSqlTypeTest {
   @Test
   protected void intType() throws Exception {
     final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
-    assertThat(schema.findField("int_t").getType())
-        .asInstanceOf(InstanceOfAssertFactories.type(ArrowType.Int.class))
-        .extracting(ArrowType.Int::getBitWidth, ArrowType.Int::getIsSigned)
-        .containsExactly(32, true);
+    assertThat(schema.findField("int_t").getType()).isEqualTo(new ArrowType.Int(32, true));
   }
 
   @Test
   protected void intValue() throws Exception {
     assertValue("int_t", IntVector.class, 42);
+  }
+
+  @Test
+  protected void smallintType() throws Exception {
+    final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
+    assertThat(schema.findField("smallint_t").getType()).isEqualTo(new ArrowType.Int(16, true));
+  }
+
+  @Test
+  protected void smallintValue() throws Exception {
+    assertValue("smallint_t", SmallIntVector.class, (short) 42);
   }
 
   @Test

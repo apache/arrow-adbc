@@ -27,12 +27,10 @@ import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
-import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverters;
+import org.apache.arrow.adbc.driver.jdbc.StandardJdbcQuirks;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
-import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.types.TimeUnit;
-import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.junit.jupiter.api.Assumptions;
 
 public class PostgresqlQuirks extends SqlValidationQuirks {
@@ -57,18 +55,7 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
 
     final Map<String, Object> parameters = new HashMap<>();
     parameters.put(AdbcDriver.PARAM_URL, url);
-    parameters.put(
-        AdbcDriver.PARAM_SQL_QUIRKS,
-        SqlQuirks.builder()
-            .arrowToSqlTypeNameMapping(
-                (arrowType -> {
-                  if (arrowType.getTypeID() == ArrowType.ArrowTypeID.Utf8) {
-                    return "TEXT";
-                  }
-                  return SqlQuirks.DEFAULT_ARROW_TYPE_TO_SQL_TYPE_NAME_MAPPING.apply(arrowType);
-                }))
-            .build());
-    parameters.put(JdbcDriver.PARAM_JDBC_TO_ARROW_TYPE, JdbcToArrowTypeConverters.POSTGRESQL);
+    parameters.put(JdbcDriver.PARAM_JDBC_QUIRKS, StandardJdbcQuirks.POSTGRESQL);
     return new JdbcDriver(allocator).open(parameters);
   }
 
