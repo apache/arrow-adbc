@@ -258,6 +258,150 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
   ASSERT_TRUE(seen_public) << "public schema does not exist";
 }
 
+TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_pkey_test", &error),
+              IsOkStatus(&error));
+
+  struct AdbcStatement statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  {
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement, "CREATE TABLE adbc_pkey_test (ints INT, id SERIAL PRIMARY KEY)",
+            &error),
+        IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(reader.rows_affected, 0);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, &reader.stream.value, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_GT(reader.array->length, 0);
+
+  bool seen_id_column = false;
+  bool seen_primary_key = false;
+
+  struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
+  struct ArrowArrayView* catalog_db_schemas_items = catalog_db_schemas_list->children[0];
+  struct ArrowArrayView* db_schema_name_col = catalog_db_schemas_items->children[0];
+  struct ArrowArrayView* db_schema_tables_col = catalog_db_schemas_items->children[1];
+
+  struct ArrowArrayView* schema_table_items = db_schema_tables_col->children[0];
+  struct ArrowArrayView* table_name_col = schema_table_items->children[0];
+  struct ArrowArrayView* table_columns_col = schema_table_items->children[2];
+  struct ArrowArrayView* table_constraints_col = schema_table_items->children[3];
+
+  struct ArrowArrayView* table_columns_items = table_columns_col->children[0];
+  struct ArrowArrayView* column_name_col = table_columns_items->children[0];
+
+  struct ArrowArrayView* table_constraints_items = table_constraints_col->children[0];
+  struct ArrowArrayView* constraint_name_col = table_constraints_items->children[0];
+  struct ArrowArrayView* constraint_type_col = table_constraints_items->children[1];
+  struct ArrowArrayView* constraint_column_names_col =
+      table_constraints_items->children[2];
+
+  do {
+    for (int64_t catalog_idx = 0; catalog_idx < reader.array->length; catalog_idx++) {
+      ArrowStringView db_name =
+          ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], catalog_idx);
+      auto db_str = std::string(db_name.data, db_name.size_bytes);
+
+      auto schema_list_start =
+          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx);
+      auto schema_list_end =
+          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx + 1);
+
+      if (db_str == "postgres") {
+        for (auto db_schemas_index = schema_list_start;
+             db_schemas_index < schema_list_end; db_schemas_index++) {
+          ArrowStringView schema_name =
+              ArrowArrayViewGetStringUnsafe(db_schema_name_col, db_schemas_index);
+          auto schema_str = std::string(schema_name.data, schema_name.size_bytes);
+          if (schema_str == "public") {
+            for (auto tables_index = ArrowArrayViewListChildOffset(db_schema_tables_col,
+                                                                   db_schemas_index);
+                 tables_index < ArrowArrayViewListChildOffset(db_schema_tables_col,
+                                                              db_schemas_index + 1);
+                 tables_index++) {
+              ArrowStringView table_name =
+                  ArrowArrayViewGetStringUnsafe(table_name_col, tables_index);
+              auto table_str = std::string(table_name.data, table_name.size_bytes);
+              if (table_str == "adbc_pkey_test") {
+                for (auto columns_index =
+                         ArrowArrayViewListChildOffset(table_columns_col, tables_index);
+                     columns_index <
+                     ArrowArrayViewListChildOffset(table_columns_col, tables_index + 1);
+                     columns_index++) {
+                  ArrowStringView column_name =
+                      ArrowArrayViewGetStringUnsafe(column_name_col, columns_index);
+                  auto column_str = std::string(column_name.data, column_name.size_bytes);
+                  if (column_str == "id") {
+                    seen_id_column = true;
+                  }
+                }
+              }
+              for (auto constraints_index =
+                       ArrowArrayViewListChildOffset(table_constraints_col, tables_index);
+                   constraints_index <
+                   ArrowArrayViewListChildOffset(table_constraints_col, tables_index + 1);
+                   constraints_index++) {
+                ArrowStringView constraint_name =
+                    ArrowArrayViewGetStringUnsafe(constraint_name_col, constraints_index);
+                auto constraint_name_str =
+                    std::string(constraint_name.data, constraint_name.size_bytes);
+                ArrowStringView constraint_type =
+                    ArrowArrayViewGetStringUnsafe(constraint_type_col, constraints_index);
+                auto constraint_type_str =
+                    std::string(constraint_type.data, constraint_type.size_bytes);
+
+                for (auto constraint_names_index = ArrowArrayViewListChildOffset(
+                         constraint_column_names_col, constraints_index);
+                     constraint_names_index <
+                     ArrowArrayViewListChildOffset(constraint_column_names_col,
+                                                   constraints_index + 1);
+                     constraint_names_index++) {
+                  ArrowStringView constraint_column_name = ArrowArrayViewGetStringUnsafe(
+                      constraint_column_names_col->children[0], constraint_names_index);
+                  auto constraint_column_name_str = std::string(
+                      constraint_column_name.data, constraint_column_name.size_bytes);
+                  if ((constraint_column_name_str == "id") &
+                      (constraint_name_str == "adbc_pkey_test_pkey") &
+                      (constraint_type_str == "PRIMARY KEY")) {
+                    seen_primary_key = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+  } while (reader.array->release);
+
+  ASSERT_TRUE(seen_id_column) << "could not find column 'id' on table adbc_pkey_test";
+  ASSERT_TRUE(seen_primary_key) << "could not find primary key for adbc_pkey_test";
+}
+
 TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
   if (!quirks()->supports_bulk_ingest()) {
     GTEST_SKIP();
