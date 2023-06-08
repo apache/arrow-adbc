@@ -17,8 +17,11 @@ DROP TABLE IF EXISTS adbc_alltypes;
 
 CREATE TABLE adbc_alltypes (
     bigint_t BIGINT,
+    blob_t VARBINARY(MAX),
+    boolean_t BIT,
     date_t DATE,
     int_t INT,
+    smallint_t SMALLINT,
     text_t TEXT,
     time_without_time_zone_t TIME,
     timestamp_without_time_zone_t DATETIME2,
@@ -27,13 +30,19 @@ CREATE TABLE adbc_alltypes (
 
 INSERT INTO adbc_alltypes VALUES (
     42,
+    CONVERT(VARBINARY(MAX), 'abcd'),
+    1,
     '2000-01-01',
+    42,
     42,
     'foo',
     '04:05:06.789012',
     '2000-01-02T03:04:05.123456',
     '2000-01-02T03:04:05.123456+06:00'
 ), (
+    NULL,
+    NULL,
+    NULL,
     NULL,
     NULL,
     NULL,

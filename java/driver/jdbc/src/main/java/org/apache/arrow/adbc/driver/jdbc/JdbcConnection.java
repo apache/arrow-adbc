@@ -22,7 +22,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.arrow.adapter.jdbc.JdbcToArrowUtils;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
@@ -31,8 +30,6 @@ import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.IsolationLevel;
 import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcFieldInfoExtra;
-import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverter;
-import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -45,8 +42,7 @@ import org.apache.arrow.vector.types.pojo.Schema;
 public class JdbcConnection implements AdbcConnection {
   private final BufferAllocator allocator;
   private final Connection connection;
-  private final SqlQuirks quirks;
-  private final JdbcToArrowTypeConverter typeConverter;
+  private final JdbcQuirks quirks;
 
   /**
    * Create a new connection.
@@ -55,15 +51,10 @@ public class JdbcConnection implements AdbcConnection {
    * @param connection The JDBC connection.
    * @param quirks Backend-specific quirks to account for.
    */
-  JdbcConnection(
-      BufferAllocator allocator,
-      Connection connection,
-      SqlQuirks quirks,
-      JdbcToArrowTypeConverter typeConverter) {
+  JdbcConnection(BufferAllocator allocator, Connection connection, JdbcQuirks quirks) {
     this.allocator = allocator;
     this.connection = connection;
     this.quirks = quirks;
-    this.typeConverter = typeConverter;
   }
 
   @Override
@@ -157,14 +148,7 @@ public class JdbcConnection implements AdbcConnection {
         final String fieldName = rs.getString("COLUMN_NAME");
         final JdbcFieldInfoExtra fieldInfoExtra = new JdbcFieldInfoExtra(rs);
 
-        final ArrowType arrowType;
-        if (typeConverter != null) {
-          arrowType = typeConverter.apply(fieldInfoExtra);
-        } else {
-          arrowType =
-              JdbcToArrowUtils.getArrowTypeFromJdbcType(
-                  fieldInfoExtra.getFieldInfo(), /*calendar*/ null);
-        }
+        final ArrowType arrowType = quirks.getTypeConverter().apply(fieldInfoExtra);
         if (arrowType == null) {
           throw AdbcException.notImplemented(
               JdbcDriverUtil.prefixExceptionMessage(

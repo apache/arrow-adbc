@@ -27,7 +27,7 @@ import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.driver.jdbc.JdbcDriver;
-import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverters;
+import org.apache.arrow.adbc.driver.jdbc.StandardJdbcQuirks;
 import org.apache.arrow.adbc.driver.testsuite.SqlValidationQuirks;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.types.TimeUnit;
@@ -54,8 +54,7 @@ public class MsSqlServerQuirks extends SqlValidationQuirks {
 
     final Map<String, Object> parameters = new HashMap<>();
     parameters.put(AdbcDriver.PARAM_URL, url);
-    parameters.put(
-        JdbcDriver.PARAM_JDBC_TO_ARROW_TYPE, JdbcToArrowTypeConverters.MICROSOFT_SQL_SERVER);
+    parameters.put(JdbcDriver.PARAM_JDBC_QUIRKS, StandardJdbcQuirks.MS_SQL_SERVER);
     return new JdbcDriver(allocator).open(parameters);
   }
 

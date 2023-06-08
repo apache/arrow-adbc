@@ -23,7 +23,6 @@ import javax.sql.DataSource;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
-import org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverter;
 import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.memory.BufferAllocator;
@@ -32,11 +31,8 @@ import org.apache.arrow.memory.BufferAllocator;
 public class JdbcDriver implements AdbcDriver {
   /** A parameter for creating an {@link AdbcDatabase} from a {@link DataSource}. */
   public static final String PARAM_DATASOURCE = "adbc.jdbc.datasource";
-  /**
-   * A parameter for specifying a JDBC to ArrowType converter (type: {@link
-   * org.apache.arrow.adbc.driver.jdbc.adapter.JdbcToArrowTypeConverter}).
-   */
-  public static final String PARAM_JDBC_TO_ARROW_TYPE = "adbc.jdbc.type_converter";
+  /** A parameter for specifying backend-specific configuration (type: {@link JdbcQuirks}). */
+  public static final String PARAM_JDBC_QUIRKS = "adbc.jdbc.quirks";
   /**
    * A parameter for specifying a URI to connect to.
    *
@@ -66,8 +62,15 @@ public class JdbcDriver implements AdbcDriver {
     }
 
     SqlQuirks quirks = getParam(SqlQuirks.class, parameters, PARAM_SQL_QUIRKS);
-    if (quirks == null) {
-      quirks = new SqlQuirks();
+    JdbcQuirks jdbcQuirks = getParam(JdbcQuirks.class, parameters, PARAM_JDBC_QUIRKS);
+    if (jdbcQuirks != null && quirks != null) {
+      throw AdbcException.invalidArgument(
+          "[JDBC] Provide at most one of " + PARAM_SQL_QUIRKS + " and " + PARAM_JDBC_QUIRKS);
+    } else if (jdbcQuirks == null) {
+      if (quirks == null) {
+        quirks = new SqlQuirks();
+      }
+      jdbcQuirks = JdbcQuirks.builder("unknown").sqlQuirks(quirks).build();
     }
 
     String username = getParam(String.class, parameters, "username");
@@ -76,8 +79,6 @@ public class JdbcDriver implements AdbcDriver {
       throw AdbcException.invalidArgument(
           "[JDBC] Must provide both or neither of username and password");
     }
-    JdbcToArrowTypeConverter typeConverter =
-        getParam(JdbcToArrowTypeConverter.class, parameters, PARAM_JDBC_TO_ARROW_TYPE);
 
     if (target != null) {
       dataSource = new UrlDataSource(target);
@@ -87,8 +88,7 @@ public class JdbcDriver implements AdbcDriver {
       throw AdbcException.invalidArgument(
           "[JDBC] Must provide one of " + PARAM_URI + " and " + PARAM_DATASOURCE + " options");
     }
-    return new JdbcDataSourceDatabase(
-        allocator, dataSource, username, password, quirks, typeConverter);
+    return new JdbcDataSourceDatabase(allocator, dataSource, username, password, jdbcQuirks);
   }
 
   private static <T> T getParam(Class<T> klass, Map<String, Object> parameters, String... choices)
