@@ -24,6 +24,7 @@ Go
    :caption: Drivers
 
    flight_sql
+   snowflake
 
 The ADBC project ships some drivers.  Others may (eventually) be
 available from database vendors or third parties.  The drivers here

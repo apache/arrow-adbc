@@ -4,6 +4,8 @@ ci/conda/.gitattributes
 ci/linux-packages/changelog
 ci/linux-packages/*.install
 dev/release/rat_exclude_files.txt
+docs/source/format/*.drawio
+docs/source/format/*.svg
 filtered_rat.txt
 go/adbc/drivermgr/adbc.h
 go/adbc/drivermgr/adbc_driver_manager.cc

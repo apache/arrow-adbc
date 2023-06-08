@@ -21,5 +21,7 @@ furo
 make
 numpydoc
 sphinx>=5.0
+sphinx-autobuild
 sphinx-copybutton
 sphinx-design
+sphinxcontrib-mermaid
