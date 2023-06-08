@@ -121,8 +121,9 @@ these are not set, the ``CREATE TEMPORARY STAGE`` command executed by the driver
 can fail with the following error:
 
 .. code-block::
-  CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by='"')
-  CANNOT perform CREATE STAGE. This session does not have a current schema. Call 'USE SCHEMA' or use a qualified name.
+
+   CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by='"')
+   CANNOT perform CREATE STAGE. This session does not have a current schema. Call 'USE SCHEMA' or use a qualified name.
 
 In addition, results are potentially fetched in parallel from multiple endpoints.
 A limited number of batches are queued per endpoint, though data is always
@@ -256,7 +257,7 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
 Metadata
 --------
 
-When calling :cpp:`AdbcConnectionGetTableSchema`, the returned Arrow Schema
+When calling :cpp:func:`AdbcConnectionGetTableSchema`, the returned Arrow Schema
 will contain metadata on each field:
 
 ``DATA_TYPE``

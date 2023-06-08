@@ -5,7 +5,7 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Java" href="../java/index.html" /><link rel="prev" title="Flight SQL Driver" href="flight_sql.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.05.20 -->
         <title>Snowflake Driver - ADBC 0.5.0 (dev) documentation</title>
@@ -226,7 +226,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions (FAQ)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../status.html">Driver Feature Support/Implementation Status</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++/Python</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++/Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -234,8 +234,9 @@
 <li class="toctree-l2"><a class="reference internal" href="../cpp/sqlite.html">SQLite Driver</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="index.html">Go</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Go</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Go</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Go</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Snowflake Driver</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -415,6 +416,10 @@ to the snowflake database.</p>
 <p>In addition, the current database and schema for the session must be set. If
 these are not set, the <code class="docutils literal notranslate"><span class="pre">CREATE</span> <span class="pre">TEMPORARY</span> <span class="pre">STAGE</span></code> command executed by the driver
 can fail with the following error:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by=&#39;&quot;&#39;)
+CANNOT perform CREATE STAGE. This session does not have a current schema. Call &#39;USE SCHEMA&#39; or use a qualified name.
+</pre></div>
+</div>
 <p>In addition, results are potentially fetched in parallel from multiple endpoints.
 A limited number of batches are queued per endpoint, though data is always
 returned to the client in the order of the endpoints.</p>
@@ -521,7 +526,7 @@ to <code class="docutils literal notranslate"><span class="pre">true</span></cod
 </section>
 <section id="metadata">
 <h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h3>
-<p>When calling <a href="#id1"><span class="problematic" id="id2">:cpp:`AdbcConnectionGetTableSchema`</span></a>, the returned Arrow Schema
+<p>When calling <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv428AdbcConnectionGetTableSchemaP14AdbcConnectionPKcPKcPKcP11ArrowSchemaP9AdbcError" title="AdbcConnectionGetTableSchema"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcConnectionGetTableSchema()</span></code></a>, the returned Arrow Schema
 will contain metadata on each field:</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">DATA_TYPE</span></code></dt><dd><p>This will be a string containing the raw Snowflake data type of this column</p>
@@ -619,8 +624,26 @@ strings.</p></td>
       <footer>
         
         <div class="related-pages">
-          
-          
+          <a class="next-page" href="../java/index.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Java</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="flight_sql.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Flight SQL Driver</div>
+                
+              </div>
+            </a>
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
