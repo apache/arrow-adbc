@@ -18,15 +18,27 @@
 sequenceDiagram
     actor App
     participant Driver as AdbcStatement
+    participant S1 as Server 1
+    participant S2 as Server 2
+
     App ->> Driver: New
     App ->> Driver: SetSqlQuery
     App -->> Driver: Prepare
     loop As many times as desired
-    App -->> Driver: GetParameterSchema
-    App -->> Driver: Bind
-    App ->> Driver: ExecuteQuery
-    Driver ->> App: ArrowArrayStream
-    App -> App: consume result set
+        App -->> Driver: GetParameterSchema
+        App -->> Driver: Bind
+        App ->> Driver: ExecutePartitions
+        Driver ->> App: AdbcPartitions
+        Note over App, S2: Consume the distributed result set
+        par Read from server 1
+            App ->> S1: ReadPartition
+            S1 ->> App: ArrowArrayStream
+            App -> App: consume result set
+        and Read from server 2
+            App ->> S2: ReadPartition
+            S2 ->> App: ArrowArrayStream
+            App -> App: consume result set
+        end
     end
     Note over App, Driver: SetSqlQuery and repeat (if desired)
     App ->> Driver: Release

@@ -24,9 +24,8 @@ sequenceDiagram
     loop As many times as desired
     App -->> Driver: GetParameterSchema
     App -->> Driver: Bind
-    App ->> Driver: ExecuteQuery
-    Driver ->> App: ArrowArrayStream
-    App -> App: consume result set
+    App ->> Driver: ExecuteUpdate
+    Driver ->> App: affected rows
     end
     Note over App, Driver: SetSqlQuery and repeat (if desired)
     App ->> Driver: Release

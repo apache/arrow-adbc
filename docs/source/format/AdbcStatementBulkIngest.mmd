@@ -19,14 +19,8 @@ sequenceDiagram
     actor App
     participant Driver as AdbcStatement
     App ->> Driver: New
-    App ->> Driver: SetSqlQuery
-    App -->> Driver: Prepare
-    loop As many times as desired
-    App -->> Driver: GetParameterSchema
-    App -->> Driver: Bind
-    App ->> Driver: ExecuteQuery
-    Driver ->> App: ArrowArrayStream
-    App -> App: consume result set
-    end
-    Note over App, Driver: SetSqlQuery and repeat (if desired)
+    App ->> Driver: SetOption(ADBC_INGEST_OPTION_TARGET_TABLE)
+    App ->> Driver: GetParameterSchema
+    App ->> Driver: Bind
+    App ->> Driver: ExecuteUpdate
     App ->> Driver: Release

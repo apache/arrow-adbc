@@ -97,8 +97,8 @@ machines.
 - Go: ``Statement.ExecutePartitions``
 - Java: ``org.apache.arrow.adbc.core.AdbcStatement#executePartitioned()``
 
-Lifecycle
----------
+Lifecycle & Usage
+-----------------
 
 .. image:: AdbcStatement.svg
    :alt: The lifecycle of a statement.
@@ -108,8 +108,30 @@ Basic Usage
 ~~~~~~~~~~~
 
 .. mermaid:: AdbcStatementBasicUsage.mmd
+   :caption: Preparing the statement and binding parameters are optional.
 
 Consuming Result Sets
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. mermaid:: AdbcStatementConsumeResultSet.mmd
+   :caption: This is equivalent to reading from what many Arrow
+             libraries call a RecordBatchReader.
+
+Bulk Data Ingestion
+~~~~~~~~~~~~~~~~~~~
+
+.. mermaid:: AdbcStatementBulkIngest.mmd
+   :caption: There is no need to prepare the statement.
+
+Update-only Queries (No Result Set)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. mermaid:: AdbcStatementUpdate.mmd
+   :caption: Preparing the statement and binding parameters are optional.
+
+Partitioned Execution
+~~~~~~~~~~~~~~~~~~~~~
+
+.. mermaid:: AdbcStatementPartitioned.mmd
+   :caption: This is similar to fetching data in Arrow Flight RPC (by
+             design). See :doc:`"Downloading Data" <arrow:format/Flight>`.
