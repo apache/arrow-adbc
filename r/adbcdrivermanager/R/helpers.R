@@ -259,32 +259,32 @@ adbc_statement_join <- function(statement, connection) {
 #' @rdname adbc_connection_join
 #' @export
 adbc_stream_join <- function(stream, x) {
-  if (utils::packageVersion("nanoarrow") >= "0.1.0.9000") {
-    assert_adbc(stream, "nanoarrow_array_stream")
-    assert_adbc(x)
-
-    self_contained_finalizer <- function() {
-      try(adbc_release_non_null(x))
-    }
-
-    # Make sure we don't keep any variables around that aren't needed
-    # for the finalizer and make sure we invalidate the original statement
-    self_contained_finalizer_env <- as.environment(
-      list(x = adbc_xptr_move(x))
-    )
-    parent.env(self_contained_finalizer_env) <- asNamespace("adbcdrivermanager")
-    environment(self_contained_finalizer) <- self_contained_finalizer_env
-
-    # This finalizer will run immediately on release (if released explicitly
-    # on the main R thread) or on garbage collection otherwise.
-
-    # Until the release version of nanoarrow contains this we will get a check
-    # warning for nanoarrow::array_stream_set_finalizer()
-    set_finalizer <- asNamespace("nanoarrow")[["array_stream_set_finalizer"]]
-    set_finalizer(stream, self_contained_finalizer)
-
-    invisible(stream)
-  } else {
+  if (utils::packageVersion("nanoarrow") < "0.1.0.9000") {
     stop("adbc_stream_join_statement() requires nanoarrow >= 0.2.0")
   }
+
+  assert_adbc(stream, "nanoarrow_array_stream")
+  assert_adbc(x)
+
+  self_contained_finalizer <- function() {
+    try(adbc_release_non_null(x))
+  }
+
+  # Make sure we don't keep any variables around that aren't needed
+  # for the finalizer and make sure we invalidate the original statement
+  self_contained_finalizer_env <- as.environment(
+    list(x = adbc_xptr_move(x))
+  )
+  parent.env(self_contained_finalizer_env) <- asNamespace("adbcdrivermanager")
+  environment(self_contained_finalizer) <- self_contained_finalizer_env
+
+  # This finalizer will run immediately on release (if released explicitly
+  # on the main R thread) or on garbage collection otherwise.
+
+  # Until the release version of nanoarrow contains this we will get a check
+  # warning for nanoarrow::array_stream_set_finalizer()
+  set_finalizer <- asNamespace("nanoarrow")[["array_stream_set_finalizer"]]
+  set_finalizer(stream, self_contained_finalizer)
+
+  invisible(stream)
 }
