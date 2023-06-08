@@ -429,7 +429,6 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
         break;
       }
     }
-
   }
   if (status == 0) {
     out->length = batch_size;
@@ -862,8 +861,9 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
           }
 
           for (int col = 0; col < num_columns; col++) {
-            status = StatementReaderInferOneValue(stmt, col, &validity[col], &data[col],
-                                                  &binary[col], &current_type[col], error);
+            status =
+                StatementReaderInferOneValue(stmt, col, &validity[col], &data[col],
+                                             &binary[col], &current_type[col], error);
             if (status != ADBC_STATUS_OK) break;
           }
           if (status != ADBC_STATUS_OK) break;
