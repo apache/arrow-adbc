@@ -921,6 +921,8 @@ class _RowIterator(_Closeable):
         if self._current_batch is None or self._next_row >= len(self._current_batch):
             try:
                 self._current_batch = self._reader.read_next_batch()
+                if self._current_batch.num_rows == 0:
+                    raise StopIteration
                 self._next_row = 0
             except StopIteration:
                 self._current_batch = None

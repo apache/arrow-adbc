@@ -295,6 +295,14 @@ def test_executemany(sqlite):
 
 
 @pytest.mark.sqlite
+def test_fetch_empty(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("CREATE TABLE foo (bar)")
+        cur.execute("SELECT * FROM foo")
+        assert cur.fetchall() == []
+
+
+@pytest.mark.sqlite
 def test_prepare(sqlite):
     with sqlite.cursor() as cur:
         schema = cur.adbc_prepare("SELECT 1")
