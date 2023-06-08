@@ -381,7 +381,35 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
   int status = 0;
 
   sqlite3_mutex_enter(sqlite3_db_mutex(reader->db));
-  while (batch_size < reader->batch_size) {
+  while (batch_size < reader->batch_size && !reader->done) {
+    // Skip loop if no parameter have been bound yet
+    if (!reader->binder || reader->binder->next_row > 0) {
+      while (batch_size < reader->batch_size) {
+        int rc = sqlite3_step(reader->stmt);
+        if (rc == SQLITE_DONE) {
+          reader->done = 1;
+          break;
+        } else if (rc == SQLITE_ERROR) {
+          reader->done = 1;
+          status = EIO;
+          StatementReaderSetError(reader);
+          break;
+        }
+
+        for (int col = 0; col < reader->schema.n_children; col++) {
+          status = StatementReaderGetOneValue(reader, col, out->children[col]);
+          if (status != 0) break;
+        }
+
+        if (status != 0) break;
+        batch_size++;
+      }
+    }
+
+    if (status != ADBC_STATUS_OK) break;
+
+    if (batch_size >= reader->batch_size) break;
+
     if (reader->binder) {
       char finished = 0;
       struct AdbcError error = {0};
@@ -402,24 +430,6 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
       }
     }
 
-    int rc = sqlite3_step(reader->stmt);
-    if (rc == SQLITE_DONE) {
-      reader->done = 1;
-      break;
-    } else if (rc == SQLITE_ERROR) {
-      reader->done = 1;
-      status = EIO;
-      StatementReaderSetError(reader);
-      break;
-    }
-
-    for (int col = 0; col < reader->schema.n_children; col++) {
-      status = StatementReaderGetOneValue(reader, col, out->children[col]);
-      if (status != 0) break;
-    }
-
-    if (status != 0) break;
-    batch_size++;
   }
   if (status == 0) {
     out->length = batch_size;
@@ -838,7 +848,33 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
       num_columns, batch_size, validity, data, binary, current_type, error);
   if (status == ADBC_STATUS_OK) {
     int64_t num_rows = 0;
-    while (num_rows < batch_size) {
+    while (num_rows < batch_size && !reader->done) {
+      // Skip loop if no parameter have been bound yet
+      if (!binder || binder->next_row > 0) {
+        while (num_rows < batch_size) {
+          int rc = sqlite3_step(stmt);
+          if (rc == SQLITE_DONE) {
+            reader->done = 1;
+            break;
+          } else if (rc == SQLITE_ERROR) {
+            status = ADBC_STATUS_IO;
+            break;
+          }
+
+          for (int col = 0; col < num_columns; col++) {
+            status = StatementReaderInferOneValue(stmt, col, &validity[col], &data[col],
+                                                  &binary[col], &current_type[col], error);
+            if (status != ADBC_STATUS_OK) break;
+          }
+          if (status != ADBC_STATUS_OK) break;
+          num_rows++;
+        }
+      }
+
+      if (status != ADBC_STATUS_OK) break;
+
+      if (num_rows >= batch_size) break;
+
       if (binder) {
         char finished = 0;
         status = AdbcSqliteBinderBindNext(binder, db, stmt, &finished, error);
@@ -848,23 +884,6 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
           break;
         }
       }
-
-      int rc = sqlite3_step(stmt);
-      if (rc == SQLITE_DONE) {
-        reader->done = 1;
-        break;
-      } else if (rc == SQLITE_ERROR) {
-        status = ADBC_STATUS_IO;
-        break;
-      }
-
-      for (int col = 0; col < num_columns; col++) {
-        status = StatementReaderInferOneValue(stmt, col, &validity[col], &data[col],
-                                              &binary[col], &current_type[col], error);
-        if (status != ADBC_STATUS_OK) break;
-      }
-      if (status != ADBC_STATUS_OK) break;
-      num_rows++;
     }
 
     if (status == ADBC_STATUS_OK) {
