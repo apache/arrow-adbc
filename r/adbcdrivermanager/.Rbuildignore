@@ -8,3 +8,4 @@
 ^\.github$
 ^\.covrignore$
 ^bootstrap\.R$
+^cran-comments\.md$
