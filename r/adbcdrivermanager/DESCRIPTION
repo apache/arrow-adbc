@@ -4,7 +4,8 @@ Version: 0.4.0.9000
 Authors@R: c(
       person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
              comment = c(ORCID = "0000-0002-9415-4582")),
-      person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph"))
+      person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph")),
+      person("Apache Software Foundation", email = "dev@arrow.apache.org", role = c("cph"))
     )
 Description: Provides a developer-facing interface to 'Arrow' Database
   Connectivity ('ADBC') for the purposes of driver development, driver
