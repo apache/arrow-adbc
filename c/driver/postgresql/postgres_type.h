@@ -223,6 +223,20 @@ class PostgresType {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         break;
 
+      case PostgresTypeId::kTimestamp:
+        // We always return microsecond precision even if the type
+        // specifies differently
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_MICRO, /*timezone=*/nullptr));
+        break;
+
+      case PostgresTypeId::kTimestamptz:
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_MICRO, /*timezone=*/"UTC"));
+        break;
+
       case PostgresTypeId::kRecord:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {
