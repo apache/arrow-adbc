@@ -5,16 +5,16 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Snowflake Driver" href="snowflake.html" /><link rel="prev" title="Go" href="index.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="JDBC Adapter" href="jdbc.html" /><link rel="prev" title="Driver Implementation Status" href="status.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.05.20 -->
         <title>Flight SQL Driver - ADBC 0.5.0 (dev) documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
-    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
     
     
 
@@ -42,7 +42,7 @@
 </style>
 <script>
   const currentVersion = "0.5.0 (dev)";
-  const versionsRoot = "../../..";
+  const versionsRoot = "../..";
 </script>
 <style>
   #version-switcher {
@@ -183,7 +183,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">ADBC 0.5.0 (dev) documentation</div></a>
+      <a href="../index.html"><div class="brand">ADBC 0.5.0 (dev) documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -203,88 +203,74 @@
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
       
-      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
   <div class="sidebar-logo-container">
-    <img class="sidebar-logo only-light" src="../../_static/logo-light.png" alt="Light Logo"/>
-    <img class="sidebar-logo only-dark" src="../../_static/logo-dark.png" alt="Dark Logo"/>
+    <img class="sidebar-logo only-light" src="../_static/logo-light.png" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
   <span class="sidebar-brand-text">ADBC 0.5.0 (dev) documentation</span>
   
-</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Specifications</span></p>
+  <ul>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../format/specification.html">ADBC API Standard</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../format/versioning.html">Versioning and Compatibility</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../format/comparison.html">Comparison with Other APIs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc">Go</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../python/quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../python/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../status.html">Driver Feature Support/Implementation Status</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++/Python</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++/Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../cpp/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../cpp/sqlite.html">SQLite Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Driver Implementation Status</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Flight SQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jdbc.html">JDBC Adapter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="postgresql.html">PostgreSQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="snowflake.html">Snowflake Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
 </ul>
-</li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Go</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Go</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Flight SQL Driver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="snowflake.html">Snowflake Driver</a></li>
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../java/flight_sql.html">Flight SQL</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../java/jdbc.html">JDBC Adapter</a></li>
-</ul>
-</li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../python/quickstart.html">Quickstart (Python)</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Language-Specific APIs</span></p>
-<ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../cpp/driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../cpp/api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../cpp/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../go/index.html">Go</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Go</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../python/quickstart.html">Quickstart (Python)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../python/driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="../format/specification.html">ADBC API Standard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/versioning.html">Versioning and Compatibility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/comparison.html">Comparison with Other APIs</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Development</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../development/contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../development/nightly.html">Nightly Packages</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../development/releasing.html">Release Management Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/nightly.html">Nightly Packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/releasing.html">Release Management Guide</a></li>
 </ul>
 
 </div>
@@ -305,7 +291,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/driver/go/flight_sql.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/driver/flight_sql.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -329,23 +315,47 @@
         <article role="main">
           <section id="flight-sql-driver">
 <h1>Flight SQL Driver<a class="headerlink" href="#flight-sql-driver" title="Permalink to this heading">#</a></h1>
+<p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Java, Python</p>
 <p>The Flight SQL Driver provides access to any database implementing a
 <a class="reference external" href="https://arrow.apache.org/docs/format/FlightSql.html" title="(in Apache Arrow v12.0.0)"><span>Arrow Flight SQL</span></a> compatible endpoint.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
-<p>The Flight SQL driver is shipped as a standalone library.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-0">
+</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
+C/C++</label><div class="sd-tab-content docutils">
+<p>For conda-forge users:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-flightsql
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-1">
 Go</label><div class="sd-tab-content docutils">
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
-</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-1">
+<input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="java" for="sd-tab-item-2">
+Java</label><div class="sd-tab-content docutils">
+<p>Add a dependency on <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc:adbc-driver-flight-sql</span></code>.</p>
+<p>For Maven users:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;dependency&gt;</span>
+<span class="w">  </span><span class="nt">&lt;groupId&gt;</span>org.apache.arrow.adbc<span class="nt">&lt;/groupId&gt;</span>
+<span class="w">  </span><span class="nt">&lt;artifactId&gt;</span>adbc-driver-flight-sql<span class="nt">&lt;/artifactId&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-3">
 Python</label><div class="sd-tab-content docutils">
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_sqlite
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># For conda-forge</span>
+mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-flightsql
+
+<span class="c1"># For pip</span>
+pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_flightsql
 </pre></div>
 </div>
 </div>
@@ -354,10 +364,10 @@ Python</label><div class="sd-tab-content docutils">
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
 <p>To connect to a database, supply the “uri” parameter when constructing
-the <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
+the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
 <div class="sd-tab-set docutils">
-<input checked="checked" id="sd-tab-item-2" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-2">
+<input checked="checked" id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-4">
 C++</label><div class="sd-tab-content docutils">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;adbc.h&quot;</span>
 
@@ -370,8 +380,8 @@ C++</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-3" name="sd-tab-set-1" type="radio">
-</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-3">
+<input id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-5">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_flightsql.dbapi</span>
 
@@ -386,6 +396,11 @@ Python</label><div class="sd-tab-content docutils">
 <h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">#</a></h2>
 <p>The Flight SQL driver generally supports features defined in the ADBC
 API specification 1.0.0, as well as some additional, custom options.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The Java driver does not support all options here.  See
+<a class="reference external" href="https://github.com/apache/arrow-adbc/issues/745">issue #745</a>.</p>
+</div>
 <section id="authentication">
 <h3>Authentication<a class="headerlink" href="#authentication" title="Permalink to this heading">#</a></h3>
 <p>The driver does no authentication by default.  The driver implements a
@@ -394,7 +409,7 @@ few optional authentication schemes:</p>
 <li><p>Mutual TLS (mTLS): see “Client Options” below.</p></li>
 <li><p>An HTTP-style scheme mimicking the Arrow Flight SQL JDBC driver.</p>
 <p>Set the options <code class="docutils literal notranslate"><span class="pre">username</span></code> and <code class="docutils literal notranslate"><span class="pre">password</span></code> on the
-<a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  Alternatively, set the option
+<a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  Alternatively, set the option
 <code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.authorization_header</span></code> for full control.</p>
 <p>The client provides credentials sending an <code class="docutils literal notranslate"><span class="pre">authorization</span></code> from
 client to server.  The server then responds with an
@@ -441,8 +456,8 @@ reponse payloads.  Should be a positive integer number of bytes.</p>
 <section id="custom-call-headers">
 <h3>Custom Call Headers<a class="headerlink" href="#custom-call-headers" title="Permalink to this heading">#</a></h3>
 <p>Custom HTTP headers can be attached to requests via options that apply
-to <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>, <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>, and
-<a class="reference internal" href="../../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>.</p>
+to <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>, <a class="reference internal" href="../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>, and
+<a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>.</p>
 <dl>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.call_header.&lt;HEADER</span> <span class="pre">NAME&gt;</span></code></dt><dd><p>Add the header <code class="docutils literal notranslate"><span class="pre">&lt;HEADER</span> <span class="pre">NAME&gt;</span></code> to outgoing requests with the given
 value.</p>
@@ -468,7 +483,7 @@ connections.  It also does not retry connections or requests.</p>
 are queued per partition.  Data is returned to the client in the order
 of the partitions.</p>
 <p>The queue size can be changed by setting an option on the
-<a class="reference internal" href="../../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>:</p>
+<a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>:</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.rpc.result_queue_size</span></code></dt><dd><p>The number of batches to queue per partition.  Defaults to 5.</p>
 </dd>
@@ -477,7 +492,7 @@ of the partitions.</p>
 <section id="metadata">
 <h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h3>
 <p>The driver currently will not populate column constraint info (foreign
-keys, primary keys, etc.) in <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv424AdbcConnectionGetObjectsP14AdbcConnectioniPKcPKcPKcPPKcPKcP16ArrowArrayStreamP9AdbcError" title="AdbcConnectionGetObjects"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcConnectionGetObjects()</span></code></a>.
+keys, primary keys, etc.) in <a class="reference internal" href="../cpp/api/adbc.html#_CPPv424AdbcConnectionGetObjectsP14AdbcConnectioniPKcPKcPKcPPKcPKcP16ArrowArrayStreamP9AdbcError" title="AdbcConnectionGetObjects"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcConnectionGetObjects()</span></code></a>.
 Also, catalog filters are evaluated as simple string matches, not
 <code class="docutils literal notranslate"><span class="pre">LIKE</span></code>-style patterns.</p>
 </section>
@@ -495,7 +510,7 @@ information that ADBC does not have.)</p>
 <section id="timeouts">
 <h3>Timeouts<a class="headerlink" href="#timeouts" title="Permalink to this heading">#</a></h3>
 <p>By default, timeouts are not used for RPC calls.  They can be set via
-special options on <a class="reference internal" href="../../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>.  In general, it is
+special options on <a class="reference internal" href="../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>.  In general, it is
 best practice to set timeouts to avoid unexpectedly getting stuck.
 The options are as follows:</p>
 <dl>
@@ -522,7 +537,7 @@ calls that implement bulk ingestion, or transaction support.</p>
 <p>The driver supports transactions.  It will first check the server’s
 SqlInfo to determine whether this is supported.  Otherwise,
 transaction-related ADBC APIs will return
-<a class="reference internal" href="../../cpp/api/adbc.html#c.ADBC_STATUS_NOT_IMPLEMENTED" title="ADBC_STATUS_NOT_IMPLEMENTED"><code class="xref c c-type docutils literal notranslate"><span class="pre">ADBC_STATUS_NOT_IMPLEMENTED</span></code></a>.</p>
+<a class="reference internal" href="../cpp/api/adbc.html#c.ADBC_STATUS_NOT_IMPLEMENTED" title="ADBC_STATUS_NOT_IMPLEMENTED"><code class="xref c c-type docutils literal notranslate"><span class="pre">ADBC_STATUS_NOT_IMPLEMENTED</span></code></a>.</p>
 </section>
 </section>
 </section>
@@ -532,23 +547,23 @@ transaction-related ADBC APIs will return
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="snowflake.html">
+          <a class="next-page" href="jdbc.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Snowflake Driver</div>
+                <div class="title">JDBC Adapter</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="index.html">
+          <a class="prev-page" href="status.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Go</div>
+                <div class="title">Driver Implementation Status</div>
                 
               </div>
             </a>
@@ -608,16 +623,16 @@ transaction-related ADBC APIs will return
       
     </aside>
   </div>
-</div><script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="../../_static/doctools.js"></script>
-    <script src="../../_static/sphinx_highlight.js"></script>
-    <script src="../../_static/scripts/furo.js"></script>
-    <script src="../../_static/clipboard.min.js"></script>
-    <script src="../../_static/copybutton.js"></script>
-    <script src="../../_static/design-tabs.js"></script>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/scripts/furo.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script src="../_static/design-tabs.js"></script>
     
-<script async defer src="../../../version.js"></script></body>
+<script async defer src="../../version.js"></script></body>
 </html>
