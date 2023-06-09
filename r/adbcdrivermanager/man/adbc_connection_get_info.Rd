@@ -35,25 +35,36 @@ adbc_connection_rollback(connection)
 \arguments{
 \item{connection}{An \link[=adbc_connection_init]{adbc_connection}}
 
-\item{info_codes}{(Currently undocumented)}
+\item{info_codes}{A list of metadata codes to fetch, or NULL to fetch all.
+Valid values are documented in the adbc.h header.}
 
-\item{depth}{(Currently undocumented)}
+\item{depth}{The level of nesting to display. If 0, display all levels. If 1,
+display only catalogs (i.e. catalog_schemas will be null). If 2, display
+only catalogs and schemas (i.e. db_schema_tables will be null), and so on.}
 
-\item{catalog}{(Currently undocumented)}
+\item{catalog}{Only show tables in the given catalog. If NULL, do not filter
+by catalog. If an empty string, only show tables without a catalog. May be
+a search pattern.}
 
-\item{db_schema}{(Currently undocumented)}
+\item{db_schema}{Only show tables in the given database schema. If NULL, do
+not filter by database schema. If an empty string, only show tables without
+a database schema. May be a search pattern.}
 
-\item{table_name}{(Currently undocumented)}
+\item{table_name}{Only show tables with the given name. If NULL, do not
+filter by name. May be a search pattern.}
 
-\item{table_type}{(Currently undocumented)}
+\item{table_type}{Only show tables matching one of the given table types. If
+NULL, show tables of any type. Valid table types can be fetched from
+GetTableTypes. Terminate the list with a NULL entry.}
 
-\item{column_name}{(Currently undocumented)}
+\item{column_name}{Only show columns with the given name. If NULL, do not
+filter by name. May be a search pattern.}
 
-\item{serialized_partition}{(Currently undocumented)}
+\item{serialized_partition}{The partition descriptor.}
 }
 \value{
 \itemize{
-\item \code{adbc_connection_get_info()}, \code{adbc_connection_get_objects},
+\item \code{adbc_connection_get_info()}, \code{adbc_connection_get_objects()},
 \code{adbc_connection_get_table_types()}, and \code{adbc_connection_read_partition()}
 return a \link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow_array_stream}.
 \item \code{adbc_connection_get_table_schema()} returns a
