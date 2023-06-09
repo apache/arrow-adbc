@@ -603,10 +603,7 @@ class PqGetObjectsHelper {
       }
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col_), error_);
 
-      if (strcmp(constraint_type, "FOREIGN KEY")) {
-        CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_column_usage_items_, 1),
-                 error_);
-      } else {
+      if (!strcmp(constraint_type, "FOREIGN KEY")) {
         assert(!row[3].is_null);
         assert(!row[4].is_null);
         assert(!row[5].is_null);
@@ -628,7 +625,7 @@ class PqGetObjectsHelper {
                                           ArrowCharView(constraint_ftable_name)),
                    error_);
           CHECK_NA(INTERNAL,
-                   ArrowArrayAppendString(fk_table_col_,
+                   ArrowArrayAppendString(fk_column_name_col_,
                                           ArrowCharView(constraint_fcolumn_name.c_str())),
                    error_);
 
@@ -637,7 +634,6 @@ class PqGetObjectsHelper {
         }
       }
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usages_col_), error_);
-
       CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_constraints_items_), error_);
     }
 

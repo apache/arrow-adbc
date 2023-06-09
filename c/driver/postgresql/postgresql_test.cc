@@ -410,6 +410,8 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     GTEST_SKIP();
   }
 
+  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_fkey_test", &error),
+              IsOkStatus(&error));
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_fkey_test_base", &error),
               IsOkStatus(&error));
 
@@ -431,9 +433,6 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
-
-  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_fkey_test", &error),
-              IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   {
@@ -463,8 +462,8 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_GT(reader.array->length, 0);
 
-  // bool seen_id1_fkey = false;
-  // bool seen_id2_fkey = false;
+  bool seen_fid1 = false;
+  bool seen_fid2 = false;
 
   struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
   struct ArrowArrayView* catalog_db_schemas_items = catalog_db_schemas_list->children[0];
@@ -473,26 +472,26 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
 
   struct ArrowArrayView* schema_table_items = db_schema_tables_col->children[0];
   struct ArrowArrayView* table_name_col = schema_table_items->children[0];
-  struct ArrowArrayView* table_columns_col = schema_table_items->children[2];
+  // struct ArrowArrayView* table_columns_col = schema_table_items->children[2];
   struct ArrowArrayView* table_constraints_col = schema_table_items->children[3];
 
-  struct ArrowArrayView* table_columns_items = table_columns_col->children[0];
-  struct ArrowArrayView* column_name_col = table_columns_items->children[0];
+  // struct ArrowArrayView* table_columns_items = table_columns_col->children[0];
+  // struct ArrowArrayView* column_name_col = table_columns_items->children[0];
 
   struct ArrowArrayView* table_constraints_items = table_constraints_col->children[0];
   struct ArrowArrayView* constraint_name_col = table_constraints_items->children[0];
   struct ArrowArrayView* constraint_type_col = table_constraints_items->children[1];
-  struct ArrowArrayView* constraint_column_names_col =
-      table_constraints_items->children[2];
+  // struct ArrowArrayView* constraint_column_names_col =
+  //     table_constraints_items->children[2];
 
-  // struct ArrowArrayView* constraint_column_usages_col =
-  // table_constraints_items->children[3]; struct ArrowArrayView*
-  // constraint_column_usage_items = constraint_column_usages_col->children[0]; struct
-  // ArrowArrayView* fk_catalog_col_ = constraint_column_usage_items->children[0]; struct
-  // ArrowArrayView* fk_db_schema_col_ = constraint_column_usage_items->children[1];
-  // struct ArrowArrayView* fk_table_col_ = constraint_column_usage_items->children[2];
-  // struct ArrowArrayView* fk_column_name_col_ =
-  // constraint_column_usage_items->children[3];
+  struct ArrowArrayView* constraint_column_usages_col =
+      table_constraints_items->children[3];
+  struct ArrowArrayView* constraint_column_usage_items =
+      constraint_column_usages_col->children[0];
+  struct ArrowArrayView* fk_catalog_col = constraint_column_usage_items->children[0];
+  struct ArrowArrayView* fk_db_schema_col = constraint_column_usage_items->children[1];
+  struct ArrowArrayView* fk_table_col = constraint_column_usage_items->children[2];
+  struct ArrowArrayView* fk_column_name_col = constraint_column_usage_items->children[3];
 
   do {
     for (int64_t catalog_idx = 0; catalog_idx < reader.array->length; catalog_idx++) {
@@ -520,52 +519,59 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
               ArrowStringView table_name =
                   ArrowArrayViewGetStringUnsafe(table_name_col, tables_index);
               auto table_str = std::string(table_name.data, table_name.size_bytes);
-              if (table_str == "adbc_pkey_test") {
-                for (auto columns_index =
-                         ArrowArrayViewListChildOffset(table_columns_col, tables_index);
-                     columns_index <
-                     ArrowArrayViewListChildOffset(table_columns_col, tables_index + 1);
-                     columns_index++) {
-                  ArrowStringView column_name =
-                      ArrowArrayViewGetStringUnsafe(column_name_col, columns_index);
-                  auto column_str = std::string(column_name.data, column_name.size_bytes);
-                  if (column_str == "id") {
-                    // TODO: check constraint columns
-                  }
-                }
-              }
-              for (auto constraints_index =
-                       ArrowArrayViewListChildOffset(table_constraints_col, tables_index);
-                   constraints_index <
-                   ArrowArrayViewListChildOffset(table_constraints_col, tables_index + 1);
-                   constraints_index++) {
-                ArrowStringView constraint_name =
-                    ArrowArrayViewGetStringUnsafe(constraint_name_col, constraints_index);
-                auto constraint_name_str =
-                    std::string(constraint_name.data, constraint_name.size_bytes);
-                ArrowStringView constraint_type =
-                    ArrowArrayViewGetStringUnsafe(constraint_type_col, constraints_index);
-                auto constraint_type_str =
-                    std::string(constraint_type.data, constraint_type.size_bytes);
+              if (table_str == "adbc_fkey_test") {
+                for (auto constraints_index = ArrowArrayViewListChildOffset(
+                         table_constraints_col, tables_index);
+                     constraints_index < ArrowArrayViewListChildOffset(
+                                             table_constraints_col, tables_index + 1);
+                     constraints_index++) {
+                  ArrowStringView constraint_name = ArrowArrayViewGetStringUnsafe(
+                      constraint_name_col, constraints_index);
+                  auto constraint_name_str =
+                      std::string(constraint_name.data, constraint_name.size_bytes);
+                  ArrowStringView constraint_type = ArrowArrayViewGetStringUnsafe(
+                      constraint_type_col, constraints_index);
+                  auto constraint_type_str =
+                      std::string(constraint_type.data, constraint_type.size_bytes);
 
-                for (auto constraint_names_index = ArrowArrayViewListChildOffset(
-                         constraint_column_names_col, constraints_index);
-                     constraint_names_index <
-                     ArrowArrayViewListChildOffset(constraint_column_names_col,
-                                                   constraints_index + 1);
-                     constraint_names_index++) {
-                  ArrowStringView constraint_column_name = ArrowArrayViewGetStringUnsafe(
-                      constraint_column_names_col->children[0], constraint_names_index);
-                  auto constraint_column_name_str = std::string(
-                      constraint_column_name.data, constraint_column_name.size_bytes);
-                  if ((constraint_column_name_str == "id") &
-                      (constraint_name_str == "adbc_pkey_test_pkey") &
-                      (constraint_type_str == "PRIMARY KEY")) {
-                    // TODO
-                  } else if ((constraint_column_name_str == "id_fkey") &
-                             (constraint_name_str == "adbc_fkey_test_id_fkey_fkey") &
-                             (constraint_type_str == "FOREIGN KEY")) {
-                    // TODO
+                  if (constraint_type_str == "FOREIGN KEY") {
+                    for (auto usage_index = ArrowArrayViewListChildOffset(
+                             constraint_column_usages_col, constraints_index);
+                         usage_index <
+                         ArrowArrayViewListChildOffset(constraint_column_usages_col,
+                                                       constraints_index + 1);
+                         usage_index++) {
+                      ArrowStringView fk_catalog_name =
+                          ArrowArrayViewGetStringUnsafe(fk_catalog_col, usage_index);
+                      auto fk_catalog_name_str =
+                          std::string(fk_catalog_name.data, fk_catalog_name.size_bytes);
+                      ArrowStringView fk_schema_name =
+                          ArrowArrayViewGetStringUnsafe(fk_db_schema_col, usage_index);
+                      auto fk_schema_name_str =
+                          std::string(fk_schema_name.data, fk_schema_name.size_bytes);
+                      ArrowStringView fk_table_name =
+                          ArrowArrayViewGetStringUnsafe(fk_table_col, usage_index);
+                      auto fk_table_name_str =
+                          std::string(fk_table_name.data, fk_table_name.size_bytes);
+                      ArrowStringView fk_column_name =
+                          ArrowArrayViewGetStringUnsafe(fk_column_name_col, usage_index);
+                      auto fk_column_name_str =
+                          std::string(fk_column_name.data, fk_column_name.size_bytes);
+                      if ((fk_catalog_name_str == "postgres") &&
+                          (fk_schema_name_str == "public") &&
+                          (fk_table_name_str == "adbc_fkey_test_base")) {
+                        // TODO: the current implementation makes it so the length of
+                        // constraint_column_names is not the same as the length of
+                        // constraint_column_usage as the latter applies only to foreign
+                        // keys; should these be the same? If so can pairwise iterate
+                        // and check source column -> foreign table column mapping
+                        if (fk_column_name_str == "id1") {
+                          seen_fid1 = true;
+                        } else if (fk_column_name_str == "id2") {
+                          seen_fid2 = true;
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -577,8 +583,10 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
   } while (reader.array->release);
 
-  // ASSERT_TRUE(seen_id1_fkey);
-  // ASSERT_TRUE(seen_id2_fkey);
+  ASSERT_TRUE(seen_fid1)
+      << "could not find foreign key relationship for 'fid1' on adbc_fkey_test";
+  ASSERT_TRUE(seen_fid2)
+      << "could not find foreign key relationship for 'fid2' on adbc_fkey_test";
 }
 
 TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
