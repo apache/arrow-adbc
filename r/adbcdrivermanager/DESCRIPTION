@@ -16,7 +16,6 @@ License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
-SystemRequirements: C++11
 Suggests:
     testthat (>= 3.0.0),
     withr
@@ -25,6 +24,4 @@ Config/build/bootstrap: TRUE
 URL: https://github.com/apache/arrow-adbc
 BugReports: https://github.com/apache/arrow-adbc/issues
 Imports:
-    nanoarrow (>= 0.1.0.9000)
-Remotes:
-    nanoarrow=apache/arrow-nanoarrow/r
+    nanoarrow
