@@ -19,6 +19,53 @@
 Apache Arrow ADBC
 =================
 
+To get started, choose a language and follow the Quickstart page.
+
+To learn more about ADBC, see the `introductory blog post
+<https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/>`_.
+
+.. toctree::
+   :maxdepth: 1
+
+   faq
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Supported Environments
+
+   C/C++ <cpp/index>
+   Go <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
+   Java <java/index>
+   Python <python/index>
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Drivers
+
+   driver/installation
+   driver/status
+   driver/flight_sql
+   driver/jdbc
+   driver/postgresql
+   driver/snowflake
+   driver/sqlite
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Specification
+
+   format/specification
+   format/versioning
+   format/comparison
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Development
+
+   development/contributing
+   development/nightly
+   development/releasing
+
 ADBC (Arrow Database Connectivity) is an API specification for
 Arrow-based database access.  It provides a set of APIs in C, Go, and
 Java that define how to interact with databases, including executing
@@ -32,52 +79,6 @@ work with multiple databases, whether Arrow-native or not.
 Application code should not need to juggle conversions from
 non-Arrow-native datasources alongside bindings for multiple
 Arrow-native database protocols.
-
-To learn more about ADBC, see the `introductory blog post
-<https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/>`_.
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Specifications
-
-   format/specification
-   format/versioning
-   format/comparison
-
-   faq
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Drivers
-
-   driver/installation
-   driver/status
-   driver/cpp/index
-   driver/go/index
-   driver/java/index
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Tutorials
-
-   python/quickstart
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Language-Specific APIs
-
-   C/C++ <cpp/index>
-   Go <go/index>
-   Java <java/index>
-   Python <python/index>
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Development
-
-   development/contributing
-   development/nightly
-   development/releasing
 
 Indices and tables
 ==================

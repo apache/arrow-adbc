@@ -19,34 +19,47 @@
 SQLite Driver
 =============
 
+**Available for:** C/C++, GLib/Ruby, Go, Python, R
+
 The SQLite driver provides access to SQLite databases.
 
-Status
-======
-
-The SQLite driver is essentially a "reference" driver that was used
-during ADBC development.  It generally supports most ADBC features but
-has not received attention to optimization.
+This driver is essentially a "reference" driver that was used during
+ADBC development.  It generally supports most ADBC features but has
+not received attention to optimization.
 
 Installation
 ============
 
-The SQLite driver is shipped as a standalone library.
-
 .. tab-set::
 
-   .. tab-item:: C++
+   .. tab-item:: C/C++
       :sync: cpp
 
-      See :ref:`contributing` to build and install the package from source.
+      For conda-forge users:
+
+      .. code-block:: shell
+
+         mamba install libadbc-driver-sqlite
 
    .. tab-item:: Python
       :sync: python
 
       .. code-block:: shell
 
+         # For conda-forge
+         mamba install adbc-driver-sqlite
+
+         # For pip
          pip install adbc_driver_sqlite
 
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: shell
+
+         # install.packages("remotes")
+         remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager", build = FALSE)
+         remotes::install_github("apache/arrow-adbc/r/adbcsqlite", build = FALSE)
 
 Usage
 =====
@@ -69,7 +82,8 @@ shared across all connections.
          // Ignoring error handling
          struct AdbcDatabase database;
          AdbcDatabaseNew(&database, nullptr);
-         AdbcDatabaseSetOption(&database, "uri", "file:mydb.db", nullptr);
+         AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", nullptr);
+         AdbcDatabaseSetOption(&database, "uri", "<sqlite uri>", nullptr);
          AdbcDatabaseInit(&database, nullptr);
 
    .. tab-item:: Python
@@ -81,6 +95,17 @@ shared across all connections.
 
          with adbc_driver_sqlite.dbapi.connect() as conn:
              pass
+
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: r
+
+         library(adbcdrivermanager)
+
+         # Use the driver manager to connect to a database
+         db <- adbc_database_init(adbcsqlite::adbcsqlite(), uri = ":memory:")
+         con <- adbc_connection_init(db)
 
 Supported Features
 ==================

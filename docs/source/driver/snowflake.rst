@@ -19,21 +19,50 @@
 Snowflake Driver
 ================
 
+**Available for:** C/C++, GLib/Ruby, Go, Python, R
+
 The Snowflake Driver provides access to Snowflake Database Warehouses.
 
 Installation
 ============
 
-The Snowflake Driver is shipped as a standalone library
-
 .. tab-set::
 
-  .. tab-item:: Go
-    :sync: go
+   .. tab-item:: C/C++
+      :sync: cpp
 
-    .. code-block:: shell
+      For conda-forge users:
 
-      go get github.com/apache/arrow-adbc/go/adbc/driver/snowflake
+      .. code-block:: shell
+
+         mamba install libadbc-driver-snowflake
+
+   .. tab-item:: Go
+      :sync: go
+
+      .. code-block:: shell
+
+        go get github.com/apache/arrow-adbc/go/adbc/driver/snowflake
+
+   .. tab-item:: Python
+      :sync: python
+
+      .. code-block:: shell
+
+         # For conda-forge
+         mamba install adbc-driver-snowflake
+
+         # For pip
+         pip install adbc_driver_snowflake
+
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: shell
+
+         # install.packages("remotes")
+         remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager", build = FALSE)
+         remotes::install_github("apache/arrow-adbc/r/adbcsnowflake", build = FALSE)
 
 Usage
 =====
@@ -43,19 +72,41 @@ constructing the :cpp::class:`AdbcDatabase`.
 
 .. tab-set::
 
-  .. tab-item:: C++
-    :sync: cpp
+   .. tab-item:: C++
+      :sync: cpp
 
-    .. code-block:: cpp
+      .. code-block:: cpp
 
-      #include "adbc.h"
+         #include "adbc.h"
 
-      // Ignoring error handling
-      struct AdbcDatabase database;
-      AdbcDatabaseNew(&database, nullptr);
-      AdbcDatabaseSetOption(&database, "driver", "adbc_driver_snowflake", nullptr);
-      AdbcDatabaseSetOption(&database, "uri", "<snowflake uri>", nullptr);
-      AdbcDatabaseInit(&database, nullptr);
+         // Ignoring error handling
+         struct AdbcDatabase database;
+         AdbcDatabaseNew(&database, nullptr);
+         AdbcDatabaseSetOption(&database, "driver", "adbc_driver_snowflake", nullptr);
+         AdbcDatabaseSetOption(&database, "uri", "<snowflake uri>", nullptr);
+         AdbcDatabaseInit(&database, nullptr);
+
+   .. tab-item:: Python
+      :sync: python
+
+      .. code-block:: python
+
+         import adbc_driver_snowflake.dbapi
+
+         with adbc_driver_snowflake.dbapi.connect("<snowflake uri>") as conn:
+             pass
+
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: r
+
+         library(adbcdrivermanager)
+
+         # Use the driver manager to connect to a database
+         uri <- Sys.getenv("ADBC_SNOWFLAKE_TEST_URI")
+         db <- adbc_database_init(adbcsnowflake::adbcsnowflake(), uri = uri)
+         con <- adbc_connection_init(db)
 
 URI Format
 ----------
@@ -294,33 +345,52 @@ Because Snowflake types do not necessary match up 1-to-1 with Arrow types
 the following is what should be expected when requesting data. Any conversions
 indicated are done to ensure consistency of the stream of record batches.
 
-+----------------+---------------+-----------------------------------------+
-| Snowflake Type | Arrow Type    | Notes                                   |
-+----------------+---------------+-----------------------------------------+
-| Integral Types | Int64         | All integral types in snowflake are     |
-|                |               | stored as 64-bit integers.              |
-+----------------+---------------+-----------------------------------------+
-| Float/Double   | Float64       | Snowflake does not distinguish between  |
-|                |               | float or double. All are 64-bit values  |
-+----------------+---------------+-----------------------------------------+
-| Decimal/Numeric| Int64/Float64 | If Scale == 0 then Int64 is used, else  |
-|                |               | Float64 is returned.                    |
-+----------------+---------------+-----------------------------------------+
-| Time           | Time64(ns)    | For ingestion, time32 will also work    |
-+----------------+---------------+-----------------------------------------+
-| Date           | Date32        | For ingestion, Date64 will also work    |
-+----------------+---------------+-----------------------------------------+
-| Timestamp_LTZ  | Timestamp(ns) | Local time zone will be used.           |
-| Timestamp_NTZ  |               | No timezone specified in Arrow type info|
-| Timestamp_TZ   |               | Values will be converted to UTC         |
-+----------------+---------------+-----------------------------------------+
-| Variant        | String        | Snowflake does not provide nested type  |
-| Object         |               | information. So each value will be a    |
-| Array          |               | string, similar to JSON, which can be   |
-|                |               | parsed. The ``logicalType`` metadata key|
-|                |               | will contain the snowflake field type.  |
-+----------------+---------------+-----------------------------------------+
-| Geography      | String        | There is no canonical Arrow type for    |
-| Geometry       |               | these and snowflake returns them as     |
-|                |               | strings.                                |
-+----------------+---------------+-----------------------------------------+
+.. list-table::
+   :header-rows: 1
+
+   * - Snowflake Type
+     - Arrow Type
+     - Notes
+
+   * - integral types
+     - int64
+     - All integral types in Snowflake are stored as 64-bit integers.
+
+   * - float/double
+     - float64
+     - Snowflake does not distinguish between float or double. Both are 64-bit values.
+
+   * - decimal/numeric
+     - int64/float64
+     - If scale == 0, then int64 is used, else float64.
+
+   * - time
+     - time64[ns]
+     - For ingestion, time32 can also be used.
+
+   * - date
+     - date32
+     - For ingestion, date64 can also be used.
+
+   * - | timestamp_ltz
+       | timestamp_ntz
+       | timestamp_tz
+     - timestamp[ns]
+     - Local time zone will be used. No timezone will be specified in
+       the Arrow type. Values will be converted to UTC.
+
+   * - | variant
+       | object
+       | array
+     - string
+     - Snowflake does not provide information about nested
+       types. Values will be strings in a format similar to JSON that
+       can be parsed. The Arrow type will contain a metadata key
+       ``logicalType`` with the Snowflake field type.
+
+   * - | geography
+       | geometry
+     - string
+     - There is no current canonical Arrow (extension) type for these
+       types, so they will be returned as the string values that
+       Snowflake provides.

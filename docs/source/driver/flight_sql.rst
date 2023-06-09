@@ -19,15 +19,24 @@
 Flight SQL Driver
 =================
 
+**Available for:** C/C++, GLib/Ruby, Go, Java, Python
+
 The Flight SQL Driver provides access to any database implementing a
 :doc:`arrow:format/FlightSql` compatible endpoint.
 
 Installation
 ============
 
-The Flight SQL driver is shipped as a standalone library.
-
 .. tab-set::
+
+   .. tab-item:: C/C++
+      :sync: cpp
+
+      For conda-forge users:
+
+      .. code-block:: shell
+
+         mamba install libadbc-driver-flightsql
 
    .. tab-item:: Go
       :sync: go
@@ -36,12 +45,30 @@ The Flight SQL driver is shipped as a standalone library.
 
          go get github.com/apache/arrow-adbc/go
 
+   .. tab-item:: Java
+      :sync: java
+
+      Add a dependency on ``org.apache.arrow.adbc:adbc-driver-flight-sql``.
+
+      For Maven users:
+
+      .. code-block:: xml
+
+         <dependency>
+           <groupId>org.apache.arrow.adbc</groupId>
+           <artifactId>adbc-driver-flight-sql</artifactId>
+         </dependency>
+
    .. tab-item:: Python
       :sync: python
 
       .. code-block:: shell
 
-         pip install adbc_driver_sqlite
+         # For conda-forge
+         mamba install adbc-driver-flightsql
+
+         # For pip
+         pip install adbc_driver_flightsql
 
 Usage
 =====
@@ -80,6 +107,10 @@ Supported Features
 
 The Flight SQL driver generally supports features defined in the ADBC
 API specification 1.0.0, as well as some additional, custom options.
+
+.. warning:: The Java driver does not support all options here.  See
+             `issue #745
+             <https://github.com/apache/arrow-adbc/issues/745>`_.
 
 Authentication
 --------------
