@@ -29,6 +29,13 @@ rely on ADBC drivers.
 
 ## Installation
 
+You can install the released version of adbcdrivermanager from
+[CRAN](https://cran.r-project.org/) with:
+
+``` r
+install.packages("adbcdrivermanager")
+```
+
 You can install the development version of adbcdrivermanager from
 [GitHub](https://github.com/) with:
 
@@ -72,22 +79,22 @@ adbc_statement_execute_query(stmt, stream)
 # Materialize the whole query as a tibble
 tibble::as_tibble(stream)
 #> # A tibble: 336,776 × 19
-#>     year month   day dep_time sched_de…¹ dep_d…² arr_t…³ sched…⁴ arr_d…⁵ carrier
-#>    <int> <int> <int>    <int>      <int>   <dbl>   <int>   <int>   <dbl> <chr>
-#>  1  2013     1     1      517        515       2     830     819      11 UA
-#>  2  2013     1     1      533        529       4     850     830      20 UA
-#>  3  2013     1     1      542        540       2     923     850      33 AA
-#>  4  2013     1     1      544        545      -1    1004    1022     -18 B6
-#>  5  2013     1     1      554        600      -6     812     837     -25 DL
-#>  6  2013     1     1      554        558      -4     740     728      12 UA
-#>  7  2013     1     1      555        600      -5     913     854      19 B6
-#>  8  2013     1     1      557        600      -3     709     723     -14 EV
-#>  9  2013     1     1      557        600      -3     838     846      -8 B6
-#> 10  2013     1     1      558        600      -2     753     745       8 AA
-#> # … with 336,766 more rows, 9 more variables: flight <int>, tailnum <chr>,
-#> #   origin <chr>, dest <chr>, air_time <dbl>, distance <dbl>, hour <dbl>,
-#> #   minute <dbl>, time_hour <dttm>, and abbreviated variable names
-#> #   ¹​sched_dep_time, ²​dep_delay, ³​arr_time, ⁴​sched_arr_time, ⁵​arr_delay
+#>     year month   day dep_time sched_dep_time dep_delay arr_time sched_arr_time
+#>    <int> <int> <int>    <int>          <int>     <dbl>    <int>          <int>
+#>  1  2013     1     1      517            515         2      830            819
+#>  2  2013     1     1      533            529         4      850            830
+#>  3  2013     1     1      542            540         2      923            850
+#>  4  2013     1     1      544            545        -1     1004           1022
+#>  5  2013     1     1      554            600        -6      812            837
+#>  6  2013     1     1      554            558        -4      740            728
+#>  7  2013     1     1      555            600        -5      913            854
+#>  8  2013     1     1      557            600        -3      709            723
+#>  9  2013     1     1      557            600        -3      838            846
+#> 10  2013     1     1      558            600        -2      753            745
+#> # ℹ 336,766 more rows
+#> # ℹ 11 more variables: arr_delay <dbl>, carrier <chr>, flight <int>,
+#> #   tailnum <chr>, origin <chr>, dest <chr>, air_time <dbl>, distance <dbl>,
+#> #   hour <dbl>, minute <dbl>, time_hour <dttm>
 
 # Clean up!
 adbc_statement_release(stmt)

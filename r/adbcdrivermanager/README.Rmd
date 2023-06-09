@@ -41,6 +41,12 @@ and support for user-facing packages that rely on ADBC drivers.
 
 ## Installation
 
+You can install the released version of adbcdrivermanager from [CRAN](https://cran.r-project.org/) with:
+
+```r
+install.packages("adbcdrivermanager")
+```
+
 You can install the development version of adbcdrivermanager from [GitHub](https://github.com/) with:
 
 ``` r
