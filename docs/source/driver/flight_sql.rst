@@ -97,10 +97,24 @@ the :cpp:class:`AdbcDatabase`.
 
       .. code-block:: python
 
-         import adbc_driver_flightsql.dbapi
+         from adbc_driver_flightsql import DatabaseOptions
+         from adbc_driver_flightsql.dbapi import connect
 
-         with adbc_driver_flightsql.dbapi.connect("grpc://localhost:8080") as conn:
+         headers = {"foo": "bar"}
+
+         with connect(
+             "grpc+tls://localhost:8080",
+             db_kwargs={
+                 DatabaseOptions.AUTHORIZATION_HEADER.value: "Bearer <token>",
+                 DatabaseOptions.TLS_SKIP_VERIFY.value: "true",
+                 **{
+                     f"{DatabaseOptions.RPC_CALL_HEADER_PREFIX.value}{k}": v
+                     for k, v in headers.items()
+                 },
+             }
+         ) as conn:
              pass
+
 
 Supported Features
 ==================

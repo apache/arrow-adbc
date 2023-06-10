@@ -79,7 +79,7 @@ class ConnectionOptions(enum.Enum):
     #:
     #: This option should prefix the name of the header to add
     #: (i.e. it should be used like
-    #: ``f"{ConnectionOptions.RpcCallHeaderPrefix}.x-my-header"``).
+    #: ``f"{ConnectionOptions.RPC_CALL_HEADER_PREFIX}x-my-header"``).
     #:
     #: Overrides any headers set via the equivalent database option.
     RPC_CALL_HEADER_PREFIX = DatabaseOptions.RPC_CALL_HEADER_PREFIX.value
@@ -108,7 +108,7 @@ class StatementOptions(enum.Enum):
     #:
     #: This option should prefix the name of the header to add
     #: (i.e. it should be used like
-    #: ``f"{ConnectionOptions.RpcCallHeaderPrefix}.x-my-header"``).
+    #: ``f"{ConnectionOptions.RPC_CALL_HEADER_PREFIX}x-my-header"``).
     #:
     #: Overrides any headers set via the equivalent database or
     #: connection options.
