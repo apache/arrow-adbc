@@ -17,9 +17,11 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <adbc.h>
+#include "nanoarrow/nanoarrow.h"
 
 #if defined(__GNUC__)
 #define SET_ERROR_ATTRIBUTE __attribute__((format(printf, 2, 3)))
@@ -121,6 +123,92 @@ AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
 AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
                                                struct AdbcError* error);
 /// @}
+
+struct AdbcGetInfoUsage {
+  struct ArrowStringView fk_catalog;
+  struct ArrowStringView fk_db_schema;
+  struct ArrowStringView fk_table;
+  struct ArrowStringView fk_column_name;
+};
+
+struct AdbcGetInfoConstraint {
+  struct ArrowStringView constraint_name;
+  struct ArrowStringView constraint_type;
+  struct ArrowStringView* constraint_column_names;
+  int n_column_names;
+  struct AdbcGetInfoUsage* constraint_column_usages;
+  int n_column_usages;
+};
+
+struct AdbcGetInfoColumn {
+  struct ArrowStringView column_name;
+  int32_t ordinal_position;
+  struct ArrowStringView remarks;
+  int16_t xdbc_data_type;
+  struct ArrowStringView xdbc_type_name;
+  int32_t xdbc_column_size;
+  int16_t xdbc_decimal_digits;
+  int16_t xdbc_num_prec_radix;
+  int16_t xdbc_nullable;
+  struct ArrowStringView xdbc_column_def;
+  int16_t xdbc_sql_data_type;
+  int16_t xdbc_datetime_sub;
+  int32_t xdbc_char_octet_length;
+  struct ArrowStringView xdbc_is_nullable;
+  struct ArrowStringView xdbc_scope_catalog;
+  struct ArrowStringView xdbc_scope_schema;
+  struct ArrowStringView xdbc_scope_table;
+  bool xdbc_is_autoincrement;
+  bool xdbc_is_generatedcolumn;
+};
+
+struct AdbcGetInfoTable {
+  struct ArrowStringView table_name;
+  struct ArrowStringView table_type;
+  struct AdbcGetInfoColumn* table_columns;
+  int n_table_columns;
+  struct AdbcGetInfoConstraint* table_constraints;
+  int n_table_constraints;
+};
+
+struct AdbcGetInfoSchema {
+  struct ArrowStringView db_schema_name;
+  struct AdbcGetInfoTable* db_schema_tables;
+  int n_db_schema_tables;
+};
+
+struct AdbcGetInfoCatalog {
+  struct ArrowStringView catalog_name;
+  struct AdbcGetInfoSchema* catalog_db_schemas;
+  int n_db_schemas;
+};
+
+struct AdbcGetInfoData {
+  struct AdbcGetInfoCatalog catalogs;
+  int n_catalogs;
+  struct ArrowArray* catalog_name_array;
+  struct ArrowArray* catalog_schemas_array;
+  struct ArrowArray* db_schema_name_array;
+  struct ArrowArray* db_schema_tables_array;
+  struct ArrowArray* table_name_array;
+  struct ArrowArray* table_type_array;
+  struct ArrowArray* table_columns_array;
+  struct ArrowArray* table_constraints_array;
+  struct ArrowArray* column_name_array;
+  struct ArrowArray* column_position_array;
+  struct ArrowArray* column_remarks_array;
+  struct ArrowArray* constraint_name_array;
+  struct ArrowArray* constraint_type_array;
+  struct ArrowArray* constraint_column_names_array;
+  struct ArrowArray* constraint_column_usages_array;
+  struct ArrowArray* fk_catalog_array;
+  struct ArrowArray* fk_db_schema_array;
+  struct ArrowArray* fk_table_array;
+  struct ArrowArray* fk_column_name_array;
+};
+
+int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data, struct ArrowArray* array);
+void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data);
 
 #ifdef __cplusplus
 }

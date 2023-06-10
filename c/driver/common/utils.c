@@ -24,7 +24,6 @@
 #include <string.h>
 
 #include <assert.h>
-#include <nanoarrow/nanoarrow.h>
 
 static size_t kErrorBufferSize = 256;
 
