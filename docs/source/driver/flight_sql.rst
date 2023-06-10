@@ -115,7 +115,6 @@ the :cpp:class:`AdbcDatabase`.
          ) as conn:
              pass
 
-
 Supported Features
 ==================
 
