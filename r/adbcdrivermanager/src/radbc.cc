@@ -492,9 +492,14 @@ extern "C" SEXP RAdbcStatementExecuteQuery(SEXP statement_xptr, SEXP out_stream_
 
   const char* names[] = {"status", "rows_affected", ""};
   SEXP result = PROTECT(Rf_mkNamed(VECSXP, names));
-  SET_VECTOR_ELT(result, 0, adbc_wrap_status(status));
-  SET_VECTOR_ELT(result, 1, Rf_ScalarReal(rows_affected));
+
+  SEXP status_sexp = PROTECT(adbc_wrap_status(status));
+  SET_VECTOR_ELT(result, 0, status_sexp);
   UNPROTECT(1);
+
+  SEXP rows_affected_sexp = PROTECT(Rf_ScalarReal(rows_affected));
+  SET_VECTOR_ELT(result, 1, rows_affected_sexp);
+  UNPROTECT(2);
   return result;
 }
 
