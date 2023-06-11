@@ -15,14 +15,31 @@
 # specific language governing permissions and limitations
 # under the License.
 
-breathe
-doxygen
-furo
-make
-numpydoc
-pytest
-sphinx>=5.0
-sphinx-autobuild
-sphinx-copybutton
-sphinx-design
-sphinxcontrib-mermaid
+# RECIPE STARTS HERE
+
+#: ADBC lets you get the schema of a table as an Arrow schema.
+
+import os
+
+import pyarrow
+
+import adbc_driver_postgresql.dbapi
+
+uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
+conn = adbc_driver_postgresql.dbapi.connect(uri)
+
+#: We'll create an example table to test.
+with conn.cursor() as cur:
+    cur.execute("DROP TABLE IF EXISTS example")
+    cur.execute("CREATE TABLE example (ints INT, bigints BIGINT)")
+
+conn.commit()
+
+assert conn.adbc_get_table_schema("example") == pyarrow.schema(
+    [
+        ("ints", "int32"),
+        ("bigints", "int64"),
+    ]
+)
+
+conn.close()

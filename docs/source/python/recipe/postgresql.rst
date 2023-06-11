@@ -15,14 +15,31 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-======
-Python
-======
+==================
+PostgreSQL Recipes
+==================
 
-.. toctree::
-   :maxdepth: 2
+Authenticate with a username and password
+=========================================
 
-   quickstart
-   driver_manager
-   api/index
-   recipe/index
+.. recipe:: postgresql_authenticate.py
+
+Create/append to a table from an Arrow table
+============================================
+
+.. recipe:: postgresql_create_append_table.py
+
+Execute a statement with bind parameters
+========================================
+
+.. recipe:: postgresql_execute_bind.py
+
+Get the Arrow schema of a table
+===============================
+
+.. recipe:: postgresql_get_table_schema.py
+
+List catalogs, schemas, and tables
+==================================
+
+.. recipe:: postgresql_list_catalogs.py

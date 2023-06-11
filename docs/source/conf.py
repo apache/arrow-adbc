@@ -15,6 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path("./ext").resolve()))
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -30,6 +35,7 @@ version = release
 
 exclude_patterns = []
 extensions = [
+    "adbc_cookbook",
     "breathe",
     "numpydoc",
     "sphinx.ext.autodoc",

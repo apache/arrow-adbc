@@ -15,14 +15,21 @@
 # specific language governing permissions and limitations
 # under the License.
 
-breathe
-doxygen
-furo
-make
-numpydoc
-pytest
-sphinx>=5.0
-sphinx-autobuild
-sphinx-copybutton
-sphinx-design
-sphinxcontrib-mermaid
+import importlib
+from pathlib import Path
+
+import pytest
+
+
+def pytest_generate_tests(metafunc) -> None:
+    root = (Path(__file__).parent.parent / "python/recipe/").resolve()
+    recipes = root.rglob("*.py")
+    metafunc.parametrize(
+        "recipe", [pytest.param(path, id=path.stem) for path in recipes]
+    )
+
+
+def test_cookbook_recipe(recipe: Path) -> None:
+    spec = importlib.util.spec_from_file_location(f"cookbook.{recipe.stem}", recipe)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
