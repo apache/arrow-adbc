@@ -428,6 +428,7 @@ AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
 }
 
 struct AdbcGetInfoData* AdbcGetInfoDataInit(struct ArrowArrayView* array_view) {
+  // TODO: need to properly handle memory cleanup in case of malloc failure
   struct AdbcGetInfoData* get_info_data =
       (struct AdbcGetInfoData*)malloc(sizeof(struct AdbcGetInfoData));
   if (get_info_data == NULL) {
