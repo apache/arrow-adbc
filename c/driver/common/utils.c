@@ -480,6 +480,7 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
         free(get_info_data->catalogs[i]);
       }
       free(get_info_data->catalogs);
+      return -1;
     }
 
     catalog->catalog_name =
@@ -643,4 +644,38 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
 
   return 0;
 }
-void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data) {}
+
+void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data) {
+  for (int64_t catalog_index = 0; catalog_index < get_info_data->n_catalogs;
+       catalog_index++) {
+    struct AdbcGetInfoCatalog* catalog = get_info_data->catalogs[catalog_index];
+    for (int64_t db_schema_index = 0; db_schema_index < catalog->n_db_schemas;
+         db_schema_index++) {
+      struct AdbcGetInfoSchema* schema = catalog->catalog_db_schemas[db_schema_index];
+      for (int64_t table_index = 0; table_index < schema->n_db_schema_tables;
+           table_index++) {
+        struct AdbcGetInfoTable* table = schema->db_schema_tables[table_index];
+        for (int64_t column_index = 0; column_index < table->n_table_columns;
+             column_index++) {
+          free(table->table_columns[column_index]);
+        }
+
+        for (int64_t constraint_index = 0; constraint_index < table->n_table_constraints;
+             constraint_index++) {
+          struct AdbcGetInfoConstraint* constraint =
+              table->table_constraints[constraint_index];
+          free(constraint->constraint_column_names);
+          for (int64_t usage_index = 0; usage_index < constraint->n_column_usages;
+               usage_index++) {
+            free(constraint->constraint_column_usages[usage_index]);
+          }
+        }
+
+        free(table);
+      }
+      free(schema);
+    }
+    free(catalog);
+  }
+  free(get_info_data);
+}
