@@ -427,8 +427,13 @@ AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
   return ADBC_STATUS_OK;
 }
 
-int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
-                        struct ArrowArrayView* array_view) {
+struct AdbcGetInfoData* AdbcGetInfoDataInit(struct ArrowArrayView* array_view) {
+  struct AdbcGetInfoData* get_info_data =
+      (struct AdbcGetInfoData*)malloc(sizeof(struct AdbcGetInfoData));
+  if (get_info_data == NULL) {
+    return NULL;
+  }
+
   get_info_data->catalog_name_array = array_view->children[0];
   get_info_data->catalog_schemas_array = array_view->children[1];
 
@@ -469,7 +474,8 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
       sizeof(struct AdbcGetInfoCatalog*) * array_view->array->length);
 
   if (get_info_data->catalogs == NULL) {
-    return -1;
+    free(get_info_data);
+    return NULL;
   }
 
   for (int64_t catalog_idx = 0; catalog_idx < array_view->array->length; catalog_idx++) {
@@ -480,7 +486,8 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
         free(get_info_data->catalogs[i]);
       }
       free(get_info_data->catalogs);
-      return -1;
+      free(get_info_data);
+      return NULL;
     }
 
     catalog->catalog_name =
@@ -549,7 +556,7 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
                 column->remarks = ArrowArrayViewGetStringUnsafe(
                     get_info_data->column_remarks_array, column_index);
                 // TODO: implement the xdbc extension types; for now they return garbage
-                table->table_columns[column_index] = column;
+                table->table_columns[column_index - columns_list_start] = column;
               }
             }
 
@@ -590,9 +597,10 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
                            constraint_column_names_start;
                        constraint_column_name_index < constraint_column_names_end;
                        constraint_column_name_index++) {
-                    constraint->constraint_column_names[constraint_column_name_index] =
+                    constraint->constraint_column_names[constraint_column_name_index -
+                                                        constraint_column_names_start] =
                         ArrowArrayViewGetStringUnsafe(
-                            get_info_data->constraint_name_array,
+                            get_info_data->constraint_column_names_array,
                             constraint_column_name_index);
                   }
                 }
@@ -603,7 +611,7 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
                     get_info_data->constraint_column_usages_array, constraint_index + 1);
                 int64_t constraint_column_usages_len =
                     constraint_column_usages_end - constraint_column_usages_start;
-                constraint->n_column_names = constraint_column_usages_len;
+                constraint->n_column_usages = constraint_column_usages_len;
                 if (constraint_column_usages_len == 0) {
                   constraint->constraint_column_usages = NULL;
                 } else {
@@ -626,24 +634,26 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
                         ArrowArrayViewGetStringUnsafe(get_info_data->fk_column_name_array,
                                                       constraint_column_usage_index);
 
-                    constraint->constraint_column_usages[constraint_column_usage_index] =
+                    constraint->constraint_column_usages[constraint_column_usage_index -
+                                                         constraint_column_usages_start] =
                         usage;
                   }
                 }
-                table->table_constraints[constraint_index] = constraint;
+                table->table_constraints[constraint_index - constraints_list_start] =
+                    constraint;
               }
             }
 
-            schema->db_schema_tables[table_index] = table;
+            schema->db_schema_tables[table_index - table_list_start] = table;
           }
         }
-        catalog->catalog_db_schemas[db_schema_index] = schema;
+        catalog->catalog_db_schemas[db_schema_index - db_schema_list_start] = schema;
       }
     }
     get_info_data->catalogs[catalog_idx] = catalog;
   }
 
-  return 0;
+  return get_info_data;
 }
 
 void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data) {

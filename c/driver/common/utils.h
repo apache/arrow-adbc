@@ -208,9 +208,8 @@ struct AdbcGetInfoData {
 };
 
 // does not copy any data from array
-// returns -1 on error
-int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
-                        struct ArrowArrayView* array_view);
+// returns NULL on error
+struct AdbcGetInfoData* AdbcGetInfoDataInit(struct ArrowArrayView* array_view);
 void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data);
 
 // returns NULL on error
