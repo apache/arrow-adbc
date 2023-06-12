@@ -298,41 +298,37 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_GT(reader.array->length, 0);
 
-  // TODO: if we better handle the lifecycle of AdbcGetInfoData*
-  // we can change from EXPECT_ to ASSERT_ macros
-  struct AdbcGetInfoData* get_info_data = AdbcGetInfoDataInit(&reader.array_view.value);
-  EXPECT_NE(get_info_data, nullptr) << "could not initialize the AdbcGetInfoData object";
+  auto get_info_data = adbc_validation::GetInfoReader{&reader.array_view.value};
+  ASSERT_NE(*get_info_data, nullptr) << "could not initialize the AdbcGetInfoData object";
 
   struct AdbcGetInfoTable* table = AdbcGetInfoDataGetTableByName(
-      get_info_data, "postgres", "public", "adbc_pkey_test");
-  EXPECT_NE(table, nullptr) << "could not find adbc_pkey_test table";
+      *get_info_data, "postgres", "public", "adbc_pkey_test");
+  ASSERT_NE(table, nullptr) << "could not find adbc_pkey_test table";
 
-  EXPECT_EQ(table->n_table_columns, 2);
+  ASSERT_EQ(table->n_table_columns, 2);
   struct AdbcGetInfoColumn* column = AdbcGetInfoDataGetColumnByName(
-      get_info_data, "postgres", "public", "adbc_pkey_test", "id");
-  EXPECT_NE(column, nullptr) << "could not find id column on adbc_pkey_test table";
+      *get_info_data, "postgres", "public", "adbc_pkey_test", "id");
+  ASSERT_NE(column, nullptr) << "could not find id column on adbc_pkey_test table";
 
-  EXPECT_EQ(table->n_table_constraints, 1)
+  ASSERT_EQ(table->n_table_constraints, 1)
       << "expected 1 constraint on adbc_pkey_test table, found: "
       << table->n_table_constraints;
 
   struct AdbcGetInfoConstraint* constraint = AdbcGetInfoDataGetConstraintByName(
-      get_info_data, "postgres", "public", "adbc_pkey_test", "adbc_pkey_test_pkey");
-  EXPECT_NE(constraint, nullptr) << "could not find adbc_pkey_test_pkey constraint";
+      *get_info_data, "postgres", "public", "adbc_pkey_test", "adbc_pkey_test_pkey");
+  ASSERT_NE(constraint, nullptr) << "could not find adbc_pkey_test_pkey constraint";
 
   auto constraint_type = std::string(constraint->constraint_type.data,
                                      constraint->constraint_type.size_bytes);
-  EXPECT_EQ(constraint_type, "PRIMARY KEY");
-  EXPECT_EQ(constraint->n_column_names, 1)
+  ASSERT_EQ(constraint_type, "PRIMARY KEY");
+  ASSERT_EQ(constraint->n_column_names, 1)
       << "expected constraint adbc_pkey_test_pkey to be applied to 1 column, found: "
       << constraint->n_column_names;
 
   auto constraint_column_name =
       std::string(constraint->constraint_column_names[0].data,
                   constraint->constraint_column_names[0].size_bytes);
-  EXPECT_EQ(constraint_column_name, "id");
-
-  AdbcGetInfoDataDelete(get_info_data);
+  ASSERT_EQ(constraint_column_name, "id");
 }
 
 TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
@@ -395,28 +391,26 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_GT(reader.array->length, 0);
 
-  // TODO: if we better handle the lifecycle of AdbcGetInfoData*
-  // we can change from EXPECT_ to ASSERT_ macros
-  struct AdbcGetInfoData* get_info_data = AdbcGetInfoDataInit(&reader.array_view.value);
-  EXPECT_NE(get_info_data, nullptr) << "could not initialize the AdbcGetInfoData object";
+  auto get_info_data = adbc_validation::GetInfoReader{&reader.array_view.value};
+  ASSERT_NE(*get_info_data, nullptr) << "could not initialize the AdbcGetInfoData object";
 
   struct AdbcGetInfoTable* table = AdbcGetInfoDataGetTableByName(
-      get_info_data, "postgres", "public", "adbc_fkey_test");
-  EXPECT_NE(table, nullptr) << "could not find adbc_fkey_test table";
-  EXPECT_EQ(table->n_table_constraints, 1)
+      *get_info_data, "postgres", "public", "adbc_fkey_test");
+  ASSERT_NE(table, nullptr) << "could not find adbc_fkey_test table";
+  ASSERT_EQ(table->n_table_constraints, 1)
       << "expected 1 constraint on adbc_fkey_test table, found: "
       << table->n_table_constraints;
 
   struct AdbcGetInfoConstraint* constraint = AdbcGetInfoDataGetConstraintByName(
-      get_info_data, "postgres", "public", "adbc_fkey_test",
+      *get_info_data, "postgres", "public", "adbc_fkey_test",
       "adbc_fkey_test_fid1_fid2_fkey");
-  EXPECT_NE(constraint, nullptr)
+  ASSERT_NE(constraint, nullptr)
       << "could not find adbc_fkey_test_fid1_fid2_fkey constraint";
 
   auto constraint_type = std::string(constraint->constraint_type.data,
                                      constraint->constraint_type.size_bytes);
-  EXPECT_EQ(constraint_type, "FOREIGN KEY");
-  EXPECT_EQ(constraint->n_column_names, 2)
+  ASSERT_EQ(constraint_type, "FOREIGN KEY");
+  ASSERT_EQ(constraint->n_column_names, 2)
       << "expected constraint adbc_fkey_test_fid1_fid2_fkey to be applied to 2 columns, "
          "found: "
       << constraint->n_column_names;
@@ -425,32 +419,32 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     auto str_vw = constraint->constraint_column_names[i];
     auto str = std::string(str_vw.data, str_vw.size_bytes);
     if (i == 0) {
-      EXPECT_EQ(str, "fid1");
+      ASSERT_EQ(str, "fid1");
     } else if (i == 1) {
-      EXPECT_EQ(str, "fid2");
+      ASSERT_EQ(str, "fid2");
     }
   }
 
-  EXPECT_EQ(constraint->n_column_usages, 2)
+  ASSERT_EQ(constraint->n_column_usages, 2)
       << "expected constraint adbc_fkey_test_fid1_fid2_fkey to have 2 usages, found: "
       << constraint->n_column_usages;
 
   for (auto i = 0; i < 2; i++) {
     struct AdbcGetInfoUsage* usage = constraint->constraint_column_usages[i];
     auto catalog_str = std::string(usage->fk_catalog.data, usage->fk_catalog.size_bytes);
-    EXPECT_EQ(catalog_str, "postgres");
+    ASSERT_EQ(catalog_str, "postgres");
     auto schema_str =
         std::string(usage->fk_db_schema.data, usage->fk_db_schema.size_bytes);
-    EXPECT_EQ(schema_str, "public");
+    ASSERT_EQ(schema_str, "public");
     auto table_str = std::string(usage->fk_table.data, usage->fk_table.size_bytes);
-    EXPECT_EQ(table_str, "adbc_fkey_test_base");
+    ASSERT_EQ(table_str, "adbc_fkey_test_base");
 
     auto column_str =
         std::string(usage->fk_column_name.data, usage->fk_column_name.size_bytes);
     if (i == 0) {
-      EXPECT_EQ(column_str, "id1");
+      ASSERT_EQ(column_str, "id1");
     } else if (i == 1) {
-      EXPECT_EQ(column_str, "id2");
+      ASSERT_EQ(column_str, "id2");
     }
   }
 }

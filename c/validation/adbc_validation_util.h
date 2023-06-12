@@ -31,6 +31,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
+#include <utils.h>
 
 namespace adbc_validation {
 
@@ -195,6 +196,22 @@ struct StreamReader {
     }
     return 0;
   }
+};
+
+/// \brief Read an AdbcGetInfoData struct with RAII safety
+struct GetInfoReader {
+  explicit GetInfoReader(struct ArrowArrayView* array_view) : array_view_(array_view) {
+    // TODO: this swallows any construction errors
+    get_info_data_ = AdbcGetInfoDataInit(array_view);
+  }
+  ~GetInfoReader() { AdbcGetInfoDataDelete(get_info_data_); }
+
+  struct AdbcGetInfoData* operator*() { return get_info_data_; }
+  struct AdbcGetInfoData* operator->() { return get_info_data_; }
+
+ private:
+  struct ArrowArrayView* array_view_;
+  struct AdbcGetInfoData* get_info_data_;
 };
 
 struct SchemaField {
