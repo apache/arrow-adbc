@@ -206,8 +206,12 @@ struct GetInfoReader {
   }
   ~GetInfoReader() { AdbcGetInfoDataDelete(get_info_data_); }
 
-  struct AdbcGetInfoData* operator*() { return get_info_data_; }
-  struct AdbcGetInfoData* operator->() { return get_info_data_; }
+  struct AdbcGetInfoData* operator*() {
+    return get_info_data_;
+  }
+  struct AdbcGetInfoData* operator->() {
+    return get_info_data_;
+  }
 
  private:
   struct ArrowArrayView* array_view_;
