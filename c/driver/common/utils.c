@@ -460,6 +460,8 @@ struct AdbcGetInfoData* AdbcGetInfoDataInit(struct ArrowArrayView* array_view) {
   get_info_data->constraint_name_array = table_constraints_items->children[0];
   get_info_data->constraint_type_array = table_constraints_items->children[1];
   get_info_data->constraint_column_names_array = table_constraints_items->children[2];
+  get_info_data->constraint_column_name_array =
+      get_info_data->constraint_column_names_array->children[0];
   get_info_data->constraint_column_usages_array = table_constraints_items->children[3];
 
   struct ArrowArrayView* constraint_column_usage_items =
@@ -600,7 +602,7 @@ struct AdbcGetInfoData* AdbcGetInfoDataInit(struct ArrowArrayView* array_view) {
                     constraint->constraint_column_names[constraint_column_name_index -
                                                         constraint_column_names_start] =
                         ArrowArrayViewGetStringUnsafe(
-                            get_info_data->constraint_column_names_array,
+                            get_info_data->constraint_column_name_array,
                             constraint_column_name_index);
                   }
                 }

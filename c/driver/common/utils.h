@@ -200,6 +200,7 @@ struct AdbcGetInfoData {
   struct ArrowArrayView* constraint_name_array;
   struct ArrowArrayView* constraint_type_array;
   struct ArrowArrayView* constraint_column_names_array;
+  struct ArrowArrayView* constraint_column_name_array;
   struct ArrowArrayView* constraint_column_usages_array;
   struct ArrowArrayView* fk_catalog_array;
   struct ArrowArrayView* fk_db_schema_array;
