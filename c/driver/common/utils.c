@@ -679,3 +679,98 @@ void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data) {
   }
   free(get_info_data);
 }
+
+struct AdbcGetInfoCatalog* AdbcGetInfoDataGetCatalogByName(
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name) {
+  for (int64_t i = 0; i < get_info_data->n_catalogs; i++) {
+    struct AdbcGetInfoCatalog* catalog = get_info_data->catalogs[i];
+    struct ArrowStringView name = catalog->catalog_name;
+    if (!strncmp(name.data, catalog_name, name.size_bytes)) {
+      return catalog;
+    }
+  }
+
+  return NULL;
+}
+
+struct AdbcGetInfoSchema* AdbcGetInfoDataGetSchemaByName(
+    struct AdbcGetInfoData* get_info_data, const char* const restrict catalog_name,
+    const char* const restrict schema_name) {
+  struct AdbcGetInfoCatalog* catalog =
+      AdbcGetInfoDataGetCatalogByName(get_info_data, catalog_name);
+  if (catalog == NULL) {
+    return NULL;
+  } else {
+    for (int64_t i = 0; i < catalog->n_db_schemas; i++) {
+      struct AdbcGetInfoSchema* schema = catalog->catalog_db_schemas[i];
+      struct ArrowStringView name = schema->db_schema_name;
+      if (!strncmp(name.data, schema_name, name.size_bytes)) {
+        return schema;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+struct AdbcGetInfoTable* AdbcGetInfoDataGetTableByName(
+    struct AdbcGetInfoData* get_info_data, const char* const restrict catalog_name,
+    const char* const restrict schema_name, const char* const restrict table_name) {
+  struct AdbcGetInfoSchema* schema =
+      AdbcGetInfoDataGetSchemaByName(get_info_data, catalog_name, schema_name);
+  if (schema == NULL) {
+    return NULL;
+  } else {
+    for (int64_t i = 0; i < schema->n_db_schema_tables; i++) {
+      struct AdbcGetInfoTable* table = schema->db_schema_tables[i];
+      struct ArrowStringView name = table->table_name;
+      if (!strncmp(name.data, schema_name, name.size_bytes)) {
+        return table;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+struct AdbcGetInfoColumn* AdbcGetInfoDataGetColumnByName(
+    struct AdbcGetInfoData* get_info_data, const char* const restrict catalog_name,
+    const char* const restrict schema_name, const char* const restrict table_name,
+    const char* const restrict column_name) {
+  struct AdbcGetInfoTable* table =
+      AdbcGetInfoDataGetTableByName(get_info_data, catalog_name, schema_name, table_name);
+  if (table == NULL) {
+    return NULL;
+  } else {
+    for (int64_t i = 0; i < table->n_table_columns; i++) {
+      struct AdbcGetInfoColumn* column = table->table_columns[i];
+      struct ArrowStringView name = column->column_name;
+      if (!strncmp(name.data, schema_name, name.size_bytes)) {
+        return column;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+struct AdbcGetInfoConstraint* AdbcGetInfoDataGetConstraintByName(
+    struct AdbcGetInfoData* get_info_data, const char* const restrict catalog_name,
+    const char* const restrict schema_name, const char* const restrict table_name,
+    const char* const restrict constraint_name) {
+  struct AdbcGetInfoTable* table =
+      AdbcGetInfoDataGetTableByName(get_info_data, catalog_name, schema_name, table_name);
+  if (table == NULL) {
+    return NULL;
+  } else {
+    for (int64_t i = 0; i < table->n_table_constraints; i++) {
+      struct AdbcGetInfoConstraint* constraint = table->table_constraints[i];
+      struct ArrowStringView name = constraint->constraint_name;
+      if (!strncmp(name.data, schema_name, name.size_bytes)) {
+        return constraint;
+      }
+    }
+  }
+
+  return NULL;
+}

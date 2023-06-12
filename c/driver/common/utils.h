@@ -213,6 +213,25 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
                         struct ArrowArrayView* array_view);
 void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data);
 
+// returns NULL on error
+// for now all arguments are required
+struct AdbcGetInfoCatalog* AdbcGetInfoDataGetCatalogByName(
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name);
+struct AdbcGetInfoSchema* AdbcGetInfoDataGetSchemaByName(
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+    const char* const schema_name);
+struct AdbcGetInfoTable* AdbcGetInfoDataGetTableByName(
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+    const char* const schema_name, const char* const table_name);
+struct AdbcGetInfoColumn* AdbcGetInfoDataGetColumnByName(
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+    const char* const schema_name, const char* const table_name,
+    const char* const column_name);
+struct AdbcGetInfoConstraint* AdbcGetInfoDataGetConstraintByName(
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+    const char* const schema_name, const char* const table_name,
+    const char* const constraint_name);
+
 #ifdef __cplusplus
 }
 #endif
