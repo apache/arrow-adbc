@@ -20,7 +20,7 @@ module github.com/apache/arrow-adbc/go/adbc
 go 1.18
 
 require (
-	github.com/apache/arrow/go/v13 v13.0.0-20230607193106-16328f0ccc73
+	github.com/apache/arrow/go/v13 v13.0.0-20230612164931-b642707f6de7
 	github.com/bluele/gcache v0.0.2
 	github.com/google/uuid v1.3.0
 	github.com/snowflakedb/gosnowflake v1.6.21

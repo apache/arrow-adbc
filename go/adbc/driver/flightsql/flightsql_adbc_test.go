@@ -545,6 +545,21 @@ func (suite *StatementTests) TearDownTest() {
 	suite.Driver = nil
 }
 
+func (suite *StatementTests) TestDuplicateColumnNames() {
+	suite.NoError(suite.Stmt.SetSqlQuery("SELECT 1 as a, 2 as a"))
+	reader, _, err := suite.Stmt.ExecuteQuery(suite.ctx)
+	suite.NoError(err)
+	defer reader.Release()
+
+	suite.Len(reader.Schema().Fields(), 2)
+	suite.Equal(reader.Schema().Field(0).Name, "a")
+	suite.Equal(reader.Schema().Field(1).Name, "a")
+
+	for reader.Next() {
+	}
+	suite.NoError(reader.Err())
+}
+
 func (suite *StatementTests) TestQueueSizeOption() {
 	var err error
 	option := "adbc.rpc.result_queue_size"
