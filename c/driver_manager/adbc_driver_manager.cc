@@ -160,6 +160,11 @@ AdbcStatusCode DatabaseSetOptionDouble(struct AdbcDatabase* database, const char
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode ConnectionCancel(struct AdbcConnection* connection,
+                                struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode ConnectionCommit(struct AdbcConnection*, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
@@ -533,6 +538,14 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
   return status;
 }
 
+AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
+                                    struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return connection->private_driver->ConnectionCancel(connection, error);
+}
+
 AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
                                     struct AdbcError* error) {
   if (!connection->private_driver) {
@@ -799,6 +812,14 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
     return ADBC_STATUS_INVALID_STATE;
   }
   return statement->private_driver->StatementBindStream(statement, stream, error);
+}
+
+AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
+                                   struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return statement->private_driver->StatementCancel(statement, error);
 }
 
 // XXX: cpplint gets confused here if declared as 'struct ArrowSchema* schema'
@@ -1197,6 +1218,7 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     FILL_DEFAULT(driver, DatabaseSetOptionInt);
     FILL_DEFAULT(driver, DatabaseSetOptionDouble);
 
+    FILL_DEFAULT(driver, ConnectionCancel);
     FILL_DEFAULT(driver, ConnectionGetOption);
     FILL_DEFAULT(driver, ConnectionGetOptionInt);
     FILL_DEFAULT(driver, ConnectionGetOptionDouble);

@@ -279,6 +279,14 @@ struct ADBC_EXPORT AdbcError {
 /// point to an AdbcDriver.
 #define ADBC_VERSION_1_0_0 1000000
 
+/// \brief ADBC revision 1.1.0.
+///
+/// When passed to an AdbcDriverInitFunc(), the driver parameter must
+/// point to an AdbcDriver.
+///
+/// \addtogroup adbc-1.1.0
+#define ADBC_VERSION_1_1_0 1001000
+
 /// \brief Canonical option value for enabling an option.
 ///
 /// For use as the value in SetOption calls.
@@ -287,6 +295,64 @@ struct ADBC_EXPORT AdbcError {
 ///
 /// For use as the value in SetOption calls.
 #define ADBC_OPTION_VALUE_DISABLED "false"
+
+/// \brief Canonical option name for URIs.
+///
+/// Should be used as the expected option name to specify a URI for
+/// any ADBC driver.
+///
+/// The type is char*.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_OPTION_URI "uri"
+/// \brief Canonical option name for usernames.
+///
+/// Should be used as the expected option name to specify a username
+/// to a driver for authentication.
+///
+/// The type is char*.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_OPTION_USERNAME "username"
+/// \brief Canonical option name for passwords.
+///
+/// Should be used as the expected option name to specify a password
+/// for authentication to a driver.
+///
+/// The type is char*.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_OPTION_PASSWORD "password"
+/// \brief Canonical option name for error details.
+///
+/// Should be used as the expected option name to retrieve error
+/// details from the driver.  This allows drivers to return custom,
+/// structured error information (for example, JSON or Protocol
+/// Buffers) that can be optionally parsed by clients, beyond the
+/// standard AdbcError fields, without having to encode it in the
+/// error message.  The encoding of the data is driver-defined.
+///
+/// This can be called immediately after any API call that returns an
+/// error.  Additionally, if an ArrowArrayStream returned from an
+/// AdbcConnection or an AdbcStatement returns an error, this can be
+/// immediately called from the associated AdbcConnection or
+/// AdbcStatement to get further error details (if available).  Making
+/// other API calls with that connection or statement may clear this
+/// error value.
+///
+/// Drivers may provide multiple error details.  Each call to
+/// GetOptionBinary will return the next error detail.  The driver
+/// should return ADBC_STATUS_NOT_FOUND if there are no (more) error
+/// details.
+///
+/// The type is uint8_t*.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_OPTION_ERROR_DETAILS "error_details"
 
 /// \brief The database vendor/product name (e.g. the server name).
 ///   (type: utf8).
@@ -315,6 +381,16 @@ struct ADBC_EXPORT AdbcError {
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_DRIVER_ARROW_VERSION 102
+/// \brief The driver ADBC API version (type: int64).
+///
+/// The value should be one of the ADBC_VERSION constants.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \see AdbcConnectionGetInfo
+/// \see ADBC_VERSION_1_0_0
+/// \see ADBC_VERSION_1_1_0
+#define ADBC_INFO_DRIVER_ADBC_VERSION 103
 
 /// \brief Return metadata on catalogs, schemas, tables, and columns.
 ///
@@ -337,8 +413,58 @@ struct ADBC_EXPORT AdbcError {
 /// \see AdbcConnectionGetObjects
 #define ADBC_OBJECT_DEPTH_COLUMNS ADBC_OBJECT_DEPTH_ALL
 
+/// \defgroup adbc-table-statistics ADBC Statistic Types
+/// Standard statistic names for AdbcConnectionGetTableStatistics.
+/// @{
+
+/// \brief The dictionary-encoded name of the average byte width statistic.
+#define ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY 0
+/// \brief The average byte width statistic.  The average size in bytes of a
+///   row in the column.  Value type is float64.
+///
+/// For example, this is roughly the average length of a string for a string
+/// column.
+#define ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_NAME "adbc.statistic.byte_width"
+/// \brief The dictionary-encoded name of the distinct value count statistic.
+#define ADBC_STATISTIC_DISTINCT_COUNT_KEY 1
+/// \brief The distinct value count (NDV) statistic.  The number of distinct
+///   values in the column.  Value type is uint64 (when not approximate) or
+///   float64 (when approximate).
+#define ADBC_STATISTIC_DISTINCT_COUNT_NAME "adbc.statistic.distinct_count"
+/// \brief The dictionary-encoded name of the max byte width statistic.
+#define ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY 0
+/// \brief The max byte width statistic.  The maximum size in bytes of a row
+///   in the column.  Value type is uint64 (when not approximate) or float64
+///   (when approximate).
+///
+/// For example, this is the maximum length of a string for a string column.
+#define ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME "adbc.statistic.byte_width"
+/// \brief The dictionary-encoded name of the max value statistic.
+#define ADBC_STATISTIC_MAX_VALUE_KEY 0
+/// \brief The max value statistic.  Value type is column-dependent.
+#define ADBC_STATISTIC_MAX_VALUE_NAME "adbc.statistic.byte_width"
+/// \brief The dictionary-encoded name of the min value statistic.
+#define ADBC_STATISTIC_MIN_VALUE_KEY 0
+/// \brief The min value statistic.  Value type is column-dependent.
+#define ADBC_STATISTIC_MIN_VALUE_NAME "adbc.statistic.byte_width"
+/// \brief The dictionary-encoded name of the null count statistic.
+#define ADBC_STATISTIC_NULL_COUNT_KEY 2
+/// \brief The null count statistic.  The number of values that are null in
+///   the column.  Value type is uint64 (when not approximate) or float64
+///   (when approximate).
+#define ADBC_STATISTIC_NULL_COUNT_NAME "adbc.statistic.null_count"
+/// \brief The dictionary-encoded name of the row count statistic.
+#define ADBC_STATISTIC_ROW_COUNT_KEY 3
+/// \brief The row count statistic.  The number of rows in the column or
+///   table.  Value type is uint64 (when not approximate) or float64 (when
+///   approximate).
+#define ADBC_STATISTIC_ROW_COUNT_NAME "adbc.statistic.row_count"
+/// @}
+
 /// \brief The name of the canonical option for whether autocommit is
 ///   enabled.
+///
+/// The type is char*.
 ///
 /// \see AdbcConnectionSetOption
 #define ADBC_CONNECTION_OPTION_AUTOCOMMIT "adbc.connection.autocommit"
@@ -346,8 +472,59 @@ struct ADBC_EXPORT AdbcError {
 /// \brief The name of the canonical option for whether the current
 ///   connection should be restricted to being read-only.
 ///
+/// The type is char*.
+///
 /// \see AdbcConnectionSetOption
 #define ADBC_CONNECTION_OPTION_READ_ONLY "adbc.connection.readonly"
+
+/// \brief The name of the canonical option for the current catalog.
+///
+/// The type is char*.
+///
+/// \see AdbcConnectionGetOption
+/// \see AdbcConnectionSetOption
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_CONNECTION_OPTION_CURRENT_CATALOG "adbc.connection.catalog"
+
+/// \brief The name of the canonical option for the current schema.
+///
+/// The type is char*.
+///
+/// \see AdbcConnectionGetOption
+/// \see AdbcConnectionSetOption
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA "adbc.connection.db_schema"
+
+/// \brief The name of the canonical option for making query execution
+///   nonblocking.
+///
+/// When enabled, AdbcStatementExecutePartitions will return
+/// partitions as soon as they are available, instead of returning
+/// them all at the end.  When there are no more to return, it will
+/// return an empty set of partitions.  AdbcStatementExecuteQuery and
+/// AdbcStatementExecuteSchema are not affected.
+///
+/// The default is ADBC_OPTION_VALUE_DISABLED.
+///
+/// The type is char*.
+///
+/// \see AdbcStatementSetOption
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_STATEMENT_OPTION_INCREMENTAL "adbc.statement.exec.incremental"
+
+/// \brief The name of the option for getting the progress of a query.
+///
+/// Progress is a value in [0.0, 1.0].
+///
+/// The type is double.
+///
+/// \see AdbcStatementGetOptionDouble
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_STATEMENT_OPTION_PROGRESS "adbc.statement.exec.progress"
 
 /// \brief The name of the canonical option for setting the isolation
 ///   level of a transaction.
@@ -356,6 +533,8 @@ struct ADBC_EXPORT AdbcError {
 /// AdbcConnectionCommit / AdbcConnectionRollback. If the desired
 /// isolation level is not supported by a driver, it should return an
 /// appropriate error.
+///
+/// The type is char*.
 ///
 /// \see AdbcConnectionSetOption
 #define ADBC_CONNECTION_OPTION_ISOLATION_LEVEL \
@@ -449,8 +628,12 @@ struct ADBC_EXPORT AdbcError {
 /// exist.  If the table exists but has a different schema,
 /// ADBC_STATUS_ALREADY_EXISTS should be raised.  Else, data should be
 /// appended to the target table.
+///
+/// The type is char*.
 #define ADBC_INGEST_OPTION_TARGET_TABLE "adbc.ingest.target_table"
 /// \brief Whether to create (the default) or append.
+///
+/// The type is char*.
 #define ADBC_INGEST_OPTION_MODE "adbc.ingest.mode"
 /// \brief Create the table and insert data; error if the table exists.
 #define ADBC_INGEST_OPTION_MODE_CREATE "adbc.ingest.mode.create"
@@ -458,6 +641,17 @@ struct ADBC_EXPORT AdbcError {
 ///   table does not exist (ADBC_STATUS_NOT_FOUND) or does not match
 ///   the schema of the data to append (ADBC_STATUS_ALREADY_EXISTS).
 #define ADBC_INGEST_OPTION_MODE_APPEND "adbc.ingest.mode.append"
+/// \brief Create the table and insert data; drop the original table
+///   if it already exists.
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_INGEST_OPTION_MODE_REPLACE "adbc.ingest.mode.replace"
+/// \brief Insert data; create the table if it does not exist, or
+///   error if the table exists, but the schema does not match the
+///   schema of the data to append (ADBC_STATUS_ALREADY_EXISTS).
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_INGEST_OPTION_MODE_CREATE_APPEND "adbc.ingest.mode.create_append"
 
 /// @}
 
@@ -667,7 +861,111 @@ struct ADBC_EXPORT AdbcDriver {
                                          struct AdbcError*);
   AdbcStatusCode (*StatementSetSubstraitPlan)(struct AdbcStatement*, const uint8_t*,
                                               size_t, struct AdbcError*);
+
+  /// \defgroup adbc-1.1.0 ADBC API Revision 1.1.0
+  ///
+  /// Functions added in ADBC 1.1.0.  For backwards compatibility,
+  /// these members must not be accessed unless the version passed to
+  /// the AdbcDriverInitFunc is greater than or equal to
+  /// ADBC_VERSION_1_1_0.
+  ///
+  /// For a 1.0.0 driver being loaded by a 1.1.0 driver manager: the
+  /// 1.1.0 manager will allocate the new, expanded AdbcDriver struct
+  /// and attempt to have the driver initialize it with
+  /// ADBC_VERSION_1_1_0.  This must return an error, after which the
+  /// driver will try again with ADBC_VERSION_1_0_0.  The driver must
+  /// not access the new fields, which will carry undefined values.
+  ///
+  /// For a 1.1.0 driver being loaded by a 1.0.0 driver manager: the
+  /// 1.0.0 manager will allocate the old AdbcDriver struct and
+  /// attempt to have the driver initialize it with
+  /// ADBC_VERSION_1_0_0.  The driver must not access the new fields,
+  /// and should initialize the old fields.
+  ///
+  /// @{
+
+  AdbcStatusCode (*DatabaseGetOption)(struct AdbcDatabase*, const char*, const char**,
+                                      struct AdbcError*);
+  AdbcStatusCode (*DatabaseGetOptionBytes)(struct AdbcDatabase*, const char*,
+                                           const uint8_t**, size_t*, struct AdbcError*);
+  AdbcStatusCode (*DatabaseGetOptionInt)(struct AdbcDatabase*, const char*, int64_t*,
+                                         struct AdbcError*);
+  AdbcStatusCode (*DatabaseGetOptionDouble)(struct AdbcDatabase*, const char*, double*,
+                                            struct AdbcError*);
+  AdbcStatusCode (*DatabaseSetOptionBytes)(struct AdbcDatabase*, const char*,
+                                           const uint8_t*, size_t, struct AdbcError*);
+  AdbcStatusCode (*DatabaseSetOptionInt)(struct AdbcDatabase*, const char*, int64_t,
+                                         struct AdbcError*);
+  AdbcStatusCode (*DatabaseSetOptionDouble)(struct AdbcDatabase*, const char*, double,
+                                            struct AdbcError*);
+
+  AdbcStatusCode (*ConnectionCancel)(struct AdbcConnection*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetFunctions)(struct AdbcConnection*, const char*,
+                                           const char*, const char*,
+                                           struct ArrowArrayStream*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetOption)(struct AdbcConnection*, const char*, const char**,
+                                        struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetOptionBytes)(struct AdbcDatabase*, const char*,
+                                             const uint8_t**, size_t*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetOptionInt)(struct AdbcConnection*, const char*, int64_t*,
+                                           struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetOptionDouble)(struct AdbcConnection*, const char*,
+                                              double*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetProcedures)(struct AdbcConnection*, const char*,
+                                            const char*, const char*,
+                                            struct ArrowArrayStream*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetTableStatistics)(struct AdbcConnection*, const char*,
+                                                 const char*, const char*, char,
+                                                 struct ArrowArrayStream*,
+                                                 struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetTypes)(struct AdbcConnection*, const char*, const char*,
+                                       const char*, struct ArrowSchema*,
+                                       struct AdbcError*);
+  AdbcStatusCode (*ConnectionSetOptionBytes)(struct AdbcDatabase*, const char*,
+                                             const uint8_t*, size_t, struct AdbcError*);
+  AdbcStatusCode (*ConnectionSetOptionInt)(struct AdbcConnection*, const char*, int64_t,
+                                           struct AdbcError*);
+  AdbcStatusCode (*ConnectionSetOptionDouble)(struct AdbcConnection*, const char*, double,
+                                              struct AdbcError*);
+
+  AdbcStatusCode (*StatementCancel)(struct AdbcStatement*, struct AdbcError*);
+  AdbcStatusCode (*StatementExecuteSchema)(struct AdbcStatement*, struct ArrowSchema*,
+                                           struct AdbcError*);
+  AdbcStatusCode (*StatementGetOption)(struct AdbcStatement*, const char*, const char**,
+                                       struct AdbcError*);
+  AdbcStatusCode (*StatementGetOptionBytes)(struct AdbcDatabase*, const char*,
+                                            const uint8_t**, size_t*, struct AdbcError*);
+  AdbcStatusCode (*StatementGetOptionInt)(struct AdbcStatement*, const char*, int64_t*,
+                                          struct AdbcError*);
+  AdbcStatusCode (*StatementGetOptionDouble)(struct AdbcStatement*, const char*, double*,
+                                             struct AdbcError*);
+  AdbcStatusCode (*StatementSetOptionBytes)(struct AdbcDatabase*, const char*,
+                                            const uint8_t*, size_t, struct AdbcError*);
+  AdbcStatusCode (*StatementSetOptionInt)(struct AdbcStatement*, const char*, int64_t,
+                                          struct AdbcError*);
+  AdbcStatusCode (*StatementSetOptionDouble)(struct AdbcStatement*, const char*, double,
+                                             struct AdbcError*);
+
+  /// @}
 };
+
+/// \brief The size of the AdbcDriver structure in ADBC 1.0.0.
+/// Drivers written for ADBC 1.1.0 and later should never touch more
+/// than this portion of an AdbcDriver struct when given
+/// ADBC_VERSION_1_0_0.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_DRIVER_1_0_0_SIZE (offsetof(struct AdbcDriver, DatabaseGetOption))
+
+/// \brief The size of the AdbcDriver structure in ADBC 1.1.0.
+/// Drivers written for ADBC 1.1.0 and later should never touch more
+/// than this portion of an AdbcDriver struct when given
+/// ADBC_VERSION_1_1_0.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_DRIVER_1_1_0_SIZE (sizeof(struct AdbcDriver))
 
 /// @}
 
@@ -684,15 +982,164 @@ struct ADBC_EXPORT AdbcDriver {
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error);
 
+/// \brief Get a string option of the database.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// The returned option value is only valid until the next call to
+/// GetOption or Release.
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
+                                     const char** value, struct AdbcError* error);
+
+/// \brief Get a bytestring option of the database.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// The returned option value is only valid until the next call to
+/// GetOption or Release.
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] length The option value length.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          const uint8_t** value, size_t* length,
+                                          struct AdbcError* error);
+
+/// \brief Get an integer option of the database.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the integer
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t* value, struct AdbcError* error);
+
+/// \brief Get a double option of the database.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the double
+/// representation of an integer option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double* value, struct AdbcError* error);
+
 /// \brief Set a char* option.
 ///
 /// Options may be set before AdbcDatabaseInit.  Some drivers may
 /// support setting options after initialization as well.
 ///
+/// \param[in] database The database.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                      const char* value, struct AdbcError* error);
+
+/// \brief Set a bytestring option on a database.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[in] length The option value length.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          const uint8_t* value, size_t length,
+                                          struct AdbcError* error);
+
+/// \brief Set an integer option on a database.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t value, struct AdbcError* error);
+
+/// \brief Set a double option on a database.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double value, struct AdbcError* error);
 
 /// \brief Finish setting options and initialize the database.
 ///
@@ -730,10 +1177,67 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
 /// Options may be set before AdbcConnectionInit.  Some drivers may
 /// support setting options after initialization as well.
 ///
+/// \param[in] connection The database connection.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
                                        const char* value, struct AdbcError* error);
+
+/// \brief Set a bytestring option on a connection.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] connection The connection.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[in] length The option value length.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, const uint8_t* value,
+                                            size_t length, struct AdbcError* error);
+
+/// \brief Set an integer option.
+///
+/// Options may be set before AdbcConnectionInit.  Some drivers may
+/// support setting options after initialization as well.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] connection The database connection.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t value,
+                                          struct AdbcError* error);
+
+/// \brief Set a double option.
+///
+/// Options may be set before AdbcConnectionInit.  Some drivers may
+/// support setting options after initialization as well.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] connection The database connection.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double value,
+                                             struct AdbcError* error);
 
 /// \brief Finish setting options and initialize the connection.
 ///
@@ -752,6 +1256,112 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error);
 
+/// \brief Cancel the in-progress operation on a connection.
+///
+/// This can be called during AdbcConnectionGetObjects (or similar),
+/// or while consuming an ArrowArrayStream returned from such.
+/// Calling this function should make the other functions return
+/// ADBC_STATUS_CANCELLED (from ADBC functions) or ECANCELED (from
+/// methods of ArrowArrayStream).
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+///
+/// \param[in] connection The connection to cancel.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+///
+/// \return ADBC_STATUS_INVALID_STATE if there is no operation to cancel.
+/// \return ADBC_STATUS_UNKNOWN if the operation could not be cancelled.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
+                                    struct AdbcError* error);
+
+/// \brief Get a hierarchical view of system and user-defined functions.
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | catalog_name             | utf8                    |
+/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
+///
+/// DB_SCHEMA_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | db_schema_name           | utf8                    |
+/// | db_schema_functions      | list<FUNCTION_SCHEMA>   |
+///
+/// FUNCTION_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | function_name            | utf8 not null           |          |
+/// | remarks                  | utf8                    | (1)      |
+/// | function_type            | int16                   | (2)      |
+/// | specific_name            | utf8                    | (3)      |
+/// | function_columns         | list<COLUMN_SCHEMA>     |          |
+///
+/// 1. Database-specific description of the function.
+/// 2. The kind of function.  Should be null if not known, 1 if the function
+///    does not return a table, or 2 if the function does return a table.
+/// 3. An additional name that uniquely identifies the function within its
+///    schema.
+///
+/// COLUMN_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | column_name              | utf8                    |          |
+/// | column_type              | int16                   | (1)      |
+/// | ordinal_position         | int32                   | (2)      |
+/// | remarks                  | utf8                    | (3)      |
+/// | xdbc_data_type           | int16                   | (4)      |
+/// | xdbc_type_name           | utf8                    | (4)      |
+/// | xdbc_precision           | int32                   | (4)      |
+/// | xdbc_length              | int32                   | (4)      |
+/// | xdbc_scale               | int16                   | (4)      |
+/// | xdbc_radix               | int16                   | (4)      |
+/// | xdbc_nullable            | int16                   | (4)      |
+/// | xdbc_char_octet_length   | int32                   | (4)      |
+/// | xdbc_is_nullable         | utf8                    | (4)      |
+///
+/// 1. Whether this row describes an IN parameter (1), INOUT parameter (2),
+///    OUT parameter (3), return value (4), result set column (5), or unknown
+///    (null).
+/// 2. The column's ordinal position in the input parameters, output
+///    parameters, or result set (respectively starting from 1).  Or, 0 if the
+///    row describes the function's return value.
+/// 3. Database-specific description of the column.
+/// 4. Optional value.  Should be null if not supported by the driver.
+///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
+///    in an agnostic manner.
+///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
+///
+/// \param[in] connection The database connection.
+/// \param[in] catalog Only show functions in the given catalog. If NULL, do
+///   not filter by catalog. If an empty string, only show functions without a
+///   catalog.  May be a search pattern (see section documentation).
+/// \param[in] db_schema Only show functions in the given database schema. If
+///   NULL, do not filter by database schema. If an empty string, only show
+///   functions without a database schema. May be a search pattern (see
+///   section documentation).
+/// \param[in] function_name Only show functions with the given name. If NULL,
+///   do not filter by name.  May be a search pattern (see section
+///   documentation).
+/// \param[out] out The result set.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetFunctions(struct AdbcConnection* connection,
+                                          const char* catalog, const char* db_schema,
+                                          const char* function_name,
+                                          struct ArrowArrayStream* out,
+                                          struct AdbcError* error);
+
 /// \defgroup adbc-connection-metadata Metadata
 /// Functions for retrieving metadata about the database.
 ///
@@ -764,6 +1374,8 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 /// concurrency management (e.g. if the driver has a limit on
 /// concurrent active statements and it must execute a SQL query
 /// internally in order to implement the metadata function).
+///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
 /// Some functions accept "search pattern" arguments, which are
 /// strings that can contain the special character "%" to match zero
@@ -798,6 +1410,10 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 /// codes are defined as constants.  Codes [0, 10_000) are reserved
 /// for ADBC usage.  Drivers/vendors will ignore requests for
 /// unrecognized codes (the row will be omitted from the result).
+///
+/// Since ADBC 1.1.0: the range [500, 1_000) is reserved for "XDBC"
+/// information, which is the same metadata provided by the same info
+/// code range in the Arrow Flight SQL GetSqlInfo RPC.
 ///
 /// \param[in] connection The connection to query.
 /// \param[in] info_codes A list of metadata codes to fetch, or NULL
@@ -891,6 +1507,8 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 /// | fk_table                 | utf8 not null           |
 /// | fk_column_name           | utf8 not null           |
 ///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
+///
 /// \param[in] connection The database connection.
 /// \param[in] depth The level of nesting to display. If 0, display
 ///   all levels. If 1, display only catalogs (i.e.  catalog_schemas
@@ -922,6 +1540,194 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         struct ArrowArrayStream* out,
                                         struct AdbcError* error);
 
+/// \brief Get a string option of the connection.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// The returned option value is only valid until the next call to
+/// GetOption or Release.
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] connection The database connection.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
+                                       const char** value, struct AdbcError* error);
+
+/// \brief Get a bytestring option of the connection.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// The returned option value is only valid until the next call to
+/// GetOption or Release.
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] connection The connection.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] length The option value length.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, const uint8_t** value,
+                                            size_t* length, struct AdbcError* error);
+
+/// \brief Get an integer option of the connection.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] connection The database connection.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t* value,
+                                          struct AdbcError* error);
+
+/// \brief Get a double option of the connection.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] connection The database connection.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double* value,
+                                             struct AdbcError* error);
+
+/// \brief Get a hierarchical view of stored procedures.
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | catalog_name             | utf8                    |
+/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
+///
+/// DB_SCHEMA_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | db_schema_name           | utf8                    |
+/// | db_schema_procedures     | list<PROCEDURE_SCHEMA>  |
+///
+/// PROCEDURE_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | procedure_name           | utf8 not null           |          |
+/// | remarks                  | utf8                    | (1)      |
+/// | procedure_type           | int16                   | (2)      |
+/// | specific_name            | utf8                    | (3)      |
+/// | procedure_columns        | list<COLUMN_SCHEMA>     |          |
+///
+/// 1. Database-specific description of the procedure.
+/// 2. The kind of procedure.  Should be null if not known, 1 if the procedure
+///    does not return a value, or 2 if the procedure does return a value.
+/// 3. An additional name that uniquely identifies the procedure within its
+///    schema.
+///
+/// COLUMN_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | column_name              | utf8                    |          |
+/// | column_type              | int16                   | (1)      |
+/// | ordinal_position         | int32                   | (2)      |
+/// | remarks                  | utf8                    | (3)      |
+/// | xdbc_data_type           | int16                   | (4)      |
+/// | xdbc_type_name           | utf8                    | (4)      |
+/// | xdbc_precision           | int32                   | (4)      |
+/// | xdbc_length              | int32                   | (4)      |
+/// | xdbc_scale               | int16                   | (4)      |
+/// | xdbc_radix               | int16                   | (4)      |
+/// | xdbc_nullable            | int16                   | (4)      |
+/// | xdbc_column_def          | utf8                    | (4)      |
+/// | xdbc_sql_data_type       | int32                   | (4)      |
+/// | xdbc_sql_datetime_sub    | int32                   | (4)      |
+/// | xdbc_char_octet_length   | int32                   | (4)      |
+/// | xdbc_is_nullable         | utf8                    | (4)      |
+///
+/// 1. Whether this row describes an IN parameter (1), INOUT parameter (2),
+///    OUT parameter (3), return value (4), result set column (5), or unknown
+///    (null).
+/// 2. The column's ordinal position in the input parameters, output
+///    parameters, or result set (respectively starting from 1).  Or, 0 if the
+///    row describes the procedure's return value.
+/// 3. Database-specific description of the column.
+/// 4. Optional value.  Should be null if not supported by the driver.
+///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
+///    in an agnostic manner.
+///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
+///
+/// \param[in] connection The database connection.
+/// \param[in] catalog Only show procedures in the given catalog. If NULL, do
+///   not filter by catalog. If an empty string, only show procedures without
+///   a catalog.  May be a search pattern (see section documentation).
+/// \param[in] db_schema Only show procedures in the given database schema. If
+///   NULL, do not filter by database schema. If an empty string, only show
+///   procedures without a database schema. May be a search pattern (see
+///   section documentation).
+/// \param[in] procedure_name Only show procedures with the given name. If
+///   NULL, do not filter by name.  May be a search pattern (see section
+///   documentation).
+/// \param[out] out The result set.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetProcedures(struct AdbcConnection* connection,
+                                           const char* catalog, const char* db_schema,
+                                           const char* procedure_name,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error);
+
 /// \brief Get the Arrow schema of a table.
 ///
 /// \param[in] connection The database connection.
@@ -937,6 +1743,72 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
                                             struct ArrowSchema* schema,
                                             struct AdbcError* error);
 
+/// \brief Get statistics about the data distribution of table(s).
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// | Field Name               | Field Type                       |
+/// |--------------------------|----------------------------------|
+/// | catalog_name             | utf8                             |
+/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>           |
+///
+/// DB_SCHEMA_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type                       |
+/// |--------------------------|----------------------------------|
+/// | db_schema_name           | utf8                             |
+/// | db_schema_functions      | list<STATISTICS_SCHEMA>          |
+///
+/// STATISTICS_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type                       | Comments |
+/// |--------------------------|----------------------------------| -------- |
+/// | table_name               | utf8 not null                    |          |
+/// | column_name              | utf8                             | (1)      |
+/// | statistic_name           | dictionary<int16, utf8> not null | (2)      |
+/// | statistic_value          | VALUE_SCHEMA not null            |          |
+/// | statistic_is_approximate | bool not null                    | (3)      |
+///
+/// 1. If null, then the statistic applies to the entire table.
+/// 2. A dictionary-encoded statistic name. Values in [0, 1024) are
+///    reserved for ADBC use.  Other values are free for
+///    implementation-specific statistics.  For the names and
+///    definitions of predefined statistic types, see \ref
+///    adbc-table-statistics.
+/// 3. If true, then the value is approximate or best-effort.
+///
+/// VALUE_SCHEMA is a dense union with members:
+///
+/// | Field Name               | Field Type                       |
+/// |--------------------------|----------------------------------|
+/// | int64                    | int64                            |
+/// | uint64                   | uint64                           |
+/// | float64                  | float64                          |
+/// | decimal256               | decimal256                       |
+/// | binary                   | binary                           |
+///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
+///
+/// \param[in] connection The database connection.
+/// \param[in] catalog The catalog (or nullptr).  May be a search
+///   pattern (see section documentation).
+/// \param[in] db_schema The database schema (or nullptr).  May be a
+///   search pattern (see section documentation).
+/// \param[in] table_name The table name (or nullptr).  May be a
+///   search pattern (see section documentation).
+/// \param[in] approximate If zero, request exact values of
+///   statistics, else allow for best-effort values.  The database may
+///   return approximate values regardless, as indicated in the result.
+/// \param[out] out The result set.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetTableStatistics(struct AdbcConnection* connection,
+                                                const char* catalog,
+                                                const char* db_schema,
+                                                const char* table_name, char approximate,
+                                                struct ArrowArrayStream* out,
+                                                struct AdbcError* error);
+
 /// \brief Get a list of table types in the database.
 ///
 /// The result is an Arrow dataset with the following schema:
@@ -945,6 +1817,8 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 /// ---------------|--------------
 /// table_type     | utf8 not null
 ///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
+///
 /// \param[in] connection The database connection.
 /// \param[out] out The result set.
 /// \param[out] error Error details, if an error occurs.
@@ -952,6 +1826,67 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error);
+
+/// \brief Get a view of types supported by the database.
+///
+/// The result is an Arrow schema with one field per type.  The field name is
+/// the database's name for the type, and the field type is the driver's
+/// mapping of the database type to an Arrow type.
+///
+/// Each top-level field may have the following metadata fields:
+///
+/// - adbc:catalog_name
+/// - adbc:db_schema_name
+/// - adbc:supertype_catalog_name
+/// - adbc:supertype_db_schema_name
+/// - adbc:supertype_name
+///
+/// Both top-level fields and child fields may have the following metadata
+/// fields:
+///
+/// - adbc:remarks (1)
+/// - adbc:specific_name (2)
+/// - adbc:xdbc_data_type (3)
+/// - adbc:xdbc_type_name (3)
+/// - adbc:xdbc_size (3)
+/// - adbc:xdbc_decimal_digits (3)
+/// - adbc:xdbc_num_prec_radix (3)
+/// - adbc:xdbc_nullable (3)
+/// - adbc:xdbc_remarks (3)
+/// - adbc:xdbc_attr_def (3)
+/// - adbc:xdbc_sql_data_type (3)
+/// - adbc:xdbc_sql_datetime_sub (3)
+/// - adbc:xdbc_char_octet_length (3)
+/// - adbc:xdbc_is_nullable (3)
+/// - adbc:xdbc_scope_catalog (3)
+/// - adbc:xdbc_scope_schema (3)
+/// - adbc:xdbc_scope_table (3)
+/// - adbc:xdbc_scope_data_type (3)
+///
+/// 1. Database-specific description of the type.
+/// 2. An additional name that uniquely identifies the type within its
+///    schema.
+/// 3. xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
+///    in an agnostic manner.
+///
+/// \param[in] connection The database connection.
+/// \param[in] catalog Only show types in the given catalog. If NULL, do
+///   not filter by catalog. If an empty string, only show types without
+///   a catalog.  May be a search pattern (see section documentation).
+/// \param[in] db_schema Only show types in the given database schema. If
+///   NULL, do not filter by database schema. If an empty string, only show
+///   types without a database schema. May be a search pattern (see
+///   section documentation).
+/// \param[in] type_name Only show types with the given name. If
+///   NULL, do not filter by name.  May be a search pattern (see section
+///   documentation).
+/// \param[out] out The result schema.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetTypes(struct AdbcConnection* connection,
+                                      const char* catalog, const char* db_schema,
+                                      const char* type_name, struct ArrowSchema* out,
+                                      struct AdbcError* error);
 
 /// @}
 
@@ -972,6 +1907,8 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
 ///   results can then be read independently.
 ///
 /// A partition can be retrieved from AdbcPartitions.
+///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
 /// \param[in] connection The connection to use.  This does not have
 ///   to be the same connection that the partition was created on.
@@ -1042,7 +1979,11 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 
 /// \brief Execute a statement and get the results.
 ///
-/// This invalidates any prior result sets.
+/// This invalidates any prior result sets.  This AdbcStatement must
+/// outlive the returned ArrowArrayStream.
+///
+/// Since ADBC 1.1.0: releasing the returned ArrowArrayStream without
+/// consuming it fully is equivalent to calling AdbcStatementCancel.
 ///
 /// \param[in] statement The statement to execute.
 /// \param[out] out The results. Pass NULL if the client does not
@@ -1055,6 +1996,28 @@ ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                          struct ArrowArrayStream* out,
                                          int64_t* rows_affected, struct AdbcError* error);
+
+/// \brief Get the schema of the result set of a query without
+///   executing it.
+///
+/// This invalidates any prior result sets.
+///
+/// Depending on the driver, this may require first executing
+/// AdbcStatementPrepare.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+///
+/// \param[in] statement The statement to execute.
+/// \param[out] out The result schema.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support this.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcError* error);
 
 /// \brief Turn this statement into a prepared statement to be
 ///   executed multiple times.
@@ -1138,6 +2101,130 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
                                        struct ArrowArrayStream* stream,
                                        struct AdbcError* error);
 
+/// \brief Cancel execution of an in-progress query.
+///
+/// This can be called during AdbcStatementExecuteQuery (or similar),
+/// or while consuming an ArrowArrayStream returned from such.
+/// Calling this function should make the other functions return
+/// ADBC_STATUS_CANCELLED (from ADBC functions) or ECANCELED (from
+/// methods of ArrowArrayStream).
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+///
+/// \param[in] statement The statement to cancel.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+///
+/// \return ADBC_STATUS_INVALID_STATE if there is no query to cancel.
+/// \return ADBC_STATUS_UNKNOWN if the query could not be cancelled.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
+                                   struct AdbcError* error);
+
+/// \brief Get a string option of the statement.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// The returned option value is only valid until the next call to
+/// GetOption or Release.
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] statement The statement.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
+                                      const char** value, struct AdbcError* error);
+
+/// \brief Get a bytestring option of the statement.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// The returned option value is only valid until the next call to
+/// GetOption or Release.
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] statement The statement.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] length The option value length.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, const uint8_t** value,
+                                           size_t* length, struct AdbcError* error);
+
+/// \brief Get an integer option of the statement.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] statement The statement.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const char* key,
+                                         int64_t* value, struct AdbcError* error);
+
+/// \brief Get a double option of the statement.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the string
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] statement The statement.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double* value,
+                                            struct AdbcError* error);
+
 /// \brief Get the schema for bound parameters.
 ///
 /// This retrieves an Arrow schema describing the number, names, and
@@ -1159,9 +2246,60 @@ AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
                                                struct AdbcError* error);
 
 /// \brief Set a string option on a statement.
+/// \param[in] statement The statement.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized.
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
                                       const char* value, struct AdbcError* error);
+
+/// \brief Set a bytestring option on a statement.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] statement The statement.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[in] length The option value length.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, const uint8_t* value,
+                                           size_t length, struct AdbcError* error);
+
+/// \brief Set an integer option on a statement.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] statement The statement.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const char* key,
+                                         int64_t value, struct AdbcError* error);
+
+/// \brief Set a double option on a statement.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] statement The statement.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double value,
+                                            struct AdbcError* error);
 
 /// \addtogroup adbc-statement-partition
 /// @{
@@ -1198,7 +2336,15 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
 ///   driver.
 ///
 /// Although drivers may choose any name for this function, the
-/// recommended name is "AdbcDriverInit".
+/// recommended name is "AdbcDriverInit", or a name derived from the
+/// name of the driver's shared library as follows: remove the 'lib'
+/// prefix (on Unix systems) and all file extensions, then PascalCase
+/// the driver name, append Init, and prepend Adbc (if not already
+/// there).  For example:
+///
+/// - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
+/// - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
+/// - proprietary_driver.dll -> AdbcProprietaryDriverInit
 ///
 /// \param[in] version The ADBC revision to attempt to initialize (see
 ///   ADBC_VERSION_1_0_0).
