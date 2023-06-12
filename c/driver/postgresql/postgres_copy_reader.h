@@ -184,7 +184,7 @@ class PostgresCopyBooleanFieldReader : public PostgresCopyFieldReader {
 
 // Reader for Pg->Arrow conversions whose representations are identical minus
 // the bswap from network endian. This includes all integral and float types.
-template <typename T>
+template <typename T, T kOffset = 0>
 class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
  public:
   ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
@@ -200,7 +200,7 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
       return EINVAL;
     }
 
-    T value = ReadUnsafe<T>(data);
+    T value = kOffset + ReadUnsafe<T>(data);
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &value, sizeof(T)));
     return AppendValid(array);
   }
@@ -630,6 +630,20 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
           }
 
           *out = record_reader.release();
+          return NANOARROW_OK;
+        }
+        default:
+          return ErrorCantConvert(error, pg_type, schema_view);
+      }
+
+    case NANOARROW_TYPE_TIMESTAMP:
+      switch (pg_type.type_id()) {
+        case PostgresTypeId::kTimestamp:
+        case PostgresTypeId::kTimestamptz: {
+          // 2000-01-01 00:00:00.000000 in microseconds
+          constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
+          *out = new PostgresCopyNetworkEndianFieldReader<int64_t,
+                                                          kPostgresTimestampEpoch>();
           return NANOARROW_OK;
         }
         default:
