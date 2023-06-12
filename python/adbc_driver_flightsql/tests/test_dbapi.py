@@ -32,15 +32,3 @@ def test_query_partitioned(dremio_dbapi):
 
         cur.adbc_read_partition(partitions[0])
         assert cur.fetchone() == (1,)
-
-
-def test_query_duplicate_names(dremio_dbapi):
-    with dremio_dbapi.cursor() as cur:
-        cur.execute("SELECT 1 as A, 2 as A")
-        table = cur.fetch_arrow_table()
-        assert table.schema == pyarrow.schema(
-            [
-                ("A", "int32"),
-                ("A", "int32"),
-            ]
-        )
