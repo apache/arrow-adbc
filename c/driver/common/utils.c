@@ -426,3 +426,69 @@ AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
 
   return ADBC_STATUS_OK;
 }
+
+int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data, struct ArrowArray* array) {
+  get_info_data->catalog_name_array = array->children[0];
+  get_info_data->catalog_schemas_array = array->children[1];
+
+  struct ArrowArray* catalog_db_schemas_items =
+      get_info_data->catalog_schemas_array->children[0];
+  get_info_data->db_schema_name_array = catalog_db_schemas_items->children[0];
+  get_info_data->db_schema_tables_array = catalog_db_schemas_items->children[0];
+
+  struct ArrowArray* schema_table_items =
+      get_info_data->db_schema_tables_array->children[0];
+  get_info_data->table_name_array = schema_table_items->children[0];
+  get_info_data->table_type_array = schema_table_items->children[1];
+  get_info_data->table_columns_array = schema_table_items->children[2];
+  get_info_data->table_constraints_array = schema_table_items->children[3];
+
+  struct ArrowArray* table_columns_items =
+      get_info_data->table_columns_array->children[0];
+  get_info_data->column_name_array = table_columns_items->children[0];
+  get_info_data->column_position_array = table_columns_items->children[1];
+  get_info_data->column_remarks_array = table_columns_items->children[2];
+
+  struct ArrowArray* table_constraints_items =
+      get_info_data->table_constraints_array->children[0];
+  get_info_data->constraint_name_array = table_constraints_items->children[0];
+  get_info_data->constraint_type_array = table_constraints_items->children[1];
+  get_info_data->constraint_column_names_array = table_constraints_items->children[2];
+  get_info_data->constraint_column_usages_array = table_constraints_items->children[3];
+
+  struct ArrowArray* constraint_column_usage_items =
+      get_info_data->constraint_column_usages_array->children[0];
+  get_info_data->fk_catalog_array = constraint_column_usage_items->children[0];
+  get_info_data->fk_db_schema_array = constraint_column_usage_items->children[1];
+  get_info_data->fk_table_array = constraint_column_usage_items->children[2];
+  get_info_data->fk_column_name_array = constraint_column_usage_items->children[3];
+
+  get_info_data->n_catalogs = array->length;
+  get_info_data->catalogs = (struct AdbcGetInfoCatalog*)malloc(
+      sizeof(struct AdbcGetInfoCatalog) * array->length);
+
+  if (get_info_data->catalogs == NULL) {
+    return -1;
+  }
+
+  for (int64_t catalog_idx = 0; catalog_idx < array->length; catalog_idx++) {
+    struct AdbcGetInfoCatalog* catalog =
+        (struct AdbcGetInfoCatalog*)malloc(sizeof(struct AdbcGetInfoCatalog));
+    if (catalog == NULL) {
+      for (int64_t i = 0; i < catalog_idx; i++) {
+        free(get_info_data->catalogs[i]);
+      }
+      free(get_info_data->catalogs);
+    }
+
+    catalog->catalog_name =
+        ArrowArrayViewGetStringUnsafe(get_info_data->catalog_name_array, catalog_idx);
+    catalog->catalog_db_schemas = NULL;
+    catalog->n_db_schemas = 0;
+
+    get_info_data->catalogs[catalog_idx] = catalog;
+  }
+
+  return 0;
+}
+void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data) {}

@@ -136,7 +136,7 @@ struct AdbcGetInfoConstraint {
   struct ArrowStringView constraint_type;
   struct ArrowStringView* constraint_column_names;
   int n_column_names;
-  struct AdbcGetInfoUsage* constraint_column_usages;
+  struct AdbcGetInfoUsage** constraint_column_usages;
   int n_column_usages;
 };
 
@@ -165,26 +165,26 @@ struct AdbcGetInfoColumn {
 struct AdbcGetInfoTable {
   struct ArrowStringView table_name;
   struct ArrowStringView table_type;
-  struct AdbcGetInfoColumn* table_columns;
+  struct AdbcGetInfoColumn** table_columns;
   int n_table_columns;
-  struct AdbcGetInfoConstraint* table_constraints;
+  struct AdbcGetInfoConstraint** table_constraints;
   int n_table_constraints;
 };
 
 struct AdbcGetInfoSchema {
   struct ArrowStringView db_schema_name;
-  struct AdbcGetInfoTable* db_schema_tables;
+  struct AdbcGetInfoTable** db_schema_tables;
   int n_db_schema_tables;
 };
 
 struct AdbcGetInfoCatalog {
   struct ArrowStringView catalog_name;
-  struct AdbcGetInfoSchema* catalog_db_schemas;
+  struct AdbcGetInfoSchema** catalog_db_schemas;
   int n_db_schemas;
 };
 
 struct AdbcGetInfoData {
-  struct AdbcGetInfoCatalog catalogs;
+  struct AdbcGetInfoCatalog** catalogs;
   int n_catalogs;
   struct ArrowArray* catalog_name_array;
   struct ArrowArray* catalog_schemas_array;
@@ -207,6 +207,8 @@ struct AdbcGetInfoData {
   struct ArrowArray* fk_column_name_array;
 };
 
+// does not copy any data from array
+// returns -1 on error
 int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data, struct ArrowArray* array);
 void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data);
 
