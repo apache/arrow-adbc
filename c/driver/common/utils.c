@@ -427,51 +427,52 @@ AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
   return ADBC_STATUS_OK;
 }
 
-int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data, struct ArrowArray* array) {
-  get_info_data->catalog_name_array = array->children[0];
-  get_info_data->catalog_schemas_array = array->children[1];
+int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
+                        struct ArrowArrayView* array_view) {
+  get_info_data->catalog_name_array = array_view->children[0];
+  get_info_data->catalog_schemas_array = array_view->children[1];
 
-  struct ArrowArray* catalog_db_schemas_items =
+  struct ArrowArrayView* catalog_db_schemas_items =
       get_info_data->catalog_schemas_array->children[0];
   get_info_data->db_schema_name_array = catalog_db_schemas_items->children[0];
   get_info_data->db_schema_tables_array = catalog_db_schemas_items->children[0];
 
-  struct ArrowArray* schema_table_items =
+  struct ArrowArrayView* schema_table_items =
       get_info_data->db_schema_tables_array->children[0];
   get_info_data->table_name_array = schema_table_items->children[0];
   get_info_data->table_type_array = schema_table_items->children[1];
   get_info_data->table_columns_array = schema_table_items->children[2];
   get_info_data->table_constraints_array = schema_table_items->children[3];
 
-  struct ArrowArray* table_columns_items =
+  struct ArrowArrayView* table_columns_items =
       get_info_data->table_columns_array->children[0];
   get_info_data->column_name_array = table_columns_items->children[0];
   get_info_data->column_position_array = table_columns_items->children[1];
   get_info_data->column_remarks_array = table_columns_items->children[2];
 
-  struct ArrowArray* table_constraints_items =
+  struct ArrowArrayView* table_constraints_items =
       get_info_data->table_constraints_array->children[0];
   get_info_data->constraint_name_array = table_constraints_items->children[0];
   get_info_data->constraint_type_array = table_constraints_items->children[1];
   get_info_data->constraint_column_names_array = table_constraints_items->children[2];
   get_info_data->constraint_column_usages_array = table_constraints_items->children[3];
 
-  struct ArrowArray* constraint_column_usage_items =
+  struct ArrowArrayView* constraint_column_usage_items =
       get_info_data->constraint_column_usages_array->children[0];
   get_info_data->fk_catalog_array = constraint_column_usage_items->children[0];
   get_info_data->fk_db_schema_array = constraint_column_usage_items->children[1];
   get_info_data->fk_table_array = constraint_column_usage_items->children[2];
   get_info_data->fk_column_name_array = constraint_column_usage_items->children[3];
 
-  get_info_data->n_catalogs = array->length;
-  get_info_data->catalogs = (struct AdbcGetInfoCatalog*)malloc(
-      sizeof(struct AdbcGetInfoCatalog) * array->length);
+  get_info_data->n_catalogs = array_view->array->length;
+  get_info_data->catalogs = (struct AdbcGetInfoCatalog**)malloc(
+      sizeof(struct AdbcGetInfoCatalog*) * array_view->array->length);
 
   if (get_info_data->catalogs == NULL) {
     return -1;
   }
 
-  for (int64_t catalog_idx = 0; catalog_idx < array->length; catalog_idx++) {
+  for (int64_t catalog_idx = 0; catalog_idx < array_view->array->length; catalog_idx++) {
     struct AdbcGetInfoCatalog* catalog =
         (struct AdbcGetInfoCatalog*)malloc(sizeof(struct AdbcGetInfoCatalog));
     if (catalog == NULL) {
@@ -483,9 +484,160 @@ int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data, struct ArrowArray
 
     catalog->catalog_name =
         ArrowArrayViewGetStringUnsafe(get_info_data->catalog_name_array, catalog_idx);
-    catalog->catalog_db_schemas = NULL;
-    catalog->n_db_schemas = 0;
 
+    int64_t db_schema_list_start =
+        ArrowArrayViewListChildOffset(get_info_data->db_schema_tables_array, catalog_idx);
+    int64_t db_schema_list_end = ArrowArrayViewListChildOffset(
+        get_info_data->db_schema_tables_array, catalog_idx + 1);
+
+    int64_t db_schema_len = db_schema_list_end - db_schema_list_start;
+    catalog->n_db_schemas = db_schema_len;
+    if (db_schema_len == 0) {
+      catalog->catalog_db_schemas = NULL;
+    } else {
+      catalog->catalog_db_schemas = (struct AdbcGetInfoSchema**)malloc(
+          sizeof(struct AdbcGetInfoSchema*) * db_schema_len);
+      for (int64_t db_schema_index = db_schema_list_start;
+           db_schema_index < db_schema_list_end; db_schema_index++) {
+        struct AdbcGetInfoSchema* schema =
+            (struct AdbcGetInfoSchema*)malloc(sizeof(struct AdbcGetInfoSchema));
+        schema->db_schema_name = ArrowArrayViewGetStringUnsafe(
+            get_info_data->db_schema_name_array, db_schema_index);
+        int64_t table_list_start = ArrowArrayViewListChildOffset(
+            get_info_data->db_schema_tables_array, db_schema_index);
+        int64_t table_list_end = ArrowArrayViewListChildOffset(
+            get_info_data->db_schema_tables_array, db_schema_index + 1);
+        int64_t table_len = table_list_end - table_list_start;
+        schema->n_db_schema_tables = table_len;
+        if (table_len == 0) {
+          schema->db_schema_tables = NULL;
+        } else {
+          schema->db_schema_tables = (struct AdbcGetInfoTable**)malloc(
+              sizeof(struct AdbcGetInfoTable*) * table_len);
+
+          for (int64_t table_index = table_list_start; table_index < table_list_end;
+               table_index++) {
+            struct AdbcGetInfoTable* table =
+                (struct AdbcGetInfoTable*)malloc(sizeof(struct AdbcGetInfoTable));
+            table->table_name = ArrowArrayViewGetStringUnsafe(
+                get_info_data->table_name_array, table_index);
+            table->table_type = ArrowArrayViewGetStringUnsafe(
+                get_info_data->table_type_array, table_index);
+
+            int64_t columns_list_start = ArrowArrayViewListChildOffset(
+                get_info_data->table_columns_array, table_index);
+            int64_t columns_list_end = ArrowArrayViewListChildOffset(
+                get_info_data->table_columns_array, table_index + 1);
+
+            int64_t columns_len = columns_list_end - columns_list_start;
+            table->n_table_columns = columns_len;
+            if (columns_len == 0) {
+              table->table_columns = NULL;
+            } else {
+              table->table_columns = (struct AdbcGetInfoColumn**)malloc(
+                  sizeof(struct AdbcGetInfoColumn*) * columns_len);
+
+              for (int64_t column_index = columns_list_start;
+                   column_index < columns_list_end; column_index++) {
+                struct AdbcGetInfoColumn* column =
+                    (struct AdbcGetInfoColumn*)malloc(sizeof(struct AdbcGetInfoColumn));
+                column->column_name = ArrowArrayViewGetStringUnsafe(
+                    get_info_data->column_name_array, column_index);
+                column->ordinal_position = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->column_position_array, column_index);
+                column->remarks = ArrowArrayViewGetStringUnsafe(
+                    get_info_data->column_remarks_array, column_index);
+                // TODO: implement the xdbc extension types; for now they return garbage
+                table->table_columns[column_index] = column;
+              }
+            }
+
+            int64_t constraints_list_start = ArrowArrayViewListChildOffset(
+                get_info_data->table_constraints_array, table_index);
+            int64_t constraints_list_end = ArrowArrayViewListChildOffset(
+                get_info_data->table_constraints_array, table_index + 1);
+            int64_t constraints_len = constraints_list_end - constraints_list_start;
+            table->n_table_constraints = constraints_len;
+            if (constraints_len == 0) {
+              table->table_constraints = NULL;
+            } else {
+              table->table_constraints = (struct AdbcGetInfoConstraint**)malloc(
+                  sizeof(struct AdbcGetInfoConstraint*) * columns_len);
+              for (int64_t constraint_index = constraints_list_start;
+                   constraint_index < constraints_list_end; constraint_index++) {
+                struct AdbcGetInfoConstraint* constraint =
+                    (struct AdbcGetInfoConstraint*)malloc(
+                        sizeof(struct AdbcGetInfoConstraint));
+                constraint->constraint_name = ArrowArrayViewGetStringUnsafe(
+                    get_info_data->constraint_name_array, constraint_index);
+                constraint->constraint_type = ArrowArrayViewGetStringUnsafe(
+                    get_info_data->constraint_type_array, constraint_index);
+                int64_t constraint_column_names_start = ArrowArrayViewListChildOffset(
+                    get_info_data->constraint_column_names_array, constraint_index);
+                int64_t constraint_column_names_end = ArrowArrayViewListChildOffset(
+                    get_info_data->constraint_column_names_array, constraint_index + 1);
+                int64_t constraint_column_names_len =
+                    constraint_column_names_end - constraint_column_names_start;
+                constraint->n_column_names = constraint_column_names_len;
+                if (constraint_column_names_len == 0) {
+                  constraint->constraint_column_names = NULL;
+                } else {
+                  constraint->constraint_column_names = (struct ArrowStringView*)malloc(
+                      sizeof(struct ArrowStringView) * constraint_column_names_len);
+
+                  for (int64_t constraint_column_name_index =
+                           constraint_column_names_start;
+                       constraint_column_name_index < constraint_column_names_end;
+                       constraint_column_name_index++) {
+                    constraint->constraint_column_names[constraint_column_name_index] =
+                        ArrowArrayViewGetStringUnsafe(
+                            get_info_data->constraint_name_array,
+                            constraint_column_name_index);
+                  }
+                }
+
+                int64_t constraint_column_usages_start = ArrowArrayViewListChildOffset(
+                    get_info_data->constraint_column_usages_array, constraint_index);
+                int64_t constraint_column_usages_end = ArrowArrayViewListChildOffset(
+                    get_info_data->constraint_column_usages_array, constraint_index + 1);
+                int64_t constraint_column_usages_len =
+                    constraint_column_usages_end - constraint_column_usages_start;
+                constraint->n_column_names = constraint_column_usages_len;
+                if (constraint_column_usages_len == 0) {
+                  constraint->constraint_column_usages = NULL;
+                } else {
+                  constraint->constraint_column_usages =
+                      (struct AdbcGetInfoUsage**)malloc(sizeof(struct AdbcGetInfoUsage*) *
+                                                        constraint_column_usages_len);
+                  for (int64_t constraint_column_usage_index =
+                           constraint_column_usages_start;
+                       constraint_column_usage_index < constraint_column_usages_end;
+                       constraint_column_usage_index++) {
+                    struct AdbcGetInfoUsage* usage =
+                        (struct AdbcGetInfoUsage*)malloc(sizeof(struct AdbcGetInfoUsage));
+                    usage->fk_catalog = ArrowArrayViewGetStringUnsafe(
+                        get_info_data->fk_catalog_array, constraint_column_usage_index);
+                    usage->fk_db_schema = ArrowArrayViewGetStringUnsafe(
+                        get_info_data->fk_db_schema_array, constraint_column_usage_index);
+                    usage->fk_table = ArrowArrayViewGetStringUnsafe(
+                        get_info_data->fk_table_array, constraint_column_usage_index);
+                    usage->fk_column_name =
+                        ArrowArrayViewGetStringUnsafe(get_info_data->fk_column_name_array,
+                                                      constraint_column_usage_index);
+
+                    constraint->constraint_column_usages[constraint_column_usage_index] =
+                        usage;
+                  }
+                }
+              }
+            }
+
+            schema->db_schema_tables[table_index] = table;
+          }
+        }
+        catalog->catalog_db_schemas[db_schema_index] = schema;
+      }
+    }
     get_info_data->catalogs[catalog_idx] = catalog;
   }
 

@@ -186,30 +186,31 @@ struct AdbcGetInfoCatalog {
 struct AdbcGetInfoData {
   struct AdbcGetInfoCatalog** catalogs;
   int n_catalogs;
-  struct ArrowArray* catalog_name_array;
-  struct ArrowArray* catalog_schemas_array;
-  struct ArrowArray* db_schema_name_array;
-  struct ArrowArray* db_schema_tables_array;
-  struct ArrowArray* table_name_array;
-  struct ArrowArray* table_type_array;
-  struct ArrowArray* table_columns_array;
-  struct ArrowArray* table_constraints_array;
-  struct ArrowArray* column_name_array;
-  struct ArrowArray* column_position_array;
-  struct ArrowArray* column_remarks_array;
-  struct ArrowArray* constraint_name_array;
-  struct ArrowArray* constraint_type_array;
-  struct ArrowArray* constraint_column_names_array;
-  struct ArrowArray* constraint_column_usages_array;
-  struct ArrowArray* fk_catalog_array;
-  struct ArrowArray* fk_db_schema_array;
-  struct ArrowArray* fk_table_array;
-  struct ArrowArray* fk_column_name_array;
+  struct ArrowArrayView* catalog_name_array;
+  struct ArrowArrayView* catalog_schemas_array;
+  struct ArrowArrayView* db_schema_name_array;
+  struct ArrowArrayView* db_schema_tables_array;
+  struct ArrowArrayView* table_name_array;
+  struct ArrowArrayView* table_type_array;
+  struct ArrowArrayView* table_columns_array;
+  struct ArrowArrayView* table_constraints_array;
+  struct ArrowArrayView* column_name_array;
+  struct ArrowArrayView* column_position_array;
+  struct ArrowArrayView* column_remarks_array;
+  struct ArrowArrayView* constraint_name_array;
+  struct ArrowArrayView* constraint_type_array;
+  struct ArrowArrayView* constraint_column_names_array;
+  struct ArrowArrayView* constraint_column_usages_array;
+  struct ArrowArrayView* fk_catalog_array;
+  struct ArrowArrayView* fk_db_schema_array;
+  struct ArrowArrayView* fk_table_array;
+  struct ArrowArrayView* fk_column_name_array;
 };
 
 // does not copy any data from array
 // returns -1 on error
-int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data, struct ArrowArray* array);
+int AdbcGetInfoDataInit(struct AdbcGetInfoData* get_info_data,
+                        struct ArrowArrayView* array_view);
 void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data);
 
 #ifdef __cplusplus
