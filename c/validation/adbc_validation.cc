@@ -1463,6 +1463,9 @@ void StatementTest::TestSqlPrepareSelectParams() {
     auto start = nrows;
     auto end = nrows + reader.array->length;
 
+    ASSERT_LT(start, expected_int32.size());
+    ASSERT_LE(end, expected_int32.size());
+
     switch (reader.fields[0].type) {
       case NANOARROW_TYPE_INT32:
         ASSERT_NO_FATAL_FAILURE(CompareArray<int32_t>(
