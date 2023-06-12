@@ -536,6 +536,47 @@ TEST_F(SqliteReaderTest, InferTypedParams) {
                   "[SQLite] Type mismatch in column 0: expected INT64 but got DOUBLE"));
 }
 
+TEST_F(SqliteReaderTest, MultiValueParams) {
+  // Regression test for apache/arrow-adbc#734
+  adbc_validation::StreamReader reader;
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+
+  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (col)"));
+  ASSERT_NO_FATAL_FAILURE(
+      Exec("INSERT INTO foo VALUES (1), (2), (2), (3), (3), (3), (4), (4), (4), (4)"));
+
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT(adbc_validation::MakeBatch<int64_t>(&schema.value, &batch.value,
+                                                  /*error=*/nullptr, {4, 1, 3, 2}),
+              IsOkErrno());
+
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value));
+  ASSERT_NO_FATAL_FAILURE(
+      Exec("SELECT col FROM foo WHERE col = ?", /*infer_rows=*/3, &reader));
+  ASSERT_EQ(1, reader.schema->n_children);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {4, 4, 4}));
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {4, 1, 3}));
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {3, 3, 2}));
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[0], {2}));
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(nullptr, reader.array->release);
+}
+
 template <typename CType>
 class SqliteNumericParamTest : public SqliteReaderTest,
                                public ::testing::WithParamInterface<ArrowType> {
