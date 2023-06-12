@@ -286,6 +286,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;
   ASSERT_THAT(
@@ -433,6 +434,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   {
@@ -451,6 +453,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;
   ASSERT_THAT(
