@@ -442,6 +442,8 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 }
 
 void TupleReader::Release() {
+  StringBuilderReset(&error_builder_);
+
   if (result_) {
     PQclear(result_);
     result_ = nullptr;
