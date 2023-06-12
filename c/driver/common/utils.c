@@ -455,6 +455,22 @@ struct AdbcGetInfoData* AdbcGetInfoDataInit(struct ArrowArrayView* array_view) {
   get_info_data->column_name_array = table_columns_items->children[0];
   get_info_data->column_position_array = table_columns_items->children[1];
   get_info_data->column_remarks_array = table_columns_items->children[2];
+  get_info_data->xdbc_data_type_array = table_columns_items->children[3];
+  get_info_data->xdbc_type_name_array = table_columns_items->children[4];
+  get_info_data->xdbc_column_size_array = table_columns_items->children[5];
+  get_info_data->xdbc_decimal_digits_array = table_columns_items->children[6];
+  get_info_data->xdbc_num_prec_radix_array = table_columns_items->children[7];
+  get_info_data->xdbc_nullable_array = table_columns_items->children[8];
+  get_info_data->xdbc_column_def_array = table_columns_items->children[9];
+  get_info_data->xdbc_sql_data_type_array = table_columns_items->children[10];
+  get_info_data->xdbc_datetime_sub_array = table_columns_items->children[11];
+  get_info_data->xdbc_char_octet_length_array = table_columns_items->children[12];
+  get_info_data->xdbc_is_nullable_array = table_columns_items->children[13];
+  get_info_data->xdbc_scope_catalog_array = table_columns_items->children[14];
+  get_info_data->xdbc_scope_schema_array = table_columns_items->children[15];
+  get_info_data->xdbc_scope_table_array = table_columns_items->children[16];
+  get_info_data->xdbc_is_autoincrement_array = table_columns_items->children[17];
+  get_info_data->xdbc_is_generatedcolumn_array = table_columns_items->children[18];
 
   struct ArrowArrayView* table_constraints_items =
       get_info_data->table_constraints_array->children[0];
@@ -577,7 +593,37 @@ struct AdbcGetInfoData* AdbcGetInfoDataInit(struct ArrowArrayView* array_view) {
                     get_info_data->column_position_array, column_index);
                 column->remarks = ArrowArrayViewGetStringUnsafe(
                     get_info_data->column_remarks_array, column_index);
-                // TODO: implement the xdbc extension types; for now they return garbage
+                column->xdbc_data_type = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_data_type_array, column_index);
+                column->xdbc_type_name = ArrowArrayViewGetStringUnsafe(
+                    get_info_data->xdbc_type_name_array, column_index);
+                column->xdbc_column_size = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_column_size_array, column_index);
+                column->xdbc_decimal_digits = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_decimal_digits_array, column_index);
+                column->xdbc_num_prec_radix = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_num_prec_radix_array, column_index);
+                column->xdbc_nullable = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_nullable_array, column_index);
+                column->xdbc_column_def = ArrowArrayViewGetStringUnsafe(
+                    get_info_data->xdbc_column_def_array, column_index);
+                column->xdbc_sql_data_type = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_sql_data_type_array, column_index);
+                column->xdbc_datetime_sub = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_datetime_sub_array, column_index);
+                column->xdbc_char_octet_length = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_char_octet_length_array, column_index);
+                column->xdbc_scope_catalog = ArrowArrayViewGetStringUnsafe(
+                    get_info_data->xdbc_scope_catalog_array, column_index);
+                column->xdbc_scope_schema = ArrowArrayViewGetStringUnsafe(
+                    get_info_data->xdbc_scope_schema_array, column_index);
+                column->xdbc_scope_table = ArrowArrayViewGetStringUnsafe(
+                    get_info_data->xdbc_scope_table_array, column_index);
+                // TODO: implement a nanoarrow GetBool view here?
+                column->xdbc_is_autoincrement = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_is_autoincrement_array, column_index);
+                column->xdbc_is_generatedcolumn = ArrowArrayViewGetIntUnsafe(
+                    get_info_data->xdbc_is_generatedcolumn_array, column_index);
                 table->table_columns[column_index - columns_list_start] = column;
                 table->n_table_columns++;
               }
