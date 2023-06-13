@@ -199,23 +199,23 @@ struct StreamReader {
 };
 
 /// \brief Read an AdbcGetInfoData struct with RAII safety
-struct GetInfoReader {
-  explicit GetInfoReader(struct ArrowArrayView* array_view) : array_view_(array_view) {
+struct GetObjectsReader {
+  explicit GetObjectsReader(struct ArrowArrayView* array_view) : array_view_(array_view) {
     // TODO: this swallows any construction errors
-    get_info_data_ = AdbcGetInfoDataInit(array_view);
+    get_objects_data_ = AdbcGetObjectsDataInit(array_view);
   }
-  ~GetInfoReader() { AdbcGetInfoDataDelete(get_info_data_); }
+  ~GetObjectsReader() { AdbcGetObjectsDataDelete(get_objects_data_); }
 
-  struct AdbcGetInfoData* operator*() {
-    return get_info_data_;
+  struct AdbcGetObjectsData* operator*() {
+    return get_objects_data_;
   }
-  struct AdbcGetInfoData* operator->() {
-    return get_info_data_;
+  struct AdbcGetObjectsData* operator->() {
+    return get_objects_data_;
   }
 
  private:
   struct ArrowArrayView* array_view_;
-  struct AdbcGetInfoData* get_info_data_;
+  struct AdbcGetObjectsData* get_objects_data_;
 };
 
 struct SchemaField {

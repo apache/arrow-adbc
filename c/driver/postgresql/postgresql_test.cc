@@ -298,24 +298,25 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_GT(reader.array->length, 0);
 
-  auto get_info_data = adbc_validation::GetInfoReader{&reader.array_view.value};
-  ASSERT_NE(*get_info_data, nullptr) << "could not initialize the AdbcGetInfoData object";
+  auto get_objects_data = adbc_validation::GetObjectsReader{&reader.array_view.value};
+  ASSERT_NE(*get_objects_data, nullptr)
+      << "could not initialize the AdbcGetObjectsData object";
 
-  struct AdbcGetInfoTable* table = AdbcGetInfoDataGetTableByName(
-      *get_info_data, "postgres", "public", "adbc_pkey_test");
+  struct AdbcGetObjectsTable* table = AdbcGetObjectsDataGetTableByName(
+      *get_objects_data, "postgres", "public", "adbc_pkey_test");
   ASSERT_NE(table, nullptr) << "could not find adbc_pkey_test table";
 
   ASSERT_EQ(table->n_table_columns, 2);
-  struct AdbcGetInfoColumn* column = AdbcGetInfoDataGetColumnByName(
-      *get_info_data, "postgres", "public", "adbc_pkey_test", "id");
+  struct AdbcGetObjectsColumn* column = AdbcGetObjectsDataGetColumnByName(
+      *get_objects_data, "postgres", "public", "adbc_pkey_test", "id");
   ASSERT_NE(column, nullptr) << "could not find id column on adbc_pkey_test table";
 
   ASSERT_EQ(table->n_table_constraints, 1)
       << "expected 1 constraint on adbc_pkey_test table, found: "
       << table->n_table_constraints;
 
-  struct AdbcGetInfoConstraint* constraint = AdbcGetInfoDataGetConstraintByName(
-      *get_info_data, "postgres", "public", "adbc_pkey_test", "adbc_pkey_test_pkey");
+  struct AdbcGetObjectsConstraint* constraint = AdbcGetObjectsDataGetConstraintByName(
+      *get_objects_data, "postgres", "public", "adbc_pkey_test", "adbc_pkey_test_pkey");
   ASSERT_NE(constraint, nullptr) << "could not find adbc_pkey_test_pkey constraint";
 
   auto constraint_type = std::string(constraint->constraint_type.data,
@@ -391,18 +392,19 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_GT(reader.array->length, 0);
 
-  auto get_info_data = adbc_validation::GetInfoReader{&reader.array_view.value};
-  ASSERT_NE(*get_info_data, nullptr) << "could not initialize the AdbcGetInfoData object";
+  auto get_objects_data = adbc_validation::GetObjectsReader{&reader.array_view.value};
+  ASSERT_NE(*get_objects_data, nullptr)
+      << "could not initialize the AdbcGetInfoData object";
 
-  struct AdbcGetInfoTable* table = AdbcGetInfoDataGetTableByName(
-      *get_info_data, "postgres", "public", "adbc_fkey_test");
+  struct AdbcGetObjectsTable* table = AdbcGetObjectsDataGetTableByName(
+      *get_objects_data, "postgres", "public", "adbc_fkey_test");
   ASSERT_NE(table, nullptr) << "could not find adbc_fkey_test table";
   ASSERT_EQ(table->n_table_constraints, 1)
       << "expected 1 constraint on adbc_fkey_test table, found: "
       << table->n_table_constraints;
 
-  struct AdbcGetInfoConstraint* constraint = AdbcGetInfoDataGetConstraintByName(
-      *get_info_data, "postgres", "public", "adbc_fkey_test",
+  struct AdbcGetObjectsConstraint* constraint = AdbcGetObjectsDataGetConstraintByName(
+      *get_objects_data, "postgres", "public", "adbc_fkey_test",
       "adbc_fkey_test_fid1_fid2_fkey");
   ASSERT_NE(constraint, nullptr)
       << "could not find adbc_fkey_test_fid1_fid2_fkey constraint";
@@ -430,7 +432,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
       << constraint->n_column_usages;
 
   for (auto i = 0; i < 2; i++) {
-    struct AdbcGetInfoUsage* usage = constraint->constraint_column_usages[i];
+    struct AdbcGetObjectsUsage* usage = constraint->constraint_column_usages[i];
     auto catalog_str = std::string(usage->fk_catalog.data, usage->fk_catalog.size_bytes);
     ASSERT_EQ(catalog_str, "postgres");
     auto schema_str =

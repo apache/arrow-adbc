@@ -124,23 +124,23 @@ AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
                                                struct AdbcError* error);
 /// @}
 
-struct AdbcGetInfoUsage {
+struct AdbcGetObjectsUsage {
   struct ArrowStringView fk_catalog;
   struct ArrowStringView fk_db_schema;
   struct ArrowStringView fk_table;
   struct ArrowStringView fk_column_name;
 };
 
-struct AdbcGetInfoConstraint {
+struct AdbcGetObjectsConstraint {
   struct ArrowStringView constraint_name;
   struct ArrowStringView constraint_type;
   struct ArrowStringView* constraint_column_names;
   int n_column_names;
-  struct AdbcGetInfoUsage** constraint_column_usages;
+  struct AdbcGetObjectsUsage** constraint_column_usages;
   int n_column_usages;
 };
 
-struct AdbcGetInfoColumn {
+struct AdbcGetObjectsColumn {
   struct ArrowStringView column_name;
   int32_t ordinal_position;
   struct ArrowStringView remarks;
@@ -162,29 +162,29 @@ struct AdbcGetInfoColumn {
   bool xdbc_is_generatedcolumn;
 };
 
-struct AdbcGetInfoTable {
+struct AdbcGetObjectsTable {
   struct ArrowStringView table_name;
   struct ArrowStringView table_type;
-  struct AdbcGetInfoColumn** table_columns;
+  struct AdbcGetObjectsColumn** table_columns;
   int n_table_columns;
-  struct AdbcGetInfoConstraint** table_constraints;
+  struct AdbcGetObjectsConstraint** table_constraints;
   int n_table_constraints;
 };
 
-struct AdbcGetInfoSchema {
+struct AdbcGetObjectsSchema {
   struct ArrowStringView db_schema_name;
-  struct AdbcGetInfoTable** db_schema_tables;
+  struct AdbcGetObjectsTable** db_schema_tables;
   int n_db_schema_tables;
 };
 
-struct AdbcGetInfoCatalog {
+struct AdbcGetObjectsCatalog {
   struct ArrowStringView catalog_name;
-  struct AdbcGetInfoSchema** catalog_db_schemas;
+  struct AdbcGetObjectsSchema** catalog_db_schemas;
   int n_db_schemas;
 };
 
-struct AdbcGetInfoData {
-  struct AdbcGetInfoCatalog** catalogs;
+struct AdbcGetObjectsData {
+  struct AdbcGetObjectsCatalog** catalogs;
   int n_catalogs;
   struct ArrowArrayView* catalog_name_array;
   struct ArrowArrayView* catalog_schemas_array;
@@ -226,25 +226,25 @@ struct AdbcGetInfoData {
 
 // does not copy any data from array
 // returns NULL on error
-struct AdbcGetInfoData* AdbcGetInfoDataInit(struct ArrowArrayView* array_view);
-void AdbcGetInfoDataDelete(struct AdbcGetInfoData* get_info_data);
+struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_view);
+void AdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data);
 
 // returns NULL on error
 // for now all arguments are required
-struct AdbcGetInfoCatalog* AdbcGetInfoDataGetCatalogByName(
-    struct AdbcGetInfoData* get_info_data, const char* const catalog_name);
-struct AdbcGetInfoSchema* AdbcGetInfoDataGetSchemaByName(
-    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+struct AdbcGetObjectsCatalog* AdbcGetObjectsDataGetCatalogByName(
+    struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name);
+struct AdbcGetObjectsSchema* AdbcGetObjectsDataGetSchemaByName(
+    struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name);
-struct AdbcGetInfoTable* AdbcGetInfoDataGetTableByName(
-    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+struct AdbcGetObjectsTable* AdbcGetObjectsDataGetTableByName(
+    struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name);
-struct AdbcGetInfoColumn* AdbcGetInfoDataGetColumnByName(
-    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+struct AdbcGetObjectsColumn* AdbcGetObjectsDataGetColumnByName(
+    struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const column_name);
-struct AdbcGetInfoConstraint* AdbcGetInfoDataGetConstraintByName(
-    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+struct AdbcGetObjectsConstraint* AdbcGetObjectsDataGetConstraintByName(
+    struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const constraint_name);
 
