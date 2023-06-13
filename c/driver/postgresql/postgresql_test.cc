@@ -179,29 +179,16 @@ TEST_F(PostgresConnectionTest, GetObjectsGetCatalogs) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_GT(reader.array->length, 0);
 
-  bool seen_postgres_db = false;
-  bool seen_template0_db = false;
-  bool seen_tempalte1_db = false;
+  auto get_objects_data = adbc_validation::GetObjectsReader{&reader.array_view.value};
+  ASSERT_NE(*get_objects_data, nullptr)
+      << "could not initialize the AdbcGetObjectsData object";
 
-  do {
-    for (int64_t row = 0; row < reader.array->length; row++) {
-      ArrowStringView val =
-          ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], row);
-      auto val_str = std::string(val.data, val.size_bytes);
-      if (val_str == "postgres") {
-        seen_postgres_db = true;
-      } else if (val_str == "template0") {
-        seen_template0_db = true;
-      } else if (val_str == "template1") {
-        seen_tempalte1_db = true;
-      }
-    }
-    ASSERT_NO_FATAL_FAILURE(reader.Next());
-  } while (reader.array->release);
-
-  EXPECT_TRUE(seen_postgres_db) << "postgres database does not exist";
-  EXPECT_TRUE(seen_template0_db) << "template0 database does not exist";
-  EXPECT_TRUE(seen_tempalte1_db) << "template1 database does not exist";
+  auto catalogs = {"postgres", "template0", "template1"};
+  for (auto catalog : catalogs) {
+    struct AdbcGetObjectsCatalog* cat =
+        AdbcGetObjectsDataGetCatalogByName(*get_objects_data, catalog);
+    ASSERT_NE(cat, nullptr) << "catalog " << catalog << " not found";
+  }
 }
 
 TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
@@ -222,41 +209,13 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
   ASSERT_NE(nullptr, reader.array->release);
   ASSERT_GT(reader.array->length, 0);
 
-  bool seen_public = false;
+  auto get_objects_data = adbc_validation::GetObjectsReader{&reader.array_view.value};
+  ASSERT_NE(*get_objects_data, nullptr)
+      << "could not initialize the AdbcGetObjectsData object";
 
-  struct ArrowArrayView* catalog_db_schemas_list = reader.array_view->children[1];
-  struct ArrowArrayView* catalog_db_schema_names = catalog_db_schemas_list->children[0];
-
-  do {
-    for (int64_t catalog_idx = 0; catalog_idx < reader.array->length; catalog_idx++) {
-      ArrowStringView db_name =
-          ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], catalog_idx);
-      auto db_str = std::string(db_name.data, db_name.size_bytes);
-
-      auto schema_list_start =
-          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx);
-      auto schema_list_end =
-          ArrowArrayViewListChildOffset(catalog_db_schemas_list, catalog_idx + 1);
-
-      if (db_str == "postgres") {
-        ASSERT_FALSE(ArrowArrayViewIsNull(catalog_db_schemas_list, catalog_idx));
-        for (auto db_schemas_index = schema_list_start;
-             db_schemas_index < schema_list_end; db_schemas_index++) {
-          ArrowStringView schema_name = ArrowArrayViewGetStringUnsafe(
-              catalog_db_schema_names->children[0], db_schemas_index);
-          auto schema_str = std::string(schema_name.data, schema_name.size_bytes);
-          if (schema_str == "public") {
-            seen_public = true;
-          }
-        }
-      } else {
-        ASSERT_EQ(schema_list_start, schema_list_end);
-      }
-    }
-    ASSERT_NO_FATAL_FAILURE(reader.Next());
-  } while (reader.array->release);
-
-  ASSERT_TRUE(seen_public) << "public schema does not exist";
+  struct AdbcGetObjectsSchema* schema =
+      AdbcGetObjectsDataGetSchemaByName(*get_objects_data, "postgres", "public");
+  ASSERT_NE(schema, nullptr) << "schema public not found";
 }
 
 TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
