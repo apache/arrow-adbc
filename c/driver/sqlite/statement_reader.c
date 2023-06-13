@@ -253,6 +253,8 @@ const char* StatementReaderGetLastError(struct ArrowArrayStream* self) {
 
 void StatementReaderSetError(struct StatementReader* reader) {
   const char* msg = sqlite3_errmsg(reader->db);
+  // Reset here so that we don't get an error again in StatementRelease
+  (void)sqlite3_reset(reader->stmt);
   strncpy(reader->error.message, msg, sizeof(reader->error.message));
   reader->error.message[sizeof(reader->error.message) - 1] = '\0';
 }
@@ -810,7 +812,7 @@ AdbcStatusCode StatementReaderInferOneValue(
     }
     case SQLITE_BLOB:
     default: {
-      return ADBC_STATUS_IO;
+      return ADBC_STATUS_NOT_IMPLEMENTED;
     }
   }
   return ADBC_STATUS_OK;
@@ -870,7 +872,10 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
         }
         continue;
       } else if (rc == SQLITE_ERROR) {
+        SetError(error, "Failed to step query: %s", sqlite3_errmsg(db));
         status = ADBC_STATUS_IO;
+        // Reset here so that we don't get an error again in StatementRelease
+        (void)sqlite3_reset(stmt);
         break;
       } else if (rc != SQLITE_ROW) {
         status = ADBC_STATUS_INTERNAL;

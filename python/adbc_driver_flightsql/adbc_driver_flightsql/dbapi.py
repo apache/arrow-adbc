@@ -96,6 +96,7 @@ def connect(
     uri: str,
     db_kwargs: typing.Optional[typing.Dict[str, str]] = None,
     conn_kwargs: typing.Optional[typing.Dict[str, str]] = None,
+    **kwargs,
 ) -> "Connection":
     """
     Connect to a Flight SQL backend via ADBC.
@@ -117,7 +118,7 @@ def connect(
     try:
         db = adbc_driver_flightsql.connect(uri, db_kwargs=db_kwargs)
         conn = adbc_driver_manager.AdbcConnection(db, **(conn_kwargs or {}))
-        return adbc_driver_manager.dbapi.Connection(db, conn)
+        return adbc_driver_manager.dbapi.Connection(db, conn, **kwargs)
     except Exception:
         if conn:
             conn.close()
