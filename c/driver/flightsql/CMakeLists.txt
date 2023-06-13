@@ -42,6 +42,7 @@ else()
 endif()
 
 if(ADBC_BUILD_TESTS)
+  include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver/common)
   add_test_case(driver_flightsql_test
                 PREFIX
                 adbc
@@ -51,6 +52,7 @@ if(ADBC_BUILD_TESTS)
                 dremio_flightsql_test.cc
                 sqlite_flightsql_test.cc
                 EXTRA_LINK_LIBS
+                adbc_driver_common
                 adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
