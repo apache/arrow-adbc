@@ -805,8 +805,8 @@ struct AdbcGetInfoCatalog* AdbcGetInfoDataGetCatalogByName(
 }
 
 struct AdbcGetInfoSchema* AdbcGetInfoDataGetSchemaByName(
-    struct AdbcGetInfoData* get_info_data, const char* const restrict catalog_name,
-    const char* const restrict schema_name) {
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+    const char* const schema_name) {
   struct AdbcGetInfoCatalog* catalog =
       AdbcGetInfoDataGetCatalogByName(get_info_data, catalog_name);
   if (catalog == NULL) {
@@ -825,8 +825,8 @@ struct AdbcGetInfoSchema* AdbcGetInfoDataGetSchemaByName(
 }
 
 struct AdbcGetInfoTable* AdbcGetInfoDataGetTableByName(
-    struct AdbcGetInfoData* get_info_data, const char* const restrict catalog_name,
-    const char* const restrict schema_name, const char* const restrict table_name) {
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+    const char* const schema_name, const char* const table_name) {
   struct AdbcGetInfoSchema* schema =
       AdbcGetInfoDataGetSchemaByName(get_info_data, catalog_name, schema_name);
   if (schema == NULL) {
@@ -845,9 +845,9 @@ struct AdbcGetInfoTable* AdbcGetInfoDataGetTableByName(
 }
 
 struct AdbcGetInfoColumn* AdbcGetInfoDataGetColumnByName(
-    struct AdbcGetInfoData* get_info_data, const char* const restrict catalog_name,
-    const char* const restrict schema_name, const char* const restrict table_name,
-    const char* const restrict column_name) {
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+    const char* const schema_name, const char* const table_name,
+    const char* const column_name) {
   struct AdbcGetInfoTable* table =
       AdbcGetInfoDataGetTableByName(get_info_data, catalog_name, schema_name, table_name);
   if (table == NULL) {
@@ -866,9 +866,9 @@ struct AdbcGetInfoColumn* AdbcGetInfoDataGetColumnByName(
 }
 
 struct AdbcGetInfoConstraint* AdbcGetInfoDataGetConstraintByName(
-    struct AdbcGetInfoData* get_info_data, const char* const restrict catalog_name,
-    const char* const restrict schema_name, const char* const restrict table_name,
-    const char* const restrict constraint_name) {
+    struct AdbcGetInfoData* get_info_data, const char* const catalog_name,
+    const char* const schema_name, const char* const table_name,
+    const char* const constraint_name) {
   struct AdbcGetInfoTable* table =
       AdbcGetInfoDataGetTableByName(get_info_data, catalog_name, schema_name, table_name);
   if (table == NULL) {
