@@ -92,7 +92,7 @@ ROWID = adbc_driver_manager.dbapi.ROWID
 # Functions
 
 
-def connect(uri: typing.Optional[str] = None) -> "Connection":
+def connect(uri: typing.Optional[str] = None, **kwargs) -> "Connection":
     """Connect to SQLite via ADBC."""
     db = None
     conn = None
@@ -100,7 +100,7 @@ def connect(uri: typing.Optional[str] = None) -> "Connection":
     try:
         db = adbc_driver_sqlite.connect(uri)
         conn = adbc_driver_manager.AdbcConnection(db)
-        return adbc_driver_manager.dbapi.Connection(db, conn)
+        return adbc_driver_manager.dbapi.Connection(db, conn, **kwargs)
     except Exception:
         if conn:
             conn.close()
