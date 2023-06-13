@@ -49,9 +49,8 @@ if(ADBC_BUILD_TESTS)
                 driver-snowflake
                 SOURCES
                 snowflake_test.cc
-                ../../validation/adbc_validation.cc
-                ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
+                adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-snowflake-test PRIVATE cxx_std_17)

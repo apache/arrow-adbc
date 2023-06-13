@@ -29,6 +29,10 @@ include(CTest)
 add_subdirectory(vendor/nanoarrow)
 add_subdirectory(driver/common)
 
+if(ADBC_BUILD_TESTS)
+  add_subdirectory(validation)
+endif()
+
 if(ADBC_DRIVER_FLIGHTSQL)
   add_subdirectory(driver/flightsql)
 endif()
