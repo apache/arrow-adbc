@@ -42,6 +42,7 @@ else()
 endif()
 
 if(ADBC_BUILD_TESTS)
+  include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver/common)
   add_test_case(driver_flightsql_test
                 PREFIX
                 adbc
@@ -53,6 +54,7 @@ if(ADBC_BUILD_TESTS)
                 ../../validation/adbc_validation.cc
                 ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
+                adbc_driver_common
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-flightsql-test PRIVATE cxx_std_17)
