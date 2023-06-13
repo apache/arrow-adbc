@@ -287,6 +287,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;
   ASSERT_THAT(
@@ -363,6 +364,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   {
@@ -381,6 +383,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;
   ASSERT_THAT(
@@ -734,6 +737,45 @@ static std::initializer_list<TypeTestCase> kIntTypeCases = {
     {"BIGSERIAL", "BIGSERIAL", std::to_string(std::numeric_limits<int64_t>::max()),
      NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::max()},
 };
+static std::initializer_list<TypeTestCase> kDateTypeCases = {
+    {"DATE0", "DATE", "'1970-01-01'", NANOARROW_TYPE_DATE32, int64_t(0)},
+    {"DATE1", "DATE", "'2000-01-01'", NANOARROW_TYPE_DATE32, int64_t(10957)},
+    {"DATE2", "DATE", "'1950-01-01'", NANOARROW_TYPE_DATE32, int64_t(-7305)},
+};
+static std::initializer_list<TypeTestCase> kTimeTypeCases = {
+    {"TIME_WITHOUT_TIME_ZONE", "TIME WITHOUT TIME ZONE", "'00:00'", NANOARROW_TYPE_TIME64,
+     int64_t(0)},
+    {"TIME_WITHOUT_TIME_ZONE_VAL", "TIME WITHOUT TIME ZONE", "'01:02:03.123123'",
+     NANOARROW_TYPE_TIME64, int64_t(3'723'123'123)},
+    {"TIME_6_WITHOUT_TIME_ZONE", "TIME (6) WITHOUT TIME ZONE", "'00:00'",
+     NANOARROW_TYPE_TIME64, int64_t(0)},
+    {"TIME_6_WITHOUT_TIME_ZONE_VAL", "TIME (6) WITHOUT TIME ZONE", "'01:02:03.123123'",
+     NANOARROW_TYPE_TIME64, int64_t(3'723'123'123)},
+    {"TIME_5_WITHOUT_TIME_ZONE", "TIME (5) WITHOUT TIME ZONE", "'00:00'",
+     NANOARROW_TYPE_TIME64, int64_t(0)},
+    {"TIME_5_WITHOUT_TIME_ZONE_VAL", "TIME (5) WITHOUT TIME ZONE", "'01:02:03.123123'",
+     NANOARROW_TYPE_TIME64, int64_t(3'723'123'120)},
+    {"TIME_4_WITHOUT_TIME_ZONE", "TIME (4) WITHOUT TIME ZONE", "'00:00'",
+     NANOARROW_TYPE_TIME64, int64_t(0)},
+    {"TIME_4_WITHOUT_TIME_ZONE_VAL", "TIME (4) WITHOUT TIME ZONE", "'01:02:03.123123'",
+     NANOARROW_TYPE_TIME64, int64_t(3'723'123'100)},
+    {"TIME_3_WITHOUT_TIME_ZONE", "TIME (3) WITHOUT TIME ZONE", "'00:00'",
+     NANOARROW_TYPE_TIME64, int64_t(0)},
+    {"TIME_3_WITHOUT_TIME_ZONE_VAL", "TIME (3) WITHOUT TIME ZONE", "'01:02:03.123123'",
+     NANOARROW_TYPE_TIME64, int64_t(3'723'123'000)},
+    {"TIME_2_WITHOUT_TIME_ZONE", "TIME (2) WITHOUT TIME ZONE", "'00:00'",
+     NANOARROW_TYPE_TIME64, int64_t(0)},
+    {"TIME_2_WITHOUT_TIME_ZONE_VAL", "TIME (2) WITHOUT TIME ZONE", "'01:02:03.123123'",
+     NANOARROW_TYPE_TIME64, int64_t(3'723'120'000)},
+    {"TIME_1_WITHOUT_TIME_ZONE", "TIME (1) WITHOUT TIME ZONE", "'00:00'",
+     NANOARROW_TYPE_TIME64, int64_t(0)},
+    {"TIME_1_WITHOUT_TIME_ZONE_VAL", "TIME (1) WITHOUT TIME ZONE", "'01:02:03.123123'",
+     NANOARROW_TYPE_TIME64, int64_t(3'723'100'000)},
+    {"TIME_0_WITHOUT_TIME_ZONE", "TIME (0) WITHOUT TIME ZONE", "'00:00'",
+     NANOARROW_TYPE_TIME64, int64_t(0)},
+    {"TIME_0_WITHOUT_TIME_ZONE_VAL", "TIME (0) WITHOUT TIME ZONE", "'01:02:03.123123'",
+     NANOARROW_TYPE_TIME64, int64_t(3'723'000'000)},
+};
 static std::initializer_list<TypeTestCase> kTimestampTypeCases = {
     {"TIMESTAMP_WITHOUT_TIME_ZONE", "TIMESTAMP WITHOUT TIME ZONE",
      "'1970-01-01 00:00:00.000000'", NANOARROW_TYPE_TIMESTAMP, int64_t(0)},
@@ -824,6 +866,10 @@ INSTANTIATE_TEST_SUITE_P(BinaryTypes, PostgresTypeTest,
 INSTANTIATE_TEST_SUITE_P(FloatTypes, PostgresTypeTest, testing::ValuesIn(kFloatTypeCases),
                          TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(IntTypes, PostgresTypeTest, testing::ValuesIn(kIntTypeCases),
+                         TypeTestCase::FormatName);
+INSTANTIATE_TEST_SUITE_P(DateTypes, PostgresTypeTest, testing::ValuesIn(kDateTypeCases),
+                         TypeTestCase::FormatName);
+INSTANTIATE_TEST_SUITE_P(TimeTypes, PostgresTypeTest, testing::ValuesIn(kTimeTypeCases),
                          TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(TimestampTypes, PostgresTypeTest,
                          testing::ValuesIn(kTimestampTypeCases),

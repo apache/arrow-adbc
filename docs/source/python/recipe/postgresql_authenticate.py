@@ -15,14 +15,27 @@
 # specific language governing permissions and limitations
 # under the License.
 
-breathe
-doxygen
-furo
-make
-numpydoc
-pytest
-sphinx>=5.0
-sphinx-autobuild
-sphinx-copybutton
-sphinx-design
-sphinxcontrib-mermaid
+# RECIPE STARTS HERE
+#: To connect to a PostgreSQL database, the username and password must
+#: be provided in the URI.  For example,
+#:
+#: .. code-block:: text
+#:
+#:    postgresql://username:password@hostname:port/dbname
+#:
+#: See the `PostgreSQL documentation
+#: <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_
+#: for full details.
+
+import os
+
+import adbc_driver_postgresql.dbapi
+
+uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
+conn = adbc_driver_postgresql.dbapi.connect(uri)
+
+with conn.cursor() as cur:
+    cur.execute("SELECT 1")
+    assert cur.fetchone() == (1,)
+
+conn.close()

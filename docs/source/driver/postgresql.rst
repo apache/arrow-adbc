@@ -110,6 +110,8 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
          with adbc_driver_postgresql.dbapi.connect(uri) as conn:
              pass
 
+      For more examples, see :doc:`../python/recipe/postgresql`.
+
    .. tab-item:: R
       :sync: r
 

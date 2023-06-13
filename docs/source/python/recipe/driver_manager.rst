@@ -15,14 +15,11 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-======
-Python
-======
+======================
+Driver Manager Recipes
+======================
 
-.. toctree::
-   :maxdepth: 2
+Load a driver from a shared library (DuckDB)
+============================================
 
-   quickstart
-   driver_manager
-   api/index
-   recipe/index
+.. recipe:: driver_manager_duckdb.py

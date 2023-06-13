@@ -253,6 +253,8 @@ const char* StatementReaderGetLastError(struct ArrowArrayStream* self) {
 
 void StatementReaderSetError(struct StatementReader* reader) {
   const char* msg = sqlite3_errmsg(reader->db);
+  // Reset here so that we don't get an error again in StatementRelease
+  (void)sqlite3_reset(reader->stmt);
   strncpy(reader->error.message, msg, sizeof(reader->error.message));
   reader->error.message[sizeof(reader->error.message) - 1] = '\0';
 }
@@ -382,33 +384,39 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
 
   sqlite3_mutex_enter(sqlite3_db_mutex(reader->db));
   while (batch_size < reader->batch_size) {
-    if (reader->binder) {
-      char finished = 0;
-      struct AdbcError error = {0};
-      AdbcStatusCode status = AdbcSqliteBinderBindNext(reader->binder, reader->db,
-                                                       reader->stmt, &finished, &error);
-      if (status != ADBC_STATUS_OK) {
-        reader->done = 1;
-        status = EIO;
-        if (error.release) {
-          strncpy(reader->error.message, error.message, sizeof(reader->error.message));
-          reader->error.message[sizeof(reader->error.message) - 1] = '\0';
-          error.release(&error);
-        }
-        break;
-      } else if (finished) {
-        reader->done = 1;
-        break;
-      }
-    }
-
     int rc = sqlite3_step(reader->stmt);
     if (rc == SQLITE_DONE) {
-      reader->done = 1;
-      break;
+      if (!reader->binder) {
+        reader->done = 1;
+        break;
+      } else {
+        char finished = 0;
+        struct AdbcError error = {0};
+        status = AdbcSqliteBinderBindNext(reader->binder, reader->db, reader->stmt,
+                                          &finished, &error);
+        if (status != ADBC_STATUS_OK) {
+          reader->done = 1;
+          status = EIO;
+          if (error.release) {
+            strncpy(reader->error.message, error.message, sizeof(reader->error.message));
+            reader->error.message[sizeof(reader->error.message) - 1] = '\0';
+            error.release(&error);
+          }
+          break;
+        } else if (finished) {
+          reader->done = 1;
+          break;
+        }
+        continue;
+      }
     } else if (rc == SQLITE_ERROR) {
       reader->done = 1;
       status = EIO;
+      StatementReaderSetError(reader);
+      break;
+    } else if (rc != SQLITE_ROW) {
+      reader->done = 1;
+      status = ADBC_STATUS_INTERNAL;
       StatementReaderSetError(reader);
       break;
     }
@@ -804,7 +812,7 @@ AdbcStatusCode StatementReaderInferOneValue(
     }
     case SQLITE_BLOB:
     default: {
-      return ADBC_STATUS_IO;
+      return ADBC_STATUS_NOT_IMPLEMENTED;
     }
   }
   return ADBC_STATUS_OK;
@@ -836,25 +844,41 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
 
   AdbcStatusCode status = StatementReaderInitializeInfer(
       num_columns, batch_size, validity, data, binary, current_type, error);
-  if (status == ADBC_STATUS_OK) {
+
+  if (binder) {
+    char finished = 0;
+    status = AdbcSqliteBinderBindNext(binder, db, stmt, &finished, error);
+    if (finished) {
+      reader->done = 1;
+    }
+  }
+
+  if (status == ADBC_STATUS_OK && !reader->done) {
     int64_t num_rows = 0;
     while (num_rows < batch_size) {
-      if (binder) {
-        char finished = 0;
-        status = AdbcSqliteBinderBindNext(binder, db, stmt, &finished, error);
-        if (status != ADBC_STATUS_OK) break;
-        if (finished) {
-          reader->done = 1;
-          break;
-        }
-      }
-
       int rc = sqlite3_step(stmt);
       if (rc == SQLITE_DONE) {
-        reader->done = 1;
-        break;
+        if (!binder) {
+          reader->done = 1;
+          break;
+        } else {
+          char finished = 0;
+          status = AdbcSqliteBinderBindNext(binder, db, stmt, &finished, error);
+          if (status != ADBC_STATUS_OK) break;
+          if (finished) {
+            reader->done = 1;
+            break;
+          }
+        }
+        continue;
       } else if (rc == SQLITE_ERROR) {
+        SetError(error, "Failed to step query: %s", sqlite3_errmsg(db));
         status = ADBC_STATUS_IO;
+        // Reset here so that we don't get an error again in StatementRelease
+        (void)sqlite3_reset(stmt);
+        break;
+      } else if (rc != SQLITE_ROW) {
+        status = ADBC_STATUS_INTERNAL;
         break;
       }
 

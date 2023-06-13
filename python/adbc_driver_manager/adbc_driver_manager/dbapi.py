@@ -160,6 +160,7 @@ def connect(
     entrypoint: str = None,
     db_kwargs: Optional[Dict[str, str]] = None,
     conn_kwargs: Optional[Dict[str, str]] = None,
+    autocommit=False,
 ) -> "Connection":
     """
     Connect to a database via ADBC.
@@ -180,6 +181,10 @@ def connect(
     conn_kwargs
         Key-value parameters to pass to the driver to initialize the
         connection.
+    autocommit
+        Whether to enable autocommit.  For compliance with DB-API,
+        this is disabled by default.  A warning will be emitted if it
+        cannot be disabled.
     """
     db = None
     conn = None
@@ -194,7 +199,7 @@ def connect(
     try:
         db = _lib.AdbcDatabase(**db_kwargs)
         conn = _lib.AdbcConnection(db, **conn_kwargs)
-        return Connection(db, conn, conn_kwargs)
+        return Connection(db, conn, conn_kwargs, autocommit=autocommit)
     except Exception:
         if conn:
             conn.close()
@@ -267,6 +272,8 @@ class Connection(_Closeable):
         db: Union[_lib.AdbcDatabase, _SharedDatabase],
         conn: _lib.AdbcConnection,
         conn_kwargs: Optional[Dict[str, str]] = None,
+        *,
+        autocommit=False,
     ) -> None:
         self._closed = False
         if isinstance(db, _SharedDatabase):
@@ -280,12 +287,19 @@ class Connection(_Closeable):
             self._conn.set_autocommit(False)
         except _lib.NotSupportedError:
             self._commit_supported = False
-            warnings.warn(
-                "Cannot disable autocommit; conn will not be DB-API 2.0 compliant",
-                category=Warning,
-            )
+            if not autocommit:
+                warnings.warn(
+                    "Cannot disable autocommit; conn will not be DB-API 2.0 compliant",
+                    category=Warning,
+                )
+            self._autocommit = True
         else:
+            self._autocommit = False
             self._commit_supported = True
+
+        if autocommit and self._commit_supported:
+            self._conn.set_autocommit(True)
+            self._autocommit = True
 
     def close(self) -> None:
         """
@@ -843,6 +857,24 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         return self._stmt
+
+    def executescript(self, operation: str) -> None:
+        """
+        Execute multiple statements.
+
+        If there is a pending transaction, commits first.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        if not self._conn._autocommit:
+            self._conn.commit()
+
+        self._last_query = None
+        self._results = None
+        self._stmt.set_sql_query(operation)
+        self._stmt.execute_update()
 
     def fetchallarrow(self) -> pyarrow.Table:
         """
