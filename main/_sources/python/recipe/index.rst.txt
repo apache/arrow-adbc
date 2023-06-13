@@ -15,14 +15,15 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-======
-Python
-======
+===============
+Python Cookbook
+===============
+
+The cookbook provides task-oriented example code for using ADBC in
+Python.
 
 .. toctree::
    :maxdepth: 2
 
-   quickstart
    driver_manager
-   api/index
-   recipe/index
+   postgresql
