@@ -466,11 +466,78 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SNOWFLAKE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+
+  python-docs:
+    name: "Documentation ${{ matrix.python }} (Conda/${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    needs:
+      - drivers-build-conda
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+        python: ["3.11"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        shell: bash
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache@v3
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -c conda-forge \
+            python=${{ matrix.python }} \
+            --file ci/conda_env_docs.txt \
+            --file ci/conda_env_python.txt
+      - uses: actions/download-artifact@v3
+        with:
+          name: driver-manager-${{ matrix.os }}
+          path: ~/local
+
+      - name: Build Python
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=1 ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       # Docs requires Python packages since it runs doctests
       - name: Build Docs
         shell: bash -l {0}
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
+      # Docs requires Python packages since it runs doctests
+      - name: Test Docs
+        shell: bash -l {0}
+        env:
+          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          pytest -vvs docs/source/tests/
 
   # ------------------------------------------------------------
   # R
