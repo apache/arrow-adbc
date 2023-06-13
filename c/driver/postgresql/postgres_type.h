@@ -192,6 +192,7 @@ class PostgresType {
   // binary COPY representation in the output.
   ArrowErrorCode SetSchema(ArrowSchema* schema) const {
     switch (type_id_) {
+      // ---- Primitive types --------------------
       case PostgresTypeId::kBool:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL));
         break;
@@ -212,6 +213,8 @@ class PostgresType {
       case PostgresTypeId::kFloat8:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DOUBLE));
         break;
+
+      // ---- Binary/string --------------------
       case PostgresTypeId::kChar:
       case PostgresTypeId::kBpchar:
       case PostgresTypeId::kVarchar:
@@ -221,6 +224,19 @@ class PostgresType {
         break;
       case PostgresTypeId::kBytea:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
+        break;
+
+      // ---- Temporal --------------------
+      case PostgresTypeId::kDate:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_DATE32));
+        break;
+
+      case PostgresTypeId::kTime:
+        // We always return microsecond precision even if the type
+        // specifies differently
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIME64,
+                                                           NANOARROW_TIME_UNIT_MICRO,
+                                                           /*timezone=*/nullptr));
         break;
 
       case PostgresTypeId::kTimestamp:
@@ -237,6 +253,7 @@ class PostgresType {
                                        NANOARROW_TIME_UNIT_MICRO, /*timezone=*/"UTC"));
         break;
 
+      // ---- Nested --------------------
       case PostgresTypeId::kRecord:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));
         for (int64_t i = 0; i < n_children(); i++) {

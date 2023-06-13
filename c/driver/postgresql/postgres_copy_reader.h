@@ -636,6 +636,18 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
           return ErrorCantConvert(error, pg_type, schema_view);
       }
 
+    case NANOARROW_TYPE_DATE32: {
+      // 2000-01-01
+      constexpr int32_t kPostgresDateEpoch = 10957;
+      *out = new PostgresCopyNetworkEndianFieldReader<int32_t, kPostgresDateEpoch>();
+      return NANOARROW_OK;
+    }
+
+    case NANOARROW_TYPE_TIME64: {
+      *out = new PostgresCopyNetworkEndianFieldReader<int64_t>();
+      return NANOARROW_OK;
+    }
+
     case NANOARROW_TYPE_TIMESTAMP:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kTimestamp:

@@ -23,6 +23,8 @@ import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.types.TimeUnit;
+import org.apache.arrow.vector.types.Types;
+import org.apache.arrow.vector.types.pojo.ArrowType;
 
 /** Account for driver/vendor-specific quirks in implementing validation tests. */
 public abstract class SqlValidationQuirks {
@@ -85,6 +87,24 @@ public abstract class SqlValidationQuirks {
         + " ("
         + caseFoldColumnName(referenceColumn)
         + ") ";
+  }
+
+  public TimeUnit defaultTimeUnit() {
+    return TimeUnit.MILLISECOND;
+  }
+
+  public ArrowType defaultTimeType() {
+    switch (defaultTimeUnit()) {
+      case SECOND:
+        return Types.MinorType.TIMESEC.getType();
+      case MILLISECOND:
+        return Types.MinorType.TIMEMILLI.getType();
+      case MICROSECOND:
+        return Types.MinorType.TIMEMICRO.getType();
+      case NANOSECOND:
+        return Types.MinorType.TIMENANO.getType();
+    }
+    throw new AssertionError("Unhandled case");
   }
 
   public TimeUnit defaultTimestampUnit() {

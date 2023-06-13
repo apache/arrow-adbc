@@ -85,6 +85,11 @@ public class MsSqlServerQuirks extends SqlValidationQuirks {
   }
 
   @Override
+  public TimeUnit defaultTimeUnit() {
+    return TimeUnit.NANOSECOND;
+  }
+
+  @Override
   public TimeUnit defaultTimestampUnit() {
     return TimeUnit.NANOSECOND;
   }
