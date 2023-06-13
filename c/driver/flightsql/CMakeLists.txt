@@ -33,6 +33,7 @@ add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
 
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver)
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
@@ -42,7 +43,6 @@ else()
 endif()
 
 if(ADBC_BUILD_TESTS)
-  include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver/common)
   add_test_case(driver_flightsql_test
                 PREFIX
                 adbc

@@ -29,8 +29,8 @@
 #include <adbc.h>
 #include <libpq-fe.h>
 
+#include "common/utils.h"
 #include "database.h"
-#include "utils.h"
 
 namespace {
 

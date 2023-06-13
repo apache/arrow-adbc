@@ -22,10 +22,10 @@
 
 #include <adbc.h>
 
+#include "common/utils.h"
 #include "connection.h"
 #include "database.h"
 #include "statement.h"
-#include "utils.h"
 
 using adbcpq::PostgresConnection;
 using adbcpq::PostgresDatabase;

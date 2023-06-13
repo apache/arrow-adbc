@@ -31,7 +31,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
-#include "utils.h"
+#include "common/utils.h"
 
 namespace adbc_validation {
 
@@ -206,12 +206,8 @@ struct GetObjectsReader {
   }
   ~GetObjectsReader() { AdbcGetObjectsDataDelete(get_objects_data_); }
 
-  struct AdbcGetObjectsData* operator*() {
-    return get_objects_data_;
-  }
-  struct AdbcGetObjectsData* operator->() {
-    return get_objects_data_;
-  }
+  struct AdbcGetObjectsData* operator*() { return get_objects_data_; }
+  struct AdbcGetObjectsData* operator->() { return get_objects_data_; }
 
  private:
   struct ArrowArrayView* array_view_;

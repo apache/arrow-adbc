@@ -28,9 +28,9 @@
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
+#include "common/utils.h"
 #include "statement_reader.h"
 #include "types.h"
-#include "utils.h"
 
 static const char kDefaultUri[] = "file:adbc_driver_sqlite?mode=memory&cache=shared";
 // The batch size for query results (and for initial type inference)
