@@ -60,29 +60,13 @@ public final class StandardJdbcQuirks {
   private static ArrowType postgresql(JdbcFieldInfoExtra field) {
     switch (field.getJdbcType()) {
       case Types.TIMESTAMP:
-        {
-          int decimalDigits = field.getScale();
-          final TimeUnit unit;
-          if (decimalDigits == 0) {
-            unit = TimeUnit.SECOND;
-          } else if (decimalDigits > 0 && decimalDigits <= 3) {
-            unit = TimeUnit.MILLISECOND;
-          } else if (decimalDigits > 0 && decimalDigits <= 6) {
-            unit = TimeUnit.MICROSECOND;
-          } else if (decimalDigits > 6) {
-            unit = TimeUnit.NANOSECOND;
-          } else {
-            // Negative precision?
-            return null;
-          }
-          if ("timestamptz".equals(field.getTypeName())) {
-            return new ArrowType.Timestamp(unit, "UTC");
-          } else if ("timestamp".equals(field.getTypeName())) {
-            return new ArrowType.Timestamp(unit, /*timezone*/ null);
-          }
-          // Unknown type
-          return null;
+        if ("timestamptz".equals(field.getTypeName())) {
+          return new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC");
+        } else if ("timestamp".equals(field.getTypeName())) {
+          return new ArrowType.Timestamp(TimeUnit.MICROSECOND, /*timezone*/ null);
         }
+        // Unknown type
+        return null;
       default:
         return JdbcToArrowUtils.getArrowTypeFromJdbcType(field.getFieldInfo(), /*calendar*/ null);
     }

@@ -76,27 +76,27 @@ class PostgreSqlTypeTest extends AbstractSqlTypeTest {
   protected void timestamp3WithoutTimeZoneType() throws Exception {
     final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
     assertThat(schema.findField("timestamp_without_time_zone_p3_t").getType())
-        .isEqualTo(new ArrowType.Timestamp(TimeUnit.MILLISECOND, null));
+        .isEqualTo(new ArrowType.Timestamp(TimeUnit.MICROSECOND, null));
   }
 
   @Test
   protected void timestamp2WithoutTimeZoneType() throws Exception {
     final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
     assertThat(schema.findField("timestamp_without_time_zone_p2_t").getType())
-        .isEqualTo(new ArrowType.Timestamp(TimeUnit.MILLISECOND, null));
+        .isEqualTo(new ArrowType.Timestamp(TimeUnit.MICROSECOND, null));
   }
 
   @Test
   protected void timestamp1WithoutTimeZoneType() throws Exception {
     final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
     assertThat(schema.findField("timestamp_without_time_zone_p1_t").getType())
-        .isEqualTo(new ArrowType.Timestamp(TimeUnit.MILLISECOND, null));
+        .isEqualTo(new ArrowType.Timestamp(TimeUnit.MICROSECOND, null));
   }
 
   @Test
   protected void timestamp0WithoutTimeZoneType() throws Exception {
     final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
     assertThat(schema.findField("timestamp_without_time_zone_p0_t").getType())
-        .isEqualTo(new ArrowType.Timestamp(TimeUnit.SECOND, null));
+        .isEqualTo(new ArrowType.Timestamp(TimeUnit.MICROSECOND, null));
   }
 }
