@@ -18,7 +18,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Apache.Arrow.Adbc.Interop
+namespace Apache.Arrow.Adbc.C
 {
     internal readonly struct NativeDelegate<T>
     {
