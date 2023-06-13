@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['8', '11']
+        java: ['8', '11', '17', '20']
     services:
       postgres:
         image: postgres
@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['11']
+        java: ['11', '17']
     steps:
       - uses: actions/checkout@v3
         with:
