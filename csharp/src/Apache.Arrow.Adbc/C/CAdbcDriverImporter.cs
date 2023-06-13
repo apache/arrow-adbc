@@ -35,6 +35,7 @@ namespace Apache.Arrow.Adbc.C
     public static class CAdbcDriverImporter
     {
         private const string driverInit = "AdbcDriverInit";
+        private const int ADBC_VERSION_1_0_0 = 1000000;
 
         class NativeDriver
         {
@@ -47,7 +48,8 @@ namespace Apache.Arrow.Adbc.C
         /// </summary>
         static class MacInterop
         {
-            const string libdl = "libdl.dylib";
+            private const string libdl = "libdl.dylib";
+            private const int RTLD_NOW = 2;
 
             [DllImport(libdl)]
             static extern SafeLibraryHandle dlopen(string fileName, int flags);
@@ -70,12 +72,12 @@ namespace Apache.Arrow.Adbc.C
 
             public static NativeDriver GetDriver(string file)
             {
-                SafeHandle library = dlopen(file, 2); // TODO: find a symbol for 2
+                SafeHandle library = dlopen(file, RTLD_NOW);
                 IntPtr symbol = dlsym(library, "AdbcDriverInit");
                 AdbcDriverInit init = Marshal.GetDelegateForFunctionPointer<AdbcDriverInit>(symbol);
                 CAdbcDriver driver = new CAdbcDriver();
                 CAdbcError error = new CAdbcError();
-                byte result = init(1000000, ref driver, ref error);
+                byte result = init(ADBC_VERSION_1_0_0, ref driver, ref error);
                 return new NativeDriver { driverHandle = library, driver = driver };
             }
         }
@@ -85,7 +87,9 @@ namespace Apache.Arrow.Adbc.C
         /// </summary>
         static class WindowsInterop
         {
-            const string kernel32 = "kernel32.dll";
+            private const string kernel32 = "kernel32.dll";
+            private const int LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x1000;
+            private const int LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x0100;
 
             [DllImport(kernel32)]
             [return: MarshalAs(UnmanagedType.Bool)]
@@ -109,12 +113,12 @@ namespace Apache.Arrow.Adbc.C
 
             public static NativeDriver GetDriver(string file)
             {
-                SafeHandle library = LoadLibraryEx(file, IntPtr.Zero, 0x1100);
+                SafeHandle library = LoadLibraryEx(file, IntPtr.Zero, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
                 IntPtr symbol = GetProcAddress(library, "AdbcDriverInit");
                 AdbcDriverInit init = Marshal.GetDelegateForFunctionPointer<AdbcDriverInit>(symbol);
                 CAdbcDriver driver = new CAdbcDriver();
                 CAdbcError error = new CAdbcError();
-                byte result = init(1000000, ref driver, ref error);
+                byte result = init(ADBC_VERSION_1_0_0, ref driver, ref error);
                 return new NativeDriver { /* driverHandle = library, */ driver = driver };
             }
         }

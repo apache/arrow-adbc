@@ -111,7 +111,6 @@ namespace Apache.Arrow.Adbc.C
             error->sqlstate3 = (byte)0;
             error->sqlstate4 = (byte)0;
             error->vendor_code = 0;
-            error->vendor_code = 0;
             error->release = (delegate* unmanaged[Stdcall]<CAdbcError*, void>)releaseError.Pointer;
 
             return AdbcStatusCode.UnknownError;
