@@ -441,7 +441,7 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
     sqlite3_stmt* fk_stmt, struct AdbcError* error) {
   struct ArrowArray* table_constraints_items = table_constraints_col->children[0];
   struct ArrowArray* constraint_name_col = table_constraints_items->children[0];
-  // Constraints type column would be table_constraints_items->children[1];
+  struct ArrowArray* constraint_type_col = table_constraints_items->children[1];
   struct ArrowArray* constraint_column_names_col = table_constraints_items->children[2];
   struct ArrowArray* constraint_column_names_items =
       constraint_column_names_col->children[0];
@@ -469,7 +469,7 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
       has_primary_key = 1;
       CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
       CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(constraint_name_col, ArrowCharView("PRIMARY KEY")),
+               ArrowArrayAppendString(constraint_type_col, ArrowCharView("PRIMARY KEY")),
                error);
     }
     CHECK_NA(

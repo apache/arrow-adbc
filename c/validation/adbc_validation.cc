@@ -838,6 +838,79 @@ void ConnectionTest::TestMetadataGetObjectsConstraints() {
   // TODO: can't be done portably (need to create tables with primary keys and such)
 }
 
+void ConnectionTest::TestMetadataGetObjectsPrimaryKey() {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
+  std::optional<std::string> maybe_ddl = quirks()->PrimaryKeyTableDdl("adbc_pkey_test");
+  if (!maybe_ddl.has_value()) {
+    GTEST_SKIP();
+  }
+  std::string ddl = std::move(*maybe_ddl);
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_pkey_test", &error),
+              IsOkStatus(&error));
+
+  {
+    Handle<AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, ddl.c_str(), &error),
+                IsOkStatus(&error));
+    int64_t rows_affected = 0;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement.value, nullptr, &rows_affected, &error),
+        IsOkStatus(&error));
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, &reader.stream.value, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_GT(reader.array->length, 0);
+
+  auto get_objects_data = adbc_validation::GetObjectsReader{&reader.array_view.value};
+  ASSERT_NE(*get_objects_data, nullptr)
+      << "could not initialize the AdbcGetObjectsData object";
+
+  struct AdbcGetObjectsTable* table =
+      AdbcGetObjectsDataGetTableByName(*get_objects_data, quirks()->catalog().c_str(),
+                                       quirks()->db_schema().c_str(), "adbc_pkey_test");
+  ASSERT_NE(table, nullptr) << "could not find adbc_pkey_test table";
+
+  ASSERT_EQ(table->n_table_columns, 1);
+  struct AdbcGetObjectsColumn* column = AdbcGetObjectsDataGetColumnByName(
+      *get_objects_data, quirks()->catalog().c_str(), quirks()->db_schema().c_str(),
+      "adbc_pkey_test", "id");
+  ASSERT_NE(column, nullptr) << "could not find id column on adbc_pkey_test table";
+
+  ASSERT_EQ(table->n_table_constraints, 1)
+      << "expected 1 constraint on adbc_pkey_test table, found: "
+      << table->n_table_constraints;
+
+  struct AdbcGetObjectsConstraint* constraint = table->table_constraints[0];
+
+  std::string_view constraint_type(constraint->constraint_type.data,
+                                   constraint->constraint_type.size_bytes);
+  ASSERT_EQ(constraint_type, "PRIMARY KEY");
+  ASSERT_EQ(constraint->n_column_names, 1)
+      << "expected constraint adbc_pkey_test_pkey to be applied to 1 column, found: "
+      << constraint->n_column_names;
+
+  std::string_view constraint_column_name(
+      constraint->constraint_column_names[0].data,
+      constraint->constraint_column_names[0].size_bytes);
+  ASSERT_EQ(constraint_column_name, "id");
+}
+
 //------------------------------------------------------------
 // Tests of AdbcStatement
 
