@@ -206,8 +206,12 @@ struct GetObjectsReader {
   }
   ~GetObjectsReader() { AdbcGetObjectsDataDelete(get_objects_data_); }
 
-  struct AdbcGetObjectsData* operator*() { return get_objects_data_; }
-  struct AdbcGetObjectsData* operator->() { return get_objects_data_; }
+  struct AdbcGetObjectsData* operator*() {
+    return get_objects_data_;
+  }
+  struct AdbcGetObjectsData* operator->() {
+    return get_objects_data_;
+  }
 
  private:
   struct ArrowArrayView* array_view_;
