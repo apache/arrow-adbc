@@ -86,6 +86,11 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
   }
 
   @Override
+  public TimeUnit defaultTimeUnit() {
+    return TimeUnit.MICROSECOND;
+  }
+
+  @Override
   public TimeUnit defaultTimestampUnit() {
     return TimeUnit.MICROSECOND;
   }

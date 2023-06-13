@@ -35,6 +35,10 @@ import org.apache.arrow.vector.DateDayVector;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.SmallIntVector;
+import org.apache.arrow.vector.TimeMicroVector;
+import org.apache.arrow.vector.TimeMilliVector;
+import org.apache.arrow.vector.TimeNanoVector;
+import org.apache.arrow.vector.TimeSecVector;
 import org.apache.arrow.vector.TimeStampMicroTZVector;
 import org.apache.arrow.vector.TimeStampMilliTZVector;
 import org.apache.arrow.vector.TimeStampNanoTZVector;
@@ -187,6 +191,31 @@ public class AbstractSqlTypeTest {
   @Test
   protected void textValue() throws Exception {
     assertValue("text_t", VarCharVector.class, new Text("foo"));
+  }
+
+  @Test
+  protected void timeWithoutTimeZoneType() throws Exception {
+    final Schema schema = connection.getTableSchema(null, null, "adbc_alltypes");
+    assertThat(schema.findField("time_without_time_zone_t").getType())
+        .isEqualTo(quirks.defaultTimeType());
+  }
+
+  @Test
+  protected void timeWithoutTimeZoneValue() throws Exception {
+    switch (quirks.defaultTimeUnit()) {
+      case SECOND:
+        assertValue("time_without_time_zone_t", TimeSecVector.class, 14706L);
+        break;
+      case MILLISECOND:
+        assertValue("time_without_time_zone_t", TimeMilliVector.class, 14706123L);
+        break;
+      case MICROSECOND:
+        assertValue("time_without_time_zone_t", TimeMicroVector.class, 14706123456L);
+        break;
+      case NANOSECOND:
+        assertValue("time_without_time_zone_t", TimeNanoVector.class, 14706123456000L);
+        break;
+    }
   }
 
   @Test

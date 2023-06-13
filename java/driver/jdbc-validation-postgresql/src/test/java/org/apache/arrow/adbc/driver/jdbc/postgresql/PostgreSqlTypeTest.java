@@ -35,6 +35,15 @@ class PostgreSqlTypeTest extends AbstractSqlTypeTest {
 
   @Test
   @Override
+  protected void timeWithoutTimeZoneValue() throws Exception {
+    // TODO(https://github.com/apache/arrow/issues/35916): needs upstream fix
+    // XXX: Java 8 compiler complains without lambda https://stackoverflow.com/questions/33621060
+    //noinspection Convert2MethodRef
+    assertThrows(AssertionError.class, () -> super.timeWithoutTimeZoneValue());
+  }
+
+  @Test
+  @Override
   protected void timestampWithoutTimeZoneValue() {
     // TODO(https://github.com/apache/arrow/issues/35916): needs upstream fix
     // XXX: Java 8 compiler complains without lambda https://stackoverflow.com/questions/33621060
