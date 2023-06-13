@@ -53,7 +53,7 @@ if (all(file.exists(files_to_vendor))) {
         "src/utils.c", "src/utils.h"),
       c("src/nanoarrow/nanoarrow.c", "src/nanoarrow/nanoarrow.h",
         "tools/sqlite3.c", "tools/sqlite3.h",
-        "common/utils.c", "common/utils.h")
+        "src/common/utils.c", "src/common/utils.h")
     )
     cat("All files successfully copied to src/\n")
   } else {
