@@ -75,10 +75,9 @@ if(ADBC_BUILD_TESTS)
                 postgres_type_test.cc
                 postgres_copy_reader_test.cc
                 postgresql_test.cc
-                ../../validation/adbc_validation.cc
-                ../../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
                 adbc_driver_common
+                adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
