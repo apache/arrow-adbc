@@ -15,11 +15,5 @@
 # specific language governing permissions and limitations
 # under the License.
 
-PKG_CPPFLAGS=-I../src @cppflags@ -DADBC_EXPORT=""
-PKG_LIBS=@libs@
-
-OBJECTS = init.o \
-    sqlite.o \
-    statement_reader.o \
-    common/utils.o \
-    nanoarrow/nanoarrow.o @objects@
+utils.c
+utils.h
