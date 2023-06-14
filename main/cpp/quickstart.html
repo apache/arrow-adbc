@@ -348,7 +348,6 @@ cmake<span class="w"> </span>--build<span class="w"> </span>.<span class="w"> </
 <section id="using-adbc">
 <h2>Using ADBC<a class="headerlink" href="#using-adbc" title="Permalink to this heading">#</a></h2>
 <p>Let’s start with some includes:</p>
-</section>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">58</span><span class="o">//</span> <span class="n">For</span> <span class="n">EXIT_SUCCESS</span>
 <span class="linenos">59</span><span class="c1">#include &lt;cstdlib&gt;</span>
 <span class="linenos">60</span><span class="o">//</span> <span class="n">For</span> <span class="n">strerror</span>
@@ -394,10 +393,9 @@ cmake<span class="w"> </span>--build<span class="w"> </span>.<span class="w"> </
 </pre></div>
 </div>
 <section id="loading-the-driver">
-<h2>Loading the Driver<a class="headerlink" href="#loading-the-driver" title="Permalink to this heading">#</a></h2>
+<h3>Loading the Driver<a class="headerlink" href="#loading-the-driver" title="Permalink to this heading">#</a></h3>
 <p>We’ll load the SQLite driver using the driver manager.  We don’t
 have to explicitly link to the driver this way.</p>
-</section>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">106</span>  <span class="n">AdbcError</span> <span class="n">error</span> <span class="o">=</span> <span class="p">{};</span>
 <span class="linenos">107</span>
 <span class="linenos">108</span>  <span class="n">AdbcDatabase</span> <span class="n">database</span> <span class="o">=</span> <span class="p">{};</span>
@@ -410,34 +408,34 @@ have to explicitly link to the driver this way.</p>
 <span class="linenos">113</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 </pre></div>
 </div>
+</section>
 <section id="creating-a-connection">
-<h2>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Permalink to this heading">#</a></h2>
+<h3>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Permalink to this heading">#</a></h3>
 <p>ADBC distinguishes between “databases”, “connections”, and
 “statements”.  A “database” holds shared state across multiple
 connections.  For example, in the SQLite driver, it holds the
 actual instance of SQLite.  A “connection” is one connection to
 the database.</p>
-</section>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">124</span>  <span class="n">AdbcConnection</span> <span class="n">connection</span> <span class="o">=</span> <span class="p">{};</span>
 <span class="linenos">125</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 <span class="linenos">126</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">database</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 </pre></div>
 </div>
+</section>
 <section id="creating-a-statement">
-<h2>Creating a Statement<a class="headerlink" href="#creating-a-statement" title="Permalink to this heading">#</a></h2>
+<h3>Creating a Statement<a class="headerlink" href="#creating-a-statement" title="Permalink to this heading">#</a></h3>
 <p>A statement lets us execute queries.  They are used for both
 prepared and non-prepared (“ad-hoc”) queries.</p>
-</section>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">134</span>  <span class="n">AdbcStatement</span> <span class="n">statement</span> <span class="o">=</span> <span class="p">{};</span>
 <span class="linenos">135</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 </pre></div>
 </div>
+</section>
 <section id="executing-a-query">
-<h2>Executing a Query<a class="headerlink" href="#executing-a-query" title="Permalink to this heading">#</a></h2>
+<h3>Executing a Query<a class="headerlink" href="#executing-a-query" title="Permalink to this heading">#</a></h3>
 <p>We execute a query by setting the query on the statement, then
 calling <a class="reference internal" href="api/adbc.html#_CPPv425AdbcStatementExecuteQueryP13AdbcStatementP16ArrowArrayStreamP7int64_tP9AdbcError" title="AdbcStatementExecuteQuery"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code></a>.  The results come
 back through the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow C Data Interface</a>.</p>
-</section>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">146</span>  <span class="n">struct</span> <span class="n">ArrowArrayStream</span> <span class="n">stream</span> <span class="o">=</span> <span class="p">{};</span>
 <span class="linenos">147</span>  <span class="n">int64_t</span> <span class="n">rows_affected</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
 <span class="linenos">148</span>
@@ -497,10 +495,10 @@ record batches.</p>
 <span class="linenos">201</span>  <span class="n">stream</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">);</span>
 </pre></div>
 </div>
-<section id="cleanup">
-<h2>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">#</a></h2>
-<p>At the end, we must release all our resources.</p>
 </section>
+<section id="cleanup">
+<h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">#</a></h3>
+<p>At the end, we must release all our resources.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">207</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 <span class="linenos">208</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 <span class="linenos">209</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
@@ -508,6 +506,8 @@ record batches.</p>
 <span class="linenos">211</span><span class="p">}</span>
 </pre></div>
 </div>
+</section>
+</section>
 </section>
 
         </article>
@@ -568,12 +568,14 @@ record batches.</p>
 <li><a class="reference internal" href="#">Quickstart</a><ul>
 <li><a class="reference internal" href="#installation">Installation</a></li>
 <li><a class="reference internal" href="#building">Building</a></li>
-<li><a class="reference internal" href="#using-adbc">Using ADBC</a></li>
+<li><a class="reference internal" href="#using-adbc">Using ADBC</a><ul>
 <li><a class="reference internal" href="#loading-the-driver">Loading the Driver</a></li>
 <li><a class="reference internal" href="#creating-a-connection">Creating a Connection</a></li>
 <li><a class="reference internal" href="#creating-a-statement">Creating a Statement</a></li>
 <li><a class="reference internal" href="#executing-a-query">Executing a Query</a></li>
 <li><a class="reference internal" href="#cleanup">Cleanup</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
