@@ -126,6 +126,7 @@ class RecipeDirective(SphinxDirective):
                 line_max = fragment.lines[-1].lineno
                 lines = [
                     f".. literalinclude:: {self.arguments[0]}",
+                    f"   :language: {language}",
                     "   :linenos:",
                     "   :lineno-match:",
                     f"   :lines: {line_min}-{line_max}",
