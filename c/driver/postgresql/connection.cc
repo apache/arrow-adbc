@@ -23,6 +23,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -184,6 +185,10 @@ class PqGetObjectsHelper {
         error_(error) {
     na_error_ = {0};
   }
+
+  static const inline std::unordered_map<std::string, std::string> PgTableTypes = {
+      {"table", "r"},       {"view", "v"},          {"materialized_view", "m"},
+      {"toast_table", "t"}, {"foreign_table", "f"}, {"partitioned_table", "p"}};
 
   AdbcStatusCode GetObjects() {
     PqResultHelper curr_db_helper =
@@ -363,6 +368,36 @@ class PqGetObjectsHelper {
       }
 
       params.push_back(std::string(table_name_));
+    }
+
+    std::vector<std::string> table_type_filter;
+    const char** table_types = table_types_;
+    while (table_types != NULL) {
+      auto table_type_str = std::string(*table_types);
+      if (auto search = PqGetObjectsHelper::PgTableTypes.find(std::move(table_type_str));
+          search != PqGetObjectsHelper::PgTableTypes.end()) {
+        table_type_filter.push_back(search->second);
+      }
+      table_types++;
+    }
+
+    if (!table_type_filter.empty()) {
+      std::ostringstream oss;
+      bool first = false;
+      for (const auto& str : table_type_filter) {
+        if (!first) {
+          oss << ", ";
+        }
+        oss << "'" << str << "'";
+        first = false;
+      }
+
+      if (StringBuilderAppend(&query, "%s", " AND c.relkind IN ($3)")) {
+        StringBuilderReset(&query);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      params.push_back(oss.str());
     }
 
     auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
@@ -889,28 +924,13 @@ AdbcStatusCode PostgresConnectionGetTableTypesImpl(struct ArrowSchema* schema,
   CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array, uschema.get(), NULL), error);
   CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
 
-  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], ArrowCharView("table")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL,
-           ArrowArrayAppendString(array->children[0], ArrowCharView("toast_table")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], ArrowCharView("view")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL,
-           ArrowArrayAppendString(array->children[0], ArrowCharView("materialized_view")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL,
-           ArrowArrayAppendString(array->children[0], ArrowCharView("foreign_table")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL,
-           ArrowArrayAppendString(array->children[0], ArrowCharView("partitioned_table")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  for (auto const& table_type : PqGetObjectsHelper::PgTableTypes) {
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(array->children[0],
+                                    ArrowCharView(table_type.first.c_str())),
+             error);
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  }
 
   CHECK_NA(INTERNAL, ArrowArrayFinishBuildingDefault(array, NULL), error);
 
