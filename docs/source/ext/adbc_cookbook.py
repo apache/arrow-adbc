@@ -65,27 +65,9 @@ class RecipeDirective(SphinxDirective):
         language = self.options.get("language", "python")
         prefix = self.options.get("prose-prefix", self.default_prose_prefix(language))
 
-        fragments = []
+        # --- Split the source into runs of prose or code
 
-        # Link to the source on GitHub
-        github_url = (
-            f"https://github.com/apache/arrow-adbc/blob/main/docs/source/{rel_filename}"
-        )
-        fragments.append(
-            SourceFragment(
-                kind="prose",
-                lines=[
-                    # lineno doesn't matter for prose
-                    SourceLine(
-                        PREAMBLE.format(
-                            name=Path(rel_filename).name,
-                            url=github_url,
-                        ),
-                        lineno=0,
-                    )
-                ],
-            )
-        )
+        fragments = []
 
         fragment = []
         fragment_type = None
@@ -121,16 +103,24 @@ class RecipeDirective(SphinxDirective):
         if fragment:
             fragments.append(SourceFragment(kind=fragment_type, lines=fragment))
 
-        nodes = []
+        # --- Generate the final reST as a whole and parse it
+        # That way, section hierarchy works properly
+
+        # Link to the source on GitHub
+        github_url = (
+            f"https://github.com/apache/arrow-adbc/blob/main/docs/source/{rel_filename}"
+        )
+        generated_lines = [
+            PREAMBLE.format(
+                name=Path(rel_filename).name,
+                url=github_url,
+            ),
+            "",
+        ]
         for fragment in fragments:
-            parsed = docutils.nodes.Element()
             if fragment.kind == "prose":
-                # TODO: this doesn't seem to handle title hierarchy right
-                nested_parse_with_titles(
-                    self.state,
-                    StringList([line.content for line in fragment.lines], source=""),
-                    parsed,
-                )
+                generated_lines.extend([line.content for line in fragment.lines])
+                generated_lines.append("")
             elif fragment.kind == "code":
                 line_min = fragment.lines[0].lineno
                 line_max = fragment.lines[-1].lineno
@@ -141,16 +131,17 @@ class RecipeDirective(SphinxDirective):
                     f"   :lines: {line_min}-{line_max}",
                     "",
                 ]
-                self.state.nested_parse(
-                    StringList(lines, source=""),
-                    self.content_offset,
-                    parsed,
-                )
+                generated_lines.extend(lines)
             else:
                 raise RuntimeError("Unknown fragment kind")
-            nodes.extend(parsed.children)
 
-        return nodes
+        parsed = docutils.nodes.Element()
+        nested_parse_with_titles(
+            self.state,
+            StringList(generated_lines, source=""),
+            parsed,
+        )
+        return parsed.children
 
 
 def setup(app) -> None:
