@@ -173,23 +173,34 @@ adbc_connection_release <- function(connection) {
 #' Connection methods
 #'
 #' @inheritParams adbc_connection_init
-#' @param info_codes (Currently undocumented)
-#' @param depth (Currently undocumented)
-#' @param catalog (Currently undocumented)
-#' @param db_schema (Currently undocumented)
-#' @param table_name (Currently undocumented)
-#' @param table_type (Currently undocumented)
-#' @param column_name (Currently undocumented)
-#' @param serialized_partition (Currently undocumented)
+#' @param info_codes A list of metadata codes to fetch, or NULL to fetch all.
+#'   Valid values are documented in the adbc.h header.
+#' @param depth The level of nesting to display. If 0, display all levels. If 1,
+#'   display only catalogs (i.e. catalog_schemas will be null). If 2, display
+#'   only catalogs and schemas (i.e. db_schema_tables will be null), and so on.
+#' @param catalog Only show tables in the given catalog. If NULL, do not filter
+#'   by catalog. If an empty string, only show tables without a catalog. May be
+#'   a search pattern.
+#' @param db_schema Only show tables in the given database schema. If NULL, do
+#'   not filter by database schema. If an empty string, only show tables without
+#'   a database schema. May be a search pattern.
+#' @param table_name Only show tables with the given name. If NULL, do not
+#'   filter by name. May be a search pattern.
+#' @param table_type Only show tables matching one of the given table types. If
+#'   NULL, show tables of any type. Valid table types can be fetched from
+#'   GetTableTypes. Terminate the list with a NULL entry.
+#' @param column_name Only show columns with the given name. If NULL, do not
+#'   filter by name. May be a search pattern.
+#' @param serialized_partition The partition descriptor.
 #'
 #' @return
-#'   - `adbc_connection_get_info()`, `adbc_connection_get_objects`,
-#'     `adbc_connection_get_table_types()`, and `adbc_connection_read_partition()`
-#'     return a [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream()].
+#'   - `adbc_connection_get_info()`, `adbc_connection_get_objects()`,
+#' `adbc_connection_get_table_types()`, and `adbc_connection_read_partition()`
+#' return a [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream()].
 #'   - `adbc_connection_get_table_schema()` returns a
-#'     [nanoarrow_schena][nanoarrow::as_nanoarrow_schema()]
+#' [nanoarrow_schena][nanoarrow::as_nanoarrow_schema()]
 #'   - `adbc_connection_commit()` and `adbc_connection_rollback()` return
-#'     `connection`, invisibly.
+#' `connection`, invisibly.
 #' @export
 #'
 #' @examples

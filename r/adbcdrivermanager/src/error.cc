@@ -60,7 +60,9 @@ extern "C" SEXP RAdbcErrorProxy(SEXP error_xptr) {
     UNPROTECT(1);
   }
 
-  SET_VECTOR_ELT(result, 1, Rf_ScalarInteger(error->vendor_code));
+  SEXP vendor_code = PROTECT(Rf_ScalarInteger(error->vendor_code));
+  SET_VECTOR_ELT(result, 1, vendor_code);
+  UNPROTECT(1);
 
   SEXP sqlstate = PROTECT(Rf_allocVector(RAWSXP, sizeof(error->sqlstate)));
   memcpy(RAW(sqlstate), error->sqlstate, sizeof(error->sqlstate));

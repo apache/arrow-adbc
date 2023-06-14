@@ -17,6 +17,7 @@ java/.mvn/jvm.config
 rat.txt
 r/adbcdrivermanager/DESCRIPTION
 r/adbcdrivermanager/NAMESPACE
+r/adbcdrivermanager/cran-comments.md
 r/adbcdrivermanager/.Rbuildignore
 r/adbcdrivermanager/tests/testthat/_snaps/*
 r/adbcsqlite/DESCRIPTION
