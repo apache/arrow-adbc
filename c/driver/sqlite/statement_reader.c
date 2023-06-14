@@ -25,7 +25,7 @@
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
-#include "utils.h"
+#include "common/utils.h"
 
 AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
                                    struct AdbcError* error) {

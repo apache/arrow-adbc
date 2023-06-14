@@ -49,9 +49,11 @@ if (all(file.exists(files_to_vendor))) {
   if (all(file.copy(files_to_vendor, "src"))) {
     file.rename(
       c("src/nanoarrow.c", "src/nanoarrow.h",
-        "src/sqlite3.c", "src/sqlite3.h"),
+        "src/sqlite3.c", "src/sqlite3.h",
+        "src/utils.c", "src/utils.h"),
       c("src/nanoarrow/nanoarrow.c", "src/nanoarrow/nanoarrow.h",
-        "tools/sqlite3.c", "tools/sqlite3.h")
+        "tools/sqlite3.c", "tools/sqlite3.h",
+        "src/common/utils.c", "src/common/utils.h")
     )
     cat("All files successfully copied to src/\n")
   } else {

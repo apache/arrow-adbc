@@ -22,6 +22,6 @@ OBJECTS = init.o \
     connection.o \
     database.o \
     statement.o \
-    utils.o \
+    common/utils.o \
     postgresql.o \
     nanoarrow/nanoarrow.o

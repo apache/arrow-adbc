@@ -25,7 +25,7 @@
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
-#include <utils.h>
+#include "common/utils.h"
 
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"

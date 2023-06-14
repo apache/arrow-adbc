@@ -53,11 +53,19 @@ if (all(file.exists(files_to_vendor))) {
 
   if (all(file.copy(files_to_vendor, "src"))) {
     file.rename(
-      c("src/nanoarrow.c", "src/nanoarrow.h", "src/nanoarrow.hpp"),
+      c(
+        "src/nanoarrow.c",
+        "src/nanoarrow.h",
+        "src/nanoarrow.hpp",
+        "src/utils.c",
+        "src/utils.h"
+      ),
       c(
         "src/nanoarrow/nanoarrow.c",
         "src/nanoarrow/nanoarrow.h",
-        "src/nanoarrow/nanoarrow.hpp"
+        "src/nanoarrow/nanoarrow.hpp",
+        "src/common/utils.c",
+        "src/common/utils.h"
       )
     )
     cat("All files successfully copied to src/\n")

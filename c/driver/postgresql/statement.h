@@ -26,9 +26,9 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.h>
 
+#include "common/utils.h"
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
-#include "utils.h"
 
 namespace adbcpq {
 class PostgresConnection;

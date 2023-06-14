@@ -49,7 +49,7 @@ add_arrow_lib(adbc_driver_sqlite
 include_directories(SYSTEM ${REPOSITORY_ROOT})
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
 include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver/common)
+include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver)
 include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
 
 foreach(LIB_TARGET ${ADBC_LIBRARIES})

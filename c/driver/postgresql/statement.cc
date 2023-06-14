@@ -30,11 +30,11 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.hpp>
 
+#include "common/utils.h"
 #include "connection.h"
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
-#include "utils.h"
 
 namespace adbcpq {
 
