@@ -134,6 +134,7 @@ jobs:
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"
