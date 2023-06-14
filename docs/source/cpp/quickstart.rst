@@ -15,14 +15,9 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=========
-C and C++
-=========
+==========
+Quickstart
+==========
 
-.. toctree::
-   :maxdepth: 2
-
-   quickstart
-   driver_manager
-   concurrency
-   api/index
+.. recipe:: recipe/quickstart.cc
+   :language: cpp
