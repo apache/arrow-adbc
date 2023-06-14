@@ -112,17 +112,14 @@ static inline double LoadNetworkFloat8(const char* buf) {
   return out;
 }
 
-static inline uint16_t ToNetworkInt16(int16_t v) {
-  return SwapHostToNetwork(static_cast<uint16_t>(v));
-}
+#define ADBC_REGISTER_TO_NETWORK_FUNC(size)                          \
+  static inline uint##size##_t ToNetworkInt##size(int##size##_t v) { \
+    return SwapHostToNetwork(static_cast<uint##size##_t>(v));        \
+  }
 
-static inline uint32_t ToNetworkInt32(int32_t v) {
-  return SwapHostToNetwork(static_cast<uint32_t>(v));
-}
-
-static inline uint64_t ToNetworkInt64(int64_t v) {
-  return SwapHostToNetwork(static_cast<uint64_t>(v));
-}
+ADBC_REGISTER_TO_NETWORK_FUNC(16)
+ADBC_REGISTER_TO_NETWORK_FUNC(32)
+ADBC_REGISTER_TO_NETWORK_FUNC(64)
 
 static inline uint64_t ToNetworkFloat8(double v) {
   uint64_t vint;
