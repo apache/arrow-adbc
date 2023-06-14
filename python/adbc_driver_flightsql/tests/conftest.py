@@ -24,23 +24,37 @@ import adbc_driver_flightsql.dbapi
 import adbc_driver_manager
 
 
-@pytest.fixture
-def dremio_uri():
+@pytest.fixture(scope="session")
+def dremio_uri() -> str:
     dremio_uri = os.environ.get("ADBC_DREMIO_FLIGHTSQL_URI")
     if not dremio_uri:
         pytest.skip("Set ADBC_DREMIO_FLIGHTSQL_URI to run tests")
-    yield dremio_uri
+    return dremio_uri
+
+
+@pytest.fixture(scope="session")
+def dremio_user() -> str:
+    username = os.environ.get("ADBC_DREMIO_FLIGHTSQL_USER")
+    if not username:
+        pytest.skip("Set ADBC_DREMIO_FLIGHTSQL_USER to run tests")
+    return username
+
+
+@pytest.fixture(scope="session")
+def dremio_pass() -> str:
+    password = os.environ.get("ADBC_DREMIO_FLIGHTSQL_PASS")
+    if not password:
+        pytest.skip("Set ADBC_DREMIO_FLIGHTSQL_PASS to run tests")
+    return password
 
 
 @pytest.fixture
-def dremio(dremio_uri):
-    username = os.environ.get("ADBC_DREMIO_FLIGHTSQL_USER")
-    password = os.environ.get("ADBC_DREMIO_FLIGHTSQL_PASS")
+def dremio(dremio_uri, dremio_user, dremio_pass):
     with adbc_driver_flightsql.connect(
         dremio_uri,
         db_kwargs={
-            adbc_driver_manager.DatabaseOptions.USERNAME.value: username,
-            adbc_driver_manager.DatabaseOptions.PASSWORD.value: password,
+            adbc_driver_manager.DatabaseOptions.USERNAME.value: dremio_user,
+            adbc_driver_manager.DatabaseOptions.PASSWORD.value: dremio_pass,
         },
     ) as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
@@ -48,14 +62,12 @@ def dremio(dremio_uri):
 
 
 @pytest.fixture
-def dremio_dbapi(dremio_uri):
-    username = os.environ.get("ADBC_DREMIO_FLIGHTSQL_USER")
-    password = os.environ.get("ADBC_DREMIO_FLIGHTSQL_PASS")
+def dremio_dbapi(dremio_uri, dremio_user, dremio_pass):
     with adbc_driver_flightsql.dbapi.connect(
         dremio_uri,
         db_kwargs={
-            adbc_driver_manager.DatabaseOptions.USERNAME.value: username,
-            adbc_driver_manager.DatabaseOptions.PASSWORD.value: password,
+            adbc_driver_manager.DatabaseOptions.USERNAME.value: dremio_user,
+            adbc_driver_manager.DatabaseOptions.PASSWORD.value: dremio_pass,
         },
     ) as conn:
         yield conn

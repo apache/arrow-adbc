@@ -17,6 +17,9 @@
 
 import pyarrow
 
+import adbc_driver_flightsql.dbapi
+import adbc_driver_manager
+
 
 def test_query_trivial(dremio_dbapi):
     with dremio_dbapi.cursor() as cur:
@@ -32,3 +35,18 @@ def test_query_partitioned(dremio_dbapi):
 
         cur.adbc_read_partition(partitions[0])
         assert cur.fetchone() == (1,)
+
+
+def test_set_options(dremio_uri, dremio_user, dremio_pass):
+    # Regression test for apache/arrow-adbc#713
+    with adbc_driver_flightsql.dbapi.connect(
+        dremio_uri,
+        db_kwargs={
+            adbc_driver_manager.DatabaseOptions.USERNAME.value: dremio_user,
+            adbc_driver_manager.DatabaseOptions.PASSWORD.value: dremio_pass,
+        },
+        conn_kwargs={
+            "adbc.flight.sql.rpc.call_header.x-foo": "1",
+        },
+    ):
+        pass
