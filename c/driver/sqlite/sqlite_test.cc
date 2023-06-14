@@ -64,7 +64,17 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     }
   }
 
+  std::optional<std::string> PrimaryKeyTableDdl(std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id INTEGER PRIMARY KEY)";
+    return ddl;
+  }
+
   bool supports_concurrent_statements() const override { return true; }
+
+  std::string catalog() const override { return "main"; }
+  std::string db_schema() const override { return ""; }
 };
 
 class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::DatabaseTest {

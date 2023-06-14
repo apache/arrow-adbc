@@ -67,6 +67,14 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     return "$" + std::to_string(index + 1);
   }
 
+  std::optional<std::string> PrimaryKeyTableDdl(std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id SERIAL PRIMARY KEY)";
+    return ddl;
+  }
+
+  std::string catalog() const override { return "postgres"; }
   std::string db_schema() const override { return "public"; }
 };
 

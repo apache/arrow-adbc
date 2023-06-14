@@ -60,6 +60,15 @@ class DriverQuirks {
                                            const std::string& name,
                                            struct AdbcError* error) const;
 
+  /// \brief Get the statement to create a table with a primary key, or nullopt if not
+  /// supported.
+  ///
+  /// The table should have one column:
+  /// - "id" with Arrow type int64 (primary key)
+  virtual std::optional<std::string> PrimaryKeyTableDdl(std::string_view name) const {
+    return std::nullopt;
+  }
+
   /// \brief Return the SQL to reference the bind parameter of the given index
   virtual std::string BindParameter(int index) const { return "?"; }
 
@@ -93,6 +102,9 @@ class DriverQuirks {
 
   /// \brief Whether dynamic parameter bindings are supported for prepare
   virtual bool supports_dynamic_parameter_binding() const { return true; }
+
+  /// \brief Default catalog to use for tests
+  virtual std::string catalog() const { return ""; }
 
   /// \brief Default Schema to use for tests
   virtual std::string db_schema() const { return ""; }
@@ -145,6 +157,7 @@ class ConnectionTest {
   void TestMetadataGetObjectsTablesTypes();
   void TestMetadataGetObjectsColumns();
   void TestMetadataGetObjectsConstraints();
+  void TestMetadataGetObjectsPrimaryKey();
 
  protected:
   struct AdbcError error;
@@ -170,7 +183,10 @@ class ConnectionTest {
     TestMetadataGetObjectsTablesTypes();                                              \
   }                                                                                   \
   TEST_F(FIXTURE, MetadataGetObjectsColumns) { TestMetadataGetObjectsColumns(); }     \
-  TEST_F(FIXTURE, MetadataGetObjectsConstraints) { TestMetadataGetObjectsConstraints(); }
+  TEST_F(FIXTURE, MetadataGetObjectsConstraints) {                                    \
+    TestMetadataGetObjectsConstraints();                                              \
+  }                                                                                   \
+  TEST_F(FIXTURE, MetadataGetObjectsPrimaryKey) { TestMetadataGetObjectsPrimaryKey(); }
 
 class StatementTest {
  public:

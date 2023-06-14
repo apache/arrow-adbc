@@ -20,4 +20,5 @@ target_compile_features(adbc_validation PRIVATE cxx_std_17)
 target_include_directories(adbc_validation SYSTEM
                            PRIVATE "${REPOSITORY_ROOT}" "${REPOSITORY_ROOT}/c/driver/"
                                    "${REPOSITORY_ROOT}/c/vendor/")
-target_link_libraries(adbc_validation PUBLIC nanoarrow GTest::gtest GTest::gmock)
+target_link_libraries(adbc_validation PUBLIC adbc_driver_common nanoarrow GTest::gtest
+                                             GTest::gmock)
