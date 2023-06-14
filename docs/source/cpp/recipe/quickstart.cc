@@ -43,8 +43,9 @@
 ///
 /// .. code-block:: shell
 ///
-///    cd docs/source/cpp/recipe
-///    cmake .
+///    mkdir build
+///    cd build
+///    cmake ../docs/source/cpp/recipe
 ///    cmake --build . --target quickstart
 ///    ./quickstart
 ///
