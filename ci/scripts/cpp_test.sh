@@ -24,6 +24,7 @@ set -e
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 : ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
+: ${BUILD_INTEGRATION_DUCKDB:=${BUILD_ALL}}
 
 test_project() {
     local -r build_dir="${1}"
@@ -45,6 +46,9 @@ test_project() {
     fi
     if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
        labels="${labels}|driver-snowflake"
+    fi
+    if [[ "${BUILD_INTEGRATION_DUCKDB}" -gt 0 ]]; then
+       labels="${labels}|integration-duckdb"
     fi
 
     ctest \

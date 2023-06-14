@@ -233,6 +233,8 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   define_option(ADBC_DRIVER_POSTGRESQL "Build the PostgreSQL driver" OFF)
   define_option(ADBC_DRIVER_SQLITE "Build the SQLite driver" OFF)
   define_option(ADBC_DRIVER_SNOWFLAKE "Build the Snowflake driver" OFF)
+
+  define_option(ADBC_INTEGRATION_DUCKDB "Build the test suite for DuckDB" OFF)
 endif()
 
 macro(validate_config)
@@ -255,10 +257,11 @@ endmacro()
 
 macro(config_summary_message)
   message(STATUS "---------------------------------------------------------------------")
-  message(STATUS "Arrow version:                                 ${ADBC_VERSION}")
+  message(STATUS "ADBC version: ${ADBC_VERSION}")
   message(STATUS)
   message(STATUS "Build configuration summary:")
 
+  message(STATUS "  CMake version: ${CMAKE_VERSION}")
   message(STATUS "  Generator: ${CMAKE_GENERATOR}")
   message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
   message(STATUS "  Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")

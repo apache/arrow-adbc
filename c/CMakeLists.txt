@@ -33,6 +33,10 @@ if(ADBC_BUILD_TESTS)
   add_subdirectory(validation)
 endif()
 
+if(ADBC_INTEGRATION_DUCKDB)
+  set(ADBC_DRIVER_MANAGER ON)
+endif()
+
 if(ADBC_DRIVER_FLIGHTSQL)
   add_subdirectory(driver/flightsql)
 endif()
@@ -51,6 +55,10 @@ endif()
 
 if(ADBC_DRIVER_SNOWFLAKE)
   add_subdirectory(driver/snowflake)
+endif()
+
+if(ADBC_INTEGRATION_DUCKDB)
+  add_subdirectory(integration/duckdb)
 endif()
 
 validate_config()
