@@ -464,7 +464,6 @@ class PostgresStatementTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestSqlIngestInt8() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestInt16() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestInt32() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestUInt8() { GTEST_SKIP() << "Not implemented"; }

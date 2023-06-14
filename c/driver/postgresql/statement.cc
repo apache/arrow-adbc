@@ -282,8 +282,14 @@ struct BindStream {
             param_values[col] = param_values_buffer.data() + param_values_offsets[col];
           }
           switch (bind_schema_fields[col].type) {
+            case ArrowType::NANOARROW_TYPE_INT16: {
+              const uint16_t value = ToNetworkInt16(
+                  array_view->children[col]->buffer_views[1].data.as_int32[row]);
+              std::memcpy(param_values[col], &value, sizeof(int16_t));
+              break;
+            }
             case ArrowType::NANOARROW_TYPE_INT32: {
-              const int64_t value = ToNetworkInt32(
+              const uint32_t value = ToNetworkInt32(
                   array_view->children[col]->buffer_views[1].data.as_int32[row]);
               std::memcpy(param_values[col], &value, sizeof(int32_t));
               break;
