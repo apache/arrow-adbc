@@ -24,6 +24,7 @@ import docutils
 from docutils.parsers.rst import directives
 from docutils.statemachine import StringList
 from sphinx.util.docutils import SphinxDirective
+from sphinx.util.nodes import nested_parse_with_titles
 from sphinx.util.typing import OptionSpec
 
 
@@ -98,7 +99,7 @@ class RecipeDirective(SphinxDirective):
                 if line.strip().startswith(prefix):
                     line_type = "prose"
                     # Remove prefix and next whitespace
-                    line = line[len(prefix) + 1 :]
+                    line = line.lstrip()[len(prefix) + 1 :]
                 else:
                     line_type = "code"
 
@@ -124,9 +125,10 @@ class RecipeDirective(SphinxDirective):
         for fragment in fragments:
             parsed = docutils.nodes.Element()
             if fragment.kind == "prose":
-                self.state.nested_parse(
+                # TODO: this doesn't seem to handle title hierarchy right
+                nested_parse_with_titles(
+                    self.state,
                     StringList([line.content for line in fragment.lines], source=""),
-                    self.content_offset,
                     parsed,
                 )
             elif fragment.kind == "code":
