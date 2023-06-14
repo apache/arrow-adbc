@@ -62,14 +62,17 @@ public class AdbcException extends Exception {
     return new AdbcException(message, /*cause*/ null, AdbcStatusCode.NOT_IMPLEMENTED, null, 0);
   }
 
+  /** The ADBC status code. */
   public AdbcStatusCode getStatus() {
     return status;
   }
 
+  /** A SQLSTATE error code, if provided, as defined by the SQL:2003 standard. */
   public String getSqlState() {
     return sqlState;
   }
 
+  /** A vendor-specific error code, if applicable. */
   public int getVendorCode() {
     return vendorCode;
   }
