@@ -18,6 +18,7 @@
 Cython
 pandas
 pyarrow>=8.0.0
+pyright
 pytest
 setuptools
 

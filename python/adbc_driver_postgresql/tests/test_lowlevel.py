@@ -38,7 +38,7 @@ def test_query_trivial(postgres):
 
 
 def test_version():
-    assert adbc_driver_postgresql.__version__
+    assert adbc_driver_postgresql.__version__  # type:ignore
 
 
 def test_failed_connection():

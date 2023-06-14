@@ -51,4 +51,4 @@ def test_options(snowflake):
 
 
 def test_version():
-    assert adbc_driver_snowflake.__version__
+    assert adbc_driver_snowflake.__version__  # type:ignore

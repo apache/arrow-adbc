@@ -466,6 +466,10 @@ jobs:
         shell: bash -l {0}
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_SNOWFLAKE=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Typecheck Python
+        shell: bash -l {0}
+        run: |
+          ./ci/scripts/python_typecheck.sh "$(pwd)"
 
   python-docs:
     name: "Documentation ${{ matrix.python }} (Conda/${{ matrix.os }})"

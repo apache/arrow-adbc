@@ -18,3 +18,4 @@
 # setuptools manifest
 
 include adbc_driver_snowflake/libadbc_driver_snowflake.so
+include adbc_driver_snowflake/py.typed

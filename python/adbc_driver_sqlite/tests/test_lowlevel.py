@@ -51,4 +51,4 @@ def test_options(sqlite):
 
 
 def test_version():
-    assert adbc_driver_sqlite.__version__
+    assert adbc_driver_sqlite.__version__  # type:ignore
