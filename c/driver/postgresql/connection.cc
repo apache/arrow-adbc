@@ -370,34 +370,43 @@ class PqGetObjectsHelper {
       params.push_back(std::string(table_name_));
     }
 
-    std::vector<std::string> table_type_filter;
-    const char** table_types = table_types_;
-    while (table_types != NULL) {
-      auto table_type_str = std::string(*table_types);
-      if (auto search = PqGetObjectsHelper::PgTableTypes.find(std::move(table_type_str));
-          search != PqGetObjectsHelper::PgTableTypes.end()) {
-        table_type_filter.push_back(search->second);
-      }
-      table_types++;
-    }
-
-    if (!table_type_filter.empty()) {
-      std::ostringstream oss;
-      bool first = false;
-      for (const auto& str : table_type_filter) {
-        if (!first) {
-          oss << ", ";
+    if (table_types_ != NULL) {
+      std::vector<std::string> table_type_filter;
+      const char** table_types = table_types_;
+      while (*table_types != NULL) {
+        auto table_type_str = std::string(*table_types);
+        if (auto search = PqGetObjectsHelper::PgTableTypes.find(table_type_str);
+            search != PqGetObjectsHelper::PgTableTypes.end()) {
+          table_type_filter.push_back(search->second);
         }
-        oss << "'" << str << "'";
-        first = false;
+        table_types++;
       }
 
-      if (StringBuilderAppend(&query, "%s", " AND c.relkind IN ($3)")) {
-        StringBuilderReset(&query);
-        return ADBC_STATUS_INTERNAL;
-      }
+      if (!table_type_filter.empty()) {
+        std::ostringstream oss;
+        bool first = true;
+        oss << "(";
+        for (const auto& str : table_type_filter) {
+          if (!first) {
+            oss << ", ";
+          }
+          oss << "'" << str << "'";
+          first = false;
+        }
+        oss << ")";
 
-      params.push_back(oss.str());
+        if (StringBuilderAppend(&query, "%s%s", " AND c.relkind IN ",
+                                oss.str().c_str())) {
+          StringBuilderReset(&query);
+          return ADBC_STATUS_INTERNAL;
+        }
+      } else {
+        // no matching table type means no records should come back
+        if (StringBuilderAppend(&query, "%s", " AND false")) {
+          StringBuilderReset(&query);
+          return ADBC_STATUS_INTERNAL;
+        }
+      }
     }
 
     auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};

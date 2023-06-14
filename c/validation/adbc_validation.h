@@ -47,6 +47,13 @@ class DriverQuirks {
     return ADBC_STATUS_OK;
   }
 
+  /// \brief Drop the given view. Used by tests to reset state.
+  virtual AdbcStatusCode DropView(struct AdbcConnection* connection,
+                                  const std::string& name,
+                                  struct AdbcError* error) const {
+    return ADBC_STATUS_OK;
+  }
+
   virtual AdbcStatusCode EnsureSampleTable(struct AdbcConnection* connection,
                                            const std::string& name,
                                            struct AdbcError* error) const;
