@@ -778,6 +778,8 @@ void AdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data) {
           free(table->table_columns[column_index]);
         }
 
+        free(table->table_columns);
+
         for (int64_t constraint_index = 0; constraint_index < table->n_table_constraints;
              constraint_index++) {
           struct AdbcGetObjectsConstraint* constraint =
@@ -787,14 +789,24 @@ void AdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data) {
                usage_index++) {
             free(constraint->constraint_column_usages[usage_index]);
           }
+
+          free(constraint->constraint_column_usages);
+          free(table->table_constraints[constraint_index]);
         }
 
+        free(table->table_constraints);
         free(table);
       }
+
+      free(schema->db_schema_tables);
       free(schema);
     }
+
+    free(catalog->catalog_db_schemas);
     free(catalog);
   }
+
+  free(get_objects_data->catalogs);
   free(get_objects_data);
 }
 
