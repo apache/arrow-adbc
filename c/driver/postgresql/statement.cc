@@ -284,7 +284,7 @@ struct BindStream {
           switch (bind_schema_fields[col].type) {
             case ArrowType::NANOARROW_TYPE_INT16: {
               const uint16_t value = ToNetworkInt16(
-                  array_view->children[col]->buffer_views[1].data.as_int32[row]);
+                  array_view->children[col]->buffer_views[1].data.as_int16[row]);
               std::memcpy(param_values[col], &value, sizeof(int16_t));
               break;
             }
