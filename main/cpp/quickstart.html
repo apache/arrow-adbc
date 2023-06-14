@@ -338,8 +338,9 @@ installed as follows:</p>
 <section id="building">
 <h2>Building<a class="headerlink" href="#building" title="Permalink to this heading">#</a></h2>
 <p>We’ll use <a class="reference external" href="https://cmake.org/">CMake</a> here.  From a source checkout of the ADBC repository:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docs/source/cpp/recipe
-cmake<span class="w"> </span>.
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>build
+<span class="nb">cd</span><span class="w"> </span>build
+cmake<span class="w"> </span>../docs/source/cpp/recipe
 cmake<span class="w"> </span>--build<span class="w"> </span>.<span class="w"> </span>--target<span class="w"> </span>quickstart
 ./quickstart
 </pre></div>
@@ -348,64 +349,64 @@ cmake<span class="w"> </span>--build<span class="w"> </span>.<span class="w"> </
 <section id="using-adbc">
 <h2>Using ADBC<a class="headerlink" href="#using-adbc" title="Permalink to this heading">#</a></h2>
 <p>Let’s start with some includes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">58</span><span class="o">//</span> <span class="n">For</span> <span class="n">EXIT_SUCCESS</span>
-<span class="linenos">59</span><span class="c1">#include &lt;cstdlib&gt;</span>
-<span class="linenos">60</span><span class="o">//</span> <span class="n">For</span> <span class="n">strerror</span>
-<span class="linenos">61</span><span class="c1">#include &lt;cstring&gt;</span>
-<span class="linenos">62</span><span class="c1">#include &lt;iostream&gt;</span>
-<span class="linenos">63</span>
-<span class="linenos">64</span><span class="c1">#include &lt;adbc.h&gt;</span>
-<span class="linenos">65</span><span class="c1">#include &lt;nanoarrow.h&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">59</span><span class="c1">// For EXIT_SUCCESS</span>
+<span class="linenos">60</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdlib&gt;</span>
+<span class="linenos">61</span><span class="c1">// For strerror</span>
+<span class="linenos">62</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstring&gt;</span>
+<span class="linenos">63</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;iostream&gt;</span>
+<span class="linenos">64</span>
+<span class="linenos">65</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;adbc.h&gt;</span>
+<span class="linenos">66</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nanoarrow.h&gt;</span>
 </pre></div>
 </div>
 <p>Then we’ll add some (very basic) error checking helpers.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">69</span>// Error-checking helper for ADBC calls.
-<span class="linenos">70</span>// Assumes that there is an AdbcError named `error` in scope.
-<span class="linenos">71</span>#define CHECK_ADBC(EXPR)                                          \
-<span class="linenos">72</span>  if (AdbcStatusCode status = (EXPR); status != ADBC_STATUS_OK) { \
-<span class="linenos">73</span>    if (error.message != nullptr) {                               \
-<span class="linenos">74</span>      std::cerr &lt;&lt; error.message &lt;&lt; std::endl;                    \
-<span class="linenos">75</span>    }                                                             \
-<span class="linenos">76</span>    return EXIT_FAILURE;                                          \
-<span class="linenos">77</span>  }
-<span class="linenos">78</span>
-<span class="linenos">79</span>// Error-checking helper for ArrowArrayStream.
-<span class="linenos">80</span>#define CHECK_STREAM(STREAM, EXPR)                            \
-<span class="linenos">81</span>  if (int status = (EXPR); status != 0) {                     \
-<span class="linenos">82</span>    std::cerr &lt;&lt; &quot;(&quot; &lt;&lt; std::strerror(status) &lt;&lt; &quot;): &quot;;       \
-<span class="linenos">83</span>    const char* message = (STREAM).get_last_error(&amp;(STREAM)); \
-<span class="linenos">84</span>    if (message != nullptr) {                                 \
-<span class="linenos">85</span>      std::cerr &lt;&lt; message &lt;&lt; std::endl;                      \
-<span class="linenos">86</span>    } else {                                                  \
-<span class="linenos">87</span>      std::cerr &lt;&lt; &quot;(no error message)&quot; &lt;&lt; std::endl;         \
-<span class="linenos">88</span>    }                                                         \
-<span class="linenos">89</span>    return EXIT_FAILURE;                                      \
-<span class="linenos">90</span>  }
-<span class="linenos">91</span>
-<span class="linenos">92</span>// Error-checking helper for Nanoarrow.
-<span class="linenos">93</span>#define CHECK_NANOARROW(EXPR)                                              \
-<span class="linenos">94</span>  if (int status = (EXPR); status != 0) {                                  \
-<span class="linenos">95</span>    std::cerr &lt;&lt; &quot;(&quot; &lt;&lt; std::strerror(status) &lt;&lt; &quot;): failed&quot; &lt;&lt; std::endl; \
-<span class="linenos">96</span>    return EXIT_FAILURE;                                                   \
-<span class="linenos">97</span>  }
-<span class="linenos">98</span>
-<span class="linenos">99</span>int main() {
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 70</span><span class="c1">// Error-checking helper for ADBC calls.</span>
+<span class="linenos"> 71</span><span class="c1">// Assumes that there is an AdbcError named `error` in scope.</span>
+<span class="linenos"> 72</span><span class="cp">#define CHECK_ADBC(EXPR)                                          \</span>
+<span class="linenos"> 73</span><span class="cp">  if (AdbcStatusCode status = (EXPR); status != ADBC_STATUS_OK) { \</span>
+<span class="linenos"> 74</span><span class="cp">    if (error.message != nullptr) {                               \</span>
+<span class="linenos"> 75</span><span class="cp">      std::cerr &lt;&lt; error.message &lt;&lt; std::endl;                    \</span>
+<span class="linenos"> 76</span><span class="cp">    }                                                             \</span>
+<span class="linenos"> 77</span><span class="cp">    return EXIT_FAILURE;                                          \</span>
+<span class="linenos"> 78</span><span class="cp">  }</span>
+<span class="linenos"> 79</span>
+<span class="linenos"> 80</span><span class="c1">// Error-checking helper for ArrowArrayStream.</span>
+<span class="linenos"> 81</span><span class="cp">#define CHECK_STREAM(STREAM, EXPR)                            \</span>
+<span class="linenos"> 82</span><span class="cp">  if (int status = (EXPR); status != 0) {                     \</span>
+<span class="linenos"> 83</span><span class="cp">    std::cerr &lt;&lt; &quot;(&quot; &lt;&lt; std::strerror(status) &lt;&lt; &quot;): &quot;;       \</span>
+<span class="linenos"> 84</span><span class="cp">    const char* message = (STREAM).get_last_error(&amp;(STREAM)); \</span>
+<span class="linenos"> 85</span><span class="cp">    if (message != nullptr) {                                 \</span>
+<span class="linenos"> 86</span><span class="cp">      std::cerr &lt;&lt; message &lt;&lt; std::endl;                      \</span>
+<span class="linenos"> 87</span><span class="cp">    } else {                                                  \</span>
+<span class="linenos"> 88</span><span class="cp">      std::cerr &lt;&lt; &quot;(no error message)&quot; &lt;&lt; std::endl;         \</span>
+<span class="linenos"> 89</span><span class="cp">    }                                                         \</span>
+<span class="linenos"> 90</span><span class="cp">    return EXIT_FAILURE;                                      \</span>
+<span class="linenos"> 91</span><span class="cp">  }</span>
+<span class="linenos"> 92</span>
+<span class="linenos"> 93</span><span class="c1">// Error-checking helper for Nanoarrow.</span>
+<span class="linenos"> 94</span><span class="cp">#define CHECK_NANOARROW(EXPR)                                              \</span>
+<span class="linenos"> 95</span><span class="cp">  if (int status = (EXPR); status != 0) {                                  \</span>
+<span class="linenos"> 96</span><span class="cp">    std::cerr &lt;&lt; &quot;(&quot; &lt;&lt; std::strerror(status) &lt;&lt; &quot;): failed&quot; &lt;&lt; std::endl; \</span>
+<span class="linenos"> 97</span><span class="cp">    return EXIT_FAILURE;                                                   \</span>
+<span class="linenos"> 98</span><span class="cp">  }</span>
+<span class="linenos"> 99</span>
+<span class="linenos">100</span><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
 </pre></div>
 </div>
 <section id="loading-the-driver">
 <h3>Loading the Driver<a class="headerlink" href="#loading-the-driver" title="Permalink to this heading">#</a></h3>
 <p>We’ll load the SQLite driver using the driver manager.  We don’t
 have to explicitly link to the driver this way.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">106</span>  <span class="n">AdbcError</span> <span class="n">error</span> <span class="o">=</span> <span class="p">{};</span>
-<span class="linenos">107</span>
-<span class="linenos">108</span>  <span class="n">AdbcDatabase</span> <span class="n">database</span> <span class="o">=</span> <span class="p">{};</span>
-<span class="linenos">109</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">107</span><span class="w">  </span><span class="n">AdbcError</span><span class="w"> </span><span class="n">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+<span class="linenos">108</span>
+<span class="linenos">109</span><span class="w">  </span><span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+<span class="linenos">110</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 </pre></div>
 </div>
 <p>The way the driver manager knows what driver we want is via the
 <code class="docutils literal notranslate"><span class="pre">driver</span></code> option.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">112</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span> <span class="s2">&quot;driver&quot;</span><span class="p">,</span> <span class="s2">&quot;adbc_driver_sqlite&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
-<span class="linenos">113</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">113</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;adbc_driver_sqlite&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<span class="linenos">114</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 </pre></div>
 </div>
 </section>
@@ -416,9 +417,9 @@ have to explicitly link to the driver this way.</p>
 connections.  For example, in the SQLite driver, it holds the
 actual instance of SQLite.  A “connection” is one connection to
 the database.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">124</span>  <span class="n">AdbcConnection</span> <span class="n">connection</span> <span class="o">=</span> <span class="p">{};</span>
-<span class="linenos">125</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
-<span class="linenos">126</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">database</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">125</span><span class="w">  </span><span class="n">AdbcConnection</span><span class="w"> </span><span class="n">connection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+<span class="linenos">126</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<span class="linenos">127</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 </pre></div>
 </div>
 </section>
@@ -426,8 +427,8 @@ the database.</p>
 <h3>Creating a Statement<a class="headerlink" href="#creating-a-statement" title="Permalink to this heading">#</a></h3>
 <p>A statement lets us execute queries.  They are used for both
 prepared and non-prepared (“ad-hoc”) queries.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">134</span>  <span class="n">AdbcStatement</span> <span class="n">statement</span> <span class="o">=</span> <span class="p">{};</span>
-<span class="linenos">135</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">135</span><span class="w">  </span><span class="n">AdbcStatement</span><span class="w"> </span><span class="n">statement</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+<span class="linenos">136</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 </pre></div>
 </div>
 </section>
@@ -436,18 +437,18 @@ prepared and non-prepared (“ad-hoc”) queries.</p>
 <p>We execute a query by setting the query on the statement, then
 calling <a class="reference internal" href="api/adbc.html#_CPPv425AdbcStatementExecuteQueryP13AdbcStatementP16ArrowArrayStreamP7int64_tP9AdbcError" title="AdbcStatementExecuteQuery"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code></a>.  The results come
 back through the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow C Data Interface</a>.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">146</span>  <span class="n">struct</span> <span class="n">ArrowArrayStream</span> <span class="n">stream</span> <span class="o">=</span> <span class="p">{};</span>
-<span class="linenos">147</span>  <span class="n">int64_t</span> <span class="n">rows_affected</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
-<span class="linenos">148</span>
-<span class="linenos">149</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementSetSqlQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span> <span class="s2">&quot;SELECT 42 AS THEANSWER&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
-<span class="linenos">150</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementExecuteQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">stream</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rows_affected</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">147</span><span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArrayStream</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+<span class="linenos">148</span><span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">rows_affected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span>
+<span class="linenos">149</span>
+<span class="linenos">150</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementSetSqlQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;SELECT 42 AS THEANSWER&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<span class="linenos">151</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementExecuteQuery</span><span class="p">(</span><span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">rows_affected</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
 </pre></div>
 </div>
 <p>While the API gives us the number of rows, the SQLite driver
 can’t actually know how many rows there are in the result set
 ahead of time, so this value will actually just be <code class="docutils literal notranslate"><span class="pre">-1</span></code> to
 indicate that the value is not known.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">156</span>  <span class="n">std</span><span class="p">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Got &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">rows_affected</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot; rows&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="p">::</span><span class="n">endl</span><span class="p">;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">157</span><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Got &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">rows_affected</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot; rows&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
 </pre></div>
 </div>
 <p>We need an Arrow implementation to read the actual results.  We
@@ -456,54 +457,54 @@ we’ll use Nanoarrow here.  (The CMake configuration for this
 example downloads and builds Nanoarrow from source as part of
 the build.)</p>
 <p>First we’ll get the schema of the data:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">168</span>  <span class="n">ArrowSchema</span> <span class="n">schema</span> <span class="o">=</span> <span class="p">{};</span>
-<span class="linenos">169</span>  <span class="n">CHECK_STREAM</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">stream</span><span class="o">.</span><span class="n">get_schema</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">schema</span><span class="p">));</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">169</span><span class="w">  </span><span class="n">ArrowSchema</span><span class="w"> </span><span class="n">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+<span class="linenos">170</span><span class="w">  </span><span class="n">CHECK_STREAM</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">get_schema</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">schema</span><span class="p">));</span>
 </pre></div>
 </div>
 <p>Then we can use Nanoarrow to print it:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">172</span>  <span class="n">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">1024</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
-<span class="linenos">173</span>  <span class="n">ArrowSchemaToString</span><span class="p">(</span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="o">/*</span><span class="n">recursive</span><span class="o">=*/</span><span class="mi">1</span><span class="p">);</span>
-<span class="linenos">174</span>  <span class="n">std</span><span class="p">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">buf</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="p">::</span><span class="n">endl</span><span class="p">;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">173</span><span class="w">  </span><span class="kt">char</span><span class="w"> </span><span class="n">buf</span><span class="p">[</span><span class="mi">1024</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+<span class="linenos">174</span><span class="w">  </span><span class="n">ArrowSchemaToString</span><span class="p">(</span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span><span class="w"> </span><span class="cm">/*recursive=*/</span><span class="mi">1</span><span class="p">);</span>
+<span class="linenos">175</span><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
 </pre></div>
 </div>
 <p>Now we can read the data.  The data comes as a stream of Arrow
 record batches.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">178</span>  <span class="k">while</span> <span class="p">(</span><span class="n">true</span><span class="p">)</span> <span class="p">{</span>
-<span class="linenos">179</span>    <span class="n">ArrowArray</span> <span class="n">batch</span> <span class="o">=</span> <span class="p">{};</span>
-<span class="linenos">180</span>    <span class="n">CHECK_STREAM</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">stream</span><span class="o">.</span><span class="n">get_next</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">batch</span><span class="p">));</span>
-<span class="linenos">181</span>
-<span class="linenos">182</span>    <span class="k">if</span> <span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">release</span> <span class="o">==</span> <span class="n">nullptr</span><span class="p">)</span> <span class="p">{</span>
-<span class="linenos">183</span>      <span class="o">//</span> <span class="n">Stream</span> <span class="n">has</span> <span class="n">ended</span>
-<span class="linenos">184</span>      <span class="k">break</span><span class="p">;</span>
-<span class="linenos">185</span>    <span class="p">}</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">179</span><span class="w">  </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="nb">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">180</span><span class="w">    </span><span class="n">ArrowArray</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+<span class="linenos">181</span><span class="w">    </span><span class="n">CHECK_STREAM</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="p">.</span><span class="n">get_next</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">batch</span><span class="p">));</span>
+<span class="linenos">182</span>
+<span class="linenos">183</span><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">batch</span><span class="p">.</span><span class="n">release</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="k">nullptr</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">184</span><span class="w">      </span><span class="c1">// Stream has ended</span>
+<span class="linenos">185</span><span class="w">      </span><span class="k">break</span><span class="p">;</span>
+<span class="linenos">186</span><span class="w">    </span><span class="p">}</span>
 </pre></div>
 </div>
 <p>We can use Nanoarrow to print out the data, too.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">188</span>    <span class="n">ArrowArrayView</span> <span class="n">view</span> <span class="o">=</span> <span class="p">{};</span>
-<span class="linenos">189</span>    <span class="n">CHECK_NANOARROW</span><span class="p">(</span><span class="n">ArrowArrayViewInitFromSchema</span><span class="p">(</span><span class="o">&amp;</span><span class="n">view</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span> <span class="n">nullptr</span><span class="p">));</span>
-<span class="linenos">190</span>    <span class="n">CHECK_NANOARROW</span><span class="p">(</span><span class="n">ArrowArrayViewSetArray</span><span class="p">(</span><span class="o">&amp;</span><span class="n">view</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">batch</span><span class="p">,</span> <span class="n">nullptr</span><span class="p">));</span>
-<span class="linenos">191</span>    <span class="n">std</span><span class="p">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Got a batch with &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">batch</span><span class="o">.</span><span class="n">length</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot; rows&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="p">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="linenos">192</span>    <span class="k">for</span> <span class="p">(</span><span class="n">int64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">batch</span><span class="o">.</span><span class="n">length</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-<span class="linenos">193</span>      <span class="n">std</span><span class="p">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;THEANSWER[&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">i</span>
-<span class="linenos">194</span>                <span class="o">&lt;&lt;</span> <span class="s2">&quot;] = &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">view</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">buffer_views</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">as_int64</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-<span class="linenos">195</span>                <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="p">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="linenos">196</span>    <span class="p">}</span>
-<span class="linenos">197</span>    <span class="n">ArrowArrayViewReset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">view</span><span class="p">);</span>
-<span class="linenos">198</span>  <span class="p">}</span>
-<span class="linenos">199</span>
-<span class="linenos">200</span>  <span class="n">std</span><span class="p">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Finished reading result set&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="p">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="linenos">201</span>  <span class="n">stream</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">);</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">189</span><span class="w">    </span><span class="n">ArrowArrayView</span><span class="w"> </span><span class="n">view</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
+<span class="linenos">190</span><span class="w">    </span><span class="n">CHECK_NANOARROW</span><span class="p">(</span><span class="n">ArrowArrayViewInitFromSchema</span><span class="p">(</span><span class="o">&amp;</span><span class="n">view</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">));</span>
+<span class="linenos">191</span><span class="w">    </span><span class="n">CHECK_NANOARROW</span><span class="p">(</span><span class="n">ArrowArrayViewSetArray</span><span class="p">(</span><span class="o">&amp;</span><span class="n">view</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">batch</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">));</span>
+<span class="linenos">192</span><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Got a batch with &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">batch</span><span class="p">.</span><span class="n">length</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot; rows&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="linenos">193</span><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int64_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">batch</span><span class="p">.</span><span class="n">length</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="linenos">194</span><span class="w">      </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;THEANSWER[&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">i</span>
+<span class="linenos">195</span><span class="w">                </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;] = &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">view</span><span class="p">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">buffer_views</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">data</span><span class="p">.</span><span class="n">as_int64</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+<span class="linenos">196</span><span class="w">                </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="linenos">197</span><span class="w">    </span><span class="p">}</span>
+<span class="linenos">198</span><span class="w">    </span><span class="n">ArrowArrayViewReset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">view</span><span class="p">);</span>
+<span class="linenos">199</span><span class="w">  </span><span class="p">}</span>
+<span class="linenos">200</span>
+<span class="linenos">201</span><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Finished reading result set&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="linenos">202</span><span class="w">  </span><span class="n">stream</span><span class="p">.</span><span class="n">release</span><span class="p">(</span><span class="o">&amp;</span><span class="n">stream</span><span class="p">);</span>
 </pre></div>
 </div>
 </section>
 <section id="cleanup">
 <h3>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this heading">#</a></h3>
 <p>At the end, we must release all our resources.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">207</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
-<span class="linenos">208</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
-<span class="linenos">209</span>  <span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
-<span class="linenos">210</span>  <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
-<span class="linenos">211</span><span class="p">}</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">208</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcStatementRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">statement</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<span class="linenos">209</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcConnectionRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">connection</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<span class="linenos">210</span><span class="w">  </span><span class="n">CHECK_ADBC</span><span class="p">(</span><span class="n">AdbcDatabaseRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
+<span class="linenos">211</span><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+<span class="linenos">212</span><span class="p">}</span>
 </pre></div>
 </div>
 </section>

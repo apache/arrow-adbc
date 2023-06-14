@@ -331,7 +331,7 @@ be provided in the URI.  For example,</p>
 </div>
 <p>See the <a class="reference external" href="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">PostgreSQL documentation</a>
 for full details.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">30</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">30</span><span class="kn">import</span> <span class="nn">os</span>
 <span class="linenos">31</span>
 <span class="linenos">32</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">33</span>
@@ -351,7 +351,7 @@ for full details.</p>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_append_table.py">postgresql_create_append_table.py</a></p>
 <p>ADBC allows creating and appending to database tables using Arrow
 tables.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
 <span class="linenos">23</span>
 <span class="linenos">24</span><span class="kn">import</span> <span class="nn">pyarrow</span>
 <span class="linenos">25</span>
@@ -363,12 +363,12 @@ tables.</p>
 </div>
 <p>For the purposes of testing, we’ll first make sure the table
 doesn’t exist.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">33</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">33</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">34</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS example&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Now we can create the table.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">38</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">(</span>
 <span class="linenos">39</span>        <span class="p">[</span>
 <span class="linenos">40</span>            <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
@@ -385,7 +385,7 @@ doesn’t exist.</p>
 </pre></div>
 </div>
 <p>After ingestion, we can fetch the result.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">53</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">53</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">54</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM example&quot;</span><span class="p">)</span>
 <span class="linenos">55</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
 <span class="linenos">56</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">2</span><span class="p">,)</span>
@@ -396,7 +396,7 @@ doesn’t exist.</p>
 </div>
 <p>If we try to ingest again, it’ll fail, because the table already
 exists.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">63</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">63</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">64</span>    <span class="k">try</span><span class="p">:</span>
 <span class="linenos">65</span>        <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
 <span class="linenos">66</span>    <span class="k">except</span> <span class="n">conn</span><span class="o">.</span><span class="n">OperationalError</span><span class="p">:</span>
@@ -406,7 +406,7 @@ exists.</p>
 </pre></div>
 </div>
 <p>Instead, we can append to the table.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">72</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">72</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">73</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">)</span>
 <span class="linenos">74</span>
 <span class="linenos">75</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
@@ -422,7 +422,7 @@ exists.</p>
 <p>ADBC allows using Python and Arrow values as bind parameters.
 Right now, the PostgreSQL driver only supports bind parameters
 for queries that don’t generate result sets.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span> <span class="nn">os</span>
 <span class="linenos">25</span>
 <span class="linenos">26</span><span class="kn">import</span> <span class="nn">pyarrow</span>
 <span class="linenos">27</span>
@@ -433,7 +433,7 @@ for queries that don’t generate result sets.</p>
 </pre></div>
 </div>
 <p>We’ll create an example table to test.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">34</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">34</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">35</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS example&quot;</span><span class="p">)</span>
 <span class="linenos">36</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE example (ints INT, bigints BIGINT)&quot;</span><span class="p">)</span>
 <span class="linenos">37</span>
@@ -441,7 +441,7 @@ for queries that don’t generate result sets.</p>
 </pre></div>
 </div>
 <p>We can bind Python values:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">41</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">41</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">42</span>    <span class="n">cur</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s2">&quot;INSERT INTO example VALUES ($1, $2)&quot;</span><span class="p">,</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)])</span>
 <span class="linenos">43</span>
 <span class="linenos">44</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT SUM(ints) FROM example&quot;</span><span class="p">)</span>
@@ -455,7 +455,7 @@ libraries like psycopg use for bind parameters, note that this
 is not supported—only the PostgreSQL-native <code class="docutils literal notranslate"><span class="pre">$1</span></code> syntax.</p>
 </div>
 <p>We can also bind Arrow values:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">52</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">52</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">53</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span>
 <span class="linenos">54</span>        <span class="p">[</span>
 <span class="linenos">55</span>            <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
@@ -476,7 +476,7 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 <h2>Get the Arrow schema of a table<a class="headerlink" href="#get-the-arrow-schema-of-a-table" title="Permalink to this heading">#</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_table_schema.py">postgresql_get_table_schema.py</a></p>
 <p>ADBC lets you get the schema of a table as an Arrow schema.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
 <span class="linenos">23</span>
 <span class="linenos">24</span><span class="kn">import</span> <span class="nn">pyarrow</span>
 <span class="linenos">25</span>
@@ -487,7 +487,7 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 </pre></div>
 </div>
 <p>We’ll create an example table to test.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">33</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS example&quot;</span><span class="p">)</span>
 <span class="linenos">34</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE example (ints INT, bigints BIGINT)&quot;</span><span class="p">)</span>
 <span class="linenos">35</span>
@@ -508,7 +508,7 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 <h2>List catalogs, schemas, and tables<a class="headerlink" href="#list-catalogs-schemas-and-tables" title="Permalink to this heading">#</a></h2>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_list_catalogs.py">postgresql_list_catalogs.py</a></p>
 <p>ADBC allows listing tables, catalogs, and schemas in the database.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">22</span><span class="kn">import</span> <span class="nn">os</span>
 <span class="linenos">23</span>
 <span class="linenos">24</span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
 <span class="linenos">25</span>
@@ -517,7 +517,7 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 </pre></div>
 </div>
 <p>We’ll create an example table to look for.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">30</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">30</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">31</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS example&quot;</span><span class="p">)</span>
 <span class="linenos">32</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE example (ints INT, bigints BIGINT)&quot;</span><span class="p">)</span>
 <span class="linenos">33</span>
@@ -525,11 +525,11 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 </pre></div>
 </div>
 <p>The data is given as a PyArrow RecordBatchReader.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="n">objects</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_objects</span><span class="p">(</span><span class="n">depth</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="n">objects</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_objects</span><span class="p">(</span><span class="n">depth</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>We’ll convert it to plain Python data for convenience.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">40</span><span class="n">objects</span> <span class="o">=</span> <span class="n">objects</span><span class="o">.</span><span class="n">to_pylist</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">40</span><span class="n">objects</span> <span class="o">=</span> <span class="n">objects</span><span class="o">.</span><span class="n">to_pylist</span><span class="p">()</span>
 <span class="linenos">41</span><span class="n">catalog</span> <span class="o">=</span> <span class="n">objects</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="linenos">42</span><span class="k">assert</span> <span class="n">catalog</span><span class="p">[</span><span class="s2">&quot;catalog_name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;postgres&quot;</span>
 <span class="linenos">43</span>

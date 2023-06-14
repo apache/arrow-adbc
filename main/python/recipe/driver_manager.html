@@ -328,7 +328,7 @@
 For drivers provided by the Arrow project, you don’t need to worry
 about this; the Python package will take care of this for you.
 Other drivers may need configuration, though.  We’ll use <a class="reference external" href="https://duckdb.org">DuckDB</a> as an example.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">25</span><span class="kn">import</span> <span class="nn">duckdb</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">25</span><span class="kn">import</span> <span class="nn">duckdb</span>
 <span class="linenos">26</span>
 <span class="linenos">27</span><span class="kn">import</span> <span class="nn">adbc_driver_manager.dbapi</span>
 </pre></div>
@@ -336,7 +336,7 @@ Other drivers may need configuration, though.  We’ll use <a class="reference e
 <p>The driver manager needs the path to the shared library.  It also
 needs the name of the entrypoint function.  Both of these should be
 found in the driver’s documentation.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
 <span class="linenos">33</span>    <span class="n">driver</span><span class="o">=</span><span class="n">duckdb</span><span class="o">.</span><span class="vm">__file__</span><span class="p">,</span>
 <span class="linenos">34</span>    <span class="n">entrypoint</span><span class="o">=</span><span class="s2">&quot;duckdb_adbc_init&quot;</span><span class="p">,</span>
 <span class="linenos">35</span><span class="p">)</span>
@@ -344,7 +344,7 @@ found in the driver’s documentation.</p>
 </div>
 <p>Once we provide that, everything else about the connection is the
 same as usual.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="linenos">40</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">40</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">41</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
 <span class="linenos">42</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
 <span class="linenos">43</span>
