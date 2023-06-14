@@ -188,6 +188,41 @@ jobs:
         run: |
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
+  clang-tidy-conda:
+    name: "clang-tidy"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        shell: bash
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache@v3
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        shell: bash -l {0}
+        run: |
+          mamba install -c conda-forge \
+            --file ci/conda_env_cpp.txt
+
+      - name: clang-tidy
+        shell: bash -l {0}
+        run: |
+          ./ci/scripts/cpp_clang_tidy.sh "$(pwd)" "$(pwd)/build"
+
   # ------------------------------------------------------------
   # GLib/Ruby
   # ------------------------------------------------------------
