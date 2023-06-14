@@ -247,7 +247,8 @@ func SnowflakeDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError
 }
 
 type cConn struct {
-	cnxn adbc.Connection
+	cnxn     adbc.Connection
+	initArgs map[string]string
 }
 
 func checkConnAlloc(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname string) bool {
@@ -312,7 +313,22 @@ func SnowflakeConnectionSetOption(cnxn *C.struct_AdbcConnection, key, val *C.cch
 	}
 	conn := getFromHandle[cConn](cnxn.private_data)
 
-	rawCode := errToAdbcErr(err, conn.cnxn.(adbc.PostInitOptions).SetOption(C.GoString(key), C.GoString(val)))
+	if conn.cnxn == nil {
+		// not yet initialized
+		k, v := C.GoString(key), C.GoString(val)
+		if conn.initArgs == nil {
+			conn.initArgs = map[string]string{}
+		}
+		conn.initArgs[k] = v
+		return C.ADBC_STATUS_OK
+	}
+
+	opts, ok := conn.cnxn.(adbc.PostInitOptions)
+	if !ok {
+		setErr(err, "AdbcConnectionSetOption: not supported post-init")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+	rawCode := errToAdbcErr(err, opts.SetOption(C.GoString(key), C.GoString(val)))
 	return C.AdbcStatusCode(rawCode)
 }
 
@@ -340,8 +356,25 @@ func SnowflakeConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDat
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
-
 	conn.cnxn = c
+
+	if len(conn.initArgs) > 0 {
+		// C allow SetOption before Init, Go doesn't allow options to Open so set them now
+		opts, ok := conn.cnxn.(adbc.PostInitOptions)
+		if !ok {
+			setErr(err, "AdbcConnectionInit: options are not supported")
+			return C.ADBC_STATUS_NOT_IMPLEMENTED
+		}
+
+		for k, v := range conn.initArgs {
+			rawCode := errToAdbcErr(err, opts.SetOption(k, v))
+			if rawCode != adbc.StatusOK {
+				return C.AdbcStatusCode(rawCode)
+			}
+		}
+		conn.initArgs = nil
+	}
+
 	return C.ADBC_STATUS_OK
 }
 
