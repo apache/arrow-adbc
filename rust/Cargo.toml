@@ -17,7 +17,7 @@
 
 [package]
 name = "arrow-adbc"
-version = "0.1.0"
+version = "0.5.0"
 edition = "2021"
 rust-version = "1.62"
 description = "Rust implementation of Arrow Database Connectivity (ADBC)"
