@@ -15,13 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from typing import Generator
+
 import pytest
 
 from adbc_driver_postgresql import dbapi
 
 
 @pytest.fixture
-def postgres(postgres_uri: str) -> dbapi.Connection:
+def postgres(postgres_uri: str) -> Generator[dbapi.Connection, None, None]:
     with dbapi.connect(postgres_uri) as conn:
         yield conn
 

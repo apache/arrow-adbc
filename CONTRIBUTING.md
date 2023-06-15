@@ -190,6 +190,19 @@ $ pip install -e .[test]
 $ pytest -vvx
 ```
 
+Type checking is done with [pyright][pyright].  There is a script to
+run the type checker:
+
+```shell
+# Build native libraries first
+$ env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build
+# Install Python packages
+$ ./ci/scripts/python_build.sh $(pwd) $(pwd)/build
+# Run type checker
+$ ./ci/scripts/python_typecheck.sh $(pwd)
+```
+
+[pyright]: https://microsoft.github.io/pyright/
 [pytest]: https://docs.pytest.org/
 [setuptools]: https://setuptools.pypa.io/en/latest/index.html
 

@@ -18,3 +18,4 @@
 # setuptools manifest
 
 include adbc_driver_sqlite/libadbc_driver_sqlite.so
+include adbc_driver_sqlite/py.typed

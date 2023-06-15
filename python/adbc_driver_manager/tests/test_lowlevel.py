@@ -46,7 +46,7 @@ def _bind(stmt, batch):
 
 
 def test_version():
-    assert adbc_driver_manager.__version__
+    assert adbc_driver_manager.__version__  # type:ignore
 
 
 def test_database_init():

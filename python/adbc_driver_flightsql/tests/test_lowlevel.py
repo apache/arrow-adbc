@@ -44,4 +44,4 @@ def test_options(dremio):
 
 
 def test_version():
-    assert adbc_driver_flightsql.__version__
+    assert adbc_driver_flightsql.__version__  # type:ignore

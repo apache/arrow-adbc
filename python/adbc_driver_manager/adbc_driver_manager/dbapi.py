@@ -29,6 +29,7 @@ under pytest, or when the environment variable
 
 """
 
+import abc
 import datetime
 import os
 import threading
@@ -45,9 +46,8 @@ except ImportError as e:
 from . import _lib
 
 if typing.TYPE_CHECKING:
-    from typing import Self
-
     import pandas
+    from typing_extensions import Self
 
 # ----------------------------------------------------------
 # Globals
@@ -97,12 +97,12 @@ def DateFromTicks(ticks: int) -> Date:
     return Date(*time.localtime(ticks)[:3])
 
 
-def TimeFromTicks(ticks: int) -> Date:
+def TimeFromTicks(ticks: int) -> Time:
     """Construct a time value from a count of seconds."""
     return Time(*time.localtime(ticks)[3:6])
 
 
-def TimestampFromTicks(ticks: int) -> Date:
+def TimestampFromTicks(ticks: int) -> Timestamp:
     """Construct a timestamp value from a count of seconds."""
     return Timestamp(*time.localtime(ticks)[:6])
 
@@ -157,7 +157,7 @@ STRING = _TypeSet([pyarrow.string().id, pyarrow.large_string().id])
 def connect(
     *,
     driver: str,
-    entrypoint: str = None,
+    entrypoint: Optional[str] = None,
     db_kwargs: Optional[Dict[str, str]] = None,
     conn_kwargs: Optional[Dict[str, str]] = None,
     autocommit=False,
@@ -212,7 +212,7 @@ def connect(
 # Classes
 
 
-class _Closeable:
+class _Closeable(abc.ABC):
     """Base class providing context manager interface."""
 
     def __enter__(self) -> "Self":
@@ -220,6 +220,10 @@ class _Closeable:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
+
+    @abc.abstractmethod
+    def close(self) -> None:
+        ...
 
 
 class _SharedDatabase(_Closeable):
@@ -662,7 +666,7 @@ class Cursor(_Closeable):
         self._bind(arrow_parameters)
         self._rowcount = self._stmt.execute_update()
 
-    def fetchone(self) -> tuple:
+    def fetchone(self) -> Optional[tuple]:
         """Fetch one row of the result."""
         if self._results is None:
             raise ProgrammingError(
@@ -949,7 +953,7 @@ class _RowIterator(_Closeable):
             for field in self._reader.schema
         ]
 
-    def fetchone(self):
+    def fetchone(self) -> Optional[tuple]:
         if self._current_batch is None or self._next_row >= len(self._current_batch):
             try:
                 while True:
@@ -961,7 +965,7 @@ class _RowIterator(_Closeable):
                 self._current_batch = None
                 self._finished = True
 
-        if self._finished:
+        if self._finished or self._current_batch is None:
             return None
 
         row = tuple(arr[self._next_row].as_py() for arr in self._current_batch.columns)

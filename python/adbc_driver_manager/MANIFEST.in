@@ -22,3 +22,4 @@ include NOTICE.txt
 include adbc_driver_manager/adbc.h
 include adbc_driver_manager/adbc_driver_manager.cc
 include adbc_driver_manager/adbc_driver_manager.h
+include adbc_driver_manager/py.typed
