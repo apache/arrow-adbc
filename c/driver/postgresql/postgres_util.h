@@ -36,16 +36,16 @@
 namespace adbcpq {
 
 #if defined(_WIN32) && defined(_MSC_VER)
-static inline uint32_t SwapNetworkToHost(uint16_t x) { return ntohs(x); }
-static inline uint32_t SwapHostToNetwork(uint16_t x) { return htons(x); }
+static inline uint16_t SwapNetworkToHost(uint16_t x) { return ntohs(x); }
+static inline uint16_t SwapHostToNetwork(uint16_t x) { return htons(x); }
 static inline uint32_t SwapNetworkToHost(uint32_t x) { return ntohl(x); }
 static inline uint32_t SwapHostToNetwork(uint32_t x) { return htonl(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) { return ntohll(x); }
 static inline uint64_t SwapHostToNetwork(uint64_t x) { return htonll(x); }
 #elif defined(_WIN32)
 // e.g., msys2, where ntohll is not necessarily defined
-static inline uint32_t SwapNetworkToHost(uint16_t x) { return ntohs(x); }
-static inline uint32_t SwapHostToNetwork(uint16_t x) { return htons(x); }
+static inline uint16_t SwapNetworkToHost(uint16_t x) { return ntohs(x); }
+static inline uint16_t SwapHostToNetwork(uint16_t x) { return htons(x); }
 static inline uint32_t SwapNetworkToHost(uint32_t x) { return ntohl(x); }
 static inline uint32_t SwapHostToNetwork(uint32_t x) { return htonl(x); }
 static inline uint64_t SwapNetworkToHost(uint64_t x) {
@@ -112,13 +112,14 @@ static inline double LoadNetworkFloat8(const char* buf) {
   return out;
 }
 
-static inline uint32_t ToNetworkInt32(int32_t v) {
-  return SwapHostToNetwork(static_cast<uint32_t>(v));
-}
+#define ADBC_REGISTER_TO_NETWORK_FUNC(size)                          \
+  static inline uint##size##_t ToNetworkInt##size(int##size##_t v) { \
+    return SwapHostToNetwork(static_cast<uint##size##_t>(v));        \
+  }
 
-static inline uint64_t ToNetworkInt64(int64_t v) {
-  return SwapHostToNetwork(static_cast<uint64_t>(v));
-}
+ADBC_REGISTER_TO_NETWORK_FUNC(16)
+ADBC_REGISTER_TO_NETWORK_FUNC(32)
+ADBC_REGISTER_TO_NETWORK_FUNC(64)
 
 static inline uint64_t ToNetworkFloat8(double v) {
   uint64_t vint;
