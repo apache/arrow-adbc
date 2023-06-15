@@ -50,6 +50,10 @@ update_versions() {
   git add meta.yaml
   popd
 
+  sed -i.bak -E "s/version = \".+\"/version = \"${version}\"/" "${ADBC_DIR}/csharp/Directory.Build.props"
+  rm "${ADBC_DIR}/csharp/Directory.Build.props.bak"
+  git add "${ADBC_DIR}/csharp/Directory.Build.props"
+
   sed -i.bak -E "s/release = \".+\"/release = \"${docs_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
   rm "${ADBC_DIR}/docs/source/conf.py.bak"
   git add "${ADBC_DIR}/docs/source/conf.py"
@@ -75,6 +79,10 @@ update_versions() {
     rm "${desc_file}.bak"
     git add "${desc_file}"
   done
+
+  sed -i.bak -E "s/^version = \".+\"/version = \"${version}\"/" "${ADBC_DIR}/rust/Cargo.toml"
+  rm "${ADBC_DIR}/rust/Cargo.toml.bak"
+  git add "${ADBC_DIR}/rust/Cargo.toml"
 
   if [ ${type} = "release" ]; then
     pushd "${ADBC_DIR}/ci/linux-packages"
