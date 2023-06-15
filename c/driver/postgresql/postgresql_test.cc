@@ -450,42 +450,37 @@ TEST_F(PostgresConnectionTest, GetObjectsTableTypesFilter) {
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_table_types_table_test", &error),
               IsOkStatus(&error));
 
-  struct AdbcStatement statement;
-  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
     ASSERT_THAT(
         AdbcStatementSetSqlQuery(
-            &statement, "CREATE TABLE adbc_table_types_table_test (id1 INT, id2 INT)",
-            &error),
+            &statement.value,
+            "CREATE TABLE adbc_table_types_table_test (id1 INT, id2 INT)", &error),
         IsOkStatus(&error));
-    adbc_validation::StreamReader reader;
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                          &reader.rows_affected, &error),
-                IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
-    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-    ASSERT_NO_FATAL_FAILURE(reader.Next());
-    ASSERT_EQ(reader.array->release, nullptr);
-  }
-  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
-  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+    int64_t rows_affected = 0;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement.value, nullptr, &rows_affected, &error),
+        IsOkStatus(&error));
+  }
+
   {
-    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value,
                                          "CREATE VIEW adbc_table_types_view_test AS ( "
                                          "SELECT * FROM adbc_table_types_table_test)",
                                          &error),
                 IsOkStatus(&error));
-    adbc_validation::StreamReader reader;
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                          &reader.rows_affected, &error),
-                IsOkStatus(&error));
-    ASSERT_EQ(reader.rows_affected, 0);
-    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-    ASSERT_NO_FATAL_FAILURE(reader.Next());
-    ASSERT_EQ(reader.array->release, nullptr);
+    int64_t rows_affected = 0;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement.value, nullptr, &rows_affected, &error),
+        IsOkStatus(&error));
   }
-  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;
   std::vector<const char*> table_types = {"view", nullptr};

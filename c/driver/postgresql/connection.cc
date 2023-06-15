@@ -40,6 +40,10 @@ static const uint32_t kSupportedInfoCodes[] = {
     ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ARROW_VERSION,
 };
 
+static const std::unordered_map<std::string, std::string> kPgTableTypes = {
+    {"table", "r"},       {"view", "v"},          {"materialized_view", "m"},
+    {"toast_table", "t"}, {"foreign_table", "f"}, {"partitioned_table", "p"}};
+
 struct PqRecord {
   const char* data;
   const int len;
@@ -185,10 +189,6 @@ class PqGetObjectsHelper {
         error_(error) {
     na_error_ = {0};
   }
-
-  static const inline std::unordered_map<std::string, std::string> PgTableTypes = {
-      {"table", "r"},       {"view", "v"},          {"materialized_view", "m"},
-      {"toast_table", "t"}, {"foreign_table", "f"}, {"partitioned_table", "p"}};
 
   AdbcStatusCode GetObjects() {
     PqResultHelper curr_db_helper =
@@ -361,7 +361,7 @@ class PqGetObjectsHelper {
       return ADBC_STATUS_INTERNAL;
     }
 
-    if (table_name_ != NULL) {
+    if (table_name_ != nullptr) {
       if (StringBuilderAppend(&query, "%s", " AND c.relname LIKE $2")) {
         StringBuilderReset(&query);
         return ADBC_STATUS_INTERNAL;
@@ -370,13 +370,13 @@ class PqGetObjectsHelper {
       params.push_back(std::string(table_name_));
     }
 
-    if (table_types_ != NULL) {
+    if (table_types_ != nullptr) {
       std::vector<std::string> table_type_filter;
       const char** table_types = table_types_;
       while (*table_types != NULL) {
         auto table_type_str = std::string(*table_types);
-        if (auto search = PqGetObjectsHelper::PgTableTypes.find(table_type_str);
-            search != PqGetObjectsHelper::PgTableTypes.end()) {
+        if (auto search = kPgTableTypes.find(table_type_str);
+            search != kPgTableTypes.end()) {
           table_type_filter.push_back(search->second);
         }
         table_types++;
@@ -933,7 +933,7 @@ AdbcStatusCode PostgresConnectionGetTableTypesImpl(struct ArrowSchema* schema,
   CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array, uschema.get(), NULL), error);
   CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
 
-  for (auto const& table_type : PqGetObjectsHelper::PgTableTypes) {
+  for (auto const& table_type : kPgTableTypes) {
     CHECK_NA(INTERNAL,
              ArrowArrayAppendString(array->children[0],
                                     ArrowCharView(table_type.first.c_str())),

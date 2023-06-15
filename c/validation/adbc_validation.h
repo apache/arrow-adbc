@@ -51,7 +51,7 @@ class DriverQuirks {
   virtual AdbcStatusCode DropView(struct AdbcConnection* connection,
                                   const std::string& name,
                                   struct AdbcError* error) const {
-    return ADBC_STATUS_OK;
+    return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
   virtual AdbcStatusCode EnsureSampleTable(struct AdbcConnection* connection,
