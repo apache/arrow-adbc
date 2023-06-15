@@ -471,7 +471,6 @@ class PostgresStatementTest : public ::testing::Test,
   void TestSqlIngestUInt64() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestFloat32() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestFloat64() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestBinary() { GTEST_SKIP() << "Not implemented"; }
 
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
   void TestSqlPrepareGetParameterSchema() { GTEST_SKIP() << "Not yet implemented"; }
