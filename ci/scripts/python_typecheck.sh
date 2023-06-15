@@ -25,7 +25,7 @@ set -e
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
 
-: ${PYRIGHT_OPTIONS:="--warnings"}
+: ${PYRIGHT_OPTIONS:=""}
 
 main() {
     local -r source_dir="${1}"

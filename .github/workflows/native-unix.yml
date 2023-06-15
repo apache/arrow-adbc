@@ -399,7 +399,6 @@ jobs:
           mamba install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
-            --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt
       - uses: actions/setup-go@v3
         with:
