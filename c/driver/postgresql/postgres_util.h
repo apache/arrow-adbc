@@ -121,6 +121,12 @@ ADBC_REGISTER_TO_NETWORK_FUNC(16)
 ADBC_REGISTER_TO_NETWORK_FUNC(32)
 ADBC_REGISTER_TO_NETWORK_FUNC(64)
 
+static inline uint32_t ToNetworkFloat4(float v) {
+  uint32_t vint;
+  memcpy(&vint, &v, sizeof(uint32_t));
+  return SwapHostToNetwork(vint);
+}
+
 static inline uint64_t ToNetworkFloat8(double v) {
   uint64_t vint;
   memcpy(&vint, &v, sizeof(uint64_t));

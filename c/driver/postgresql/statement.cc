@@ -199,6 +199,10 @@ struct BindStream {
           type_id = PostgresTypeId::kInt8;
           param_lengths[i] = 8;
           break;
+        case ArrowType::NANOARROW_TYPE_FLOAT:
+          type_id = PostgresTypeId::kFloat4;
+          param_lengths[i] = 4;
+          break;
         case ArrowType::NANOARROW_TYPE_DOUBLE:
           type_id = PostgresTypeId::kFloat8;
           param_lengths[i] = 8;
@@ -302,6 +306,12 @@ struct BindStream {
               const int64_t value = ToNetworkInt64(
                   array_view->children[col]->buffer_views[1].data.as_int64[row]);
               std::memcpy(param_values[col], &value, sizeof(int64_t));
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_FLOAT: {
+              const uint32_t value = ToNetworkFloat4(
+                  array_view->children[col]->buffer_views[1].data.as_float[row]);
+              std::memcpy(param_values[col], &value, sizeof(uint32_t));
               break;
             }
             case ArrowType::NANOARROW_TYPE_DOUBLE: {
@@ -574,6 +584,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_INT64:
         create += " BIGINT";
+        break;
+      case ArrowType::NANOARROW_TYPE_FLOAT:
+        create += " REAL";
         break;
       case ArrowType::NANOARROW_TYPE_DOUBLE:
         create += " DOUBLE PRECISION";
