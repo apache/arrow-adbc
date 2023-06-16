@@ -23,6 +23,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -38,6 +39,10 @@ static const uint32_t kSupportedInfoCodes[] = {
     ADBC_INFO_VENDOR_NAME,    ADBC_INFO_VENDOR_VERSION,       ADBC_INFO_DRIVER_NAME,
     ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ARROW_VERSION,
 };
+
+static const std::unordered_map<std::string, std::string> kPgTableTypes = {
+    {"table", "r"},       {"view", "v"},          {"materialized_view", "m"},
+    {"toast_table", "t"}, {"foreign_table", "f"}, {"partitioned_table", "p"}};
 
 struct PqRecord {
   const char* data;
@@ -356,13 +361,52 @@ class PqGetObjectsHelper {
       return ADBC_STATUS_INTERNAL;
     }
 
-    if (table_name_ != NULL) {
+    if (table_name_ != nullptr) {
       if (StringBuilderAppend(&query, "%s", " AND c.relname LIKE $2")) {
         StringBuilderReset(&query);
         return ADBC_STATUS_INTERNAL;
       }
 
       params.push_back(std::string(table_name_));
+    }
+
+    if (table_types_ != nullptr) {
+      std::vector<std::string> table_type_filter;
+      const char** table_types = table_types_;
+      while (*table_types != NULL) {
+        auto table_type_str = std::string(*table_types);
+        if (auto search = kPgTableTypes.find(table_type_str);
+            search != kPgTableTypes.end()) {
+          table_type_filter.push_back(search->second);
+        }
+        table_types++;
+      }
+
+      if (!table_type_filter.empty()) {
+        std::ostringstream oss;
+        bool first = true;
+        oss << "(";
+        for (const auto& str : table_type_filter) {
+          if (!first) {
+            oss << ", ";
+          }
+          oss << "'" << str << "'";
+          first = false;
+        }
+        oss << ")";
+
+        if (StringBuilderAppend(&query, "%s%s", " AND c.relkind IN ",
+                                oss.str().c_str())) {
+          StringBuilderReset(&query);
+          return ADBC_STATUS_INTERNAL;
+        }
+      } else {
+        // no matching table type means no records should come back
+        if (StringBuilderAppend(&query, "%s", " AND false")) {
+          StringBuilderReset(&query);
+          return ADBC_STATUS_INTERNAL;
+        }
+      }
     }
 
     auto result_helper = PqResultHelper{conn_, query.buffer, params, error_};
@@ -889,28 +933,13 @@ AdbcStatusCode PostgresConnectionGetTableTypesImpl(struct ArrowSchema* schema,
   CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array, uschema.get(), NULL), error);
   CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
 
-  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], ArrowCharView("table")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL,
-           ArrowArrayAppendString(array->children[0], ArrowCharView("toast_table")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL, ArrowArrayAppendString(array->children[0], ArrowCharView("view")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL,
-           ArrowArrayAppendString(array->children[0], ArrowCharView("materialized_view")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL,
-           ArrowArrayAppendString(array->children[0], ArrowCharView("foreign_table")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
-  CHECK_NA(INTERNAL,
-           ArrowArrayAppendString(array->children[0], ArrowCharView("partitioned_table")),
-           error);
-  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  for (auto const& table_type : kPgTableTypes) {
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(array->children[0],
+                                    ArrowCharView(table_type.first.c_str())),
+             error);
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+  }
 
   CHECK_NA(INTERNAL, ArrowArrayFinishBuildingDefault(array, NULL), error);
 

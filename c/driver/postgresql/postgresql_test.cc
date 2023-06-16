@@ -63,6 +63,24 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     return status;
   }
 
+  AdbcStatusCode DropView(struct AdbcConnection* connection, const std::string& name,
+                          struct AdbcError* error) const override {
+    struct AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    AdbcStatusCode status = AdbcStatementNew(connection, &statement, error);
+    if (status != ADBC_STATUS_OK) return status;
+
+    std::string query = "DROP VIEW IF EXISTS " + name;
+    status = AdbcStatementSetSqlQuery(&statement, query.c_str(), error);
+    if (status != ADBC_STATUS_OK) {
+      std::ignore = AdbcStatementRelease(&statement, error);
+      return status;
+    }
+    status = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, error);
+    std::ignore = AdbcStatementRelease(&statement, error);
+    return status;
+  }
+
   std::string BindParameter(int index) const override {
     return "$" + std::to_string(index + 1);
   }
@@ -96,8 +114,6 @@ class PostgresConnectionTest : public ::testing::Test,
   const adbc_validation::DriverQuirks* quirks() const override { return &quirks_; }
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
-
-  void TestMetadataGetObjectsTablesTypes() { GTEST_SKIP() << "Not yet implemented"; }
 
  protected:
   PostgresQuirks quirks_;
@@ -419,6 +435,75 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
       ASSERT_EQ(column_str, "id2");
     }
   }
+}
+
+TEST_F(PostgresConnectionTest, GetObjectsTableTypesFilter) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (!quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(quirks()->DropView(&connection, "adbc_table_types_view_test", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_table_types_table_test", &error),
+              IsOkStatus(&error));
+
+  {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement.value,
+            "CREATE TABLE adbc_table_types_table_test (id1 INT, id2 INT)", &error),
+        IsOkStatus(&error));
+
+    int64_t rows_affected = 0;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement.value, nullptr, &rows_affected, &error),
+        IsOkStatus(&error));
+  }
+
+  {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value,
+                                         "CREATE VIEW adbc_table_types_view_test AS ( "
+                                         "SELECT * FROM adbc_table_types_table_test)",
+                                         &error),
+                IsOkStatus(&error));
+    int64_t rows_affected = 0;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement.value, nullptr, &rows_affected, &error),
+        IsOkStatus(&error));
+  }
+
+  adbc_validation::StreamReader reader;
+  std::vector<const char*> table_types = {"view", nullptr};
+  ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_ALL, nullptr,
+                                       nullptr, nullptr, table_types.data(), nullptr,
+                                       &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_GT(reader.array->length, 0);
+
+  auto get_objects_data = adbc_validation::GetObjectsReader{&reader.array_view.value};
+  ASSERT_NE(*get_objects_data, nullptr)
+      << "could not initialize the AdbcGetInfoData object";
+
+  struct AdbcGetObjectsTable* table = AdbcGetObjectsDataGetTableByName(
+      *get_objects_data, "postgres", "public", "adbc_table_types_table_test");
+  ASSERT_EQ(table, nullptr) << "unexpected table adbc_table_types_table_test found";
+
+  struct AdbcGetObjectsTable* view = AdbcGetObjectsDataGetTableByName(
+      *get_objects_data, "postgres", "public", "adbc_table_types_view_test");
+  ASSERT_NE(view, nullptr) << "did not find view adbc_table_types_view_test";
 }
 
 TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
