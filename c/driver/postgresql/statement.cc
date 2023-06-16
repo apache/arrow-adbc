@@ -211,6 +211,10 @@ struct BindStream {
           type_id = PostgresTypeId::kText;
           param_lengths[i] = 0;
           break;
+        case ArrowType::NANOARROW_TYPE_BINARY:
+          type_id = PostgresTypeId::kBytea;
+          param_lengths[i] = 0;
+          break;
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                    static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
@@ -316,7 +320,8 @@ struct BindStream {
               std::memcpy(param_values[col], &value, sizeof(uint64_t));
               break;
             }
-            case ArrowType::NANOARROW_TYPE_STRING: {
+            case ArrowType::NANOARROW_TYPE_STRING:
+            case ArrowType::NANOARROW_TYPE_BINARY: {
               const ArrowBufferView view =
                   ArrowArrayViewGetBytesUnsafe(array_view->children[col], row);
               // TODO: overflow check?
@@ -588,6 +593,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_STRING:
         create += " TEXT";
+        break;
+      case ArrowType::NANOARROW_TYPE_BINARY:
+        create += " BYTEA";
         break;
       default:
         // TODO: data type to string
