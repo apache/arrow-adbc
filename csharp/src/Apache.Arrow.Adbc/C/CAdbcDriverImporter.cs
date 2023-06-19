@@ -40,10 +40,9 @@ namespace Apache.Arrow.Adbc.C
         /// <summary>
         /// Loads an <see cref="AdbcDriver"/> from the file system.
         /// </summary>
-        /// <param name="file">
-        /// The path to the file.
-        /// </param>
-        public static AdbcDriver Load(string file)
+        /// <param name="file">The path to the driver to load</param>
+        /// <param name="entryPoint">The name of the entry point. If not provided, the name AdbcDriverInit will be used.</param>
+        public static AdbcDriver Load(string file, string entryPoint = null)
         {
             if (file == null)
             {
@@ -63,11 +62,12 @@ namespace Apache.Arrow.Adbc.C
 
             try
             {
-                IntPtr export = NativeLibrary.GetExport(library, driverInit);
+                entryPoint = entryPoint ?? driverInit;
+                IntPtr export = NativeLibrary.GetExport(library, entryPoint);
                 if (export == IntPtr.Zero)
                 {
                     NativeLibrary.Free(library);
-                    throw new ArgumentException("Unable to find AdbcDriverInit export", nameof(file));
+                    throw new ArgumentException($"Unable to find {entryPoint} export", nameof(file));
                 }
 
                 AdbcDriverInit init = Marshal.GetDelegateForFunctionPointer<AdbcDriverInit>(export);
