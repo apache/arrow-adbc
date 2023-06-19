@@ -172,6 +172,8 @@ namespace Apache.Arrow.Adbc.C
 
                 using (CallHelper caller = new CallHelper())
                 {
+                    caller.Call(_nativeDriver.ConnectionNew, ref nativeConnection);
+
                     if (options != null)
                     {
                         foreach (KeyValuePair<string, string> pair in options)
