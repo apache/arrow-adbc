@@ -435,7 +435,7 @@ prepared and non-prepared (“ad-hoc”) queries.</p>
 <section id="executing-a-query">
 <h3>Executing a Query<a class="headerlink" href="#executing-a-query" title="Permalink to this heading">#</a></h3>
 <p>We execute a query by setting the query on the statement, then
-calling <a class="reference internal" href="api/adbc.html#_CPPv425AdbcStatementExecuteQueryP13AdbcStatementP16ArrowArrayStreamP7int64_tP9AdbcError" title="AdbcStatementExecuteQuery"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code></a>.  The results come
+calling <code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code>.  The results come
 back through the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow C Data Interface</a>.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">147</span><span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArrayStream</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
 <span class="linenos">148</span><span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">rows_affected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span>

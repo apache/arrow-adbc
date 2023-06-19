@@ -337,7 +337,7 @@ addition to the driver-specific connection parameters: <code class="docutils lit
 (optionally) <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>.  <code class="docutils literal notranslate"><span class="pre">driver</span></code> must be the name of a library
 to load, or the path to a library to load. <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>, if
 provided, should be the name of the symbol that serves as the ADBC
-entrypoint (see <a class="reference internal" href="api/adbc.html#_CPPv418AdbcDriverInitFunc" title="AdbcDriverInitFunc"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code></a>).</p>
+entrypoint (see <code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code>).</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* Ignoring error handling */</span>
 <span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
 <span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">database</span><span class="p">));</span>

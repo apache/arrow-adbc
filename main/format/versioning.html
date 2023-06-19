@@ -331,7 +331,7 @@ instead use free functions, making it easy to add new functions.</p></li>
 <p>Of course, we can never add/remove/change struct members, and we can
 never change the signatures of existing functions.</p>
 <p>The main point of concern is compatibility of <a class="reference internal" href="../cpp/api/adbc.html#_CPPv410AdbcDriver" title="AdbcDriver"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDriver</span></code></a>.</p>
-<p>The driver entrypoint, <a class="reference internal" href="../cpp/api/adbc.html#_CPPv418AdbcDriverInitFunc" title="AdbcDriverInitFunc"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code></a>, is given a
+<p>The driver entrypoint, <code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code>, is given a
 version and a pointer to a table of function pointers to initialize.
 The type of the table will depend on the version; when a new version
 of ADBC is accepted, then a new table of function pointers will be
@@ -341,7 +341,7 @@ add a new ADBC version, the following scenarios are possible:</p>
 <li><p>An updated client application uses an old driver library.  The
 client will pass a <cite>version</cite> field greater than what the driver
 recognizes, so the driver will return
-<a class="reference internal" href="../cpp/api/adbc.html#c.ADBC_STATUS_NOT_IMPLEMENTED" title="ADBC_STATUS_NOT_IMPLEMENTED"><code class="xref c c-type docutils literal notranslate"><span class="pre">ADBC_STATUS_NOT_IMPLEMENTED</span></code></a> and the client can decide
+<code class="xref c c-type docutils literal notranslate"><span class="pre">ADBC_STATUS_NOT_IMPLEMENTED</span></code> and the client can decide
 whether to abort or retry with an older version.</p></li>
 <li><p>An old client application uses an updated driver library.  The
 client will pass a <code class="docutils literal notranslate"><span class="pre">version</span></code> lower than what the driver

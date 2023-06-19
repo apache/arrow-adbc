@@ -346,7 +346,7 @@ AdbcConnection:</p>
 </pre></div>
 </div>
 <p>What happens if the client application calls
-<a class="reference internal" href="api/adbc.html#_CPPv425AdbcStatementExecuteQueryP13AdbcStatementP16ArrowArrayStreamP7int64_tP9AdbcError" title="AdbcStatementExecuteQuery"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code></a> on <code class="docutils literal notranslate"><span class="pre">stmt1</span></code>, then on <code class="docutils literal notranslate"><span class="pre">stmt2</span></code>,
+<code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecuteQuery()</span></code> on <code class="docutils literal notranslate"><span class="pre">stmt1</span></code>, then on <code class="docutils literal notranslate"><span class="pre">stmt2</span></code>,
 without reading the result set of <code class="docutils literal notranslate"><span class="pre">stmt1</span></code>?  Some existing client
 libraries/protocols, like libpq, don’t support concurrent execution of
 queries from a single connection.  So the driver would have to

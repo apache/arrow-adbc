@@ -511,7 +511,7 @@ of the partitions.</p>
 <section id="metadata">
 <h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h3>
 <p>The driver currently will not populate column constraint info (foreign
-keys, primary keys, etc.) in <a class="reference internal" href="../cpp/api/adbc.html#_CPPv424AdbcConnectionGetObjectsP14AdbcConnectioniPKcPKcPKcPPKcPKcP16ArrowArrayStreamP9AdbcError" title="AdbcConnectionGetObjects"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcConnectionGetObjects()</span></code></a>.
+keys, primary keys, etc.) in <code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcConnectionGetObjects()</span></code>.
 Also, catalog filters are evaluated as simple string matches, not
 <code class="docutils literal notranslate"><span class="pre">LIKE</span></code>-style patterns.</p>
 </section>
@@ -556,7 +556,7 @@ calls that implement bulk ingestion, or transaction support.</p>
 <p>The driver supports transactions.  It will first check the server’s
 SqlInfo to determine whether this is supported.  Otherwise,
 transaction-related ADBC APIs will return
-<a class="reference internal" href="../cpp/api/adbc.html#c.ADBC_STATUS_NOT_IMPLEMENTED" title="ADBC_STATUS_NOT_IMPLEMENTED"><code class="xref c c-type docutils literal notranslate"><span class="pre">ADBC_STATUS_NOT_IMPLEMENTED</span></code></a>.</p>
+<code class="xref c c-type docutils literal notranslate"><span class="pre">ADBC_STATUS_NOT_IMPLEMENTED</span></code>.</p>
 </section>
 </section>
 </section>

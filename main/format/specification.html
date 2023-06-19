@@ -353,7 +353,7 @@ that is, queries take effect immediately upon execution.  This can be
 disabled in favor of manual commit/rollback calls, but not all
 implementations will support this.</p>
 <ul class="simple">
-<li><p>C/C++: <a class="reference internal" href="../cpp/api/adbc.html#c.ADBC_CONNECTION_OPTION_AUTOCOMMIT" title="ADBC_CONNECTION_OPTION_AUTOCOMMIT"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_CONNECTION_OPTION_AUTOCOMMIT</span></code></a></p></li>
+<li><p>C/C++: <code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_CONNECTION_OPTION_AUTOCOMMIT</span></code></p></li>
 <li><p>Go: <code class="docutils literal notranslate"><span class="pre">OptionKeyAutoCommit</span></code></p></li>
 <li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection#setAutoCommit(boolean)</span></code></p></li>
 </ul>
@@ -377,7 +377,7 @@ a database table.  For databases which support it, this can avoid
 overheads from the typical bind-insert loop.  Also, this (mostly)
 frees the user from knowing the right SQL syntax for their database.</p>
 <ul class="simple">
-<li><p>C/C++: <a class="reference internal" href="../cpp/api/adbc.html#c.ADBC_INGEST_OPTION_TARGET_TABLE" title="ADBC_INGEST_OPTION_TARGET_TABLE"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_INGEST_OPTION_TARGET_TABLE</span></code></a> and related
+<li><p>C/C++: <code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_INGEST_OPTION_TARGET_TABLE</span></code> and related
 options.</p></li>
 <li><p>Go: <code class="docutils literal notranslate"><span class="pre">OptionKeyIngestTargetTable</span></code></p></li>
 <li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection#bulkIngest(String,</span> <span class="pre">org.apache.arrow.adbc.core.BulkIngestMode)</span></code></p></li>
@@ -391,7 +391,7 @@ RPC/Flight SQL.)  Clients may take advantage of this to distribute
 computations on a result set across multiple threads, processes, or
 machines.</p>
 <ul class="simple">
-<li><p>C/C++: <a class="reference internal" href="../cpp/api/adbc.html#_CPPv430AdbcStatementExecutePartitionsP13AdbcStatementP11ArrowSchemaP14AdbcPartitionsP7int64_tP9AdbcError" title="AdbcStatementExecutePartitions"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecutePartitions()</span></code></a></p></li>
+<li><p>C/C++: <code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecutePartitions()</span></code></p></li>
 <li><p>Go: <code class="docutils literal notranslate"><span class="pre">Statement.ExecutePartitions</span></code></p></li>
 <li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcStatement#executePartitioned()</span></code></p></li>
 </ul>
