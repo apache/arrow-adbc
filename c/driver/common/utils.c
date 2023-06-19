@@ -144,6 +144,7 @@ int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
     va_start(argptr, fmt);
     int ret = vsnprintf(builder->buffer + builder->size, n + 1, fmt, argptr);
     if (ret < 0) {
+      va_end(argptr);
       return errno;
     }
 
@@ -429,7 +430,7 @@ AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
 
 struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_view) {
   struct AdbcGetObjectsData* get_objects_data =
-      (struct AdbcGetObjectsData*)malloc(sizeof(struct AdbcGetObjectsData));
+      (struct AdbcGetObjectsData*)calloc(1, sizeof(struct AdbcGetObjectsData));
   if (get_objects_data == NULL) {
     return NULL;
   }
@@ -488,8 +489,8 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
   get_objects_data->fk_table_array = constraint_column_usage_items->children[2];
   get_objects_data->fk_column_name_array = constraint_column_usage_items->children[3];
 
-  get_objects_data->catalogs = (struct AdbcGetObjectsCatalog**)malloc(
-      sizeof(struct AdbcGetObjectsCatalog*) * array_view->array->length);
+  get_objects_data->catalogs = (struct AdbcGetObjectsCatalog**)calloc(
+      array_view->array->length, sizeof(struct AdbcGetObjectsCatalog*));
 
   if (get_objects_data->catalogs == NULL) {
     goto error_handler;
@@ -497,10 +498,13 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
 
   for (int64_t catalog_idx = 0; catalog_idx < array_view->array->length; catalog_idx++) {
     struct AdbcGetObjectsCatalog* catalog =
-        (struct AdbcGetObjectsCatalog*)malloc(sizeof(struct AdbcGetObjectsCatalog));
+        (struct AdbcGetObjectsCatalog*)calloc(1, sizeof(struct AdbcGetObjectsCatalog));
     if (catalog == NULL) {
       goto error_handler;
     }
+    get_objects_data->catalogs[catalog_idx] = catalog;
+    get_objects_data->n_catalogs++;
+
     catalog->n_db_schemas = 0;
 
     catalog->catalog_name =
@@ -516,8 +520,8 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
     if (db_schema_len == 0) {
       catalog->catalog_db_schemas = NULL;
     } else {
-      catalog->catalog_db_schemas = (struct AdbcGetObjectsSchema**)malloc(
-          sizeof(struct AdbcGetObjectsSchema*) * db_schema_len);
+      catalog->catalog_db_schemas = (struct AdbcGetObjectsSchema**)calloc(
+          db_schema_len, sizeof(struct AdbcGetObjectsSchema*));
       if (catalog->catalog_db_schemas == NULL) {
         goto error_handler;
       }
@@ -525,10 +529,12 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
       for (int64_t db_schema_index = db_schema_list_start;
            db_schema_index < db_schema_list_end; db_schema_index++) {
         struct AdbcGetObjectsSchema* schema =
-            (struct AdbcGetObjectsSchema*)malloc(sizeof(struct AdbcGetObjectsSchema));
+            (struct AdbcGetObjectsSchema*)calloc(1, sizeof(struct AdbcGetObjectsSchema));
         if (schema == NULL) {
           goto error_handler;
         }
+        catalog->catalog_db_schemas[db_schema_index - db_schema_list_start] = schema;
+        catalog->n_db_schemas++;
         schema->n_db_schema_tables = 0;
 
         schema->db_schema_name = ArrowArrayViewGetStringUnsafe(
@@ -542,19 +548,21 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
         if (table_len == 0) {
           schema->db_schema_tables = NULL;
         } else {
-          schema->db_schema_tables = (struct AdbcGetObjectsTable**)malloc(
-              sizeof(struct AdbcGetObjectsTable*) * table_len);
+          schema->db_schema_tables = (struct AdbcGetObjectsTable**)calloc(
+              table_len, sizeof(struct AdbcGetObjectsTable*));
           if (schema->db_schema_tables == NULL) {
             goto error_handler;
           }
 
           for (int64_t table_index = table_list_start; table_index < table_list_end;
                table_index++) {
-            struct AdbcGetObjectsTable* table =
-                (struct AdbcGetObjectsTable*)malloc(sizeof(struct AdbcGetObjectsTable));
+            struct AdbcGetObjectsTable* table = (struct AdbcGetObjectsTable*)calloc(
+                1, sizeof(struct AdbcGetObjectsTable));
             if (table == NULL) {
               goto error_handler;
             }
+            schema->db_schema_tables[table_index - table_list_start] = table;
+            schema->n_db_schema_tables++;
             table->n_table_columns = 0;
             table->n_table_constraints = 0;
 
@@ -573,8 +581,8 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
             if (columns_len == 0) {
               table->table_columns = NULL;
             } else {
-              table->table_columns = (struct AdbcGetObjectsColumn**)malloc(
-                  sizeof(struct AdbcGetObjectsColumn*) * columns_len);
+              table->table_columns = (struct AdbcGetObjectsColumn**)calloc(
+                  columns_len, sizeof(struct AdbcGetObjectsColumn*));
               if (table->table_columns == NULL) {
                 goto error_handler;
               }
@@ -582,11 +590,13 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
               for (int64_t column_index = columns_list_start;
                    column_index < columns_list_end; column_index++) {
                 struct AdbcGetObjectsColumn* column =
-                    (struct AdbcGetObjectsColumn*)malloc(
-                        sizeof(struct AdbcGetObjectsColumn));
+                    (struct AdbcGetObjectsColumn*)calloc(
+                        1, sizeof(struct AdbcGetObjectsColumn));
                 if (column == NULL) {
                   goto error_handler;
                 }
+                table->table_columns[column_index - columns_list_start] = column;
+                table->n_table_columns++;
 
                 column->column_name = ArrowArrayViewGetStringUnsafe(
                     get_objects_data->column_name_array, column_index);
@@ -625,8 +635,6 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
                     get_objects_data->xdbc_is_autoincrement_array, column_index);
                 column->xdbc_is_generatedcolumn = ArrowArrayViewGetIntUnsafe(
                     get_objects_data->xdbc_is_generatedcolumn_array, column_index);
-                table->table_columns[column_index - columns_list_start] = column;
-                table->n_table_columns++;
               }
             }
 
@@ -639,8 +647,8 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
             if (constraints_len == 0) {
               table->table_constraints = NULL;
             } else {
-              table->table_constraints = (struct AdbcGetObjectsConstraint**)malloc(
-                  sizeof(struct AdbcGetObjectsConstraint*) * constraints_len);
+              table->table_constraints = (struct AdbcGetObjectsConstraint**)calloc(
+                  constraints_len, sizeof(struct AdbcGetObjectsConstraint*));
               if (table->table_constraints == NULL) {
                 goto error_handler;
               }
@@ -648,11 +656,14 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
               for (int64_t constraint_index = constraints_list_start;
                    constraint_index < constraints_list_end; constraint_index++) {
                 struct AdbcGetObjectsConstraint* constraint =
-                    (struct AdbcGetObjectsConstraint*)malloc(
-                        sizeof(struct AdbcGetObjectsConstraint));
+                    (struct AdbcGetObjectsConstraint*)calloc(
+                        1, sizeof(struct AdbcGetObjectsConstraint));
                 if (constraint == NULL) {
                   goto error_handler;
                 }
+                table->table_constraints[constraint_index - constraints_list_start] =
+                    constraint;
+                table->n_table_constraints++;
                 constraint->n_column_names = 0;
                 constraint->n_column_usages = 0;
 
@@ -671,8 +682,8 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
                 if (constraint_column_names_len == 0) {
                   constraint->constraint_column_names = NULL;
                 } else {
-                  constraint->constraint_column_names = (struct ArrowStringView*)malloc(
-                      sizeof(struct ArrowStringView) * constraint_column_names_len);
+                  constraint->constraint_column_names = (struct ArrowStringView*)calloc(
+                      constraint_column_names_len, sizeof(struct ArrowStringView));
                   if (constraint->constraint_column_names == NULL) {
                     goto error_handler;
                   }
@@ -702,9 +713,9 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
                   constraint->constraint_column_usages = NULL;
                 } else {
                   constraint->constraint_column_usages =
-                      (struct AdbcGetObjectsUsage**)malloc(
-                          sizeof(struct AdbcGetObjectsUsage*) *
-                          constraint_column_usages_len);
+                      (struct AdbcGetObjectsUsage**)calloc(
+                          constraint_column_usages_len,
+                          sizeof(struct AdbcGetObjectsUsage*));
                   if (constraint->constraint_column_usages == NULL) {
                     goto error_handler;
                   }
@@ -714,8 +725,8 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
                        constraint_column_usage_index < constraint_column_usages_end;
                        constraint_column_usage_index++) {
                     struct AdbcGetObjectsUsage* usage =
-                        (struct AdbcGetObjectsUsage*)malloc(
-                            sizeof(struct AdbcGetObjectsUsage));
+                        (struct AdbcGetObjectsUsage*)calloc(
+                            1, sizeof(struct AdbcGetObjectsUsage));
                     if (usage == NULL) {
                       goto error_handler;
                     }
@@ -738,22 +749,12 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
                     constraint->n_column_usages++;
                   }
                 }
-                table->table_constraints[constraint_index - constraints_list_start] =
-                    constraint;
-                table->n_table_constraints++;
               }
             }
-
-            schema->db_schema_tables[table_index - table_list_start] = table;
-            schema->n_db_schema_tables++;
           }
         }
-        catalog->catalog_db_schemas[db_schema_index - db_schema_list_start] = schema;
-        catalog->n_db_schemas++;
       }
     }
-    get_objects_data->catalogs[catalog_idx] = catalog;
-    get_objects_data->n_catalogs++;
   }
 
   return get_objects_data;

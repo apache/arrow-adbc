@@ -431,6 +431,7 @@ AdbcStatusCode SqliteConnectionGetColumnsImpl(
 
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(table_columns_items), error);
   }
+  RAISE(INTERNAL, rc == SQLITE_DONE, sqlite3_errmsg(conn->conn), error);
 
   return ADBC_STATUS_OK;
 }
@@ -480,6 +481,7 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
                                      .size_bytes = sqlite3_column_bytes(pk_stmt, 0)}),
         error);
   }
+  RAISE(INTERNAL, rc == SQLITE_DONE, sqlite3_errmsg(conn->conn), error);
   if (has_primary_key) {
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col), error);
     CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_column_usage_col, 1), error);
@@ -537,6 +539,7 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
                error);
     }
   }
+  RAISE(INTERNAL, rc == SQLITE_DONE, sqlite3_errmsg(conn->conn), error);
   if (prev_fk_id != -1) {
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col), error);
     CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_col), error);
