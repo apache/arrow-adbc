@@ -131,10 +131,10 @@ the :cpp:class:`AdbcDatabase`.
 
          func main() {
             options := map[string]string{
-                adbc.OptionKeyURI: "grpc+tls://localhost:8080",                
-                flightsql.OptionSSLSkipVerify: adbc.OptionValueEnabled,               
+                adbc.OptionKeyURI: "grpc+tls://localhost:8080",
+                flightsql.OptionSSLSkipVerify: adbc.OptionValueEnabled,
             }
-            
+
             for k, v := range headers {
                 options[flightsql.OptionRPCCallHeaderPrefix + k] = v
             }
@@ -144,12 +144,12 @@ the :cpp:class:`AdbcDatabase`.
             if err != nil {
                 // do something with the error
             }
-            
+
             cnxn, err := db.Open(context.Background())
             if err != nil {
                 // handle the error
             }
-            defer cnxn.Close()                
+            defer cnxn.Close()
          }
 
 Supported Features
