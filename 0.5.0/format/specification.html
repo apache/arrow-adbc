@@ -1,0 +1,732 @@
+
+
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Versioning and Compatibility" href="versioning.html" /><link rel="prev" title="SQLite Driver" href="../driver/sqlite.html" />
+
+    <!-- Generated with Sphinx 5.3.0 and Furo 2023.05.20 -->
+        <title>ADBC API Standard - ADBC 0.5.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style>
+<script>
+  const currentVersion = "0.5.0";
+  const versionsRoot = "../..";
+</script>
+<style>
+  #version-switcher {
+    background: var(--color-background-primary);
+    bottom: 2em;
+    box-shadow: 0 .1rem .25rem var(--sd-color-shadow),0 0 .0625rem rgba(0,0,0,.1);
+    position: fixed;
+    right: 2em;
+    z-index: 9999;
+  }
+
+  #version-switcher button {
+    background-color: var(--sd-color-card-header);
+    border: 0;
+    color: var(--sd-color-card-text);
+    cursor: pointer;
+    font-family: var(--font-stack);
+    padding: 0.5em;
+    width: 100%;
+  }
+
+  #version-switcher button::after {
+    content: "▼";
+  }
+
+  #version-switcher.open button::after {
+    content: "▲";
+  }
+
+  #version-switcher div.versions {
+    height: 0;
+    overflow-y: hidden;
+    padding: 0 0.5em;
+    transition: all 0.2s ease-in;
+  }
+
+  #version-switcher.open div.versions {
+    height: 8em;
+    overflow-y: scroll;
+  }
+
+  #version-switcher .active {
+    font-weight: bold;
+  }
+</style>
+</head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+<nav id="version-switcher">
+  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 0.5.0</button>
+  <div class="versions">
+    <ul></ul>
+  </div>
+</nav>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">ADBC 0.5.0 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/logo-light.png" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/logo-dark.png" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">ADBC 0.5.0 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc">Go</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../python/quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../python/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../python/recipe/index.html">Python Cookbook</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Python Cookbook</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../python/recipe/driver_manager.html">Driver Manager Recipes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/recipe/postgresql.html">PostgreSQL Recipes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../driver/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/status.html">Driver Implementation Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/jdbc.html">JDBC Adapter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/postgresql.html">PostgreSQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/snowflake.html">Snowflake Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/sqlite.html">SQLite Driver</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Specification</span></p>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">ADBC API Standard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="versioning.html">Versioning and Compatibility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other APIs</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/nightly.html">Nightly Packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/releasing.html">Release Management Guide</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/format/specification.rst" title="Edit this page">
+    <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
+      <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
+    </svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="adbc-api-standard">
+<h1>ADBC API Standard<a class="headerlink" href="#adbc-api-standard" title="Permalink to this heading">#</a></h1>
+<p>This document summarizes the general featureset.</p>
+<ul class="simple">
+<li><p>For C/C++ details, see <a class="reference internal" href="../cpp/api/adbc.html"><span class="doc">adbc.h</span></a>.</p></li>
+<li><p>For Go details, see the <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/go/adbc/adbc.go">source</a>.</p></li>
+<li><p>For Java details, see the <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/java/core">source</a>.</p></li>
+</ul>
+<section id="databases">
+<h2>Databases<a class="headerlink" href="#databases" title="Permalink to this heading">#</a></h2>
+<p>Databases hold state shared by multiple connections.  Generally, this
+means common configuration and caches.  For in-memory databases, it
+provides a place to hold ownership of the in-memory database.</p>
+<ul class="simple">
+<li><p>C/C++: <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a></p></li>
+<li><p>Go: <code class="docutils literal notranslate"><span class="pre">Driver</span></code></p></li>
+<li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcDatabase</span></code></p></li>
+</ul>
+</section>
+<section id="connections">
+<h2>Connections<a class="headerlink" href="#connections" title="Permalink to this heading">#</a></h2>
+<p>A connection is a single, logical connection to a database.</p>
+<ul class="simple">
+<li><p>C/C++: <a class="reference internal" href="../cpp/api/adbc.html#_CPPv414AdbcConnection" title="AdbcConnection"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a></p></li>
+<li><p>Go: <code class="docutils literal notranslate"><span class="pre">Connection</span></code></p></li>
+<li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection</span></code></p></li>
+</ul>
+<section id="autocommit">
+<h3>Autocommit<a class="headerlink" href="#autocommit" title="Permalink to this heading">#</a></h3>
+<p>By default, connections are expected to operate in autocommit mode;
+that is, queries take effect immediately upon execution.  This can be
+disabled in favor of manual commit/rollback calls, but not all
+implementations will support this.</p>
+<ul class="simple">
+<li><p>C/C++: <code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_CONNECTION_OPTION_AUTOCOMMIT</span></code></p></li>
+<li><p>Go: <code class="docutils literal notranslate"><span class="pre">OptionKeyAutoCommit</span></code></p></li>
+<li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection#setAutoCommit(boolean)</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="statements">
+<h2>Statements<a class="headerlink" href="#statements" title="Permalink to this heading">#</a></h2>
+<p>Statements hold state related to query execution.  They represent both
+one-off queries and prepared statements.  They can be reused, though
+doing so will invalidate prior result sets from that statement.  (See
+<a class="reference internal" href="../cpp/concurrency.html"><span class="doc">Concurrency and Thread Safety</span></a>.)</p>
+<ul class="simple">
+<li><p>C/C++: <a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a></p></li>
+<li><p>Go: <code class="docutils literal notranslate"><span class="pre">Statement</span></code></p></li>
+<li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcStatement</span></code></p></li>
+</ul>
+<section id="bulk-ingestion">
+<span id="specification-bulk-ingestion"></span><h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
+<p>ADBC provides explicit facilities to ingest batches of Arrow data into
+a database table.  For databases which support it, this can avoid
+overheads from the typical bind-insert loop.  Also, this (mostly)
+frees the user from knowing the right SQL syntax for their database.</p>
+<ul class="simple">
+<li><p>C/C++: <code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_INGEST_OPTION_TARGET_TABLE</span></code> and related
+options.</p></li>
+<li><p>Go: <code class="docutils literal notranslate"><span class="pre">OptionKeyIngestTargetTable</span></code></p></li>
+<li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection#bulkIngest(String,</span> <span class="pre">org.apache.arrow.adbc.core.BulkIngestMode)</span></code></p></li>
+</ul>
+</section>
+<section id="partitioned-result-sets">
+<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
+<p>ADBC lets a driver explicitly expose partitioned and/or distributed
+result sets to clients.  (This is similar to functionality in Flight
+RPC/Flight SQL.)  Clients may take advantage of this to distribute
+computations on a result set across multiple threads, processes, or
+machines.</p>
+<ul class="simple">
+<li><p>C/C++: <code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">AdbcStatementExecutePartitions()</span></code></p></li>
+<li><p>Go: <code class="docutils literal notranslate"><span class="pre">Statement.ExecutePartitions</span></code></p></li>
+<li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcStatement#executePartitioned()</span></code></p></li>
+</ul>
+</section>
+<section id="lifecycle-usage">
+<h3>Lifecycle &amp; Usage<a class="headerlink" href="#lifecycle-usage" title="Permalink to this heading">#</a></h3>
+<a class="reference internal image-reference" href="../_images/AdbcStatement.svg"><img alt="The lifecycle of a statement." src="../_images/AdbcStatement.svg" width="100%" /></a>
+<section id="basic-usage">
+<h4>Basic Usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading">#</a></h4>
+<figure class="align-default" id="id1">
+<div class="mermaid">
+            %% Licensed to the Apache Software Foundation (ASF) under one
+%% or more contributor license agreements.  See the NOTICE file
+%% distributed with this work for additional information
+%% regarding copyright ownership.  The ASF licenses this file
+%% to you under the Apache License, Version 2.0 (the
+%% &quot;License&quot;); you may not use this file except in compliance
+%% with the License.  You may obtain a copy of the License at
+%%
+%%   http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing,
+%% software distributed under the License is distributed on an
+%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+%% KIND, either express or implied.  See the License for the
+%% specific language governing permissions and limitations
+%% under the License.
+
+sequenceDiagram
+    actor App
+    participant Driver as AdbcStatement
+    App -&gt;&gt; Driver: New
+    App -&gt;&gt; Driver: SetSqlQuery
+    App --&gt;&gt; Driver: Prepare
+    loop As many times as desired
+    App --&gt;&gt; Driver: GetParameterSchema
+    App --&gt;&gt; Driver: Bind
+    App -&gt;&gt; Driver: ExecuteQuery
+    Driver -&gt;&gt; App: ArrowArrayStream
+    App -&gt; App: consume result set
+    end
+    Note over App, Driver: SetSqlQuery and repeat (if desired)
+    App -&gt;&gt; Driver: Release
+
+        </div><figcaption>
+<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id1" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="consuming-result-sets">
+<h4>Consuming Result Sets<a class="headerlink" href="#consuming-result-sets" title="Permalink to this heading">#</a></h4>
+<figure class="align-default" id="id2">
+<div class="mermaid">
+            %% Licensed to the Apache Software Foundation (ASF) under one
+%% or more contributor license agreements.  See the NOTICE file
+%% distributed with this work for additional information
+%% regarding copyright ownership.  The ASF licenses this file
+%% to you under the Apache License, Version 2.0 (the
+%% &quot;License&quot;); you may not use this file except in compliance
+%% with the License.  You may obtain a copy of the License at
+%%
+%%   http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing,
+%% software distributed under the License is distributed on an
+%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+%% KIND, either express or implied.  See the License for the
+%% specific language governing permissions and limitations
+%% under the License.
+
+sequenceDiagram
+    actor App
+    participant Stream as ArrowArrayStream
+    App -&gt;&gt; Stream: get_schema
+    Stream -&gt;&gt; App: ArrowSchema
+    loop Until stream exhausted
+        App -&gt;&gt; Stream: get_next
+        Stream -&gt;&gt; App: ArrowArray
+    end
+    App -&gt;&gt; Stream: release
+
+        </div><figcaption>
+<p><span class="caption-text">This is equivalent to reading from what many Arrow
+libraries call a RecordBatchReader.</span><a class="headerlink" href="#id2" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="bulk-data-ingestion">
+<h4>Bulk Data Ingestion<a class="headerlink" href="#bulk-data-ingestion" title="Permalink to this heading">#</a></h4>
+<figure class="align-default" id="id3">
+<div class="mermaid">
+            %% Licensed to the Apache Software Foundation (ASF) under one
+%% or more contributor license agreements.  See the NOTICE file
+%% distributed with this work for additional information
+%% regarding copyright ownership.  The ASF licenses this file
+%% to you under the Apache License, Version 2.0 (the
+%% &quot;License&quot;); you may not use this file except in compliance
+%% with the License.  You may obtain a copy of the License at
+%%
+%%   http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing,
+%% software distributed under the License is distributed on an
+%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+%% KIND, either express or implied.  See the License for the
+%% specific language governing permissions and limitations
+%% under the License.
+
+sequenceDiagram
+    actor App
+    participant Driver as AdbcStatement
+    App -&gt;&gt; Driver: New
+    App -&gt;&gt; Driver: SetOption(ADBC_INGEST_OPTION_TARGET_TABLE)
+    App -&gt;&gt; Driver: GetParameterSchema
+    App -&gt;&gt; Driver: Bind
+    App -&gt;&gt; Driver: ExecuteUpdate
+    App -&gt;&gt; Driver: Release
+
+        </div><figcaption>
+<p><span class="caption-text">There is no need to prepare the statement.</span><a class="headerlink" href="#id3" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="update-only-queries-no-result-set">
+<h4>Update-only Queries (No Result Set)<a class="headerlink" href="#update-only-queries-no-result-set" title="Permalink to this heading">#</a></h4>
+<figure class="align-default" id="id4">
+<div class="mermaid">
+            %% Licensed to the Apache Software Foundation (ASF) under one
+%% or more contributor license agreements.  See the NOTICE file
+%% distributed with this work for additional information
+%% regarding copyright ownership.  The ASF licenses this file
+%% to you under the Apache License, Version 2.0 (the
+%% &quot;License&quot;); you may not use this file except in compliance
+%% with the License.  You may obtain a copy of the License at
+%%
+%%   http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing,
+%% software distributed under the License is distributed on an
+%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+%% KIND, either express or implied.  See the License for the
+%% specific language governing permissions and limitations
+%% under the License.
+
+sequenceDiagram
+    actor App
+    participant Driver as AdbcStatement
+    App -&gt;&gt; Driver: New
+    App -&gt;&gt; Driver: SetSqlQuery
+    App --&gt;&gt; Driver: Prepare
+    loop As many times as desired
+    App --&gt;&gt; Driver: GetParameterSchema
+    App --&gt;&gt; Driver: Bind
+    App -&gt;&gt; Driver: ExecuteUpdate
+    Driver -&gt;&gt; App: affected rows
+    end
+    Note over App, Driver: SetSqlQuery and repeat (if desired)
+    App -&gt;&gt; Driver: Release
+
+        </div><figcaption>
+<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id4" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="partitioned-execution">
+<h4>Partitioned Execution<a class="headerlink" href="#partitioned-execution" title="Permalink to this heading">#</a></h4>
+<figure class="align-default" id="id5">
+<div class="mermaid">
+            %% Licensed to the Apache Software Foundation (ASF) under one
+%% or more contributor license agreements.  See the NOTICE file
+%% distributed with this work for additional information
+%% regarding copyright ownership.  The ASF licenses this file
+%% to you under the Apache License, Version 2.0 (the
+%% &quot;License&quot;); you may not use this file except in compliance
+%% with the License.  You may obtain a copy of the License at
+%%
+%%   http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing,
+%% software distributed under the License is distributed on an
+%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+%% KIND, either express or implied.  See the License for the
+%% specific language governing permissions and limitations
+%% under the License.
+
+sequenceDiagram
+    actor App
+    participant Driver as AdbcStatement
+    participant S1 as Server 1
+    participant S2 as Server 2
+
+    App -&gt;&gt; Driver: New
+    App -&gt;&gt; Driver: SetSqlQuery
+    App --&gt;&gt; Driver: Prepare
+    loop As many times as desired
+        App --&gt;&gt; Driver: GetParameterSchema
+        App --&gt;&gt; Driver: Bind
+        App -&gt;&gt; Driver: ExecutePartitions
+        Driver -&gt;&gt; App: AdbcPartitions
+        Note over App, S2: Consume the distributed result set
+        par Read from server 1
+            App -&gt;&gt; S1: ReadPartition
+            S1 -&gt;&gt; App: ArrowArrayStream
+            App -&gt; App: consume result set
+        and Read from server 2
+            App -&gt;&gt; S2: ReadPartition
+            S2 -&gt;&gt; App: ArrowArrayStream
+            App -&gt; App: consume result set
+        end
+    end
+    Note over App, Driver: SetSqlQuery and repeat (if desired)
+    App -&gt;&gt; Driver: Release
+
+        </div><figcaption>
+<p><span class="caption-text">This is similar to fetching data in Arrow Flight RPC (by
+design). See <a class="reference external" href="https://arrow.apache.org/docs/format/Flight.html" title="(in Apache Arrow v12.0.1)"><span class="xref std std-doc">“Downloading Data”</span></a>.</span><a class="headerlink" href="#id5" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+</section>
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="versioning.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Versioning and Compatibility</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="../driver/sqlite.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">SQLite Driver</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022, Apache Arrow Developers
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">ADBC API Standard</a><ul>
+<li><a class="reference internal" href="#databases">Databases</a></li>
+<li><a class="reference internal" href="#connections">Connections</a><ul>
+<li><a class="reference internal" href="#autocommit">Autocommit</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#statements">Statements</a><ul>
+<li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
+<li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
+<li><a class="reference internal" href="#lifecycle-usage">Lifecycle &amp; Usage</a><ul>
+<li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
+<li><a class="reference internal" href="#consuming-result-sets">Consuming Result Sets</a></li>
+<li><a class="reference internal" href="#bulk-data-ingestion">Bulk Data Ingestion</a></li>
+<li><a class="reference internal" href="#update-only-queries-no-result-set">Update-only Queries (No Result Set)</a></li>
+<li><a class="reference internal" href="#partitioned-execution">Partitioned Execution</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/scripts/furo.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script src="../_static/design-tabs.js"></script>
+    <script src="https://unpkg.com/mermaid@10.2.0/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({startOnLoad:true});</script>
+    <script src="https://unpkg.com/d3/dist/d3.min.js"></script>
+    <script>
+            window.addEventListener("load", function () {
+              var svgs = d3.selectAll(".mermaid svg");
+              svgs.each(function() {
+                var svg = d3.select(this);
+                svg.html("<g>" + svg.html() + "</g>");
+                var inner = svg.select("g");
+                var zoom = d3.zoom().on("zoom", function(event) {
+                  inner.attr("transform", event.transform);
+                });
+                svg.call(zoom);
+              });
+            });
+            </script>
+    
+<script async defer src="../../version.js"></script></body>
+</html>
