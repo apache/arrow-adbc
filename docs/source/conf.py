@@ -26,7 +26,7 @@ sys.path.append(str(Path("./ext").resolve()))
 project = "ADBC"
 copyright = "2022, Apache Arrow Developers"
 author = "the Apache Arrow Developers"
-release = "0.5.0 (dev)"
+release = "0.6.0 (dev)"
 # Needed to generate version switcher
 version = release
 
