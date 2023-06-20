@@ -7,11 +7,8 @@ ci/conda/.ci_support/*
 ci/conda/.gitattributes
 ci/linux-packages/changelog
 ci/linux-packages/*.install
-csharp/Apache.Arrow.Adbc.sln
-csharp/src/Apache.Arrow.Adbc.FlightSql/Apache.Arrow.Adbc.FlightSql.csproj
-csharp/src/Apache.Arrow.Adbc/Apache.Arrow.Adbc.csproj
-csharp/test/Apache.Arrow.Adbc.FlightSql.Tests/Apache.Arrow.Adbc.FlightSql.Tests.csproj
-csharp/test/Apache.Arrow.Adbc.Tests/Apache.Arrow.Adbc.Tests.csproj
+csharp/*.sln
+csharp/*.csproj
 dev/release/rat_exclude_files.txt
 docs/source/format/*.drawio
 docs/source/format/*.svg

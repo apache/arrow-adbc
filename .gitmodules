@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[submodule "arrow"]
-	path = arrow
-	url = https://github.com/apache/arrow
-	branch = main
+[submodule "csharp/src/arrow"]
+	path = csharp/src/arrow
+	url = https://github.com/apache/arrow.git
