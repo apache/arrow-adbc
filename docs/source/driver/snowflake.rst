@@ -108,6 +108,34 @@ constructing the :cpp::class:`AdbcDatabase`.
          db <- adbc_database_init(adbcsnowflake::adbcsnowflake(), uri = uri)
          con <- adbc_connection_init(db)
 
+   .. tab-item:: Go
+      :sync: go
+
+      .. code-block:: go
+
+         import (
+            "context"
+
+            "github.com/apache/arrow-adbc/go/adbc"
+            "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
+         )
+
+         func main() {
+            var drv snowflake.Driver
+            db, err := drv.NewDatabase(map[string]string{
+                adbc.OptionKeyURI: "<snowflake uri>",
+            })
+            if err != nil {
+                // handle error
+            }
+
+            cnxn, err := db.Open(context.Background())
+            if err != nil {
+                // handle error
+            }
+            defer cnxn.Close()
+         }
+
 URI Format
 ----------
 
