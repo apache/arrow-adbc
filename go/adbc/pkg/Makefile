@@ -17,6 +17,8 @@
 GO_BUILD=go build
 ifeq ($(shell go env GOOS),linux)
 	SUFFIX=so
+else ifeq ($(shell go env GOOS),windows)
+	SUFFIX=dll
 else
 	SUFFIX=dylib
 endif

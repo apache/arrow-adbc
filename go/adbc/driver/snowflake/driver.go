@@ -221,7 +221,9 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 		d.cfg = cfg
 		delete(cnOptions, adbc.OptionKeyURI)
 	} else {
-		d.cfg = &gosnowflake.Config{}
+		d.cfg = &gosnowflake.Config{
+			Params: make(map[string]*string),
+		}
 	}
 
 	var err error
