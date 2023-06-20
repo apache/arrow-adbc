@@ -80,6 +80,7 @@ const (
 	OptionTimeoutQuery        = "adbc.flight.sql.rpc.timeout_seconds.query"
 	OptionTimeoutUpdate       = "adbc.flight.sql.rpc.timeout_seconds.update"
 	OptionRPCCallHeaderPrefix = "adbc.flight.sql.rpc.call_header."
+	OptionCookieMiddleware    = "adbc.flight.sql.rpc.with_cookie_middleware"
 	infoDriverName            = "ADBC Flight SQL Driver - Go"
 )
 
@@ -184,12 +185,13 @@ func (d *dbDialOpts) rebuild() {
 }
 
 type database struct {
-	uri        *url.URL
-	creds      credentials.TransportCredentials
-	user, pass string
-	hdrs       metadata.MD
-	timeout    timeoutOption
-	dialOpts   dbDialOpts
+	uri           *url.URL
+	creds         credentials.TransportCredentials
+	user, pass    string
+	hdrs          metadata.MD
+	timeout       timeoutOption
+	dialOpts      dbDialOpts
+	enableCookies bool
 
 	alloc memory.Allocator
 }
@@ -327,6 +329,7 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 		}
 		delete(cnOptions, OptionWithBlock)
 	}
+
 	if val, ok := cnOptions[OptionWithMaxMsgSize]; ok {
 		var err error
 		var size int
@@ -345,6 +348,20 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 		delete(cnOptions, OptionWithMaxMsgSize)
 	}
 	d.dialOpts.rebuild()
+
+	if val, ok := cnOptions[OptionCookieMiddleware]; ok {
+		if val == adbc.OptionValueEnabled {
+			d.enableCookies = true
+		} else if val == adbc.OptionValueDisabled {
+			d.enableCookies = false
+		} else {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionCookieMiddleware, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		delete(cnOptions, OptionCookieMiddleware)
+	}
 
 	for key, val := range cnOptions {
 		if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
@@ -542,6 +559,10 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 			Unary:  unaryTimeoutInterceptor,
 			Stream: streamTimeoutInterceptor,
 		},
+	}
+
+	if d.enableCookies {
+		middleware = append(middleware, flight.NewClientCookieMiddleware())
 	}
 
 	uri, err := url.Parse(loc)
