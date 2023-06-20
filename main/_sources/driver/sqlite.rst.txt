@@ -61,6 +61,17 @@ Installation
          remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager", build = FALSE)
          remotes::install_github("apache/arrow-adbc/r/adbcsqlite", build = FALSE)
 
+   .. tab-item:: Go
+      :sync: go
+
+      Install the C/C++ package and use the Go driver manager.
+      Requires CGO.
+
+      .. code-block:: shell
+
+         go get github.com/apache/arrow-adbc/go/adbc/drivermgr
+
+
 Usage
 =====
 
@@ -106,6 +117,39 @@ shared across all connections.
          # Use the driver manager to connect to a database
          db <- adbc_database_init(adbcsqlite::adbcsqlite(), uri = ":memory:")
          con <- adbc_connection_init(db)
+
+   .. tab-item:: Go
+      :sync: go
+
+      You must have `libadbc_driver_sqlite.so` on your LD_LIBRARY_PATH,
+      or in the same directory as the executable when you run this. This
+      requires CGO and loads the C++ ADBC sqlite driver.
+
+      .. code-block:: go
+
+         import (
+            "context"
+
+            "github.com/apache/arrow-adbc/go/adbc"
+            "github.com/apache/arrow-adbc/go/adbc/drivermgr"
+         )
+
+         func main() {
+            var drv drivermgr.Driver
+            db, err := drv.NewDatabase(map[string]string{
+               "driver": "adbc_driver_sqlite",
+               adbc.OptionKeyURI: "<sqlite uri>",
+            })
+            if err != nil {
+               // handle error
+            }
+
+            cnxn, err := db.Open(context.Background())
+            if err != nil {
+               // handle error
+            }
+            defer cnxn.Close()
+         }
 
 Supported Features
 ==================

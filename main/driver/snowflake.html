@@ -404,6 +404,34 @@ R</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
+<input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-7">
+Go</label><div class="sd-tab-content docutils">
+<div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">   </span><span class="s">&quot;context&quot;</span>
+
+<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc&quot;</span>
+<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc/driver/snowflake&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="kd">var</span><span class="w"> </span><span class="nx">drv</span><span class="w"> </span><span class="nx">snowflake</span><span class="p">.</span><span class="nx">Driver</span>
+<span class="w">   </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">       </span><span class="nx">adbc</span><span class="p">.</span><span class="nx">OptionKeyURI</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&lt;snowflake uri&gt;&quot;</span><span class="p">,</span>
+<span class="w">   </span><span class="p">})</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">       </span><span class="c1">// handle error</span>
+<span class="w">   </span><span class="p">}</span>
+
+<span class="w">   </span><span class="nx">cnxn</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">())</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">       </span><span class="c1">// handle error</span>
+<span class="w">   </span><span class="p">}</span>
+<span class="w">   </span><span class="k">defer</span><span class="w"> </span><span class="nx">cnxn</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
 </div>
 <section id="uri-format">
 <h3>URI Format<a class="headerlink" href="#uri-format" title="Permalink to this heading">#</a></h3>

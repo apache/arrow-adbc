@@ -53,10 +53,11 @@ Installation
       :sync: go
 
       Install the C/C++ package and use the Go driver manager.
+      Requires CGO.
 
       .. code-block:: shell
 
-         go get github.com/apache/arrow-adbc/go
+         go get github.com/apache/arrow-adbc/go/adbc/drivermgr
 
    .. tab-item:: Python
       :sync: python
@@ -123,6 +124,39 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
          uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI")
          db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
          con <- adbc_connection_init(db)
+
+   .. tab-item:: Go
+      :sync: go
+
+      You must have `libadbc_driver_postgresql.so` on your LD_LIBRARY_PATH,
+      or in the same directory as the executable when you run this. This
+      requires CGO and loads the C++ ADBC postgresql driver.
+
+      .. code-block:: go
+
+         import (
+            "context"
+
+            "github.com/apache/arrow-adbc/go/adbc"
+            "github.com/apache/arrow-adbc/go/adbc/drivermgr"
+         )
+
+         func main() {
+            var drv drivermgr.Driver
+            db, err := drv.NewDatabase(map[string]string{
+               "driver": "adbc_driver_postgresql",
+               adbc.OptionKeyURI: "postgresql://user:pass@localhost:5433/postgres",
+            })
+            if err != nil {
+               // handle error
+            }
+
+            cnxn, err := db.Open(context.Background())
+            if err != nil {
+               // handle error
+            }
+            defer cnxn.Close()
+         }
 
 Supported Features
 ==================

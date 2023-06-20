@@ -350,8 +350,9 @@ C/C++</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
 </input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-1">
 Go</label><div class="sd-tab-content docutils">
-<p>Install the C/C++ package and use the Go driver manager.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go
+<p>Install the C/C++ package and use the Go driver manager.
+Requires CGO.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/drivermgr
 </pre></div>
 </div>
 </div>
@@ -415,6 +416,38 @@ R</label><div class="sd-tab-content docutils">
 <span class="n">uri</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">Sys.getenv</span><span class="p">(</span><span class="s">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">)</span>
 <span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">adbcpostgresql</span><span class="o">::</span><span class="nf">adbcpostgresql</span><span class="p">(),</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">uri</span><span class="p">)</span>
 <span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_connection_init</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-7">
+Go</label><div class="sd-tab-content docutils">
+<p>You must have <cite>libadbc_driver_postgresql.so</cite> on your LD_LIBRARY_PATH,
+or in the same directory as the executable when you run this. This
+requires CGO and loads the C++ ADBC postgresql driver.</p>
+<div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">   </span><span class="s">&quot;context&quot;</span>
+
+<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc&quot;</span>
+<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc/drivermgr&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="kd">var</span><span class="w"> </span><span class="nx">drv</span><span class="w"> </span><span class="nx">drivermgr</span><span class="p">.</span><span class="nx">Driver</span>
+<span class="w">   </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">      </span><span class="s">&quot;driver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;adbc_driver_postgresql&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">adbc</span><span class="p">.</span><span class="nx">OptionKeyURI</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;postgresql://user:pass@localhost:5433/postgres&quot;</span><span class="p">,</span>
+<span class="w">   </span><span class="p">})</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="c1">// handle error</span>
+<span class="w">   </span><span class="p">}</span>
+
+<span class="w">   </span><span class="nx">cnxn</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">())</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="c1">// handle error</span>
+<span class="w">   </span><span class="p">}</span>
+<span class="w">   </span><span class="k">defer</span><span class="w"> </span><span class="nx">cnxn</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="p">}</span>
 </pre></div>
 </div>
 </div>
