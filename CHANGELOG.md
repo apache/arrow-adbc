@@ -173,3 +173,67 @@
 - **c**: merge CMake projects (#597)
 - **c/driver/postgresql**: Factor out Postgres type abstraction and test it independently of the driver (#573)
 - **c/driver/shared**: created shared util library for drivers (#582)
+
+## ADBC Libraries 0.5.0 (2023-06-15)
+
+### Feat
+
+- **c/driver/postgresql**: Support INT16 Postgres Ingest (#800)
+- **python/adbc_driver_manager**: add autocommit, executescript (#778)
+- **c/driver/postgresql,java**: ensure time/date type support (#774)
+- **c/driver/postgresql**: Implement Foreign Key information for GetObjects (#757)
+- **c/driver/postgresql**: add timestamp types support (#758)
+- **c/driver/postgresql**: Implement PRIMARY KEY in GetObjects ALL depth (#725)
+- **csharp**: adding C# functionality (#697)
+- **go/adbc/pkg**: catch panics at interface boundary (#730)
+- **java/driver/jdbc**: add hooks for JDBC type system mapping (#722)
+- **c/driver/postgresql**: Implement GetObjects for columns (#723)
+- **c/driver/postgresql**: Implement GetObjects for tables (#712)
+- **rust**: define the rust adbc api (#478)
+- **c/driver/postgresql**: handle non-SELECT statements (#707)
+- **c/driver/postgresql**: Implement GetObjectsDbSchemas for Postgres (#679)
+- **r**: Add `read_adbc()`, `write_adbc()`, and `execute_adbc()` convenience functions (#706)
+- **r**: Improve error communication (#703)
+- **r**: Add scoping + lifecycle helpers (#693)
+- **r**: Add driver logging utility (#694)
+- **c/driver/postgresql**: implement GetObjectsSchema (#676)
+- **go/adbc/driver/snowflake**: Update gosnowflake dep (#674)
+- **c/driver/postgresql**: Implement Postgres Get table types (#668)
+- **dev/release**: Retry on apt failure in the RC verification script (#672)
+- **c/driver/postgresql**: Implement Postgres GetInfo (#658)
+
+### Fix
+
+- **go/adbc/pkg**: allow ConnectionSetOptions before Init (#789)
+- **c/driver/sqlite**: support PRIMARY KEY constraint in GetObjects (#777)
+- **c/driver/common**: Prevent UB in GetObjects with NULL argument (#786)
+- **c**: Fix destructor mem leaks (#785)
+- **java/driver/jdbc**: return timestamps as MICROSECOND always (#771)
+- **go/adbc**: don't crash on duplicate column names (#766)
+- **c/driver/postgresql**: Fix ASAN detected leaks (#768)
+- **c/driver/sqlite**: Fix parameter binding when inferring types and when retrieving (#742)
+- **python/adbc_driver_manager**: fix fetching queries with empty results (#744)
+- **go/adbc/drivermgr**: go doesn't package symbolic links (#709)
+- **r**: Don't save database/connection/statement options at the R level (#708)
+- **go/adbc**: Update snowflake dep (#705)
+- **c/driver/snowflake**: fix validation test failures (#677)
+- **dev/release**: Fix BINARY_DIR prepare condition in the verify RC script (#670)
+- **c/driver/postgresql**: Prevent SQL Injection in GetTableSchema (#657)
+
+### Refactor
+
+- **c/driver/postgresql**: More postgres test simplification (#784)
+- **c/driver/postgresql**: Use AdbcGetInfoData structure (#769)
+- **csharp**: Cleanup C API (#749)
+- **go/adbc/driver/flightsql**: factor out server-based tests (#763)
+- **java/driver/jdbc**: add JdbcQuirks for backend config (#748)
+- **r/adbcdrivermanager**: Early exit (#740)
+- **c/driver/postgresql**: Use Prepared Statement in Result Helper (#714)
+- **c/driver/postgresql**: Postgres class helper for GetObjects (#711)
+- **c**: Use ArrowArrayViewListChildOffset from nanoarrow (#696)
+- **c/driver/postgresql**: implement InputIterator for ResultHelper (#683)
+- **c**: Simplify CI testing for cpp (#610)
+
+### Perf
+
+- **go/adbc/driver/flightsql**: filter by schema in getObjectsTables (#726)
