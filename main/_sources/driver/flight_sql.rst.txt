@@ -222,6 +222,12 @@ These options map 1:1 with the options in FlightClientOptions:
     defaults to 16 MiB since Flight services tend to return larger
     reponse payloads.  Should be a positive integer number of bytes.
 
+``adbc.flight.sql.rpc.with_cookie_middleware``
+    Enable or disable middleware that processes and handles "set-cookie"
+    metadata headers returned from the server and sends "Cookie" headers
+    back from the client. Value should be ``true`` or ``false``. Default
+    is ``false``.
+
 Custom Call Headers
 -------------------
 

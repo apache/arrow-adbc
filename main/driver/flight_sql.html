@@ -507,6 +507,11 @@ errors earlier.  Value should be <code class="docutils literal notranslate"><spa
 defaults to 16 MiB since Flight services tend to return larger
 reponse payloads.  Should be a positive integer number of bytes.</p>
 </dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.with_cookie_middleware</span></code></dt><dd><p>Enable or disable middleware that processes and handles “set-cookie”
+metadata headers returned from the server and sends “Cookie” headers
+back from the client. Value should be <code class="docutils literal notranslate"><span class="pre">true</span></code> or <code class="docutils literal notranslate"><span class="pre">false</span></code>. Default
+is <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
+</dd>
 </dl>
 </section>
 <section id="custom-call-headers">
