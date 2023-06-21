@@ -162,7 +162,11 @@ func errToAdbcErr(code adbc.Status, err error) error {
 	if errors.As(err, &sferr) {
 		var sqlstate [5]byte
 		if len(sferr.SQLState) > 0 {
-			copy(sqlstate[:], sferr.SQLState[:5])
+			if len(sferr.SQLState) <= 5 {
+				copy(sqlstate[:], sferr.SQLState)
+			} else {
+				copy(sqlstate[:], sferr.SQLState[:5])
+			}
 		}
 		return adbc.Error{
 			Code:       code,
