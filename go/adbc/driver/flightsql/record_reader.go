@@ -95,6 +95,10 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		schema = rdr.Schema()
 		group.Go(func() error {
 			defer rdr.Release()
+			if numEndpoints > 1 {
+				defer close(ch)
+			}
+
 			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.Record()
 				rec.Retain()

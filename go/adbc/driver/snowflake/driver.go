@@ -161,9 +161,8 @@ func errToAdbcErr(code adbc.Status, err error) error {
 	var sferr *gosnowflake.SnowflakeError
 	if errors.As(err, &sferr) {
 		var sqlstate [5]byte
-		if len(sferr.SQLState) > 0 {
-			copy(sqlstate[:], sferr.SQLState[:5])
-		}
+		copy(sqlstate[:], []byte(sferr.SQLState))
+
 		return adbc.Error{
 			Code:       code,
 			Msg:        sferr.Error(),

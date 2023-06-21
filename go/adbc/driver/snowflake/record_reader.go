@@ -274,6 +274,9 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	group.Go(func() error {
 		defer rr.Release()
 		defer r.Close()
+		if len(batches) > 1 {
+			defer close(ch)
+		}
 
 		for rr.Next() && ctx.Err() == nil {
 			rec := rr.Record()
@@ -297,39 +300,41 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	}
 
 	lastChannelIndex := len(chs) - 1
-	for i, b := range batches[1:] {
-		batch, batchIdx := b, i+1
-		chs[batchIdx] = make(chan arrow.Record, bufferSize)
-		group.Go(func() error {
-			// close channels (except the last) so that Next can move on to the next channel properly
-			if batchIdx != lastChannelIndex {
-				defer close(chs[batchIdx])
-			}
+	go func() {
+		for i, b := range batches[1:] {
+			batch, batchIdx := b, i+1
+			chs[batchIdx] = make(chan arrow.Record, bufferSize)
+			group.Go(func() error {
+				// close channels (except the last) so that Next can move on to the next channel properly
+				if batchIdx != lastChannelIndex {
+					defer close(chs[batchIdx])
+				}
 
-			rdr, err := batch.GetStream(ctx)
-			if err != nil {
-				return err
-			}
-			defer rdr.Close()
-
-			rr, err := ipc.NewReader(rdr, ipc.WithAllocator(alloc))
-			if err != nil {
-				return err
-			}
-			defer rr.Release()
-
-			for rr.Next() && ctx.Err() == nil {
-				rec := rr.Record()
-				rec, err = recTransform(ctx, rec)
+				rdr, err := batch.GetStream(ctx)
 				if err != nil {
 					return err
 				}
-				chs[batchIdx] <- rec
-			}
+				defer rdr.Close()
 
-			return rr.Err()
-		})
-	}
+				rr, err := ipc.NewReader(rdr, ipc.WithAllocator(alloc))
+				if err != nil {
+					return err
+				}
+				defer rr.Release()
+
+				for rr.Next() && ctx.Err() == nil {
+					rec := rr.Record()
+					rec, err = recTransform(ctx, rec)
+					if err != nil {
+						return err
+					}
+					chs[batchIdx] <- rec
+				}
+
+				return rr.Err()
+			})
+		}
+	}()
 
 	go func() {
 		rdr.err = group.Wait()
