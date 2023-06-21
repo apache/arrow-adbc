@@ -188,7 +188,8 @@ These options map 1:1 with the options in FlightClientOptions:
 ``adbc.flight.sql.rpc.with_cookie_middleware``
     Enable or disable middleware that processes and handles "set-cookie"
     metadata headers returned from the server and sends "Cookie" headers
-    back from the client. Value should be ``true`` or ``false``.
+    back from the client. Value should be ``true`` or ``false``. Default
+    is ``false``.
 
 Custom Call Headers
 -------------------
