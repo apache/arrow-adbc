@@ -70,6 +70,8 @@ class DatabaseOptions(enum.Enum):
     WITH_BLOCK = "adbc.flight.sql.client_option.with_block"
     #: Set the maximum gRPC message size (in bytes). The default is 16 MiB.
     WITH_MAX_MSG_SIZE = "adbc.flight.sql.client_option.with_max_msg_size"
+    #: Enable cookie middleware. Default is disabled ("false")
+    WITH_COOKIE_MIDDLEWARE = "adbc.flight.sql.rpc.with_cookie_middleware"
 
 
 class ConnectionOptions(enum.Enum):
