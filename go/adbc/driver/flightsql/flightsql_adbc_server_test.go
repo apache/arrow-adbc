@@ -21,6 +21,9 @@ package flightsql_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net/textproto"
 	"os"
 	"strings"
 	"testing"
@@ -71,17 +74,17 @@ func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware 
 	suite.Require().NoError(err)
 }
 
-func (suite *ServerBasedTests) DoSetupTest() {
+func (suite *ServerBasedTests) SetupTest() {
 	var err error
 	suite.cnxn, err = suite.db.Open(context.Background())
 	suite.Require().NoError(err)
 }
 
-func (suite *ServerBasedTests) DoTearDownTest() {
+func (suite *ServerBasedTests) TearDownTest() {
 	suite.Require().NoError(suite.cnxn.Close())
 }
 
-func (suite *ServerBasedTests) DoTearDownSuite() {
+func (suite *ServerBasedTests) TearDownSuite() {
 	suite.db = nil
 	suite.s.Shutdown()
 }
@@ -94,6 +97,10 @@ func TestAuthn(t *testing.T) {
 
 func TestTimeout(t *testing.T) {
 	suite.Run(t, &TimeoutTests{})
+}
+
+func TestCookies(t *testing.T) {
+	suite.Run(t, &CookieTests{})
 }
 
 // ---- AuthN Tests --------------------
@@ -181,18 +188,6 @@ func (suite *AuthnTests) SetupSuite() {
 	}, map[string]string{
 		driver.OptionAuthorizationHeader: "Bearer initial",
 	})
-}
-
-func (suite *AuthnTests) SetupTest() {
-	suite.DoSetupTest()
-}
-
-func (suite *AuthnTests) TearDownTest() {
-	suite.DoTearDownTest()
-}
-
-func (suite *AuthnTests) TearDownSuite() {
-	suite.DoTearDownSuite()
 }
 
 func (suite *AuthnTests) TestBearerTokenUpdated() {
@@ -289,18 +284,6 @@ type TimeoutTests struct {
 
 func (suite *TimeoutTests) SetupSuite() {
 	suite.DoSetupSuite(&TimeoutTestServer{}, nil, nil)
-}
-
-func (suite *TimeoutTests) SetupTest() {
-	suite.DoSetupTest()
-}
-
-func (suite *TimeoutTests) TearDownTest() {
-	suite.DoTearDownTest()
-}
-
-func (suite *TimeoutTests) TearDownSuite() {
-	suite.DoTearDownSuite()
 }
 
 func (ts *TimeoutTests) TestInvalidValues() {
@@ -423,4 +406,119 @@ func (ts *TimeoutTests) TestDontTimeout() {
 	ts.Require().NoError(err)
 	defer expected.Release()
 	ts.Truef(array.RecordEqual(rec, expected), "expected: %s\nactual: %s", expected, rec)
+}
+
+// ---- Cookie Tests --------------------
+type CookieTestServer struct {
+	flightsql.BaseServer
+
+	cur time.Time
+}
+
+func (server *CookieTestServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	md := metadata.MD{}
+	md.Append("set-cookie", "foo=bar")
+	md.Append("set-cookie", "bar=baz; Max-Age=1")
+	server.cur = time.Now()
+
+	if err := grpc.SendHeader(ctx, md); err != nil {
+		return nil, err
+	}
+
+	tkt, _ := flightsql.CreateStatementQueryTicket([]byte{})
+	info := &flight.FlightInfo{
+		FlightDescriptor: desc,
+		Endpoint: []*flight.FlightEndpoint{
+			{Ticket: &flight.Ticket{Ticket: tkt}},
+		},
+		TotalRecords: -1,
+		TotalBytes:   -1,
+	}
+
+	return info, nil
+}
+
+func (server *CookieTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	var (
+		foundFoo, foundBar bool
+	)
+
+	cookies := metadata.ValueFromIncomingContext(ctx, "cookie")
+	for _, line := range cookies {
+		line = textproto.TrimString(line)
+
+		var part string
+		for len(line) > 0 {
+			part, line, _ = strings.Cut(line, ";")
+			part = textproto.TrimString(part)
+			if part == "" {
+				continue
+			}
+
+			name, val, _ := strings.Cut(part, "=")
+			name = textproto.TrimString(name)
+			if len(val) > 1 && val[0] == '"' && val[len(val)-1] == '"' {
+				val = val[1 : len(val)-1]
+			}
+
+			switch name {
+			case "foo":
+				if val == "bar" {
+					foundFoo = true
+				}
+			case "bar":
+				if val == "baz" {
+					foundBar = true
+				}
+			default:
+				return nil, nil, fmt.Errorf("found unexpected cookie '%s' = '%s'", name, val)
+			}
+		}
+	}
+
+	if !foundFoo {
+		return nil, nil, errors.New("missing cookie 'foo'='bar'")
+	}
+
+	if !foundBar && time.Now().Before(server.cur.Add(1*time.Second)) {
+		return nil, nil, errors.New("missing cookie 'bar'='baz'")
+	}
+
+	sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+	rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ch := make(chan flight.StreamChunk)
+	go func() {
+		defer close(ch)
+		ch <- flight.StreamChunk{
+			Data: rec,
+			Desc: nil,
+			Err:  nil,
+		}
+	}()
+	return sc, ch, nil
+}
+
+type CookieTests struct {
+	ServerBasedTests
+}
+
+func (suite *CookieTests) SetupSuite() {
+	suite.DoSetupSuite(&CookieTestServer{}, nil, map[string]string{
+		driver.OptionCookieMiddleware: adbc.OptionValueEnabled,
+	})
+}
+
+func (suite *CookieTests) TestCookieUsage() {
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	suite.Require().NoError(err)
+	defer reader.Release()
 }

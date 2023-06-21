@@ -20,14 +20,14 @@ module github.com/apache/arrow-adbc/go/adbc
 go 1.18
 
 require (
-	github.com/apache/arrow/go/v13 v13.0.0-20230612164931-b642707f6de7
+	github.com/apache/arrow/go/v13 v13.0.0-20230620164925-94af6c3c9646
 	github.com/bluele/gcache v0.0.2
 	github.com/google/uuid v1.3.0
 	github.com/snowflakedb/gosnowflake v1.6.21
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
-	golang.org/x/sync v0.2.0
-	golang.org/x/tools v0.9.1
+	golang.org/x/sync v0.3.0
+	golang.org/x/tools v0.10.0
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
 )
@@ -65,7 +65,7 @@ require (
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/flatbuffers v23.5.9+incompatible // indirect
+	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
@@ -82,12 +82,12 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
-	golang.org/x/crypto v0.9.0 // indirect
-	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
-	golang.org/x/term v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/mod v0.11.0 // indirect
+	golang.org/x/net v0.11.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
+	golang.org/x/term v0.9.0 // indirect
+	golang.org/x/text v0.10.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -102,5 +102,3 @@ require (
 	modernc.org/strutil v1.1.3 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
-
-replace github.com/apache/arrow/go/v12 v12.0.0 => github.com/apache/arrow/go/v12 v12.0.0-20230428025921-06d49ee63e26
