@@ -17,9 +17,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
-using Microsoft.Win32.SafeHandles;
 
 #if NETSTANDARD
 using Apache.Arrow.Adbc.Extensions;
@@ -27,117 +27,62 @@ using Apache.Arrow.Adbc.Extensions;
 
 namespace Apache.Arrow.Adbc.C
 {
-    internal delegate byte AdbcDriverInit(int version, ref CAdbcDriver driver, ref CAdbcError error);
+    internal delegate AdbcStatusCode AdbcDriverInit(int version, ref CAdbcDriver driver, ref CAdbcError error);
 
     /// <summary>
-    /// Class for working with loading drivers from files
+    /// Class for working with imported drivers from files
     /// </summary>
     public static class CAdbcDriverImporter
     {
         private const string driverInit = "AdbcDriverInit";
         private const int ADBC_VERSION_1_0_0 = 1000000;
 
-        class NativeDriver
-        {
-            public SafeHandle driverHandle;
-            public CAdbcDriver driver;
-        }
-
-        /// <summary>
-        /// Class used for Mac interoperability
-        /// </summary>
-        static class MacInterop
-        {
-            private const string libdl = "libdl.dylib";
-            private const int RTLD_NOW = 2;
-
-            [DllImport(libdl)]
-            static extern SafeLibraryHandle dlopen(string fileName, int flags);
-
-            [DllImport(libdl)]
-            static extern IntPtr dlsym(SafeHandle libraryHandle, string symbol);
-
-            [DllImport(libdl)]
-            static extern int dlclose(IntPtr handle);
-
-            sealed class SafeLibraryHandle : SafeHandleZeroOrMinusOneIsInvalid
-            {
-                SafeLibraryHandle() : base(true) { }
-
-                protected override bool ReleaseHandle()
-                {
-                    return dlclose(handle) == 0;
-                }
-            }
-
-            public static NativeDriver GetDriver(string file)
-            {
-                SafeHandle library = dlopen(file, RTLD_NOW);
-                IntPtr symbol = dlsym(library, "AdbcDriverInit");
-                AdbcDriverInit init = Marshal.GetDelegateForFunctionPointer<AdbcDriverInit>(symbol);
-                CAdbcDriver driver = new CAdbcDriver();
-                CAdbcError error = new CAdbcError();
-                byte result = init(ADBC_VERSION_1_0_0, ref driver, ref error);
-                return new NativeDriver { driverHandle = library, driver = driver };
-            }
-        }
-
-        /// <summary>
-        /// Class used for Windows interoperability
-        /// </summary>
-        static class WindowsInterop
-        {
-            private const string kernel32 = "kernel32.dll";
-            private const int LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x1000;
-            private const int LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x0100;
-
-            [DllImport(kernel32)]
-            [return: MarshalAs(UnmanagedType.Bool)]
-            static extern bool FreeLibrary(IntPtr libraryHandle);
-
-            [DllImport(kernel32, CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
-            static extern IntPtr GetProcAddress(SafeHandle libraryHandle, string functionName);
-
-            [DllImport(kernel32, CharSet = CharSet.Unicode, SetLastError = true)]
-            static extern SafeLibraryHandle LoadLibraryEx(string fileName, IntPtr hFile, uint flags);
-
-            sealed class SafeLibraryHandle : SafeHandleZeroOrMinusOneIsInvalid
-            {
-                SafeLibraryHandle() : base(true) { }
-
-                protected override bool ReleaseHandle()
-                {
-                    return FreeLibrary(handle);
-                }
-            }
-
-            public static NativeDriver GetDriver(string file)
-            {
-                SafeHandle library = LoadLibraryEx(file, IntPtr.Zero, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
-                IntPtr symbol = GetProcAddress(library, "AdbcDriverInit");
-                AdbcDriverInit init = Marshal.GetDelegateForFunctionPointer<AdbcDriverInit>(symbol);
-                CAdbcDriver driver = new CAdbcDriver();
-                CAdbcError error = new CAdbcError();
-                byte result = init(ADBC_VERSION_1_0_0, ref driver, ref error);
-                return new NativeDriver { /* driverHandle = library, */ driver = driver };
-            }
-        }
-
         /// <summary>
         /// Loads an <see cref="AdbcDriver"/> from the file system.
         /// </summary>
-        /// <param name="file">
-        /// The path to the file.
-        /// </param>
-        public static AdbcDriver Load(string file)
+        /// <param name="file">The path to the driver to load</param>
+        /// <param name="entryPoint">The name of the entry point. If not provided, the name AdbcDriverInit will be used.</param>
+        public static AdbcDriver Load(string file, string entryPoint = null)
         {
-            if (file[0] == '/')
+            if (file == null)
             {
-                return new ImportedAdbcDriver(MacInterop.GetDriver(file).driver);
+                throw new ArgumentNullException(nameof(file));
             }
-            else
+
+            if (!File.Exists(file))
             {
-                return new ImportedAdbcDriver(WindowsInterop.GetDriver(file).driver);
+                throw new ArgumentException("file does not exist", nameof(file));
+            }
+
+            IntPtr library = NativeLibrary.Load(file);
+            if (library == IntPtr.Zero)
+            {
+                throw new ArgumentException("unable to load library", nameof(file));
+            }
+
+            try
+            {
+                entryPoint = entryPoint ?? driverInit;
+                IntPtr export = NativeLibrary.GetExport(library, entryPoint);
+                if (export == IntPtr.Zero)
+                {
+                    NativeLibrary.Free(library);
+                    throw new ArgumentException($"Unable to find {entryPoint} export", nameof(file));
+                }
+
+                AdbcDriverInit init = Marshal.GetDelegateForFunctionPointer<AdbcDriverInit>(export);
+                CAdbcDriver driver = new CAdbcDriver();
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(init, ADBC_VERSION_1_0_0, ref driver);
+                    ImportedAdbcDriver result = new ImportedAdbcDriver(library, driver);
+                    library = IntPtr.Zero;
+                    return result;
+                }
+            }
+            finally
+            {
+                if (library != IntPtr.Zero) { NativeLibrary.Free(library); }
             }
         }
 
@@ -146,10 +91,12 @@ namespace Apache.Arrow.Adbc.C
         /// </summary>
         sealed class ImportedAdbcDriver : AdbcDriver
         {
+            private IntPtr _library;
             private CAdbcDriver _nativeDriver;
 
-            public ImportedAdbcDriver(CAdbcDriver nativeDriver)
+            public ImportedAdbcDriver(IntPtr library, CAdbcDriver nativeDriver)
             {
+                _library = library;
                 _nativeDriver = nativeDriver;
             }
 
@@ -196,6 +143,10 @@ namespace Apache.Arrow.Adbc.C
                             _nativeDriver.release = null;
                         }
                     }
+
+                    NativeLibrary.Free(_library);
+                    _library = IntPtr.Zero;
+
                     base.Dispose();
                 }
             }
@@ -221,6 +172,8 @@ namespace Apache.Arrow.Adbc.C
 
                 using (CallHelper caller = new CallHelper())
                 {
+                    caller.Call(_nativeDriver.ConnectionNew, ref nativeConnection);
+
                     if (options != null)
                     {
                         foreach (KeyValuePair<string, string> pair in options)
@@ -313,14 +266,14 @@ namespace Apache.Arrow.Adbc.C
         /// <summary>
         /// Assists with UTF8/string marshalling
         /// </summary>
-        struct Utf8Helper : IDisposable
+        private struct Utf8Helper : IDisposable
         {
             private IntPtr _s;
 
             public Utf8Helper(string s)
             {
 #if NETSTANDARD
-                    _s = MarshalExtensions.StringToCoTaskMemUTF8(s);
+                _s = MarshalExtensions.StringToCoTaskMemUTF8(s);
 #else
                 _s = Marshal.StringToCoTaskMemUTF8(s);
 #endif
@@ -333,9 +286,14 @@ namespace Apache.Arrow.Adbc.C
         /// <summary>
         /// Assists with delegate calls and handling error codes
         /// </summary>
-        struct CallHelper : IDisposable
+        private struct CallHelper : IDisposable
         {
             private CAdbcError _error;
+
+            public unsafe void Call(AdbcDriverInit init, int version, ref CAdbcDriver driver)
+            {
+                TranslateCode(init(version, ref driver, ref this._error));
+            }
 
             public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcDriver*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDriver nativeDriver)
             {
@@ -467,7 +425,7 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
-            internal unsafe void TranslateCode(AdbcStatusCode statusCode)
+            private unsafe void TranslateCode(AdbcStatusCode statusCode)
             {
                 if (statusCode != AdbcStatusCode.Success)
                 {
@@ -475,7 +433,7 @@ namespace Apache.Arrow.Adbc.C
                     if ((IntPtr)_error.message != IntPtr.Zero)
                     {
 #if NETSTANDARD
-                            message = MarshalExtensions.PtrToStringUTF8((IntPtr)_error.message);
+                        message = MarshalExtensions.PtrToStringUTF8((IntPtr)_error.message);
 #else
                         message = Marshal.PtrToStringUTF8((IntPtr)_error.message);
 #endif
