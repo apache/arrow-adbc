@@ -27,20 +27,14 @@ set CMAKE_GENERATOR=Visual Studio 15 2017 Win64
 set CMAKE_UNITY_BUILD=ON
 set VCPKG_FEATURE_FLAGS=-manifests
 set VCPKG_TARGET_TRIPLET=x64-windows-static
+set ADBC_VERSION_DLL_SUFFIX=.6.0.0
 
 IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
 %VCPKG_ROOT%\vcpkg install --triplet=%VCPKG_TARGET_TRIPLET% libpq sqlite3
 IF %errorlevel% NEQ 0 EXIT /B %errorlevel%
 
-set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\flightsql\adbc_driver_flightsql.dll
-
 mkdir %build_dir%
-pushd %source_dir%\go\adbc\pkg
-go build -tags driverlib -o %ADBC_FLIGHTSQL_LIBRARY% -buildmode=c-shared ./flightsql
-IF %errorlevel% NEQ 0 EXIT /B %errorlevel%
-popd
-
 pushd %build_dir%
 
 cmake ^
@@ -61,10 +55,10 @@ cmake ^
 
 cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exit /B 1
 
-set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\bin\adbc_driver_flightsql.dll.5.0.0
+set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\bin\adbc_driver_flightsql.dll%ADBC_VERSION_DLL_SUFFIX%
 set ADBC_POSTGRESQL_LIBRARY=%build_dir%\bin\adbc_driver_postgresql.dll
 set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
-set ADBC_SNOWFLAKE_LIBRARY=%build_dir%\bin\adbc_driver_snowflake.dll.5.0.0
+set ADBC_SNOWFLAKE_LIBRARY=%build_dir%\bin\adbc_driver_snowflake.dll%ADBC_VERSION_DLL_SUFFIX%
 
 popd
 
