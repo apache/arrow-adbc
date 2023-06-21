@@ -26,8 +26,8 @@
 adbc.h @lidavidm
 
 ## Implementations
-/c/ @lidavidm @WillAyd
-/csharp/ @CurtHagenlocher @davidhcoe
+/c/ @lidavidm
+# /csharp/
 /glib/ @kou
 /java/ @lidavidm
 /go/ @zeroshade
