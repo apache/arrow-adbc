@@ -68,10 +68,10 @@ class DatabaseOptions(enum.Enum):
     TLS_SKIP_VERIFY = "adbc.flight.sql.client_option.tls_skip_verify"
     #: Block and wait for the connection to be established.
     WITH_BLOCK = "adbc.flight.sql.client_option.with_block"
-    #: Set the maximum gRPC message size (in bytes). The default is 16 MiB.
-    WITH_MAX_MSG_SIZE = "adbc.flight.sql.client_option.with_max_msg_size"
     #: Enable cookie middleware. Default is disabled ("false")
     WITH_COOKIE_MIDDLEWARE = "adbc.flight.sql.rpc.with_cookie_middleware"
+    #: Set the maximum gRPC message size (in bytes). The default is 16 MiB.
+    WITH_MAX_MSG_SIZE = "adbc.flight.sql.client_option.with_max_msg_size"
 
 
 class ConnectionOptions(enum.Enum):
