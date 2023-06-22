@@ -237,3 +237,25 @@
 ### Perf
 
 - **go/adbc/driver/flightsql**: filter by schema in getObjectsTables (#726)
+
+## ADBC Libraries 0.5.1 (2023-06-22)
+
+### Feat
+
+- **r**: Add FlightSQL driver wrapper (#835)
+- **python/adbc_driver_flightsql**: add cookie middleware option to DatabaseOptions (#830)
+- **go/adbc/driver/flightsql**: Add cookie middleware option (#825)
+- **c/driver/postgresql**: Implement GetObjects with table_types argument (#799)
+- **c/driver/postgresql**: Binary ingest (#808)
+- **c/driver/postgresql**: Support float type (#807)
+
+### Fix
+
+- **go/adbc/driver/snowflake**: fix potential deadlock and error handling (#828)
+- **csharp**: submodule not pulling correctly (#824)
+- **go/adbc/driver/snowflake**: initialize Params, add DLL build (#820)
+- **dev/release**: add missing duckdb dependency (#810)
+
+### Refactor
+
+- **csharp**: cleanup load of imported drivers (#818)
