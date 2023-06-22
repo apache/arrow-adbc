@@ -39,41 +39,55 @@ remotes::install_github("apache/arrow-adbc/r/adbcflightsql", build = FALSE)
 ## Example
 
 This is a basic example which shows you how to solve a common problem.
-For examples of `uri` values to use as a connection value, see the
-documentation for the [upstream Go driver
-implementation](https://github.com/apache/arrow-adbc/blob/main/docs/source/driver/go/flightsql.rst#uri-format).
 
 ``` r
 library(adbcdrivermanager)
 
 # Use the driver manager to connect to a database. This example URI is
-# <user>:<pass>@wt78143.<aws region>.aws/SNOWFLAKE_SAMPLE_DATA/TPCH_SF1?role=ACCOUNTADMIN
-uri <- Sys.getenv("ADBC_SNOWFLAKE_TEST_URI")
+# grpc://localhost:8080 and uses a Go FlightSQL/SQLite server docker image
+uri <- Sys.getenv("ADBC_FLIGHTSQL_TEST_URI")
 db <- adbc_database_init(adbcflightsql::adbcflightsql(), uri = uri)
 con <- adbc_connection_init(db)
 
-stmt <- adbcdrivermanager::adbc_statement_init(con)
-adbcdrivermanager::adbc_statement_set_sql_query(
+# Write a table
+stmt <- adbc_statement_init(con)
+adbc_statement_set_sql_query(
   stmt,
-  "SELECT * FROM REGION ORDER BY R_REGIONKEY"
+  "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"
 )
+adbc_statement_execute_query(stmt)
+#> [1] 4
+adbc_statement_release(stmt)
 
+stmt <- adbc_statement_init(con)
+adbc_statement_set_sql_query(
+  stmt,
+  "INSERT INTO crossfit values
+    ('Push Ups', 3),
+    ('Pull Ups', 5),
+    ('Push Jerk', 7),
+    ('Bar Muscle Up', 10);"
+)
+adbc_statement_execute_query(stmt)
+#> [1] 4
+adbc_statement_release(stmt)
+
+# Query it
+stmt <- adbc_statement_init(con)
 stream <- nanoarrow::nanoarrow_allocate_array_stream()
-adbcdrivermanager::adbc_statement_execute_query(stmt, stream)
-#> [1] 5
-tibble::as_tibble(stream)
-#> # A tibble: 5 × 3
-#>   R_REGIONKEY R_NAME      R_COMMENT
-#>         <dbl> <chr>       <chr>
-#> 1           0 AFRICA      "lar deposits. blithely final packages cajole. regula…
-#> 2           1 AMERICA     "hs use ironic, even requests. s"
-#> 3           2 ASIA        "ges. thinly even pinto beans ca"
-#> 4           3 EUROPE      "ly final courts cajole furiously final excuse"
-#> 5           4 MIDDLE EAST "uickly special accounts cajole carefully blithely cl…
-```
 
-``` r
-# Clean up
-adbc_connection_release(con)
-adbc_database_release(db)
+adbc_statement_set_sql_query(stmt, "SELECT * from crossfit")
+adbc_statement_execute_query(stmt, stream)
+#> [1] -1
+result <- tibble::as_tibble(stream)
+adbc_statement_release(stmt)
+
+result
+#> # A tibble: 4 × 2
+#>   exercise      difficulty_level
+#>   <chr>                    <dbl>
+#> 1 Push Ups                     3
+#> 2 Pull Ups                     5
+#> 3 Push Jerk                    7
+#> 4 Bar Muscle Up               10
 ```
