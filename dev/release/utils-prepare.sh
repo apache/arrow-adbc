@@ -44,7 +44,7 @@ update_versions() {
   git add cmake_modules/AdbcVersion.cmake
   popd
 
-  sed -i.bak -E "s/set ADBC_VERSION_DLL_SUFFIX=.+/set ADBC_VERSION_DLL_SUFFIX=${version}/" "${ADBC_DIR}/ci/scripts/python_wheel_windows_build.bat"
+  sed -i.bak -E "s/set ADBC_VERSION_DLL_SUFFIX=.+/set ADBC_VERSION_DLL_SUFFIX=.${version}/" "${ADBC_DIR}/ci/scripts/python_wheel_windows_build.bat"
   rm "${ADBC_DIR}/ci/scripts/python_wheel_windows_build.bat.bak"
   git add "${ADBC_DIR}/ci/scripts/python_wheel_windows_build.bat"
 
