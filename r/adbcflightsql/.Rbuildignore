@@ -1,0 +1,9 @@
+^adbcflightsql\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^bootstrap\.R$
+^README\.Rmd$
+^src/Makevars$
+^configure\.win$
+^\.vscode$
+^src/go/tmp$

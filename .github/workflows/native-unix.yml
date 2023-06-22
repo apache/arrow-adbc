@@ -598,6 +598,9 @@ jobs:
           - {os: macOS-latest,   r: 'release', pkg: 'adbcsnowflake'}
           - {os: windows-latest,   r: 'release', pkg: 'adbcsnowflake'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsnowflake'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcflightsql'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcflightsql'}
+          - {os: windows-latest,   r: 'release', pkg: 'adbcflightsql'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -652,6 +655,14 @@ jobs:
           ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
           echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
 
+      - name: Start FlightSQL test database
+        if: matrix.config.pkg == 'adbcflightsql' && runner.os == 'Linux'
+        run: |
+          cd r/adbcpostgresql
+          docker compose up --detach golang-sqlite-flightsql
+          ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
+          echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
+
       - uses: r-lib/actions/check-r-package@v2
         env:
           ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }}
@@ -659,8 +670,7 @@ jobs:
           upload-snapshots: true
           working-directory: r/${{ matrix.config.pkg }}
 
-      - name: Stop postgres test database
-        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
+      - name: Stop test database
+        if: runner.os == 'Linux'
         run: |
-          cd r/adbcpostgresql
           docker compose down
