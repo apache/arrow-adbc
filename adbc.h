@@ -1855,9 +1855,6 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
 ///
 /// - adbc:catalog_name
 /// - adbc:db_schema_name
-/// - adbc:supertype_catalog_name
-/// - adbc:supertype_db_schema_name
-/// - adbc:supertype_name
 ///
 /// Both top-level fields and child fields may have the following metadata
 /// fields:
