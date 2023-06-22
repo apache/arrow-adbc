@@ -428,13 +428,13 @@ struct ADBC_EXPORT AdbcError {
 /// \brief The dictionary-encoded name of the distinct value count statistic.
 #define ADBC_STATISTIC_DISTINCT_COUNT_KEY 1
 /// \brief The distinct value count (NDV) statistic.  The number of distinct
-///   values in the column.  Value type is uint64 (when not approximate) or
+///   values in the column.  Value type is int64 (when not approximate) or
 ///   float64 (when approximate).
 #define ADBC_STATISTIC_DISTINCT_COUNT_NAME "adbc.statistic.distinct_count"
 /// \brief The dictionary-encoded name of the max byte width statistic.
 #define ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY 0
 /// \brief The max byte width statistic.  The maximum size in bytes of a row
-///   in the column.  Value type is uint64 (when not approximate) or float64
+///   in the column.  Value type is int64 (when not approximate) or float64
 ///   (when approximate).
 ///
 /// For example, this is the maximum length of a string for a string column.
@@ -450,13 +450,13 @@ struct ADBC_EXPORT AdbcError {
 /// \brief The dictionary-encoded name of the null count statistic.
 #define ADBC_STATISTIC_NULL_COUNT_KEY 2
 /// \brief The null count statistic.  The number of values that are null in
-///   the column.  Value type is uint64 (when not approximate) or float64
+///   the column.  Value type is int64 (when not approximate) or float64
 ///   (when approximate).
 #define ADBC_STATISTIC_NULL_COUNT_NAME "adbc.statistic.null_count"
 /// \brief The dictionary-encoded name of the row count statistic.
 #define ADBC_STATISTIC_ROW_COUNT_KEY 3
 /// \brief The row count statistic.  The number of rows in the column or
-///   table.  Value type is uint64 (when not approximate) or float64 (when
+///   table.  Value type is int64 (when not approximate) or float64 (when
 ///   approximate).
 #define ADBC_STATISTIC_ROW_COUNT_NAME "adbc.statistic.row_count"
 /// @}
