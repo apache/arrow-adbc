@@ -884,7 +884,7 @@ struct ADBC_EXPORT AdbcDriver {
   ///
   /// @{
 
-  AdbcStatusCode (*DatabaseGetOption)(struct AdbcDatabase*, const char*, const char**,
+  AdbcStatusCode (*DatabaseGetOption)(struct AdbcDatabase*, const char*, char*, size_t*,
                                       struct AdbcError*);
   AdbcStatusCode (*DatabaseGetOptionBytes)(struct AdbcDatabase*, const char*, uint8_t*,
                                            size_t*, struct AdbcError*);
@@ -900,8 +900,8 @@ struct ADBC_EXPORT AdbcDriver {
                                             struct AdbcError*);
 
   AdbcStatusCode (*ConnectionCancel)(struct AdbcConnection*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetOption)(struct AdbcConnection*, const char*, const char**,
-                                        struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetOption)(struct AdbcConnection*, const char*, char*,
+                                        size_t*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOptionBytes)(struct AdbcDatabase*, const char*, uint8_t*,
                                              size_t*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOptionInt)(struct AdbcConnection*, const char*, int64_t*,
@@ -924,7 +924,7 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*StatementCancel)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementExecuteSchema)(struct AdbcStatement*, struct ArrowSchema*,
                                            struct AdbcError*);
-  AdbcStatusCode (*StatementGetOption)(struct AdbcStatement*, const char*, const char**,
+  AdbcStatusCode (*StatementGetOption)(struct AdbcStatement*, const char*, char*, size_t*,
                                        struct AdbcError*);
   AdbcStatusCode (*StatementGetOptionBytes)(struct AdbcDatabase*, const char*, uint8_t*,
                                             size_t*, struct AdbcError*);
@@ -977,10 +977,22 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
 
 /// \brief Get a string option of the database.
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not), though
+/// given the semantics here, it is not recommended to call GetOption
+/// concurrently with itself.
 ///
-/// The returned option value is only valid until the next call to
-/// GetOption or Release.
+/// length must be provided and must be the size of the buffer pointed
+/// to by value.  If there is sufficient space, the driver will copy
+/// the option value to buffer and set length to the size of the
+/// actual value.  If the buffer is too small, no data will be written
+/// and length will be set to the required length.
+///
+/// In other words:
+///
+/// - If output length <= input length, value will contain a value
+///   with length bytes.
+/// - If output length > input length, nothing has been written to
+///   value.
 ///
 /// For standard options, drivers must always support getting the
 /// option value (if they support getting option values at all) via
@@ -995,11 +1007,13 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
 /// \param[in] database The database.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
+/// \param[in,out] length The length of value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
-                                     const char** value, struct AdbcError* error);
+                                     char* value, size_t* length,
+                                     struct AdbcError* error);
 
 /// \brief Get a bytestring option of the database.
 ///
@@ -1464,29 +1478,35 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 
 /// \brief Get a string option of the connection.
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not), though
+/// given the semantics here, it is not recommended to call GetOption
+/// concurrently with itself.
 ///
-/// The returned option value is only valid until the next call to
-/// GetOption or Release.
+/// length must be provided and must be the size of the buffer pointed
+/// to by value.  If there is sufficient space, the driver will copy
+/// the option value to buffer and set length to the size of the
+/// actual value.  If the buffer is too small, no data will be written
+/// and length will be set to the required length.
 ///
-/// For standard options, drivers must always support getting the
-/// option value (if they support getting option values at all) via
-/// the type specified in the option.  (For example, an option set via
-/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
-/// may also support getting a converted option value via other
-/// getters if needed.  (For example, getting the string
-/// representation of a double option.)
+/// In other words:
+///
+/// - If output length <= input length, value will contain a value
+///   with length bytes.
+/// - If output length > input length, nothing has been written to
+///   value.
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
+/// \param[in,out] length The length of value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
-                                       const char** value, struct AdbcError* error);
+                                       char* value, size_t* length,
+                                       struct AdbcError* error);
 
 /// \brief Get a bytestring option of the connection.
 ///
@@ -1520,7 +1540,7 @@ AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const 
 /// \param[in] connection The connection.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
-/// \param[out] length The option value length.
+/// \param[in,out] length The option value length.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
@@ -1933,10 +1953,22 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
 
 /// \brief Get a string option of the statement.
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not), though
+/// given the semantics here, it is not recommended to call GetOption
+/// concurrently with itself.
 ///
-/// The returned option value is only valid until the next call to
-/// GetOption or Release.
+/// length must be provided and must be the size of the buffer pointed
+/// to by value.  If there is sufficient space, the driver will copy
+/// the option value to buffer and set length to the size of the
+/// actual value.  If the buffer is too small, no data will be written
+/// and length will be set to the required length.
+///
+/// In other words:
+///
+/// - If output length <= input length, value will contain a value
+///   with length bytes.
+/// - If output length > input length, nothing has been written to
+///   value.
 ///
 /// For standard options, drivers must always support getting the
 /// option value (if they support getting option values at all) via
@@ -1951,11 +1983,13 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
 /// \param[in] statement The statement.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
+/// \param[in,out] length The length of value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
-                                      const char** value, struct AdbcError* error);
+                                      char* value, size_t* length,
+                                      struct AdbcError* error);
 
 /// \brief Get a bytestring option of the statement.
 ///
@@ -1989,7 +2023,7 @@ AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const cha
 /// \param[in] statement The statement.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
-/// \param[out] length The option value length.
+/// \param[in,out] length The option value length.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
