@@ -20,7 +20,7 @@ test_that("adbcflightsql() works", {
 })
 
 test_that("default options can open a database and execute a query", {
-  test_db_uri <- Sys.getenv("ADBC_SNOWFLAKE_TEST_URI", "")
+  test_db_uri <- Sys.getenv("ADBC_FLIGHTSQL_TEST_URI", "")
   skip_if(identical(test_db_uri, ""))
 
   db <- adbcdrivermanager::adbc_database_init(
@@ -32,34 +32,58 @@ test_that("default options can open a database and execute a query", {
   con <- adbcdrivermanager::adbc_connection_init(db)
   expect_s3_class(con, "adbcflightsql_connection")
 
+  stmt <- adbcdrivermanager::adbc_statement_init(con)
+  expect_s3_class(stmt, "adbcflightsql_statement")
+
+  adbcdrivermanager::adbc_statement_set_sql_query(
+    stmt,
+    "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"
+  )
+  adbcdrivermanager::adbc_statement_execute_query(stmt)
+  adbcdrivermanager::adbc_statement_release(stmt)
+
+  # If we get this far, remove the table and disconnect when the test is done
   on.exit({
+    stmt <- adbcdrivermanager::adbc_statement_init(con)
+    adbcdrivermanager::adbc_statement_set_sql_query(
+      stmt,
+      "DROP TABLE IF EXISTS crossfit;"
+    )
+    adbcdrivermanager::adbc_statement_execute_query(stmt)
+    adbcdrivermanager::adbc_statement_release(stmt)
+
     adbcdrivermanager::adbc_connection_release(con)
     adbcdrivermanager::adbc_database_release(db)
   })
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
-  expect_s3_class(stmt, "adbcflightsql_statement")
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "use schema flightsql_sample_data.tpch_sf1;"
+    "INSERT INTO crossfit values
+      ('Push Ups', 3),
+      ('Pull Ups', 5),
+      ('Push Jerk', 7),
+      ('Bar Muscle Up', 10);"
   )
   adbcdrivermanager::adbc_statement_execute_query(stmt)
   adbcdrivermanager::adbc_statement_release(stmt)
 
   stmt <- adbcdrivermanager::adbc_statement_init(con)
-  expect_s3_class(stmt, "adbcflightsql_statement")
-
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "SELECT * FROM REGION ORDER BY R_REGIONKEY"
+    "SELECT * from crossfit"
   )
 
   stream <- nanoarrow::nanoarrow_allocate_array_stream()
   adbcdrivermanager::adbc_statement_execute_query(stmt, stream)
-  result <- as.data.frame(stream)
+
   expect_identical(
-    result$R_REGIONKEY,
-    c(0, 1, 2, 3, 4)
+    as.data.frame(stream),
+    data.frame(
+      exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
+      difficulty_level = c(3, 5, 7, 10),
+      stringsAsFactors = FALSE
+    )
   )
 
   adbcdrivermanager::adbc_statement_release(stmt)
