@@ -344,7 +344,7 @@ struct ADBC_EXPORT AdbcError {
 /// error value.
 ///
 /// Drivers may provide multiple error details.  Each call to
-/// GetOptionBinary will return the next error detail.  The driver
+/// GetOptionBytes will return the next error detail.  The driver
 /// should return ADBC_STATUS_NOT_FOUND if there are no (more) error
 /// details.
 ///
@@ -900,9 +900,6 @@ struct ADBC_EXPORT AdbcDriver {
                                             struct AdbcError*);
 
   AdbcStatusCode (*ConnectionCancel)(struct AdbcConnection*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetFunctions)(struct AdbcConnection*, const char*,
-                                           const char*, const char*,
-                                           struct ArrowArrayStream*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOption)(struct AdbcConnection*, const char*, const char**,
                                         struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOptionBytes)(struct AdbcDatabase*, const char*,
@@ -911,18 +908,12 @@ struct ADBC_EXPORT AdbcDriver {
                                            struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOptionDouble)(struct AdbcConnection*, const char*,
                                               double*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetProcedures)(struct AdbcConnection*, const char*,
-                                            const char*, const char*,
-                                            struct ArrowArrayStream*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetStatistics)(struct AdbcConnection*, const char*,
                                             const char*, const char*, char,
                                             struct ArrowArrayStream*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetStatisticNames)(struct AdbcConnection*,
                                                 struct ArrowArrayStream*,
                                                 struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetTypes)(struct AdbcConnection*, const char*, const char*,
-                                       const char*, struct ArrowSchema*,
-                                       struct AdbcError*);
   AdbcStatusCode (*ConnectionSetOptionBytes)(struct AdbcDatabase*, const char*,
                                              const uint8_t*, size_t, struct AdbcError*);
   AdbcStatusCode (*ConnectionSetOptionInt)(struct AdbcConnection*, const char*, int64_t,
@@ -1281,89 +1272,6 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
                                     struct AdbcError* error);
 
-/// \brief Get a hierarchical view of system and user-defined functions.
-///
-/// The result is an Arrow dataset with the following schema:
-///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | catalog_name             | utf8                    |
-/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
-///
-/// DB_SCHEMA_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | db_schema_name           | utf8                    |
-/// | db_schema_functions      | list<FUNCTION_SCHEMA>   |
-///
-/// FUNCTION_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | function_name            | utf8 not null           |          |
-/// | remarks                  | utf8                    | (1)      |
-/// | function_type            | int16                   | (2)      |
-/// | specific_name            | utf8                    | (3)      |
-/// | function_columns         | list<COLUMN_SCHEMA>     |          |
-///
-/// 1. Database-specific description of the function.
-/// 2. The kind of function.  Should be null if not known, 1 if the function
-///    does not return a table, or 2 if the function does return a table.
-/// 3. An additional name that uniquely identifies the function within its
-///    schema.
-///
-/// COLUMN_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | column_name              | utf8                    |          |
-/// | column_type              | int16                   | (1)      |
-/// | ordinal_position         | int32                   | (2)      |
-/// | remarks                  | utf8                    | (3)      |
-/// | xdbc_data_type           | int16                   | (4)      |
-/// | xdbc_type_name           | utf8                    | (4)      |
-/// | xdbc_precision           | int32                   | (4)      |
-/// | xdbc_length              | int32                   | (4)      |
-/// | xdbc_scale               | int16                   | (4)      |
-/// | xdbc_radix               | int16                   | (4)      |
-/// | xdbc_nullable            | int16                   | (4)      |
-/// | xdbc_char_octet_length   | int32                   | (4)      |
-/// | xdbc_is_nullable         | utf8                    | (4)      |
-///
-/// 1. Whether this row describes an IN parameter (1), INOUT parameter (2),
-///    OUT parameter (3), return value (4), result set column (5), or unknown
-///    (null).
-/// 2. The column's ordinal position in the input parameters, output
-///    parameters, or result set (respectively starting from 1).  Or, 0 if the
-///    row describes the function's return value.
-/// 3. Database-specific description of the column.
-/// 4. Optional value.  Should be null if not supported by the driver.
-///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
-///    in an agnostic manner.
-///
-/// This AdbcConnection must outlive the returned ArrowArrayStream.
-///
-/// \param[in] connection The database connection.
-/// \param[in] catalog Only show functions in the given catalog. If NULL, do
-///   not filter by catalog. If an empty string, only show functions without a
-///   catalog.  May be a search pattern (see section documentation).
-/// \param[in] db_schema Only show functions in the given database schema. If
-///   NULL, do not filter by database schema. If an empty string, only show
-///   functions without a database schema. May be a search pattern (see
-///   section documentation).
-/// \param[in] function_name Only show functions with the given name. If NULL,
-///   do not filter by name.  May be a search pattern (see section
-///   documentation).
-/// \param[out] out The result set.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetFunctions(struct AdbcConnection* connection,
-                                          const char* catalog, const char* db_schema,
-                                          const char* function_name,
-                                          struct ArrowArrayStream* out,
-                                          struct AdbcError* error);
-
 /// \defgroup adbc-connection-metadata Metadata
 /// Functions for retrieving metadata about the database.
 ///
@@ -1644,92 +1552,6 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
                                              const char* key, double* value,
                                              struct AdbcError* error);
 
-/// \brief Get a hierarchical view of stored procedures.
-///
-/// The result is an Arrow dataset with the following schema:
-///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | catalog_name             | utf8                    |
-/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
-///
-/// DB_SCHEMA_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | db_schema_name           | utf8                    |
-/// | db_schema_procedures     | list<PROCEDURE_SCHEMA>  |
-///
-/// PROCEDURE_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | procedure_name           | utf8 not null           |          |
-/// | remarks                  | utf8                    | (1)      |
-/// | procedure_type           | int16                   | (2)      |
-/// | specific_name            | utf8                    | (3)      |
-/// | procedure_columns        | list<COLUMN_SCHEMA>     |          |
-///
-/// 1. Database-specific description of the procedure.
-/// 2. The kind of procedure.  Should be null if not known, 1 if the procedure
-///    does not return a value, or 2 if the procedure does return a value.
-/// 3. An additional name that uniquely identifies the procedure within its
-///    schema.
-///
-/// COLUMN_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | column_name              | utf8                    |          |
-/// | column_type              | int16                   | (1)      |
-/// | ordinal_position         | int32                   | (2)      |
-/// | remarks                  | utf8                    | (3)      |
-/// | xdbc_data_type           | int16                   | (4)      |
-/// | xdbc_type_name           | utf8                    | (4)      |
-/// | xdbc_precision           | int32                   | (4)      |
-/// | xdbc_length              | int32                   | (4)      |
-/// | xdbc_scale               | int16                   | (4)      |
-/// | xdbc_radix               | int16                   | (4)      |
-/// | xdbc_nullable            | int16                   | (4)      |
-/// | xdbc_column_def          | utf8                    | (4)      |
-/// | xdbc_sql_data_type       | int32                   | (4)      |
-/// | xdbc_sql_datetime_sub    | int32                   | (4)      |
-/// | xdbc_char_octet_length   | int32                   | (4)      |
-/// | xdbc_is_nullable         | utf8                    | (4)      |
-///
-/// 1. Whether this row describes an IN parameter (1), INOUT parameter (2),
-///    OUT parameter (3), return value (4), result set column (5), or unknown
-///    (null).
-/// 2. The column's ordinal position in the input parameters, output
-///    parameters, or result set (respectively starting from 1).  Or, 0 if the
-///    row describes the procedure's return value.
-/// 3. Database-specific description of the column.
-/// 4. Optional value.  Should be null if not supported by the driver.
-///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
-///    in an agnostic manner.
-///
-/// This AdbcConnection must outlive the returned ArrowArrayStream.
-///
-/// \param[in] connection The database connection.
-/// \param[in] catalog Only show procedures in the given catalog. If NULL, do
-///   not filter by catalog. If an empty string, only show procedures without
-///   a catalog.  May be a search pattern (see section documentation).
-/// \param[in] db_schema Only show procedures in the given database schema. If
-///   NULL, do not filter by database schema. If an empty string, only show
-///   procedures without a database schema. May be a search pattern (see
-///   section documentation).
-/// \param[in] procedure_name Only show procedures with the given name. If
-///   NULL, do not filter by name.  May be a search pattern (see section
-///   documentation).
-/// \param[out] out The result set.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetProcedures(struct AdbcConnection* connection,
-                                           const char* catalog, const char* db_schema,
-                                           const char* procedure_name,
-                                           struct ArrowArrayStream* out,
-                                           struct AdbcError* error);
-
 /// \brief Get statistics about the data distribution of table(s).
 ///
 /// The result is an Arrow dataset with the following schema:
@@ -1776,6 +1598,8 @@ AdbcStatusCode AdbcConnectionGetProcedures(struct AdbcConnection* connection,
 ///
 /// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] catalog The catalog (or nullptr).  May be a search
 ///   pattern (see section documentation).
@@ -1804,6 +1628,8 @@ AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
 /// statistic_name | utf8 not null
 /// statistic_key  | int16 not null
 ///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[out] out The result set.
 /// \param[out] error Error details, if an error occurs.
@@ -1844,64 +1670,6 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error);
-
-/// \brief Get a view of types supported by the database.
-///
-/// The result is an Arrow schema with one field per type.  The field name is
-/// the database's name for the type, and the field type is the driver's
-/// mapping of the database type to an Arrow type.
-///
-/// Each top-level field may have the following metadata fields:
-///
-/// - adbc:catalog_name
-/// - adbc:db_schema_name
-///
-/// Both top-level fields and child fields may have the following metadata
-/// fields:
-///
-/// - adbc:remarks (1)
-/// - adbc:specific_name (2)
-/// - adbc:xdbc_data_type (3)
-/// - adbc:xdbc_type_name (3)
-/// - adbc:xdbc_size (3)
-/// - adbc:xdbc_decimal_digits (3)
-/// - adbc:xdbc_num_prec_radix (3)
-/// - adbc:xdbc_nullable (3)
-/// - adbc:xdbc_remarks (3)
-/// - adbc:xdbc_attr_def (3)
-/// - adbc:xdbc_sql_data_type (3)
-/// - adbc:xdbc_sql_datetime_sub (3)
-/// - adbc:xdbc_char_octet_length (3)
-/// - adbc:xdbc_is_nullable (3)
-/// - adbc:xdbc_scope_catalog (3)
-/// - adbc:xdbc_scope_schema (3)
-/// - adbc:xdbc_scope_table (3)
-/// - adbc:xdbc_scope_data_type (3)
-///
-/// 1. Database-specific description of the type.
-/// 2. An additional name that uniquely identifies the type within its
-///    schema.
-/// 3. xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
-///    in an agnostic manner.
-///
-/// \param[in] connection The database connection.
-/// \param[in] catalog Only show types in the given catalog. If NULL, do
-///   not filter by catalog. If an empty string, only show types without
-///   a catalog.  May be a search pattern (see section documentation).
-/// \param[in] db_schema Only show types in the given database schema. If
-///   NULL, do not filter by database schema. If an empty string, only show
-///   types without a database schema. May be a search pattern (see
-///   section documentation).
-/// \param[in] type_name Only show types with the given name. If
-///   NULL, do not filter by name.  May be a search pattern (see section
-///   documentation).
-/// \param[out] out The result schema.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetTypes(struct AdbcConnection* connection,
-                                      const char* catalog, const char* db_schema,
-                                      const char* type_name, struct ArrowSchema* out,
-                                      struct AdbcError* error);
 
 /// @}
 
