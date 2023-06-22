@@ -15,31 +15,21 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-==================
-PostgreSQL Recipes
-==================
+============
+C/C++/Python
+============
 
-Authenticate with a username and password
-=========================================
+.. toctree::
+   :maxdepth: 1
+   :caption: Drivers
 
-.. recipe:: postgresql_authenticate.py
+   flight_sql
+   postgresql
+   sqlite
 
-Create/append to a table from an Arrow table
-============================================
+   features
 
-.. recipe:: postgresql_create_append_table.py
-
-Execute a statement with bind parameters
-========================================
-
-.. recipe:: postgresql_execute_bind.py
-
-Get the Arrow schema of a table
-===============================
-
-.. recipe:: postgresql_get_table_schema.py
-
-List catalogs, schemas, and tables
-==================================
-
-.. recipe:: postgresql_list_catalogs.py
+The ADBC project ships some drivers.  Others may (eventually) be
+available from database vendors or third parties.  The drivers here
+implement the C API standard and are directly usable in C/C++.  They
+also provide Python bindings.

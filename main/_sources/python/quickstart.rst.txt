@@ -15,9 +15,9 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-==========
-Quickstart
-==========
+===================
+Quickstart (Python)
+===================
 
 Here we'll briefly tour basic features of ADBC with the SQLite driver.
 

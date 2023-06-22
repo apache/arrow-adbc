@@ -5,10 +5,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="PostgreSQL Recipes" href="postgresql.html" /><link rel="prev" title="Python Cookbook" href="index.html" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Flight SQL Driver" href="flight_sql.html" /><link rel="prev" title="Comparison with Other APIs" href="../../format/comparison.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.05.20 -->
-        <title>Driver Manager Recipes - ADBC 0.6.0 (dev) documentation</title>
+        <title>C/C++/Python - ADBC 0.1.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
@@ -41,7 +41,7 @@
   }
 </style>
 <script>
-  const currentVersion = "0.6.0 (dev)";
+  const currentVersion = "0.1.0 (dev)";
   const versionsRoot = "../../..";
 </script>
 <style>
@@ -96,7 +96,7 @@
     </script>
     
 <nav id="version-switcher">
-  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 0.6.0 (dev)</button>
+  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 0.1.0 (dev)</button>
   <div class="versions">
     <ul></ul>
   </div>
@@ -183,7 +183,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">ADBC 0.6.0 (dev) documentation</div></a>
+      <a href="../../index.html"><div class="brand">ADBC 0.1.0 (dev) documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -194,7 +194,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -210,7 +210,7 @@
     <img class="sidebar-logo only-dark" src="../../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 0.6.0 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 0.1.0 (dev) documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -218,61 +218,62 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions (FAQ)</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Specifications</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../format/specification.html">ADBC API Standard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../format/versioning.html">Versioning and Compatibility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../format/comparison.html">Comparison with Other APIs</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
+<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
 <ul class="current">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../cpp/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">C/C++/Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++/Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="postgresql.html">PostgreSQL Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html">Feature Support Matrix</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../java/flight_sql.html">Flight SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../java/jdbc.html">JDBC Adapter</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../python/quickstart.html">Quickstart (Python)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Language-Specific APIs</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../cpp/api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../cpp/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc">Go</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../go/index.html">Go</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Go</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
 </ul>
 </li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
 </ul>
 </li>
-<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python Cookbook</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Python Cookbook</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Driver Manager Recipes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="postgresql.html">PostgreSQL Recipes</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../python/quickstart.html">Quickstart (Python)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../python/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../python/api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/snowflake.html">Snowflake Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/sqlite.html">SQLite Driver</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Specification</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../format/specification.html">ADBC API Standard</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../format/versioning.html">Versioning and Compatibility</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../format/comparison.html">Comparison with Other APIs</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/nightly.html">Nightly Packages</a></li>
@@ -297,7 +298,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/recipe/driver_manager.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/driver/cpp/index.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -313,45 +314,27 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="driver-manager-recipes">
-<h1>Driver Manager Recipes<a class="headerlink" href="#driver-manager-recipes" title="Permalink to this heading">#</a></h1>
-<section id="load-a-driver-from-a-shared-library-duckdb">
-<h2>Load a driver from a shared library (DuckDB)<a class="headerlink" href="#load-a-driver-from-a-shared-library-duckdb" title="Permalink to this heading">#</a></h2>
-<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/driver_manager_duckdb.py">driver_manager_duckdb.py</a></p>
-<p>The ADBC driver manager can load a driver from a shared library.
-For drivers provided by the Arrow project, you don’t need to worry
-about this; the Python package will take care of this for you.
-Other drivers may need configuration, though.  We’ll use <a class="reference external" href="https://duckdb.org">DuckDB</a> as an example.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">25</span><span class="kn">import</span> <span class="nn">duckdb</span>
-<span class="linenos">26</span>
-<span class="linenos">27</span><span class="kn">import</span> <span class="nn">adbc_driver_manager.dbapi</span>
-</pre></div>
+          <section id="c-c-python">
+<h1>C/C++/Python<a class="headerlink" href="#c-c-python" title="Permalink to this heading">#</a></h1>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="postgresql.html">PostgreSQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Feature Support Matrix</a></li>
+</ul>
 </div>
-<p>The driver manager needs the path to the shared library.  It also
-needs the name of the entrypoint function.  Both of these should be
-found in the driver’s documentation.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
-<span class="linenos">33</span>    <span class="n">driver</span><span class="o">=</span><span class="n">duckdb</span><span class="o">.</span><span class="vm">__file__</span><span class="p">,</span>
-<span class="linenos">34</span>    <span class="n">entrypoint</span><span class="o">=</span><span class="s2">&quot;duckdb_adbc_init&quot;</span><span class="p">,</span>
-<span class="linenos">35</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Once we provide that, everything else about the connection is the
-same as usual.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">40</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">41</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
-<span class="linenos">42</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
-<span class="linenos">43</span>
-<span class="linenos">44</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</pre></div>
-</div>
-</section>
+<p>The ADBC project ships some drivers.  Others may (eventually) be
+available from database vendors or third parties.  The drivers here
+implement the C API standard and are directly usable in C/C++.  They
+also provide Python bindings.</p>
 </section>
 
         </article>
@@ -359,23 +342,23 @@ same as usual.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="postgresql.html">
+          <a class="next-page" href="flight_sql.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">PostgreSQL Recipes</div>
+                <div class="title">Flight SQL Driver</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="index.html">
+          <a class="prev-page" href="../../format/comparison.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Python Cookbook</div>
+                <div class="title">Comparison with Other APIs</div>
                 
               </div>
             </a>
@@ -397,27 +380,8 @@ same as usual.</p>
         
       </footer>
     </div>
-    <aside class="toc-drawer">
+    <aside class="toc-drawer no-toc">
       
-      
-      <div class="toc-sticky toc-scroll">
-        <div class="toc-title-container">
-          <span class="toc-title">
-            On this page
-          </span>
-        </div>
-        <div class="toc-tree-container">
-          <div class="toc-tree">
-            <ul>
-<li><a class="reference internal" href="#">Driver Manager Recipes</a><ul>
-<li><a class="reference internal" href="#load-a-driver-from-a-shared-library-duckdb">Load a driver from a shared library (DuckDB)</a></li>
-</ul>
-</li>
-</ul>
-
-          </div>
-        </div>
-      </div>
       
       
     </aside>

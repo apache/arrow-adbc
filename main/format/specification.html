@@ -5,10 +5,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Versioning and Compatibility" href="versioning.html" /><link rel="prev" title="SQLite Driver" href="../driver/sqlite.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Versioning and Compatibility" href="versioning.html" /><link rel="prev" title="Apache Arrow ADBC" href="../index.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.05.20 -->
-        <title>ADBC API Standard - ADBC 0.6.0 (dev) documentation</title>
+        <title>ADBC API Standard - ADBC 0.1.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
@@ -41,7 +41,7 @@
   }
 </style>
 <script>
-  const currentVersion = "0.6.0 (dev)";
+  const currentVersion = "0.1.0 (dev)";
   const versionsRoot = "../..";
 </script>
 <style>
@@ -96,7 +96,7 @@
     </script>
     
 <nav id="version-switcher">
-  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 0.6.0 (dev)</button>
+  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 0.1.0 (dev)</button>
   <div class="versions">
     <ul></ul>
   </div>
@@ -183,7 +183,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">ADBC 0.6.0 (dev) documentation</div></a>
+      <a href="../index.html"><div class="brand">ADBC 0.1.0 (dev) documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -210,7 +210,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 0.6.0 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 0.1.0 (dev) documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -218,61 +218,62 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
-<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Specifications</span></p>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">ADBC API Standard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="versioning.html">Versioning and Compatibility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other APIs</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
+<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
 <ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../cpp/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../driver/cpp/index.html">C/C++/Python</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++/Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../driver/cpp/flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../driver/cpp/postgresql.html">PostgreSQL Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../driver/cpp/sqlite.html">SQLite Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../driver/cpp/features.html">Feature Support Matrix</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../driver/java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../driver/java/flight_sql.html">Flight SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../driver/java/jdbc.html">JDBC Adapter</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../python/quickstart.html">Quickstart (Python)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Language-Specific APIs</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../cpp/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc">Go</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../go/index.html">Go</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Go</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../python/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../python/index.html">Python</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../python/quickstart.html">Quickstart (Python)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../python/driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../python/api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../python/recipe/index.html">Python Cookbook</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Python Cookbook</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../python/recipe/driver_manager.html">Driver Manager Recipes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../python/recipe/postgresql.html">PostgreSQL Recipes</a></li>
 </ul>
 </li>
 </ul>
-</li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/snowflake.html">Snowflake Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/sqlite.html">SQLite Driver</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Specification</span></p>
-<ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">ADBC API Standard</a></li>
-<li class="toctree-l1"><a class="reference internal" href="versioning.html">Versioning and Compatibility</a></li>
-<li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other APIs</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/nightly.html">Nightly Packages</a></li>
@@ -371,7 +372,7 @@ doing so will invalidate prior result sets from that statement.  (See
 <li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcStatement</span></code></p></li>
 </ul>
 <section id="bulk-ingestion">
-<span id="specification-bulk-ingestion"></span><h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
+<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
 <p>ADBC provides explicit facilities to ingest batches of Arrow data into
 a database table.  For databases which support it, this can avoid
 overheads from the typical bind-insert loop.  Also, this (mostly)
@@ -396,222 +397,6 @@ machines.</p>
 <li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcStatement#executePartitioned()</span></code></p></li>
 </ul>
 </section>
-<section id="lifecycle-usage">
-<h3>Lifecycle &amp; Usage<a class="headerlink" href="#lifecycle-usage" title="Permalink to this heading">#</a></h3>
-<a class="reference internal image-reference" href="../_images/AdbcStatement.svg"><img alt="The lifecycle of a statement." src="../_images/AdbcStatement.svg" width="100%" /></a>
-<section id="basic-usage">
-<h4>Basic Usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading">#</a></h4>
-<figure class="align-default" id="id1">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Driver as AdbcStatement
-    App -&gt;&gt; Driver: New
-    App -&gt;&gt; Driver: SetSqlQuery
-    App --&gt;&gt; Driver: Prepare
-    loop As many times as desired
-    App --&gt;&gt; Driver: GetParameterSchema
-    App --&gt;&gt; Driver: Bind
-    App -&gt;&gt; Driver: ExecuteQuery
-    Driver -&gt;&gt; App: ArrowArrayStream
-    App -&gt; App: consume result set
-    end
-    Note over App, Driver: SetSqlQuery and repeat (if desired)
-    App -&gt;&gt; Driver: Release
-
-        </div><figcaption>
-<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id1" title="Permalink to this image">#</a></p>
-</figcaption>
-</figure>
-</section>
-<section id="consuming-result-sets">
-<h4>Consuming Result Sets<a class="headerlink" href="#consuming-result-sets" title="Permalink to this heading">#</a></h4>
-<figure class="align-default" id="id2">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Stream as ArrowArrayStream
-    App -&gt;&gt; Stream: get_schema
-    Stream -&gt;&gt; App: ArrowSchema
-    loop Until stream exhausted
-        App -&gt;&gt; Stream: get_next
-        Stream -&gt;&gt; App: ArrowArray
-    end
-    App -&gt;&gt; Stream: release
-
-        </div><figcaption>
-<p><span class="caption-text">This is equivalent to reading from what many Arrow
-libraries call a RecordBatchReader.</span><a class="headerlink" href="#id2" title="Permalink to this image">#</a></p>
-</figcaption>
-</figure>
-</section>
-<section id="bulk-data-ingestion">
-<h4>Bulk Data Ingestion<a class="headerlink" href="#bulk-data-ingestion" title="Permalink to this heading">#</a></h4>
-<figure class="align-default" id="id3">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Driver as AdbcStatement
-    App -&gt;&gt; Driver: New
-    App -&gt;&gt; Driver: SetOption(ADBC_INGEST_OPTION_TARGET_TABLE)
-    App -&gt;&gt; Driver: GetParameterSchema
-    App -&gt;&gt; Driver: Bind
-    App -&gt;&gt; Driver: ExecuteUpdate
-    App -&gt;&gt; Driver: Release
-
-        </div><figcaption>
-<p><span class="caption-text">There is no need to prepare the statement.</span><a class="headerlink" href="#id3" title="Permalink to this image">#</a></p>
-</figcaption>
-</figure>
-</section>
-<section id="update-only-queries-no-result-set">
-<h4>Update-only Queries (No Result Set)<a class="headerlink" href="#update-only-queries-no-result-set" title="Permalink to this heading">#</a></h4>
-<figure class="align-default" id="id4">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Driver as AdbcStatement
-    App -&gt;&gt; Driver: New
-    App -&gt;&gt; Driver: SetSqlQuery
-    App --&gt;&gt; Driver: Prepare
-    loop As many times as desired
-    App --&gt;&gt; Driver: GetParameterSchema
-    App --&gt;&gt; Driver: Bind
-    App -&gt;&gt; Driver: ExecuteUpdate
-    Driver -&gt;&gt; App: affected rows
-    end
-    Note over App, Driver: SetSqlQuery and repeat (if desired)
-    App -&gt;&gt; Driver: Release
-
-        </div><figcaption>
-<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id4" title="Permalink to this image">#</a></p>
-</figcaption>
-</figure>
-</section>
-<section id="partitioned-execution">
-<h4>Partitioned Execution<a class="headerlink" href="#partitioned-execution" title="Permalink to this heading">#</a></h4>
-<figure class="align-default" id="id5">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Driver as AdbcStatement
-    participant S1 as Server 1
-    participant S2 as Server 2
-
-    App -&gt;&gt; Driver: New
-    App -&gt;&gt; Driver: SetSqlQuery
-    App --&gt;&gt; Driver: Prepare
-    loop As many times as desired
-        App --&gt;&gt; Driver: GetParameterSchema
-        App --&gt;&gt; Driver: Bind
-        App -&gt;&gt; Driver: ExecutePartitions
-        Driver -&gt;&gt; App: AdbcPartitions
-        Note over App, S2: Consume the distributed result set
-        par Read from server 1
-            App -&gt;&gt; S1: ReadPartition
-            S1 -&gt;&gt; App: ArrowArrayStream
-            App -&gt; App: consume result set
-        and Read from server 2
-            App -&gt;&gt; S2: ReadPartition
-            S2 -&gt;&gt; App: ArrowArrayStream
-            App -&gt; App: consume result set
-        end
-    end
-    Note over App, Driver: SetSqlQuery and repeat (if desired)
-    App -&gt;&gt; Driver: Release
-
-        </div><figcaption>
-<p><span class="caption-text">This is similar to fetching data in Arrow Flight RPC (by
-design). See <a class="reference external" href="https://arrow.apache.org/docs/format/Flight.html" title="(in Apache Arrow v12.0.1)"><span class="xref std std-doc">“Downloading Data”</span></a>.</span><a class="headerlink" href="#id5" title="Permalink to this image">#</a></p>
-</figcaption>
-</figure>
-</section>
-</section>
 </section>
 </section>
 
@@ -629,14 +414,14 @@ design). See <a class="reference external" href="https://arrow.apache.org/docs/f
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="../driver/sqlite.html">
+          <a class="prev-page" href="../index.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">SQLite Driver</div>
+                <div class="title">Home</div>
                 
               </div>
             </a>
@@ -679,14 +464,6 @@ design). See <a class="reference external" href="https://arrow.apache.org/docs/f
 <li><a class="reference internal" href="#statements">Statements</a><ul>
 <li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
 <li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
-<li><a class="reference internal" href="#lifecycle-usage">Lifecycle &amp; Usage</a><ul>
-<li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
-<li><a class="reference internal" href="#consuming-result-sets">Consuming Result Sets</a></li>
-<li><a class="reference internal" href="#bulk-data-ingestion">Bulk Data Ingestion</a></li>
-<li><a class="reference internal" href="#update-only-queries-no-result-set">Update-only Queries (No Result Set)</a></li>
-<li><a class="reference internal" href="#partitioned-execution">Partitioned Execution</a></li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>
@@ -710,23 +487,6 @@ design). See <a class="reference external" href="https://arrow.apache.org/docs/f
     <script src="../_static/clipboard.min.js"></script>
     <script src="../_static/copybutton.js"></script>
     <script src="../_static/design-tabs.js"></script>
-    <script src="https://unpkg.com/mermaid@10.2.0/dist/mermaid.min.js"></script>
-    <script>mermaid.initialize({startOnLoad:true});</script>
-    <script src="https://unpkg.com/d3/dist/d3.min.js"></script>
-    <script>
-            window.addEventListener("load", function () {
-              var svgs = d3.selectAll(".mermaid svg");
-              svgs.each(function() {
-                var svg = d3.select(this);
-                svg.html("<g>" + svg.html() + "</g>");
-                var inner = svg.select("g");
-                var zoom = d3.zoom().on("zoom", function(event) {
-                  inner.attr("transform", event.transform);
-                });
-                svg.call(zoom);
-              });
-            });
-            </script>
     
 <script async defer src="../../version.js"></script></body>
 </html>

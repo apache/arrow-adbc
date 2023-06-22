@@ -44,26 +44,6 @@ window.addEventListener("DOMContentLoaded", () => {
             const li = document.createElement("li");
             li.appendChild(el);
             root.appendChild(li);
-
-            el.addEventListener("click", (e) => {
-                e.preventDefault();
-                try {
-                    const relativePart = window.location.pathname.replace(/^\/[^\/]+\//, "");
-                    const newUrl = `${el.getAttribute("href")}/${relativePart}`;
-                    window.fetch(newUrl).then((resp) => {
-                        if (resp.status === 200) {
-                            window.location.href = newUrl;
-                        } else {
-                            window.location.href = el.getAttribute("href");
-                        }
-                    }, () => {
-                        window.location.href = el.getAttribute("href");
-                    });
-                } catch (e) {
-                    window.location.href = el.getAttribute("href");
-                }
-                return false;
-            });
         });
 });
 
@@ -73,5 +53,5 @@ const versions = `
 0.3.0;0.3.0
 0.4.0;0.4.0
 0.5.0;0.5.0
-main;0.6.0 (dev)
+main;0.1.0 (dev)
 `;

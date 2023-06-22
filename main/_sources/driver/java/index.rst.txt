@@ -15,15 +15,17 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-===============
-Python Cookbook
-===============
-
-The cookbook provides task-oriented example code for using ADBC in
-Python.
+====
+Java
+====
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: Drivers
 
-   driver_manager
-   postgresql
+   flight_sql
+   jdbc
+
+The ADBC project ships some drivers.  Others may (eventually) be
+available from database vendors or third parties.  The drivers here
+implement the Java API standard.

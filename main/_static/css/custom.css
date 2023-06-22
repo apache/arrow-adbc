@@ -18,9 +18,3 @@
 p.admonition-title {
     font-weight: bold;
 }
-
-/* Center Mermaid diagrams */
-.mermaid svg {
-    display: block;
-    margin: 0 auto;
-}
