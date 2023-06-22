@@ -50,8 +50,6 @@ Some steps of the release require being a committer or a PMC member.
       # You might need to export GPG_TTY=$(tty) to properly prompt for a passphrase
       mvn clean install -Papache-release
 
-- An `Artifactory`_ API key (log in with your ASF credentials, then generate it from your profile in the upper-right). You must set the Artifactory API key in ``dev/release/.env`` (see ``dev/release/.env.example`` for a template).
-
 - Install ``en_US.UTF-8`` locale. You can confirm available locales by ``locale -a``.
 - Install Conda with conda-forge, and create and activate the environment.
 
@@ -60,12 +58,6 @@ Some steps of the release require being a committer or a PMC member.
      mamba create -n adbc -c conda-forge --file ci/conda_env_dev.txt
 
   This will install two tools used in the release process: ``commitizen`` (generates changelog from commit messages) and ``gh`` (submit jobs/download artifacts).
-
-- Install Docker.
-
-- Clone the main Arrow repository (https://github.com/apache/arrow) and symlink ``arrow-adbc/dev/release/.env`` to ``arrow/dev/release/.env``.  Some release scripts depend on the scripts in the main Arrow repository.
-
-.. _Artifactory: https://apache.jfrog.io
 
 Before creating a Release Candidate
 ===================================
@@ -113,17 +105,14 @@ Create or update the corresponding maintenance branch
 
       .. code-block::
 
+         # First cherry-pick any commits by hand.
          git switch maint-X.Y.Z
-         # Remove the commits that created the changelog and bumped the
-         # versions, since 01-source.sh will redo those steps
-         git reset --hard HEAD~2
-         # Cherry-pick any commits by hand.
          git cherry-pick ...
          # Push the updated maintenance branch to the remote repository
          git push -u apache maint-X.Y.Z
 
-Create the Release Candidate tag from the updated maintenance branch
---------------------------------------------------------------------
+Create the Release Candidate branch from the updated maintenance branch
+-----------------------------------------------------------------------
 
 .. code-block::
 
@@ -139,7 +128,7 @@ Create the Release Candidate tag from the updated maintenance branch
 
    dev/release/01-prepare.sh <version> <next-version> <rc-number>
 
-   git push -u apache apache-arrow-adbc-<version>-rc<rc-number> maint-<version>
+   git push -u apache apache-arrow-adbc-<version>-rc<rc-number>
 
 Build source and binaries and submit them
 -----------------------------------------
@@ -162,16 +151,10 @@ Build source and binaries and submit them
     # Note that you need to press the "Close" button manually by Web interface
     # after you complete the script:
     #   https://repository.apache.org/#stagingRepositories
-    dev/release/04-java-upload.sh <arrow-dir> <version> <rc-number>
-
-    # Sign and upload the deb/rpm packages and APT/Yum repositories
-    #
-    # This reuses release scripts in apache/arrow. So you need to
-    # specify cloned apache/arrow directory.
-    dev/release/05-linux-upload.sh <arrow-dir> <version> <rc-number>
+    dev/release/04-java-upload.sh <version> <rc-number>
 
     # Start verifications for binaries and wheels
-    dev/release/06-binary-verify.sh <version> <rc-number>
+    dev/release/05-binary-verify.sh <version> <rc-number>
 
 Verify the Release
 ------------------
@@ -216,7 +199,7 @@ Be sure to go through on the following checklist:
    .. code-block:: Bash
 
       # dev/release/post-01-upload.sh 0.1.0 0
-      dev/release/post-01-upload.sh <version> <rc-number>
+      dev/release/post-01-upload.sh <version> <rc>
       git push --tag apache apache-arrow-adbc-<version>
 
 .. dropdown:: Create the final GitHub release
@@ -228,7 +211,7 @@ Be sure to go through on the following checklist:
    .. code-block:: Bash
 
       # dev/release/post-02-binary.sh 0.1.0 0
-      dev/release/post-02-binary.sh <version> <rc-number>
+      dev/release/post-02-binary.sh <version> <rc number>
 
 .. dropdown:: Update website
    :class-title: sd-fs-5
@@ -263,19 +246,7 @@ Be sure to go through on the following checklist:
    .. code-block:: Bash
 
       # dev/release/post-04-go.sh 10.0.0
-      dev/release/post-04-go.sh <version>
-
-.. dropdown:: Deploy APT/Yum repositories
-   :class-title: sd-fs-5
-   :class-container: sd-shadow-md
-
-   .. code-block:: Bash
-
-      # This reuses release scripts in apache/arrow. So you need to
-      # specify cloned apache/arrow directory.
-      #
-      # dev/release/post-05-linux.sh ../arrow 10.0.0 0
-      dev/release/post-05-linux.sh <arrow-dir> <version> <rc-number>
+      dev/release/post-04-go.sh X.Y.Z
 
 .. dropdown:: Announce the new release
    :class-title: sd-fs-5
@@ -299,7 +270,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-06-remove-old-artifacts.sh
+      dev/release/post-05-remove-old-artifacts.sh
 
 .. dropdown:: Bump versions
    :class-title: sd-fs-5
@@ -307,7 +278,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-07-bump-versions.sh 0.1.0 0.2.0
-      dev/release/post-07-bump-versions.sh <version> <next_version>
+      # dev/release/post-06-bump-versions.sh 0.1.0 0.2.0
+      dev/release/post-06-bump-versions.sh <version> <next_version>
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml
