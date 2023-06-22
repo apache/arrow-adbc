@@ -414,7 +414,7 @@ struct ADBC_EXPORT AdbcError {
 #define ADBC_OBJECT_DEPTH_COLUMNS ADBC_OBJECT_DEPTH_ALL
 
 /// \defgroup adbc-table-statistics ADBC Statistic Types
-/// Standard statistic names for AdbcConnectionGetTableStatistics.
+/// Standard statistic names for AdbcConnectionGetStatistics.
 /// @{
 
 /// \brief The dictionary-encoded name of the average byte width statistic.
@@ -914,10 +914,12 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*ConnectionGetProcedures)(struct AdbcConnection*, const char*,
                                             const char*, const char*,
                                             struct ArrowArrayStream*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetTableStatistics)(struct AdbcConnection*, const char*,
-                                                 const char*, const char*, char,
-                                                 struct ArrowArrayStream*,
-                                                 struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetStatistics)(struct AdbcConnection*, const char*,
+                                            const char*, const char*, char,
+                                            struct ArrowArrayStream*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetStatisticNames)(struct AdbcConnection*,
+                                                struct ArrowArrayStream*,
+                                                struct AdbcError*);
   AdbcStatusCode (*ConnectionGetTypes)(struct AdbcConnection*, const char*, const char*,
                                        const char*, struct ArrowSchema*,
                                        struct AdbcError*);
@@ -1728,21 +1730,6 @@ AdbcStatusCode AdbcConnectionGetProcedures(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error);
 
-/// \brief Get the Arrow schema of a table.
-///
-/// \param[in] connection The database connection.
-/// \param[in] catalog The catalog (or nullptr if not applicable).
-/// \param[in] db_schema The database schema (or nullptr if not applicable).
-/// \param[in] table_name The table name.
-/// \param[out] schema The table schema.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
-                                            const char* catalog, const char* db_schema,
-                                            const char* table_name,
-                                            struct ArrowSchema* schema,
-                                            struct AdbcError* error);
-
 /// \brief Get statistics about the data distribution of table(s).
 ///
 /// The result is an Arrow dataset with the following schema:
@@ -1765,16 +1752,16 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 /// |--------------------------|----------------------------------| -------- |
 /// | table_name               | utf8 not null                    |          |
 /// | column_name              | utf8                             | (1)      |
-/// | statistic_name           | dictionary<int16, utf8> not null | (2)      |
+/// | statistic_key            | int16 not null                   | (2)      |
 /// | statistic_value          | VALUE_SCHEMA not null            |          |
 /// | statistic_is_approximate | bool not null                    | (3)      |
 ///
 /// 1. If null, then the statistic applies to the entire table.
-/// 2. A dictionary-encoded statistic name. Values in [0, 1024) are
-///    reserved for ADBC use.  Other values are free for
-///    implementation-specific statistics.  For the names and
-///    definitions of predefined statistic types, see \ref
-///    adbc-table-statistics.
+/// 2. A dictionary-encoded statistic name (although we do not use the Arrow
+///    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
+///    values are for implementation-specific statistics.  For the definitions
+///    of predefined statistic types, see \ref adbc-table-statistics.  To get
+///    driver-specific statistic names, use AdbcConnectionGetStatisticNames.
 /// 3. If true, then the value is approximate or best-effort.
 ///
 /// VALUE_SCHEMA is a dense union with members:
@@ -1802,12 +1789,43 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 /// \param[out] out The result set.
 /// \param[out] error Error details, if an error occurs.
 ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetTableStatistics(struct AdbcConnection* connection,
-                                                const char* catalog,
-                                                const char* db_schema,
-                                                const char* table_name, char approximate,
-                                                struct ArrowArrayStream* out,
-                                                struct AdbcError* error);
+AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
+                                           const char* catalog, const char* db_schema,
+                                           const char* table_name, char approximate,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error);
+
+/// \brief Get the names of statistics specific to this driver.
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// Field Name     | Field Type
+/// ---------------|----------------
+/// statistic_name | utf8 not null
+/// statistic_key  | int16 not null
+///
+/// \param[in] connection The database connection.
+/// \param[out] out The result set.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
+                                               struct ArrowArrayStream* out,
+                                               struct AdbcErrror* error);
+
+/// \brief Get the Arrow schema of a table.
+///
+/// \param[in] connection The database connection.
+/// \param[in] catalog The catalog (or nullptr if not applicable).
+/// \param[in] db_schema The database schema (or nullptr if not applicable).
+/// \param[in] table_name The table name.
+/// \param[out] schema The table schema.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
+                                            const char* catalog, const char* db_schema,
+                                            const char* table_name,
+                                            struct ArrowSchema* schema,
+                                            struct AdbcError* error);
 
 /// \brief Get a list of table types in the database.
 ///
