@@ -166,7 +166,6 @@ function(ADD_ARROW_LIB LIB_NAME)
     add_library(${LIB_NAME}_objlib OBJECT ${ARG_SOURCES})
     # Necessary to make static linking into other shared libraries work properly
     set_property(TARGET ${LIB_NAME}_objlib PROPERTY POSITION_INDEPENDENT_CODE 1)
-    set_property(TARGET ${LIB_NAME}_objlib PROPERTY CXX_STANDARD 17)
     set_property(TARGET ${LIB_NAME}_objlib PROPERTY CXX_STANDARD_REQUIRED ON)
     if(ARG_DEPENDENCIES)
       add_dependencies(${LIB_NAME}_objlib ${ARG_DEPENDENCIES})
@@ -197,7 +196,6 @@ function(ADD_ARROW_LIB LIB_NAME)
     adbc_configure_target(${LIB_NAME}_objlib)
     # https://github.com/apache/arrow-adbc/issues/81
     target_compile_features(${LIB_NAME}_objlib PRIVATE cxx_std_11)
-    set_property(TARGET ${LIB_NAME}_objlib PROPERTY CXX_STANDARD 11)
   else()
     # Prepare arguments for separate compilation of static and shared libs below
     # TODO: add PCH directives
@@ -213,7 +211,7 @@ function(ADD_ARROW_LIB LIB_NAME)
 
   if(BUILD_SHARED)
     add_library(${LIB_NAME}_shared SHARED ${LIB_DEPS})
-    set_property(TARGET ${LIB_NAME}_shared PROPERTY CXX_STANDARD 17)
+    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_11)
     set_property(TARGET ${LIB_NAME}_shared PROPERTY CXX_STANDARD_REQUIRED ON)
     adbc_configure_target(${LIB_NAME}_shared)
     if(EXTRA_DEPS)
@@ -311,7 +309,7 @@ function(ADD_ARROW_LIB LIB_NAME)
 
   if(BUILD_STATIC)
     add_library(${LIB_NAME}_static STATIC ${LIB_DEPS})
-    set_property(TARGET ${LIB_NAME}_shared PROPERTY CXX_STANDARD 17)
+    target_compile_features(${LIB_NAME}_static PRIVATE cxx_std_11)
     set_property(TARGET ${LIB_NAME}_shared PROPERTY CXX_STANDARD_REQUIRED ON)
     adbc_configure_target(${LIB_NAME}_static)
     if(EXTRA_DEPS)
