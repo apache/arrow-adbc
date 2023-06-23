@@ -5,10 +5,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="adbc_driver_postgresql" href="adbc_driver_postgresql.html" /><link rel="prev" title="Python API Reference" href="index.html" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="adbc_driver_flightsql" href="adbc_driver_flightsql.html" /><link rel="prev" title="Python API Reference" href="index.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.05.20 -->
-        <title>adbc_driver_manager - ADBC 0.1.0 (dev) documentation</title>
+        <title>adbc_driver_manager - ADBC 0.6.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
@@ -41,7 +41,7 @@
   }
 </style>
 <script>
-  const currentVersion = "0.1.0 (dev)";
+  const currentVersion = "0.6.0 (dev)";
   const versionsRoot = "../../..";
 </script>
 <style>
@@ -96,7 +96,7 @@
     </script>
     
 <nav id="version-switcher">
-  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 0.1.0 (dev)</button>
+  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 0.6.0 (dev)</button>
   <div class="versions">
     <ul></ul>
   </div>
@@ -183,7 +183,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">ADBC 0.1.0 (dev) documentation</div></a>
+      <a href="../../index.html"><div class="brand">ADBC 0.6.0 (dev) documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -210,7 +210,7 @@
     <img class="sidebar-logo only-dark" src="../../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 0.1.0 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 0.6.0 (dev) documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -218,62 +218,61 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Specifications</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../format/specification.html">ADBC API Standard</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../format/versioning.html">Versioning and Compatibility</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../format/comparison.html">Comparison with Other APIs</a></li>
+  <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions (FAQ)</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../driver/cpp/index.html">C/C++/Python</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++/Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/cpp/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/cpp/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/cpp/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/cpp/features.html">Feature Support Matrix</a></li>
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../driver/java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/java/flight_sql.html">Flight SQL</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../driver/java/jdbc.html">JDBC Adapter</a></li>
-</ul>
-</li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart (Python)</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Language-Specific APIs</span></p>
+<p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul class="current">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../cpp/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../cpp/api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../cpp/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../go/index.html">Go</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Go</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+<li class="toctree-l1"><a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc">Go</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
-</ul>
-</li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../quickstart.html">Quickstart (Python)</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l3 current current-page"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../recipe/index.html">Python Cookbook</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Python Cookbook</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../recipe/driver_manager.html">Driver Manager Recipes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../recipe/postgresql.html">PostgreSQL Recipes</a></li>
 </ul>
 </li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/status.html">Driver Implementation Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/jdbc.html">JDBC Adapter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/postgresql.html">PostgreSQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/snowflake.html">Snowflake Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/sqlite.html">SQLite Driver</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Specification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../format/specification.html">ADBC API Standard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../format/versioning.html">Versioning and Compatibility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../format/comparison.html">Comparison with Other APIs</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/nightly.html">Nightly Packages</a></li>
@@ -421,6 +420,60 @@ definitions in Python.  For a higher-level interface, use
 </div>
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="adbc_driver_manager.ConnectionOptions">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">ConnectionOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.ConnectionOptions" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Connection options that are standardized between drivers.</p>
+<p>Not all drivers support all options.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.ConnectionOptions.ISOLATION_LEVEL">
+<span class="sig-name descname"><span class="pre">ISOLATION_LEVEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.connection.transaction.isolation_level'</span></em><a class="headerlink" href="#adbc_driver_manager.ConnectionOptions.ISOLATION_LEVEL" title="Permalink to this definition">#</a></dt>
+<dd><p>Set the transaction isolation level.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="adbc_driver_manager.DatabaseOptions">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">DatabaseOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.DatabaseOptions" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Database options that are standardized between drivers.</p>
+<p>Not all drivers support all options.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.DatabaseOptions.PASSWORD">
+<span class="sig-name descname"><span class="pre">PASSWORD</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'password'</span></em><a class="headerlink" href="#adbc_driver_manager.DatabaseOptions.PASSWORD" title="Permalink to this definition">#</a></dt>
+<dd><p>Set the password to use for username-password authentication.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.DatabaseOptions.USERNAME">
+<span class="sig-name descname"><span class="pre">USERNAME</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'username'</span></em><a class="headerlink" href="#adbc_driver_manager.DatabaseOptions.USERNAME" title="Permalink to this definition">#</a></dt>
+<dd><p>Set the username to use for username-password authentication.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="adbc_driver_manager.StatementOptions">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">StatementOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.StatementOptions" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Statement options that are standardized between drivers.</p>
+<p>Not all drivers support all options.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.StatementOptions.INGEST_MODE">
+<span class="sig-name descname"><span class="pre">INGEST_MODE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.ingest.mode'</span></em><a class="headerlink" href="#adbc_driver_manager.StatementOptions.INGEST_MODE" title="Permalink to this definition">#</a></dt>
+<dd><p>For bulk ingestion, whether to create or append to the table.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.StatementOptions.INGEST_TARGET_TABLE">
+<span class="sig-name descname"><span class="pre">INGEST_TARGET_TABLE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.ingest.target_table'</span></em><a class="headerlink" href="#adbc_driver_manager.StatementOptions.INGEST_TARGET_TABLE" title="Permalink to this definition">#</a></dt>
+<dd><p>For bulk ingestion, the table to ingest into.</p>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="py data">
 <dt class="sig sig-object py" id="adbc_driver_manager.adbc_driver_manager.INGEST_OPTION_MODE">
 <span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.</span></span><span class="sig-name descname"><span class="pre">INGEST_OPTION_MODE</span></span><a class="headerlink" href="#adbc_driver_manager.adbc_driver_manager.INGEST_OPTION_MODE" title="Permalink to this definition">#</a></dt>
@@ -496,6 +549,9 @@ serialize accesses to a connection.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_autocommit" title="adbc_driver_manager.AdbcConnection.set_autocommit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_autocommit</span></code></a></p></td>
 <td><p>Toggle whether autocommit is enabled.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_options" title="adbc_driver_manager.AdbcConnection.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
+<td><p>Set arbitrary key-value options.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -561,6 +617,20 @@ serialize accesses to a connection.</p>
 <dd><p>Toggle whether autocommit is enabled.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.set_options">
+<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.set_options" title="Permalink to this definition">#</a></dt>
+<dd><p>Set arbitrary key-value options.</p>
+<p>Note, not all drivers support setting options after creation.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#adbc_driver_manager.ConnectionOptions" title="adbc_driver_manager.ConnectionOptions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_driver_manager.ConnectionOptions</span></code></a></dt><dd><p>Standard option names.</p>
+</dd>
+</dl>
+</div>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -585,6 +655,9 @@ database driver to load.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.close" title="adbc_driver_manager.AdbcDatabase.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a></p></td>
 <td><p>Release the handle to the database.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.set_options" title="adbc_driver_manager.AdbcDatabase.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
+<td><p>Set arbitrary key-value options.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -592,6 +665,20 @@ database driver to load.</p>
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcDatabase.close">
 <span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcDatabase.close" title="Permalink to this definition">#</a></dt>
 <dd><p>Release the handle to the database.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.AdbcDatabase.set_options">
+<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcDatabase.set_options" title="Permalink to this definition">#</a></dt>
+<dd><p>Set arbitrary key-value options.</p>
+<p>Note, not all drivers support setting options after creation.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#adbc_driver_manager.DatabaseOptions" title="adbc_driver_manager.DatabaseOptions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_driver_manager.DatabaseOptions</span></code></a></dt><dd><p>Standard option names.</p>
+</dd>
+</dl>
+</div>
 </dd></dl>
 
 </dd></dl>
@@ -630,16 +717,19 @@ serialize accesses to a connection.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_update" title="adbc_driver_manager.AdbcStatement.execute_update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_update</span></code></a></p></td>
 <td><p>Execute the query without a result set.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare" title="adbc_driver_manager.AdbcStatement.prepare"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema" title="adbc_driver_manager.AdbcStatement.get_parameter_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter_schema</span></code></a></p></td>
+<td><p>Get the Arrow schema for bound parameters.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare" title="adbc_driver_manager.AdbcStatement.prepare"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare</span></code></a></p></td>
 <td><p>Turn this statement into a prepared statement.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_options" title="adbc_driver_manager.AdbcStatement.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_options" title="adbc_driver_manager.AdbcStatement.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
 <td><p>Set arbitrary key-value options.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_sql_query" title="adbc_driver_manager.AdbcStatement.set_sql_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_sql_query</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_sql_query" title="adbc_driver_manager.AdbcStatement.set_sql_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_sql_query</span></code></a></p></td>
 <td><p>Set a SQL query to be executed.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_substrait_plan" title="adbc_driver_manager.AdbcStatement.set_substrait_plan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_substrait_plan</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_substrait_plan" title="adbc_driver_manager.AdbcStatement.set_substrait_plan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_substrait_plan</span></code></a></p></td>
 <td><p>Set a Substrait plan to be executed.</p></td>
 </tr>
 </tbody>
@@ -731,6 +821,30 @@ serialize accesses to a connection.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.get_parameter_schema">
+<span class="sig-name descname"><span class="pre">get_parameter_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema" title="Permalink to this definition">#</a></dt>
+<dd><p>Get the Arrow schema for bound parameters.</p>
+<p>This retrieves an Arrow schema describing the number, names,
+and types of the parameters in a parameterized statement.  The
+fields of the schema should be in order of the ordinal
+position of the parameters; named parameters should appear
+only once.</p>
+<p>If the parameter does not have a name, or the name cannot be
+determined, the name of the corresponding field in the schema
+will be an empty string.  If the type cannot be determined,
+the type of the corresponding field will be NA (NullType).</p>
+<p>This should be called after <a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare" title="adbc_driver_manager.AdbcStatement.prepare"><code class="xref py py-meth docutils literal notranslate"><span class="pre">prepare()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>NotSupportedError</dt><dd><p>If the schema could not be determined.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.prepare">
 <span class="sig-name descname"><span class="pre">prepare</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.prepare" title="Permalink to this definition">#</a></dt>
 <dd><p>Turn this statement into a prepared statement.</p>
@@ -740,6 +854,13 @@ serialize accesses to a connection.</p>
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.set_options">
 <span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.set_options" title="Permalink to this definition">#</a></dt>
 <dd><p>Set arbitrary key-value options.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#adbc_driver_manager.StatementOptions" title="adbc_driver_manager.StatementOptions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_driver_manager.StatementOptions</span></code></a></dt><dd><p>Standard option names.</p>
+</dd>
+</dl>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -824,6 +945,15 @@ serialize accesses to a connection.</p>
 <section id="module-adbc_driver_manager.dbapi">
 <span id="dbapi-2-0-api"></span><h2>DBAPI 2.0 API<a class="headerlink" href="#module-adbc_driver_manager.dbapi" title="Permalink to this heading">#</a></h2>
 <p>PEP 249 (DB-API 2.0) API wrapper for the ADBC Driver Manager.</p>
+<section id="resource-management">
+<h3>Resource Management<a class="headerlink" href="#resource-management" title="Permalink to this heading">#</a></h3>
+<p>You must <code class="docutils literal notranslate"><span class="pre">close()</span></code> Connection and Cursor objects, or else driver
+resources may be leaked.  A <code class="docutils literal notranslate"><span class="pre">__del__</span></code> is implemented as a fallback,
+but Python does not guarantee the timing of when this is called.  For
+development, <code class="docutils literal notranslate"><span class="pre">__del__</span></code> will raise a ResourceWarning when running
+under pytest, or when the environment variable
+<code class="docutils literal notranslate"><span class="pre">_ADBC_DRIVER_MANAGER_WARN_UNCLOSED_RESOURCE</span></code> is set to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
+</section>
 <section id="id1">
 <h3>Constants &amp; Enums<a class="headerlink" href="#id1" title="Permalink to this heading">#</a></h3>
 <dl class="py data">
@@ -898,7 +1028,7 @@ depends on the driver.</p>
 <h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">#</a></h3>
 <dl class="py function">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.connect">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">driver</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entrypoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><span class="pre">Connection</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.connect" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">driver</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entrypoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autocommit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><span class="pre">Connection</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.connect" title="Permalink to this definition">#</a></dt>
 <dd><p>Connect to a database via ADBC.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -917,6 +1047,10 @@ database.</p>
 <dt><strong>conn_kwargs</strong></dt><dd><p>Key-value parameters to pass to the driver to initialize the
 connection.</p>
 </dd>
+<dt><strong>autocommit</strong></dt><dd><p>Whether to enable autocommit.  For compliance with DB-API,
+this is disabled by default.  A warning will be emitted if it
+cannot be disabled.</p>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -930,13 +1064,13 @@ connection.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.TimeFromTicks">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">TimeFromTicks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">date</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.TimeFromTicks" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">TimeFromTicks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">time</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.TimeFromTicks" title="Permalink to this definition">#</a></dt>
 <dd><p>Construct a time value from a count of seconds.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.TimestampFromTicks">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">TimestampFromTicks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">date</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.TimestampFromTicks" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">TimestampFromTicks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">datetime</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.TimestampFromTicks" title="Permalink to this definition">#</a></dt>
 <dd><p>Construct a timestamp value from a count of seconds.</p>
 </dd></dl>
 
@@ -945,7 +1079,7 @@ connection.</p>
 <h3>Classes<a class="headerlink" href="#id2" title="Permalink to this heading">#</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Connection">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">Connection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager._lib.AdbcDatabase"><span class="pre">AdbcDatabase</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_SharedDatabase</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#adbc_driver_manager.AdbcConnection" title="adbc_driver_manager._lib.AdbcConnection"><span class="pre">AdbcConnection</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.dbapi.Connection" title="Permalink to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">Connection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager._lib.AdbcDatabase"><span class="pre">AdbcDatabase</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_SharedDatabase</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#adbc_driver_manager.AdbcConnection" title="adbc_driver_manager._lib.AdbcConnection"><span class="pre">AdbcConnection</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autocommit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.dbapi.Connection" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_Closeable</span></code></p>
 <p>A DB-API 2.0 (PEP 249) connection.</p>
 <p>Do not create this object directly; use connect().</p>
@@ -1144,20 +1278,26 @@ connections.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest" title="adbc_driver_manager.dbapi.Cursor.adbc_ingest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_ingest</span></code></a>(table_name, data[, mode])</p></td>
 <td><p>Ingest Arrow data into a database table.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_read_partition" title="adbc_driver_manager.dbapi.Cursor.adbc_read_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_read_partition</span></code></a>(partition)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_prepare" title="adbc_driver_manager.dbapi.Cursor.adbc_prepare"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_prepare</span></code></a>(operation)</p></td>
+<td><p>Prepare a query without executing it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_read_partition" title="adbc_driver_manager.dbapi.Cursor.adbc_read_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_read_partition</span></code></a>(partition)</p></td>
 <td><p>Read a partition of a distributed result set.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.callproc" title="adbc_driver_manager.dbapi.Cursor.callproc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">callproc</span></code></a>(procname, parameters)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.callproc" title="adbc_driver_manager.dbapi.Cursor.callproc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">callproc</span></code></a>(procname, parameters)</p></td>
 <td><p>Call a stored procedure (not supported).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.close" title="adbc_driver_manager.dbapi.Cursor.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.close" title="adbc_driver_manager.dbapi.Cursor.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
 <td><p>Close the cursor and free resources.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.execute" title="adbc_driver_manager.dbapi.Cursor.execute"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute</span></code></a>(operation[, parameters])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.execute" title="adbc_driver_manager.dbapi.Cursor.execute"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute</span></code></a>(operation[, parameters])</p></td>
 <td><p>Execute a query.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executemany" title="adbc_driver_manager.dbapi.Cursor.executemany"><code class="xref py py-obj docutils literal notranslate"><span class="pre">executemany</span></code></a>(operation, seq_of_parameters)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executemany" title="adbc_driver_manager.dbapi.Cursor.executemany"><code class="xref py py-obj docutils literal notranslate"><span class="pre">executemany</span></code></a>(operation, seq_of_parameters)</p></td>
 <td><p>Execute a query with multiple parameter sets.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executescript" title="adbc_driver_manager.dbapi.Cursor.executescript"><code class="xref py py-obj docutils literal notranslate"><span class="pre">executescript</span></code></a>(operation)</p></td>
+<td><p>Execute multiple statements.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table" title="adbc_driver_manager.dbapi.Cursor.fetch_arrow_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_arrow_table</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result as a PyArrow Table.</p></td>
@@ -1197,7 +1337,7 @@ connections.</p>
 <span class="sig-name descname"><span class="pre">adbc_execute_partitions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Schema.html#pyarrow.Schema" title="(in Apache Arrow v12.0.1)"><span class="pre">Schema</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.adbc_execute_partitions" title="Permalink to this definition">#</a></dt>
 <dd><p>Execute a query and get the partitions of a distributed result set.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>partitions</strong><span class="classifier">list of byte</span></dt><dd><p>A list of partition descriptors, which can be read with
 read_partition.</p>
@@ -1232,6 +1372,26 @@ would result from a typical prepare-bind-insert loop.</p>
 <dd class="field-even"><dl class="simple">
 <dt>int</dt><dd><p>The number of rows inserted, or -1 if the driver cannot
 provide this information.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.adbc_prepare">
+<span class="sig-name descname"><span class="pre">adbc_prepare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Schema.html#pyarrow.Schema" title="(in Apache Arrow v12.0.1)"><span class="pre">Schema</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.adbc_prepare" title="Permalink to this definition">#</a></dt>
+<dd><p>Prepare a query without executing it.</p>
+<p>To execute the query afterwards, call <a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.execute" title="adbc_driver_manager.dbapi.Cursor.execute"><code class="xref py py-meth docutils literal notranslate"><span class="pre">execute()</span></code></a> or
+<a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executemany" title="adbc_driver_manager.dbapi.Cursor.executemany"><code class="xref py py-meth docutils literal notranslate"><span class="pre">executemany()</span></code></a> with the same query.  This will not
+prepare the query a second time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>pyarrow.Schema or None</dt><dd><p>The schema of the bind parameters, or None if the schema
+could not be determined.</p>
 </dd>
 </dl>
 </dd>
@@ -1329,6 +1489,15 @@ be executed once per row.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.executescript">
+<span class="sig-name descname"><span class="pre">executescript</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.executescript" title="Permalink to this definition">#</a></dt>
+<dd><p>Execute multiple statements.</p>
+<p>If there is a pending transaction, commits first.</p>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.fetch_arrow_table">
 <span class="sig-name descname"><span class="pre">fetch_arrow_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table" title="(in Apache Arrow v12.0.1)"><span class="pre">Table</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table" title="Permalink to this definition">#</a></dt>
 <dd><p>Fetch all rows of the result as a PyArrow Table.</p>
@@ -1369,7 +1538,7 @@ be executed once per row.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.fetchone">
-<span class="sig-name descname"><span class="pre">fetchone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.fetchone" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fetchone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.fetchone" title="Permalink to this definition">#</a></dt>
 <dd><p>Fetch one row of the result.</p>
 </dd></dl>
 
@@ -1505,12 +1674,12 @@ be executed once per row.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="adbc_driver_postgresql.html">
+          <a class="next-page" href="adbc_driver_flightsql.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></div>
+                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -1560,6 +1729,20 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#constants-enums">Constants &amp; Enums</a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatusCode"><code class="docutils literal notranslate"><span class="pre">AdbcStatusCode</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.GetObjectsDepth"><code class="docutils literal notranslate"><span class="pre">GetObjectsDepth</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.ConnectionOptions"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_manager.ConnectionOptions.ISOLATION_LEVEL"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.ISOLATION_LEVEL</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#adbc_driver_manager.DatabaseOptions"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_manager.DatabaseOptions.PASSWORD"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.PASSWORD</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.DatabaseOptions.USERNAME"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.USERNAME</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#adbc_driver_manager.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INGEST_MODE"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INGEST_MODE</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INGEST_TARGET_TABLE"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INGEST_TARGET_TABLE</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#adbc_driver_manager.adbc_driver_manager.INGEST_OPTION_MODE"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_MODE</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.adbc_driver_manager.INGEST_OPTION_MODE_APPEND"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_MODE_APPEND</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.adbc_driver_manager.INGEST_OPTION_MODE_CREATE"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.INGEST_OPTION_MODE_CREATE</span></code></a></li>
@@ -1577,10 +1760,12 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.read_partition"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.read_partition()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.rollback"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.rollback()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_autocommit"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.set_autocommit()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_options"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.set_options()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase"><code class="docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.close"><code class="docutils literal notranslate"><span class="pre">AdbcDatabase.close()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.set_options"><code class="docutils literal notranslate"><span class="pre">AdbcDatabase.set_options()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement"><code class="docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a><ul>
@@ -1589,6 +1774,7 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_partitions"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.execute_partitions()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_query"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.execute_query()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_update"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.execute_update()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.get_parameter_schema()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.prepare()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_options"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.set_options()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_sql_query"><code class="docutils literal notranslate"><span class="pre">AdbcStatement.set_sql_query()</span></code></a></li>
@@ -1612,6 +1798,7 @@ be executed once per row.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-adbc_driver_manager.dbapi">DBAPI 2.0 API</a><ul>
+<li><a class="reference internal" href="#resource-management">Resource Management</a></li>
 <li><a class="reference internal" href="#id1">Constants &amp; Enums</a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.apilevel"><code class="docutils literal notranslate"><span class="pre">apilevel</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.paramstyle"><code class="docutils literal notranslate"><span class="pre">paramstyle</span></code></a></li>
@@ -1651,6 +1838,7 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor"><code class="docutils literal notranslate"><span class="pre">Cursor</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_execute_partitions"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_execute_partitions()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_ingest()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_prepare"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_prepare()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_read_partition"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_read_partition()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_statement"><code class="docutils literal notranslate"><span class="pre">Cursor.adbc_statement</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.arraysize"><code class="docutils literal notranslate"><span class="pre">Cursor.arraysize</span></code></a></li>
@@ -1660,6 +1848,7 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.description"><code class="docutils literal notranslate"><span class="pre">Cursor.description</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.execute"><code class="docutils literal notranslate"><span class="pre">Cursor.execute()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executemany"><code class="docutils literal notranslate"><span class="pre">Cursor.executemany()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executescript"><code class="docutils literal notranslate"><span class="pre">Cursor.executescript()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_arrow_table()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_df"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_df()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchall"><code class="docutils literal notranslate"><span class="pre">Cursor.fetchall()</span></code></a></li>

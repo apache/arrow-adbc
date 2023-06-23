@@ -15,11 +15,9 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-===
-Go
-===
+==========
+Quickstart
+==========
 
-.. toctree::
-   :maxdepth: 2
-
-.. note:: Under construction
+.. recipe:: recipe/quickstart.cc
+   :language: cpp

@@ -25,8 +25,8 @@ Low-Level API
 =============
 
 .. automodule:: adbc_driver_sqlite
-
-.. autofunction:: adbc_driver_sqlite.connect
+   :members:
+   :undoc-members:
 
 DBAPI 2.0 API
 =============

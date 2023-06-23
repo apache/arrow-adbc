@@ -5,10 +5,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Concurrency and Thread Safety" href="concurrency.html" /><link rel="prev" title="Quickstart" href="quickstart.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Snowflake Driver" href="snowflake.html" /><link rel="prev" title="JDBC Adapter" href="jdbc.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2023.05.20 -->
-        <title>Driver Manager - ADBC 0.6.0 (dev) documentation</title>
+        <title>PostgreSQL Driver - ADBC 0.6.0 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
@@ -222,14 +222,14 @@
 <li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
-<ul class="current">
-<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">C/C++</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Driver Manager</a></li>
-<li class="toctree-l2"><a class="reference internal" href="concurrency.html">Concurrency and Thread Safety</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cpp/api/index.html">C/C++ API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of C/C++ API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc.html"><code class="docutils literal notranslate"><span class="pre">adbc.h</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cpp/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.h</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -257,14 +257,14 @@
 </li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/snowflake.html">Snowflake Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/sqlite.html">SQLite Driver</a></li>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Driver Implementation Status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jdbc.html">JDBC Adapter</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">PostgreSQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="snowflake.html">Snowflake Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -297,7 +297,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/cpp/driver_manager.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/driver/postgresql.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -319,44 +319,167 @@
           </label>
         </div>
         <article role="main">
-          <section id="driver-manager">
-<h1>Driver Manager<a class="headerlink" href="#driver-manager" title="Permalink to this heading">#</a></h1>
-<p>The driver manager is a library that implements the ADBC API by
-delegating to dynamically-loaded drivers.  This allows applications to
-use multiple drivers simultaneously, and decouple themselves from the
-specific driver.</p>
+          <section id="postgresql-driver">
+<h1>PostgreSQL Driver<a class="headerlink" href="#postgresql-driver" title="Permalink to this heading">#</a></h1>
+<p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Python, R</p>
+<p>The PostgreSQL driver provides access to any database that supports
+the PostgreSQL wire format.  It wraps <a class="reference external" href="https://www.postgresql.org/docs/current/libpq.html">libpq</a>, the client library for
+PostgreSQL.  The project owes credit to 0x0L’s <a class="reference external" href="https://github.com/0x0L/pgeon">pgeon</a> for the
+overall approach.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This project is not affiliated with PostgreSQL in any way.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The PostgreSQL driver is experimental.
+Performance/optimization and support for complex types and
+different ADBC features is still ongoing.</p>
+</div>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
-<p>TODO</p>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-0">
+C/C++</label><div class="sd-tab-content docutils">
+<p>For conda-forge users:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-postgresql
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-1">
+Go</label><div class="sd-tab-content docutils">
+<p>Install the C/C++ package and use the Go driver manager.
+Requires CGO.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/drivermgr
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-2">
+Python</label><div class="sd-tab-content docutils">
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># For conda-forge</span>
+mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-postgresql
+
+<span class="c1"># For pip</span>
+pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_postgresql
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
+</input><label class="sd-tab-label" data-sync-id="r" for="sd-tab-item-3">
+R</label><div class="sd-tab-content docutils">
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="c1"># install.packages(&quot;remotes&quot;)</span>
+<span class="n">remotes</span><span class="o">::</span><span class="nf">install_github</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcpostgresql&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">build</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
-<p>To create a database, use the <a class="reference internal" href="api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a> API as usual,
-but during initialization, provide two additional parameters in
-addition to the driver-specific connection parameters: <code class="docutils literal notranslate"><span class="pre">driver</span></code> and
-(optionally) <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>.  <code class="docutils literal notranslate"><span class="pre">driver</span></code> must be the name of a library
-to load, or the path to a library to load. <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>, if
-provided, should be the name of the symbol that serves as the ADBC
-entrypoint (see <code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code>).</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cm">/* Ignoring error handling */</span>
+<p>To connect to a database, supply the “uri” parameter when constructing
+the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  This should be a <a class="reference external" href="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">connection URI</a>.</p>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="cpp" for="sd-tab-item-4">
+C++</label><div class="sd-tab-content docutils">
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;adbc.h&quot;</span>
+
+<span class="c1">// Ignoring error handling</span>
 <span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
-<span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">database</span><span class="p">));</span>
-<span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="cm">/* On Linux: loads libadbc_driver_sqlite.so</span>
-<span class="cm"> * On MacOS: loads libadbc_driver_sqlite.dylib</span>
-<span class="cm"> * On Windows: loads adbc_driver_sqlite.dll */</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;adbc_driver_sqlite&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="cm">/* Set additional options for the specific driver, if needed */</span>
-<span class="cm">/* Initialize the database */</span>
-<span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
-<span class="cm">/* Create connections as usual */</span>
+<span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;postgresql://localhost:5433&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span>
+<span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">);</span>
 </pre></div>
 </div>
+</div>
+<input id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-5">
+Python</label><div class="sd-tab-content docutils">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_postgresql.dbapi</span>
+
+<span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;postgresql://user:pass@localhost:5433/postgres&quot;</span>
+<span class="k">with</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>For more examples, see <a class="reference internal" href="../python/recipe/postgresql.html"><span class="doc">PostgreSQL Recipes</span></a>.</p>
+</div>
+<input id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="r" for="sd-tab-item-6">
+R</label><div class="sd-tab-content docutils">
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
+
+<span class="c1"># Use the driver manager to connect to a database</span>
+<span class="n">uri</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">Sys.getenv</span><span class="p">(</span><span class="s">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">)</span>
+<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">adbcpostgresql</span><span class="o">::</span><span class="nf">adbcpostgresql</span><span class="p">(),</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">uri</span><span class="p">)</span>
+<span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_connection_init</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
+</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-7">
+Go</label><div class="sd-tab-content docutils">
+<p>You must have <cite>libadbc_driver_postgresql.so</cite> on your LD_LIBRARY_PATH,
+or in the same directory as the executable when you run this. This
+requires CGO and loads the C++ ADBC postgresql driver.</p>
+<div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">   </span><span class="s">&quot;context&quot;</span>
+
+<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc&quot;</span>
+<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc/drivermgr&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="kd">var</span><span class="w"> </span><span class="nx">drv</span><span class="w"> </span><span class="nx">drivermgr</span><span class="p">.</span><span class="nx">Driver</span>
+<span class="w">   </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">      </span><span class="s">&quot;driver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;adbc_driver_postgresql&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">adbc</span><span class="p">.</span><span class="nx">OptionKeyURI</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;postgresql://user:pass@localhost:5433/postgres&quot;</span><span class="p">,</span>
+<span class="w">   </span><span class="p">})</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="c1">// handle error</span>
+<span class="w">   </span><span class="p">}</span>
+
+<span class="w">   </span><span class="nx">cnxn</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">())</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="c1">// handle error</span>
+<span class="w">   </span><span class="p">}</span>
+<span class="w">   </span><span class="k">defer</span><span class="w"> </span><span class="nx">cnxn</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
 </section>
-<section id="api-reference">
-<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this heading">#</a></h2>
-<p>The driver manager includes a few additional functions beyond the ADBC
-API.  See the API reference: <a class="reference internal" href="api/adbc_driver_manager.html"><span class="doc">adbc_driver_manager.h</span></a>.</p>
+<section id="supported-features">
+<h2>Supported Features<a class="headerlink" href="#supported-features" title="Permalink to this heading">#</a></h2>
+<p>The PostgreSQL driver mostly supports features defined in the ADBC API
+specification 1.0.0, but not all cases are fully implemented
+(particularly around bind parameters and prepared statements).</p>
+<section id="bulk-ingestion">
+<h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
+<p>Bulk ingestion is supported.  The mapping from Arrow types to
+PostgreSQL types is the same as below.</p>
+</section>
+<section id="partitioned-result-sets">
+<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
+<p>Partitioned result sets are not supported.</p>
+</section>
+<section id="transactions">
+<h3>Transactions<a class="headerlink" href="#transactions" title="Permalink to this heading">#</a></h3>
+<p>Transactions are supported.</p>
+</section>
+<section id="type-support">
+<h3>Type Support<a class="headerlink" href="#type-support" title="Permalink to this heading">#</a></h3>
+<p>PostgreSQL allows defining new types at runtime, so the driver must
+build a mapping of available types.  This is currently done once at
+startup.</p>
+<p>Type support is currently limited.  Parameter binding and bulk
+ingestion support int16, int32, int64, and string.  Reading result
+sets is limited to int32, int64, float, double, and string.</p>
+</section>
 </section>
 </section>
 
@@ -365,23 +488,23 @@ API.  See the API reference: <a class="reference internal" href="api/adbc_driver
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="concurrency.html">
+          <a class="next-page" href="snowflake.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Concurrency and Thread Safety</div>
+                <div class="title">Snowflake Driver</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="quickstart.html">
+          <a class="prev-page" href="jdbc.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Quickstart</div>
+                <div class="title">JDBC Adapter</div>
                 
               </div>
             </a>
@@ -415,10 +538,16 @@ API.  See the API reference: <a class="reference internal" href="api/adbc_driver
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Driver Manager</a><ul>
+<li><a class="reference internal" href="#">PostgreSQL Driver</a><ul>
 <li><a class="reference internal" href="#installation">Installation</a></li>
 <li><a class="reference internal" href="#usage">Usage</a></li>
-<li><a class="reference internal" href="#api-reference">API Reference</a></li>
+<li><a class="reference internal" href="#supported-features">Supported Features</a><ul>
+<li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
+<li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
+<li><a class="reference internal" href="#transactions">Transactions</a></li>
+<li><a class="reference internal" href="#type-support">Type Support</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

@@ -28,7 +28,33 @@ Nightly builds of some binary packages are available.
 C/C++
 =====
 
-Not yet available.
+Conda users can install nightly builds from a Conda channel:
+https://anaconda.org/arrow-adbc-nightlies
+
+This should be used with conda-forge.  Example::
+
+  mamba install -c conda-forge -c arrow-adbc-nightlies adbc-driver-manager
+
+Both C/C++ and Python packages are available.
+
+.. list-table:: Supported platforms for nightly Conda packages
+   :header-rows: 1
+
+   * - Operating System
+     - AMD64 (x86_64)
+     - AArch64
+
+   * - Linux
+     - Yes ✅
+     - No ❌
+
+   * - macOS
+     - Yes ✅
+     - No ❌
+
+   * - Windows
+     - No ✅
+     - No ❌
 
 Java
 ====
@@ -41,15 +67,11 @@ Python
 Packages can be installed from an alternative package index:
 https://gemfury.com/arrow-adbc-nightlies
 
-.. warning:: You MUST explicitly specify the version, since otherwise
-             pip will install the latest version by lexicographical
-             ordering, which will likely be some random, old build.
-
 Example::
 
   pip install \
         --extra-index-url https://repo.fury.io/arrow-adbc-nightlies \
-        adbc_driver_manager==0.0.0+g265a1b6
+        adbc-driver-manager
 
 .. list-table:: Supported platforms for nightly Python wheels
    :header-rows: 1

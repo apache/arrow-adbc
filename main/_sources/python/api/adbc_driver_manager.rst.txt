@@ -35,6 +35,18 @@ Constants & Enums
 .. autoclass:: adbc_driver_manager.GetObjectsDepth
    :members:
 
+.. autoclass:: adbc_driver_manager.ConnectionOptions
+   :members:
+   :undoc-members:
+
+.. autoclass:: adbc_driver_manager.DatabaseOptions
+   :members:
+   :undoc-members:
+
+.. autoclass:: adbc_driver_manager.StatementOptions
+   :members:
+   :undoc-members:
+
 .. XXX: Sphinx doesn't seem to be able to parse docstrings out of
    Cython code, so put the descriptions here instead.
 

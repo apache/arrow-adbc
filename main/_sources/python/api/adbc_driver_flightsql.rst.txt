@@ -15,18 +15,22 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-============
-JDBC Adapter
-============
+.. default-domain:: py
 
-The JDBC Adapter provides access to any database with a JDBC driver.
+=========================
+``adbc_driver_flightsql``
+=========================
 
-Installation
-============
+Low-Level API
+=============
 
-Add a dependency on ``org.apache.arrow.adbc:adbc-driver-jdbc``.
+.. automodule:: adbc_driver_flightsql
+   :members:
+   :undoc-members:
 
-Usage
-=====
+DBAPI 2.0 API
+=============
 
-Provide the parameter ``adbc.url`` when creating the database.
+.. automodule:: adbc_driver_flightsql.dbapi
+
+.. autofunction:: adbc_driver_flightsql.dbapi.connect

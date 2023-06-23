@@ -19,6 +19,8 @@
 PostgreSQL Driver
 =================
 
+**Available for:** C/C++, GLib/Ruby, Go, Python, R
+
 The PostgreSQL driver provides access to any database that supports
 the PostgreSQL wire format.  It wraps `libpq`_, the client library for
 PostgreSQL.  The project owes credit to 0x0L's `pgeon`_ for the
@@ -29,31 +31,52 @@ overall approach.
 .. _libpq: https://www.postgresql.org/docs/current/libpq.html
 .. _pgeon: https://github.com/0x0L/pgeon
 
-Status
-======
-
-The PostgreSQL driver is experimental.  Performance/optimization and
-support for complex types and different ADBC features is still
-ongoing.
+.. note:: The PostgreSQL driver is experimental.
+          Performance/optimization and support for complex types and
+          different ADBC features is still ongoing.
 
 Installation
 ============
 
-The PostgreSQL driver is shipped as a standalone library.
-
 .. tab-set::
 
-   .. tab-item:: C++
+   .. tab-item:: C/C++
       :sync: cpp
 
-      See :ref:`contributing` to build and install the package from source.
+      For conda-forge users:
+
+      .. code-block:: shell
+
+         mamba install libadbc-driver-postgresql
+
+   .. tab-item:: Go
+      :sync: go
+
+      Install the C/C++ package and use the Go driver manager.
+      Requires CGO.
+
+      .. code-block:: shell
+
+         go get github.com/apache/arrow-adbc/go/adbc/drivermgr
 
    .. tab-item:: Python
       :sync: python
 
       .. code-block:: shell
 
+         # For conda-forge
+         mamba install adbc-driver-postgresql
+
+         # For pip
          pip install adbc_driver_postgresql
+
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: r
+
+         # install.packages("remotes")
+         remotes::install_github("apache/arrow-adbc/r/adbcpostgresql", build = FALSE)
 
 Usage
 =====
@@ -84,13 +107,63 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
 
          import adbc_driver_postgresql.dbapi
 
-
-         uri = "postgresql://localhost:5433"
+         uri = "postgresql://user:pass@localhost:5433/postgres"
          with adbc_driver_postgresql.dbapi.connect(uri) as conn:
              pass
 
+      For more examples, see :doc:`../python/recipe/postgresql`.
+
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: r
+
+         library(adbcdrivermanager)
+
+         # Use the driver manager to connect to a database
+         uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI")
+         db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
+         con <- adbc_connection_init(db)
+
+   .. tab-item:: Go
+      :sync: go
+
+      You must have `libadbc_driver_postgresql.so` on your LD_LIBRARY_PATH,
+      or in the same directory as the executable when you run this. This
+      requires CGO and loads the C++ ADBC postgresql driver.
+
+      .. code-block:: go
+
+         import (
+            "context"
+
+            "github.com/apache/arrow-adbc/go/adbc"
+            "github.com/apache/arrow-adbc/go/adbc/drivermgr"
+         )
+
+         func main() {
+            var drv drivermgr.Driver
+            db, err := drv.NewDatabase(map[string]string{
+               "driver": "adbc_driver_postgresql",
+               adbc.OptionKeyURI: "postgresql://user:pass@localhost:5433/postgres",
+            })
+            if err != nil {
+               // handle error
+            }
+
+            cnxn, err := db.Open(context.Background())
+            if err != nil {
+               // handle error
+            }
+            defer cnxn.Close()
+         }
+
 Supported Features
 ==================
+
+The PostgreSQL driver mostly supports features defined in the ADBC API
+specification 1.0.0, but not all cases are fully implemented
+(particularly around bind parameters and prepared statements).
 
 Bulk Ingestion
 --------------
@@ -102,12 +175,6 @@ Partitioned Result Sets
 -----------------------
 
 Partitioned result sets are not supported.
-
-Performance
------------
-
-The driver makes use of COPY and the binary format to speed up result
-set reading.  Formal benchmarking is forthcoming.
 
 Transactions
 ------------
