@@ -40,8 +40,8 @@ You can install the development version of adbcdrivermanager from
 [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager")
+# install.packages("pak")
+pak::pkg_install("apache/arrow-adbc/r/adbcdrivermanager")
 ```
 
 ## Example
