@@ -57,7 +57,7 @@ adbc_database_init.adbcsnowflake_driver_snowflake <- function(driver, ..., uri =
   options <- list(..., uri = uri)
   adbcdrivermanager::adbc_database_init_default(
     driver,
-    options[!vapply(options, is.null, logical(1))],
+    options,
     subclass = "adbcsnowflake_database"
   )
 }
@@ -70,7 +70,7 @@ adbc_connection_init.adbcsnowflake_database <- function(database, ...,
   options <- list(..., adbc.connection.autocommit = adbc.connection.autocommit)
   adbcdrivermanager::adbc_connection_init_default(
     database,
-    options[!vapply(options, is.null, logical(1))],
+    options,
     subclass = "adbcsnowflake_connection"
   )
 }
@@ -89,7 +89,7 @@ adbc_statement_init.adbcsnowflake_connection <- function(connection, ...,
 
   adbcdrivermanager::adbc_statement_init_default(
     connection,
-    options[!vapply(options, is.null, logical(1))],
+    options,
     subclass = "adbcsnowflake_statement"
   )
 }
