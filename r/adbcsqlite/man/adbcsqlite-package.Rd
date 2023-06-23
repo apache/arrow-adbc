@@ -2,9 +2,9 @@
 % Please edit documentation in R/adbcsqlite-package.R
 \docType{package}
 \name{adbcsqlite-package}
-\title{adbcsqlite: Arrow Database Connectivity (ADBC) SQLite Driver}
+\title{adbcsqlite: 'Arrow' Database Connectivity ('ADBC') SQLite Driver}
 \description{
-Provides a developer-facing interface to the Arrow Database Connectivity (ADBC) SQLite driver.
+Provides a developer-facing interface to the 'Arrow' Database Connectivity ('ADBC') SQLite driver. for the purposes of driver development, driver testing, and building high-level database interfaces for users. 'ADBC' \url{https://arrow.apache.org/adbc/} is an API standard for database access libraries that uses 'Arrow' for result sets and query parameters.
 }
 \seealso{
 Useful links:
@@ -20,6 +20,11 @@ Useful links:
 Authors:
 \itemize{
   \item Apache Arrow \email{dev@arrow.apache.org} [copyright holder]
+}
+
+Other contributors:
+\itemize{
+  \item Apache Software Foundation \email{dev@arrow.apache.org} [copyright holder]
 }
 
 }
