@@ -107,7 +107,7 @@ class PqResultHelper {
   AdbcStatusCode Execute() {
     std::vector<const char*> param_c_strs;
 
-    for (auto index = 0; index < param_values_.size(); index++) {
+    for (size_t index = 0; index < param_values_.size(); index++) {
       param_c_strs.push_back(param_values_[index].c_str());
     }
 
@@ -375,8 +375,8 @@ class PqGetObjectsHelper {
       const char** table_types = table_types_;
       while (*table_types != NULL) {
         auto table_type_str = std::string(*table_types);
-        if (auto search = kPgTableTypes.find(table_type_str);
-            search != kPgTableTypes.end()) {
+        auto search = kPgTableTypes.find(table_type_str);
+        if (search != kPgTableTypes.end()) {
           table_type_filter.push_back(search->second);
         }
         table_types++;

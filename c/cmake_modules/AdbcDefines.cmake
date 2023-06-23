@@ -60,16 +60,40 @@ if(CXX_LINKER_SUPPORTS_VERSION_SCRIPT)
 endif()
 
 # Set common build options
-macro(adbc_configure_target TARGET)
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(${TARGET}
-                           PRIVATE -Wall
-                                   -Werror
-                                   -Wextra
-                                   -Wpedantic
-                                   -Wno-unused-parameter
-                                   -Wunused-result)
+if(NOT ADBC_BUILD_WARNING_LEVEL OR ADBC_BUILD_WARNING_LEVEL STREQUAL "")
+  if("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+    set(ADBC_BUILD_WARNING_LEVEL "PRODUCTION")
+  else()
+    set(ADBC_BUILD_WARNING_LEVEL "CHECKIN")
   endif()
+endif()
+
+set(ADBC_C_CXX_FLAGS)
+if("${ADBC_BUILD_WARNING_LEVEL}" STREQUAL "CHECKIN")
+  if(MSVC)
+    set(ADBC_C_CXX_FLAGS /Wall /Werror)
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
+         OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+         OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(ADBC_C_CXX_FLAGS -Wall -Werror)
+  else()
+    message(WARNING "Unknown compiler: ${CMAKE_CXX_COMPILER_ID}")
+  endif()
+elseif("${ADBC_BUILD_WARNING_LEVEL}" STREQUAL "PRODUCTION")
+  if(MSVC)
+    set(CMAKE_C_FLAGS /Wall)
+    set(ADBC_C_CXX_FLAGS /Wall)
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
+         OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+         OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(ADBC_C_CXX_FLAGS -Wall)
+  else()
+    message(WARNING "Unknown compiler: ${CMAKE_CXX_COMPILER_ID}")
+  endif()
+endif()
+
+macro(adbc_configure_target TARGET)
+  target_compile_options(${TARGET} PRIVATE ${ADBC_C_CXX_FLAGS})
 endmacro()
 
 # Common testing setup

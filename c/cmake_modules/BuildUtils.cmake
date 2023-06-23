@@ -194,6 +194,10 @@ function(ADD_ARROW_LIB LIB_NAME)
     target_link_libraries(${LIB_NAME}_objlib
                           PRIVATE ${ARG_SHARED_LINK_LIBS} ${ARG_SHARED_PRIVATE_LINK_LIBS}
                                   ${ARG_STATIC_LINK_LIBS})
+    adbc_configure_target(${LIB_NAME}_objlib)
+    # https://github.com/apache/arrow-adbc/issues/81
+    target_compile_features(${LIB_NAME}_objlib PRIVATE cxx_std_11)
+    set_property(TARGET ${LIB_NAME}_objlib PROPERTY CXX_STANDARD 11)
   else()
     # Prepare arguments for separate compilation of static and shared libs below
     # TODO: add PCH directives
@@ -254,6 +258,9 @@ function(ADD_ARROW_LIB LIB_NAME)
                                      OUTPUT_NAME ${LIB_NAME}
                                      VERSION "${ADBC_FULL_SO_VERSION}"
                                      SOVERSION "${ADBC_SO_VERSION}")
+
+    # https://github.com/apache/arrow-adbc/issues/81
+    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_11)
 
     target_link_libraries(${LIB_NAME}_shared
                           LINK_PUBLIC
@@ -341,6 +348,9 @@ function(ADD_ARROW_LIB LIB_NAME)
     set_target_properties(${LIB_NAME}_static
                           PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_PATH}"
                                      OUTPUT_NAME ${LIB_NAME_STATIC})
+
+    # https://github.com/apache/arrow-adbc/issues/81
+    target_compile_features(${LIB_NAME}_static PRIVATE cxx_std_11)
 
     if(ARG_STATIC_INSTALL_INTERFACE_LIBS)
       target_link_libraries(${LIB_NAME}_static LINK_PUBLIC
@@ -584,6 +594,7 @@ function(ADD_TEST_CASE REL_TEST_NAME)
 
   set(TEST_PATH "${EXECUTABLE_OUTPUT_PATH}/${TEST_NAME}")
   add_executable(${TEST_NAME} ${SOURCES})
+  adbc_configure_target(${TEST_NAME})
 
   # With OSX and conda, we need to set the correct RPATH so that dependencies
   # are found. The installed libraries with conda have an RPATH that matches
@@ -636,8 +647,6 @@ function(ADD_TEST_CASE REL_TEST_NAME)
   else()
     add_test(${TEST_NAME} ${TEST_PATH} ${ARG_TEST_ARGUMENTS})
   endif()
-
-  adbc_configure_target(${TEST_NAME})
 
   # Add test as dependency of relevant targets
   add_dependencies(all-tests ${TEST_NAME})
