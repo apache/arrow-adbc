@@ -204,6 +204,9 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     endif()
     if(NOT WIN32)
       install(FILES "${LIBOUT_SHARED}" "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE LIB)
+    else()
+      # This symlink doesn't get installed
+      install(FILES "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE BIN)
     endif()
   endif()
 
