@@ -1,5 +1,5 @@
 Package: adbcsqlite
-Title: 'Arrow' Database Connectivity ('ADBC') SQLite Driver
+Title: 'Arrow' Database Connectivity ('ADBC') 'SQLite' Driver
 Version: 0.5.0.9000
 Authors@R: c(
       person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
@@ -8,7 +8,7 @@ Authors@R: c(
       person("Apache Software Foundation", email = "dev@arrow.apache.org", role = c("cph"))
     )
 Description: Provides a developer-facing interface to the 'Arrow' Database
-  Connectivity ('ADBC') SQLite driver for the purposes of building high-level
+  Connectivity ('ADBC') 'SQLite' driver for the purposes of building high-level
   database interfaces for users. 'ADBC' <https://arrow.apache.org/adbc/> is
   an API standard for database access libraries that uses 'Arrow' for result
   sets and query parameters.

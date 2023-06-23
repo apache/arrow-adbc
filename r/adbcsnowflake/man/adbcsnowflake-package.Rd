@@ -2,9 +2,9 @@
 % Please edit documentation in R/adbcsnowflake-package.R
 \docType{package}
 \name{adbcsnowflake-package}
-\title{adbcsnowflake: Arrow Database Connectivity (ADBC) Snowflake Driver}
+\title{adbcsnowflake: Arrow Database Connectivity ('ADBC') 'Snowflake' Driver}
 \description{
-Provides a developer-facing interface to the Arrow Database Connectivity (ADBC) Snowflake driver.
+Provides a developer-facing interface to the 'Arrow' Database Connectivity ('ADBC') 'Snowflake' driver for the purposes of building high-level database interfaces for users. 'ADBC' \url{https://arrow.apache.org/adbc/} is an API standard for database access libraries that uses 'Arrow' for result sets and query parameters.
 }
 \seealso{
 Useful links:
@@ -20,6 +20,11 @@ Useful links:
 Authors:
 \itemize{
   \item Apache Arrow \email{dev@arrow.apache.org} [copyright holder]
+}
+
+Other contributors:
+\itemize{
+  \item Apache Software Foundation \email{dev@arrow.apache.org} [copyright holder]
 }
 
 }

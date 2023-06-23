@@ -4,9 +4,10 @@ Version: 0.5.0.9000
 Authors@R: c(
       person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
              comment = c(ORCID = "0000-0002-9415-4582")),
-      person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph"))
+      person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph")),
+      person("Apache Software Foundation", email = "dev@arrow.apache.org", role = c("cph"))
     )
-Description: Provides a developer-facing interface to the Arrow Database
+Description: Provides a developer-facing interface to the 'Arrow' Database
   Connectivity ('ADBC') 'PostgreSQL' driver for the purposes of building high-level
   database interfaces for users. 'ADBC' <https://arrow.apache.org/adbc/> is
   an API standard for database access libraries that uses 'Arrow' for result
