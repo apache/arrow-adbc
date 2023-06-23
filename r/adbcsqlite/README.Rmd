@@ -62,18 +62,18 @@ con <- adbc_connection_init(db)
 flights <- nycflights13::flights
 # (timestamp not supported yet)
 flights$time_hour <- NULL
-flights |> 
+flights |>
   write_adbc(con, "flights")
 
 # Query it
-con |> 
-  read_adbc("SELECT * from flights") |> 
+con |>
+  read_adbc("SELECT * from flights") |>
   tibble::as_tibble()
 ```
 
 ```{r}
 # Clean up
-con |> 
+con |>
   execute_adbc("DROP TABLE flights")
 adbc_connection_release(con)
 adbc_database_release(db)
