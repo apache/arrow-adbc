@@ -7,7 +7,10 @@ Authors@R: c(
       person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph"))
     )
 Description: Provides a developer-facing interface to the Arrow Database
-  Connectivity (ADBC) PostgreSQL driver.
+  Connectivity (ADBC) PostgreSQL driver for the purposes of building high-level
+  database interfaces for users. 'ADBC' <https://arrow.apache.org/adbc/> is
+  an API standard for database access libraries that uses 'Arrow' for result
+  sets and query parameters.
 License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -20,7 +23,5 @@ Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
 URL: https://github.com/apache/arrow-adbc
 BugReports: https://github.com/apache/arrow-adbc/issues
-Imports:
-    adbcdrivermanager
-Remotes:
-    adbcdrivermanager=apache/arrow-adbc/r/adbcdrivermanager
+Imports: adbcdrivermanager
+

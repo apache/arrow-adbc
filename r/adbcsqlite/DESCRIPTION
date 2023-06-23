@@ -8,10 +8,10 @@ Authors@R: c(
       person("Apache Software Foundation", email = "dev@arrow.apache.org", role = c("cph"))
     )
 Description: Provides a developer-facing interface to the 'Arrow' Database
-  Connectivity ('ADBC') SQLite driver. for the purposes of driver development, driver
-  testing, and building high-level database interfaces for users. 'ADBC'
-  <https://arrow.apache.org/adbc/> is an API standard for database access
-  libraries that uses 'Arrow' for result sets and query parameters.
+  Connectivity ('ADBC') SQLite driver for the purposes of building high-level
+  database interfaces for users. 'ADBC' <https://arrow.apache.org/adbc/> is
+  an API standard for database access libraries that uses 'Arrow' for result
+  sets and query parameters.
 License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
