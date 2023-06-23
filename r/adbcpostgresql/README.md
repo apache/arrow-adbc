@@ -32,7 +32,7 @@ You can install the development version of adbcpostgresql from
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcpostgresql")
+remotes::install_github("apache/arrow-adbc/r/adbcpostgresql", build = FALSE)
 ```
 
 ## Example

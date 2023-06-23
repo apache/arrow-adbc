@@ -32,7 +32,7 @@ You can install the development version of adbcsqlite from
 
 ``` r
 # install.packages("remotes")
-pak::pak("apache/arrow-adbc/r/adbcsqlite")
+remotes::install_github("apache/arrow-adbc/r/adbcsqlite", build = FALSE)
 ```
 
 ## Example
