@@ -55,7 +55,7 @@ adbcsqlite <- function() {
 adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, ..., uri = ":memory:") {
   adbcdrivermanager::adbc_database_init_default(
     driver,
-    list(uri = uri),
+    list(..., uri = uri),
     subclass = "adbcsqlite_database"
   )
 }
@@ -65,10 +65,10 @@ adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, ..., uri = ":mem
 #' @export
 adbc_connection_init.adbcsqlite_database <- function(database, ...,
                                                      adbc.connection.autocommit = NULL) {
-  options <- list(adbc.connection.autocommit = adbc.connection.autocommit)
+  options <- list(..., adbc.connection.autocommit = adbc.connection.autocommit)
   adbcdrivermanager::adbc_connection_init_default(
     database,
-    options[!vapply(options, is.null, logical(1))],
+    options,
     subclass = "adbcsqlite_connection"
   )
 }
@@ -81,6 +81,7 @@ adbc_statement_init.adbcsqlite_connection <- function(connection, ...,
                                                       adbc.ingest.mode = NULL,
                                                       adbc.sqlite.query.batch_rows = NULL) {
   options <- list(
+    ...,
     adbc.ingest.target_table = adbc.ingest.target_table,
     adbc.ingest.mode = adbc.ingest.mode,
     adbc.sqlite.query.batch_rows = adbc.sqlite.query.batch_rows
@@ -88,7 +89,7 @@ adbc_statement_init.adbcsqlite_connection <- function(connection, ...,
 
   adbcdrivermanager::adbc_statement_init_default(
     connection,
-    options[!vapply(options, is.null, logical(1))],
+    options,
     subclass = "adbcsqlite_statement"
   )
 }

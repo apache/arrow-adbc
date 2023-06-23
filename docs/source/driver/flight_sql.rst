@@ -70,6 +70,14 @@ Installation
          # For pip
          pip install adbc_driver_flightsql
 
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: r
+
+         # install.packages("remotes")
+         remotes::install_github("apache/arrow-adbc/r/adbcflightsql", build = FALSE)
+
 Usage
 =====
 

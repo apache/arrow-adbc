@@ -41,7 +41,7 @@ You can install the development version of adbcdrivermanager from
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager")
+remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager", build = FALSE)
 ```
 
 ## Example

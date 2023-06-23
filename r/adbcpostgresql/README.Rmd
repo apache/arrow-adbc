@@ -44,7 +44,7 @@ You can install the development version of adbcpostgresql from [GitHub](https://
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcpostgresql")
+remotes::install_github("apache/arrow-adbc/r/adbcpostgresql", build = FALSE)
 ```
 
 ## Example
@@ -63,33 +63,19 @@ con <- adbc_connection_init(db)
 flights <- head(nycflights13::flights, 100)
 # (timestamp not supported yet)
 flights$time_hour <- NULL
-
-stmt <- adbc_statement_init(con, adbc.ingest.target_table = "flights")
-adbc_statement_bind(stmt, flights)
-adbc_statement_execute_query(stmt)
-adbc_statement_release(stmt)
+flights |>
+  write_adbc(con, "flights")
 
 # Query it
-stmt <- adbc_statement_init(con)
-stream <- nanoarrow::nanoarrow_allocate_array_stream()
-
-adbc_statement_set_sql_query(stmt, "SELECT * from flights")
-adbc_statement_execute_query(stmt, stream)
-result <- tibble::as_tibble(stream)
-adbc_statement_release(stmt)
-
-result
+con |>
+  read_adbc("SELECT * from flights") |>
+  tibble::as_tibble()
 ```
 
-```{r example-clean-up, include=FALSE}
-stmt <- adbc_statement_init(con)
-adbc_statement_set_sql_query(stmt, "DROP TABLE flights")
-adbc_statement_execute_query(stmt)
-adbc_statement_release(stmt)
-```
-
-```{r example-clean-up2, include=FALSE}
+```{r example-clean-up}
 # Clean up
+con |>
+  execute_adbc("DROP TABLE flights")
 adbc_connection_release(con)
 adbc_database_release(db)
 ```

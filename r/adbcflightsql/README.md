@@ -32,7 +32,6 @@ You can install the development version of adbcflightsql from
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager", build = FALSE)
 remotes::install_github("apache/arrow-adbc/r/adbcflightsql", build = FALSE)
 ```
 
@@ -50,39 +49,20 @@ db <- adbc_database_init(adbcflightsql::adbcflightsql(), uri = uri)
 con <- adbc_connection_init(db)
 
 # Write a table
-stmt <- adbc_statement_init(con)
-adbc_statement_set_sql_query(
-  stmt,
-  "CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)"
-)
-adbc_statement_execute_query(stmt)
-#> [1] 4
-adbc_statement_release(stmt)
-
-stmt <- adbc_statement_init(con)
-adbc_statement_set_sql_query(
-  stmt,
-  "INSERT INTO crossfit values
-    ('Push Ups', 3),
-    ('Pull Ups', 5),
-    ('Push Jerk', 7),
-    ('Bar Muscle Up', 10);"
-)
-adbc_statement_execute_query(stmt)
-#> [1] 4
-adbc_statement_release(stmt)
+con |>
+  execute_adbc("CREATE TABLE crossfit (exercise TEXT, difficulty_level INTEGER)") |>
+  execute_adbc(
+    "INSERT INTO crossfit values
+      ('Push Ups', 3),
+      ('Pull Ups', 5),
+      ('Push Jerk', 7),
+      ('Bar Muscle Up', 10);"
+  )
 
 # Query it
-stmt <- adbc_statement_init(con)
-stream <- nanoarrow::nanoarrow_allocate_array_stream()
-
-adbc_statement_set_sql_query(stmt, "SELECT * from crossfit")
-adbc_statement_execute_query(stmt, stream)
-#> [1] -1
-result <- tibble::as_tibble(stream)
-adbc_statement_release(stmt)
-
-result
+con |>
+  read_adbc("SELECT * from crossfit") |>
+  tibble::as_tibble()
 #> # A tibble: 4 × 2
 #>   exercise      difficulty_level
 #>   <chr>                    <dbl>
@@ -90,4 +70,12 @@ result
 #> 2 Pull Ups                     5
 #> 3 Push Jerk                    7
 #> 4 Bar Muscle Up               10
+```
+
+``` r
+# Clean up
+con |>
+  execute_adbc("DROP TABLE crossfit")
+adbc_connection_release(con)
+adbc_database_release(db)
 ```

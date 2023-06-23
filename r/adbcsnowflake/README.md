@@ -32,7 +32,6 @@ You can install the development version of adbcsnowflake from
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager", build = FALSE)
 remotes::install_github("apache/arrow-adbc/r/adbcsnowflake", build = FALSE)
 ```
 
@@ -52,16 +51,9 @@ uri <- Sys.getenv("ADBC_SNOWFLAKE_TEST_URI")
 db <- adbc_database_init(adbcsnowflake::adbcsnowflake(), uri = uri)
 con <- adbc_connection_init(db)
 
-stmt <- adbcdrivermanager::adbc_statement_init(con)
-adbcdrivermanager::adbc_statement_set_sql_query(
-  stmt,
-  "SELECT * FROM REGION ORDER BY R_REGIONKEY"
-)
-
-stream <- nanoarrow::nanoarrow_allocate_array_stream()
-adbcdrivermanager::adbc_statement_execute_query(stmt, stream)
-#> [1] 5
-tibble::as_tibble(stream)
+con |>
+  read_adbc("SELECT * FROM REGION ORDER BY R_REGIONKEY") |>
+  tibble::as_tibble()
 #> # A tibble: 5 × 3
 #>   R_REGIONKEY R_NAME      R_COMMENT
 #>         <dbl> <chr>       <chr>
