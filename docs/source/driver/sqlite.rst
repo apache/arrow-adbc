@@ -58,7 +58,6 @@ Installation
       .. code-block:: shell
 
          # install.packages("remotes")
-         remotes::install_github("apache/arrow-adbc/r/adbcdrivermanager", build = FALSE)
          remotes::install_github("apache/arrow-adbc/r/adbcsqlite", build = FALSE)
 
    .. tab-item:: Go

@@ -76,7 +76,7 @@ Installation
       .. code-block:: r
 
          # install.packages("remotes")
-         remotes::install_github("apache/arrow-adbc/r/adbcpostgresql")
+         remotes::install_github("apache/arrow-adbc/r/adbcpostgresql", build = FALSE)
 
 Usage
 =====
