@@ -202,11 +202,11 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
               DESTINATION
               ${CMAKE_INSTALL_LIBDIR})
     endif()
-    if(NOT WIN32)
-      install(FILES "${LIBOUT_SHARED}" "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE LIB)
-    else()
+    if(WIN32)
       # This symlink doesn't get installed
       install(FILES "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE BIN)
+    else()
+      install(FILES "${LIBOUT_SHARED}" "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE LIB)
     endif()
   endif()
 
