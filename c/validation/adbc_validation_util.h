@@ -200,7 +200,7 @@ struct StreamReader {
 
 /// \brief Read an AdbcGetInfoData struct with RAII safety
 struct GetObjectsReader {
-  explicit GetObjectsReader(struct ArrowArrayView* array_view) : array_view_(array_view) {
+  explicit GetObjectsReader(struct ArrowArrayView* array_view) {
     // TODO: this swallows any construction errors
     get_objects_data_ = AdbcGetObjectsDataInit(array_view);
   }
@@ -214,7 +214,6 @@ struct GetObjectsReader {
   }
 
  private:
-  struct ArrowArrayView* array_view_;
   struct AdbcGetObjectsData* get_objects_data_;
 };
 

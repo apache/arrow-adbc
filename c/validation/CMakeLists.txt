@@ -16,6 +16,7 @@
 # under the License.
 
 add_library(adbc_validation OBJECT adbc_validation.cc adbc_validation_util.cc)
+adbc_configure_target(adbc_validation)
 target_compile_features(adbc_validation PRIVATE cxx_std_17)
 target_include_directories(adbc_validation SYSTEM
                            PRIVATE "${REPOSITORY_ROOT}" "${REPOSITORY_ROOT}/c/driver/"

@@ -86,6 +86,9 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   #----------------------------------------------------------------------
   set_option_category("Compile and link")
 
+  define_option_string(ADBC_BUILD_WARNING_LEVEL
+                       "CHECKIN to enable Werror, PRODUCTION otherwise" "")
+
   define_option_string(ADBC_CXXFLAGS
                        "Compiler flags to append when compiling ADBC C++ libraries" "")
   define_option_string(ADBC_GO_BUILD_TAGS
