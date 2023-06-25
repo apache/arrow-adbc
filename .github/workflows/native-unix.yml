@@ -594,7 +594,7 @@ jobs:
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsqlite'}
           - {os: macOS-latest,   r: 'release', pkg: 'adbcpostgresql'}
           - {os: windows-latest,   r: 'release', pkg: 'adbcpostgresql'}
-          - {os: windows-latest,   r: '3.6', pkg: 'adbcpostgresql', biarch: '--force-biarch'}
+          - {os: windows-latest,   r: '3.6', pkg: 'adbcpostgresql'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcpostgresql'}
           - {os: macOS-latest,   r: 'release', pkg: 'adbcsnowflake'}
           - {os: windows-latest,   r: 'release', pkg: 'adbcsnowflake'}
