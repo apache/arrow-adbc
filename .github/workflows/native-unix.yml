@@ -581,7 +581,7 @@ jobs:
   # R
   # ------------------------------------------------------------
   r:
-    name: "R/${{ matrix.config.pkg }} (${{ matrix.config.os }})"
+    name: "R-${{ matrix.config.r }}/${{ matrix.config.pkg }} (${{ matrix.config.os }})"
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
