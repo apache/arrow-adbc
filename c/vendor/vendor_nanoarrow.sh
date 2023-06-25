@@ -28,6 +28,7 @@ main() {
     local -r tarball="$SCRATCH/nanoarrow.tar.gz"
     wget -O "$tarball" "$repo_url/archive/$commit_sha.tar.gz"
 
+    mv nanoarrow/CMakeLists.txt CMakeLists.nanoarrow.tmp
     rm -rf nanoarrow
     mkdir -p nanoarrow
     tar --strip-components 1 -C "$SCRATCH" -xf "$tarball"
@@ -45,6 +46,7 @@ main() {
     cp "$SCRATCH/dist-adbc/nanoarrow.c" nanoarrow/
     cp "$SCRATCH/dist-adbc/nanoarrow.h" nanoarrow/
     cp "$SCRATCH/dist-adbc/nanoarrow.hpp" nanoarrow/
+    mv CMakeLists.nanoarrow.tmp nanoarrow/CMakeLists.txt
 }
 
 main "$@"
