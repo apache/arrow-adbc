@@ -629,14 +629,14 @@ jobs:
       - name: Prepare sources (driver manager)
         if: matrix.config.pkg == 'adbcdrivermanager'
         run: |
-          R -e 'install.packages("nanoarrow", repos = "https://cloud.r-project.org")'
+          R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
           R CMD INSTALL r/${{ matrix.config.pkg }}
         shell: bash
 
       - name: Prepare sources
         if: matrix.config.pkg != 'adbcdrivermanager'
         run: |
-          R -e 'install.packages("nanoarrow", repos = "https://cloud.r-project.org")'
+          R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
           R CMD INSTALL r/adbcdrivermanager
           R CMD INSTALL r/${{ matrix.config.pkg }}
         shell: bash
