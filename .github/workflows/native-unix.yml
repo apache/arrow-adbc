@@ -637,7 +637,7 @@ jobs:
         if: matrix.config.pkg != 'adbcdrivermanager'
         run: |
           R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
-          R CMD INSTALL r/adbcdrivermanager ${{ matrix.config.biarch }}
+          R CMD INSTALL r/adbcdrivermanager
           R CMD INSTALL r/${{ matrix.config.pkg }}
         shell: bash
 
@@ -670,6 +670,7 @@ jobs:
         with:
           upload-snapshots: true
           working-directory: r/${{ matrix.config.pkg }}
+          args: 'c("--no-manual", "--as-cran", "--no-multiarch")'
 
       - name: Stop test database
         if: runner.os == 'Linux'
