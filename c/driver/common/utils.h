@@ -23,25 +23,21 @@
 #include <adbc.h>
 #include "nanoarrow/nanoarrow.h"
 
-#if defined(__GNUC__)
-#define SET_ERROR_ATTRIBUTE __attribute__((format(printf, 2, 3)))
-#else
-#define SET_ERROR_ATTRIBUTE
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// The printf checking attribute doesn't work properly on gcc 4.8
+// and results in spurious compiler warnings
+#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5)
+#define ADBC_CHECK_PRINTF_ATTRIBUTE __attribute__((format(printf, 2, 3)))
+#else
+#define ADBC_CHECK_PRINTF_ATTRIBUTE
+#endif
+
 /// Set error details using a format string.
-void SetError(struct AdbcError* error, const char* format, ...) SET_ERROR_ATTRIBUTE;
-
-#undef SET_ERROR_ATTRIBUTE
-
-/// Wrap a single batch as a stream.
-AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema* schema,
-                                  struct ArrowArrayStream* stream,
-                                  struct AdbcError* error);
+void SetError(struct AdbcError* error, const char* format,
+              ...) ADBC_CHECK_PRINTF_ATTRIBUTE;
 
 struct StringBuilder {
   char* buffer;
@@ -51,14 +47,16 @@ struct StringBuilder {
 };
 int StringBuilderInit(struct StringBuilder* builder, size_t initial_size);
 
-#if defined(__GNUC__)
-#define ADBC_STRING_BUILDER_FORMAT_CHECK __attribute__((format(printf, 2, 3)))
-#else
-#define ADBC_STRING_BUILDER_FORMAT_CHECK
-#endif
-int ADBC_STRING_BUILDER_FORMAT_CHECK StringBuilderAppend(struct StringBuilder* builder,
-                                                         const char* fmt, ...);
+int ADBC_CHECK_PRINTF_ATTRIBUTE StringBuilderAppend(struct StringBuilder* builder,
+                                                    const char* fmt, ...);
 void StringBuilderReset(struct StringBuilder* builder);
+
+#undef ADBC_CHECK_PRINTF_ATTRIBUTE
+
+/// Wrap a single batch as a stream.
+AdbcStatusCode BatchToArrayStream(struct ArrowArray* values, struct ArrowSchema* schema,
+                                  struct ArrowArrayStream* stream,
+                                  struct AdbcError* error);
 
 /// Check an NanoArrow status code.
 #define CHECK_NA(CODE, EXPR, ERROR)                                                 \

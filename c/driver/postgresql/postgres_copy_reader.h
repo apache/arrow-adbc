@@ -29,6 +29,11 @@
 #include "postgres_type.h"
 #include "postgres_util.h"
 
+// R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
+#if defined(_WIN32) && !defined(MSVC) && !defined(ENODATA)
+#define ENODATA 120
+#endif
+
 namespace adbcpq {
 
 // "PGCOPY\n\377\r\n\0"

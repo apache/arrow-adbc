@@ -581,7 +581,7 @@ jobs:
   # R
   # ------------------------------------------------------------
   r:
-    name: "R/${{ matrix.config.pkg }} (${{ matrix.config.os }})"
+    name: "R-${{ matrix.config.r }}/${{ matrix.config.pkg }} (${{ matrix.config.os }})"
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
@@ -594,6 +594,7 @@ jobs:
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsqlite'}
           - {os: macOS-latest,   r: 'release', pkg: 'adbcpostgresql'}
           - {os: windows-latest,   r: 'release', pkg: 'adbcpostgresql'}
+          - {os: windows-latest,   r: '3.6', pkg: 'adbcpostgresql'}
           - {os: ubuntu-latest,   r: 'release', pkg: 'adbcpostgresql'}
           - {os: macOS-latest,   r: 'release', pkg: 'adbcsnowflake'}
           - {os: windows-latest,   r: 'release', pkg: 'adbcsnowflake'}
@@ -628,14 +629,14 @@ jobs:
       - name: Prepare sources (driver manager)
         if: matrix.config.pkg == 'adbcdrivermanager'
         run: |
-          R -e 'install.packages("nanoarrow", repos = "https://cloud.r-project.org")'
+          R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
           R CMD INSTALL r/${{ matrix.config.pkg }}
         shell: bash
 
       - name: Prepare sources
         if: matrix.config.pkg != 'adbcdrivermanager'
         run: |
-          R -e 'install.packages("nanoarrow", repos = "https://cloud.r-project.org")'
+          R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
           R CMD INSTALL r/adbcdrivermanager
           R CMD INSTALL r/${{ matrix.config.pkg }}
         shell: bash
@@ -669,6 +670,11 @@ jobs:
         with:
           upload-snapshots: true
           working-directory: r/${{ matrix.config.pkg }}
+          # Using --no-multiarch here means that in version of R that support
+          # 32-bit Windows builds, only the 64-bit version is tested. With some
+          # effort we could also test 32-bit builds; however, they are not commonly
+          # used.
+          args: 'c("--no-manual", "--as-cran", "--no-multiarch")'
 
       - name: Stop test database
         if: runner.os == 'Linux'
