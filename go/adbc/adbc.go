@@ -673,7 +673,7 @@ type ConnectionGetStatistics interface {
 	// 2. A dictionary-encoded statistic name (although we do not use the Arrow
 	//    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
 	//    values are for implementation-specific statistics.  For the definitions
-	//    of predefined statistic types, see \ref adbc-table-statistics.  To get
+	//    of predefined statistic types, see the Statistic constants.  To get
 	//    driver-specific statistic names, use AdbcConnectionGetStatisticNames.
 	// 3. If true, then the value is approximate or best-effort.
 	//
