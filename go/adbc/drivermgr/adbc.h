@@ -1682,7 +1682,7 @@ AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
                                                struct ArrowArrayStream* out,
-                                               struct AdbcErrror* error);
+                                               struct AdbcError* error);
 
 /// \brief Get the Arrow schema of a table.
 ///
