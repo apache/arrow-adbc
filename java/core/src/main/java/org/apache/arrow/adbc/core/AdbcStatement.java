@@ -45,6 +45,8 @@ public interface AdbcStatement extends AutoCloseable, AdbcOptions {
   /**
    * Cancel execution of a query.
    *
+   * <p>This can be used to interrupt execution of a method like {@link #executeQuery()}.
+   *
    * <p>This method must be thread-safe (other method are not necessarily thread-safe).
    *
    * @since ADBC API revision 1.1.0
