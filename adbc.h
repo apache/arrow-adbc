@@ -983,9 +983,10 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
 ///
 /// length must be provided and must be the size of the buffer pointed
 /// to by value.  If there is sufficient space, the driver will copy
-/// the option value to buffer and set length to the size of the
-/// actual value.  If the buffer is too small, no data will be written
-/// and length will be set to the required length.
+/// the option value (including the null terminator) to buffer and set
+/// length to the size of the actual value.  If the buffer is too
+/// small, no data will be written and length will be set to the
+/// required length.
 ///
 /// In other words:
 ///
@@ -1484,9 +1485,10 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 ///
 /// length must be provided and must be the size of the buffer pointed
 /// to by value.  If there is sufficient space, the driver will copy
-/// the option value to buffer and set length to the size of the
-/// actual value.  If the buffer is too small, no data will be written
-/// and length will be set to the required length.
+/// the option value (including the null terminator) to buffer and set
+/// length to the size of the actual value.  If the buffer is too
+/// small, no data will be written and length will be set to the
+/// required length.
 ///
 /// In other words:
 ///
@@ -1961,9 +1963,10 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
 ///
 /// length must be provided and must be the size of the buffer pointed
 /// to by value.  If there is sufficient space, the driver will copy
-/// the option value to buffer and set length to the size of the
-/// actual value.  If the buffer is too small, no data will be written
-/// and length will be set to the required length.
+/// the option value (including the null terminator) to buffer and set
+/// length to the size of the actual value.  If the buffer is too
+/// small, no data will be written and length will be set to the
+/// required length.
 ///
 /// In other words:
 ///
