@@ -670,6 +670,10 @@ jobs:
         with:
           upload-snapshots: true
           working-directory: r/${{ matrix.config.pkg }}
+          # Using --no-multiarch here means that in version of R that support
+          # 32-bit Windows builds, only the 64-bit version is tested. With some
+          # effort we could also test 32-bit builds; however, they are not commonly
+          # used.
           args: 'c("--no-manual", "--as-cran", "--no-multiarch")'
 
       - name: Stop test database
