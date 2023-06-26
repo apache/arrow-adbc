@@ -1022,6 +1022,7 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
                                      char* value, size_t* length,
                                      struct AdbcError* error);
@@ -1062,6 +1063,7 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
                                           uint8_t* value, size_t* length,
                                           struct AdbcError* error);
@@ -1086,6 +1088,7 @@ AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const c
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
                                            double* value, struct AdbcError* error);
 
@@ -1109,6 +1112,7 @@ AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const 
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
                                         int64_t* value, struct AdbcError* error);
 
@@ -1292,7 +1296,8 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 /// or while consuming an ArrowArrayStream returned from such.
 /// Calling this function should make the other functions return
 /// ADBC_STATUS_CANCELLED (from ADBC functions) or ECANCELED (from
-/// methods of ArrowArrayStream).
+/// methods of ArrowArrayStream).  (It is not guaranteed to, for
+/// instance, the result set may be buffered in memory already.)
 ///
 /// This must always be thread-safe (other operations are not).
 ///
@@ -1516,6 +1521,7 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
                                        char* value, size_t* length,
                                        struct AdbcError* error);
@@ -1556,6 +1562,7 @@ AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const 
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
                                             const char* key, uint8_t* value,
                                             size_t* length, struct AdbcError* error);
@@ -1580,6 +1587,7 @@ AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
                                           const char* key, int64_t* value,
                                           struct AdbcError* error);
@@ -1604,6 +1612,7 @@ AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
                                              const char* key, double* value,
                                              struct AdbcError* error);
@@ -1947,7 +1956,8 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
 /// or while consuming an ArrowArrayStream returned from such.
 /// Calling this function should make the other functions return
 /// ADBC_STATUS_CANCELLED (from ADBC functions) or ECANCELED (from
-/// methods of ArrowArrayStream).
+/// methods of ArrowArrayStream).  (It is not guaranteed to, for
+/// instance, the result set may be buffered in memory already.)
 ///
 /// This must always be thread-safe (other operations are not).
 ///
@@ -2001,6 +2011,7 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
                                       char* value, size_t* length,
                                       struct AdbcError* error);
@@ -2041,6 +2052,7 @@ AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const cha
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
                                            const char* key, uint8_t* value,
                                            size_t* length, struct AdbcError* error);
@@ -2065,6 +2077,7 @@ AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const char* key,
                                          int64_t* value, struct AdbcError* error);
 
@@ -2088,6 +2101,7 @@ AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const 
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+ADBC_EXPORT
 AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
                                             const char* key, double* value,
                                             struct AdbcError* error);
