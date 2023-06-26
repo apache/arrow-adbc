@@ -432,7 +432,7 @@ struct ADBC_EXPORT AdbcError {
 ///   float64 (when approximate).
 #define ADBC_STATISTIC_DISTINCT_COUNT_NAME "adbc.statistic.distinct_count"
 /// \brief The dictionary-encoded name of the max byte width statistic.
-#define ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY 0
+#define ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY 2
 /// \brief The max byte width statistic.  The maximum size in bytes of a row
 ///   in the column.  Value type is int64 (when not approximate) or float64
 ///   (when approximate).
@@ -440,21 +440,21 @@ struct ADBC_EXPORT AdbcError {
 /// For example, this is the maximum length of a string for a string column.
 #define ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME "adbc.statistic.byte_width"
 /// \brief The dictionary-encoded name of the max value statistic.
-#define ADBC_STATISTIC_MAX_VALUE_KEY 0
+#define ADBC_STATISTIC_MAX_VALUE_KEY 3
 /// \brief The max value statistic.  Value type is column-dependent.
 #define ADBC_STATISTIC_MAX_VALUE_NAME "adbc.statistic.byte_width"
 /// \brief The dictionary-encoded name of the min value statistic.
-#define ADBC_STATISTIC_MIN_VALUE_KEY 0
+#define ADBC_STATISTIC_MIN_VALUE_KEY 4
 /// \brief The min value statistic.  Value type is column-dependent.
 #define ADBC_STATISTIC_MIN_VALUE_NAME "adbc.statistic.byte_width"
 /// \brief The dictionary-encoded name of the null count statistic.
-#define ADBC_STATISTIC_NULL_COUNT_KEY 2
+#define ADBC_STATISTIC_NULL_COUNT_KEY 5
 /// \brief The null count statistic.  The number of values that are null in
 ///   the column.  Value type is int64 (when not approximate) or float64
 ///   (when approximate).
 #define ADBC_STATISTIC_NULL_COUNT_NAME "adbc.statistic.null_count"
 /// \brief The dictionary-encoded name of the row count statistic.
-#define ADBC_STATISTIC_ROW_COUNT_KEY 3
+#define ADBC_STATISTIC_ROW_COUNT_KEY 6
 /// \brief The row count statistic.  The number of rows in the column or
 ///   table.  Value type is int64 (when not approximate) or float64 (when
 ///   approximate).
@@ -1652,8 +1652,10 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
 /// \param[in] table_name The table name (or nullptr).  May be a
 ///   search pattern (see section documentation).
 /// \param[in] approximate If zero, request exact values of
-///   statistics, else allow for best-effort values.  The database may
-///   return approximate values regardless, as indicated in the result.
+///   statistics, else allow for best-effort, approximate, or cached
+///   values.  The database may return approximate values regardless,
+///   as indicated in the result.  Requesting exact values may be
+///   expensive or unsupported.
 /// \param[out] out The result set.
 /// \param[out] error Error details, if an error occurs.
 ADBC_EXPORT

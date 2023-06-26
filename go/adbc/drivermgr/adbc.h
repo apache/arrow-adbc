@@ -344,7 +344,7 @@ struct ADBC_EXPORT AdbcError {
 /// error value.
 ///
 /// Drivers may provide multiple error details.  Each call to
-/// GetOptionBinary will return the next error detail.  The driver
+/// GetOptionBytes will return the next error detail.  The driver
 /// should return ADBC_STATUS_NOT_FOUND if there are no (more) error
 /// details.
 ///
@@ -414,7 +414,7 @@ struct ADBC_EXPORT AdbcError {
 #define ADBC_OBJECT_DEPTH_COLUMNS ADBC_OBJECT_DEPTH_ALL
 
 /// \defgroup adbc-table-statistics ADBC Statistic Types
-/// Standard statistic names for AdbcConnectionGetTableStatistics.
+/// Standard statistic names for AdbcConnectionGetStatistics.
 /// @{
 
 /// \brief The dictionary-encoded name of the average byte width statistic.
@@ -428,35 +428,35 @@ struct ADBC_EXPORT AdbcError {
 /// \brief The dictionary-encoded name of the distinct value count statistic.
 #define ADBC_STATISTIC_DISTINCT_COUNT_KEY 1
 /// \brief The distinct value count (NDV) statistic.  The number of distinct
-///   values in the column.  Value type is uint64 (when not approximate) or
+///   values in the column.  Value type is int64 (when not approximate) or
 ///   float64 (when approximate).
 #define ADBC_STATISTIC_DISTINCT_COUNT_NAME "adbc.statistic.distinct_count"
 /// \brief The dictionary-encoded name of the max byte width statistic.
-#define ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY 0
+#define ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY 2
 /// \brief The max byte width statistic.  The maximum size in bytes of a row
-///   in the column.  Value type is uint64 (when not approximate) or float64
+///   in the column.  Value type is int64 (when not approximate) or float64
 ///   (when approximate).
 ///
 /// For example, this is the maximum length of a string for a string column.
 #define ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME "adbc.statistic.byte_width"
 /// \brief The dictionary-encoded name of the max value statistic.
-#define ADBC_STATISTIC_MAX_VALUE_KEY 0
+#define ADBC_STATISTIC_MAX_VALUE_KEY 3
 /// \brief The max value statistic.  Value type is column-dependent.
 #define ADBC_STATISTIC_MAX_VALUE_NAME "adbc.statistic.byte_width"
 /// \brief The dictionary-encoded name of the min value statistic.
-#define ADBC_STATISTIC_MIN_VALUE_KEY 0
+#define ADBC_STATISTIC_MIN_VALUE_KEY 4
 /// \brief The min value statistic.  Value type is column-dependent.
 #define ADBC_STATISTIC_MIN_VALUE_NAME "adbc.statistic.byte_width"
 /// \brief The dictionary-encoded name of the null count statistic.
-#define ADBC_STATISTIC_NULL_COUNT_KEY 2
+#define ADBC_STATISTIC_NULL_COUNT_KEY 5
 /// \brief The null count statistic.  The number of values that are null in
-///   the column.  Value type is uint64 (when not approximate) or float64
+///   the column.  Value type is int64 (when not approximate) or float64
 ///   (when approximate).
 #define ADBC_STATISTIC_NULL_COUNT_NAME "adbc.statistic.null_count"
 /// \brief The dictionary-encoded name of the row count statistic.
-#define ADBC_STATISTIC_ROW_COUNT_KEY 3
+#define ADBC_STATISTIC_ROW_COUNT_KEY 6
 /// \brief The row count statistic.  The number of rows in the column or
-///   table.  Value type is uint64 (when not approximate) or float64 (when
+///   table.  Value type is int64 (when not approximate) or float64 (when
 ///   approximate).
 #define ADBC_STATISTIC_ROW_COUNT_NAME "adbc.statistic.row_count"
 /// @}
@@ -884,10 +884,10 @@ struct ADBC_EXPORT AdbcDriver {
   ///
   /// @{
 
-  AdbcStatusCode (*DatabaseGetOption)(struct AdbcDatabase*, const char*, const char**,
+  AdbcStatusCode (*DatabaseGetOption)(struct AdbcDatabase*, const char*, char*, size_t*,
                                       struct AdbcError*);
-  AdbcStatusCode (*DatabaseGetOptionBytes)(struct AdbcDatabase*, const char*,
-                                           const uint8_t**, size_t*, struct AdbcError*);
+  AdbcStatusCode (*DatabaseGetOptionBytes)(struct AdbcDatabase*, const char*, uint8_t*,
+                                           size_t*, struct AdbcError*);
   AdbcStatusCode (*DatabaseGetOptionInt)(struct AdbcDatabase*, const char*, int64_t*,
                                          struct AdbcError*);
   AdbcStatusCode (*DatabaseGetOptionDouble)(struct AdbcDatabase*, const char*, double*,
@@ -900,27 +900,20 @@ struct ADBC_EXPORT AdbcDriver {
                                             struct AdbcError*);
 
   AdbcStatusCode (*ConnectionCancel)(struct AdbcConnection*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetFunctions)(struct AdbcConnection*, const char*,
-                                           const char*, const char*,
-                                           struct ArrowArrayStream*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetOption)(struct AdbcConnection*, const char*, const char**,
-                                        struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetOptionBytes)(struct AdbcDatabase*, const char*,
-                                             const uint8_t**, size_t*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetOption)(struct AdbcConnection*, const char*, char*,
+                                        size_t*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetOptionBytes)(struct AdbcDatabase*, const char*, uint8_t*,
+                                             size_t*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOptionInt)(struct AdbcConnection*, const char*, int64_t*,
                                            struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOptionDouble)(struct AdbcConnection*, const char*,
                                               double*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetProcedures)(struct AdbcConnection*, const char*,
-                                            const char*, const char*,
+  AdbcStatusCode (*ConnectionGetStatistics)(struct AdbcConnection*, const char*,
+                                            const char*, const char*, char,
                                             struct ArrowArrayStream*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetTableStatistics)(struct AdbcConnection*, const char*,
-                                                 const char*, const char*, char,
-                                                 struct ArrowArrayStream*,
-                                                 struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetTypes)(struct AdbcConnection*, const char*, const char*,
-                                       const char*, struct ArrowSchema*,
-                                       struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetStatisticNames)(struct AdbcConnection*,
+                                                struct ArrowArrayStream*,
+                                                struct AdbcError*);
   AdbcStatusCode (*ConnectionSetOptionBytes)(struct AdbcDatabase*, const char*,
                                              const uint8_t*, size_t, struct AdbcError*);
   AdbcStatusCode (*ConnectionSetOptionInt)(struct AdbcConnection*, const char*, int64_t,
@@ -931,10 +924,10 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*StatementCancel)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementExecuteSchema)(struct AdbcStatement*, struct ArrowSchema*,
                                            struct AdbcError*);
-  AdbcStatusCode (*StatementGetOption)(struct AdbcStatement*, const char*, const char**,
+  AdbcStatusCode (*StatementGetOption)(struct AdbcStatement*, const char*, char*, size_t*,
                                        struct AdbcError*);
-  AdbcStatusCode (*StatementGetOptionBytes)(struct AdbcDatabase*, const char*,
-                                            const uint8_t**, size_t*, struct AdbcError*);
+  AdbcStatusCode (*StatementGetOptionBytes)(struct AdbcDatabase*, const char*, uint8_t*,
+                                            size_t*, struct AdbcError*);
   AdbcStatusCode (*StatementGetOptionInt)(struct AdbcStatement*, const char*, int64_t*,
                                           struct AdbcError*);
   AdbcStatusCode (*StatementGetOptionDouble)(struct AdbcStatement*, const char*, double*,
@@ -984,10 +977,22 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
 
 /// \brief Get a string option of the database.
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not), though
+/// given the semantics here, it is not recommended to call GetOption
+/// concurrently with itself.
 ///
-/// The returned option value is only valid until the next call to
-/// GetOption or Release.
+/// length must be provided and must be the size of the buffer pointed
+/// to by value.  If there is sufficient space, the driver will copy
+/// the option value to buffer and set length to the size of the
+/// actual value.  If the buffer is too small, no data will be written
+/// and length will be set to the required length.
+///
+/// In other words:
+///
+/// - If output length <= input length, value will contain a value
+///   with length bytes.
+/// - If output length > input length, nothing has been written to
+///   value.
 ///
 /// For standard options, drivers must always support getting the
 /// option value (if they support getting option values at all) via
@@ -1002,18 +1007,32 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
 /// \param[in] database The database.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
+/// \param[in,out] length The length of value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
-                                     const char** value, struct AdbcError* error);
+                                     char* value, size_t* length,
+                                     struct AdbcError* error);
 
 /// \brief Get a bytestring option of the database.
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not), though
+/// given the semantics here, it is not recommended to call
+/// GetOptionBytes concurrently with itself.
 ///
-/// The returned option value is only valid until the next call to
-/// GetOption or Release.
+/// length must be provided and must be the size of the buffer pointed
+/// to by value.  If there is sufficient space, the driver will copy
+/// the option value to buffer and set length to the size of the
+/// actual value.  If the buffer is too small, no data will be written
+/// and length will be set to the required length.
+///
+/// In other words:
+///
+/// - If output length <= input length, value will contain a value
+///   with length bytes.
+/// - If output length > input length, nothing has been written to
+///   value.
 ///
 /// For standard options, drivers must always support getting the
 /// option value (if they support getting option values at all) via
@@ -1028,12 +1047,12 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
 /// \param[in] database The database.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
-/// \param[out] length The option value length.
+/// \param[in,out] length The option value length.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
-                                          const uint8_t** value, size_t* length,
+                                          uint8_t* value, size_t* length,
                                           struct AdbcError* error);
 
 /// \brief Get an integer option of the database.
@@ -1279,89 +1298,6 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
                                     struct AdbcError* error);
 
-/// \brief Get a hierarchical view of system and user-defined functions.
-///
-/// The result is an Arrow dataset with the following schema:
-///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | catalog_name             | utf8                    |
-/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
-///
-/// DB_SCHEMA_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | db_schema_name           | utf8                    |
-/// | db_schema_functions      | list<FUNCTION_SCHEMA>   |
-///
-/// FUNCTION_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | function_name            | utf8 not null           |          |
-/// | remarks                  | utf8                    | (1)      |
-/// | function_type            | int16                   | (2)      |
-/// | specific_name            | utf8                    | (3)      |
-/// | function_columns         | list<COLUMN_SCHEMA>     |          |
-///
-/// 1. Database-specific description of the function.
-/// 2. The kind of function.  Should be null if not known, 1 if the function
-///    does not return a table, or 2 if the function does return a table.
-/// 3. An additional name that uniquely identifies the function within its
-///    schema.
-///
-/// COLUMN_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | column_name              | utf8                    |          |
-/// | column_type              | int16                   | (1)      |
-/// | ordinal_position         | int32                   | (2)      |
-/// | remarks                  | utf8                    | (3)      |
-/// | xdbc_data_type           | int16                   | (4)      |
-/// | xdbc_type_name           | utf8                    | (4)      |
-/// | xdbc_precision           | int32                   | (4)      |
-/// | xdbc_length              | int32                   | (4)      |
-/// | xdbc_scale               | int16                   | (4)      |
-/// | xdbc_radix               | int16                   | (4)      |
-/// | xdbc_nullable            | int16                   | (4)      |
-/// | xdbc_char_octet_length   | int32                   | (4)      |
-/// | xdbc_is_nullable         | utf8                    | (4)      |
-///
-/// 1. Whether this row describes an IN parameter (1), INOUT parameter (2),
-///    OUT parameter (3), return value (4), result set column (5), or unknown
-///    (null).
-/// 2. The column's ordinal position in the input parameters, output
-///    parameters, or result set (respectively starting from 1).  Or, 0 if the
-///    row describes the function's return value.
-/// 3. Database-specific description of the column.
-/// 4. Optional value.  Should be null if not supported by the driver.
-///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
-///    in an agnostic manner.
-///
-/// This AdbcConnection must outlive the returned ArrowArrayStream.
-///
-/// \param[in] connection The database connection.
-/// \param[in] catalog Only show functions in the given catalog. If NULL, do
-///   not filter by catalog. If an empty string, only show functions without a
-///   catalog.  May be a search pattern (see section documentation).
-/// \param[in] db_schema Only show functions in the given database schema. If
-///   NULL, do not filter by database schema. If an empty string, only show
-///   functions without a database schema. May be a search pattern (see
-///   section documentation).
-/// \param[in] function_name Only show functions with the given name. If NULL,
-///   do not filter by name.  May be a search pattern (see section
-///   documentation).
-/// \param[out] out The result set.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetFunctions(struct AdbcConnection* connection,
-                                          const char* catalog, const char* db_schema,
-                                          const char* function_name,
-                                          struct ArrowArrayStream* out,
-                                          struct AdbcError* error);
-
 /// \defgroup adbc-connection-metadata Metadata
 /// Functions for retrieving metadata about the database.
 ///
@@ -1542,36 +1478,54 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 
 /// \brief Get a string option of the connection.
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not), though
+/// given the semantics here, it is not recommended to call GetOption
+/// concurrently with itself.
 ///
-/// The returned option value is only valid until the next call to
-/// GetOption or Release.
+/// length must be provided and must be the size of the buffer pointed
+/// to by value.  If there is sufficient space, the driver will copy
+/// the option value to buffer and set length to the size of the
+/// actual value.  If the buffer is too small, no data will be written
+/// and length will be set to the required length.
 ///
-/// For standard options, drivers must always support getting the
-/// option value (if they support getting option values at all) via
-/// the type specified in the option.  (For example, an option set via
-/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
-/// may also support getting a converted option value via other
-/// getters if needed.  (For example, getting the string
-/// representation of a double option.)
+/// In other words:
+///
+/// - If output length <= input length, value will contain a value
+///   with length bytes.
+/// - If output length > input length, nothing has been written to
+///   value.
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
+/// \param[in,out] length The length of value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
-                                       const char** value, struct AdbcError* error);
+                                       char* value, size_t* length,
+                                       struct AdbcError* error);
 
 /// \brief Get a bytestring option of the connection.
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not), though
+/// given the semantics here, it is not recommended to call
+/// GetOptionBytes concurrently with itself.
 ///
-/// The returned option value is only valid until the next call to
-/// GetOption or Release.
+/// length must be provided and must be the size of the buffer pointed
+/// to by value.  If there is sufficient space, the driver will copy
+/// the option value to buffer and set length to the size of the
+/// actual value.  If the buffer is too small, no data will be written
+/// and length will be set to the required length.
+///
+/// In other words:
+///
+/// - If output length <= input length, value will contain a value
+///   with length bytes.
+/// - If output length > input length, nothing has been written to
+///   value.
 ///
 /// For standard options, drivers must always support getting the
 /// option value (if they support getting option values at all) via
@@ -1586,12 +1540,12 @@ AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const 
 /// \param[in] connection The connection.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
-/// \param[out] length The option value length.
+/// \param[in,out] length The option value length.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
-                                            const char* key, const uint8_t** value,
+                                            const char* key, uint8_t* value,
                                             size_t* length, struct AdbcError* error);
 
 /// \brief Get an integer option of the connection.
@@ -1642,107 +1596,6 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
                                              const char* key, double* value,
                                              struct AdbcError* error);
 
-/// \brief Get a hierarchical view of stored procedures.
-///
-/// The result is an Arrow dataset with the following schema:
-///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | catalog_name             | utf8                    |
-/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
-///
-/// DB_SCHEMA_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | db_schema_name           | utf8                    |
-/// | db_schema_procedures     | list<PROCEDURE_SCHEMA>  |
-///
-/// PROCEDURE_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | procedure_name           | utf8 not null           |          |
-/// | remarks                  | utf8                    | (1)      |
-/// | procedure_type           | int16                   | (2)      |
-/// | specific_name            | utf8                    | (3)      |
-/// | procedure_columns        | list<COLUMN_SCHEMA>     |          |
-///
-/// 1. Database-specific description of the procedure.
-/// 2. The kind of procedure.  Should be null if not known, 1 if the procedure
-///    does not return a value, or 2 if the procedure does return a value.
-/// 3. An additional name that uniquely identifies the procedure within its
-///    schema.
-///
-/// COLUMN_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | column_name              | utf8                    |          |
-/// | column_type              | int16                   | (1)      |
-/// | ordinal_position         | int32                   | (2)      |
-/// | remarks                  | utf8                    | (3)      |
-/// | xdbc_data_type           | int16                   | (4)      |
-/// | xdbc_type_name           | utf8                    | (4)      |
-/// | xdbc_precision           | int32                   | (4)      |
-/// | xdbc_length              | int32                   | (4)      |
-/// | xdbc_scale               | int16                   | (4)      |
-/// | xdbc_radix               | int16                   | (4)      |
-/// | xdbc_nullable            | int16                   | (4)      |
-/// | xdbc_column_def          | utf8                    | (4)      |
-/// | xdbc_sql_data_type       | int32                   | (4)      |
-/// | xdbc_sql_datetime_sub    | int32                   | (4)      |
-/// | xdbc_char_octet_length   | int32                   | (4)      |
-/// | xdbc_is_nullable         | utf8                    | (4)      |
-///
-/// 1. Whether this row describes an IN parameter (1), INOUT parameter (2),
-///    OUT parameter (3), return value (4), result set column (5), or unknown
-///    (null).
-/// 2. The column's ordinal position in the input parameters, output
-///    parameters, or result set (respectively starting from 1).  Or, 0 if the
-///    row describes the procedure's return value.
-/// 3. Database-specific description of the column.
-/// 4. Optional value.  Should be null if not supported by the driver.
-///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
-///    in an agnostic manner.
-///
-/// This AdbcConnection must outlive the returned ArrowArrayStream.
-///
-/// \param[in] connection The database connection.
-/// \param[in] catalog Only show procedures in the given catalog. If NULL, do
-///   not filter by catalog. If an empty string, only show procedures without
-///   a catalog.  May be a search pattern (see section documentation).
-/// \param[in] db_schema Only show procedures in the given database schema. If
-///   NULL, do not filter by database schema. If an empty string, only show
-///   procedures without a database schema. May be a search pattern (see
-///   section documentation).
-/// \param[in] procedure_name Only show procedures with the given name. If
-///   NULL, do not filter by name.  May be a search pattern (see section
-///   documentation).
-/// \param[out] out The result set.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetProcedures(struct AdbcConnection* connection,
-                                           const char* catalog, const char* db_schema,
-                                           const char* procedure_name,
-                                           struct ArrowArrayStream* out,
-                                           struct AdbcError* error);
-
-/// \brief Get the Arrow schema of a table.
-///
-/// \param[in] connection The database connection.
-/// \param[in] catalog The catalog (or nullptr if not applicable).
-/// \param[in] db_schema The database schema (or nullptr if not applicable).
-/// \param[in] table_name The table name.
-/// \param[out] schema The table schema.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
-                                            const char* catalog, const char* db_schema,
-                                            const char* table_name,
-                                            struct ArrowSchema* schema,
-                                            struct AdbcError* error);
-
 /// \brief Get statistics about the data distribution of table(s).
 ///
 /// The result is an Arrow dataset with the following schema:
@@ -1765,16 +1618,16 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 /// |--------------------------|----------------------------------| -------- |
 /// | table_name               | utf8 not null                    |          |
 /// | column_name              | utf8                             | (1)      |
-/// | statistic_name           | dictionary<int16, utf8> not null | (2)      |
+/// | statistic_key            | int16 not null                   | (2)      |
 /// | statistic_value          | VALUE_SCHEMA not null            |          |
 /// | statistic_is_approximate | bool not null                    | (3)      |
 ///
 /// 1. If null, then the statistic applies to the entire table.
-/// 2. A dictionary-encoded statistic name. Values in [0, 1024) are
-///    reserved for ADBC use.  Other values are free for
-///    implementation-specific statistics.  For the names and
-///    definitions of predefined statistic types, see \ref
-///    adbc-table-statistics.
+/// 2. A dictionary-encoded statistic name (although we do not use the Arrow
+///    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
+///    values are for implementation-specific statistics.  For the definitions
+///    of predefined statistic types, see \ref adbc-table-statistics.  To get
+///    driver-specific statistic names, use AdbcConnectionGetStatisticNames.
 /// 3. If true, then the value is approximate or best-effort.
 ///
 /// VALUE_SCHEMA is a dense union with members:
@@ -1789,6 +1642,8 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 ///
 /// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] catalog The catalog (or nullptr).  May be a search
 ///   pattern (see section documentation).
@@ -1797,17 +1652,52 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 /// \param[in] table_name The table name (or nullptr).  May be a
 ///   search pattern (see section documentation).
 /// \param[in] approximate If zero, request exact values of
-///   statistics, else allow for best-effort values.  The database may
-///   return approximate values regardless, as indicated in the result.
+///   statistics, else allow for best-effort, approximate, or cached
+///   values.  The database may return approximate values regardless,
+///   as indicated in the result.  Requesting exact values may be
+///   expensive or unsupported.
 /// \param[out] out The result set.
 /// \param[out] error Error details, if an error occurs.
 ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetTableStatistics(struct AdbcConnection* connection,
-                                                const char* catalog,
-                                                const char* db_schema,
-                                                const char* table_name, char approximate,
-                                                struct ArrowArrayStream* out,
-                                                struct AdbcError* error);
+AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
+                                           const char* catalog, const char* db_schema,
+                                           const char* table_name, char approximate,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error);
+
+/// \brief Get the names of statistics specific to this driver.
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// Field Name     | Field Type
+/// ---------------|----------------
+/// statistic_name | utf8 not null
+/// statistic_key  | int16 not null
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] connection The database connection.
+/// \param[out] out The result set.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
+                                               struct ArrowArrayStream* out,
+                                               struct AdbcErrror* error);
+
+/// \brief Get the Arrow schema of a table.
+///
+/// \param[in] connection The database connection.
+/// \param[in] catalog The catalog (or nullptr if not applicable).
+/// \param[in] db_schema The database schema (or nullptr if not applicable).
+/// \param[in] table_name The table name.
+/// \param[out] schema The table schema.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
+                                            const char* catalog, const char* db_schema,
+                                            const char* table_name,
+                                            struct ArrowSchema* schema,
+                                            struct AdbcError* error);
 
 /// \brief Get a list of table types in the database.
 ///
@@ -1826,67 +1716,6 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error);
-
-/// \brief Get a view of types supported by the database.
-///
-/// The result is an Arrow schema with one field per type.  The field name is
-/// the database's name for the type, and the field type is the driver's
-/// mapping of the database type to an Arrow type.
-///
-/// Each top-level field may have the following metadata fields:
-///
-/// - adbc:catalog_name
-/// - adbc:db_schema_name
-/// - adbc:supertype_catalog_name
-/// - adbc:supertype_db_schema_name
-/// - adbc:supertype_name
-///
-/// Both top-level fields and child fields may have the following metadata
-/// fields:
-///
-/// - adbc:remarks (1)
-/// - adbc:specific_name (2)
-/// - adbc:xdbc_data_type (3)
-/// - adbc:xdbc_type_name (3)
-/// - adbc:xdbc_size (3)
-/// - adbc:xdbc_decimal_digits (3)
-/// - adbc:xdbc_num_prec_radix (3)
-/// - adbc:xdbc_nullable (3)
-/// - adbc:xdbc_remarks (3)
-/// - adbc:xdbc_attr_def (3)
-/// - adbc:xdbc_sql_data_type (3)
-/// - adbc:xdbc_sql_datetime_sub (3)
-/// - adbc:xdbc_char_octet_length (3)
-/// - adbc:xdbc_is_nullable (3)
-/// - adbc:xdbc_scope_catalog (3)
-/// - adbc:xdbc_scope_schema (3)
-/// - adbc:xdbc_scope_table (3)
-/// - adbc:xdbc_scope_data_type (3)
-///
-/// 1. Database-specific description of the type.
-/// 2. An additional name that uniquely identifies the type within its
-///    schema.
-/// 3. xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
-///    in an agnostic manner.
-///
-/// \param[in] connection The database connection.
-/// \param[in] catalog Only show types in the given catalog. If NULL, do
-///   not filter by catalog. If an empty string, only show types without
-///   a catalog.  May be a search pattern (see section documentation).
-/// \param[in] db_schema Only show types in the given database schema. If
-///   NULL, do not filter by database schema. If an empty string, only show
-///   types without a database schema. May be a search pattern (see
-///   section documentation).
-/// \param[in] type_name Only show types with the given name. If
-///   NULL, do not filter by name.  May be a search pattern (see section
-///   documentation).
-/// \param[out] out The result schema.
-/// \param[out] error Error details, if an error occurs.
-ADBC_EXPORT
-AdbcStatusCode AdbcConnectionGetTypes(struct AdbcConnection* connection,
-                                      const char* catalog, const char* db_schema,
-                                      const char* type_name, struct ArrowSchema* out,
-                                      struct AdbcError* error);
 
 /// @}
 
@@ -2126,10 +1955,22 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
 
 /// \brief Get a string option of the statement.
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not), though
+/// given the semantics here, it is not recommended to call GetOption
+/// concurrently with itself.
 ///
-/// The returned option value is only valid until the next call to
-/// GetOption or Release.
+/// length must be provided and must be the size of the buffer pointed
+/// to by value.  If there is sufficient space, the driver will copy
+/// the option value to buffer and set length to the size of the
+/// actual value.  If the buffer is too small, no data will be written
+/// and length will be set to the required length.
+///
+/// In other words:
+///
+/// - If output length <= input length, value will contain a value
+///   with length bytes.
+/// - If output length > input length, nothing has been written to
+///   value.
 ///
 /// For standard options, drivers must always support getting the
 /// option value (if they support getting option values at all) via
@@ -2144,18 +1985,32 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
 /// \param[in] statement The statement.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
+/// \param[in,out] length The length of value.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
-                                      const char** value, struct AdbcError* error);
+                                      char* value, size_t* length,
+                                      struct AdbcError* error);
 
 /// \brief Get a bytestring option of the statement.
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not), though
+/// given the semantics here, it is not recommended to call
+/// GetOptionBytes concurrently with itself.
 ///
-/// The returned option value is only valid until the next call to
-/// GetOption or Release.
+/// length must be provided and must be the size of the buffer pointed
+/// to by value.  If there is sufficient space, the driver will copy
+/// the option value to buffer and set length to the size of the
+/// actual value.  If the buffer is too small, no data will be written
+/// and length will be set to the required length.
+///
+/// In other words:
+///
+/// - If output length <= input length, value will contain a value
+///   with length bytes.
+/// - If output length > input length, nothing has been written to
+///   value.
 ///
 /// For standard options, drivers must always support getting the
 /// option value (if they support getting option values at all) via
@@ -2170,12 +2025,12 @@ AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const cha
 /// \param[in] statement The statement.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
-/// \param[out] length The option value length.
+/// \param[in,out] length The option value length.
 /// \param[out] error An optional location to return an error
 ///   message if necessary.
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
-                                           const char* key, const uint8_t** value,
+                                           const char* key, uint8_t* value,
                                            size_t* length, struct AdbcError* error);
 
 /// \brief Get an integer option of the statement.
