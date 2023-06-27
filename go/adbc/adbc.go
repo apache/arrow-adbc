@@ -58,6 +58,13 @@ type Error struct {
 	// SqlState is a SQLSTATE error code, if provided, as defined
 	// by the SQL:2003 standard. If not set, it will be "\0\0\0\0\0"
 	SqlState [5]byte
+	// Details is an array of additional driver-specific binary error details.
+	//
+	// This allows drivers to return custom, structured error information (for
+	// example, JSON or Protocol Buffers) that can be optionally parsed by
+	// clients, beyond the standard Error fields, without having to encode it in
+	// the error message.  The encoding of the data is driver-defined.
+	Details [][]byte
 }
 
 func (e Error) Error() string {
@@ -188,6 +195,51 @@ const (
 // Canonical property values
 const (
 	PropertyProgress = "adbc.statement.exec.progress"
+)
+
+// Standard statistic names and keys.
+const (
+	// The dictionary-encoded name of the average byte width statistic.
+	StatisticAverageByteWidthKey = 0
+	// The average byte width statistic.  The average size in bytes of a row in
+	// the column.  Value type is float64.
+	//
+	// For example, this is roughly the average length of a string for a string
+	// column.
+	StatisticAverageByteWidthName = "adbc.statistic.byte_width"
+	// The dictionary-encoded name of the distinct value count statistic.
+	StatisticDistinctCountKey = 1
+	// The distinct value count (NDV) statistic.  The number of distinct values in
+	// the column.  Value type is int64 (when not approximate) or float64 (when
+	// approximate).
+	StatisticDistinctCountName = "adbc.statistic.distinct_count"
+	// The dictionary-encoded name of the max byte width statistic.
+	StatisticMaxByteWidthKey = 2
+	// The max byte width statistic.  The maximum size in bytes of a row in the
+	// column.  Value type is int64 (when not approximate) or float64 (when
+	// approximate).
+	//
+	// For example, this is the maximum length of a string for a string column.
+	StatisticMaxByteWidthName = "adbc.statistic.byte_width"
+	// The dictionary-encoded name of the max value statistic.
+	StatisticMaxValueKey = 3
+	// The max value statistic.  Value type is column-dependent.
+	StatisticMaxValueName = "adbc.statistic.byte_width"
+	// The dictionary-encoded name of the min value statistic.
+	StatisticMinValueKey = 4
+	// The min value statistic.  Value type is column-dependent.
+	StatisticMinValueName = "adbc.statistic.byte_width"
+	// The dictionary-encoded name of the null count statistic.
+	StatisticNullCountKey = 5
+	// The null count statistic.  The number of values that are null in the
+	// column.  Value type is int64 (when not approximate) or float64 (when
+	// approximate).
+	StatisticNullCountName = "adbc.statistic.null_count"
+	// The dictionary-encoded name of the row count statistic.
+	StatisticRowCountKey = 6
+	// The row count statistic.  The number of rows in the column or table.  Value
+	// type is int64 (when not approximate) or float64 (when approximate).
+	StatisticRowCountName = "adbc.statistic.row_count"
 )
 
 // Driver is the entry point for the interface. It is similar to
@@ -569,20 +621,94 @@ type Statement interface {
 	ExecutePartitions(context.Context) (*arrow.Schema, Partitions, int64, error)
 }
 
-// StatementCancel is a Statement that also supports Cancel.
+// Cancellable is a Connection or Statement that also supports Cancel.
 //
 // Since ADBC API revision 1.1.0.
-type StatementCancel interface {
+type Cancellable interface {
 	// Cancel stops execution of an in-progress query.
 	//
-	// This can be called during ExecuteQuery (or similar), or while
-	// consuming a RecordReader returned from such.  Calling this
-	// function should make the other functions return an error with a
-	// StatusCancelled code.
+	// This can be called during ExecuteQuery, GetObjects, or other
+	// methods that produce result sets, or while consuming a
+	// RecordReader returned from such.  Calling this function should
+	// make the other functions return an error with a StatusCancelled
+	// code.
 	//
 	// This must always be thread-safe (other operations are not
 	// necessarily thread-safe).
 	Cancel() error
+}
+
+// ConnectionGetStatistics is a Connection that supports getting
+// statistics on data in the database.
+//
+// Since ADBC API revision 1.1.0.
+type ConnectionGetStatistics interface {
+	// GetStatistics gets statistics about the data distribution of table(s).
+	//
+	// The result is an Arrow dataset with the following schema:
+	//
+	//		Field Name               | Field Type
+	//		-------------------------|----------------------------------
+	//		catalog_name             | utf8
+	//		catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>
+	//
+	// DB_SCHEMA_SCHEMA is a Struct with fields:
+	//
+	//		Field Name               | Field Type
+	//		-------------------------|----------------------------------
+	//		db_schema_name           | utf8
+	//		db_schema_functions      | list<STATISTICS_SCHEMA>
+	//
+	// STATISTICS_SCHEMA is a Struct with fields:
+	//
+	//		Field Name               | Field Type                       | Comments
+	//		-------------------------|----------------------------------| --------
+	//		table_name               | utf8 not null                    |
+	//		column_name              | utf8                             | (1)
+	//		statistic_key            | int16 not null                   | (2)
+	//		statistic_value          | VALUE_SCHEMA not null            |
+	//		statistic_is_approximate | bool not null                    | (3)
+	//
+	// 1. If null, then the statistic applies to the entire table.
+	// 2. A dictionary-encoded statistic name (although we do not use the Arrow
+	//    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
+	//    values are for implementation-specific statistics.  For the definitions
+	//    of predefined statistic types, see the Statistic constants.  To get
+	//    driver-specific statistic names, use AdbcConnectionGetStatisticNames.
+	// 3. If true, then the value is approximate or best-effort.
+	//
+	// VALUE_SCHEMA is a dense union with members:
+	//
+	//		Field Name               | Field Type
+	//		-------------------------|----------------------------------
+	//		int64                    | int64
+	//		uint64                   | uint64
+	//		float64                  | float64
+	//		decimal256               | decimal256
+	//		binary                   | binary
+	//
+	// For the parameters: If nil is passed, then that parameter will not
+	// be filtered by at all. If an empty string, then only objects without
+	// that property (ie: catalog or db schema) will be returned.
+	//
+	// All non-empty, non-nil strings should be a search pattern (as described
+	// earlier).
+	//
+	// approximate indicates whether to request exact values of statistics, or
+	// best-effort/cached values. Requesting exact values may be expensive or
+	// unsupported.
+	GetStatistics(ctx context.Context, catalog, dbSchema, tableName *string, approximate bool) (array.RecordReader, error)
+
+	// GetStatisticNames gets a list of custom statistic names defined by this driver.
+	//
+	// The result is an Arrow dataset with the following schema:
+	//
+	//		Field Name     | Field Type
+	//		---------------|----------------
+	//		statistic_name | utf8 not null
+	//		statistic_key  | int16 not null
+	//
+	GetStatisticNames() (array.RecordReader, error)
 }
 
 // StatementExecuteSchema is a Statement that also supports ExecuteSchema.
@@ -599,9 +725,11 @@ type StatementExecuteSchema interface {
 type GetSetOptions interface {
 	PostInitOptions
 
-	SetOption(key, value string) error
-	SetOptionInt(key, value int64) error
-	SetOptionDouble(key, value float64) error
+	SetOptionBytes(key string, value []byte) error
+	SetOptionInt(key string, value int64) error
+	SetOptionDouble(key string, value float64) error
+	GetOption(key, value string) (string, error)
+	GetOptionBytes(key string) ([]byte, error)
 	GetOptionInt(key string) (int64, error)
 	GetOptionDouble(key string) (float64, error)
 }
