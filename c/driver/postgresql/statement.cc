@@ -187,6 +187,7 @@ struct BindStream {
     for (size_t i = 0; i < bind_schema_fields.size(); i++) {
       PostgresTypeId type_id;
       switch (bind_schema_fields[i].type) {
+        case ArrowType::NANOARROW_TYPE_INT8:
         case ArrowType::NANOARROW_TYPE_INT16:
           type_id = PostgresTypeId::kInt2;
           param_lengths[i] = 2;
@@ -290,6 +291,13 @@ struct BindStream {
             param_values[col] = param_values_buffer.data() + param_values_offsets[col];
           }
           switch (bind_schema_fields[col].type) {
+            case ArrowType::NANOARROW_TYPE_INT8: {
+              const int16_t val =
+                  array_view->children[col]->buffer_views[1].data.as_int8[row];
+              const uint16_t value = ToNetworkInt16(val);
+              std::memcpy(param_values[col], &value, sizeof(int16_t));
+              break;
+            }
             case ArrowType::NANOARROW_TYPE_INT16: {
               const uint16_t value = ToNetworkInt16(
                   array_view->children[col]->buffer_views[1].data.as_int16[row]);
@@ -576,6 +584,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
     if (i > 0) create += ", ";
     create += source_schema.children[i]->name;
     switch (source_schema_fields[i].type) {
+      case ArrowType::NANOARROW_TYPE_INT8:
       case ArrowType::NANOARROW_TYPE_INT16:
         create += " SMALLINT";
         break;

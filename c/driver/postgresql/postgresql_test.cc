@@ -85,6 +85,15 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     return "$" + std::to_string(index + 1);
   }
 
+  ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const override {
+    switch (ingest_type) {
+      case NANOARROW_TYPE_INT8:
+        return NANOARROW_TYPE_INT16;
+      default:
+        return ingest_type;
+    }
+  }
+
   std::optional<std::string> PrimaryKeyTableDdl(std::string_view name) const override {
     std::string ddl = "CREATE TABLE ";
     ddl += name;
@@ -549,7 +558,6 @@ class PostgresStatementTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestSqlIngestInt8() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestUInt8() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestUInt16() { GTEST_SKIP() << "Not implemented"; }
   void TestSqlIngestUInt32() { GTEST_SKIP() << "Not implemented"; }
