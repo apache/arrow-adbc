@@ -16,6 +16,10 @@
  */
 package org.apache.arrow.adbc.core;
 
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Collections;
+
 /**
  * An error in the database or ADBC driver.
  *
@@ -33,13 +37,25 @@ public class AdbcException extends Exception {
   private final AdbcStatusCode status;
   private final String sqlState;
   private final int vendorCode;
+  private Collection<ByteBuffer> details;
 
   public AdbcException(
       String message, Throwable cause, AdbcStatusCode status, String sqlState, int vendorCode) {
+    this(message, cause, status, sqlState, vendorCode, Collections.emptyList());
+  }
+
+  public AdbcException(
+      String message,
+      Throwable cause,
+      AdbcStatusCode status,
+      String sqlState,
+      int vendorCode,
+      Collection<ByteBuffer> details) {
     super(message, cause);
     this.status = status;
     this.sqlState = sqlState;
     this.vendorCode = vendorCode;
+    this.details = details;
   }
 
   /** Create a new exception with code {@link AdbcStatusCode#INVALID_ARGUMENT}. */
@@ -78,10 +94,29 @@ public class AdbcException extends Exception {
   }
 
   /**
+   * Get extra driver-specific binary error details.
+   *
+   * <p>This allows drivers to return custom, structured error information (for example, JSON or
+   * Protocol Buffers) that can be optionally parsed by clients, beyond the standard AdbcError
+   * fields, without having to encode it in the error message. The encoding of the data is
+   * driver-defined.
+   */
+  public Collection<ByteBuffer> getDetails() {
+    return details;
+  }
+
+  /**
    * Copy this exception with a different cause (a convenience for use with the static factories).
    */
   public AdbcException withCause(Throwable cause) {
-    return new AdbcException(this.getMessage(), cause, status, sqlState, vendorCode);
+    return new AdbcException(getMessage(), cause, status, sqlState, vendorCode, details);
+  }
+
+  /**
+   * Copy this exception with different details (a convenience for use with the static factories).
+   */
+  public AdbcException withDetails(Collection<ByteBuffer> details) {
+    return new AdbcException(getMessage(), getCause(), status, sqlState, vendorCode, details);
   }
 
   @Override
@@ -98,6 +133,8 @@ public class AdbcException extends Exception {
         + vendorCode
         + ", cause="
         + getCause()
+        + ", details="
+        + getDetails().size()
         + '}';
   }
 }
