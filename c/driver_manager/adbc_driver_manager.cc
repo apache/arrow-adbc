@@ -135,6 +135,12 @@ AdbcStatusCode DatabaseGetOption(struct AdbcDatabase* database, const char* key,
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode DatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                      uint8_t* value, size_t* length,
+                                      struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode DatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
                                     int64_t* value, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -147,6 +153,12 @@ AdbcStatusCode DatabaseGetOptionDouble(struct AdbcDatabase* database, const char
 
 AdbcStatusCode DatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                  const char* value, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode DatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                      const uint8_t* value, size_t length,
+                                      struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -183,6 +195,12 @@ AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, co
 
 AdbcStatusCode ConnectionGetOption(struct AdbcConnection* connection, const char* key,
                                    char* value, size_t* length, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionGetOptionBytes(struct AdbcConnection* connection,
+                                        const char* key, uint8_t* value, size_t* length,
+                                        struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -225,6 +243,11 @@ AdbcStatusCode ConnectionSetOption(struct AdbcConnection*, const char*, const ch
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode ConnectionSetOptionBytes(struct AdbcConnection*, const char*,
+                                        const uint8_t*, size_t, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode ConnectionSetOptionInt(struct AdbcConnection* connection, const char* key,
                                       int64_t value, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -264,6 +287,12 @@ AdbcStatusCode StatementGetOption(struct AdbcStatement* statement, const char* k
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode StatementGetOptionBytes(struct AdbcStatement* statement, const char* key,
+                                       uint8_t* value, size_t* length,
+                                       struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode StatementGetOptionInt(struct AdbcStatement* statement, const char* key,
                                      int64_t* value, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -286,6 +315,11 @@ AdbcStatusCode StatementPrepare(struct AdbcStatement*, struct AdbcError* error) 
 
 AdbcStatusCode StatementSetOption(struct AdbcStatement*, const char*, const char*,
                                   struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode StatementSetOptionBytes(struct AdbcStatement*, const char*, const uint8_t*,
+                                       size_t, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -312,6 +346,7 @@ AdbcStatusCode StatementSetSubstraitPlan(struct AdbcStatement*, const uint8_t*, 
 /// Temporary state while the database is being configured.
 struct TempDatabase {
   std::unordered_map<std::string, std::string> options;
+  std::unordered_map<std::string, std::string> bytes_options;
   std::unordered_map<std::string, int64_t> int_options;
   std::unordered_map<std::string, double> double_options;
   std::string driver;
@@ -323,6 +358,7 @@ struct TempDatabase {
 /// Temporary state while the database is being configured.
 struct TempConnection {
   std::unordered_map<std::string, std::string> options;
+  std::unordered_map<std::string, std::string> bytes_options;
   std::unordered_map<std::string, int64_t> int_options;
   std::unordered_map<std::string, double> double_options;
 };
@@ -363,6 +399,28 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
     std::memcpy(value, result->c_str(), result->size() + 1);
   }
   *length = result->size() + 1;
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          uint8_t* value, size_t* length,
+                                          struct AdbcError* error) {
+  if (database->private_driver) {
+    return database->private_driver->DatabaseGetOptionBytes(database, key, value, length,
+                                                            error);
+  }
+  const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
+  const auto it = args->bytes_options.find(key);
+  if (it == args->options.end()) {
+    return ADBC_STATUS_NOT_FOUND;
+  }
+  const std::string& result = it->second;
+
+  if (*length <= result.size()) {
+    // Enough space
+    std::memcpy(value, result.c_str(), result.size());
+  }
+  *length = result.size();
   return ADBC_STATUS_OK;
 }
 
@@ -408,6 +466,19 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
   } else {
     args->options[key] = value;
   }
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          const uint8_t* value, size_t length,
+                                          struct AdbcError* error) {
+  if (database->private_driver) {
+    return database->private_driver->DatabaseSetOptionBytes(database, key, value, length,
+                                                            error);
+  }
+
+  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
+  args->bytes_options[key] = std::string(reinterpret_cast<const char*>(value), length);
   return ADBC_STATUS_OK;
 }
 
@@ -490,6 +561,7 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     return status;
   }
   auto options = std::move(args->options);
+  auto bytes_options = std::move(args->bytes_options);
   auto int_options = std::move(args->int_options);
   auto double_options = std::move(args->double_options);
   delete args;
@@ -497,6 +569,13 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   for (const auto& option : options) {
     status = database->private_driver->DatabaseSetOption(database, option.first.c_str(),
                                                          option.second.c_str(), error);
+    if (status != ADBC_STATUS_OK) break;
+  }
+  for (const auto& option : bytes_options) {
+    status = database->private_driver->DatabaseSetOptionBytes(
+        database, option.first.c_str(),
+        reinterpret_cast<const uint8_t*>(option.second.data()), option.second.size(),
+        error);
     if (status != ADBC_STATUS_OK) break;
   }
   for (const auto& option : int_options) {
@@ -612,6 +691,30 @@ AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const 
                                                          error);
 }
 
+AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, uint8_t* value,
+                                            size_t* length, struct AdbcError* error) {
+  if (!connection->private_data) {
+    SetError(error, "AdbcConnectionGetOption: must AdbcConnectionNew first");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  if (!connection->private_driver) {
+    // Init not yet called, get the saved option
+    const auto* args = reinterpret_cast<const TempConnection*>(connection->private_data);
+    const auto it = args->bytes_options.find(key);
+    if (it == args->options.end()) {
+      return ADBC_STATUS_NOT_FOUND;
+    }
+    if (*length >= it->second.size() + 1) {
+      std::memcpy(value, it->second.data(), it->second.size() + 1);
+    }
+    *length = it->second.size() + 1;
+    return ADBC_STATUS_OK;
+  }
+  return connection->private_driver->ConnectionGetOptionBytes(connection, key, value,
+                                                              length, error);
+}
+
 AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
                                           const char* key, int64_t* value,
                                           struct AdbcError* error) {
@@ -688,6 +791,8 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
   TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
   connection->private_data = nullptr;
   std::unordered_map<std::string, std::string> options = std::move(args->options);
+  std::unordered_map<std::string, std::string> bytes_options =
+      std::move(args->bytes_options);
   std::unordered_map<std::string, int64_t> int_options = std::move(args->int_options);
   std::unordered_map<std::string, double> double_options =
       std::move(args->double_options);
@@ -700,6 +805,13 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
   for (const auto& option : options) {
     status = database->private_driver->ConnectionSetOption(
         connection, option.first.c_str(), option.second.c_str(), error);
+    if (status != ADBC_STATUS_OK) return status;
+  }
+  for (const auto& option : bytes_options) {
+    status = database->private_driver->ConnectionSetOptionBytes(
+        connection, option.first.c_str(),
+        reinterpret_cast<const uint8_t*>(option.second.data()), option.second.size(),
+        error);
     if (status != ADBC_STATUS_OK) return status;
   }
   for (const auto& option : int_options) {
@@ -774,6 +886,23 @@ AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const 
     return ADBC_STATUS_OK;
   }
   return connection->private_driver->ConnectionSetOption(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, const uint8_t* value,
+                                            size_t length, struct AdbcError* error) {
+  if (!connection->private_data) {
+    SetError(error, "AdbcConnectionSetOptionInt: must AdbcConnectionNew first");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  if (!connection->private_driver) {
+    // Init not yet called, save the option
+    TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
+    args->bytes_options[key] = std::string(reinterpret_cast<const char*>(value), length);
+    return ADBC_STATUS_OK;
+  }
+  return connection->private_driver->ConnectionSetOptionBytes(connection, key, value,
+                                                              length, error);
 }
 
 AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
@@ -879,6 +1008,16 @@ AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const cha
                                                        error);
 }
 
+AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, uint8_t* value,
+                                           size_t* length, struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return statement->private_driver->StatementGetOptionBytes(statement, key, value, length,
+                                                            error);
+}
+
 AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const char* key,
                                          int64_t* value, struct AdbcError* error) {
   if (!statement->private_driver) {
@@ -941,6 +1080,16 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
     return ADBC_STATUS_INVALID_STATE;
   }
   return statement->private_driver->StatementSetOption(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, const uint8_t* value,
+                                           size_t length, struct AdbcError* error) {
+  if (!statement->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  return statement->private_driver->StatementSetOptionBytes(statement, key, value, length,
+                                                            error);
 }
 
 AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const char* key,
@@ -1225,23 +1374,29 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
   if (version >= ADBC_VERSION_1_1_0) {
     auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
     FILL_DEFAULT(driver, DatabaseGetOption);
+    FILL_DEFAULT(driver, DatabaseGetOptionBytes);
     FILL_DEFAULT(driver, DatabaseGetOptionInt);
     FILL_DEFAULT(driver, DatabaseGetOptionDouble);
+    FILL_DEFAULT(driver, DatabaseSetOptionBytes);
     FILL_DEFAULT(driver, DatabaseSetOptionInt);
     FILL_DEFAULT(driver, DatabaseSetOptionDouble);
 
     FILL_DEFAULT(driver, ConnectionCancel);
     FILL_DEFAULT(driver, ConnectionGetOption);
+    FILL_DEFAULT(driver, ConnectionGetOptionBytes);
     FILL_DEFAULT(driver, ConnectionGetOptionInt);
     FILL_DEFAULT(driver, ConnectionGetOptionDouble);
+    FILL_DEFAULT(driver, ConnectionSetOptionBytes);
     FILL_DEFAULT(driver, ConnectionSetOptionInt);
     FILL_DEFAULT(driver, ConnectionSetOptionDouble);
 
     FILL_DEFAULT(driver, StatementCancel);
     FILL_DEFAULT(driver, StatementExecuteSchema);
     FILL_DEFAULT(driver, StatementGetOption);
+    FILL_DEFAULT(driver, StatementGetOptionBytes);
     FILL_DEFAULT(driver, StatementGetOptionInt);
     FILL_DEFAULT(driver, StatementGetOptionDouble);
+    FILL_DEFAULT(driver, StatementSetOptionBytes);
     FILL_DEFAULT(driver, StatementSetOptionInt);
     FILL_DEFAULT(driver, StatementSetOptionDouble);
   }
