@@ -103,6 +103,10 @@ func TestCookies(t *testing.T) {
 	suite.Run(t, &CookieTests{})
 }
 
+func TestDataType(t *testing.T) {
+	suite.Run(t, &DataTypeTests{})
+}
+
 // ---- AuthN Tests --------------------
 
 type AuthnTestServer struct {
@@ -523,4 +527,103 @@ func (suite *CookieTests) TestCookieUsage() {
 	reader, _, err := stmt.ExecuteQuery(context.Background())
 	suite.Require().NoError(err)
 	defer reader.Release()
+}
+
+// ---- Data Type Tests --------------------
+type DataTypeTestServer struct {
+	flightsql.BaseServer
+}
+
+func (server *DataTypeTestServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	tkt, _ := flightsql.CreateStatementQueryTicket([]byte(cmd.GetQuery()))
+	info := &flight.FlightInfo{
+		FlightDescriptor: desc,
+		Endpoint: []*flight.FlightEndpoint{
+			{Ticket: &flight.Ticket{Ticket: tkt}},
+		},
+		TotalRecords: -1,
+		TotalBytes:   -1,
+	}
+
+	return info, nil
+}
+
+var (
+	SchemaListInt3     = arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.FixedSizeListOf(3, arrow.PrimitiveTypes.Int32), Nullable: true}}, nil)
+	SchemaListInt      = arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.ListOf(arrow.PrimitiveTypes.Int32), Nullable: true}}, nil)
+	SchemaLargeListInt = arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.LargeListOf(arrow.PrimitiveTypes.Int32), Nullable: true}}, nil)
+	SchemaMapIntInt    = arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.MapOf(arrow.PrimitiveTypes.Int32, arrow.PrimitiveTypes.Int32), Nullable: true}}, nil)
+)
+
+func (server *DataTypeTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	var schema *arrow.Schema
+	var record arrow.Record
+	var err error
+
+	cmd := string(tkt.GetStatementHandle())
+	switch cmd {
+	case "list[int, 3]":
+		schema = SchemaListInt3
+		record, _, err = array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"a": [1, 2, 3]}]`))
+	case "list[int]":
+		schema = SchemaListInt
+		record, _, err = array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"a": [1]}]`))
+	case "large_list[int]":
+		schema = SchemaLargeListInt
+		record, _, err = array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"a": [1]}]`))
+	case "map[int]int":
+		schema = SchemaMapIntInt
+		record, _, err = array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"a": null}]`))
+	default:
+		return nil, nil, fmt.Errorf("Unknown command: '%s'", cmd)
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ch := make(chan flight.StreamChunk)
+	go func() {
+		defer close(ch)
+		ch <- flight.StreamChunk{
+			Data: record,
+		}
+	}()
+	return schema, ch, nil
+}
+
+type DataTypeTests struct {
+	ServerBasedTests
+}
+
+func (suite *DataTypeTests) SetupSuite() {
+	suite.DoSetupSuite(&DataTypeTestServer{}, nil, map[string]string{})
+}
+
+func (suite *DataTypeTests) DoTestCase(name string, schema *arrow.Schema) {
+	stmt, err := suite.cnxn.NewStatement()
+	suite.NoError(err)
+	defer stmt.Close()
+
+	suite.NoError(stmt.SetSqlQuery(name))
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	suite.NoError(err)
+	suite.Equal(reader.Schema(), schema)
+	defer reader.Release()
+}
+
+func (suite *DataTypeTests) TestListInt3() {
+	suite.DoTestCase("list[int, 3]", SchemaListInt3)
+}
+
+func (suite *DataTypeTests) TestLargeListInt() {
+	suite.DoTestCase("large_list[int]", SchemaLargeListInt)
+}
+
+func (suite *DataTypeTests) TestListInt() {
+	suite.DoTestCase("list[int]", SchemaListInt)
+}
+
+func (suite *DataTypeTests) TestMapIntInt() {
+	suite.DoTestCase("map[int]int", SchemaMapIntInt)
 }
