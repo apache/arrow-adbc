@@ -330,11 +330,10 @@ struct BindStream {
               break;
             }
             default:
-              // TODO: data type to string
-              SetError(error, "%s%" PRId64 "%s%s%s%ud", "[libpq] Field #", col + 1, " ('",
+              SetError(error, "%s%" PRId64 "%s%s%s%s", "[libpq] Field #", col + 1, " ('",
                        bind_schema->children[col]->name,
                        "') has unsupported type for ingestion ",
-                       bind_schema_fields[col].type);
+                       ArrowTypeString(bind_schema_fields[col].type));
               return ADBC_STATUS_NOT_IMPLEMENTED;
           }
         }
@@ -598,10 +597,10 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         create += " BYTEA";
         break;
       default:
-        // TODO: data type to string
-        SetError(error, "%s%" PRIu64 "%s%s%s%ud", "[libpq] Field #",
+        SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                  static_cast<uint64_t>(i + 1), " ('", source_schema.children[i]->name,
-                 "') has unsupported type for ingestion ", source_schema_fields[i].type);
+                 "') has unsupported type for ingestion ",
+                 ArrowTypeString(source_schema_fields[i].type));
         return ADBC_STATUS_NOT_IMPLEMENTED;
     }
   }
