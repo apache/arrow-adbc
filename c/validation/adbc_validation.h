@@ -231,6 +231,7 @@ class StatementTest {
 
   // Temporal
   void TestSqlIngestTimestamp();
+  void TestSqlIngestTimestampWithUnit(enum ArrowTimeUnit unit);
 
   // ---- End Type-specific tests ----------------
 
