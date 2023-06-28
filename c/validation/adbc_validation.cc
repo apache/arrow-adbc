@@ -1094,7 +1094,8 @@ void StatementTest::TestSqlIngestBinary() {
       NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x00\x01\x02\x04", "\xFE\xFF"}));
 }
 
-void StatementTest::TestSqlIngestTimestampWithUnit(enum ArrowTimeUnit unit) {
+template <enum ArrowTimeUnit TU>
+void StatementTest::TestSqlIngestTemporalType() {
   if (!quirks()->supports_bulk_ingest()) {
     GTEST_SKIP();
   }
@@ -1111,7 +1112,7 @@ void StatementTest::TestSqlIngestTimestampWithUnit(enum ArrowTimeUnit unit) {
   // changes to allow for various time units to be tested
   ArrowSchemaInit(&schema.value);
   ArrowSchemaSetTypeStruct(&schema.value, 1);
-  ArrowSchemaSetTypeDateTime(schema->children[0], NANOARROW_TYPE_TIMESTAMP, unit,
+  ArrowSchemaSetTypeDateTime(schema->children[0], NANOARROW_TYPE_TIMESTAMP, TU,
                              /*timezone=*/nullptr);
   ArrowSchemaSetName(schema->children[0], "col");
   ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error, values),
@@ -1151,7 +1152,7 @@ void StatementTest::TestSqlIngestTimestampWithUnit(enum ArrowTimeUnit unit) {
     ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    if (unit == NANOARROW_TIME_UNIT_MICRO) {
+    if (TU == NANOARROW_TIME_UNIT_MICRO) {
       // Similar to the TestSqlIngestType implementation we are only now
       // testing values if the unit round trips
       ASSERT_NO_FATAL_FAILURE(
@@ -1164,10 +1165,10 @@ void StatementTest::TestSqlIngestTimestampWithUnit(enum ArrowTimeUnit unit) {
 }
 
 void StatementTest::TestSqlIngestTimestamp() {
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTimestampWithUnit(NANOARROW_TIME_UNIT_SECOND));
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTimestampWithUnit(NANOARROW_TIME_UNIT_MICRO));
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTimestampWithUnit(NANOARROW_TIME_UNIT_MILLI));
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTimestampWithUnit(NANOARROW_TIME_UNIT_NANO));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_SECOND>());
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_MICRO>());
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_MILLI>());
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_NANO>());
 }
 
 void StatementTest::TestSqlIngestAppend() {

@@ -231,7 +231,6 @@ class StatementTest {
 
   // Temporal
   void TestSqlIngestTimestamp();
-  void TestSqlIngestTimestampWithUnit(enum ArrowTimeUnit unit);
 
   // ---- End Type-specific tests ----------------
 
@@ -273,6 +272,9 @@ class StatementTest {
 
   template <typename CType>
   void TestSqlIngestNumericType(ArrowType type);
+
+  template <enum ArrowTimeUnit TU>
+  void TestSqlIngestTemporalType();
 };
 
 #define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
