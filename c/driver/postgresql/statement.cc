@@ -218,8 +218,8 @@ struct BindStream {
           break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
           if (strcmp("", bind_schema_fields[i].timezone)) {
-            SetError(error, "%s%" PRIi64 "%s%s%s", "[libpq] Field #", i + 1, " (\"",
-                     bind_schema->children[i]->name,
+            SetError(error, "%s%" PRIi64 "%s%s%s", "[libpq] Field #",
+                     static_cast<int64_t>(i + 1), " (\"", bind_schema->children[i]->name,
                      "\") has unsupported type code timestamp with timezone");
             return ADBC_STATUS_NOT_IMPLEMENTED;
           }
