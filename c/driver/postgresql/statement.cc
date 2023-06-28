@@ -217,7 +217,7 @@ struct BindStream {
           param_lengths[i] = 0;
           break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
-          if (!(bind_schema_fields[i].timezone == nullptr)) {
+          if (strcmp("", bind_schema_fields[i].timezone)) {
             SetError(error, "%s%" PRIi64 "%s%s%s", "[libpq] Field #", i + 1, " (\"",
                      bind_schema->children[i]->name,
                      "\") has unsupported type code timestamp with timezone");
@@ -349,7 +349,7 @@ struct BindStream {
             }
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
-              if (!(bind_schema_fields[col].timezone == nullptr)) {
+              if (strcmp("", bind_schema_fields[col].timezone)) {
                 SetError(error, "%s%" PRIi64 "%s%s%s", "[libpq] Column #", col + 1,
                          " (\"", PQfname(result, col),
                          "\") has unsupported type code timestamp with timezone");
