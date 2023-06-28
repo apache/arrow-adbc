@@ -229,6 +229,9 @@ class StatementTest {
   void TestSqlIngestString();
   void TestSqlIngestBinary();
 
+  // Temporal
+  void TestSqlIngestTimestamp();
+
   // ---- End Type-specific tests ----------------
 
   void TestSqlIngestAppend();
@@ -288,6 +291,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                         \
   TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
   TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
+  TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \

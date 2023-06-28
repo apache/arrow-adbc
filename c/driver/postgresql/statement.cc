@@ -216,6 +216,10 @@ struct BindStream {
           type_id = PostgresTypeId::kBytea;
           param_lengths[i] = 0;
           break;
+        case ArrowType::NANOARROW_TYPE_TIMESTAMP:
+          type_id = PostgresTypeId::kTimestamp;
+          param_lengths[i] = 8;
+          break;
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                    static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
@@ -335,6 +339,31 @@ struct BindStream {
               // TODO: overflow check?
               param_lengths[col] = static_cast<int>(view.size_bytes);
               param_values[col] = const_cast<char*>(view.data.as_char);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
+              int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
+              auto unit = bind_schema_fields[col].time_unit;
+
+              // TODO: maybe upstream to nanoarrow as ArrowTimeUnitGetMultiplier
+              switch (unit) {
+                case NANOARROW_TIME_UNIT_SECOND:
+                  val *= 1000000;
+                  break;
+                case NANOARROW_TIME_UNIT_MILLI:
+                  val *= 1000;
+                  break;
+                case NANOARROW_TIME_UNIT_MICRO:
+                  break;
+                case NANOARROW_TIME_UNIT_NANO:
+                  val /= 1000;
+                  break;
+              }
+
+              // 2000-01-01 00:00:00.000000 in microseconds
+              constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
+              const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
+              std::memcpy(param_values[col], &value, sizeof(int64_t));
               break;
             }
             default:
@@ -604,6 +633,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_BINARY:
         create += " BYTEA";
+        break;
+      case ArrowType::NANOARROW_TYPE_TIMESTAMP:
+        create += " TIMESTAMP";
         break;
       default:
         SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",

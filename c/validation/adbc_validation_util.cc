@@ -141,7 +141,16 @@ int MakeSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& field
   CHECK_ERRNO(ArrowSchemaSetTypeStruct(schema, fields.size()));
   size_t i = 0;
   for (const SchemaField& field : fields) {
-    CHECK_ERRNO(ArrowSchemaSetType(schema->children[i], field.type));
+    switch (field.type) {
+      case NANOARROW_TYPE_TIMESTAMP:
+        // TODO: don't hardcode unit here
+        CHECK_ERRNO(ArrowSchemaSetTypeDateTime(schema->children[i], field.type,
+                                               NANOARROW_TIME_UNIT_MICRO,
+                                               /*timezone=*/nullptr));
+        break;
+      default:
+        CHECK_ERRNO(ArrowSchemaSetType(schema->children[i], field.type));
+    }
     CHECK_ERRNO(ArrowSchemaSetName(schema->children[i], field.name.c_str()));
     if (!field.nullable) {
       schema->children[i]->flags &= ~ARROW_FLAG_NULLABLE;

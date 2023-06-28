@@ -1094,6 +1094,10 @@ void StatementTest::TestSqlIngestBinary() {
       NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x00\x01\x02\x04", "\xFE\xFF"}));
 }
 
+void StatementTest::TestSqlIngestTimestamp() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<int64_t>(NANOARROW_TYPE_TIMESTAMP, {0, 42}));
+}
+
 void StatementTest::TestSqlIngestAppend() {
   if (!quirks()->supports_bulk_ingest()) {
     GTEST_SKIP();
