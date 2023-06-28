@@ -217,6 +217,12 @@ struct BindStream {
           param_lengths[i] = 0;
           break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
+          if (!(bind_schema_fields[i].timezone == nullptr)) {
+            SetError(error, "%s%" PRIi64 "%s%s%s", "[libpq] Field #", i + 1, " (\"",
+                     bind_schema->children[i]->name,
+                     "\") has unsupported type code timestamp with timezone");
+            return ADBC_STATUS_NOT_IMPLEMENTED;
+          }
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
@@ -343,14 +349,38 @@ struct BindStream {
             }
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
-              auto unit = bind_schema_fields[col].time_unit;
+              if (!(bind_schema_fields[col].timezone == nullptr)) {
+                SetError(error, "%s%" PRIi64 "%s%s%s", "[libpq] Column #", col + 1,
+                         " (\"", PQfname(result, col),
+                         "\") has unsupported type code timestamp with timezone");
+                return ADBC_STATUS_NOT_IMPLEMENTED;
+              }
 
-              // TODO: maybe upstream to nanoarrow as ArrowTimeUnitGetMultiplier
+              // 2000-01-01 00:00:00.000000 in microseconds
+              constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
+              constexpr int64_t kSecOverflowLimit = 9223372036854;
+              constexpr int64_t kmSecOverflowLimit = 9223372036854775;
+
+              auto unit = bind_schema_fields[col].time_unit;
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
+                  if (abs(val) > kSecOverflowLimit) {
+                    SetError(error, "%s%" PRId64 "%s%s%s%" PRId64 "%s", "[libpq] Field #",
+                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
+                             row + 1,
+                             "has value which exceeds postgres timestamp limits");
+                    return ADBC_STATUS_INVALID_ARGUMENT;
+                  }
                   val *= 1000000;
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
+                  if (abs(val) > kmSecOverflowLimit) {
+                    SetError(error, "%s%" PRId64 "%s%s%s%" PRId64 "%s", "[libpq] Field #",
+                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
+                             row + 1,
+                             "has value which exceeds postgres timestamp limits");
+                    return ADBC_STATUS_INVALID_ARGUMENT;
+                  }
                   val *= 1000;
                   break;
                 case NANOARROW_TIME_UNIT_MICRO:
@@ -360,8 +390,6 @@ struct BindStream {
                   break;
               }
 
-              // 2000-01-01 00:00:00.000000 in microseconds
-              constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
               const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
               std::memcpy(param_values[col], &value, sizeof(int64_t));
               break;
