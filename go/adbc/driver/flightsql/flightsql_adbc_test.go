@@ -854,7 +854,7 @@ func (suite *TLSTests) TestInvalidOptions() {
 
 	suite.NoError(stmt.SetSqlQuery("SELECT 1"))
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
-	suite.Contains(err.Error(), "Unavailable")
+	suite.Contains(err.Error(), "connection error")
 }
 
 type ConnectionTests struct {

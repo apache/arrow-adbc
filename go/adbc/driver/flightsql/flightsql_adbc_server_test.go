@@ -333,6 +333,8 @@ func (ts *TimeoutTests) TestDoActionTimeout() {
 	var adbcErr adbc.Error
 	ts.ErrorAs(stmt.Prepare(context.Background()), &adbcErr)
 	ts.Equal(adbc.StatusTimeout, adbcErr.Code, adbcErr.Error())
+	// Exact match - we don't want extra fluff in the message
+	ts.Equal("context deadline exceeded", adbcErr.Msg)
 }
 
 func (ts *TimeoutTests) TestDoGetTimeout() {

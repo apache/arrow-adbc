@@ -16,9 +16,23 @@
 # under the License.
 
 import pyarrow
+import pytest
 
 import adbc_driver_flightsql.dbapi
 import adbc_driver_manager
+
+
+def test_query_error(dremio_dbapi):
+    with dremio_dbapi.cursor() as cur:
+        with pytest.raises(adbc_driver_manager.dbapi.ProgrammingError) as exc_info:
+            cur.execute("SELECT")
+
+        exc = exc_info.value
+        assert exc.status_code == adbc_driver_manager.AdbcStatusCode.INVALID_ARGUMENT
+        # Try to keep noise in exceptions minimal
+        assert exc.args[0].startswith(
+            "INVALID_ARGUMENT: [FlightSQL] Failure parsing the query."
+        )
 
 
 def test_query_trivial(dremio_dbapi):

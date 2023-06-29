@@ -29,7 +29,9 @@ func adbcFromFlightStatus(err error) error {
 	}
 
 	var adbcCode adbc.Status
-	switch status.Code(err) {
+	// If not a status.Status, will return codes.Unknown
+	grpcStatus := status.Convert(err)
+	switch grpcStatus.Code() {
 	case codes.OK:
 		return nil
 	case codes.Canceled:
@@ -69,7 +71,7 @@ func adbcFromFlightStatus(err error) error {
 	}
 
 	return adbc.Error{
-		Msg:  err.Error(),
+		Msg:  grpcStatus.Message(),
 		Code: adbcCode,
 	}
 }
