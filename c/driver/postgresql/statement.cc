@@ -218,7 +218,7 @@ struct BindStream {
           break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
           if (strcmp("", bind_schema_fields[i].timezone)) {
-            SetError(error, "%s%" PRIi64 "%s%s%s", "[libpq] Field #",
+            SetError(error, "[libpq] Field #%" PRIi64 "%s%s%s",
                      static_cast<int64_t>(i + 1), " (\"", bind_schema->children[i]->name,
                      "\") has unsupported type code timestamp with timezone");
             return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -350,8 +350,8 @@ struct BindStream {
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
               if (strcmp("", bind_schema_fields[col].timezone)) {
-                SetError(error, "%s%" PRIi64 "%s%s%s", "[libpq] Column #", col + 1,
-                         " (\"", PQfname(result, col),
+                SetError(error, "[libpq] Column #%" PRIi64 "%s%s%s", col + 1, " (\"",
+                         PQfname(result, col),
                          "\") has unsupported type code timestamp with timezone");
                 return ADBC_STATUS_NOT_IMPLEMENTED;
               }
@@ -365,7 +365,7 @@ struct BindStream {
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
                   if (abs(val) > kSecOverflowLimit) {
-                    SetError(error, "%s%" PRId64 "%s%s%s%" PRId64 "%s", "[libpq] Field #",
+                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
                              col + 1, "('", bind_schema->children[col]->name, "') Row #",
                              row + 1,
                              "has value which exceeds postgres timestamp limits");
@@ -375,7 +375,7 @@ struct BindStream {
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
                   if (abs(val) > kmSecOverflowLimit) {
-                    SetError(error, "%s%" PRId64 "%s%s%s%" PRId64 "%s", "[libpq] Field #",
+                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
                              col + 1, "('", bind_schema->children[col]->name, "') Row #",
                              row + 1,
                              "has value which exceeds postgres timestamp limits");
