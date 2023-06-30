@@ -24,7 +24,7 @@ import adbc_driver_manager
 
 def test_query_error(dremio_dbapi):
     with dremio_dbapi.cursor() as cur:
-        with pytest.raises(adbc_driver_manager.dbapi.ProgrammingError) as exc_info:
+        with pytest.raises(adbc_driver_flightsql.dbapi.ProgrammingError) as exc_info:
             cur.execute("SELECT")
 
         exc = exc_info.value
