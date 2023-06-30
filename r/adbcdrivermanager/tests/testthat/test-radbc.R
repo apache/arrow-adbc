@@ -19,7 +19,7 @@ test_that("can initialize and release a database", {
   db <- adbc_database_init(adbc_driver_void(), some_key = "some_value")
   expect_s3_class(db, "adbc_database")
   adbc_database_release(db)
-  expect_error(adbc_database_release(db), "ADBC_STATUS_INVALID_STATE")
+  expect_error(adbc_database_release(db), "INVALID_STATE")
 })
 
 test_that("can initialize and release a connection", {
@@ -27,7 +27,7 @@ test_that("can initialize and release a connection", {
   con <- adbc_connection_init(db, some_key = "some_value")
   expect_s3_class(con, "adbc_connection")
   adbc_connection_release(con)
-  expect_error(adbc_connection_release(con), "ADBC_STATUS_INVALID_STATE")
+  expect_error(adbc_connection_release(con), "INVALID_STATE")
 })
 
 test_that("connection methods work for the void driver", {
@@ -36,7 +36,7 @@ test_that("connection methods work for the void driver", {
 
   expect_error(
     adbc_connection_get_info(con, integer()),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
@@ -45,7 +45,7 @@ test_that("connection methods work for the void driver", {
       "catalog", "db_schema",
       "table_name", "table_type", "column_name"
     ),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
@@ -53,17 +53,17 @@ test_that("connection methods work for the void driver", {
       con,
       "catalog", "db_schema", "table_name"
     ),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
     adbc_connection_get_table_types(con),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
     adbc_connection_read_partition(con, raw()),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_identical(
@@ -83,7 +83,7 @@ test_that("can initialize and release a statement", {
   stmt <- adbc_statement_init(con, some_key = "some_value")
   expect_s3_class(stmt, "adbc_statement")
   adbc_statement_release(stmt)
-  expect_error(adbc_statement_release(stmt), "ADBC_STATUS_INVALID_STATE")
+  expect_error(adbc_statement_release(stmt), "INVALID_STATE")
 })
 
 test_that("statement methods work for the void driver", {
@@ -93,38 +93,38 @@ test_that("statement methods work for the void driver", {
 
   expect_error(
     adbc_statement_set_sql_query(stmt, "some query"),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
     adbc_statement_set_substrait_plan(stmt, charToRaw("some plan")),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
     adbc_statement_prepare(stmt),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
     adbc_statement_get_parameter_schema(stmt),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   struct_array <- nanoarrow::as_nanoarrow_array(data.frame(x = 1:5))
   expect_error(
     adbc_statement_bind(stmt, struct_array),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
     adbc_statement_bind_stream(stmt, nanoarrow::nanoarrow_allocate_array_stream()),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 
   expect_error(
     adbc_statement_execute_query(stmt),
-    "ADBC_STATUS_NOT_IMPLEMENTED"
+    "NOT_IMPLEMENTED"
   )
 })
 
