@@ -217,12 +217,6 @@ struct BindStream {
           param_lengths[i] = 0;
           break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
-          if (strcmp("", bind_schema_fields[i].timezone)) {
-            SetError(error, "[libpq] Field #%" PRIi64 "%s%s%s",
-                     static_cast<int64_t>(i + 1), " (\"", bind_schema->children[i]->name,
-                     "\") has unsupported type code timestamp with timezone");
-            return ADBC_STATUS_NOT_IMPLEMENTED;
-          }
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
@@ -349,12 +343,6 @@ struct BindStream {
             }
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
-              if (strcmp("", bind_schema_fields[col].timezone)) {
-                SetError(error, "[libpq] Column #%" PRIi64 "%s%s%s", col + 1, " (\"",
-                         PQfname(result, col),
-                         "\") has unsupported type code timestamp with timezone");
-                return ADBC_STATUS_NOT_IMPLEMENTED;
-              }
 
               // 2000-01-01 00:00:00.000000 in microseconds
               constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
@@ -664,12 +652,12 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_TIMESTAMP:
         if (strcmp("", source_schema_fields[i].timezone)) {
-          SetError(error, "[libpq] Field #%" PRIi64 "%s%s%s", static_cast<int64_t>(i + 1),
-                   " (\"", source_schema.children[i]->name,
-                   "\") has unsupported type for ingestion timestamp with timezone");
-          return ADBC_STATUS_NOT_IMPLEMENTED;
+          // TODO: this should probably be set during initial connection
+          connection_->SetOption("TIME ZONE", "UTC", error);
+          create += " TIMESTAMPTZ";
+        } else {
+          create += " TIMESTAMP";
         }
-        create += " TIMESTAMP";
         break;
       default:
         SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",

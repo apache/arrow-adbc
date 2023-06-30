@@ -1025,6 +1025,18 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     }
     return ADBC_STATUS_OK;
   }
+
+  if (std::strcmp(key, "TIME ZONE") == 0) {
+    std::string query = std::string("SET TIME ZONE '") + std::string(value) + "'";
+    PGresult* result = PQexec(conn_, query.c_str());
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+      PQclear(result);
+      return ADBC_STATUS_IO;
+    }
+    PQclear(result);
+    return ADBC_STATUS_OK;
+  }
+
   SetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
