@@ -40,6 +40,7 @@
       adbc_database_release(db)
     Output
       LogDatabaseRelease()
+      LogDriverRelease()
 
 ---
 
@@ -111,3 +112,4 @@
       LogConnectionRelease()
       LogDatabaseRelease()
       LogDriverRelease()
+
