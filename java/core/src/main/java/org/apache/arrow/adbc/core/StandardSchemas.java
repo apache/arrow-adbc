@@ -19,6 +19,8 @@ package org.apache.arrow.adbc.core;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.apache.arrow.vector.types.FloatingPointPrecision;
+import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.UnionMode;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -30,10 +32,13 @@ public final class StandardSchemas {
     throw new AssertionError("Do not instantiate this class");
   }
 
-  private static final ArrowType INT16 = new ArrowType.Int(16, true);
-  private static final ArrowType INT32 = new ArrowType.Int(32, true);
-  private static final ArrowType INT64 = new ArrowType.Int(64, true);
+  private static final ArrowType INT16 = Types.MinorType.SMALLINT.getType();
+  private static final ArrowType INT32 = Types.MinorType.INT.getType();
+  private static final ArrowType INT64 = Types.MinorType.BIGINT.getType();
   private static final ArrowType UINT32 = new ArrowType.Int(32, false);
+  private static final ArrowType UINT64 = new ArrowType.Int(64, false);
+  private static final ArrowType FLOAT64 =
+      new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE);
 
   /** The schema of the result set of {@link AdbcConnection#getInfo(int[])}}. */
   public static final Schema GET_INFO_SCHEMA =
@@ -83,11 +88,11 @@ public final class StandardSchemas {
           Field.notNullable("constraint_type", ArrowType.Utf8.INSTANCE),
           new Field(
               "constraint_column_names",
-              FieldType.notNullable(ArrowType.List.INSTANCE),
+              FieldType.nullable(ArrowType.List.INSTANCE),
               Collections.singletonList(Field.nullable("item", new ArrowType.Utf8()))),
           new Field(
               "constraint_column_usage",
-              FieldType.notNullable(ArrowType.List.INSTANCE),
+              FieldType.nullable(ArrowType.List.INSTANCE),
               Collections.singletonList(
                   new Field("item", FieldType.nullable(ArrowType.Struct.INSTANCE), USAGE_SCHEMA))));
 
@@ -119,12 +124,12 @@ public final class StandardSchemas {
           new Field("table_type", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
           new Field(
               "table_columns",
-              FieldType.notNullable(ArrowType.List.INSTANCE),
+              FieldType.nullable(ArrowType.List.INSTANCE),
               Collections.singletonList(
                   new Field("item", FieldType.nullable(ArrowType.Struct.INSTANCE), COLUMN_SCHEMA))),
           new Field(
               "table_constraints",
-              FieldType.notNullable(ArrowType.List.INSTANCE),
+              FieldType.nullable(ArrowType.List.INSTANCE),
               Collections.singletonList(
                   new Field(
                       "item", FieldType.nullable(ArrowType.Struct.INSTANCE), CONSTRAINT_SCHEMA))));
@@ -134,20 +139,76 @@ public final class StandardSchemas {
           new Field("db_schema_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
           new Field(
               "db_schema_tables",
-              FieldType.notNullable(ArrowType.List.INSTANCE),
+              FieldType.nullable(ArrowType.List.INSTANCE),
               Collections.singletonList(
                   new Field("item", FieldType.nullable(ArrowType.Struct.INSTANCE), TABLE_SCHEMA))));
 
+  /**
+   * The schema of the result of {@link AdbcConnection#getObjects(AdbcConnection.GetObjectsDepth,
+   * String, String, String, String[], String)}.
+   */
   public static final Schema GET_OBJECTS_SCHEMA =
       new Schema(
           Arrays.asList(
               new Field("catalog_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
               new Field(
                   "catalog_db_schemas",
-                  FieldType.notNullable(ArrowType.List.INSTANCE),
+                  FieldType.nullable(ArrowType.List.INSTANCE),
                   Collections.singletonList(
                       new Field(
                           "item",
                           FieldType.nullable(ArrowType.Struct.INSTANCE),
                           DB_SCHEMA_SCHEMA)))));
+
+  public static final List<Field> STATISTICS_VALUE_SCHEMA =
+      Arrays.asList(
+          Field.nullable("int64", INT64),
+          Field.nullable("uint64", UINT64),
+          Field.nullable("float64", FLOAT64),
+          Field.nullable("binary", ArrowType.Binary.INSTANCE));
+
+  public static final List<Field> STATISTICS_SCHEMA =
+      Arrays.asList(
+          Field.notNullable("table_name", ArrowType.Utf8.INSTANCE),
+          Field.nullable("column_name", ArrowType.Utf8.INSTANCE),
+          Field.notNullable("statistic_key", INT16),
+          new Field(
+              "statistic_value",
+              FieldType.notNullable(new ArrowType.Union(UnionMode.Dense, new int[] {0, 1, 2, 3})),
+              STATISTICS_VALUE_SCHEMA),
+          Field.notNullable("statistic_is_approximate", ArrowType.Bool.INSTANCE));
+
+  public static final List<Field> STATISTICS_DB_SCHEMA_SCHEMA =
+      Arrays.asList(
+          new Field("db_schema_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
+          new Field(
+              "db_schema_statistics",
+              FieldType.nullable(ArrowType.List.INSTANCE),
+              Collections.singletonList(
+                  new Field(
+                      "item", FieldType.nullable(ArrowType.Struct.INSTANCE), STATISTICS_SCHEMA))));
+
+  /**
+   * The schema of the result of {@link AdbcConnection#getStatistics(String, String, String,
+   * boolean)}.
+   */
+  public static final Schema GET_STATISTICS_SCHEMA =
+      new Schema(
+          Arrays.asList(
+              new Field("catalog_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
+              new Field(
+                  "catalog_db_schemas",
+                  FieldType.nullable(ArrowType.List.INSTANCE),
+                  Collections.singletonList(
+                      new Field(
+                          "item",
+                          FieldType.nullable(ArrowType.Struct.INSTANCE),
+                          STATISTICS_DB_SCHEMA_SCHEMA)))));
+
+  /** The schema of the result of {@link AdbcConnection#getStatisticNames()}. */
+  public static final Schema GET_STATISTIC_NAMES_SCHEMA =
+      new Schema(
+          Arrays.asList(
+              Field.notNullable("statistic_name", ArrowType.Utf8.INSTANCE),
+              Field.notNullable("statistic_name", INT16)));
 }

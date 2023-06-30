@@ -17,8 +17,11 @@
 package org.apache.arrow.adbc.driver.flightsql;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
+import org.apache.arrow.adbc.core.ErrorDetail;
 import org.apache.arrow.flight.FlightRuntimeException;
 import org.apache.arrow.flight.FlightStatusCode;
 
@@ -72,7 +75,24 @@ final class FlightSqlDriverUtil {
   }
 
   static AdbcException fromFlightException(FlightRuntimeException e) {
+    List<ErrorDetail> errorDetails = new ArrayList<>();
+    for (String key : e.status().metadata().keys()) {
+      if (key.endsWith("-bin")) {
+        for (byte[] value : e.status().metadata().getAllByte(key)) {
+          errorDetails.add(new ErrorDetail(key, value));
+        }
+      } else {
+        for (String value : e.status().metadata().getAll(key)) {
+          errorDetails.add(new ErrorDetail(key, value));
+        }
+      }
+    }
     return new AdbcException(
-        e.getMessage(), e.getCause(), fromFlightStatusCode(e.status().code()), null, 0);
+        e.getMessage(),
+        e.getCause(),
+        fromFlightStatusCode(e.status().code()),
+        null,
+        0,
+        errorDetails);
   }
 }
