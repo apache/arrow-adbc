@@ -605,34 +605,30 @@ AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
 }
 
 const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
-#define STRINGIFY(s) #s
-#define STRINGIFY_VALUE(s) STRINGIFY(s)
-#define CASE(CONSTANT) \
-  case CONSTANT:       \
-    return #CONSTANT " (" STRINGIFY_VALUE(CONSTANT) ")";
+#define CASE(CONSTANT)         \
+  case ADBC_STATUS_##CONSTANT: \
+    return #CONSTANT;
 
   switch (code) {
-    CASE(ADBC_STATUS_OK);
-    CASE(ADBC_STATUS_UNKNOWN);
-    CASE(ADBC_STATUS_NOT_IMPLEMENTED);
-    CASE(ADBC_STATUS_NOT_FOUND);
-    CASE(ADBC_STATUS_ALREADY_EXISTS);
-    CASE(ADBC_STATUS_INVALID_ARGUMENT);
-    CASE(ADBC_STATUS_INVALID_STATE);
-    CASE(ADBC_STATUS_INVALID_DATA);
-    CASE(ADBC_STATUS_INTEGRITY);
-    CASE(ADBC_STATUS_INTERNAL);
-    CASE(ADBC_STATUS_IO);
-    CASE(ADBC_STATUS_CANCELLED);
-    CASE(ADBC_STATUS_TIMEOUT);
-    CASE(ADBC_STATUS_UNAUTHENTICATED);
-    CASE(ADBC_STATUS_UNAUTHORIZED);
+    CASE(OK);
+    CASE(UNKNOWN);
+    CASE(NOT_IMPLEMENTED);
+    CASE(NOT_FOUND);
+    CASE(ALREADY_EXISTS);
+    CASE(INVALID_ARGUMENT);
+    CASE(INVALID_STATE);
+    CASE(INVALID_DATA);
+    CASE(INTEGRITY);
+    CASE(INTERNAL);
+    CASE(IO);
+    CASE(CANCELLED);
+    CASE(TIMEOUT);
+    CASE(UNAUTHENTICATED);
+    CASE(UNAUTHORIZED);
     default:
       return "(invalid code)";
   }
 #undef CASE
-#undef STRINGIFY_VALUE
-#undef STRINGIFY
 }
 
 AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,

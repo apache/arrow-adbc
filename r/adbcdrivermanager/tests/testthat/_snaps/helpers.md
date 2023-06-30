@@ -14,8 +14,7 @@
       LogStatementSetSqlQuery()
       LogStatementRelease()
       LogConnectionRelease()
-      Error in adbc_statement_set_sql_query(stmt, query) : 
-        ADBC_STATUS_NOT_IMPLEMENTED (2)
+      Error in adbc_statement_set_sql_query(stmt, query) : NOT_IMPLEMENTED
     Code
       try(execute_adbc(db, "some sql"))
     Output
@@ -25,8 +24,7 @@
       LogStatementSetSqlQuery()
       LogStatementRelease()
       LogConnectionRelease()
-      Error in adbc_statement_set_sql_query(stmt, query) : 
-        ADBC_STATUS_NOT_IMPLEMENTED (2)
+      Error in adbc_statement_set_sql_query(stmt, query) : NOT_IMPLEMENTED
     Code
       try(write_adbc(mtcars, db, "some_table"))
     Output
@@ -37,8 +35,7 @@
       LogStatementBindStream()
       LogStatementRelease()
       LogConnectionRelease()
-      Error in adbc_statement_bind_stream(stmt, tbl) : 
-        ADBC_STATUS_NOT_IMPLEMENTED (2)
+      Error in adbc_statement_bind_stream(stmt, tbl) : NOT_IMPLEMENTED
     Code
       adbc_database_release(db)
     Output
@@ -63,16 +60,14 @@
       LogStatementNew()
       LogStatementSetSqlQuery()
       LogStatementRelease()
-      Error in adbc_statement_set_sql_query(stmt, query) : 
-        ADBC_STATUS_NOT_IMPLEMENTED (2)
+      Error in adbc_statement_set_sql_query(stmt, query) : NOT_IMPLEMENTED
     Code
       try(execute_adbc(con, "some sql"))
     Output
       LogStatementNew()
       LogStatementSetSqlQuery()
       LogStatementRelease()
-      Error in adbc_statement_set_sql_query(stmt, query) : 
-        ADBC_STATUS_NOT_IMPLEMENTED (2)
+      Error in adbc_statement_set_sql_query(stmt, query) : NOT_IMPLEMENTED
     Code
       try(write_adbc(mtcars, con, "some_table"))
     Output
@@ -80,8 +75,7 @@
       LogStatementSetOption()
       LogStatementBindStream()
       LogStatementRelease()
-      Error in adbc_statement_bind_stream(stmt, tbl) : 
-        ADBC_STATUS_NOT_IMPLEMENTED (2)
+      Error in adbc_statement_bind_stream(stmt, tbl) : NOT_IMPLEMENTED
     Code
       adbc_connection_release(con)
     Output

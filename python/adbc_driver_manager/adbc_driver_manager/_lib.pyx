@@ -331,6 +331,20 @@ class NotSupportedError(DatabaseError):
         )
 
 
+# XXX: shorten the traceback a bit (and avoid exposing _lib).  We
+# could also define the exceptions in __init__ but then we'd have a
+# circular import situation
+Error.__module__ = "adbc_driver_manager"
+InterfaceError.__module__ = "adbc_driver_manager"
+DatabaseError.__module__ = "adbc_driver_manager"
+DataError.__module__ = "adbc_driver_manager"
+OperationalError.__module__ = "adbc_driver_manager"
+IntegrityError.__module__ = "adbc_driver_manager"
+InternalError.__module__ = "adbc_driver_manager"
+ProgrammingError.__module__ = "adbc_driver_manager"
+NotSupportedError.__module__ = "adbc_driver_manager"
+
+
 INGEST_OPTION_MODE = ADBC_INGEST_OPTION_MODE.decode("utf-8")
 INGEST_OPTION_MODE_APPEND = ADBC_INGEST_OPTION_MODE_APPEND.decode("utf-8")
 INGEST_OPTION_MODE_CREATE = ADBC_INGEST_OPTION_MODE_CREATE.decode("utf-8")

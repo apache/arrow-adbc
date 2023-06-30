@@ -29,7 +29,7 @@ stop_for_error <- function(status, error) {
     # Gives an error class like "adbc_status_invalid_state", "adbc_status",
     # "simpleError", ...
     cnd_class <- c(
-      tolower(gsub("\\s+.*", "", error$status_code_message)),
+      paste0("adbc_status_", tolower(gsub("\\s+.*", "", error$status_code_message))),
       "adbc_status"
     )
 

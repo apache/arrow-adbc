@@ -44,7 +44,7 @@ test_that("with_adbc() and local_adbc() release databases", {
   expect_identical(with_adbc(db, "value"), "value")
   expect_error(
     adbc_database_release(db),
-    "ADBC_STATUS_INVALID_STATE"
+    "INVALID_STATE"
   )
 
   db <- adbc_database_init(adbc_driver_void())
@@ -53,7 +53,7 @@ test_that("with_adbc() and local_adbc() release databases", {
   })
   expect_error(
     adbc_database_release(db),
-    "ADBC_STATUS_INVALID_STATE"
+    "INVALID_STATE"
   )
 })
 
@@ -63,7 +63,7 @@ test_that("with_adbc() and local_adbc() release connections", {
   expect_identical(with_adbc(con, "value"), "value")
   expect_error(
     adbc_connection_release(con),
-    "ADBC_STATUS_INVALID_STATE"
+    "INVALID_STATE"
   )
 
   con <- adbc_connection_init(db)
@@ -72,7 +72,7 @@ test_that("with_adbc() and local_adbc() release connections", {
   })
   expect_error(
     adbc_connection_release(con),
-    "ADBC_STATUS_INVALID_STATE"
+    "INVALID_STATE"
   )
 })
 
@@ -83,7 +83,7 @@ test_that("with_adbc() and local_adbc() release statements", {
   expect_identical(with_adbc(stmt, "value"), "value")
   expect_error(
     adbc_statement_release(stmt),
-    "ADBC_STATUS_INVALID_STATE"
+    "INVALID_STATE"
   )
 
   stmt <- adbc_statement_init(con)
@@ -92,7 +92,7 @@ test_that("with_adbc() and local_adbc() release statements", {
   })
   expect_error(
     adbc_statement_release(stmt),
-    "ADBC_STATUS_INVALID_STATE"
+    "INVALID_STATE"
   )
 })
 
