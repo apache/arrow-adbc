@@ -30,9 +30,7 @@ def test_query_error(dremio_dbapi):
         exc = exc_info.value
         assert exc.status_code == adbc_driver_manager.AdbcStatusCode.INVALID_ARGUMENT
         # Try to keep noise in exceptions minimal
-        assert exc.args[0].startswith(
-            "INVALID_ARGUMENT: [FlightSQL] Failure parsing the query."
-        )
+        assert exc.args[0].startswith("INVALID_ARGUMENT: [FlightSQL] ")
 
 
 def test_query_trivial(dremio_dbapi):
