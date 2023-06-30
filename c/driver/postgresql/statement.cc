@@ -216,6 +216,16 @@ struct BindStream {
           type_id = PostgresTypeId::kBytea;
           param_lengths[i] = 0;
           break;
+        case ArrowType::NANOARROW_TYPE_TIMESTAMP:
+          if (strcmp("", bind_schema_fields[i].timezone)) {
+            SetError(error, "[libpq] Field #%" PRIi64 "%s%s%s",
+                     static_cast<int64_t>(i + 1), " (\"", bind_schema->children[i]->name,
+                     "\") has unsupported type code timestamp with timezone");
+            return ADBC_STATUS_NOT_IMPLEMENTED;
+          }
+          type_id = PostgresTypeId::kTimestamp;
+          param_lengths[i] = 8;
+          break;
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                    static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
@@ -335,6 +345,53 @@ struct BindStream {
               // TODO: overflow check?
               param_lengths[col] = static_cast<int>(view.size_bytes);
               param_values[col] = const_cast<char*>(view.data.as_char);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
+              int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
+              if (strcmp("", bind_schema_fields[col].timezone)) {
+                SetError(error, "[libpq] Column #%" PRIi64 "%s%s%s", col + 1, " (\"",
+                         PQfname(result, col),
+                         "\") has unsupported type code timestamp with timezone");
+                return ADBC_STATUS_NOT_IMPLEMENTED;
+              }
+
+              // 2000-01-01 00:00:00.000000 in microseconds
+              constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
+              constexpr int64_t kSecOverflowLimit = 9223372036854;
+              constexpr int64_t kmSecOverflowLimit = 9223372036854775;
+
+              auto unit = bind_schema_fields[col].time_unit;
+              switch (unit) {
+                case NANOARROW_TIME_UNIT_SECOND:
+                  if (abs(val) > kSecOverflowLimit) {
+                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
+                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
+                             row + 1,
+                             "has value which exceeds postgres timestamp limits");
+                    return ADBC_STATUS_INVALID_ARGUMENT;
+                  }
+                  val *= 1000000;
+                  break;
+                case NANOARROW_TIME_UNIT_MILLI:
+                  if (abs(val) > kmSecOverflowLimit) {
+                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
+                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
+                             row + 1,
+                             "has value which exceeds postgres timestamp limits");
+                    return ADBC_STATUS_INVALID_ARGUMENT;
+                  }
+                  val *= 1000;
+                  break;
+                case NANOARROW_TIME_UNIT_MICRO:
+                  break;
+                case NANOARROW_TIME_UNIT_NANO:
+                  val /= 1000;
+                  break;
+              }
+
+              const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
+              std::memcpy(param_values[col], &value, sizeof(int64_t));
               break;
             }
             default:
@@ -604,6 +661,15 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_BINARY:
         create += " BYTEA";
+        break;
+      case ArrowType::NANOARROW_TYPE_TIMESTAMP:
+        if (strcmp("", source_schema_fields[i].timezone)) {
+          SetError(error, "[libpq] Field #%" PRIi64 "%s%s%s", static_cast<int64_t>(i + 1),
+                   " (\"", source_schema.children[i]->name,
+                   "\") has unsupported type for ingestion timestamp with timezone");
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+        }
+        create += " TIMESTAMP";
         break;
       default:
         SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
