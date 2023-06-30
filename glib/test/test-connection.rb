@@ -491,7 +491,7 @@ class ConnectionTest < Test::Unit::TestCase
     open_connection do |connection|
       message =
         "[adbc][connection][set-option]" +
-        "[ADBC_STATUS_NOT_IMPLEMENTED (2)][0] " +
+        "[NOT_IMPLEMENTED][0] " +
         "[SQLite] Unknown connection option adbc.connection.readonly=false"
       assert_raise(ADBC::Error::NotImplemented.new(message)) do
         connection.read_only = false
@@ -503,7 +503,7 @@ class ConnectionTest < Test::Unit::TestCase
     open_connection do |connection|
       message =
         "[adbc][connection][set-option]" +
-        "[ADBC_STATUS_NOT_IMPLEMENTED (2)][0] " +
+        "[NOT_IMPLEMENTED][0] " +
         "[SQLite] Unknown connection option " +
         "adbc.connection.transaction.isolation_level=" +
         "adbc.connection.transaction.isolation.linearizable"
