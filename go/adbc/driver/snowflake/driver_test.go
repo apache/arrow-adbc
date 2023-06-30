@@ -247,7 +247,7 @@ func dropTempSchema(uri, schema string) {
 	}
 }
 
-func TestADBCSnowflake(t *testing.T) {
+func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 	uri := os.Getenv("SNOWFLAKE_URI")
 
 	if uri == "" {
@@ -258,7 +258,74 @@ func TestADBCSnowflake(t *testing.T) {
 	// dropping that schema when we're done.
 	q := &SnowflakeQuirks{dsn: uri, schemaName: createTempSchema(uri)}
 	defer dropTempSchema(uri, q.schemaName)
-	suite.Run(t, &validation.DatabaseTests{Quirks: q})
-	suite.Run(t, &validation.ConnectionTests{Quirks: q})
-	suite.Run(t, &validation.StatementTests{Quirks: q})
+
+	fn(q)
+}
+
+func TestValidation(t *testing.T) {
+	withQuirks(t, func(q *SnowflakeQuirks) {
+		suite.Run(t, &validation.DatabaseTests{Quirks: q})
+		suite.Run(t, &validation.ConnectionTests{Quirks: q})
+		suite.Run(t, &validation.StatementTests{Quirks: q})
+	})
+}
+
+func TestSnowflake(t *testing.T) {
+	withQuirks(t, func(q *SnowflakeQuirks) {
+		suite.Run(t, &SnowflakeTests{Quirks: q})
+	})
+}
+
+// ---- Additional Tests --------------------
+
+type SnowflakeTests struct {
+	suite.Suite
+
+	Quirks *SnowflakeQuirks
+
+	ctx    context.Context
+	driver adbc.Driver
+	db     adbc.Database
+	cnxn   adbc.Connection
+	stmt   adbc.Statement
+}
+
+func (suite *SnowflakeTests) SetupSuite() {
+	var err error
+	suite.ctx = context.Background()
+	suite.driver = suite.Quirks.SetupDriver(suite.T())
+	suite.db, err = suite.driver.NewDatabase(suite.Quirks.DatabaseOptions())
+	suite.NoError(err)
+}
+
+func (suite *SnowflakeTests) SetupTest() {
+	var err error
+	suite.cnxn, err = suite.db.Open(suite.ctx)
+	suite.NoError(err)
+
+	suite.stmt, err = suite.cnxn.NewStatement()
+	suite.NoError(err)
+}
+
+func (suite *SnowflakeTests) TearDownTest() {
+	suite.NoError(suite.stmt.Close())
+	suite.NoError(suite.cnxn.Close())
+}
+
+func (suite *SnowflakeTests) TearDownSuite() {
+	suite.db = nil
+}
+
+func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
+	// Regression test for https://github.com/apache/arrow-adbc/issues/863
+	suite.NoError(suite.stmt.SetSqlQuery("SHOW WAREHOUSES"))
+
+	// XXX: there IS data in this result set, but Snowflake doesn't
+	// appear to support getting the results as Arrow
+	_, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+	var adbcErr adbc.Error
+	suite.ErrorAs(err, &adbcErr)
+
+	suite.Equal(adbc.StatusInternal, adbcErr.Code)
+	suite.Contains(adbcErr.Msg, "Cannot get Arrow data from this result set")
 }
