@@ -663,6 +663,12 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         create += " BYTEA";
         break;
       case ArrowType::NANOARROW_TYPE_TIMESTAMP:
+        if (strcmp("", source_schema_fields[i].timezone)) {
+          SetError(error, "[libpq] Field #%" PRIi64 "%s%s%s", static_cast<int64_t>(i + 1),
+                   " (\"", source_schema.children[i]->name,
+                   "\") has unsupported type for ingestion timestamp with timezone");
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+        }
         create += " TIMESTAMP";
         break;
       default:
