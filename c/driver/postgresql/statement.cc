@@ -391,6 +391,46 @@ struct BindStream {
           }
         }
 
+        bool has_timezone = false;
+        for (int64_t col = 0; col < array_view->n_children; col++) {
+          if ((bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) &&
+              !(strcmp("", bind_schema_fields[col].timezone))) {
+            has_timezone = true;
+          }
+        }
+
+        char* current_tz;
+        if (has_timezone) {
+          PGresult* begin_result = PQexec(conn, "BEGIN TRANSACTION");
+          if (PQresultStatus(begin_result) != PGRES_COMMAND_OK) {
+            SetError(error, "[libpq] Failed to begin transaction: %s",
+                     PQerrorMessage(conn));
+            PQclear(begin_result);
+            return ADBC_STATUS_IO;
+          }
+          PQclear(begin_result);
+
+          PGresult* get_tz_result = PQexec(conn, "SELECT current_setting('TIMEZONE')");
+          if (PQresultStatus(get_tz_result) != PGRES_TUPLES_OK) {
+            SetError(error, "[libpq] Could not query current timezone: %s",
+                     PQerrorMessage(conn));
+            PQclear(get_tz_result);
+            return ADBC_STATUS_IO;
+          }
+
+          current_tz = PQgetvalue(get_tz_result, 0, 0);
+          PQclear(get_tz_result);
+
+          PGresult* set_utc_result = PQexec(conn, "SET TIME ZONE 'UTC'");
+          if (PQresultStatus(set_utc_result) != PGRES_COMMAND_OK) {
+            SetError(error, "[libpq] Failed to set time zone to UTC: %s",
+                     PQerrorMessage(conn));
+            PQclear(set_utc_result);
+            return ADBC_STATUS_IO;
+          }
+          PQclear(set_utc_result);
+        }
+
         result = PQexecPrepared(conn, /*stmtName=*/"",
                                 /*nParams=*/bind_schema->n_children, param_values.data(),
                                 param_lengths.data(), param_formats.data(),
@@ -404,6 +444,27 @@ struct BindStream {
         }
 
         PQclear(result);
+
+        if (has_timezone) {
+          std::string reset_query = "SET TIME ZONE '" + std::string(current_tz) + "'";
+          PGresult* reset_tz_result = PQexec(conn, reset_query.c_str());
+          if (PQresultStatus(reset_tz_result) != PGRES_COMMAND_OK) {
+            SetError(error, "[libpq] Failed to reset time zone: %s",
+                     PQerrorMessage(conn));
+            PQclear(reset_tz_result);
+            return ADBC_STATUS_IO;
+          }
+          PQclear(reset_tz_result);
+
+          PGresult* commit_result = PQexec(conn, "COMMIT");
+          if (PQresultStatus(commit_result) != PGRES_COMMAND_OK) {
+            SetError(error, "[libpq] Failed to commit transaction: %s",
+                     PQerrorMessage(conn));
+            PQclear(commit_result);
+            return ADBC_STATUS_IO;
+          }
+          PQclear(commit_result);
+        }
       }
       if (rows_affected) *rows_affected += array->length;
     }
