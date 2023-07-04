@@ -40,7 +40,7 @@ to the Arrow Database Connectivity (ADBC) FlightSQL driver.
 
 ## Installation
 
-You can install the development version of adbcflightsql from [GitHub](https://github.com/) with:`
+You can install the development version of adbcflightsql from [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("pak")
