@@ -86,4 +86,3 @@ Install the appropriate driver package from GitHub:
 
    # install.packages("pak")
    pak::pak("apache/arrow-adbc/r/adbcsqlite")
-
