@@ -41,6 +41,7 @@ you may need to update its internal version of pkgbuild.
 
 ``` r
 install.packages("pkgbuild", pak:::private_lib_dir())
+pak::cache_clean()
 ```
 
 ## Example

@@ -51,6 +51,7 @@ ADBC drivers for R use a relatively new feature of pkgbuild to enable installati
 
 ``` r
 install.packages("pkgbuild", pak:::private_lib_dir())
+pak::cache_clean()
 ```
 
 ## Example
