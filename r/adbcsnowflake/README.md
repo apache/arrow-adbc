@@ -31,8 +31,16 @@ You can install the development version of adbcsnowflake from
 [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcsnowflake", build = FALSE)
+# install.packages("pak")
+pak::pak("apache/arrow-adbc/r/adbcsnowflake")
+```
+
+ADBC drivers for R use a relatively new feature of pkgbuild to enable
+installation from GitHub via pak. Depending on when you installed pak,
+you may need to update its internal version of pkgbuild.
+
+``` r
+install.packages("pkgbuild", pak:::private_lib_dir())
 ```
 
 ## Example
@@ -55,12 +63,12 @@ con |>
   read_adbc("SELECT * FROM REGION ORDER BY R_REGIONKEY") |>
   tibble::as_tibble()
 #> # A tibble: 5 × 3
-#>   R_REGIONKEY R_NAME      R_COMMENT
-#>         <dbl> <chr>       <chr>
+#>   R_REGIONKEY R_NAME      R_COMMENT                                             
+#>         <dbl> <chr>       <chr>                                                 
 #> 1           0 AFRICA      "lar deposits. blithely final packages cajole. regula…
-#> 2           1 AMERICA     "hs use ironic, even requests. s"
-#> 3           2 ASIA        "ges. thinly even pinto beans ca"
-#> 4           3 EUROPE      "ly final courts cajole furiously final excuse"
+#> 2           1 AMERICA     "hs use ironic, even requests. s"                     
+#> 3           2 ASIA        "ges. thinly even pinto beans ca"                     
+#> 4           3 EUROPE      "ly final courts cajole furiously final excuse"       
 #> 5           4 MIDDLE EAST "uickly special accounts cajole carefully blithely cl…
 ```
 
