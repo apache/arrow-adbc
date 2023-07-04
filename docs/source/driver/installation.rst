@@ -76,3 +76,14 @@ From conda-forge_:
 - ``mamba install adbc-driver-flightsql``
 - ``mamba install adbc-driver-postgresql``
 - ``mamba install adbc-driver-sqlite``
+
+R
+======
+
+Install the appropriate driver package from GitHub:
+
+.. code-block:: r
+
+   # install.packages("pak")
+   pak::pak("apache/arrow-adbc/r/adbcsqlite")
+

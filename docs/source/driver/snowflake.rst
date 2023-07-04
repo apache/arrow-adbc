@@ -60,8 +60,8 @@ Installation
 
       .. code-block:: shell
 
-         # install.packages("remotes")
-         remotes::install_github("apache/arrow-adbc/r/adbcsnowflake", build = FALSE)
+         # install.packages("pak")
+         pak::pak("apache/arrow-adbc/r/adbcsnowflake")
 
 Usage
 =====
