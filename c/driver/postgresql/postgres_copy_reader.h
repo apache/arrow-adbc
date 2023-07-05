@@ -211,6 +211,34 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
   }
 };
 
+class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
+ public:
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
+                      ArrowError* error) override {
+    // -1 for NULL
+    if (field_size_bytes < 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
+    if (field_size_bytes > data->size_bytes) {
+      ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
+                    static_cast<int>(field_size_bytes),
+                    static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, data->data.data, field_size_bytes));
+    data->data.as_uint8 += field_size_bytes;
+    data->size_bytes -= field_size_bytes;
+
+    int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppendInt32(offsets_, offsets[array->length] + field_size_bytes));
+
+    return AppendValid(array);
+  }
+};
+
 // Reader for Pg->Arrow conversions whose Arrow representation is simply the
 // bytes of the field representation. This can be used with binary and string
 // Arrow types and any Postgres type.
@@ -233,10 +261,6 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, data->data.data, field_size_bytes));
     data->data.as_uint8 += field_size_bytes;
     data->size_bytes -= field_size_bytes;
-
-    int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
-    NANOARROW_RETURN_NOT_OK(
-        ArrowBufferAppendInt32(offsets_, offsets[array->length] + field_size_bytes));
 
     return AppendValid(array);
   }
@@ -560,6 +584,15 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
       switch (pg_type.type_id()) {
         case PostgresTypeId::kFloat8:
           *out = new PostgresCopyNetworkEndianFieldReader<uint64_t>();
+          return NANOARROW_OK;
+        default:
+          return ErrorCantConvert(error, pg_type, schema_view);
+      }
+
+    case NANOARROW_TYPE_DECIMAL128:
+      switch (pg_type.type_id()) {
+        case PostgresTypeId::kNumeric:
+          *out = new PostgresCopyNumericFieldReader();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
