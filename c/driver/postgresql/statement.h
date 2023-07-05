@@ -38,8 +38,15 @@ class PostgresStatement;
 class TupleReader final {
  public:
   TupleReader(PGconn* conn)
-      : conn_(conn), result_(nullptr), pgbuf_(nullptr), copy_reader_(nullptr) {
+      : conn_(conn),
+        result_(nullptr),
+        pgbuf_(nullptr),
+        copy_reader_(nullptr),
+        row_id_(-1),
+        array_size_hint_bytes_(16777216) {
     StringBuilderInit(&error_builder_, 0);
+    data_.data.as_char = nullptr;
+    data_.size_bytes = 0;
   }
 
   int GetSchema(struct ArrowSchema* out);
@@ -57,6 +64,11 @@ class TupleReader final {
  private:
   friend class PostgresStatement;
 
+  int InitQuery(struct ArrowError* error);
+  int AppendRow(struct ArrowError* error);
+  int BuildOutput(struct ArrowArray* out, struct ArrowError* error);
+  void ResetQuery();
+
   static int GetSchemaTrampoline(struct ArrowArrayStream* self, struct ArrowSchema* out);
   static int GetNextTrampoline(struct ArrowArrayStream* self, struct ArrowArray* out);
   static const char* GetLastErrorTrampoline(struct ArrowArrayStream* self);
@@ -65,8 +77,11 @@ class TupleReader final {
   PGconn* conn_;
   PGresult* result_;
   char* pgbuf_;
+  struct ArrowBufferView data_;
   struct StringBuilder error_builder_;
   std::unique_ptr<PostgresCopyStreamReader> copy_reader_;
+  int64_t row_id_;
+  int64_t array_size_hint_bytes_;
 };
 
 class PostgresStatement {

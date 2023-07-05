@@ -679,8 +679,11 @@ class PostgresCopyStreamReader {
     }
 
     root_reader_.Init(pg_type);
+    array_size_approx_bytes_ = 0;
     return NANOARROW_OK;
   }
+
+  int64_t array_size_approx_bytes() const { return array_size_approx_bytes_; }
 
   ArrowErrorCode SetOutputSchema(ArrowSchema* schema, ArrowError* error) {
     if (std::string(schema_->format) != "+s") {
@@ -776,9 +779,11 @@ class PostgresCopyStreamReader {
           ArrowArrayInitFromSchema(array_.get(), schema_.get(), error));
       NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array_.get()));
       NANOARROW_RETURN_NOT_OK(root_reader_.InitArray(array_.get()));
+      array_size_approx_bytes_ = 0;
     }
 
     NANOARROW_RETURN_NOT_OK(root_reader_.Read(data, -1, array_.get(), error));
+    array_size_approx_bytes_ += data->size_bytes;
     return NANOARROW_OK;
   }
 
@@ -800,6 +805,7 @@ class PostgresCopyStreamReader {
   PostgresCopyFieldTupleReader root_reader_;
   nanoarrow::UniqueSchema schema_;
   nanoarrow::UniqueArray array_;
+  int64_t array_size_approx_bytes_;
 };
 
 }  // namespace adbcpq
