@@ -537,9 +537,6 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 
   struct ArrowError error;
   error.message[0] = '\0';
-  struct ArrowBufferView data;
-  data.data.data = nullptr;
-  data.size_bytes = 0;
 
   if (row_id_ == -1) {
     NANOARROW_RETURN_NOT_OK(InitQuery(&error));
