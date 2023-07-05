@@ -334,6 +334,68 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDoublePrecision) {
   ASSERT_EQ(data_buffer[4], 0);
 }
 
+// COPY (SELECT CAST("col" AS NUMERIC) AS "col" FROM (  VALUES (-123.456), (-1), (1),
+// (123.456), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumeric[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0x00,
+    0x00, 0x40, 0x00, 0x00, 0x03, 0x00, 0x7b, 0x11, 0xd0, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x0a, 0x00, 0x01, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00,
+    0x7b, 0x11, 0xd0, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyNumeric;
+  data.size_bytes = sizeof(kTestPgCopyNumeric);
+
+  auto col_type = PostgresType(PostgresTypeId::kNumeric);
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", col_type);
+
+  PostgresCopyStreamTester tester;
+  ASSERT_EQ(tester.Init(input_type), NANOARROW_OK);
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyNumeric, sizeof(kTestPgCopyNumeric));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 5);
+  ASSERT_EQ(array->n_children, 1);
+
+  nanoarrow::UniqueSchema schema;
+  tester.GetSchema(schema.get());
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  auto validity = array_view->children[0]->buffer_views[0].data.as_uint8;
+  ASSERT_TRUE(ArrowBitGet(validity, 0));
+  ASSERT_TRUE(ArrowBitGet(validity, 1));
+  ASSERT_TRUE(ArrowBitGet(validity, 2));
+  ASSERT_TRUE(ArrowBitGet(validity, 3));
+  ASSERT_FALSE(ArrowBitGet(validity, 4));
+
+  struct ArrowDecimal item;
+  ArrowDecimalInit(&item, 128, 38, 3);
+
+  ArrowArrayViewGetDecimalUnsafe(array_view.get(), 0, &item);
+  ASSERT_EQ(ArrowDecimalGetIntUnsafe(&item), -123456);
+
+  ArrowArrayViewGetDecimalUnsafe(array_view.get(), 1, &item);
+  ASSERT_EQ(ArrowDecimalGetIntUnsafe(&item), -1000);
+
+  ArrowArrayViewGetDecimalUnsafe(array_view.get(), 2, &item);
+  ASSERT_EQ(ArrowDecimalGetIntUnsafe(&item), 1000);
+
+  ArrowArrayViewGetDecimalUnsafe(array_view.get(), 3, &item);
+  ASSERT_EQ(ArrowDecimalGetIntUnsafe(&item), 123456);
+}
+
 // COPY (SELECT CAST("col" AS TEXT) AS "col" FROM (  VALUES ('abc'), ('1234'),
 // (NULL::text)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
 static uint8_t kTestPgCopyText[] = {
