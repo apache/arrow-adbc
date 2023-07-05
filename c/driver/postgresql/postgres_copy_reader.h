@@ -782,8 +782,9 @@ class PostgresCopyStreamReader {
       array_size_approx_bytes_ = 0;
     }
 
+    const uint8_t* start = data->data.as_uint8;
     NANOARROW_RETURN_NOT_OK(root_reader_.Read(data, -1, array_.get(), error));
-    array_size_approx_bytes_ += data->size_bytes;
+    array_size_approx_bytes_ += (data->data.as_uint8 - start);
     return NANOARROW_OK;
   }
 

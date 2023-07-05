@@ -530,7 +530,7 @@ void TupleReader::ResetQuery() {
 }
 
 int TupleReader::GetNext(struct ArrowArray* out) {
-  if (!result_) {
+  if (!copy_reader_) {
     out->release = nullptr;
     return 0;
   }
@@ -561,6 +561,9 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   // Finish the result properly and return the last result
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
+
+  // Clear the copy reader to mark this reader as finished
+  copy_reader_.reset();
 
   // Check the server-side response
   result_ = PQgetResult(conn_);
