@@ -46,7 +46,15 @@ func removeFieldMetadata(field *arrow.Field) arrow.Field {
 		case *arrow.LargeListType:
 			fieldType = arrow.LargeListOfField(childFields[0])
 		case *arrow.MapType:
-			mapType := arrow.MapOf(childFields[0].Type, childFields[1].Type)
+			// XXX: arrow-go doesn't let us build a map type from fields (so
+			// nonstandard field names or nullability will be lost here)
+
+			// child must be struct
+			structType := ty.Elem().(*arrow.StructType)
+			// struct must have two children
+			keyType := structType.Field(0).Type
+			itemType := structType.Field(1).Type
+			mapType := arrow.MapOf(keyType, itemType)
 			mapType.KeysSorted = ty.KeysSorted
 			fieldType = mapType
 		case *arrow.SparseUnionType:
