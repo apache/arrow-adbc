@@ -57,8 +57,8 @@ Installation
 
       .. code-block:: shell
 
-         # install.packages("remotes")
-         remotes::install_github("apache/arrow-adbc/r/adbcsqlite", build = FALSE)
+         # install.packages("pak")
+         pak::pak("apache/arrow-adbc/r/adbcsqlite")
 
    .. tab-item:: Go
       :sync: go
