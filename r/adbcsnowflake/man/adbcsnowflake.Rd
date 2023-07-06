@@ -2,14 +2,14 @@
 % Please edit documentation in R/adbcsnowflake-package.R
 \name{adbcsnowflake}
 \alias{adbcsnowflake}
-\alias{adbc_database_init.adbcsnowflake_driver_snowflake}
+\alias{adbc_database_init.adbcsnowflake_driver}
 \alias{adbc_connection_init.adbcsnowflake_database}
 \alias{adbc_statement_init.adbcsnowflake_connection}
 \title{ADBC Snowflake Driver}
 \usage{
 adbcsnowflake()
 
-\method{adbc_database_init}{adbcsnowflake_driver_snowflake}(driver, ..., uri = NULL)
+\method{adbc_database_init}{adbcsnowflake_driver}(driver, ..., uri = NULL)
 
 \method{adbc_connection_init}{adbcsnowflake_database}(database, ..., adbc.connection.autocommit = NULL)
 

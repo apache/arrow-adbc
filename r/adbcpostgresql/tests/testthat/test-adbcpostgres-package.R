@@ -89,7 +89,7 @@ test_that("default options can open a database and execute a query", {
   adbcdrivermanager::adbc_statement_release(stmt)
 })
 
-test_that("S4 slot definitions work with adbc_* S3 object defined in this package", {
+test_that("S4 slot definitions work with adbc_* S3 objects defined in this package", {
   test_db_uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI", "")
   skip_if(identical(test_db_uri, ""))
 

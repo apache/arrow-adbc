@@ -45,14 +45,14 @@ NULL
 adbcsqlite <- function() {
   adbcdrivermanager::adbc_driver(
     .Call(adbcsqlite_c_sqlite),
-    subclass = "adbcsqlite_driver_sqlite"
+    subclass = "adbcsqlite_driver"
   )
 }
 
 #' @rdname adbcsqlite
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcsqlite_driver_sqlite <- function(driver, ..., uri = ":memory:") {
+adbc_database_init.adbcsqlite_driver <- function(driver, ..., uri = ":memory:") {
   adbcdrivermanager::adbc_database_init_default(
     driver,
     list(..., uri = uri),
@@ -93,3 +93,10 @@ adbc_statement_init.adbcsqlite_connection <- function(connection, ...,
     subclass = "adbcsqlite_statement"
   )
 }
+
+# For S4 compatibility
+#' @importFrom methods setOldClass
+setOldClass(c("adbcsqlite_driver", "adbc_driver", "adbc_xptr"))
+setOldClass(c("adbcsqlite_database", "adbc_database", "adbc_xptr"))
+setOldClass(c("adbcsqlite_connection", "adbc_connection", "adbc_xptr"))
+setOldClass(c("adbcsqlite_statement", "adbc_statement", "adbc_xptr"))

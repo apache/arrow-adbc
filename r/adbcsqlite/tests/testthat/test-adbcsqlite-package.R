@@ -126,3 +126,10 @@ test_that("read/write/execute SQL work with sqlite databases", {
   expect_identical(as.data.frame(stream), data.frame(x = as.double(3:12)))
   stream$release()
 })
+
+test_that("S4 slot definitions work with adbc_* S3 objects defined in this package", {
+  expect_s4_class(
+    adbcdrivermanager::adbc_test_s4_compat(adbcsqlite()),
+    "AdbcS4CompatTest"
+  )
+})

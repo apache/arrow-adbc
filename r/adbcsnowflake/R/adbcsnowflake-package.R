@@ -46,14 +46,14 @@ NULL
 adbcsnowflake <- function() {
   adbcdrivermanager::adbc_driver(
     .Call(adbcsnowflake_c_snowflake),
-    subclass = "adbcsnowflake_driver_snowflake"
+    subclass = "adbcsnowflake_driver"
   )
 }
 
 #' @rdname adbcsnowflake
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcsnowflake_driver_snowflake <- function(driver, ..., uri = NULL) {
+adbc_database_init.adbcsnowflake_driver <- function(driver, ..., uri = NULL) {
   options <- list(..., uri = uri)
   adbcdrivermanager::adbc_database_init_default(
     driver,
@@ -93,3 +93,10 @@ adbc_statement_init.adbcsnowflake_connection <- function(connection, ...,
     subclass = "adbcsnowflake_statement"
   )
 }
+
+# For S4 compatibility
+#' @importFrom methods setOldClass
+setOldClass(c("adbcsnowflake_driver", "adbc_driver", "adbc_xptr"))
+setOldClass(c("adbcsnowflake_database", "adbc_database", "adbc_xptr"))
+setOldClass(c("adbcsnowflake_connection", "adbc_connection", "adbc_xptr"))
+setOldClass(c("adbcsnowflake_statement", "adbc_statement", "adbc_xptr"))

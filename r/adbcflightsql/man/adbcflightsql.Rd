@@ -2,14 +2,14 @@
 % Please edit documentation in R/adbcflightsql-package.R
 \name{adbcflightsql}
 \alias{adbcflightsql}
-\alias{adbc_database_init.adbcflightsql_driver_flightsql}
+\alias{adbc_database_init.adbcflightsql_driver}
 \alias{adbc_connection_init.adbcflightsql_database}
 \alias{adbc_statement_init.adbcflightsql_connection}
 \title{ADBC FlightSQL Driver}
 \usage{
 adbcflightsql()
 
-\method{adbc_database_init}{adbcflightsql_driver_flightsql}(driver, ..., uri = NULL)
+\method{adbc_database_init}{adbcflightsql_driver}(driver, ..., uri = NULL)
 
 \method{adbc_connection_init}{adbcflightsql_database}(database, ..., adbc.connection.autocommit = NULL)
 

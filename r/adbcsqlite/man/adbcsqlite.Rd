@@ -2,14 +2,14 @@
 % Please edit documentation in R/adbcsqlite-package.R
 \name{adbcsqlite}
 \alias{adbcsqlite}
-\alias{adbc_database_init.adbcsqlite_driver_sqlite}
+\alias{adbc_database_init.adbcsqlite_driver}
 \alias{adbc_connection_init.adbcsqlite_database}
 \alias{adbc_statement_init.adbcsqlite_connection}
 \title{ADBC SQLite3 Driver}
 \usage{
 adbcsqlite()
 
-\method{adbc_database_init}{adbcsqlite_driver_sqlite}(driver, ..., uri = ":memory:")
+\method{adbc_database_init}{adbcsqlite_driver}(driver, ..., uri = ":memory:")
 
 \method{adbc_connection_init}{adbcsqlite_database}(database, ..., adbc.connection.autocommit = NULL)
 

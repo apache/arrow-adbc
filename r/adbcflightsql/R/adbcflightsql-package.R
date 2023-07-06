@@ -46,14 +46,14 @@ NULL
 adbcflightsql <- function() {
   adbcdrivermanager::adbc_driver(
     .Call(adbcflightsql_c_flightsql),
-    subclass = "adbcflightsql_driver_flightsql"
+    subclass = "adbcflightsql_driver"
   )
 }
 
 #' @rdname adbcflightsql
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcflightsql_driver_flightsql <- function(driver, ..., uri = NULL) {
+adbc_database_init.adbcflightsql_driver <- function(driver, ..., uri = NULL) {
   options <- list(..., uri = uri)
   adbcdrivermanager::adbc_database_init_default(
     driver,
@@ -93,3 +93,10 @@ adbc_statement_init.adbcflightsql_connection <- function(connection, ...,
     subclass = "adbcflightsql_statement"
   )
 }
+
+# For S4 compatibility
+#' @importFrom methods setOldClass
+setOldClass(c("adbcflightsql_driver", "adbc_driver", "adbc_xptr"))
+setOldClass(c("adbcflightsql_database", "adbc_database", "adbc_xptr"))
+setOldClass(c("adbcflightsql_connection", "adbc_connection", "adbc_xptr"))
+setOldClass(c("adbcflightsql_statement", "adbc_statement", "adbc_xptr"))
