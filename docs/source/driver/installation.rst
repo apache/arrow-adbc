@@ -69,12 +69,14 @@ For example, from PyPI:
 
 - ``pip install adbc-driver-flightsql``
 - ``pip install adbc-driver-postgresql``
+- ``pip install adbc-driver-snowflake``
 - ``pip install adbc-driver-sqlite``
 
 From conda-forge_:
 
 - ``mamba install adbc-driver-flightsql``
 - ``mamba install adbc-driver-postgresql``
+- ``mamba install adbc-driver-snowflake``
 - ``mamba install adbc-driver-sqlite``
 
 R
@@ -85,4 +87,10 @@ Install the appropriate driver package from GitHub:
 .. code-block:: r
 
    # install.packages("pak")
+   pak::pak("apache/arrow-adbc/r/adbcflightsql")
+   pak::pak("apache/arrow-adbc/r/adbcpostgresql")
+   pak::pak("apache/arrow-adbc/r/adbcsnowflake")
    pak::pak("apache/arrow-adbc/r/adbcsqlite")
+
+Installation of stable releases from CRAN is anticipated following the
+release of ADBC Libraries 0.6.0.
