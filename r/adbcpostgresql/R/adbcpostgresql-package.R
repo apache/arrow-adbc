@@ -45,14 +45,14 @@ NULL
 adbcpostgresql <- function() {
   adbcdrivermanager::adbc_driver(
     .Call(adbcpostgresql_c_postgresql),
-    subclass = "adbcpostgresql_driver_postgresql"
+    subclass = "adbcpostgresql_driver"
   )
 }
 
 #' @rdname adbcpostgresql
 #' @importFrom adbcdrivermanager adbc_database_init
 #' @export
-adbc_database_init.adbcpostgresql_driver_postgresql <- function(driver, ..., uri) {
+adbc_database_init.adbcpostgresql_driver <- function(driver, ..., uri) {
   adbcdrivermanager::adbc_database_init_default(
     driver,
     list(..., uri = uri),
@@ -91,3 +91,10 @@ adbc_statement_init.adbcpostgresql_connection <- function(connection, ...,
     subclass = "adbcpostgresql_statement"
   )
 }
+
+# For S4 compatibility
+#' @importFrom methods setOldClass
+setOldClass(c("adbcpostgresql_driver", "adbc_driver", "adbc_xptr"))
+setOldClass(c("adbcpostgresql_database", "adbc_database", "adbc_xptr"))
+setOldClass(c("adbcpostgresql_connection", "adbc_connection", "adbc_xptr"))
+setOldClass(c("adbcpostgresql_statement", "adbc_statement", "adbc_xptr"))
