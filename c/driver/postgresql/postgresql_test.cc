@@ -638,6 +638,48 @@ TEST_F(PostgresStatementTest, UpdateInExecuteQuery) {
   }
 }
 
+TEST_F(PostgresStatementTest, BatchSizeHint) {
+  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "batch_size_hint_test", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_EQ(AdbcStatementSetOption(&statement, "adbc.postgresql.batch_size_hint_bytes",
+                                   "-1", nullptr),
+            ADBC_STATUS_INVALID_ARGUMENT);
+  ASSERT_EQ(AdbcStatementSetOption(&statement, "adbc.postgresql.batch_size_hint_bytes",
+                                   "not a valid number", nullptr),
+            ADBC_STATUS_INVALID_ARGUMENT);
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, "adbc.postgresql.batch_size_hint_bytes",
+                                     "1", &error),
+              IsOkStatus(&error));
+
+  {
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement, "SELECT int64s from batch_size_hint_test ORDER BY int64s LIMIT 3",
+            &error),
+        IsOkStatus(&error));
+
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->length, 1);
+    ASSERT_EQ(ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], 0), -42);
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->length, 1);
+    ASSERT_EQ(ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], 0), 42);
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->length, 1);
+    ASSERT_TRUE(ArrowArrayViewIsNull(reader.array_view->children[0], 0));
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+}
+
 struct TypeTestCase {
   std::string name;
   std::string sql_type;

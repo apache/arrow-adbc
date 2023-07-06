@@ -438,7 +438,7 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
   return na_res;
 }
 
-int TupleReader::InitQuery(struct ArrowError* error) {
+int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
   ResetQuery();
 
   // Fetch + parse the header
@@ -461,7 +461,7 @@ int TupleReader::InitQuery(struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
-int TupleReader::AppendRow(struct ArrowError* error) {
+int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
   // Parse the result (the header AND the first row are included in the first
   // call to PQgetCopyData())
   int na_res = copy_reader_->ReadRecord(&data_, error);
@@ -490,7 +490,7 @@ int TupleReader::AppendRow(struct ArrowError* error) {
     // Returned when COPY has finished successfully
     return ENODATA;
   } else if ((copy_reader_->array_size_approx_bytes() + get_copy_res) >=
-             array_size_hint_bytes_) {
+             batch_size_hint_bytes_) {
     // Appending the next row will result in an array larger than requested.
     // Return EOVERFLOW to force GetNext() to build the current result and return.
     return EOVERFLOW;
@@ -500,6 +500,11 @@ int TupleReader::AppendRow(struct ArrowError* error) {
 }
 
 int TupleReader::BuildOutput(struct ArrowArray* out, struct ArrowError* error) {
+  if (copy_reader_->array_size_approx_bytes() == 0) {
+    out->release = nullptr;
+    return NANOARROW_OK;
+  }
+
   int na_res = copy_reader_->GetArray(out, error);
   if (na_res != NANOARROW_OK) {
     StringBuilderAppend(&error_builder_, "[libpq] Failed to build result array: %s",
@@ -539,17 +544,17 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   error.message[0] = '\0';
 
   if (row_id_ == -1) {
-    NANOARROW_RETURN_NOT_OK(InitQuery(&error));
+    NANOARROW_RETURN_NOT_OK(InitQueryAndFetchFirst(&error));
     row_id_++;
   }
 
   int na_res;
   do {
-    na_res = AppendRow(&error);
+    na_res = AppendRowAndFetchNext(&error);
     if (na_res == EOVERFLOW) {
-      // The result is too big to return. When EOVERFLOW is returned, the copy reader
-      // leaves the output in a valid state. The data is left in pg_buf_/data_ and
-      // will attempt to be appended on the next call to GetNext()
+      // The result would be too big to return if we appended the row. When EOVERFLOW is
+      // returned, the copy reader leaves the output in a valid state. The data is left in
+      // pg_buf_/data_ and will attempt to be appended on the next call to GetNext()
       return BuildOutput(out, &error);
     }
   } while (na_res == NANOARROW_OK);
@@ -558,7 +563,9 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     return na_res;
   }
 
-  // Finish the result properly and return the last result
+  // Finish the result properly and return the last result. Note that BuildOutput() may
+  // set tmp.release = nullptr if there were zero rows in the copy reader (can
+  // occur in an overflow scenario).
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
 
@@ -571,7 +578,11 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   if (pq_status != PGRES_COMMAND_OK) {
     StringBuilderAppend(&error_builder_, "[libpq] Query failed [%d]: %s", pq_status,
                         PQresultErrorMessage(result_));
-    tmp.release(&tmp);
+
+    if (tmp.release != nullptr) {
+      tmp.release(&tmp);
+    }
+
     return EIO;
   }
 
@@ -992,6 +1003,14 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
       SetError(error, "%s%s%s%s", "[libpq] Invalid value ", value, " for option ", key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
+  } else if (std::strcmp(value, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES)) {
+    int64_t int_value = std::atol(value);
+    if (int_value <= 0) {
+      SetError(error, "%s%s%s%s", "[libpq] Invalid value ", value, " for option ", key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    this->reader_.batch_size_hint_bytes_ = int_value;
   } else {
     SetError(error, "%s%s", "[libq] Unknown statement option ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
