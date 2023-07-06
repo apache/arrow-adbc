@@ -365,12 +365,14 @@
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-flightsql</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-postgresql</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-snowflake</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-sqlite</span></code></p></li>
 </ul>
 <p>From <a class="reference external" href="https://conda-forge.org/">conda-forge</a>:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-flightsql</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-postgresql</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-snowflake</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-sqlite</span></code></p></li>
 </ul>
 </section>
@@ -378,9 +380,14 @@
 <h2>R<a class="headerlink" href="#r" title="Permalink to this heading">#</a></h2>
 <p>Install the appropriate driver package from GitHub:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="c1"># install.packages(&quot;pak&quot;)</span>
+<span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcflightsql&quot;</span><span class="p">)</span>
+<span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcpostgresql&quot;</span><span class="p">)</span>
+<span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcsnowflake&quot;</span><span class="p">)</span>
 <span class="n">pak</span><span class="o">::</span><span class="nf">pak</span><span class="p">(</span><span class="s">&quot;apache/arrow-adbc/r/adbcsqlite&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>Installation of stable releases from CRAN is anticipated following the
+release of ADBC Libraries 0.6.0.</p>
 </section>
 </section>
 
