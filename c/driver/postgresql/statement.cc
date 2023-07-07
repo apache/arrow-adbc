@@ -250,8 +250,8 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Prepare(PGconn* conn, const std::string& query,
-                         struct AdbcError* error) {
+  AdbcStatusCode Prepare(PGconn* conn, const std::string& query, struct AdbcError* error,
+                         const bool autocommit) {
     // tz-aware timestamps require special handling to set the timezone to UTC
     // prior to sending over the binary protocol; must be reset after execute
     for (int64_t col = 0; col < bind_schema->n_children; col++) {
@@ -259,14 +259,16 @@ struct BindStream {
           (strcmp("", bind_schema_fields[col].timezone))) {
         has_tz_field = true;
 
-        PGresult* begin_result = PQexec(conn, "BEGIN");
-        if (PQresultStatus(begin_result) != PGRES_COMMAND_OK) {
-          SetError(error, "[libpq] Failed to begin transaction for timezone data: %s",
-                   PQerrorMessage(conn));
+        if (autocommit) {
+          PGresult* begin_result = PQexec(conn, "BEGIN");
+          if (PQresultStatus(begin_result) != PGRES_COMMAND_OK) {
+            SetError(error, "[libpq] Failed to begin transaction for timezone data: %s",
+                     PQerrorMessage(conn));
+            PQclear(begin_result);
+            return ADBC_STATUS_IO;
+          }
           PQclear(begin_result);
-          return ADBC_STATUS_IO;
         }
-        PQclear(begin_result);
 
         PGresult* get_tz_result = PQexec(conn, "SELECT current_setting('TIMEZONE')");
         if (PQresultStatus(get_tz_result) != PGRES_TUPLES_OK) {
@@ -830,7 +832,8 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
 
   RAISE_ADBC(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
   RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
-  RAISE_ADBC(bind_stream.Prepare(connection_->conn(), query_, error));
+  RAISE_ADBC(
+      bind_stream.Prepare(connection_->conn(), query_, error, connection_->autocommit()));
   RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
@@ -981,7 +984,8 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
   }
   insert += ")";
 
-  RAISE_ADBC(bind_stream.Prepare(connection_->conn(), insert, error));
+  RAISE_ADBC(
+      bind_stream.Prepare(connection_->conn(), insert, error, connection_->autocommit()));
   RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
