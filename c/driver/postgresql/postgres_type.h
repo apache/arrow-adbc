@@ -216,7 +216,7 @@ class PostgresType {
 
       // ---- Numeric/Decimal-------------------
       case PostgresTypeId::kNumeric:
-        // NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL128));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
 
       // ---- Binary/string --------------------

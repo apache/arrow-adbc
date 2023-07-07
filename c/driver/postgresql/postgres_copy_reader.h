@@ -262,6 +262,10 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
     data->data.as_uint8 += field_size_bytes;
     data->size_bytes -= field_size_bytes;
 
+    int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppendInt32(offsets_, offsets[array->length] + field_size_bytes));
+
     return AppendValid(array);
   }
 };
@@ -589,15 +593,6 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
           return ErrorCantConvert(error, pg_type, schema_view);
       }
 
-    case NANOARROW_TYPE_DECIMAL128:
-      switch (pg_type.type_id()) {
-        case PostgresTypeId::kNumeric:
-          *out = new PostgresCopyNumericFieldReader();
-          return NANOARROW_OK;
-        default:
-          return ErrorCantConvert(error, pg_type, schema_view);
-      }
-
     case NANOARROW_TYPE_STRING:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kChar:
@@ -606,6 +601,9 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
         case PostgresTypeId::kBpchar:
         case PostgresTypeId::kName:
           *out = new PostgresCopyBinaryFieldReader();
+          return NANOARROW_OK;
+        case PostgresTypeId::kNumeric:
+          *out = new PostgresCopyNumericFieldReader();
           return NANOARROW_OK;
         default:
           return ErrorCantConvert(error, pg_type, schema_view);

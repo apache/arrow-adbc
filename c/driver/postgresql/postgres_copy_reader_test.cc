@@ -334,16 +334,17 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDoublePrecision) {
   ASSERT_EQ(data_buffer[4], 0);
 }
 
-// COPY (SELECT CAST("col" AS NUMERIC) AS "col" FROM (  VALUES (-123.456), (-1), (1),
-// (123.456), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (  VALUES (-123.456), (123.456), ('nan'),
+// ('-inf'), ('inf'), (NULL)) AS drvd(col)) TO STDOUT WITH (FORMAT binary);
 static uint8_t kTestPgCopyNumeric[] = {
     0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0x00,
     0x00, 0x40, 0x00, 0x00, 0x03, 0x00, 0x7b, 0x11, 0xd0, 0x00, 0x01, 0x00, 0x00, 0x00,
-    0x0a, 0x00, 0x01, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
-    0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
-    0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00,
-    0x7b, 0x11, 0xd0, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    0x0c, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x7b, 0x11, 0xd0, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x20, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0xd0, 0x00, 0x00, 0x20, 0x00,
+    0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   ArrowBufferView data;
@@ -362,7 +363,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
 
   nanoarrow::UniqueArray array;
   ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
-  ASSERT_EQ(array->length, 5);
+  ASSERT_EQ(array->length, 6);
   ASSERT_EQ(array->n_children, 1);
 
   nanoarrow::UniqueSchema schema;
@@ -371,6 +372,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   nanoarrow::UniqueArrayView array_view;
   ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
             NANOARROW_OK);
+  ASSERT_EQ(array_view->children[0]->storage_type, NANOARROW_TYPE_STRING);
   ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
 
   auto validity = array_view->children[0]->buffer_views[0].data.as_uint8;
@@ -378,22 +380,20 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   ASSERT_TRUE(ArrowBitGet(validity, 1));
   ASSERT_TRUE(ArrowBitGet(validity, 2));
   ASSERT_TRUE(ArrowBitGet(validity, 3));
-  ASSERT_FALSE(ArrowBitGet(validity, 4));
+  ASSERT_TRUE(ArrowBitGet(validity, 4));
+  ASSERT_FALSE(ArrowBitGet(validity, 5));
 
-  struct ArrowDecimal item;
-  ArrowDecimalInit(&item, 128, 38, 3);
-
-  ArrowArrayViewGetDecimalUnsafe(array_view.get(), 0, &item);
-  ASSERT_EQ(ArrowDecimalGetIntUnsafe(&item), -123456);
-
-  ArrowArrayViewGetDecimalUnsafe(array_view.get(), 1, &item);
-  ASSERT_EQ(ArrowDecimalGetIntUnsafe(&item), -1000);
-
-  ArrowArrayViewGetDecimalUnsafe(array_view.get(), 2, &item);
-  ASSERT_EQ(ArrowDecimalGetIntUnsafe(&item), 1000);
-
-  ArrowArrayViewGetDecimalUnsafe(array_view.get(), 3, &item);
-  ASSERT_EQ(ArrowDecimalGetIntUnsafe(&item), 123456);
+  struct ArrowStringView item;
+  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 0);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "-123.456");
+  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 1);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "123.456");
+  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 2);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "nan");
+  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 3);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "-inf");
+  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 4);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "inf");
 }
 
 // COPY (SELECT CAST("col" AS TEXT) AS "col" FROM (  VALUES ('abc'), ('1234'),
