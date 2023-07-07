@@ -425,6 +425,11 @@ struct BindStream {
 }  // namespace
 
 int TupleReader::GetSchema(struct ArrowSchema* out) {
+  if (!copy_reader_) {
+    StringBuilderAppend(&error_builder_,
+                        "[libpq] Statement was already freed");
+    return EINVAL;
+  }
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
     StringBuilderAppend(&error_builder_,
@@ -439,6 +444,12 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
 }
 
 int TupleReader::GetNext(struct ArrowArray* out) {
+  if (!copy_reader_) {
+    StringBuilderAppend(&error_builder_,
+                        "[libpq] Statement was already freed");
+    return EINVAL;
+  }
+
   if (!result_) {
     out->release = nullptr;
     return 0;
@@ -537,6 +548,7 @@ void TupleReader::Release() {
     PQfreemem(pgbuf_);
     pgbuf_ = nullptr;
   }
+  copy_reader_ = nullptr;
 }
 
 void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
