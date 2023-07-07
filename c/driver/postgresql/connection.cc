@@ -191,17 +191,6 @@ class PqGetObjectsHelper {
   }
 
   AdbcStatusCode GetObjects() {
-    PqResultHelper curr_db_helper =
-        PqResultHelper{conn_, std::string("SELECT current_database()"), error_};
-
-    RAISE_ADBC(curr_db_helper.Prepare());
-    RAISE_ADBC(curr_db_helper.Execute());
-
-    assert(curr_db_helper.NumRows() == 1);
-    auto curr_iter = curr_db_helper.begin();
-    PqResultRow db_row = *curr_iter;
-    current_db_ = std::string(db_row[0].data);
-
     RAISE_ADBC(InitArrowArray());
 
     catalog_name_col_ = array_->children[0];
@@ -252,7 +241,7 @@ class PqGetObjectsHelper {
 
   AdbcStatusCode AppendSchemas(std::string db_name) {
     // postgres only allows you to list schemas for the currently connected db
-    if (db_name == current_db_) {
+    if (!strcmp(db_name.c_str(), PQdb(conn_))) {
       struct StringBuilder query = {0};
       if (StringBuilderInit(&query, /*initial_size*/ 256)) {
         return ADBC_STATUS_INTERNAL;
@@ -658,10 +647,9 @@ class PqGetObjectsHelper {
         const char* constraint_ftable_name = row[4].data;
         auto constraint_fcolumn_names = PqTextArrayToVector(std::string(row[5].data));
         for (const auto& constraint_fcolumn_name : constraint_fcolumn_names) {
-          CHECK_NA(
-              INTERNAL,
-              ArrowArrayAppendString(fk_catalog_col_, ArrowCharView(current_db_.c_str())),
-              error_);
+          CHECK_NA(INTERNAL,
+                   ArrowArrayAppendString(fk_catalog_col_, ArrowCharView(PQdb(conn_))),
+                   error_);
           CHECK_NA(INTERNAL,
                    ArrowArrayAppendString(fk_db_schema_col_,
                                           ArrowCharView(constraint_ftable_schema)),
@@ -705,7 +693,6 @@ class PqGetObjectsHelper {
   struct ArrowArray* array_;
   struct AdbcError* error_;
   struct ArrowError na_error_;
-  std::string current_db_;
   struct ArrowArray* catalog_name_col_;
   struct ArrowArray* catalog_db_schemas_col_;
   struct ArrowArray* catalog_db_schemas_items_;

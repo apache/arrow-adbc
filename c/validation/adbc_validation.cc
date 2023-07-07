@@ -1023,6 +1023,7 @@ void StatementTest::TestSqlIngestType(ArrowType type,
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
   }
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
 template <typename CType>
@@ -1165,6 +1166,8 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
   }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
 void StatementTest::TestSqlIngestTimestamp() {

@@ -31,8 +31,17 @@ You can install the development version of adbcsqlite from
 [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("apache/arrow-adbc/r/adbcsqlite", build = FALSE)
+# install.packages("pak")
+pak::pak("apache/arrow-adbc/r/adbcsqlite")
+```
+
+ADBC drivers for R use a relatively new feature of pkgbuild to enable
+installation from GitHub via pak. Depending on when you installed pak,
+you may need to update its internal version of pkgbuild.
+
+``` r
+install.packages("pkgbuild", pak:::private_lib_dir())
+pak::cache_clean()
 ```
 
 ## Example
