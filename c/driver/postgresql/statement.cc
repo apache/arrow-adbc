@@ -466,8 +466,8 @@ int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
   // call to PQgetCopyData())
   int na_res = copy_reader_->ReadRecord(&data_, error);
   if (na_res != NANOARROW_OK && na_res != ENODATA) {
-    StringBuilderAppend(&error_builder_, "[libpq] ReadRecord failed at row %ld: %s",
-                        static_cast<long>(row_id_),  // NOLINT(runtime/int)
+    StringBuilderAppend(&error_builder_,
+                        "[libpq] ReadRecord failed at row %" PRId64 ": %s", row_id_,
                         error->message);
     return na_res;
   }
@@ -482,8 +482,8 @@ int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
   data_.data.as_char = pgbuf_;
 
   if (get_copy_res == -2) {
-    StringBuilderAppend(&error_builder_, "[libpq] Fetch row %ld failed: %s",
-                        static_cast<long>(row_id_),  // NOLINT(runtime/int)
+    StringBuilderAppend(&error_builder_,
+                        "[libpq] PQgetCopyData failed at row %" PRId64 ": %s", row_id_,
                         PQerrorMessage(conn_));
     return EIO;
   } else if (get_copy_res == -1) {
@@ -1000,19 +1000,19 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
     } else if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_APPEND) == 0) {
       ingest_.append = true;
     } else {
-      SetError(error, "%s%s%s%s", "[libpq] Invalid value ", value, " for option ", key);
+      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
   } else if (std::strcmp(value, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES)) {
     int64_t int_value = std::atol(value);
     if (int_value <= 0) {
-      SetError(error, "%s%s%s%s", "[libpq] Invalid value ", value, " for option ", key);
+      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
     this->reader_.batch_size_hint_bytes_ = int_value;
   } else {
-    SetError(error, "%s%s", "[libq] Unknown statement option ", key);
+    SetError(error, "[libq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return ADBC_STATUS_OK;
