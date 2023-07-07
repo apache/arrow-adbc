@@ -643,6 +643,7 @@ TEST_F(PostgresStatementTest, BatchSizeHint) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
+  // Setting the batch size hint to a negative or non-integer value should fail
   ASSERT_EQ(AdbcStatementSetOption(&statement, "adbc.postgresql.batch_size_hint_bytes",
                                    "-1", nullptr),
             ADBC_STATUS_INVALID_ARGUMENT);
@@ -650,6 +651,7 @@ TEST_F(PostgresStatementTest, BatchSizeHint) {
                                    "not a valid number", nullptr),
             ADBC_STATUS_INVALID_ARGUMENT);
 
+  // For this test, use a batch size of 1 byte to force every row to be its own batch
   ASSERT_THAT(AdbcStatementSetOption(&statement, "adbc.postgresql.batch_size_hint_bytes",
                                      "1", &error),
               IsOkStatus(&error));
