@@ -211,6 +211,10 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
   }
 };
 
+// Converts COPY resulting from the Postgres NUMERIC type into a string.
+// Rewritten based on the Postgres implementation of NUMERIC cast to string in
+// src/backend/utils/adt/numeric.c : get_str_from_var()
+// Note that in the initial source, DEC_DIGITS is always 4 and DBASE is always 10000
 class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
  public:
   ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
@@ -220,23 +224,83 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    if (field_size_bytes > data->size_bytes) {
-      ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
-                    static_cast<int>(field_size_bytes),
+    // Read the input
+    if (data->size_bytes < (4 * sizeof(int16_t))) {
+      ArrowErrorSet(error,
+                    "Expected at least %d bytes of field data for numeric copy data but "
+                    "only %d bytes of input remain",
+                    static_cast<int>(4 * sizeof(int16_t)),
+                    static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    int16_t ndigits = ReadUnsafe<int16_t>(data);
+    int16_t weight = ReadUnsafe<int16_t>(data);
+    int16_t sign = ReadUnsafe<int16_t>(data);
+    int16_t dscale = ReadUnsafe<int16_t>(data);
+
+    if (data->size_bytes < (ndigits * sizeof(int16_t))) {
+      ArrowErrorSet(error,
+                    "Expected at least %d bytes of field data for numeric digits copy "
+                    "data but only %d bytes of input remain",
+                    static_cast<int>(ndigits * sizeof(int16_t)),
                     static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, data->data.data, field_size_bytes));
-    data->data.as_uint8 += field_size_bytes;
-    data->size_bytes -= field_size_bytes;
+    digits_.clear();
+    for (int16_t i = 0; i < ndigits; i++) {
+      digits_.push_back(ReadUnsafe<int16_t>(data));
+    }
 
-    int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
-    NANOARROW_RETURN_NOT_OK(
-        ArrowBufferAppendInt32(offsets_, offsets[array->length] + field_size_bytes));
+    // Handle special values
+    std::string special_value("");
+    switch (sign) {
+      case numeric_nan:
+        special_value = "nan";
+        break;
+      case numeric_pinf:
+        special_value = "inf";
+        break;
+      case numeric_ninf:
+        special_value = "-inf";
+      default:
+        break;
+    }
 
+    if (special_value.size() > 0) {
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppend(data_, special_value.data(), special_value.size()));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, data_->size_bytes));
+      return AppendValid(array);
+    }
+
+    // Calculate string space requirement
+    int64_t max_chars_required = std::max<int64_t>(1, weight + 1 * dec_digits);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(data_, max_chars_required));
+    char* out0 = reinterpret_cast<char*>(data_->data + data_->size_bytes);
+    char* out = out0;
+
+    // Build output string in-place
+    out[0] = static_cast<char>(dscale);
+
+    // Update data buffer size and add offsets
+    int32_t chars_needed = out - out0;
+    data_->size_bytes += chars_needed;
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, data_->size_bytes));
     return AppendValid(array);
   }
+
+ private:
+  std::vector<int16_t> digits_;
+
+  static const int dec_digits = 4;
+  static const int nbase = 10000;
+  static const int numeric_pos = 0x0000;
+  static const int numeric_neg = 0x4000;
+  static const int numeric_nan = 0xF001;
+  static const int numeric_pinf = 0xD000;
+  static const int numeric_ninf = 0xF000;
 };
 
 // Reader for Pg->Arrow conversions whose Arrow representation is simply the
