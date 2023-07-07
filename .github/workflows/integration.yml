@@ -238,7 +238,7 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
         run: |
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
@@ -254,7 +254,7 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
         run: |
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
 

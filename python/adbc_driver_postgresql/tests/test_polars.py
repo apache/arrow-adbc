@@ -58,17 +58,7 @@ def df(request):
     "df",
     [
         "ints",
-        pytest.param(
-            "floats",
-            marks=pytest.mark.xfail(
-                reason="; ".join(
-                    [
-                        "apache/arrow-adbc#81: lack of type support",
-                        "pola-rs/polars#7757: polars doesn't close cursor properly",
-                    ]
-                )
-            ),
-        ),
+        "floats",
     ],
     indirect=True,
 )
@@ -84,8 +74,6 @@ def test_polars_write_database(postgres_uri: str, df: "polars.DataFrame") -> Non
             engine="adbc",
         )
     finally:
-        # TODO(apache/arrow-adbc#540): driver doesn't handle execute()
-        # properly here because it tries to infer the schema.
         with dbapi.connect(postgres_uri) as conn:
             with conn.cursor() as cursor:
-                cursor.executemany(f"DROP TABLE {table_name}", [])
+                cursor.execute(f"DROP TABLE {table_name}")
