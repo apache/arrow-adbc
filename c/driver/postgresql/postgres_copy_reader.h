@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdint>
 #include <memory>
