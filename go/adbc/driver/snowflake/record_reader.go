@@ -133,7 +133,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 						tb.Append(arrow.Timestamp(time.Unix(epoch[i], int64(fraction[i])).UnixNano()))
 					}
 				} else {
-					for i, t := range a.(*array.Timestamp).TimestampValues() {
+					for i, t := range a.(*array.Int64).Int64Values() {
 						if a.IsNull(i) {
 							tb.AppendNull()
 							continue
@@ -166,7 +166,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 						tb.Append(arrow.Timestamp(time.Unix(epoch[i], int64(fraction[i])).UnixNano()))
 					}
 				} else {
-					for i, t := range a.(*array.Timestamp).TimestampValues() {
+					for i, t := range a.(*array.Int64).Int64Values() {
 						if a.IsNull(i) {
 							tb.AppendNull()
 							continue
