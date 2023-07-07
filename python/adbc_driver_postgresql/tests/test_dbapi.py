@@ -19,13 +19,44 @@ from typing import Generator
 
 import pytest
 
-from adbc_driver_postgresql import dbapi
+from adbc_driver_postgresql import StatementOptions, dbapi
 
 
 @pytest.fixture
 def postgres(postgres_uri: str) -> Generator[dbapi.Connection, None, None]:
     with dbapi.connect(postgres_uri) as conn:
         yield conn
+
+
+def test_query_batch_size(postgres: dbapi.Connection):
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_batch_size")
+        cur.execute("CREATE TABLE test_batch_size (ints INT)")
+        cur.execute(
+            """
+            INSERT INTO test_batch_size (ints)
+            SELECT generated :: INT
+            FROM GENERATE_SERIES(1, 65536) temp(generated)
+        """
+        )
+
+        cur.execute("SELECT * FROM test_batch_size")
+        table = cur.fetch_arrow_table()
+        assert len(table.to_batches()) == 1
+
+        cur.adbc_statement.set_options(
+            **{StatementOptions.BATCH_SIZE_HINT_BYTES.value: "1"}
+        )
+        cur.execute("SELECT * FROM test_batch_size")
+        table = cur.fetch_arrow_table()
+        assert len(table.to_batches()) == 65536
+
+        cur.adbc_statement.set_options(
+            **{StatementOptions.BATCH_SIZE_HINT_BYTES.value: "4096"}
+        )
+        cur.execute("SELECT * FROM test_batch_size")
+        table = cur.fetch_arrow_table()
+        assert 64 <= len(table.to_batches()) <= 256
 
 
 def test_query_trivial(postgres: dbapi.Connection):
