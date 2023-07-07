@@ -438,79 +438,139 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
   return na_res;
 }
 
-int TupleReader::GetNext(struct ArrowArray* out) {
-  if (!result_) {
-    out->release = nullptr;
-    return 0;
-  }
-
-  // Clear the result, since the data is actually read from the connection
-  PQclear(result_);
-  result_ = nullptr;
-
-  // Clear the error builder
-  error_builder_.size = 0;
-
-  struct ArrowError error;
-  error.message[0] = '\0';
-  struct ArrowBufferView data;
-  data.data.data = nullptr;
-  data.size_bytes = 0;
+int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
+  ResetQuery();
 
   // Fetch + parse the header
   int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
+  data_.size_bytes = get_copy_res;
+  data_.data.as_char = pgbuf_;
+
   if (get_copy_res == -2) {
     StringBuilderAppend(&error_builder_, "[libpq] Fetch header failed: %s",
                         PQerrorMessage(conn_));
     return EIO;
   }
 
-  data.size_bytes = get_copy_res;
-  data.data.as_char = pgbuf_;
-  int na_res = copy_reader_->ReadHeader(&data, &error);
+  int na_res = copy_reader_->ReadHeader(&data_, error);
   if (na_res != NANOARROW_OK) {
-    StringBuilderAppend(&error_builder_, "[libpq] ReadHeader failed: %s", error.message);
+    StringBuilderAppend(&error_builder_, "[libpq] ReadHeader failed: %s", error->message);
+    return EIO;
+  }
+
+  return NANOARROW_OK;
+}
+
+int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
+  // Parse the result (the header AND the first row are included in the first
+  // call to PQgetCopyData())
+  int na_res = copy_reader_->ReadRecord(&data_, error);
+  if (na_res != NANOARROW_OK && na_res != ENODATA) {
+    StringBuilderAppend(&error_builder_,
+                        "[libpq] ReadRecord failed at row %" PRId64 ": %s", row_id_,
+                        error->message);
     return na_res;
   }
 
-  int64_t row_id = 0;
-  do {
-    // Parse the result (the header AND the first row are included in the first
-    // call to PQgetCopyData())
-    na_res = copy_reader_->ReadRecord(&data, &error);
-    if (na_res != NANOARROW_OK && na_res != ENODATA) {
-      StringBuilderAppend(&error_builder_, "[libpq] ReadRecord failed at row %ld: %s",
-                          static_cast<long>(row_id),  // NOLINT(runtime/int)
-                          error.message);
-      return na_res;
-    }
+  row_id_++;
 
-    row_id++;
+  // Fetch + check
+  PQfreemem(pgbuf_);
+  pgbuf_ = nullptr;
+  int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
+  data_.size_bytes = get_copy_res;
+  data_.data.as_char = pgbuf_;
 
-    // Fetch + check
-    PQfreemem(pgbuf_);
-    pgbuf_ = nullptr;
-    get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
-    if (get_copy_res == -2) {
-      StringBuilderAppend(&error_builder_, "[libpq] Fetch row %ld failed: %s",
-                          static_cast<long>(row_id),  // NOLINT(runtime/int)
-                          PQerrorMessage(conn_));
-      return EIO;
-    } else if (get_copy_res == -1) {
-      // Returned when COPY has finished
-      break;
-    }
+  if (get_copy_res == -2) {
+    StringBuilderAppend(&error_builder_,
+                        "[libpq] PQgetCopyData failed at row %" PRId64 ": %s", row_id_,
+                        PQerrorMessage(conn_));
+    return EIO;
+  } else if (get_copy_res == -1) {
+    // Returned when COPY has finished successfully
+    return ENODATA;
+  } else if ((copy_reader_->array_size_approx_bytes() + get_copy_res) >=
+             batch_size_hint_bytes_) {
+    // Appending the next row will result in an array larger than requested.
+    // Return EOVERFLOW to force GetNext() to build the current result and return.
+    return EOVERFLOW;
+  } else {
+    return NANOARROW_OK;
+  }
+}
 
-    data.size_bytes = get_copy_res;
-    data.data.as_char = pgbuf_;
-  } while (true);
+int TupleReader::BuildOutput(struct ArrowArray* out, struct ArrowError* error) {
+  if (copy_reader_->array_size_approx_bytes() == 0) {
+    out->release = nullptr;
+    return NANOARROW_OK;
+  }
 
-  na_res = copy_reader_->GetArray(out, &error);
+  int na_res = copy_reader_->GetArray(out, error);
   if (na_res != NANOARROW_OK) {
     StringBuilderAppend(&error_builder_, "[libpq] Failed to build result array: %s",
-                        error.message);
+                        error->message);
     return na_res;
   }
+
+  return NANOARROW_OK;
+}
+
+void TupleReader::ResetQuery() {
+  // Clear result
+  if (result_) {
+    PQclear(result_);
+    result_ = nullptr;
+  }
+
+  // Reset result buffer
+  if (pgbuf_ != nullptr) {
+    PQfreemem(pgbuf_);
+    pgbuf_ = nullptr;
+  }
+
+  // Clear the error builder
+  error_builder_.size = 0;
+
+  row_id_ = -1;
+}
+
+int TupleReader::GetNext(struct ArrowArray* out) {
+  if (!copy_reader_) {
+    out->release = nullptr;
+    return 0;
+  }
+
+  struct ArrowError error;
+  error.message[0] = '\0';
+
+  if (row_id_ == -1) {
+    NANOARROW_RETURN_NOT_OK(InitQueryAndFetchFirst(&error));
+    row_id_++;
+  }
+
+  int na_res;
+  do {
+    na_res = AppendRowAndFetchNext(&error);
+    if (na_res == EOVERFLOW) {
+      // The result would be too big to return if we appended the row. When EOVERFLOW is
+      // returned, the copy reader leaves the output in a valid state. The data is left in
+      // pg_buf_/data_ and will attempt to be appended on the next call to GetNext()
+      return BuildOutput(out, &error);
+    }
+  } while (na_res == NANOARROW_OK);
+
+  if (na_res != ENODATA) {
+    return na_res;
+  }
+
+  // Finish the result properly and return the last result. Note that BuildOutput() may
+  // set tmp.release = nullptr if there were zero rows in the copy reader (can
+  // occur in an overflow scenario).
+  struct ArrowArray tmp;
+  NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
+
+  // Clear the copy reader to mark this reader as finished
+  copy_reader_.reset();
 
   // Check the server-side response
   result_ = PQgetResult(conn_);
@@ -518,11 +578,16 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   if (pq_status != PGRES_COMMAND_OK) {
     StringBuilderAppend(&error_builder_, "[libpq] Query failed [%d]: %s", pq_status,
                         PQresultErrorMessage(result_));
+
+    if (tmp.release != nullptr) {
+      tmp.release(&tmp);
+    }
+
     return EIO;
   }
 
-  PQclear(result_);
-  result_ = nullptr;
+  ResetQuery();
+  ArrowArrayMove(&tmp, out);
   return NANOARROW_OK;
 }
 
@@ -533,6 +598,7 @@ void TupleReader::Release() {
     PQclear(result_);
     result_ = nullptr;
   }
+
   if (pgbuf_) {
     PQfreemem(pgbuf_);
     pgbuf_ = nullptr;
@@ -934,11 +1000,19 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
     } else if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_APPEND) == 0) {
       ingest_.append = true;
     } else {
-      SetError(error, "%s%s%s%s", "[libpq] Invalid value ", value, " for option ", key);
+      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
+  } else if (std::strcmp(value, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES)) {
+    int64_t int_value = std::atol(value);
+    if (int_value <= 0) {
+      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    this->reader_.batch_size_hint_bytes_ = int_value;
   } else {
-    SetError(error, "%s%s", "[libq] Unknown statement option ", key);
+    SetError(error, "[libq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return ADBC_STATUS_OK;
