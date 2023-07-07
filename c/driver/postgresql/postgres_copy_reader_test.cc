@@ -384,15 +384,15 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   ASSERT_FALSE(ArrowBitGet(validity, 5));
 
   struct ArrowStringView item;
-  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 0);
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 0);
   EXPECT_EQ(std::string(item.data, item.size_bytes), "-123.456");
-  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 1);
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 1);
   EXPECT_EQ(std::string(item.data, item.size_bytes), "123.456");
-  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 2);
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 2);
   EXPECT_EQ(std::string(item.data, item.size_bytes), "nan");
-  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 3);
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 3);
   EXPECT_EQ(std::string(item.data, item.size_bytes), "-inf");
-  item = ArrowArrayViewGetStringUnsafe(array_view.get(), 4);
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 4);
   EXPECT_EQ(std::string(item.data, item.size_bytes), "inf");
 }
 

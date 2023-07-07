@@ -236,8 +236,8 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
 
     int16_t ndigits = ReadUnsafe<int16_t>(data);
     int16_t weight = ReadUnsafe<int16_t>(data);
-    int16_t sign = ReadUnsafe<int16_t>(data);
-    int16_t dscale = ReadUnsafe<int16_t>(data);
+    uint16_t sign = ReadUnsafe<uint16_t>(data);
+    uint16_t dscale = ReadUnsafe<uint16_t>(data);
 
     if (data->size_bytes < (ndigits * sizeof(int16_t))) {
       ArrowErrorSet(error,
@@ -254,18 +254,26 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
     }
 
     // Handle special values
-    std::string special_value("");
+    std::string special_value;
     switch (sign) {
       case numeric_nan:
-        special_value = "nan";
+        special_value = std::string("nan");
         break;
       case numeric_pinf:
-        special_value = "inf";
+        special_value = std::string("inf");
         break;
       case numeric_ninf:
-        special_value = "-inf";
-      default:
+        special_value = std::string("-inf");
         break;
+      case numeric_pos:
+      case numeric_neg:
+        special_value = std::string("");
+        break;
+      default:
+        ArrowErrorSet(error,
+                      "Unexpected value for sign read from Postgres numerid field: %d",
+                      static_cast<int>(sign));
+        return EINVAL;
     }
 
     if (special_value.size() > 0) {
@@ -296,11 +304,11 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
 
   static const int dec_digits = 4;
   static const int nbase = 10000;
-  static const int numeric_pos = 0x0000;
-  static const int numeric_neg = 0x4000;
-  static const int numeric_nan = 0xF001;
-  static const int numeric_pinf = 0xD000;
-  static const int numeric_ninf = 0xF000;
+  static const uint16_t numeric_pos = 0x0000;
+  static const uint16_t numeric_neg = 0x4000;
+  static const uint16_t numeric_nan = 0xC000;
+  static const uint16_t numeric_pinf = 0xD000;
+  static const uint16_t numeric_ninf = 0xF000;
 };
 
 // Reader for Pg->Arrow conversions whose Arrow representation is simply the
