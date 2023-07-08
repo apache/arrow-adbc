@@ -113,40 +113,37 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 				return compute.CastArray(ctx, a, compute.SafeCastOptions(f.Type))
 			}
 		case "TIMESTAMP_NTZ":
-			dt := &arrow.TimestampType{Unit: arrow.Nanosecond}
+			dt := &arrow.TimestampType{Unit: arrow.TimeUnit(srcMeta.Scale / 3)}
 			f.Type = dt
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+
+				if a.DataType().ID() != arrow.STRUCT {
+					return compute.CastArray(ctx, a, compute.SafeCastOptions(dt))
+				}
+
 				pool := compute.GetAllocator(ctx)
 				tb := array.NewTimestampBuilder(pool, dt)
 				defer tb.Release()
 
-				if a.DataType().ID() == arrow.STRUCT {
-					structData := a.(*array.Struct)
-					epoch := structData.Field(0).(*array.Int64).Int64Values()
-					fraction := structData.Field(1).(*array.Int32).Int32Values()
-					for i := 0; i < a.Len(); i++ {
-						if a.IsNull(i) {
-							tb.AppendNull()
-							continue
-						}
-
-						tb.Append(arrow.Timestamp(time.Unix(epoch[i], int64(fraction[i])).UnixNano()))
+				structData := a.(*array.Struct)
+				epoch := structData.Field(0).(*array.Int64).Int64Values()
+				fraction := structData.Field(1).(*array.Int32).Int32Values()
+				for i := 0; i < a.Len(); i++ {
+					if a.IsNull(i) {
+						tb.AppendNull()
+						continue
 					}
-				} else {
-					for i, t := range a.(*array.Int64).Int64Values() {
-						if a.IsNull(i) {
-							tb.AppendNull()
-							continue
-						}
 
-						val := time.Unix(0, int64(t)*int64(math.Pow10(9-int(srcMeta.Scale)))).UTC()
-						tb.Append(arrow.Timestamp(val.UnixNano()))
+					v, err := arrow.TimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit())
+					if err != nil {
+						return nil, err
 					}
+					tb.Append(v)
 				}
 				return tb.NewArray(), nil
 			}
 		case "TIMESTAMP_LTZ":
-			dt := &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+			dt := &arrow.TimestampType{Unit: arrow.TimeUnit(srcMeta.Scale) / 3, TimeZone: loc.String()}
 			f.Type = dt
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 				pool := compute.GetAllocator(ctx)
@@ -163,7 +160,11 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 							continue
 						}
 
-						tb.Append(arrow.Timestamp(time.Unix(epoch[i], int64(fraction[i])).UnixNano()))
+						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit())
+						if err != nil {
+							return nil, err
+						}
+						tb.Append(v)
 					}
 				} else {
 					for i, t := range a.(*array.Int64).Int64Values() {
@@ -174,13 +175,19 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 
 						q := int64(t) / int64(math.Pow10(int(srcMeta.Scale)))
 						r := int64(t) % int64(math.Pow10(int(srcMeta.Scale)))
-						tb.Append(arrow.Timestamp(time.Unix(q, r).UnixNano()))
+						v, err := arrow.TimestampFromTime(time.Unix(q, r), dt.Unit)
+						if err != nil {
+							return nil, err
+						}
+						tb.Append(v)
 					}
 				}
 				return tb.NewArray(), nil
 			}
 		case "TIMESTAMP_TZ":
-			dt := &arrow.TimestampType{Unit: arrow.Nanosecond}
+			// we convert each value to UTC since we have timezone information
+			// with the data that lets us do so.
+			dt := &arrow.TimestampType{TimeZone: "UTC", Unit: arrow.TimeUnit(srcMeta.Scale / 3)}
 			f.Type = dt
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 				pool := compute.GetAllocator(ctx)
@@ -198,7 +205,11 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 						}
 
 						loc := gosnowflake.Location(int(tzoffset[i]) - 1440)
-						tb.Append(arrow.Timestamp(time.Unix(epoch[i], 0).In(loc).UnixNano()))
+						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], 0).In(loc), dt.Unit)
+						if err != nil {
+							return nil, err
+						}
+						tb.Append(v)
 					}
 				} else {
 					epoch := structData.Field(0).(*array.Int64).Int64Values()
@@ -211,7 +222,11 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 						}
 
 						loc := gosnowflake.Location(int(tzoffset[i]) - 1440)
-						tb.Append(arrow.Timestamp(time.Unix(epoch[i], int64(fraction[i])).In(loc).UnixNano()))
+						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], int64(fraction[i])).In(loc), dt.Unit)
+						if err != nil {
+							return nil, err
+						}
+						tb.Append(v)
 					}
 				}
 				return tb.NewArray(), nil

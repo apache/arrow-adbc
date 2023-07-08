@@ -102,3 +102,5 @@ require (
 	modernc.org/strutil v1.1.3 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
+
+replace github.com/apache/arrow/go/v13 => github.com/zeroshade/arrow/go/v13 v13.0.0-20230708172844-856f91cdbdfe
