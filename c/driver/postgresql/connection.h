@@ -54,7 +54,7 @@ class PostgresConnection {
   const std::shared_ptr<PostgresTypeResolver>& type_resolver() const {
     return type_resolver_;
   }
-  const bool autocommit() { return autocommit_; }
+  bool autocommit() const { return autocommit_; }
 
  private:
   std::shared_ptr<PostgresDatabase> database_;
