@@ -286,16 +286,72 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
 
     // Calculate string space requirement
     int64_t max_chars_required = std::max<int64_t>(1, weight + 1 * dec_digits);
+    max_chars_required += dscale + dec_digits + 2;
     NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(data_, max_chars_required));
     char* out0 = reinterpret_cast<char*>(data_->data + data_->size_bytes);
     char* out = out0;
 
-    // Build output string in-place
-    out[0] = static_cast<char>(dscale);
+    // Build output string in-place, starting with the negative sign
+    if (sign == numeric_neg) {
+      *out++ = '-';
+    }
+
+    // ...then digits before the decimal point
+    int d;
+    int d1;
+    int16_t dig;
+
+    if (weight < 0) {
+      d = weight + 1;
+      *out++ = '0';
+    } else {
+      for (d = 0; d <= weight; d++) {
+        if (d < ndigits) {
+          dig = digits_[d];
+        } else {
+          dig = 0;
+        }
+
+        // To strip leading zeroes
+        int append = (d > 0);
+
+        for (const auto pow10 : {1000, 100, 10, 1}) {
+          d1 = dig / pow10;
+          dig -= d1 * pow10;
+          append |= (d1 > 0);
+          if (append) {
+            *out++ = d1 + '0';
+          }
+        }
+      }
+    }
+
+    // ...then the decimal point + digits after it. This may write more digits
+    // than specified by dscale so we need to keep track of how many we want to
+    // keep here.
+    int64_t actual_chars_required = out - out0;
+
+    if (dscale > 0) {
+      *out++ = '.';
+      actual_chars_required += dscale + 1;
+
+      for (int i = 0; i < dscale; i++, d++, i += dec_digits) {
+        if (d < ndigits) {
+          dig = digits_[d];
+        } else {
+          dig = 0;
+        }
+
+        for (const auto pow10 : {1000, 100, 10, 1}) {
+          d1 = dig / pow10;
+          dig -= d1 * pow10;
+          *out++ = d1 + '0';
+        }
+      }
+    }
 
     // Update data buffer size and add offsets
-    int32_t chars_needed = out - out0;
-    data_->size_bytes += chars_needed;
+    data_->size_bytes += actual_chars_required;
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, data_->size_bytes));
     return AppendValid(array);
   }
