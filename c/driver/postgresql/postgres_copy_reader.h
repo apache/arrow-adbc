@@ -262,17 +262,17 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
     // Handle special values
     std::string special_value;
     switch (sign) {
-      case numeric_nan:
+      case kNumericNAN:
         special_value = std::string("nan");
         break;
-      case numeric_pinf:
+      case kNumericPinf:
         special_value = std::string("inf");
         break;
-      case numeric_ninf:
+      case kNumericNinf:
         special_value = std::string("-inf");
         break;
-      case numeric_pos:
-      case numeric_neg:
+      case kNumericPos:
+      case kNumericNeg:
         special_value = std::string("");
         break;
       default:
@@ -290,14 +290,14 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
     }
 
     // Calculate string space requirement
-    int64_t max_chars_required = std::max<int64_t>(1, weight + 1 * dec_digits);
-    max_chars_required += dscale + dec_digits + 2;
+    int64_t max_chars_required = std::max<int64_t>(1, weight + 1 * kDecDigits);
+    max_chars_required += dscale + kDecDigits + 2;
     NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(data_, max_chars_required));
     char* out0 = reinterpret_cast<char*>(data_->data + data_->size_bytes);
     char* out = out0;
 
     // Build output string in-place, starting with the negative sign
-    if (sign == numeric_neg) {
+    if (sign == kNumericNeg) {
       *out++ = '-';
     }
 
@@ -340,7 +340,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
       *out++ = '.';
       actual_chars_required += dscale + 1;
 
-      for (int i = 0; i < dscale; i++, d++, i += dec_digits) {
+      for (int i = 0; i < dscale; i++, d++, i += kDecDigits) {
         if (d >= 0 && d < ndigits) {
           dig = digits_[d];
         } else {
@@ -364,13 +364,16 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
  private:
   std::vector<int16_t> digits_;
 
-  static const int dec_digits = 4;
-  static const int nbase = 10000;
-  static const uint16_t numeric_pos = 0x0000;
-  static const uint16_t numeric_neg = 0x4000;
-  static const uint16_t numeric_nan = 0xC000;
-  static const uint16_t numeric_pinf = 0xD000;
-  static const uint16_t numeric_ninf = 0xF000;
+  // Number of decimal digits per Postgres digit
+  static const int kDecDigits = 4;
+  // The "base" of the Postgres representation (i.e., each "digit" is 0 to 9999)
+  static const int kNBase = 10000;
+  // Valid values for the sign component
+  static const uint16_t kNumericPos = 0x0000;
+  static const uint16_t kNumericNeg = 0x4000;
+  static const uint16_t kNumericNAN = 0xC000;
+  static const uint16_t kNumericPinf = 0xD000;
+  static const uint16_t kNumericNinf = 0xF000;
 };
 
 // Reader for Pg->Arrow conversions whose Arrow representation is simply the
