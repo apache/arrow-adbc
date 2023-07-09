@@ -214,8 +214,13 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
 
 // Converts COPY resulting from the Postgres NUMERIC type into a string.
 // Rewritten based on the Postgres implementation of NUMERIC cast to string in
-// src/backend/utils/adt/numeric.c : get_str_from_var()
-// Note that in the initial source, DEC_DIGITS is always 4 and DBASE is always 10000
+// src/backend/utils/adt/numeric.c : get_str_from_var() (Note that in the initial source,
+// DEC_DIGITS is always 4 and DBASE is always 10000).
+//
+// Briefly, the Postgres representation of "numeric" is an array of int16_t ("digits")
+// from most significant to least significant. Each "digit" is a value between 0000 and
+// 9999. There are weight + 1 digits before the decimal point and dscale digits after the
+// decimal point. Both of those values can be zero or negative.
 class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
  public:
   ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
@@ -231,7 +236,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
                     "Expected at least %d bytes of field data for numeric copy data but "
                     "only %d bytes of input remain",
                     static_cast<int>(4 * sizeof(int16_t)),
-                    static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
+                    static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -272,7 +277,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
         break;
       default:
         ArrowErrorSet(error,
-                      "Unexpected value for sign read from Postgres numerid field: %d",
+                      "Unexpected value for sign read from Postgres numeric field: %d",
                       static_cast<int>(sign));
         return EINVAL;
     }
@@ -336,7 +341,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
       actual_chars_required += dscale + 1;
 
       for (int i = 0; i < dscale; i++, d++, i += dec_digits) {
-        if (d < ndigits) {
+        if (d >= 0 && d < ndigits) {
           dig = digits_[d];
         } else {
           dig = 0;
