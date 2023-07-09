@@ -220,7 +220,9 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
 // Briefly, the Postgres representation of "numeric" is an array of int16_t ("digits")
 // from most significant to least significant. Each "digit" is a value between 0000 and
 // 9999. There are weight + 1 digits before the decimal point and dscale digits after the
-// decimal point. Both of those values can be zero or negative.
+// decimal point. Both of those values can be zero or negative. A "sign" component
+// encodes the positive or negativeness of the value and is also used to encode special
+// values (inf, -inf, and nan).
 class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
  public:
   ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
