@@ -226,7 +226,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
     }
 
     // Read the input
-    if (data->size_bytes < (4 * sizeof(int16_t))) {
+    if (data->size_bytes < static_cast<int64_t>(4 * sizeof(int16_t))) {
       ArrowErrorSet(error,
                     "Expected at least %d bytes of field data for numeric copy data but "
                     "only %d bytes of input remain",
@@ -240,7 +240,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
     uint16_t sign = ReadUnsafe<uint16_t>(data);
     uint16_t dscale = ReadUnsafe<uint16_t>(data);
 
-    if (data->size_bytes < (ndigits * sizeof(int16_t))) {
+    if (data->size_bytes < static_cast<int64_t>(ndigits * sizeof(int16_t))) {
       ArrowErrorSet(error,
                     "Expected at least %d bytes of field data for numeric digits copy "
                     "data but only %d bytes of input remain",
