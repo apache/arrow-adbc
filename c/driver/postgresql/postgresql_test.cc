@@ -836,6 +836,16 @@ static std::initializer_list<TypeTestCase> kIntTypeCases = {
     {"BIGSERIAL", "BIGSERIAL", std::to_string(std::numeric_limits<int64_t>::max()),
      NANOARROW_TYPE_INT64, std::numeric_limits<int64_t>::max()},
 };
+static std::initializer_list<TypeTestCase> kNumericTypeCases = {
+    {"NUMERIC_TRAILING0", "NUMERIC", "1000000", NANOARROW_TYPE_STRING, "1000000"},
+    {"NUMERIC_LEADING0", "NUMERIC", "0.00001234", NANOARROW_TYPE_STRING, "0.00001234"},
+    {"NUMERIC_TRAILING02", "NUMERIC", "'1.0000'", NANOARROW_TYPE_STRING, "1.0000"},
+    {"NUMERIC_NEGATIVE", "NUMERIC", "-123.456", NANOARROW_TYPE_STRING, "-123.456"},
+    {"NUMERIC_POSITIVE", "NUMERIC", "123.456", NANOARROW_TYPE_STRING, "123.456"},
+    {"NUMERIC_NAN", "NUMERIC", "'nan'", NANOARROW_TYPE_STRING, "nan"},
+    {"NUMERIC_NINF", "NUMERIC", "'-inf'", NANOARROW_TYPE_STRING, "-inf"},
+    {"NUMERIC_PINF", "NUMERIC", "'inf'", NANOARROW_TYPE_STRING, "inf"},
+};
 static std::initializer_list<TypeTestCase> kDateTypeCases = {
     {"DATE0", "DATE", "'1970-01-01'", NANOARROW_TYPE_DATE32, int64_t(0)},
     {"DATE1", "DATE", "'2000-01-01'", NANOARROW_TYPE_DATE32, int64_t(10957)},
@@ -966,6 +976,8 @@ INSTANTIATE_TEST_SUITE_P(FloatTypes, PostgresTypeTest, testing::ValuesIn(kFloatT
                          TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(IntTypes, PostgresTypeTest, testing::ValuesIn(kIntTypeCases),
                          TypeTestCase::FormatName);
+INSTANTIATE_TEST_SUITE_P(NumericType, PostgresTypeTest,
+                         testing::ValuesIn(kNumericTypeCases), TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(DateTypes, PostgresTypeTest, testing::ValuesIn(kDateTypeCases),
                          TypeTestCase::FormatName);
 INSTANTIATE_TEST_SUITE_P(TimeTypes, PostgresTypeTest, testing::ValuesIn(kTimeTypeCases),
