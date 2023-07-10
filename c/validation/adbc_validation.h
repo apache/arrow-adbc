@@ -231,6 +231,7 @@ class StatementTest {
 
   // Temporal
   void TestSqlIngestTimestamp();
+  void TestSqlIngestTimestampTz();
 
   // ---- End Type-specific tests ----------------
 
@@ -274,7 +275,7 @@ class StatementTest {
   void TestSqlIngestNumericType(ArrowType type);
 
   template <enum ArrowTimeUnit TU>
-  void TestSqlIngestTemporalType();
+  void TestSqlIngestTemporalType(const char* timezone);
 };
 
 #define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
@@ -295,6 +296,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
   TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
+  TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \

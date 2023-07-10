@@ -145,6 +145,9 @@ struct BindStream {
   // XXX: this assumes fixed-length fields only - will need more
   // consideration to deal with variable-length fields
 
+  bool has_tz_field = false;
+  std::string tz_setting;
+
   struct ArrowError na_error;
 
   explicit BindStream(struct ArrowArrayStream&& bind) {
@@ -217,12 +220,6 @@ struct BindStream {
           param_lengths[i] = 0;
           break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
-          if (strcmp("", bind_schema_fields[i].timezone)) {
-            SetError(error, "[libpq] Field #%" PRIi64 "%s%s%s",
-                     static_cast<int64_t>(i + 1), " (\"", bind_schema->children[i]->name,
-                     "\") has unsupported type code timestamp with timezone");
-            return ADBC_STATUS_NOT_IMPLEMENTED;
-          }
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
@@ -253,8 +250,49 @@ struct BindStream {
     return ADBC_STATUS_OK;
   }
 
-  AdbcStatusCode Prepare(PGconn* conn, const std::string& query,
-                         struct AdbcError* error) {
+  AdbcStatusCode Prepare(PGconn* conn, const std::string& query, struct AdbcError* error,
+                         const bool autocommit) {
+    // tz-aware timestamps require special handling to set the timezone to UTC
+    // prior to sending over the binary protocol; must be reset after execute
+    for (int64_t col = 0; col < bind_schema->n_children; col++) {
+      if ((bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) &&
+          (strcmp("", bind_schema_fields[col].timezone))) {
+        has_tz_field = true;
+
+        if (autocommit) {
+          PGresult* begin_result = PQexec(conn, "BEGIN");
+          if (PQresultStatus(begin_result) != PGRES_COMMAND_OK) {
+            SetError(error, "[libpq] Failed to begin transaction for timezone data: %s",
+                     PQerrorMessage(conn));
+            PQclear(begin_result);
+            return ADBC_STATUS_IO;
+          }
+          PQclear(begin_result);
+        }
+
+        PGresult* get_tz_result = PQexec(conn, "SELECT current_setting('TIMEZONE')");
+        if (PQresultStatus(get_tz_result) != PGRES_TUPLES_OK) {
+          SetError(error, "[libpq] Could not query current timezone: %s",
+                   PQerrorMessage(conn));
+          PQclear(get_tz_result);
+          return ADBC_STATUS_IO;
+        }
+
+        tz_setting = std::string(PQgetvalue(get_tz_result, 0, 0));
+        PQclear(get_tz_result);
+
+        PGresult* set_utc_result = PQexec(conn, "SET TIME ZONE 'UTC'");
+        if (PQresultStatus(set_utc_result) != PGRES_COMMAND_OK) {
+          SetError(error, "[libpq] Failed to set time zone to UTC: %s",
+                   PQerrorMessage(conn));
+          PQclear(set_utc_result);
+          return ADBC_STATUS_IO;
+        }
+        PQclear(set_utc_result);
+        break;
+      }
+    }
+
     PGresult* result = PQprepare(conn, /*stmtName=*/"", query.c_str(),
                                  /*nParams=*/bind_schema->n_children, param_types.data());
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
@@ -349,12 +387,6 @@ struct BindStream {
             }
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
-              if (strcmp("", bind_schema_fields[col].timezone)) {
-                SetError(error, "[libpq] Column #%" PRIi64 "%s%s%s", col + 1, " (\"",
-                         PQfname(result, col),
-                         "\") has unsupported type code timestamp with timezone");
-                return ADBC_STATUS_NOT_IMPLEMENTED;
-              }
 
               // 2000-01-01 00:00:00.000000 in microseconds
               constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
@@ -418,6 +450,26 @@ struct BindStream {
         PQclear(result);
       }
       if (rows_affected) *rows_affected += array->length;
+
+      if (has_tz_field) {
+        std::string reset_query = "SET TIME ZONE '" + tz_setting + "'";
+        PGresult* reset_tz_result = PQexec(conn, reset_query.c_str());
+        if (PQresultStatus(reset_tz_result) != PGRES_COMMAND_OK) {
+          SetError(error, "[libpq] Failed to reset time zone: %s", PQerrorMessage(conn));
+          PQclear(reset_tz_result);
+          return ADBC_STATUS_IO;
+        }
+        PQclear(reset_tz_result);
+
+        PGresult* commit_result = PQexec(conn, "COMMIT");
+        if (PQresultStatus(commit_result) != PGRES_COMMAND_OK) {
+          SetError(error, "[libpq] Failed to commit transaction: %s",
+                   PQerrorMessage(conn));
+          PQclear(commit_result);
+          return ADBC_STATUS_IO;
+        }
+        PQclear(commit_result);
+      }
     }
     return ADBC_STATUS_OK;
   }
@@ -730,12 +782,10 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_TIMESTAMP:
         if (strcmp("", source_schema_fields[i].timezone)) {
-          SetError(error, "[libpq] Field #%" PRIi64 "%s%s%s", static_cast<int64_t>(i + 1),
-                   " (\"", source_schema.children[i]->name,
-                   "\") has unsupported type for ingestion timestamp with timezone");
-          return ADBC_STATUS_NOT_IMPLEMENTED;
+          create += " TIMESTAMPTZ";
+        } else {
+          create += " TIMESTAMP";
         }
-        create += " TIMESTAMP";
         break;
       default:
         SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
@@ -782,7 +832,8 @@ AdbcStatusCode PostgresStatement::ExecutePreparedStatement(
 
   RAISE_ADBC(bind_stream.Begin([&]() { return ADBC_STATUS_OK; }, error));
   RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
-  RAISE_ADBC(bind_stream.Prepare(connection_->conn(), query_, error));
+  RAISE_ADBC(
+      bind_stream.Prepare(connection_->conn(), query_, error, connection_->autocommit()));
   RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
@@ -933,7 +984,8 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
   }
   insert += ")";
 
-  RAISE_ADBC(bind_stream.Prepare(connection_->conn(), insert, error));
+  RAISE_ADBC(
+      bind_stream.Prepare(connection_->conn(), insert, error, connection_->autocommit()));
   RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
