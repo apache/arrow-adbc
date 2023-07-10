@@ -40,6 +40,8 @@ import (
 	"os"
 	"runtime"
 	"runtime/cgo"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"unsafe"
 
@@ -75,7 +77,7 @@ func setErr(err *C.struct_AdbcError, format string, vals ...interface{}) {
 }
 
 func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
-	if adbcerr == nil || err == nil {
+	if err == nil {
 		return adbc.StatusOK
 	}
 
@@ -87,6 +89,87 @@ func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
 
 	setErr(adbcerr, err.Error())
 	return adbc.StatusUnknown
+}
+
+// errorDetails handles the standard error details feature in ADBC.
+type errorDetails struct {
+	errorDetails []adbc.ErrorDetail
+}
+
+func (ed *errorDetails) errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
+	ed.errorDetails = nil
+	if err == nil {
+		return adbc.StatusOK
+	}
+
+	var adbcError adbc.Error
+	if errors.As(err, &adbcError) {
+		setErr(adbcerr, adbcError.Msg)
+		ed.errorDetails = adbcError.Details
+		return adbcError.Code
+	}
+
+	setErr(adbcerr, err.Error())
+	return adbc.StatusUnknown
+}
+
+func (ed *errorDetails) getErrorDetailsOptionInt(key *C.cchar_t, value *C.int64_t) bool {
+	if C.GoString(key) == C.ADBC_OPTION_ERROR_DETAILS {
+		*value = C.int64_t(len(ed.errorDetails))
+		return true
+	}
+	return false
+}
+
+func (ed *errorDetails) getErrorDetailsOptionString(key *C.cchar_t, value *C.char, length *C.size_t) (bool, error) {
+	gokey := C.GoString(key)
+	if strings.HasPrefix(gokey, C.ADBC_OPTION_ERROR_DETAILS_PREFIX) {
+		indexStr := strings.TrimPrefix(gokey, C.ADBC_OPTION_ERROR_DETAILS_PREFIX)
+		index, err := strconv.ParseInt(indexStr, 10, 32)
+		if err != nil {
+			return false, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("[PanicDummy] Invalid error details option key '%s': %s", index, err.Error()),
+			}
+		} else if index < 0 || index >= int64(len(ed.errorDetails)) {
+			return false, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("[PanicDummy] Invalid error details option key '%s': out of range", index),
+			}
+		}
+		exportStringOption(ed.errorDetails[int(index)].Key(), value, length)
+		return true, nil
+	}
+	return false, nil
+}
+
+func (ed *errorDetails) getErrorDetailsOptionBytes(key *C.cchar_t, value *C.uint8_t, length *C.size_t) (bool, error) {
+	gokey := C.GoString(key)
+	if strings.HasPrefix(gokey, C.ADBC_OPTION_ERROR_DETAILS_PREFIX) {
+		indexStr := strings.TrimPrefix(gokey, C.ADBC_OPTION_ERROR_DETAILS_PREFIX)
+		index, err := strconv.ParseInt(indexStr, 10, 32)
+		if err != nil {
+			return false, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("[PanicDummy] Invalid error details option key '%s': %s", index, err.Error()),
+			}
+		} else if index < 0 || index >= int64(len(ed.errorDetails)) {
+			return false, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("[PanicDummy] Invalid error details option key '%s': out of range", index),
+			}
+		}
+		serialized, err := ed.errorDetails[int(index)].Serialize()
+		if err != nil {
+			return false, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  fmt.Sprintf("[PanicDummy] Could not serialize error details: %s", err.Error()),
+			}
+		}
+		exportBytesOption(serialized, value, length)
+		return true, nil
+	}
+	return false, nil
 }
 
 // We panicked; make all API functions error and dump stack traces
@@ -119,6 +202,44 @@ func getFromHandle[T any](ptr unsafe.Pointer) *T {
 	return cgo.Handle((uintptr)(*hptr)).Value().(*T)
 }
 
+func exportStringOption(val string, out *C.char, length *C.size_t) C.AdbcStatusCode {
+	lenWithTerminator := C.size_t(len(val) + 1)
+	if lenWithTerminator <= *length {
+		// TODO: doesn't this reallocate the string? can we avoid this?
+		C.strncpy(out, (*C.char)(C.CString(val)), lenWithTerminator)
+	}
+	*length = lenWithTerminator
+	return C.ADBC_STATUS_OK
+}
+
+func exportBytesOption(val []byte, out *C.uint8_t, length *C.size_t) C.AdbcStatusCode {
+	if C.size_t(len(val)) <= *length {
+		sink := fromCArr[byte]((*byte)(out), int(*length))
+		copy(sink, val)
+	}
+	*length = C.size_t(len(val))
+	return C.ADBC_STATUS_OK
+}
+
+type cancellableContext struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+func (c *cancellableContext) newContext() context.Context {
+	c.cancelContext()
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+	return c.ctx
+}
+
+func (c *cancellableContext) cancelContext() {
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.ctx = nil
+	c.cancel = nil
+}
+
 func checkDBAlloc(db *C.struct_AdbcDatabase, err *C.struct_AdbcError, fname string) bool {
 	if atomic.LoadInt32(&globalPoison) != 0 {
 		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
@@ -149,47 +270,122 @@ func checkDBInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError, fname strin
 }
 
 type cDatabase struct {
+	errorDetails
+
 	opts map[string]string
 	db   adbc.Database
 }
 
-//export PanicDummyDatabaseNew
-func PanicDummyDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyDatabaseGetOption
+func PanicDummyDatabaseGetOption(db *C.struct_AdbcDatabase, key *C.cchar_t, value *C.char, length *C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
-			code = poison(err, "AdbcDatabaseNew", e)
+			code = poison(err, "AdbcDatabaseGetOption", e)
 		}
 	}()
-	if atomic.LoadInt32(&globalPoison) != 0 {
-		setErr(err, "AdbcDatabaseNew: Go panicked, driver is in unknown state")
-		return C.ADBC_STATUS_INTERNAL
-	}
-	if db.private_data != nil {
-		setErr(err, "AdbcDatabaseNew: database already allocated")
+	cdb := checkDBInit(db, err, "AdbcDatabaseGetOption")
+	if cdb == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
-	dbobj := &cDatabase{opts: make(map[string]string)}
-	hndl := cgo.NewHandle(dbobj)
-	db.private_data = createHandle(hndl)
-	return C.ADBC_STATUS_OK
+
+	if handled, e := cdb.getErrorDetailsOptionString(key, value, length); e != nil {
+		return C.AdbcStatusCode(errToAdbcErr(err, e))
+	} else if handled {
+		return C.ADBC_STATUS_OK
+	}
+
+	opts, ok := cdb.db.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcDatabaseGetOption: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+	val, e := opts.GetOption(C.GoString(key))
+	if e != nil {
+		return C.AdbcStatusCode(cdb.errToAdbcErr(err, e))
+	}
+
+	return exportStringOption(val, value, length)
 }
 
-//export PanicDummyDatabaseSetOption
-func PanicDummyDatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyDatabaseGetOptionBytes
+func PanicDummyDatabaseGetOptionBytes(db *C.struct_AdbcDatabase, key *C.cchar_t, value *C.uint8_t, length *C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
-			code = poison(err, "AdbcDatabaseSetOption", e)
+			code = poison(err, "AdbcDatabaseGetOptionBytes", e)
 		}
 	}()
-	if !checkDBAlloc(db, err, "AdbcDatabaseSetOption") {
+	cdb := checkDBInit(db, err, "AdbcDatabaseGetOptionBytes")
+	if cdb == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
-	cdb := getFromHandle[cDatabase](db.private_data)
 
-	k, v := C.GoString(key), C.GoString(value)
-	cdb.opts[k] = v
+	if handled, e := cdb.getErrorDetailsOptionBytes(key, value, length); e != nil {
+		return C.AdbcStatusCode(errToAdbcErr(err, e))
+	} else if handled {
+		return C.ADBC_STATUS_OK
+	}
 
-	return C.ADBC_STATUS_OK
+	opts, ok := cdb.db.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcDatabaseGetOptionBytes: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+	val, e := opts.GetOptionBytes(C.GoString(key))
+	if e != nil {
+		return C.AdbcStatusCode(cdb.errToAdbcErr(err, e))
+	}
+
+	return exportBytesOption(val, value, length)
+}
+
+//export PanicDummyDatabaseGetOptionDouble
+func PanicDummyDatabaseGetOptionDouble(db *C.struct_AdbcDatabase, key *C.cchar_t, value *C.double, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseGetOptionDouble", e)
+		}
+	}()
+	cdb := checkDBInit(db, err, "AdbcDatabaseGetOptionDouble")
+	if cdb == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := cdb.db.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcDatabaseGetOptionDouble: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	val, e := opts.GetOptionDouble(C.GoString(key))
+	*value = C.double(val)
+	return C.AdbcStatusCode(cdb.errToAdbcErr(err, e))
+}
+
+//export PanicDummyDatabaseGetOptionInt
+func PanicDummyDatabaseGetOptionInt(db *C.struct_AdbcDatabase, key *C.cchar_t, value *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseGetOptionInt", e)
+		}
+	}()
+	cdb := checkDBInit(db, err, "AdbcDatabaseGetOptionInt")
+	if cdb == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	if cdb.getErrorDetailsOptionInt(key, value) {
+		return C.ADBC_STATUS_OK
+	}
+
+	opts, ok := cdb.db.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcDatabaseGetOptionInt: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	val, e := opts.GetOptionInt(C.GoString(key))
+	*value = C.int64_t(val)
+	return C.AdbcStatusCode(cdb.errToAdbcErr(err, e))
 }
 
 //export PanicDummyDatabaseInit
@@ -215,6 +411,27 @@ func PanicDummyDatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) 
 	}
 
 	cdb.db = adb
+	return C.ADBC_STATUS_OK
+}
+
+//export PanicDummyDatabaseNew
+func PanicDummyDatabaseNew(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseNew", e)
+		}
+	}()
+	if atomic.LoadInt32(&globalPoison) != 0 {
+		setErr(err, "AdbcDatabaseNew: Go panicked, driver is in unknown state")
+		return C.ADBC_STATUS_INTERNAL
+	}
+	if db.private_data != nil {
+		setErr(err, "AdbcDatabaseNew: database already allocated")
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+	dbobj := &cDatabase{opts: make(map[string]string)}
+	hndl := cgo.NewHandle(dbobj)
+	db.private_data = createHandle(hndl)
 	return C.ADBC_STATUS_OK
 }
 
@@ -246,7 +463,100 @@ func PanicDummyDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcErro
 	return C.ADBC_STATUS_OK
 }
 
+//export PanicDummyDatabaseSetOption
+func PanicDummyDatabaseSetOption(db *C.struct_AdbcDatabase, key, value *C.cchar_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseSetOption", e)
+		}
+	}()
+	if !checkDBAlloc(db, err, "AdbcDatabaseSetOption") {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+	cdb := getFromHandle[cDatabase](db.private_data)
+
+	k, v := C.GoString(key), C.GoString(value)
+	if cdb.db != nil {
+		opts, ok := cdb.db.(adbc.PostInitOptions)
+		if !ok {
+			setErr(err, "AdbcDatabaseSetOption: options are not supported")
+			return C.ADBC_STATUS_NOT_IMPLEMENTED
+		}
+		return C.AdbcStatusCode(cdb.errToAdbcErr(err, opts.SetOption(k, v)))
+	} else {
+		cdb.opts[k] = v
+	}
+
+	return C.ADBC_STATUS_OK
+}
+
+//export PanicDummyDatabaseSetOptionBytes
+func PanicDummyDatabaseSetOptionBytes(db *C.struct_AdbcDatabase, key *C.cchar_t, value *C.cuint8_t, length C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseSetOptionBytes", e)
+		}
+	}()
+	cdb := checkDBInit(db, err, "AdbcDatabaseSetOptionBytes")
+	if cdb == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := cdb.db.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcDatabaseSetOptionBytes: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	return C.AdbcStatusCode(cdb.errToAdbcErr(err, opts.SetOptionBytes(C.GoString(key), fromCArr[byte](value, int(length)))))
+}
+
+//export PanicDummyDatabaseSetOptionDouble
+func PanicDummyDatabaseSetOptionDouble(db *C.struct_AdbcDatabase, key *C.cchar_t, value C.double, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseSetOptionDouble", e)
+		}
+	}()
+	cdb := checkDBInit(db, err, "AdbcDatabaseSetOptionDouble")
+	if cdb == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := cdb.db.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcDatabaseSetOptionDouble: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	return C.AdbcStatusCode(cdb.errToAdbcErr(err, opts.SetOptionDouble(C.GoString(key), float64(value))))
+}
+
+//export PanicDummyDatabaseSetOptionInt
+func PanicDummyDatabaseSetOptionInt(db *C.struct_AdbcDatabase, key *C.cchar_t, value C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcDatabaseSetOptionInt", e)
+		}
+	}()
+	cdb := checkDBInit(db, err, "AdbcDatabaseSetOptionInt")
+	if cdb == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := cdb.db.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcDatabaseSetOptionInt: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	return C.AdbcStatusCode(cdb.errToAdbcErr(err, opts.SetOptionInt(C.GoString(key), int64(value))))
+}
+
 type cConn struct {
+	cancellableContext
+	errorDetails
+
 	cnxn     adbc.Connection
 	initArgs map[string]string
 }
@@ -278,6 +588,118 @@ func checkConnInit(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError, fname
 	}
 
 	return conn
+}
+
+//export PanicDummyConnectionGetOption
+func PanicDummyConnectionGetOption(db *C.struct_AdbcConnection, key *C.cchar_t, value *C.char, length *C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetOption", e)
+		}
+	}()
+	conn := checkConnInit(db, err, "AdbcConnectionGetOption")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	if handled, e := conn.getErrorDetailsOptionString(key, value, length); e != nil {
+		return C.AdbcStatusCode(errToAdbcErr(err, e))
+	} else if handled {
+		return C.ADBC_STATUS_OK
+	}
+
+	opts, ok := conn.cnxn.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcConnectionGetOption: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+	val, e := opts.GetOption(C.GoString(key))
+	if e != nil {
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
+	}
+
+	return exportStringOption(val, value, length)
+}
+
+//export PanicDummyConnectionGetOptionBytes
+func PanicDummyConnectionGetOptionBytes(db *C.struct_AdbcConnection, key *C.cchar_t, value *C.uint8_t, length *C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetOptionBytes", e)
+		}
+	}()
+	conn := checkConnInit(db, err, "AdbcConnectionGetOptionBytes")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	if handled, e := conn.getErrorDetailsOptionBytes(key, value, length); e != nil {
+		return C.AdbcStatusCode(errToAdbcErr(err, e))
+	} else if handled {
+		return C.ADBC_STATUS_OK
+	}
+
+	opts, ok := conn.cnxn.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcConnectionGetOptionBytes: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+	val, e := opts.GetOptionBytes(C.GoString(key))
+	if e != nil {
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
+	}
+
+	return exportBytesOption(val, value, length)
+}
+
+//export PanicDummyConnectionGetOptionDouble
+func PanicDummyConnectionGetOptionDouble(db *C.struct_AdbcConnection, key *C.cchar_t, value *C.double, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetOptionDouble", e)
+		}
+	}()
+	conn := checkConnInit(db, err, "AdbcConnectionGetOptionDouble")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := conn.cnxn.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcConnectionGetOptionDouble: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	val, e := opts.GetOptionDouble(C.GoString(key))
+	*value = C.double(val)
+	return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
+}
+
+//export PanicDummyConnectionGetOptionInt
+func PanicDummyConnectionGetOptionInt(db *C.struct_AdbcConnection, key *C.cchar_t, value *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetOptionInt", e)
+		}
+	}()
+	conn := checkConnInit(db, err, "AdbcConnectionGetOptionInt")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	if conn.getErrorDetailsOptionInt(key, value) {
+		return C.ADBC_STATUS_OK
+	}
+
+	opts, ok := conn.cnxn.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcConnectionGetOptionInt: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	val, e := opts.GetOptionInt(C.GoString(key))
+	*value = C.int64_t(val)
+	return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
 }
 
 //export PanicDummyConnectionNew
@@ -328,8 +750,70 @@ func PanicDummyConnectionSetOption(cnxn *C.struct_AdbcConnection, key, val *C.cc
 		setErr(err, "AdbcConnectionSetOption: not supported post-init")
 		return C.ADBC_STATUS_NOT_IMPLEMENTED
 	}
-	rawCode := errToAdbcErr(err, opts.SetOption(C.GoString(key), C.GoString(val)))
-	return C.AdbcStatusCode(rawCode)
+	return C.AdbcStatusCode(conn.errToAdbcErr(err, opts.SetOption(C.GoString(key), C.GoString(val))))
+}
+
+//export PanicDummyConnectionSetOptionBytes
+func PanicDummyConnectionSetOptionBytes(db *C.struct_AdbcConnection, key *C.cchar_t, value *C.cuint8_t, length C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionSetOptionBytes", e)
+		}
+	}()
+	conn := checkConnInit(db, err, "AdbcConnectionSetOptionBytes")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := conn.cnxn.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcConnectionSetOptionBytes: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	return C.AdbcStatusCode(conn.errToAdbcErr(err, opts.SetOptionBytes(C.GoString(key), fromCArr[byte](value, int(length)))))
+}
+
+//export PanicDummyConnectionSetOptionDouble
+func PanicDummyConnectionSetOptionDouble(db *C.struct_AdbcConnection, key *C.cchar_t, value C.double, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionSetOptionDouble", e)
+		}
+	}()
+	conn := checkConnInit(db, err, "AdbcConnectionSetOptionDouble")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := conn.cnxn.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcConnectionSetOptionDouble: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	return C.AdbcStatusCode(conn.errToAdbcErr(err, opts.SetOptionDouble(C.GoString(key), float64(value))))
+}
+
+//export PanicDummyConnectionSetOptionInt
+func PanicDummyConnectionSetOptionInt(db *C.struct_AdbcConnection, key *C.cchar_t, value C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionSetOptionInt", e)
+		}
+	}()
+	conn := checkConnInit(db, err, "AdbcConnectionSetOptionInt")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := conn.cnxn.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcConnectionSetOptionInt: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	return C.AdbcStatusCode(conn.errToAdbcErr(err, opts.SetOptionInt(C.GoString(key), int64(value))))
 }
 
 //export PanicDummyConnectionInit
@@ -354,7 +838,7 @@ func PanicDummyConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDa
 	}
 	c, e := cdb.db.Open(context.Background())
 	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(cdb.errToAdbcErr(err, e))
 	}
 	conn.cnxn = c
 
@@ -367,7 +851,7 @@ func PanicDummyConnectionInit(cnxn *C.struct_AdbcConnection, db *C.struct_AdbcDa
 		}
 
 		for k, v := range conn.initArgs {
-			rawCode := errToAdbcErr(err, opts.SetOption(k, v))
+			rawCode := conn.errToAdbcErr(err, opts.SetOption(k, v))
 			if rawCode != adbc.StatusOK {
 				return C.AdbcStatusCode(rawCode)
 			}
@@ -392,8 +876,9 @@ func PanicDummyConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_Ad
 
 	conn := h.Value().(*cConn)
 	defer func() {
+		conn.cancelContext()
 		conn.cnxn = nil
-		C.free(unsafe.Pointer(cnxn.private_data))
+		C.free(cnxn.private_data)
 		cnxn.private_data = nil
 		h.Delete()
 		// manually trigger GC for two reasons:
@@ -430,25 +915,19 @@ func toCdataArray(ptr *C.struct_ArrowArray) *cdata.CArrowArray {
 	return (*cdata.CArrowArray)(unsafe.Pointer(ptr))
 }
 
-//export PanicDummyConnectionGetInfo
-func PanicDummyConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+//export PanicDummyConnectionCancel
+func PanicDummyConnectionCancel(cnxn *C.struct_AdbcConnection, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
-			code = poison(err, "AdbcConnectionGetInfo", e)
+			code = poison(err, "AdbcConnectionCancel", e)
 		}
 	}()
-	conn := checkConnInit(cnxn, err, "AdbcConnectionGetInfo")
+	conn := checkConnInit(cnxn, err, "AdbcConnectionCancel")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	infoCodes := fromCArr[adbc.InfoCode](codes, int(len))
-	rdr, e := conn.cnxn.GetInfo(context.Background(), infoCodes)
-	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
-	}
-
-	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	conn.cancelContext()
 	return C.ADBC_STATUS_OK
 }
 
@@ -476,6 +955,28 @@ func toStrSlice(in **C.cchar_t) []string {
 	return out
 }
 
+//export PanicDummyConnectionGetInfo
+func PanicDummyConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t, len C.size_t, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetInfo", e)
+		}
+	}()
+	conn := checkConnInit(cnxn, err, "AdbcConnectionGetInfo")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	infoCodes := fromCArr[adbc.InfoCode](codes, int(len))
+	rdr, e := conn.cnxn.GetInfo(conn.newContext(), infoCodes)
+	if e != nil {
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
+	}
+
+	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	return C.ADBC_STATUS_OK
+}
+
 //export PanicDummyConnectionGetObjects
 func PanicDummyConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, catalog, dbSchema, tableName *C.cchar_t, tableType **C.cchar_t, columnName *C.cchar_t,
 	out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
@@ -489,10 +990,64 @@ func PanicDummyConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, 
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	rdr, e := conn.cnxn.GetObjects(context.Background(), adbc.ObjectDepth(depth), toStrPtr(catalog), toStrPtr(dbSchema), toStrPtr(tableName), toStrPtr(columnName), toStrSlice(tableType))
+	rdr, e := conn.cnxn.GetObjects(conn.newContext(), adbc.ObjectDepth(depth), toStrPtr(catalog), toStrPtr(dbSchema), toStrPtr(tableName), toStrPtr(columnName), toStrSlice(tableType))
 	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
 	}
+	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	return C.ADBC_STATUS_OK
+}
+
+//export PanicDummyConnectionGetStatistics
+func PanicDummyConnectionGetStatistics(cnxn *C.struct_AdbcConnection, catalog, dbSchema, tableName *C.cchar_t, approximate C.char, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetStatistics", e)
+		}
+	}()
+	conn := checkConnInit(cnxn, err, "AdbcConnectionGetStatistics")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	gs, ok := conn.cnxn.(adbc.ConnectionGetStatistics)
+	if !ok {
+		setErr(err, "AdbcConnectionGetStatistics: not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	rdr, e := gs.GetStatistics(conn.newContext(), toStrPtr(catalog), toStrPtr(dbSchema), toStrPtr(tableName), int(approximate) != 0)
+	if e != nil {
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
+	}
+
+	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	return C.ADBC_STATUS_OK
+}
+
+//export PanicDummyConnectionGetStatisticNames
+func PanicDummyConnectionGetStatisticNames(cnxn *C.struct_AdbcConnection, out *C.struct_ArrowArrayStream, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcConnectionGetStatistics", e)
+		}
+	}()
+	conn := checkConnInit(cnxn, err, "AdbcConnectionGetStatistics")
+	if conn == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	gs, ok := conn.cnxn.(adbc.ConnectionGetStatistics)
+	if !ok {
+		setErr(err, "AdbcConnectionGetStatistics: not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	rdr, e := gs.GetStatisticNames(conn.newContext())
+	if e != nil {
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
+	}
+
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -509,9 +1064,9 @@ func PanicDummyConnectionGetTableSchema(cnxn *C.struct_AdbcConnection, catalog, 
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	sc, e := conn.cnxn.GetTableSchema(context.Background(), toStrPtr(catalog), toStrPtr(dbSchema), C.GoString(tableName))
+	sc, e := conn.cnxn.GetTableSchema(conn.newContext(), toStrPtr(catalog), toStrPtr(dbSchema), C.GoString(tableName))
 	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
 	}
 	cdata.ExportArrowSchema(sc, toCdataSchema(schema))
 	return C.ADBC_STATUS_OK
@@ -529,9 +1084,9 @@ func PanicDummyConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.str
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	rdr, e := conn.cnxn.GetTableTypes(context.Background())
+	rdr, e := conn.cnxn.GetTableTypes(conn.newContext())
 	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
 	}
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
@@ -549,9 +1104,9 @@ func PanicDummyConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	rdr, e := conn.cnxn.ReadPartition(context.Background(), fromCArr[byte](serialized, int(serializedLen)))
+	rdr, e := conn.cnxn.ReadPartition(conn.newContext(), fromCArr[byte](serialized, int(serializedLen)))
 	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
 	}
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
@@ -569,7 +1124,7 @@ func PanicDummyConnectionCommit(cnxn *C.struct_AdbcConnection, err *C.struct_Adb
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	return C.AdbcStatusCode(errToAdbcErr(err, conn.cnxn.Commit(context.Background())))
+	return C.AdbcStatusCode(conn.errToAdbcErr(err, conn.cnxn.Commit(conn.newContext())))
 }
 
 //export PanicDummyConnectionRollback
@@ -584,25 +1139,154 @@ func PanicDummyConnectionRollback(cnxn *C.struct_AdbcConnection, err *C.struct_A
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	return C.AdbcStatusCode(errToAdbcErr(err, conn.cnxn.Rollback(context.Background())))
+	return C.AdbcStatusCode(conn.errToAdbcErr(err, conn.cnxn.Rollback(conn.newContext())))
 }
 
-func checkStmtInit(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname string) adbc.Statement {
+type cStmt struct {
+	cancellableContext
+	errorDetails
+
+	stmt adbc.Statement
+}
+
+func checkStmtAlloc(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname string) bool {
 	if atomic.LoadInt32(&globalPoison) != 0 {
 		setErr(err, "%s: Go panicked, driver is in unknown state", fname)
-		return nil
+		return false
 	}
 	if stmt == nil {
 		setErr(err, "%s: statement not allocated", fname)
-		return nil
+		return false
 	}
-
 	if stmt.private_data == nil {
-		setErr(err, "%s: statement not initialized", fname)
+		setErr(err, "%s: statement not allocated", fname)
+		return false
+	}
+	return true
+}
+
+func checkStmtInit(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError, fname string) *cStmt {
+	if !checkStmtAlloc(stmt, err, fname) {
 		return nil
 	}
+	cStmt := getFromHandle[cStmt](stmt.private_data)
+	if cStmt.stmt == nil {
+		setErr(err, "%s: statement not allocated", fname)
+		return nil
+	}
+	return cStmt
+}
 
-	return (*(*cgo.Handle)(stmt.private_data)).Value().(adbc.Statement)
+//export PanicDummyStatementGetOption
+func PanicDummyStatementGetOption(db *C.struct_AdbcStatement, key *C.cchar_t, value *C.char, length *C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementGetOption", e)
+		}
+	}()
+	st := checkStmtInit(db, err, "AdbcStatementGetOption")
+	if st == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	if handled, e := st.getErrorDetailsOptionString(key, value, length); e != nil {
+		return C.AdbcStatusCode(errToAdbcErr(err, e))
+	} else if handled {
+		return C.ADBC_STATUS_OK
+	}
+
+	opts, ok := st.stmt.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcStatementGetOption: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+	val, e := opts.GetOption(C.GoString(key))
+	if e != nil {
+		return C.AdbcStatusCode(st.errToAdbcErr(err, e))
+	}
+
+	return exportStringOption(val, value, length)
+}
+
+//export PanicDummyStatementGetOptionBytes
+func PanicDummyStatementGetOptionBytes(db *C.struct_AdbcStatement, key *C.cchar_t, value *C.uint8_t, length *C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementGetOptionBytes", e)
+		}
+	}()
+	st := checkStmtInit(db, err, "AdbcStatementGetOptionBytes")
+	if st == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	if handled, e := st.getErrorDetailsOptionBytes(key, value, length); e != nil {
+		return C.AdbcStatusCode(errToAdbcErr(err, e))
+	} else if handled {
+		return C.ADBC_STATUS_OK
+	}
+
+	opts, ok := st.stmt.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcStatementGetOptionBytes: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+	val, e := opts.GetOptionBytes(C.GoString(key))
+	if e != nil {
+		return C.AdbcStatusCode(st.errToAdbcErr(err, e))
+	}
+
+	return exportBytesOption(val, value, length)
+}
+
+//export PanicDummyStatementGetOptionDouble
+func PanicDummyStatementGetOptionDouble(db *C.struct_AdbcStatement, key *C.cchar_t, value *C.double, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementGetOptionDouble", e)
+		}
+	}()
+	st := checkStmtInit(db, err, "AdbcStatementGetOptionDouble")
+	if st == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := st.stmt.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcStatementGetOptionDouble: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	val, e := opts.GetOptionDouble(C.GoString(key))
+	*value = C.double(val)
+	return C.AdbcStatusCode(st.errToAdbcErr(err, e))
+}
+
+//export PanicDummyStatementGetOptionInt
+func PanicDummyStatementGetOptionInt(db *C.struct_AdbcStatement, key *C.cchar_t, value *C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementGetOptionInt", e)
+		}
+	}()
+	st := checkStmtInit(db, err, "AdbcStatementGetOptionInt")
+	if st == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	if st.getErrorDetailsOptionInt(key, value) {
+		return C.ADBC_STATUS_OK
+	}
+
+	opts, ok := st.stmt.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcStatementGetOptionInt: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	val, e := opts.GetOptionInt(C.GoString(key))
+	*value = C.int64_t(val)
+	return C.AdbcStatusCode(st.errToAdbcErr(err, e))
 }
 
 //export PanicDummyStatementNew
@@ -623,11 +1307,11 @@ func PanicDummyStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcSt
 
 	st, e := conn.cnxn.NewStatement()
 	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
 	}
 
-	h := cgo.NewHandle(st)
-	stmt.private_data = createHandle(h)
+	hndl := cgo.NewHandle(&cStmt{stmt: st})
+	stmt.private_data = createHandle(hndl)
 	return C.ADBC_STATUS_OK
 }
 
@@ -642,31 +1326,46 @@ func PanicDummyStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_Adbc
 		setErr(err, "AdbcStatementRelease: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
-	if stmt == nil {
-		setErr(err, "AdbcStatementRelease: statement not allocated")
+	if !checkStmtAlloc(stmt, err, "AdbcStatementRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
-
-	if stmt.private_data == nil {
-		setErr(err, "AdbcStatementRelease: statement not initialized")
-		return C.ADBC_STATUS_INVALID_STATE
-	}
-
 	h := (*(*cgo.Handle)(stmt.private_data))
-	st := h.Value().(adbc.Statement)
-	C.free(stmt.private_data)
-	stmt.private_data = nil
 
-	e := st.Close()
-	h.Delete()
-	// manually trigger GC for two reasons:
-	//  1. ASAN expects the release callback to be called before
-	//     the process ends, but GC is not deterministic. So by manually
-	//     triggering the GC we ensure the release callback gets called.
-	//  2. Creates deterministic GC behavior by all Release functions
-	//     triggering a garbage collection
-	runtime.GC()
-	return C.AdbcStatusCode(errToAdbcErr(err, e))
+	st := h.Value().(*cStmt)
+	defer func() {
+		st.cancelContext()
+		st.stmt = nil
+		C.free(stmt.private_data)
+		stmt.private_data = nil
+		h.Delete()
+		// manually trigger GC for two reasons:
+		//  1. ASAN expects the release callback to be called before
+		//     the process ends, but GC is not deterministic. So by manually
+		//     triggering the GC we ensure the release callback gets called.
+		//  2. Creates deterministic GC behavior by all Release functions
+		//     triggering a garbage collection
+		runtime.GC()
+	}()
+	if st.stmt == nil {
+		return C.ADBC_STATUS_OK
+	}
+	return C.AdbcStatusCode(errToAdbcErr(err, st.stmt.Close()))
+}
+
+//export PanicDummyStatementCancel
+func PanicDummyStatementCancel(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementPrepare", e)
+		}
+	}()
+	st := checkStmtInit(stmt, err, "AdbcStatementPrepare")
+	if st == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	st.cancelContext()
+	return C.ADBC_STATUS_OK
 }
 
 //export PanicDummyStatementPrepare
@@ -681,7 +1380,7 @@ func PanicDummyStatementPrepare(stmt *C.struct_AdbcStatement, err *C.struct_Adbc
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	return C.AdbcStatusCode(errToAdbcErr(err, st.Prepare(context.Background())))
+	return C.AdbcStatusCode(st.errToAdbcErr(err, st.stmt.Prepare(st.newContext())))
 }
 
 //export PanicDummyStatementExecuteQuery
@@ -697,26 +1396,54 @@ func PanicDummyStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct
 	}
 
 	if out == nil {
-		n, e := st.ExecuteUpdate(context.Background())
+		n, e := st.stmt.ExecuteUpdate(st.newContext())
 		if e != nil {
-			return C.AdbcStatusCode(errToAdbcErr(err, e))
+			return C.AdbcStatusCode(st.errToAdbcErr(err, e))
 		}
 
 		if affected != nil {
 			*affected = C.int64_t(n)
 		}
 	} else {
-		rdr, n, e := st.ExecuteQuery(context.Background())
+		rdr, n, e := st.stmt.ExecuteQuery(st.newContext())
 		if e != nil {
-			return C.AdbcStatusCode(errToAdbcErr(err, e))
+			return C.AdbcStatusCode(st.errToAdbcErr(err, e))
 		}
 
 		if affected != nil {
 			*affected = C.int64_t(n)
 		}
 
+		// TODO: proxy the reader and record error details (and do this elsewhere, too)
 		cdata.ExportRecordReader(rdr, toCdataStream(out))
 	}
+	return C.ADBC_STATUS_OK
+}
+
+//export PanicDummyStatementExecuteSchema
+func PanicDummyStatementExecuteSchema(stmt *C.struct_AdbcStatement, schema *C.struct_ArrowSchema, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementExecuteQuery", e)
+		}
+	}()
+	st := checkStmtInit(stmt, err, "AdbcStatementExecuteQuery")
+	if st == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	es, ok := st.stmt.(adbc.StatementExecuteSchema)
+	if !ok {
+		setErr(err, "AdbcStatementExecuteSchema: not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	sc, e := es.ExecuteSchema(st.newContext())
+	if e != nil {
+		return C.AdbcStatusCode(st.errToAdbcErr(err, e))
+	}
+
+	cdata.ExportArrowSchema(sc, toCdataSchema(schema))
 	return C.ADBC_STATUS_OK
 }
 
@@ -732,7 +1459,7 @@ func PanicDummyStatementSetSqlQuery(stmt *C.struct_AdbcStatement, query *C.cchar
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	return C.AdbcStatusCode(errToAdbcErr(err, st.SetSqlQuery(C.GoString(query))))
+	return C.AdbcStatusCode(st.errToAdbcErr(err, st.stmt.SetSqlQuery(C.GoString(query))))
 }
 
 //export PanicDummyStatementSetSubstraitPlan
@@ -747,7 +1474,7 @@ func PanicDummyStatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.c
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	return C.AdbcStatusCode(errToAdbcErr(err, st.SetSubstraitPlan(fromCArr[byte](plan, int(length)))))
+	return C.AdbcStatusCode(st.errToAdbcErr(err, st.stmt.SetSubstraitPlan(fromCArr[byte](plan, int(length)))))
 }
 
 //export PanicDummyStatementBind
@@ -766,11 +1493,11 @@ func PanicDummyStatementBind(stmt *C.struct_AdbcStatement, values *C.struct_Arro
 	if e != nil {
 		// if there was an error, we need to manually release the input
 		cdata.ReleaseCArrowArray(toCdataArray(values))
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(st.errToAdbcErr(err, e))
 	}
 	defer rec.Release()
 
-	return C.AdbcStatusCode(errToAdbcErr(err, st.Bind(context.Background(), rec)))
+	return C.AdbcStatusCode(st.errToAdbcErr(err, st.stmt.Bind(st.newContext(), rec)))
 }
 
 //export PanicDummyStatementBindStream
@@ -787,9 +1514,9 @@ func PanicDummyStatementBindStream(stmt *C.struct_AdbcStatement, stream *C.struc
 
 	rdr, e := cdata.ImportCRecordReader(toCdataStream(stream), nil)
 	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(st.errToAdbcErr(err, e))
 	}
-	return C.AdbcStatusCode(errToAdbcErr(err, st.BindStream(context.Background(), rdr.(array.RecordReader))))
+	return C.AdbcStatusCode(st.errToAdbcErr(err, st.stmt.BindStream(st.newContext(), rdr.(array.RecordReader))))
 }
 
 //export PanicDummyStatementGetParameterSchema
@@ -804,9 +1531,9 @@ func PanicDummyStatementGetParameterSchema(stmt *C.struct_AdbcStatement, schema 
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	sc, e := st.GetParameterSchema()
+	sc, e := st.stmt.GetParameterSchema()
 	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(st.errToAdbcErr(err, e))
 	}
 
 	cdata.ExportArrowSchema(sc, toCdataSchema(schema))
@@ -825,7 +1552,70 @@ func PanicDummyStatementSetOption(stmt *C.struct_AdbcStatement, key, value *C.cc
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	return C.AdbcStatusCode(errToAdbcErr(err, st.SetOption(C.GoString(key), C.GoString(value))))
+	return C.AdbcStatusCode(st.errToAdbcErr(err, st.stmt.SetOption(C.GoString(key), C.GoString(value))))
+}
+
+//export PanicDummyStatementSetOptionBytes
+func PanicDummyStatementSetOptionBytes(db *C.struct_AdbcStatement, key *C.cchar_t, value *C.cuint8_t, length C.size_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementSetOptionBytes", e)
+		}
+	}()
+	st := checkStmtInit(db, err, "AdbcStatementSetOptionBytes")
+	if st == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := st.stmt.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcStatementSetOptionBytes: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	return C.AdbcStatusCode(st.errToAdbcErr(err, opts.SetOptionBytes(C.GoString(key), fromCArr[byte](value, int(length)))))
+}
+
+//export PanicDummyStatementSetOptionDouble
+func PanicDummyStatementSetOptionDouble(db *C.struct_AdbcStatement, key *C.cchar_t, value C.double, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementSetOptionDouble", e)
+		}
+	}()
+	st := checkStmtInit(db, err, "AdbcStatementSetOptionDouble")
+	if st == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := st.stmt.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcStatementSetOptionDouble: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	return C.AdbcStatusCode(st.errToAdbcErr(err, opts.SetOptionDouble(C.GoString(key), float64(value))))
+}
+
+//export PanicDummyStatementSetOptionInt
+func PanicDummyStatementSetOptionInt(db *C.struct_AdbcStatement, key *C.cchar_t, value C.int64_t, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
+	defer func() {
+		if e := recover(); e != nil {
+			code = poison(err, "AdbcStatementSetOptionInt", e)
+		}
+	}()
+	st := checkStmtInit(db, err, "AdbcStatementSetOptionInt")
+	if st == nil {
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
+	opts, ok := st.stmt.(adbc.GetSetOptions)
+	if !ok {
+		setErr(err, "AdbcStatementSetOptionInt: options are not supported")
+		return C.ADBC_STATUS_NOT_IMPLEMENTED
+	}
+
+	return C.AdbcStatusCode(st.errToAdbcErr(err, opts.SetOptionInt(C.GoString(key), int64(value))))
 }
 
 //export releasePartitions
@@ -854,9 +1644,9 @@ func PanicDummyStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	sc, part, n, e := st.ExecutePartitions(context.Background())
+	sc, part, n, e := st.stmt.ExecutePartitions(st.newContext())
 	if e != nil {
-		return C.AdbcStatusCode(errToAdbcErr(err, e))
+		return C.AdbcStatusCode(st.errToAdbcErr(err, e))
 	}
 
 	if partitions == nil {
@@ -899,13 +1689,18 @@ func PanicDummyStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *
 
 //export PanicDummyDriverInit
 func PanicDummyDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
-	if version != C.ADBC_VERSION_1_0_0 {
-		setErr(err, "Only version %d supported, got %d", int(C.ADBC_VERSION_1_0_0), int(version))
+	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
+
+	switch version {
+	case C.ADBC_VERSION_1_0_0:
+		C.memset(unsafe.Pointer(driver), 0, C.ADBC_DRIVER_1_0_0_SIZE)
+	case C.ADBC_VERSION_1_1_0:
+		C.memset(unsafe.Pointer(driver), 0, C.ADBC_DRIVER_1_1_0_SIZE)
+	default:
+		setErr(err, "Only version 1.0.0/1.1.0 supported, got %d", int(version))
 		return C.ADBC_STATUS_NOT_IMPLEMENTED
 	}
 
-	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
-	C.memset(unsafe.Pointer(driver), 0, C.sizeof_struct_AdbcDriver)
 	driver.DatabaseInit = (*[0]byte)(C.PanicDummyDatabaseInit)
 	driver.DatabaseNew = (*[0]byte)(C.PanicDummyDatabaseNew)
 	driver.DatabaseRelease = (*[0]byte)(C.PanicDummyDatabaseRelease)
@@ -934,6 +1729,37 @@ func PanicDummyDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcEr
 	driver.StatementExecutePartitions = (*[0]byte)(C.PanicDummyStatementExecutePartitions)
 	driver.StatementGetParameterSchema = (*[0]byte)(C.PanicDummyStatementGetParameterSchema)
 	driver.StatementPrepare = (*[0]byte)(C.PanicDummyStatementPrepare)
+
+	if version == C.ADBC_VERSION_1_1_0 {
+		driver.DatabaseGetOption = (*[0]byte)(C.PanicDummyDatabaseGetOption)
+		driver.DatabaseGetOptionBytes = (*[0]byte)(C.PanicDummyDatabaseGetOptionBytes)
+		driver.DatabaseGetOptionDouble = (*[0]byte)(C.PanicDummyDatabaseGetOptionDouble)
+		driver.DatabaseGetOptionInt = (*[0]byte)(C.PanicDummyDatabaseGetOptionInt)
+		driver.DatabaseSetOptionBytes = (*[0]byte)(C.PanicDummyDatabaseSetOptionBytes)
+		driver.DatabaseSetOptionDouble = (*[0]byte)(C.PanicDummyDatabaseSetOptionDouble)
+		driver.DatabaseSetOptionInt = (*[0]byte)(C.PanicDummyDatabaseSetOptionInt)
+
+		driver.ConnectionCancel = (*[0]byte)(C.PanicDummyConnectionCancel)
+		driver.ConnectionGetOption = (*[0]byte)(C.PanicDummyConnectionGetOption)
+		driver.ConnectionGetOptionBytes = (*[0]byte)(C.PanicDummyConnectionGetOptionBytes)
+		driver.ConnectionGetOptionDouble = (*[0]byte)(C.PanicDummyConnectionGetOptionDouble)
+		driver.ConnectionGetOptionInt = (*[0]byte)(C.PanicDummyConnectionGetOptionInt)
+		driver.ConnectionGetStatistics = (*[0]byte)(C.PanicDummyConnectionGetStatistics)
+		driver.ConnectionGetStatisticNames = (*[0]byte)(C.PanicDummyConnectionGetStatisticNames)
+		driver.ConnectionSetOptionBytes = (*[0]byte)(C.PanicDummyConnectionSetOptionBytes)
+		driver.ConnectionSetOptionDouble = (*[0]byte)(C.PanicDummyConnectionSetOptionDouble)
+		driver.ConnectionSetOptionInt = (*[0]byte)(C.PanicDummyConnectionSetOptionInt)
+
+		driver.StatementCancel = (*[0]byte)(C.PanicDummyStatementCancel)
+		driver.StatementExecuteSchema = (*[0]byte)(C.PanicDummyStatementExecuteSchema)
+		driver.StatementGetOption = (*[0]byte)(C.PanicDummyStatementGetOption)
+		driver.StatementGetOptionBytes = (*[0]byte)(C.PanicDummyStatementGetOptionBytes)
+		driver.StatementGetOptionDouble = (*[0]byte)(C.PanicDummyStatementGetOptionDouble)
+		driver.StatementGetOptionInt = (*[0]byte)(C.PanicDummyStatementGetOptionInt)
+		driver.StatementSetOptionBytes = (*[0]byte)(C.PanicDummyStatementSetOptionBytes)
+		driver.StatementSetOptionDouble = (*[0]byte)(C.PanicDummyStatementSetOptionDouble)
+		driver.StatementSetOptionInt = (*[0]byte)(C.PanicDummyStatementSetOptionInt)
+	}
 
 	return C.ADBC_STATUS_OK
 }

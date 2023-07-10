@@ -334,8 +334,9 @@ struct ADBC_EXPORT AdbcError {
 /// Buffers) that can be optionally parsed by clients, beyond the
 /// standard AdbcError fields, without having to encode it in the
 /// error message.  The encoding of the data is driver-defined.
+/// Drivers may provide multiple error details.
 ///
-/// This can be called immediately after any API call that returns an
+/// This can be used immediately after any API call that returns an
 /// error.  Additionally, if an ArrowArrayStream returned from an
 /// AdbcConnection or an AdbcStatement returns an error, this can be
 /// immediately called from the associated AdbcConnection or
@@ -343,16 +344,25 @@ struct ADBC_EXPORT AdbcError {
 /// other API calls with that connection or statement may clear this
 /// error value.
 ///
-/// Drivers may provide multiple error details.  Each call to
-/// GetOptionBytes will return the next error detail.  The driver
-/// should return ADBC_STATUS_NOT_FOUND if there are no (more) error
-/// details.
-///
-/// The type is uint8_t*.
+/// To use, call GetOptionInt with this option to get the number of
+/// available details.  Then, call GetOption with the option key
+/// ADBC_OPTION_ERROR_DETAILS_PREFIX + (zero-indexed index) to get the
+/// name of the error detail (for example, drivers that use gRPC
+/// underneath may provide the name of the gRPC trailer corresponding
+/// to the error detail).  GetOptionBytes with that option name will
+/// retrieve the value of the error detail (for example, a serialized
+/// Any-wrapped Protobuf).
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
-#define ADBC_OPTION_ERROR_DETAILS "error_details"
+#define ADBC_OPTION_ERROR_DETAILS "adbc.error_details"
+
+/// \brief Canonical option name for error details.
+///
+/// \see ADBC_OPTION_ERROR_DETAILS
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_OPTION_ERROR_DETAILS_PREFIX "adbc.error_details."
 
 /// \brief The database vendor/product name (e.g. the server name).
 ///   (type: utf8).
@@ -888,26 +898,26 @@ struct ADBC_EXPORT AdbcDriver {
                                       struct AdbcError*);
   AdbcStatusCode (*DatabaseGetOptionBytes)(struct AdbcDatabase*, const char*, uint8_t*,
                                            size_t*, struct AdbcError*);
-  AdbcStatusCode (*DatabaseGetOptionInt)(struct AdbcDatabase*, const char*, int64_t*,
-                                         struct AdbcError*);
   AdbcStatusCode (*DatabaseGetOptionDouble)(struct AdbcDatabase*, const char*, double*,
                                             struct AdbcError*);
+  AdbcStatusCode (*DatabaseGetOptionInt)(struct AdbcDatabase*, const char*, int64_t*,
+                                         struct AdbcError*);
   AdbcStatusCode (*DatabaseSetOptionBytes)(struct AdbcDatabase*, const char*,
                                            const uint8_t*, size_t, struct AdbcError*);
-  AdbcStatusCode (*DatabaseSetOptionInt)(struct AdbcDatabase*, const char*, int64_t,
-                                         struct AdbcError*);
   AdbcStatusCode (*DatabaseSetOptionDouble)(struct AdbcDatabase*, const char*, double,
                                             struct AdbcError*);
+  AdbcStatusCode (*DatabaseSetOptionInt)(struct AdbcDatabase*, const char*, int64_t,
+                                         struct AdbcError*);
 
   AdbcStatusCode (*ConnectionCancel)(struct AdbcConnection*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOption)(struct AdbcConnection*, const char*, char*,
                                         size_t*, struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOptionBytes)(struct AdbcConnection*, const char*,
                                              uint8_t*, size_t*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionGetOptionInt)(struct AdbcConnection*, const char*, int64_t*,
-                                           struct AdbcError*);
   AdbcStatusCode (*ConnectionGetOptionDouble)(struct AdbcConnection*, const char*,
                                               double*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetOptionInt)(struct AdbcConnection*, const char*, int64_t*,
+                                           struct AdbcError*);
   AdbcStatusCode (*ConnectionGetStatistics)(struct AdbcConnection*, const char*,
                                             const char*, const char*, char,
                                             struct ArrowArrayStream*, struct AdbcError*);
@@ -916,10 +926,10 @@ struct ADBC_EXPORT AdbcDriver {
                                                 struct AdbcError*);
   AdbcStatusCode (*ConnectionSetOptionBytes)(struct AdbcConnection*, const char*,
                                              const uint8_t*, size_t, struct AdbcError*);
-  AdbcStatusCode (*ConnectionSetOptionInt)(struct AdbcConnection*, const char*, int64_t,
-                                           struct AdbcError*);
   AdbcStatusCode (*ConnectionSetOptionDouble)(struct AdbcConnection*, const char*, double,
                                               struct AdbcError*);
+  AdbcStatusCode (*ConnectionSetOptionInt)(struct AdbcConnection*, const char*, int64_t,
+                                           struct AdbcError*);
 
   AdbcStatusCode (*StatementCancel)(struct AdbcStatement*, struct AdbcError*);
   AdbcStatusCode (*StatementExecuteSchema)(struct AdbcStatement*, struct ArrowSchema*,
@@ -928,16 +938,16 @@ struct ADBC_EXPORT AdbcDriver {
                                        struct AdbcError*);
   AdbcStatusCode (*StatementGetOptionBytes)(struct AdbcStatement*, const char*, uint8_t*,
                                             size_t*, struct AdbcError*);
-  AdbcStatusCode (*StatementGetOptionInt)(struct AdbcStatement*, const char*, int64_t*,
-                                          struct AdbcError*);
   AdbcStatusCode (*StatementGetOptionDouble)(struct AdbcStatement*, const char*, double*,
                                              struct AdbcError*);
+  AdbcStatusCode (*StatementGetOptionInt)(struct AdbcStatement*, const char*, int64_t*,
+                                          struct AdbcError*);
   AdbcStatusCode (*StatementSetOptionBytes)(struct AdbcStatement*, const char*,
                                             const uint8_t*, size_t, struct AdbcError*);
-  AdbcStatusCode (*StatementSetOptionInt)(struct AdbcStatement*, const char*, int64_t,
-                                          struct AdbcError*);
   AdbcStatusCode (*StatementSetOptionDouble)(struct AdbcStatement*, const char*, double,
                                              struct AdbcError*);
+  AdbcStatusCode (*StatementSetOptionInt)(struct AdbcStatement*, const char*, int64_t,
+                                          struct AdbcError*);
 
   /// @}
 };
@@ -1639,7 +1649,6 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
 /// | int64                    | int64                            |
 /// | uint64                   | uint64                           |
 /// | float64                  | float64                          |
-/// | decimal256               | decimal256                       |
 /// | binary                   | binary                           |
 ///
 /// This AdbcConnection must outlive the returned ArrowArrayStream.
