@@ -95,14 +95,12 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
 /* caller is responsible for freeing data */
 static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit unit) {
   int64_t seconds;
-  int strlen;
-  int rem;
-  int scale;
+  int scale = 1;
+  int strlen = 20;
+  int rem = 0;
 
   switch (unit) {
     case NANOARROW_TIME_UNIT_SECOND:
-      scale = 1;
-      strlen = 20;
       break;
     case NANOARROW_TIME_UNIT_MILLI:
       scale = 1000;
