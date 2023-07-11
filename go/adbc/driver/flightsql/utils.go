@@ -23,6 +23,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 func adbcFromFlightStatus(err error, context string, args ...any) error {
@@ -73,8 +74,21 @@ func adbcFromFlightStatus(err error, context string, args ...any) error {
 	}
 
 	// People don't read error messages, so backload the context and frontload the server error
+	details := []adbc.ErrorDetail{}
+	// slice of proto.Message or error
+	for _, detail := range grpcStatus.Details() {
+		if err, ok := detail.(error); ok {
+			details = append(details, &adbc.TextErrorDetail{Name: "grpc-status-details-bin", Detail: err.Error()})
+		} else if msg, ok := detail.(proto.Message); ok {
+			details = append(details, &adbc.ProtobufErrorDetail{Name: "grpc-status-details-bin", Message: msg})
+		} else {
+			panic(fmt.Sprintf("gRPC returned non-Protobuf detail in violation of method contract: %#v", detail))
+		}
+	}
+
 	return adbc.Error{
 		Msg:  fmt.Sprintf("[FlightSQL] %s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
 		Code: adbcCode,
+		Details: details,
 	}
 }
