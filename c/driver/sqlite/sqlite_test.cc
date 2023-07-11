@@ -171,9 +171,6 @@ class SqliteStatementTest : public ::testing::Test,
 
   void TestSqlIngestUInt64() { GTEST_SKIP() << "Cannot ingest UINT64 (out of range)"; }
   void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
-  void TestSqlIngestTimestamp() {
-    GTEST_SKIP() << "Cannot ingest TIMESTAMP (not implemented)";
-  }
   void TestSqlIngestTimestampTz() {
     GTEST_SKIP() << "Cannot ingest TIMESTAMP WITH TIMEZONE (not implemented)";
   }

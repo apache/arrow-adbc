@@ -20,6 +20,7 @@
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 
 #include <adbc.h>
 #include <nanoarrow/nanoarrow.h>
@@ -89,6 +90,76 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
   memset(values, 0, sizeof(*values));
   return AdbcSqliteBinderSet(binder, error);
 }
+
+/* caller is responsible for freeing data */
+static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit unit) {
+  int64_t seconds;
+  int strlen;
+  int rem;
+  int decimal_places;
+
+  switch (unit) {
+    case NANOARROW_TIME_UNIT_SECOND:
+      seconds = value;
+      strlen = 19;
+      rem = 0;
+      decimal_places = 0;
+      break;
+    case NANOARROW_TIME_UNIT_MILLI:
+      seconds = value / 1000;
+      rem = value % 1000;
+      strlen = 23;
+      decimal_places = 3;
+      break;
+    case NANOARROW_TIME_UNIT_MICRO:
+      seconds = value / 1000000;
+      rem = value % 1000000;
+      strlen = 26;
+      decimal_places = 6;
+      break;
+    case NANOARROW_TIME_UNIT_NANO:
+      seconds = value / 1000000000;
+      rem = value % 1000000000;
+      strlen = 29;
+      decimal_places = 9;
+      break;
+  }
+
+  if (rem < 0) {
+    // TODO: implement support for negative timestamps
+    // mainly a concern for sprintf to not violate bounds
+    return NULL;
+  }
+
+  struct tm broken_down_time;
+  if (gmtime_r(&seconds, &broken_down_time) != &broken_down_time) {
+    return NULL;
+  }
+
+  char* tsstr = malloc(strlen + 1);
+  if (tsstr == NULL) {
+    return NULL;
+  }
+
+  if (strftime(tsstr, strlen, "%Y-%m-%dT%H%M%S", &broken_down_time) == 0) {
+    free(tsstr);
+    return NULL;
+  }
+
+  switch (unit) {
+    case NANOARROW_TIME_UNIT_SECOND:
+      break;
+    case NANOARROW_TIME_UNIT_MILLI:
+    case NANOARROW_TIME_UNIT_MICRO:
+    case NANOARROW_TIME_UNIT_NANO:
+      tsstr[19] = '.';
+      snprintf(tsstr + 20, decimal_places + 1, "%d", rem);
+      break;
+  }
+
+  return tsstr;
+}
+
 AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3* conn,
                                         sqlite3_stmt* stmt, char* finished,
                                         struct AdbcError* error) {
@@ -193,6 +264,26 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
           status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
                                      SQLITE_STATIC);
+          break;
+        }
+        case NANOARROW_TYPE_TIMESTAMP: {
+          struct ArrowSchemaView bind_schema_view;
+          // TODO: double check but doesn't seem like we need to free after init?
+          RAISE_ADBC(ArrowSchemaViewInit(&bind_schema_view, binder->schema.children[col],
+                                         &arrow_error));
+          enum ArrowTimeUnit unit = bind_schema_view.time_unit;
+          int64_t value =
+              ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
+
+          const char* tsstr = ArrowTimestampToIsoString(value, unit);
+          if (tsstr == NULL) {
+            return ADBC_STATUS_IO;
+          }
+
+          // SQLITE_TRANSIENT ensures the value is copied during bind
+          status =
+              sqlite3_bind_text(stmt, col + 1, tsstr, strlen(tsstr), SQLITE_TRANSIENT);
+          free((char*)tsstr);
           break;
         }
         default:
