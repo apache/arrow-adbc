@@ -17,6 +17,7 @@
 
 #include "statement_reader.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
@@ -97,39 +98,37 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
   int strlen;
   int rem;
   int decimal_places;
+  int scale;
 
   switch (unit) {
     case NANOARROW_TIME_UNIT_SECOND:
-      seconds = value;
+      scale = 1;
       strlen = 19;
-      rem = 0;
       decimal_places = 0;
       break;
     case NANOARROW_TIME_UNIT_MILLI:
-      seconds = value / 1000;
-      rem = value % 1000;
+      scale = 1000;
       strlen = 23;
       decimal_places = 3;
       break;
     case NANOARROW_TIME_UNIT_MICRO:
-      seconds = value / 1000000;
-      rem = value % 1000000;
+      scale = 1000000;
       strlen = 26;
       decimal_places = 6;
       break;
     case NANOARROW_TIME_UNIT_NANO:
-      seconds = value / 1000000000;
-      rem = value % 1000000000;
+      scale = 1000000000;
       strlen = 29;
       decimal_places = 9;
       break;
   }
+  seconds = value / scale;
+  rem = value % scale;
 
   if (rem < 0) {
-    // TODO: implement support for negative timestamps
-    // mainly a concern for sprintf to not violate bounds
-    return NULL;
+    rem = scale + rem;
   }
+  assert(rem >= 0);
 
   struct tm broken_down_time;
   if (gmtime_r(&seconds, &broken_down_time) != &broken_down_time) {
