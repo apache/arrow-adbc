@@ -42,10 +42,78 @@ import (
 
 	"github.com/apache/arrow/go/v13/arrow"
 	"github.com/apache/arrow/go/v13/arrow/array"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type Status -linecomment
 //go:generate go run golang.org/x/tools/cmd/stringer -type InfoCode -linecomment
+
+// ErrorDetail is additional driver-specific error metadata.
+//
+// This allows drivers to return custom, structured error information (for
+// example, JSON or Protocol Buffers) that can be optionally parsed by
+// clients, beyond the standard Error fields, without having to encode it in
+// the error message.
+type ErrorDetail interface {
+	// Get an identifier for the detail (e.g. if the metadata comes from an HTTP
+	// header, the key could be the header name).
+	//
+	// This allows clients and drivers to cooperate and provide some idea of what
+	// to expect in the detail.
+	Key() string
+	// Serialize the detail value to a byte array for interoperability with C/C++.
+	Serialize() ([]byte, error)
+}
+
+// ProtobufErrorDetail is an ErrorDetail backed by a Protobuf message.
+type ProtobufErrorDetail struct {
+	Name    string
+	Message proto.Message
+}
+
+func (d *ProtobufErrorDetail) Key() string {
+	return d.Name
+}
+
+// Serialize serializes the Protobuf message (wrapped in Any).
+func (d *ProtobufErrorDetail) Serialize() ([]byte, error) {
+	any, err := anypb.New(d.Message)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(any)
+}
+
+// ProtobufErrorDetail is an ErrorDetail backed by a human-readable string.
+type TextErrorDetail struct {
+	Name   string
+	Detail string
+}
+
+func (d *TextErrorDetail) Key() string {
+	return d.Name
+}
+
+// Serialize serializes the Protobuf message (wrapped in Any).
+func (d *TextErrorDetail) Serialize() ([]byte, error) {
+	return []byte(d.Detail), nil
+}
+
+// ProtobufErrorDetail is an ErrorDetail backed by a binary payload.
+type BinaryErrorDetail struct {
+	Name   string
+	Detail []byte
+}
+
+func (d *BinaryErrorDetail) Key() string {
+	return d.Name
+}
+
+// Serialize serializes the Binary message (wrapped in Any).
+func (d *BinaryErrorDetail) Serialize() ([]byte, error) {
+	return d.Detail, nil
+}
 
 // Error is the detailed error for an operation
 type Error struct {
@@ -58,13 +126,8 @@ type Error struct {
 	// SqlState is a SQLSTATE error code, if provided, as defined
 	// by the SQL:2003 standard. If not set, it will be "\0\0\0\0\0"
 	SqlState [5]byte
-	// Details is an array of additional driver-specific binary error details.
-	//
-	// This allows drivers to return custom, structured error information (for
-	// example, JSON or Protocol Buffers) that can be optionally parsed by
-	// clients, beyond the standard Error fields, without having to encode it in
-	// the error message.  The encoding of the data is driver-defined.
-	Details [][]byte
+	// Details is an array of additional driver-specific error details.
+	Details []ErrorDetail
 }
 
 func (e Error) Error() string {
@@ -621,23 +684,6 @@ type Statement interface {
 	ExecutePartitions(context.Context) (*arrow.Schema, Partitions, int64, error)
 }
 
-// Cancellable is a Connection or Statement that also supports Cancel.
-//
-// Since ADBC API revision 1.1.0.
-type Cancellable interface {
-	// Cancel stops execution of an in-progress query.
-	//
-	// This can be called during ExecuteQuery, GetObjects, or other
-	// methods that produce result sets, or while consuming a
-	// RecordReader returned from such.  Calling this function should
-	// make the other functions return an error with a StatusCancelled
-	// code.
-	//
-	// This must always be thread-safe (other operations are not
-	// necessarily thread-safe).
-	Cancel() error
-}
-
 // ConnectionGetStatistics is a Connection that supports getting
 // statistics on data in the database.
 //
@@ -657,7 +703,7 @@ type ConnectionGetStatistics interface {
 	//		Field Name               | Field Type
 	//		-------------------------|----------------------------------
 	//		db_schema_name           | utf8
-	//		db_schema_functions      | list<STATISTICS_SCHEMA>
+	//		db_schema_statistics     | list<STATISTICS_SCHEMA>
 	//
 	// STATISTICS_SCHEMA is a Struct with fields:
 	//
@@ -684,7 +730,6 @@ type ConnectionGetStatistics interface {
 	//		int64                    | int64
 	//		uint64                   | uint64
 	//		float64                  | float64
-	//		decimal256               | decimal256
 	//		binary                   | binary
 	//
 	// For the parameters: If nil is passed, then that parameter will not
@@ -719,7 +764,10 @@ type StatementExecuteSchema interface {
 	ExecuteSchema(context.Context) (*arrow.Schema, error)
 }
 
-// GetSetOptions is a PostInitOptions that also supports getting and setting property values of different types.
+// GetSetOptions is a PostInitOptions that also supports getting and setting option values of different types.
+//
+// GetOption functions should return an error with StatusNotFound for unsupported options.
+// SetOption functions should return an error with StatusNotImplemented for unsupported options.
 //
 // Since ADBC API revision 1.1.0.
 type GetSetOptions interface {
@@ -728,7 +776,7 @@ type GetSetOptions interface {
 	SetOptionBytes(key string, value []byte) error
 	SetOptionInt(key string, value int64) error
 	SetOptionDouble(key string, value float64) error
-	GetOption(key, value string) (string, error)
+	GetOption(key string) (string, error)
 	GetOptionBytes(key string) ([]byte, error)
 	GetOptionInt(key string) (int64, error)
 	GetOptionDouble(key string) (float64, error)

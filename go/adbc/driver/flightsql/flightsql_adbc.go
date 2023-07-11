@@ -36,7 +36,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -119,18 +118,11 @@ func init() {
 		adbc.InfoDriverName,
 		adbc.InfoDriverVersion,
 		adbc.InfoDriverArrowVersion,
+		adbc.InfoDriverADBCVersion,
 		adbc.InfoVendorName,
 		adbc.InfoVendorVersion,
 		adbc.InfoVendorArrowVersion,
 	}
-}
-
-func getTimeoutOptionValue(v string) (time.Duration, error) {
-	timeout, err := strconv.ParseFloat(v, 64)
-	if math.IsNaN(timeout) || math.IsInf(timeout, 0) || timeout < 0 {
-		return 0, errors.New("timeout must be positive and finite")
-	}
-	return time.Duration(timeout * float64(time.Second)), err
 }
 
 type Driver struct {
@@ -164,6 +156,8 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	db.dialOpts.block = false
 	db.dialOpts.maxMsgSize = 16 * 1024 * 1024
 
+	db.options = make(map[string]string)
+
 	return db, db.SetOptions(opts)
 }
 
@@ -192,12 +186,17 @@ type database struct {
 	timeout       timeoutOption
 	dialOpts      dbDialOpts
 	enableCookies bool
+	options       map[string]string
 
 	alloc memory.Allocator
 }
 
 func (d *database) SetOptions(cnOptions map[string]string) error {
 	var tlsConfig tls.Config
+
+	for k, v := range cnOptions {
+		d.options[k] = v
+	}
 
 	mtlsCert := cnOptions[OptionMTLSCertChain]
 	mtlsKey := cnOptions[OptionMTLSPrivateKey]
@@ -287,33 +286,24 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 
 	var err error
 	if tv, ok := cnOptions[OptionTimeoutFetch]; ok {
-		if d.timeout.fetchTimeout, err = getTimeoutOptionValue(tv); err != nil {
-			return adbc.Error{
-				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
-					OptionTimeoutFetch, tv, err.Error()),
-				Code: adbc.StatusInvalidArgument,
-			}
+		if err = d.timeout.setTimeoutString(OptionTimeoutFetch, tv); err != nil {
+			return err
 		}
+		delete(cnOptions, OptionTimeoutFetch)
 	}
 
 	if tv, ok := cnOptions[OptionTimeoutQuery]; ok {
-		if d.timeout.queryTimeout, err = getTimeoutOptionValue(tv); err != nil {
-			return adbc.Error{
-				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
-					OptionTimeoutQuery, tv, err.Error()),
-				Code: adbc.StatusInvalidArgument,
-			}
+		if err = d.timeout.setTimeoutString(OptionTimeoutQuery, tv); err != nil {
+			return err
 		}
+		delete(cnOptions, OptionTimeoutQuery)
 	}
 
 	if tv, ok := cnOptions[OptionTimeoutUpdate]; ok {
-		if d.timeout.updateTimeout, err = getTimeoutOptionValue(tv); err != nil {
-			return adbc.Error{
-				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
-					OptionTimeoutUpdate, tv, err.Error()),
-				Code: adbc.StatusInvalidArgument,
-			}
+		if err = d.timeout.setTimeoutString(OptionTimeoutUpdate, tv); err != nil {
+			return err
 		}
+		delete(cnOptions, OptionTimeoutUpdate)
 	}
 
 	if val, ok := cnOptions[OptionWithBlock]; ok {
@@ -369,12 +359,124 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 			continue
 		}
 		return adbc.Error{
-			Msg:  fmt.Sprintf("Unknown database option '%s'", key),
+			Msg:  fmt.Sprintf("[Flight SQL] Unknown database option '%s'", key),
 			Code: adbc.StatusInvalidArgument,
 		}
 	}
 
 	return nil
+}
+
+func (d *database) GetOption(key string) (string, error) {
+	switch key {
+	case OptionTimeoutFetch:
+		return d.timeout.fetchTimeout.String(), nil
+	case OptionTimeoutQuery:
+		return d.timeout.queryTimeout.String(), nil
+	case OptionTimeoutUpdate:
+		return d.timeout.updateTimeout.String(), nil
+	}
+	if val, ok := d.options[key]; ok {
+		return val, nil
+	}
+	return "", adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown database option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (d *database) GetOptionBytes(key string) ([]byte, error) {
+	return nil, adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown database option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (d *database) GetOptionInt(key string) (int64, error) {
+	switch key {
+	case OptionTimeoutFetch:
+		fallthrough
+	case OptionTimeoutQuery:
+		fallthrough
+	case OptionTimeoutUpdate:
+		val, err := d.GetOptionDouble(key)
+		if err != nil {
+			return 0, err
+		}
+		return int64(val), nil
+	}
+
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown database option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (d *database) GetOptionDouble(key string) (float64, error) {
+	switch key {
+	case OptionTimeoutFetch:
+		return d.timeout.fetchTimeout.Seconds(), nil
+	case OptionTimeoutQuery:
+		return d.timeout.queryTimeout.Seconds(), nil
+	case OptionTimeoutUpdate:
+		return d.timeout.updateTimeout.Seconds(), nil
+	}
+
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown database option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (d *database) SetOption(key, value string) error {
+	// We can't change most options post-init
+	switch key {
+	case OptionTimeoutFetch:
+		fallthrough
+	case OptionTimeoutQuery:
+		fallthrough
+	case OptionTimeoutUpdate:
+		return d.timeout.setTimeoutString(key, value)
+	}
+	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
+		d.hdrs.Set(strings.TrimPrefix(key, OptionRPCCallHeaderPrefix), value)
+	}
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown database option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+func (d *database) SetOptionBytes(key string, value []byte) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown database option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+func (d *database) SetOptionInt(key string, value int64) error {
+	switch key {
+	case OptionTimeoutFetch:
+		fallthrough
+	case OptionTimeoutQuery:
+		fallthrough
+	case OptionTimeoutUpdate:
+		return d.timeout.setTimeout(key, float64(value))
+	}
+
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown database option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+func (d *database) SetOptionDouble(key string, value float64) error {
+	switch key {
+	case OptionTimeoutFetch:
+		fallthrough
+	case OptionTimeoutQuery:
+		fallthrough
+	case OptionTimeoutUpdate:
+		return d.timeout.setTimeout(key, value)
+	}
+
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown database option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 type timeoutOption struct {
@@ -386,6 +488,45 @@ type timeoutOption struct {
 	queryTimeout time.Duration
 	// timeout for DoPut or DoAction requests
 	updateTimeout time.Duration
+}
+
+func (t *timeoutOption) setTimeout(key string, value float64) error {
+	if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
+		return adbc.Error{
+			Msg: fmt.Sprintf("[Flight SQL] invalid timeout option value %s = %f: timeouts must be non-negative and finite",
+				key, value),
+			Code: adbc.StatusInvalidArgument,
+		}
+	}
+
+	timeout := time.Duration(value * float64(time.Second))
+
+	switch key {
+	case OptionTimeoutFetch:
+		t.fetchTimeout = timeout
+	case OptionTimeoutQuery:
+		t.queryTimeout = timeout
+	case OptionTimeoutUpdate:
+		t.updateTimeout = timeout
+	default:
+		return adbc.Error{
+			Msg:  fmt.Sprintf("[Flight SQL] Unknown timeout option '%s'", key),
+			Code: adbc.StatusNotImplemented,
+		}
+	}
+	return nil
+}
+
+func (t *timeoutOption) setTimeoutString(key string, value string) error {
+	timeout, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return adbc.Error{
+			Msg: fmt.Sprintf("[Flight SQL] invalid timeout option value %s = %s: %s",
+				key, value, err.Error()),
+			Code: adbc.StatusInvalidArgument,
+		}
+	}
+	return t.setTimeout(key, timeout)
 }
 
 func getTimeout(method string, callOptions []grpc.CallOption) (time.Duration, bool) {
@@ -729,6 +870,96 @@ func doGet(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEnd
 	return nil, err
 }
 
+func (c *cnxn) GetOption(key string) (string, error) {
+	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
+		name := strings.TrimPrefix(key, OptionRPCCallHeaderPrefix)
+		headers := c.hdrs.Get(name)
+		if len(headers) > 0 {
+			return headers[0], nil
+		}
+		return "", adbc.Error{
+			Msg:  "[Flight SQL] unknown header",
+			Code: adbc.StatusNotFound,
+		}
+	}
+
+	switch key {
+	case OptionTimeoutFetch:
+		return c.timeouts.fetchTimeout.String(), nil
+	case OptionTimeoutQuery:
+		return c.timeouts.queryTimeout.String(), nil
+	case OptionTimeoutUpdate:
+		return c.timeouts.updateTimeout.String(), nil
+	case adbc.OptionKeyAutoCommit:
+		if c.txn != nil {
+			// No autocommit
+			return adbc.OptionValueDisabled, nil
+		} else {
+			// Autocommit
+			return adbc.OptionValueEnabled, nil
+		}
+	case adbc.OptionKeyCurrentCatalog:
+		return "", adbc.Error{
+			Msg:  "[Flight SQL] current catalog not supported",
+			Code: adbc.StatusNotFound,
+		}
+
+	case adbc.OptionKeyCurrentDbSchema:
+		return "", adbc.Error{
+			Msg:  "[Flight SQL] current schema not supported",
+			Code: adbc.StatusNotFound,
+		}
+	}
+
+	return "", adbc.Error{
+		Msg:  "[Flight SQL] unknown connection option",
+		Code: adbc.StatusNotFound,
+	}
+}
+
+func (c *cnxn) GetOptionBytes(key string) ([]byte, error) {
+	return nil, adbc.Error{
+		Msg:  "[Flight SQL] unknown connection option",
+		Code: adbc.StatusNotFound,
+	}
+}
+
+func (c *cnxn) GetOptionInt(key string) (int64, error) {
+	switch key {
+	case OptionTimeoutFetch:
+		fallthrough
+	case OptionTimeoutQuery:
+		fallthrough
+	case OptionTimeoutUpdate:
+		val, err := c.GetOptionDouble(key)
+		if err != nil {
+			return 0, err
+		}
+		return int64(val), nil
+	}
+
+	return 0, adbc.Error{
+		Msg:  "[Flight SQL] unknown connection option",
+		Code: adbc.StatusNotFound,
+	}
+}
+
+func (c *cnxn) GetOptionDouble(key string) (float64, error) {
+	switch key {
+	case OptionTimeoutFetch:
+		return c.timeouts.fetchTimeout.Seconds(), nil
+	case OptionTimeoutQuery:
+		return c.timeouts.queryTimeout.Seconds(), nil
+	case OptionTimeoutUpdate:
+		return c.timeouts.updateTimeout.Seconds(), nil
+	}
+
+	return 0.0, adbc.Error{
+		Msg:  "[Flight SQL] unknown connection option",
+		Code: adbc.StatusNotFound,
+	}
+}
+
 func (c *cnxn) SetOption(key, value string) error {
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
 		name := strings.TrimPrefix(key, OptionRPCCallHeaderPrefix)
@@ -741,40 +972,13 @@ func (c *cnxn) SetOption(key, value string) error {
 	}
 
 	switch key {
-	case OptionTimeoutFetch:
-		timeout, err := getTimeoutOptionValue(value)
-		if err != nil {
-			return adbc.Error{
-				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
-					OptionTimeoutFetch, value, err.Error()),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		c.timeouts.fetchTimeout = timeout
-	case OptionTimeoutQuery:
-		timeout, err := getTimeoutOptionValue(value)
-		if err != nil {
-			return adbc.Error{
-				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
-					OptionTimeoutFetch, value, err.Error()),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		c.timeouts.queryTimeout = timeout
-	case OptionTimeoutUpdate:
-		timeout, err := getTimeoutOptionValue(value)
-		if err != nil {
-			return adbc.Error{
-				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
-					OptionTimeoutFetch, value, err.Error()),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		c.timeouts.updateTimeout = timeout
+	case OptionTimeoutFetch, OptionTimeoutQuery, OptionTimeoutUpdate:
+		return c.timeouts.setTimeoutString(key, value)
 	case adbc.OptionKeyAutoCommit:
 		autocommit := true
 		switch value {
 		case adbc.OptionValueEnabled:
+			// Do nothing
 		case adbc.OptionValueDisabled:
 			autocommit = false
 		default:
@@ -823,8 +1027,41 @@ func (c *cnxn) SetOption(key, value string) error {
 			Code: adbc.StatusNotImplemented,
 		}
 	}
+}
 
-	return nil
+func (c *cnxn) SetOptionBytes(key string, value []byte) error {
+	return adbc.Error{
+		Msg:  "[Flight SQL] unknown connection option",
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (c *cnxn) SetOptionInt(key string, value int64) error {
+	switch key {
+	case OptionTimeoutFetch, OptionTimeoutQuery, OptionTimeoutUpdate:
+		return c.timeouts.setTimeout(key, float64(value))
+	}
+
+	return adbc.Error{
+		Msg:  "[Flight SQL] unknown connection option",
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (c *cnxn) SetOptionDouble(key string, value float64) error {
+	switch key {
+	case OptionTimeoutFetch:
+		fallthrough
+	case OptionTimeoutQuery:
+		fallthrough
+	case OptionTimeoutUpdate:
+		return c.timeouts.setTimeout(key, value)
+	}
+
+	return adbc.Error{
+		Msg:  "[Flight SQL] unknown connection option",
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 // GetInfo returns metadata about the database/driver.
@@ -853,6 +1090,7 @@ func (c *cnxn) SetOption(key, value string) error {
 // codes (the row will be omitted from the result).
 func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
 	const strValTypeID arrow.UnionTypeCode = 0
+	const intValTypeID arrow.UnionTypeCode = 2
 
 	if len(infoCodes) == 0 {
 		infoCodes = infoSupportedCodes
@@ -864,7 +1102,8 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 
 	infoNameBldr := bldr.Field(0).(*array.Uint32Builder)
 	infoValueBldr := bldr.Field(1).(*array.DenseUnionBuilder)
-	strInfoBldr := infoValueBldr.Child(0).(*array.StringBuilder)
+	strInfoBldr := infoValueBldr.Child(int(strValTypeID)).(*array.StringBuilder)
+	intInfoBldr := infoValueBldr.Child(int(intValTypeID)).(*array.Int64Builder)
 
 	translated := make([]flightsql.SqlInfo, 0, len(infoCodes))
 	for _, code := range infoCodes {
@@ -886,6 +1125,10 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 			infoNameBldr.Append(uint32(code))
 			infoValueBldr.Append(strValTypeID)
 			strInfoBldr.Append(infoDriverArrowVersion)
+		case adbc.InfoDriverADBCVersion:
+			infoNameBldr.Append(uint32(code))
+			infoValueBldr.Append(intValTypeID)
+			intInfoBldr.Append(adbc.AdbcVersion1_1_0)
 		}
 	}
 
@@ -1368,12 +1611,28 @@ func (c *cnxn) execute(ctx context.Context, query string, opts ...grpc.CallOptio
 	return c.cl.Execute(ctx, query, opts...)
 }
 
+func (c *cnxn) executeSchema(ctx context.Context, query string, opts ...grpc.CallOption) (*flight.SchemaResult, error) {
+	if c.txn != nil {
+		return c.txn.GetExecuteSchema(ctx, query, opts...)
+	}
+
+	return c.cl.GetExecuteSchema(ctx, query, opts...)
+}
+
 func (c *cnxn) executeSubstrait(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flight.FlightInfo, error) {
 	if c.txn != nil {
 		return c.txn.ExecuteSubstrait(ctx, plan, opts...)
 	}
 
 	return c.cl.ExecuteSubstrait(ctx, plan, opts...)
+}
+
+func (c *cnxn) executeSubstraitSchema(ctx context.Context, plan flightsql.SubstraitPlan, opts ...grpc.CallOption) (*flight.SchemaResult, error) {
+	if c.txn != nil {
+		return c.txn.GetExecuteSubstraitSchema(ctx, plan, opts...)
+	}
+
+	return c.cl.GetExecuteSubstraitSchema(ctx, plan, opts...)
 }
 
 func (c *cnxn) executeUpdate(ctx context.Context, query string, opts ...grpc.CallOption) (n int64, err error) {

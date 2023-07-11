@@ -104,7 +104,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				rec.Retain()
 				ch <- rec
 			}
-			return rdr.Err()
+			return adbcFromFlightStatus(rdr.Err(), "DoGet: endpoint 0: remote: %s", endpoints[0].Location)
 		})
 
 		endpoints = endpoints[1:]
@@ -150,7 +150,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				chs[endpointIndex] <- rec
 			}
 
-			return rdr.Err()
+			return adbcFromFlightStatus(rdr.Err(), "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
 		})
 	}
 
