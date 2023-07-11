@@ -25,8 +25,8 @@ Low-Level API
 =============
 
 .. automodule:: adbc_driver_postgresql
-
-.. autofunction:: adbc_driver_postgresql.connect
+   :members:
+   :undoc-members:
 
 DBAPI 2.0 API
 =============
