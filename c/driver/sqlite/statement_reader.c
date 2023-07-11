@@ -127,9 +127,15 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
   assert(rem >= 0);
 
   struct tm broken_down_time;
+#ifdef _MSVC_VER
+  if (gmtime_s(&broken_down_time, &seconds) != 0) {
+    return NULL;
+  }
+#else
   if (gmtime_r(&seconds, &broken_down_time) != &broken_down_time) {
     return NULL;
   }
+#endif
 
   char* tsstr = malloc(strlen + 1);
   if (tsstr == NULL) {
