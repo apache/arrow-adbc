@@ -334,6 +334,88 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadDoublePrecision) {
   ASSERT_EQ(data_buffer[4], 0);
 }
 
+// For full coverage, ensure that this contains NUMERIC examples that:
+// - Have >= four zeroes to the left of the decimal point
+// - Have >= four zeroes to the right of the decimal point
+// - Include special values (nan, -inf, inf, NULL)
+// - Have >= four trailing zeroes to the right of the decimal point
+// - Have >= four leading zeroes before the first digit to the right of the decimal point
+// - Is < 0 (negative)
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (  VALUES (1000000), ('0.00001234'),
+// ('1.0000'), (-123.456), (123.456), ('nan'), ('-inf'), ('inf'), (NULL)) AS drvd(col)) TO
+// STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumeric[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00,
+    0x01, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x08, 0x04, 0xd2, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x0a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x01, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0c, 0x00, 0x02, 0x00, 0x00, 0x40, 0x00, 0x00, 0x03, 0x00, 0x7b, 0x11,
+    0xd0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x03, 0x00, 0x7b, 0x11, 0xd0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
+    0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
+    0x00, 0xf0, 0x00, 0x00, 0x20, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
+    0x00, 0xd0, 0x00, 0x00, 0x20, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyNumeric;
+  data.size_bytes = sizeof(kTestPgCopyNumeric);
+
+  auto col_type = PostgresType(PostgresTypeId::kNumeric);
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", col_type);
+
+  PostgresCopyStreamTester tester;
+  ASSERT_EQ(tester.Init(input_type), NANOARROW_OK);
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyNumeric, sizeof(kTestPgCopyNumeric));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 9);
+  ASSERT_EQ(array->n_children, 1);
+
+  nanoarrow::UniqueSchema schema;
+  tester.GetSchema(schema.get());
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(array_view->children[0]->storage_type, NANOARROW_TYPE_STRING);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  auto validity = array_view->children[0]->buffer_views[0].data.as_uint8;
+  ASSERT_TRUE(ArrowBitGet(validity, 0));
+  ASSERT_TRUE(ArrowBitGet(validity, 1));
+  ASSERT_TRUE(ArrowBitGet(validity, 2));
+  ASSERT_TRUE(ArrowBitGet(validity, 3));
+  ASSERT_TRUE(ArrowBitGet(validity, 4));
+  ASSERT_TRUE(ArrowBitGet(validity, 5));
+  ASSERT_TRUE(ArrowBitGet(validity, 6));
+  ASSERT_TRUE(ArrowBitGet(validity, 7));
+  ASSERT_FALSE(ArrowBitGet(validity, 8));
+
+  struct ArrowStringView item;
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 0);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "1000000");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 1);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "0.00001234");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 2);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "1.0000");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 3);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "-123.456");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 4);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "123.456");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 5);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "nan");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 6);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "-inf");
+  item = ArrowArrayViewGetStringUnsafe(array_view->children[0], 7);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "inf");
+}
+
 // COPY (SELECT CAST("col" AS TEXT) AS "col" FROM (  VALUES ('abc'), ('1234'),
 // (NULL::text)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
 static uint8_t kTestPgCopyText[] = {
