@@ -15,13 +15,24 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import enum
 import functools
 
 import adbc_driver_manager
 
 from ._version import __version__
 
-__all__ = ["connect", "__version__"]
+__all__ = ["StatementOptions", "connect", "__version__"]
+
+
+class StatementOptions(enum.Enum):
+    """Statement options specific to the PostgreSQL driver."""
+
+    #: Try to limit returned batches to this size (in bytes).
+    #:
+    #: This is merely a hint, and because the size is estimated, the
+    #: actual size may differ.
+    BATCH_SIZE_HINT_BYTES = "adbc.postgresql.batch_size_hint_bytes"
 
 
 def connect(uri: str) -> adbc_driver_manager.AdbcDatabase:
