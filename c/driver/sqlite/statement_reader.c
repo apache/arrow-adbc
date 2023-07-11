@@ -120,14 +120,13 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
   seconds = value / scale;
   rem = value % scale;
 
-  // TODO: add tests for negative timestamps
   if (rem < 0) {
     rem = scale + rem;
   }
   assert(rem >= 0);
 
   struct tm broken_down_time;
-#ifdef _MSVC_VER
+#if defined(_WIN32)
   if (gmtime_s(&broken_down_time, &seconds) != 0) {
     return NULL;
   }

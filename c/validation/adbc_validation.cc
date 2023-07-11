@@ -1107,7 +1107,7 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  const std::vector<std::optional<int64_t>> values = {std::nullopt, 0, 42};
+  const std::vector<std::optional<int64_t>> values = {std::nullopt, -42, 0, 42};
   const ArrowType type = NANOARROW_TYPE_TIMESTAMP;
 
   // much of this code is shared with TestSqlIngestType with minor
