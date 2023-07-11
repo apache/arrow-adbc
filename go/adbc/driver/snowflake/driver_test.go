@@ -317,7 +317,7 @@ func (suite *SnowflakeTests) TearDownSuite() {
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
-	suite.Quirks.DropTable(suite.cnxn, "bulk_ingest")
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
 
 	sc := arrow.NewSchema([]arrow.Field{{
 		Name: "col", Type: arrow.FixedWidthTypes.Timestamp_us,
