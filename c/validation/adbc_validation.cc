@@ -1108,12 +1108,13 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
   const std::vector<std::optional<int64_t>> values = {std::nullopt, 0, 42};
+  const ArrowType type = NANOARROW_TYPE_TIMESTAMP;
 
   // much of this code is shared with TestSqlIngestType with minor
   // changes to allow for various time units to be tested
   ArrowSchemaInit(&schema.value);
   ArrowSchemaSetTypeStruct(&schema.value, 1);
-  ArrowSchemaSetTypeDateTime(schema->children[0], NANOARROW_TYPE_TIMESTAMP, TU, timezone);
+  ArrowSchemaSetTypeDateTime(schema->children[0], type, TU, timezone);
   ArrowSchemaSetName(schema->children[0], "col");
   ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error, values),
               IsOkErrno());
@@ -1145,24 +1146,22 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
 
-    // postgres does not receive/store/send the timezone, just the UTC integer
-    // value; we may still want to update CompareSchema to explicitly check for UTC
-    // with TIMESTAMP WITH TIMEZONE and naive for TIMESTAMP
-    ASSERT_NO_FATAL_FAILURE(CompareSchema(&reader.schema.value,
-                                          {{"col", NANOARROW_TYPE_TIMESTAMP, NULLABLE}}));
+    ArrowType round_trip_type = quirks()->IngestSelectRoundTripType(type);
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(&reader.schema.value, {{"col", round_trip_type, NULLABLE}}));
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
     ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    if (TU == NANOARROW_TIME_UNIT_MICRO) {
-      // Similar to the TestSqlIngestType implementation we are only now
-      // testing values if the unit round trips
-      ASSERT_NO_FATAL_FAILURE(
-          CompareArray<int64_t>(reader.array_view->children[0], values));
+    if (round_trip_type == type) {
+      // XXX: for now we can't compare values; we would need casting
+      if (TU == NANOARROW_TIME_UNIT_MICRO) {
+        ASSERT_NO_FATAL_FAILURE(
+            CompareArray<int64_t>(reader.array_view->children[0], values));
+      }
     }
-
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
   }

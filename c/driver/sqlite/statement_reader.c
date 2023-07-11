@@ -97,38 +97,33 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
   int64_t seconds;
   int strlen;
   int rem;
-  int decimal_places;
   int scale;
 
   switch (unit) {
     case NANOARROW_TIME_UNIT_SECOND:
       scale = 1;
-      strlen = 19;
-      decimal_places = 0;
+      strlen = 20;
       break;
     case NANOARROW_TIME_UNIT_MILLI:
       scale = 1000;
-      strlen = 23;
-      decimal_places = 3;
+      strlen = 24;
       break;
     case NANOARROW_TIME_UNIT_MICRO:
       scale = 1000000;
-      strlen = 26;
-      decimal_places = 6;
+      strlen = 27;
       break;
     case NANOARROW_TIME_UNIT_NANO:
       scale = 1000000000;
-      strlen = 29;
-      decimal_places = 9;
+      strlen = 30;
       break;
   }
   seconds = value / scale;
   rem = value % scale;
 
+  // TODO: add tests for negative timestamps
   if (rem < 0) {
     rem = scale + rem;
   }
-  assert(rem >= 0);
 
   struct tm broken_down_time;
   if (gmtime_r(&seconds, &broken_down_time) != &broken_down_time) {
@@ -140,7 +135,7 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
     return NULL;
   }
 
-  if (strftime(tsstr, strlen, "%Y-%m-%dT%H%M%S", &broken_down_time) == 0) {
+  if (strftime(tsstr, strlen, "%Y-%m-%dT%H:%M:%S", &broken_down_time) == 0) {
     free(tsstr);
     return NULL;
   }
@@ -149,10 +144,22 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
     case NANOARROW_TIME_UNIT_SECOND:
       break;
     case NANOARROW_TIME_UNIT_MILLI:
-    case NANOARROW_TIME_UNIT_MICRO:
-    case NANOARROW_TIME_UNIT_NANO:
+      assert(rem >= 0);
+      assert(rem < 1000);
       tsstr[19] = '.';
-      snprintf(tsstr + 20, decimal_places + 1, "%d", rem);
+      snprintf(tsstr + 20, strlen - 20, "%03d", rem);
+      break;
+    case NANOARROW_TIME_UNIT_MICRO:
+      assert(rem >= 0);
+      assert(rem < 1000000);
+      tsstr[19] = '.';
+      snprintf(tsstr + 20, strlen - 20, "%06d", rem);
+      break;
+    case NANOARROW_TIME_UNIT_NANO:
+      assert(rem >= 0);
+      assert(rem < 1000000000);
+      tsstr[19] = '.';
+      snprintf(tsstr + 20, strlen - 20, "%09d", rem);
       break;
   }
 
