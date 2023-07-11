@@ -315,6 +315,7 @@ jobs:
           popd
       - name: Go Test
         env:
+          SNOWFLAKE_DATABASE: ADBC_TESTING
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"

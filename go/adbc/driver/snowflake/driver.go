@@ -209,6 +209,105 @@ type database struct {
 	alloc memory.Allocator
 }
 
+func (d *database) GetOption(key string) (string, error) {
+	switch key {
+	case adbc.OptionKeyUsername:
+		return d.cfg.User, nil
+	case adbc.OptionKeyPassword:
+		return d.cfg.Password, nil
+	case OptionDatabase:
+		return d.cfg.Database, nil
+	case OptionSchema:
+		return d.cfg.Schema, nil
+	case OptionWarehouse:
+		return d.cfg.Warehouse, nil
+	case OptionRole:
+		return d.cfg.Role, nil
+	case OptionRegion:
+		return d.cfg.Region, nil
+	case OptionAccount:
+		return d.cfg.Account, nil
+	case OptionProtocol:
+		return d.cfg.Protocol, nil
+	case OptionHost:
+		return d.cfg.Host, nil
+	case OptionPort:
+		return strconv.Itoa(d.cfg.Port), nil
+	case OptionAuthType:
+		return d.cfg.Authenticator.String(), nil
+	case OptionLoginTimeout:
+		return strconv.FormatFloat(d.cfg.LoginTimeout.Seconds(), 'f', -1, 64), nil
+	case OptionRequestTimeout:
+		return strconv.FormatFloat(d.cfg.RequestTimeout.Seconds(), 'f', -1, 64), nil
+	case OptionJwtExpireTimeout:
+		return strconv.FormatFloat(d.cfg.JWTExpireTimeout.Seconds(), 'f', -1, 64), nil
+	case OptionClientTimeout:
+		return strconv.FormatFloat(d.cfg.ClientTimeout.Seconds(), 'f', -1, 64), nil
+	case OptionApplicationName:
+		return d.cfg.Application, nil
+	case OptionSSLSkipVerify:
+		if d.cfg.InsecureMode {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
+	case OptionOCSPFailOpenMode:
+		return strconv.FormatUint(uint64(d.cfg.OCSPFailOpen), 10), nil
+	case OptionAuthToken:
+		return d.cfg.Token, nil
+	case OptionAuthOktaUrl:
+		return d.cfg.OktaURL.String(), nil
+	case OptionKeepSessionAlive:
+		if d.cfg.KeepSessionAlive {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
+	case OptionDisableTelemetry:
+		if d.cfg.DisableTelemetry {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
+	case OptionClientRequestMFAToken:
+		if d.cfg.ClientRequestMfaToken == gosnowflake.ConfigBoolTrue {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
+	case OptionClientStoreTempCred:
+		if d.cfg.ClientStoreTemporaryCredential == gosnowflake.ConfigBoolTrue {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
+	case OptionLogTracing:
+		return d.cfg.Tracing, nil
+	default:
+		val, ok := d.cfg.Params[key]
+		if ok {
+			return *val, nil
+		}
+	}
+	return "", adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (d *database) GetOptionBytes(key string) ([]byte, error) {
+	return nil, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (d *database) GetOptionInt(key string) (int64, error) {
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (d *database) GetOptionDouble(key string) (float64, error) {
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+
 func (d *database) SetOptions(cnOptions map[string]string) error {
 	uri, ok := cnOptions[adbc.OptionKeyURI]
 	if ok {
@@ -419,6 +518,35 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 		}
 	}
 	return nil
+}
+
+func (d *database) SetOption(key string, val string) error {
+	// Can't set options after init
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (d *database) SetOptionBytes(key string, value []byte) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (d *database) SetOptionInt(key string, value int64) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (d *database) SetOptionDouble(key string, value float64) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown database option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 func (d *database) Open(ctx context.Context) (adbc.Connection, error) {
