@@ -124,6 +124,7 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
   if (rem < 0) {
     rem = scale + rem;
   }
+  assert(rem >= 0);
 
   struct tm broken_down_time;
   if (gmtime_r(&seconds, &broken_down_time) != &broken_down_time) {
@@ -144,20 +145,14 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
     case NANOARROW_TIME_UNIT_SECOND:
       break;
     case NANOARROW_TIME_UNIT_MILLI:
-      assert(rem >= 0);
-      assert(rem < 1000);
       tsstr[19] = '.';
       snprintf(tsstr + 20, strlen - 20, "%03d", rem);
       break;
     case NANOARROW_TIME_UNIT_MICRO:
-      assert(rem >= 0);
-      assert(rem < 1000000);
       tsstr[19] = '.';
       snprintf(tsstr + 20, strlen - 20, "%06d", rem);
       break;
     case NANOARROW_TIME_UNIT_NANO:
-      assert(rem >= 0);
-      assert(rem < 1000000000);
       tsstr[19] = '.';
       snprintf(tsstr + 20, strlen - 20, "%09d", rem);
       break;
