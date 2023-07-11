@@ -284,7 +284,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
         return EINVAL;
     }
 
-    if (special_value.size() > 0) {
+    if (!special_value.empty()) {
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppend(data_, special_value.data(), special_value.size()));
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, data_->size_bytes));
@@ -292,7 +292,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
     }
 
     // Calculate string space requirement
-    int64_t max_chars_required = std::max<int64_t>(1, weight + 1 * kDecDigits);
+    int64_t max_chars_required = std::max<int64_t>(1, (weight + 1) * kDecDigits);
     max_chars_required += dscale + kDecDigits + 2;
     NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(data_, max_chars_required));
     char* out0 = reinterpret_cast<char*>(data_->data + data_->size_bytes);
