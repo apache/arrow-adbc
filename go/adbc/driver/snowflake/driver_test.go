@@ -316,6 +316,42 @@ func (suite *SnowflakeTests) TearDownSuite() {
 	suite.db = nil
 }
 
+func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "bulk_ingest"))
+
+	sc := arrow.NewSchema([]arrow.Field{{
+		Name: "col", Type: arrow.FixedWidthTypes.Timestamp_us,
+		Nullable: true,
+	}}, nil)
+
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, sc)
+	defer bldr.Release()
+
+	tbldr := bldr.Field(0).(*array.TimestampBuilder)
+	tbldr.AppendValues([]arrow.Timestamp{0, 0, 42}, []bool{false, true, true})
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
+	suite.Require().NoError(suite.stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
+	n, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.EqualValues(3, n)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(3, n)
+	suite.True(rdr.Next())
+	result := rdr.Record()
+	suite.Truef(array.RecordEqual(rec, result), "expected: %s\ngot: %s", rec, result)
+	suite.False(rdr.Next())
+
+	suite.Require().NoError(rdr.Err())
+}
+
 func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 	// Regression test for https://github.com/apache/arrow-adbc/issues/863
 	suite.NoError(suite.stmt.SetSqlQuery("SHOW WAREHOUSES"))

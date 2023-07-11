@@ -153,9 +153,9 @@ func toSnowflakeType(dt arrow.DataType) string {
 		ts := dt.(*arrow.TimestampType)
 		prec := int(ts.Unit) * 3
 		if ts.TimeZone == "" {
-			return fmt.Sprintf("timestamp_tz(%d)", prec)
+			return fmt.Sprintf("timestamp_ntz(%d)", prec)
 		}
-		return fmt.Sprintf("timestamp_ltz(%d)", prec)
+		return fmt.Sprintf("timestamp_tz(%d)", prec)
 	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
 		return "variant"
 	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
