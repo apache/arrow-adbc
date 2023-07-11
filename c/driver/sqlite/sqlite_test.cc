@@ -39,7 +39,8 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                struct AdbcError* error) const override {
     // Shared DB required for transaction tests
-    return AdbcDatabaseSetOption(database, "uri", "file:Sqlite_Transactions", error);
+    return AdbcDatabaseSetOption(
+        database, "uri", "file:Sqlite_Transactions?mode=memory&cache=shared", error);
   }
 
   AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
