@@ -120,6 +120,12 @@ static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUni
       break;
   }
 
+  rem = value % scale;
+  if (rem < 0) {
+    value -= scale;
+    rem = scale + rem;
+  }
+
   const int64_t seconds = value / scale;
 
 #if SIZEOF_TIME_T < 8
@@ -133,11 +139,6 @@ static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUni
 #else
   const time_t time = seconds;
 #endif
-
-  rem = value % scale;
-  if (rem < 0) {
-    rem = scale + rem;
-  }
 
   struct tm broken_down_time;
 
