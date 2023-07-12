@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -94,7 +95,6 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
 
 /* caller is responsible for freeing data */
 static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit unit) {
-  int64_t seconds;
   int scale = 1;
   int strlen = 20;
   int rem = 0;
@@ -115,7 +115,20 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
       strlen = 30;
       break;
   }
-  seconds = value / scale;
+
+  int64_t seconds = value / scale;
+  time_t time;
+
+#if SIZEOF_TIME_T < 8
+  if ((seconds > INT32_MAX) || (seconds < INT32_MIN)) {
+    // TODO: give better error visibility
+    return NULL;
+  }
+  time = (time_t)seconds;
+#else
+  time = seconds;
+#endif
+
   rem = value % scale;
 
   if (rem < 0) {
@@ -123,12 +136,13 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
   }
 
   struct tm broken_down_time;
+
 #if defined(_WIN32)
-  if (gmtime_s(&broken_down_time, &seconds) != 0) {
+  if (gmtime_s(&broken_down_time, &time) != 0) {
     return NULL;
   }
 #else
-  if (gmtime_r(&seconds, &broken_down_time) != &broken_down_time) {
+  if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
     return NULL;
   }
 #endif
