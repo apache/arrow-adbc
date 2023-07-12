@@ -17,9 +17,12 @@
 
 #include "statement_reader.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 
 #include <adbc.h>
 #include <nanoarrow/nanoarrow.h>
@@ -89,6 +92,107 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
   memset(values, 0, sizeof(*values));
   return AdbcSqliteBinderSet(binder, error);
 }
+
+/*
+  Allocates to buf on success. Caller is responsible for freeing.
+  On failure sets error and contents of buf are undefined.
+*/
+static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit unit,
+                                                char** buf, struct AdbcError* error) {
+  int scale = 1;
+  int strlen = 20;
+  int rem = 0;
+
+  switch (unit) {
+    case NANOARROW_TIME_UNIT_SECOND:
+      break;
+    case NANOARROW_TIME_UNIT_MILLI:
+      scale = 1000;
+      strlen = 24;
+      break;
+    case NANOARROW_TIME_UNIT_MICRO:
+      scale = 1000000;
+      strlen = 27;
+      break;
+    case NANOARROW_TIME_UNIT_NANO:
+      scale = 1000000000;
+      strlen = 30;
+      break;
+  }
+
+  const int64_t seconds = value / scale;
+
+#if SIZEOF_TIME_T < 8
+  if ((seconds > INT32_MAX) || (seconds < INT32_MIN)) {
+    SetError(error, "Timestamp %" PRId64 " with unit %d exceeds platform time_t bounds",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  const time_t time = (time_t)seconds;
+#else
+  const time_t time = seconds;
+#endif
+
+  rem = value % scale;
+  if (rem < 0) {
+    rem = scale + rem;
+  }
+
+  struct tm broken_down_time;
+
+#if defined(_WIN32)
+  if (gmtime_s(&broken_down_time, &time) != 0) {
+    SetError(error,
+             "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#else
+  if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
+    SetError(error,
+             "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#endif
+
+  char* tsstr = malloc(strlen + 1);
+  if (tsstr == NULL) {
+    return ADBC_STATUS_IO;
+  }
+
+  if (strftime(tsstr, strlen, "%Y-%m-%dT%H:%M:%S", &broken_down_time) == 0) {
+    SetError(error, "Call to strftime for timestamp %" PRId64 " with unit %d failed",
+             value, unit);
+    free(tsstr);
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  assert(rem >= 0);
+  switch (unit) {
+    case NANOARROW_TIME_UNIT_SECOND:
+      break;
+    case NANOARROW_TIME_UNIT_MILLI:
+      tsstr[19] = '.';
+      snprintf(tsstr + 20, strlen - 20, "%03d", rem % 1000u);
+      break;
+    case NANOARROW_TIME_UNIT_MICRO:
+      tsstr[19] = '.';
+      snprintf(tsstr + 20, strlen - 20, "%06d", rem % 1000000u);
+      break;
+    case NANOARROW_TIME_UNIT_NANO:
+      tsstr[19] = '.';
+      snprintf(tsstr + 20, strlen - 20, "%09d", rem % 1000000000u);
+      break;
+  }
+
+  *buf = tsstr;
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3* conn,
                                         sqlite3_stmt* stmt, char* finished,
                                         struct AdbcError* error) {
@@ -193,6 +297,23 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
           status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
                                      SQLITE_STATIC);
+          break;
+        }
+        case NANOARROW_TYPE_TIMESTAMP: {
+          struct ArrowSchemaView bind_schema_view;
+          RAISE_ADBC(ArrowSchemaViewInit(&bind_schema_view, binder->schema.children[col],
+                                         &arrow_error));
+          enum ArrowTimeUnit unit = bind_schema_view.time_unit;
+          int64_t value =
+              ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
+
+          char* tsstr;
+          RAISE_ADBC(ArrowTimestampToIsoString(value, unit, &tsstr, error));
+
+          // SQLITE_TRANSIENT ensures the value is copied during bind
+          status =
+              sqlite3_bind_text(stmt, col + 1, tsstr, strlen(tsstr), SQLITE_TRANSIENT);
+          free((char*)tsstr);
           break;
         }
         default:

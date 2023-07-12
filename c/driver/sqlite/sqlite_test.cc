@@ -43,6 +43,24 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
         database, "uri", "file:Sqlite_Transactions?mode=memory&cache=shared", error);
   }
 
+  AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
+                           struct AdbcError* error) const override {
+    struct AdbcStatement statement;
+    std::memset(&statement, 0, sizeof(statement));
+    AdbcStatusCode status = AdbcStatementNew(connection, &statement, error);
+    if (status != ADBC_STATUS_OK) return status;
+
+    std::string query = "DROP TABLE IF EXISTS " + name;
+    status = AdbcStatementSetSqlQuery(&statement, query.c_str(), error);
+    if (status != ADBC_STATUS_OK) {
+      std::ignore = AdbcStatementRelease(&statement, error);
+      return status;
+    }
+    status = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, error);
+    std::ignore = AdbcStatementRelease(&statement, error);
+    return status;
+  }
+
   std::string BindParameter(int index) const override { return "?"; }
 
   ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const override {
@@ -59,6 +77,8 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE:
         return NANOARROW_TYPE_DOUBLE;
+      case NANOARROW_TYPE_TIMESTAMP:
+        return NANOARROW_TYPE_STRING;
       default:
         return ingest_type;
     }
@@ -171,9 +191,6 @@ class SqliteStatementTest : public ::testing::Test,
 
   void TestSqlIngestUInt64() { GTEST_SKIP() << "Cannot ingest UINT64 (out of range)"; }
   void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
-  void TestSqlIngestTimestamp() {
-    GTEST_SKIP() << "Cannot ingest TIMESTAMP (not implemented)";
-  }
   void TestSqlIngestTimestampTz() {
     GTEST_SKIP() << "Cannot ingest TIMESTAMP WITH TIMEZONE (not implemented)";
   }

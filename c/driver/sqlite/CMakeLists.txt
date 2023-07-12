@@ -56,6 +56,10 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
 
+include(CheckTypeSize)
+check_type_size("time_t" SIZEOF_TIME_T)
+add_definitions(-DSIZEOF_TIME_T=${SIZEOF_TIME_T})
+
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
   set(TEST_LINK_LIBS adbc_driver_sqlite_shared)
 else()
