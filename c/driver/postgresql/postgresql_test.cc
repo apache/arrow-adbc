@@ -576,6 +576,91 @@ class PostgresStatementTest : public ::testing::Test,
   }
 
  protected:
+  void TestSqlIngestTemporalType(enum ArrowTimeUnit unit, const char* timezone) override {
+    if (!quirks()->supports_bulk_ingest()) {
+      GTEST_SKIP();
+    }
+
+    ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+                adbc_validation::IsOkStatus(&error));
+
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    const std::vector<std::optional<int64_t>> values = {std::nullopt, -42, 0, 42};
+    const ArrowType type = NANOARROW_TYPE_TIMESTAMP;
+
+    // much of this code is shared with TestSqlIngestType with minor
+    // changes to allow for various time units to be tested
+    ArrowSchemaInit(&schema.value);
+    ArrowSchemaSetTypeStruct(&schema.value, 1);
+    ArrowSchemaSetTypeDateTime(schema->children[0], type, unit, timezone);
+    ArrowSchemaSetName(schema->children[0], "col");
+    ASSERT_THAT(adbc_validation::MakeBatch<int64_t>(&schema.value, &array.value,
+                                                    &na_error, values),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       "bulk_ingest", &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+                adbc_validation::IsOkStatus(&error));
+
+    int64_t rows_affected = 0;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(rows_affected,
+                ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement,
+                    "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error),
+                adbc_validation::IsOkStatus(&error));
+    {
+      adbc_validation::StreamReader reader;
+      ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                            &reader.rows_affected, &error),
+                  adbc_validation::IsOkStatus(&error));
+      ASSERT_THAT(reader.rows_affected,
+                  ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+      ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+      ArrowType round_trip_type = quirks()->IngestSelectRoundTripType(type);
+      ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+          &reader.schema.value, {{"col", round_trip_type, /*NULLABLE=*/true}}));
+
+      ASSERT_NO_FATAL_FAILURE(reader.Next());
+      ASSERT_NE(nullptr, reader.array->release);
+      ASSERT_EQ(values.size(), reader.array->length);
+      ASSERT_EQ(1, reader.array->n_children);
+
+      std::vector<std::optional<int64_t>> expected;
+      switch (unit) {
+        case (NANOARROW_TIME_UNIT_SECOND):
+          expected.insert(expected.end(), {std::nullopt, -42000000, 0, 42000000});
+          break;
+        case (NANOARROW_TIME_UNIT_MILLI):
+          expected.insert(expected.end(), {std::nullopt, -42000, 0, 42000});
+          break;
+        case (NANOARROW_TIME_UNIT_MICRO):
+          expected.insert(expected.end(), {std::nullopt, -42, 0, 42});
+          break;
+        case (NANOARROW_TIME_UNIT_NANO):
+          expected.insert(expected.end(), {std::nullopt, 0, 0, 0});
+          break;
+      }
+      ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::int64_t>(
+          reader.array_view->children[0], expected));
+      ASSERT_NO_FATAL_FAILURE(reader.Next());
+      ASSERT_EQ(nullptr, reader.array->release);
+    }
+
+    ASSERT_THAT(AdbcStatementRelease(&statement, &error),
+                adbc_validation::IsOkStatus(&error));
+  }
   PostgresQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(PostgresStatementTest)

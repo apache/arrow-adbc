@@ -256,7 +256,6 @@ class SqliteStatementTest : public ::testing::Test,
       ASSERT_EQ(values.size(), reader.array->length);
       ASSERT_EQ(1, reader.array->n_children);
 
-      // XXX: for now we can't compare values; we would need casting
       std::vector<std::optional<std::string>> expected;
       switch (unit) {
         case (NANOARROW_TIME_UNIT_SECOND):
