@@ -219,7 +219,7 @@ class StatementTest {
   void TestSqlIngestUInt8();
   void TestSqlIngestUInt16();
   void TestSqlIngestUInt32();
-  virtual void TestSqlIngestUInt64();
+  void TestSqlIngestUInt64();
 
   // Floats
   void TestSqlIngestFloat32();

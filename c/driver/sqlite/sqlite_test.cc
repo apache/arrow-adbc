@@ -189,7 +189,7 @@ class SqliteStatementTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestSqlIngestUInt64() override {
+  void TestSqlIngestUInt64() {
     std::vector<std::optional<uint64_t>> values = {std::nullopt, 0, INT64_MAX};
     return TestSqlIngestType(NANOARROW_TYPE_UINT64, values);
   }
