@@ -1166,7 +1166,9 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
 
 void StatementTest::ValidateIngestedTemporalData(struct ArrowArrayView* values,
                                                  enum ArrowTimeUnit unit,
-                                                 const char* timezone) {}
+                                                 const char* timezone) {
+  FAIL() << "ValidateIngestedTemporalData is not implemented in the base class";
+}
 
 void StatementTest::TestSqlIngestTimestamp() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_SECOND>(nullptr));
