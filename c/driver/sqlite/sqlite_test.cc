@@ -189,11 +189,12 @@ class SqliteStatementTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestSqlIngestUInt64() { GTEST_SKIP() << "Cannot ingest UINT64 (out of range)"; }
-  void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
-  void TestSqlIngestTimestampTz() {
-    GTEST_SKIP() << "Cannot ingest TIMESTAMP WITH TIMEZONE (not implemented)";
+  void TestSqlIngestUInt64() override {
+    std::vector<std::optional<uint64_t>> values = {std::nullopt, 0, INT64_MAX};
+    return TestSqlIngestType(NANOARROW_TYPE_UINT64, values);
   }
+
+  void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
 
  protected:
   void ValidateIngestedTemporalData(struct ArrowArrayView* values,
