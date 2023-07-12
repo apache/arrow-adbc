@@ -93,8 +93,12 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
   return AdbcSqliteBinderSet(binder, error);
 }
 
-/* caller is responsible for freeing data */
-static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit unit) {
+/*
+  Allocates to buf on success. Caller is responsible for freeing.
+  On failure sets error and contents of buf are undefined.
+*/
+static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit unit,
+                                                char** buf, struct AdbcError* error) {
   int scale = 1;
   int strlen = 20;
   int rem = 0;
@@ -120,8 +124,10 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
 
 #if SIZEOF_TIME_T < 8
   if ((seconds > INT32_MAX) || (seconds < INT32_MIN)) {
-    // TODO: give better error visibility
-    return NULL;
+    SetError(error, "Timestamp %" PRId64 " with unit %d exceeds platform time_t bounds",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
   }
   const time_t time = (time_t)seconds;
 #else
@@ -137,22 +143,32 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
 
 #if defined(_WIN32)
   if (gmtime_s(&broken_down_time, &time) != 0) {
-    return NULL;
+    SetError(error,
+             "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
   }
 #else
   if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
-    return NULL;
+    SetError(error,
+             "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
+             value, unit);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
   }
 #endif
 
   char* tsstr = malloc(strlen + 1);
   if (tsstr == NULL) {
-    return NULL;
+    return ADBC_STATUS_IO;
   }
 
   if (strftime(tsstr, strlen, "%Y-%m-%dT%H:%M:%S", &broken_down_time) == 0) {
+    SetError(error, "Call to strftime for timestamp %" PRId64 " with unit %d failed",
+             value, unit);
     free(tsstr);
-    return NULL;
+    return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   assert(rem >= 0);
@@ -173,7 +189,8 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
       break;
   }
 
-  return tsstr;
+  *buf = tsstr;
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3* conn,
@@ -284,17 +301,14 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
         }
         case NANOARROW_TYPE_TIMESTAMP: {
           struct ArrowSchemaView bind_schema_view;
-          // TODO: double check but doesn't seem like we need to free after init?
           RAISE_ADBC(ArrowSchemaViewInit(&bind_schema_view, binder->schema.children[col],
                                          &arrow_error));
           enum ArrowTimeUnit unit = bind_schema_view.time_unit;
           int64_t value =
               ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
 
-          const char* tsstr = ArrowTimestampToIsoString(value, unit);
-          if (tsstr == NULL) {
-            return ADBC_STATUS_IO;
-          }
+          char* tsstr;
+          RAISE_ADBC(ArrowTimestampToIsoString(value, unit, &tsstr, error));
 
           // SQLITE_TRANSIENT ensures the value is copied during bind
           status =
