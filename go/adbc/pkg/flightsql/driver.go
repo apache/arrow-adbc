@@ -49,6 +49,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow/go/v13/arrow/array"
 	"github.com/apache/arrow/go/v13/arrow/cdata"
+	"github.com/apache/arrow/go/v13/arrow/memory"
 	"github.com/apache/arrow/go/v13/arrow/memory/mallocator"
 )
 
@@ -205,8 +206,9 @@ func getFromHandle[T any](ptr unsafe.Pointer) *T {
 func exportStringOption(val string, out *C.char, length *C.size_t) C.AdbcStatusCode {
 	lenWithTerminator := C.size_t(len(val) + 1)
 	if lenWithTerminator <= *length {
-		// TODO: doesn't this reallocate the string? can we avoid this?
-		C.strncpy(out, (*C.char)(C.CString(val)), lenWithTerminator)
+		sink := fromCArr[byte]((*byte)(unsafe.Pointer(out)), int(*length))
+		copy(sink, val)
+		sink[lenWithTerminator] = 0
 	}
 	*length = lenWithTerminator
 	return C.ADBC_STATUS_OK
@@ -1693,9 +1695,11 @@ func FlightSQLDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcErr
 
 	switch version {
 	case C.ADBC_VERSION_1_0_0:
-		C.memset(unsafe.Pointer(driver), 0, C.ADBC_DRIVER_1_0_0_SIZE)
+		sink := fromCArr[byte]((*byte)(unsafe.Pointer(driver)), C.ADBC_DRIVER_1_0_0_SIZE)
+		memory.Set(sink, 0)
 	case C.ADBC_VERSION_1_1_0:
-		C.memset(unsafe.Pointer(driver), 0, C.ADBC_DRIVER_1_1_0_SIZE)
+		sink := fromCArr[byte]((*byte)(unsafe.Pointer(driver)), C.ADBC_DRIVER_1_1_0_SIZE)
+		memory.Set(sink, 0)
 	default:
 		setErr(err, "Only version 1.0.0/1.1.0 supported, got %d", int(version))
 		return C.ADBC_STATUS_NOT_IMPLEMENTED
