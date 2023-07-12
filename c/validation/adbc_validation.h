@@ -274,7 +274,12 @@ class StatementTest {
   template <typename CType>
   void TestSqlIngestNumericType(ArrowType type);
 
-  virtual void TestSqlIngestTemporalType(enum ArrowTimeUnit unit, const char* timezone);
+  template <enum ArrowTimeUnit TU>
+  void TestSqlIngestTemporalType(const char* timezone);
+
+  virtual void ValidateIngestedTemporalData(struct ArrowArrayView* values,
+                                            enum ArrowTimeUnit unit,
+                                            const char* timezone);
 };
 
 #define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
