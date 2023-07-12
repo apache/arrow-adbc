@@ -116,21 +116,19 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
       break;
   }
 
-  int64_t seconds = value / scale;
-  time_t time;
+  const int64_t seconds = value / scale;
 
 #if SIZEOF_TIME_T < 8
   if ((seconds > INT32_MAX) || (seconds < INT32_MIN)) {
     // TODO: give better error visibility
     return NULL;
   }
-  time = (time_t)seconds;
+  const time_t time = (time_t)seconds;
 #else
-  time = seconds;
+  const time_t time = seconds;
 #endif
 
   rem = value % scale;
-
   if (rem < 0) {
     rem = scale + rem;
   }
