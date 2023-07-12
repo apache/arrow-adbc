@@ -145,3 +145,16 @@ JDBC driver in a bespoke Arrow-based API.
 
 .. _arrow-jdbc: https://central.sonatype.com/artifact/org.apache.arrow/arrow-jdbc/11.0.0
 .. _Turbodbc: https://turbodbc.readthedocs.io/en/latest/
+
+What is the ADBC SQL dialect?
+=============================
+
+Trick question!  ADBC is not a SQL dialect.  All an ADBC driver is
+required to do, is pass your query string to the database and get the
+result set as Arrow data.  In that respect, it's like JDBC.  (ODBC has
+a "standard" SQL dialect it defines; ADBC does not do this.)
+
+For a project that does try to tackle the problem of defining a
+vendor-independent query language, see Substrait_.
+
+.. _Substrait: https://substrait.io/
