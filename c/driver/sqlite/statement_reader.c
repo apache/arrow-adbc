@@ -161,15 +161,15 @@ static const char* ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUnit u
       break;
     case NANOARROW_TIME_UNIT_MILLI:
       tsstr[19] = '.';
-      snprintf(tsstr + 20, 4, "%03d", rem % 1000u);
+      snprintf(tsstr + 20, strlen - 20, "%03d", rem % 1000u);
       break;
     case NANOARROW_TIME_UNIT_MICRO:
       tsstr[19] = '.';
-      snprintf(tsstr + 20, 7, "%06d", rem % 1000000u);
+      snprintf(tsstr + 20, strlen - 20, "%06d", rem % 1000000u);
       break;
     case NANOARROW_TIME_UNIT_NANO:
       tsstr[19] = '.';
-      snprintf(tsstr + 20, 10, "%09d", rem % 1000000000u);
+      snprintf(tsstr + 20, strlen - 20, "%09d", rem % 1000000000u);
       break;
   }
 
