@@ -196,6 +196,34 @@ class SqliteStatementTest : public ::testing::Test,
   }
 
  protected:
+  void ValidateIngestedTemporalData(struct ArrowArrayView* values,
+                                    enum ArrowTimeUnit unit,
+                                    const char* timezone) override {
+    std::vector<std::optional<std::string>> expected;
+    switch (unit) {
+      case (NANOARROW_TIME_UNIT_SECOND):
+        expected.insert(expected.end(), {std::nullopt, "1969-12-31T23:59:18",
+                                         "1970-01-01T00:00:00", "1970-01-01T00:00:42"});
+        break;
+      case (NANOARROW_TIME_UNIT_MILLI):
+        expected.insert(expected.end(),
+                        {std::nullopt, "1969-12-31T23:59:59.958",
+                         "1970-01-01T00:00:00.000", "1970-01-01T00:00:00.042"});
+        break;
+      case (NANOARROW_TIME_UNIT_MICRO):
+        expected.insert(expected.end(),
+                        {std::nullopt, "1969-12-31T23:59:59.999958",
+                         "1970-01-01T00:00:00.000000", "1970-01-01T00:00:00.000042"});
+        break;
+      case (NANOARROW_TIME_UNIT_NANO):
+        expected.insert(expected.end(), {std::nullopt, "1969-12-31T23:59:59.999999958",
+                                         "1970-01-01T00:00:00.000000000",
+                                         "1970-01-01T00:00:00.000000042"});
+        break;
+    }
+    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(values, expected));
+  }
+
   SqliteQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)

@@ -1155,18 +1155,19 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
     ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    if (round_trip_type == type) {
-      // XXX: for now we can't compare values; we would need casting
-      if (TU == NANOARROW_TIME_UNIT_MICRO) {
-        ASSERT_NO_FATAL_FAILURE(
-            CompareArray<int64_t>(reader.array_view->children[0], values));
-      }
-    }
+    ValidateIngestedTemporalData(reader.array_view->children[0], TU, timezone);
+
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
   }
 
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
+void StatementTest::ValidateIngestedTemporalData(struct ArrowArrayView* values,
+                                                 enum ArrowTimeUnit unit,
+                                                 const char* timezone) {
+  FAIL() << "ValidateIngestedTemporalData is not implemented in the base class";
 }
 
 void StatementTest::TestSqlIngestTimestamp() {

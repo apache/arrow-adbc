@@ -576,6 +576,28 @@ class PostgresStatementTest : public ::testing::Test,
   }
 
  protected:
+  void ValidateIngestedTemporalData(struct ArrowArrayView* values,
+                                    enum ArrowTimeUnit unit,
+                                    const char* timezone) override {
+    std::vector<std::optional<int64_t>> expected;
+    switch (unit) {
+      case (NANOARROW_TIME_UNIT_SECOND):
+        expected.insert(expected.end(), {std::nullopt, -42000000, 0, 42000000});
+        break;
+      case (NANOARROW_TIME_UNIT_MILLI):
+        expected.insert(expected.end(), {std::nullopt, -42000, 0, 42000});
+        break;
+      case (NANOARROW_TIME_UNIT_MICRO):
+        expected.insert(expected.end(), {std::nullopt, -42, 0, 42});
+        break;
+      case (NANOARROW_TIME_UNIT_NANO):
+        expected.insert(expected.end(), {std::nullopt, 0, 0, 0});
+        break;
+    }
+    ASSERT_NO_FATAL_FAILURE(
+        adbc_validation::CompareArray<std::int64_t>(values, expected));
+  }
+
   PostgresQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(PostgresStatementTest)
