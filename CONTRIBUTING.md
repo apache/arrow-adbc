@@ -26,6 +26,34 @@ https://github.com/apache/arrow-adbc/issues
 
 ## Building
 
+### Environment Setup
+
+Some dependencies are required to build and test the various ADBC packages.
+
+For C/C++, you will most likely want a [Conda][conda] installation,
+with [Mambaforge][mambaforge] being the most convenient distribution.
+If you have Mambaforge installed, you can set up a development
+environment as follows:
+
+```shell
+$ mamba create -n adbc --file ci/conda_env_cpp.txt
+$ mamba activate adbc
+```
+
+(For other Conda distributions, you will likely need `create ... -c
+conda-forge --file ...`).
+
+There are additional environment definitions for development on Python
+and GLib/Ruby packages.
+
+Conda is not required; you may also use a package manager like Nix or
+Homebrew, the system package manager, etc. so long as you configure
+CMake or other build tool appropriately.  However, we primarily
+develop and support Conda users.
+
+[conda]: https://docs.conda.io/en/latest/
+[mambaforge]: https://mamba.readthedocs.io/en/latest/installation.html
+
 ### C/C++
 
 All libraries here contained within one CMake project. To build any
@@ -35,7 +63,7 @@ replacing `_COMPONENT` with the name of the library/libraries.
 _Note:_ unlike the Arrow C++ build system, the CMake projects will
 **not** automatically download and build dependencies—you should
 configure CMake appropriately to find dependencies in system or
-package manager locations.
+package manager locations, if you are not using something like Conda.
 
 For example, the driver manager and postgres driver may be built
 together as follows:
@@ -43,26 +71,25 @@ together as follows:
 ```shell
 $ mkdir build
 $ cd build
+$ export CMAKE_EXPORT_COMPILE_COMMANDS=ON
 $ cmake ../c -DADBC_DRIVER_POSTGRESQL=ON -DADBC_DRIVER_MANAGER=ON
 $ make -j
 ```
+
+[`export CMAKE_EXPORT_COMPILE_COMMANDS=ON`][cmake-compile-commands] is
+not required, but is useful if you are using Visual Studio Code,
+Emacs, or another editor that integrates with a C/C++ language server.
 
 For information on what each library can do and their dependencies,
 see their individual READMEs.
 
 To specify where dependencies are to the build, use standard CMake
-options such as [`CMAKE_PREFIX_PATH`][cmake-prefix-path].  A list of
-dependencies for Conda (conda-forge) is included, and can be used as
-follows:
+options such as [`CMAKE_PREFIX_PATH`][cmake-prefix-path].
 
-```shell
-$ conda create -n adbc -c conda-forge --file ci/conda_env_cpp.txt
-$ conda activate adbc
-```
+Some build options are supported:
 
-Some of Arrow's build options are supported (under a different prefix):
-
-- `ADBC_BUILD_SHARED`, `ADBC_BUILD_STATIC`: build the shared/static libraries.
+- `ADBC_BUILD_SHARED`, `ADBC_BUILD_STATIC`: toggle building the
+  shared/static libraries.
 - `ADBC_BUILD_TESTS`: build the unit tests (requires googletest/gmock).
 - `ADBC_INSTALL_NAME_RPATH`: set `install_name` to `@rpath` on MacOS.
   Usually it is more convenient to explicitly set this to `OFF` for
@@ -85,6 +112,7 @@ test-time dependencies.  For instance, the PostgreSQL and Flight SQL
 drivers require servers to test against.  See their individual READMEs
 for details.
 
+[cmake-compile-commands]: https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html
 [cmake-prefix-path]: https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html
 [gtest]: https://github.com/google/googletest/
 
