@@ -444,6 +444,7 @@ func {{.Prefix}}ConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
 
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -489,6 +490,7 @@ func {{.Prefix}}ConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int,
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -529,6 +531,7 @@ func {{.Prefix}}ConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.st
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -549,6 +552,7 @@ func {{.Prefix}}ConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialize
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -716,6 +720,7 @@ func {{.Prefix}}StatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struc
 			*affected = C.int64_t(n)
 		}
 
+		defer rdr.Release()
 		cdata.ExportRecordReader(rdr, toCdataStream(out))
 	}
 	return C.ADBC_STATUS_OK

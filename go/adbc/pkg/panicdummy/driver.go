@@ -448,6 +448,7 @@ func PanicDummyConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
 
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -493,6 +494,7 @@ func PanicDummyConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, 
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -533,6 +535,7 @@ func PanicDummyConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.str
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -553,6 +556,7 @@ func PanicDummyConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -720,6 +724,7 @@ func PanicDummyStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct
 			*affected = C.int64_t(n)
 		}
 
+		defer rdr.Release()
 		cdata.ExportRecordReader(rdr, toCdataStream(out))
 	}
 	return C.ADBC_STATUS_OK
