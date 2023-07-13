@@ -616,6 +616,11 @@ func FlightSQLStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcSta
 		setErr(err, "AdbcStatementNew: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
+	if stmt.private_data != nil {
+		setErr(err, "AdbcStatementNew: statement already allocated")
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
 	conn := checkConnInit(cnxn, err, "AdbcStatementNew")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
