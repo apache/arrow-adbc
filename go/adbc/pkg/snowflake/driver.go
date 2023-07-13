@@ -448,6 +448,7 @@ func SnowflakeConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
 
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -493,6 +494,7 @@ func SnowflakeConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, c
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -533,6 +535,7 @@ func SnowflakeConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.stru
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -553,6 +556,7 @@ func SnowflakeConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized 
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -616,6 +620,11 @@ func SnowflakeStatementNew(cnxn *C.struct_AdbcConnection, stmt *C.struct_AdbcSta
 		setErr(err, "AdbcStatementNew: Go panicked, driver is in unknown state")
 		return C.ADBC_STATUS_INTERNAL
 	}
+	if stmt.private_data != nil {
+		setErr(err, "AdbcStatementNew: statement already allocated")
+		return C.ADBC_STATUS_INVALID_STATE
+	}
+
 	conn := checkConnInit(cnxn, err, "AdbcStatementNew")
 	if conn == nil {
 		return C.ADBC_STATUS_INVALID_STATE
@@ -715,6 +724,7 @@ func SnowflakeStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_
 			*affected = C.int64_t(n)
 		}
 
+		defer rdr.Release()
 		cdata.ExportRecordReader(rdr, toCdataStream(out))
 	}
 	return C.ADBC_STATUS_OK

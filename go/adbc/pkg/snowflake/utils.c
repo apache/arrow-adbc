@@ -23,6 +23,8 @@
 
 #include "utils.h"
 
+#include <string.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -76,6 +78,7 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
                                      uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
+  if (out) memset(out, 0, sizeof(*out));
   return SnowflakeConnectionGetInfo(connection, info_codes, info_codes_length, out,
                                     error);
 }
@@ -86,6 +89,7 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         const char* column_name,
                                         struct ArrowArrayStream* out,
                                         struct AdbcError* error) {
+  if (out) memset(out, 0, sizeof(*out));
   return SnowflakeConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
                                        table_type, column_name, out, error);
 }
@@ -95,6 +99,7 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
                                             const char* table_name,
                                             struct ArrowSchema* schema,
                                             struct AdbcError* error) {
+  if (schema) memset(schema, 0, sizeof(*schema));
   return SnowflakeConnectionGetTableSchema(connection, catalog, db_schema, table_name,
                                            schema, error);
 }
@@ -102,6 +107,7 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error) {
+  if (out) memset(out, 0, sizeof(*out));
   return SnowflakeConnectionGetTableTypes(connection, out, error);
 }
 
@@ -110,6 +116,7 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
                                            size_t serialized_length,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error) {
+  if (out) memset(out, 0, sizeof(*out));
   return SnowflakeConnectionReadPartition(connection, serialized_partition,
                                           serialized_length, out, error);
 }
@@ -139,6 +146,7 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                          struct ArrowArrayStream* out,
                                          int64_t* rows_affected,
                                          struct AdbcError* error) {
+  if (out) memset(out, 0, sizeof(*out));
   return SnowflakeStatementExecuteQuery(statement, out, rows_affected, error);
 }
 
@@ -173,6 +181,7 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
                                                struct ArrowSchema* schema,
                                                struct AdbcError* error) {
+  if (schema) memset(schema, 0, sizeof(*schema));
   return SnowflakeStatementGetParameterSchema(statement, schema, error);
 }
 
@@ -186,6 +195,8 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               struct AdbcPartitions* partitions,
                                               int64_t* rows_affected,
                                               struct AdbcError* error) {
+  if (schema) memset(schema, 0, sizeof(*schema));
+  if (partitions) memset(partitions, 0, sizeof(*partitions));
   return SnowflakeStatementExecutePartitions(statement, schema, partitions, rows_affected,
                                              error);
 }
