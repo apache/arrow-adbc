@@ -40,7 +40,7 @@ Set the environment variable `ADBC_FLIGHTSQL_LIBRARY` to the path to
 pip install -e ../adbc_driver_manager
 
 export ADBC_FLIGHTSQL_LIBRARY=/path/to/libadbc_driver_flightsql.so
-pip install -e --no-deps .
+pip install --no-deps -e .
 ```
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
