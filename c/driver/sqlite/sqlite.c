@@ -983,19 +983,21 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   // Create statements for CREATE TABLE / INSERT
   sqlite3_str* create_query = sqlite3_str_new(NULL);
   if (sqlite3_str_errcode(create_query)) {
-    return ADBC_STATUS_IO;
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+    return ADBC_STATUS_INTERNAL;
   }
   struct StringBuilder insert_query = {0};
 
   if (StringBuilderInit(&insert_query, /*initial_size=*/256) != 0) {
     SetError(error, "[SQLite] Could not initiate StringBuilder");
-    StringBuilderReset(&insert_query);
+    sqlite3_free(create_query);
     return ADBC_STATUS_INTERNAL;
   }
 
   sqlite3_str_appendf(create_query, "%s%Q%s", "CREATE TABLE ", stmt->target_table, " (");
   if (sqlite3_str_errcode(create_query)) {
-    return ADBC_STATUS_IO;
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+    code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
 
@@ -1010,13 +1012,15 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     if (i > 0) {
       sqlite3_str_appendf(create_query, "%s", ", ");
       if (sqlite3_str_errcode(create_query)) {
-        return ADBC_STATUS_IO;
+        SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+        code = ADBC_STATUS_INTERNAL;
         goto cleanup;
       }
     }
-    // XXX: should escape the column name too
+
     sqlite3_str_appendf(create_query, "%Q", stmt->binder.schema.children[i]->name);
     if (sqlite3_str_errcode(create_query)) {
+      SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
@@ -1038,6 +1042,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
 
   sqlite3_str_appendchar(create_query, 1, ')');
   if (sqlite3_str_errcode(create_query)) {
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
@@ -1079,7 +1084,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   sqlite3_finalize(create);
 
 cleanup:
-  sqlite3_str_finish(create_query);
+  sqlite3_free(create_query);
   StringBuilderReset(&insert_query);
   return code;
 }
