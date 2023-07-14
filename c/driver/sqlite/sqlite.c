@@ -990,7 +990,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
 
   if (StringBuilderInit(&insert_query, /*initial_size=*/256) != 0) {
     SetError(error, "[SQLite] Could not initiate StringBuilder");
-    sqlite3_free(create_query);
+    sqlite3_free(sqlite3_str_finish(create_query));
     return ADBC_STATUS_INTERNAL;
   }
 
@@ -1084,7 +1084,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   sqlite3_finalize(create);
 
 cleanup:
-  sqlite3_free(create_query);
+  sqlite3_free(sqlite3_str_finish(create_query));
   StringBuilderReset(&insert_query);
   return code;
 }
