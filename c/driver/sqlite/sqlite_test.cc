@@ -195,6 +195,9 @@ class SqliteStatementTest : public ::testing::Test,
   }
 
   void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
+  void TestSqlIngestDuration() {
+    GTEST_SKIP() << "Cannot ingest DURATION (not implemented)";
+  }
 
  protected:
   void ValidateIngestedTemporalData(struct ArrowArrayView* values,
