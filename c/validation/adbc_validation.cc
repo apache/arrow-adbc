@@ -1095,8 +1095,9 @@ void StatementTest::TestSqlIngestBinary() {
       NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x00\x01\x02\x04", "\xFE\xFF"}));
 }
 
-template <enum ArrowTimeUnit TU>
-void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
+template <enum ArrowType T>
+void StatementTest::TestSqlIngestTemporalType(enum ArrowTimeUnit unit,
+                                              const char* timezone) {
   if (!quirks()->supports_bulk_ingest()) {
     GTEST_SKIP();
   }
@@ -1108,13 +1109,12 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
   const std::vector<std::optional<int64_t>> values = {std::nullopt, -42, 0, 42};
-  const ArrowType type = NANOARROW_TYPE_TIMESTAMP;
 
   // much of this code is shared with TestSqlIngestType with minor
   // changes to allow for various time units to be tested
   ArrowSchemaInit(&schema.value);
   ArrowSchemaSetTypeStruct(&schema.value, 1);
-  ArrowSchemaSetTypeDateTime(schema->children[0], type, TU, timezone);
+  ArrowSchemaSetTypeDateTime(schema->children[0], T, unit, timezone);
   ArrowSchemaSetName(schema->children[0], "col");
   ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error, values),
               IsOkErrno());
@@ -1146,7 +1146,7 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
 
-    ArrowType round_trip_type = quirks()->IngestSelectRoundTripType(type);
+    ArrowType round_trip_type = quirks()->IngestSelectRoundTripType(T);
     ASSERT_NO_FATAL_FAILURE(
         CompareSchema(&reader.schema.value, {{"col", round_trip_type, NULLABLE}}));
 
@@ -1155,7 +1155,7 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
     ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    ValidateIngestedTemporalData(reader.array_view->children[0], TU, timezone);
+    ValidateIngestedTemporalData(reader.array_view->children[0], unit, timezone);
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
@@ -1170,27 +1170,46 @@ void StatementTest::ValidateIngestedTemporalData(struct ArrowArrayView* values,
   FAIL() << "ValidateIngestedTemporalData is not implemented in the base class";
 }
 
+void StatementTest::TestSqlIngestDuration() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_DURATION>(
+      NANOARROW_TIME_UNIT_SECOND, nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_DURATION>(
+      NANOARROW_TIME_UNIT_MICRO, nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_DURATION>(
+      NANOARROW_TIME_UNIT_MILLI, nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_DURATION>(
+      NANOARROW_TIME_UNIT_NANO, nullptr));
+}
+
 void StatementTest::TestSqlIngestTimestamp() {
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_SECOND>(nullptr));
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_MICRO>(nullptr));
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_MILLI>(nullptr));
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_NANO>(nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_SECOND, nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_MICRO, nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_MILLI, nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_NANO, nullptr));
 }
 
 void StatementTest::TestSqlIngestTimestampTz() {
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_SECOND>("UTC"));
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_MICRO>("UTC"));
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_MILLI>("UTC"));
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_NANO>("UTC"));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_SECOND, nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_MICRO, nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_MILLI, nullptr));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_NANO, nullptr));
 
-  ASSERT_NO_FATAL_FAILURE(
-      TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_SECOND>("America/Los_Angeles"));
-  ASSERT_NO_FATAL_FAILURE(
-      TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_MICRO>("America/Los_Angeles"));
-  ASSERT_NO_FATAL_FAILURE(
-      TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_MILLI>("America/Los_Angeles"));
-  ASSERT_NO_FATAL_FAILURE(
-      TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_NANO>("America/Los_Angeles"));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_SECOND, "America/Los_Angeles"));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_MICRO, "America/Los_Angeles"));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_MILLI, "America/Los_Angeles"));
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestTemporalType<NANOARROW_TYPE_TIMESTAMP>(
+      NANOARROW_TIME_UNIT_NANO, "America/Los_Angeles"));
 }
 
 void StatementTest::TestSqlIngestAppend() {

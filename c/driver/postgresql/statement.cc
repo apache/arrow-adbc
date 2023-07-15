@@ -223,6 +223,9 @@ struct BindStream {
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
+        case ArrowType::NANOARROW_TYPE_DURATION:
+          type_id = PostgresTypeId::kInterval;
+          param_lengths[i] = 16;
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                    static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
@@ -385,11 +388,10 @@ struct BindStream {
               param_values[col] = const_cast<char*>(view.data.as_char);
               break;
             }
-            case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
+            case ArrowType::NANOARROW_TYPE_TIMESTAMP:
+            case ArrowType::NANOARROW_TYPE_DURATION: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
-              // 2000-01-01 00:00:00.000000 in microseconds
-              constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
               constexpr int64_t kSecOverflowLimit = 9223372036854;
               constexpr int64_t kmSecOverflowLimit = 9223372036854775;
 
@@ -399,8 +401,7 @@ struct BindStream {
                   if (abs(val) > kSecOverflowLimit) {
                     SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
                              col + 1, "('", bind_schema->children[col]->name, "') Row #",
-                             row + 1,
-                             "has value which exceeds postgres timestamp limits");
+                             row + 1, "has value which exceeds postgres temporal limits");
                     return ADBC_STATUS_INVALID_ARGUMENT;
                   }
                   val *= 1000000;
@@ -409,8 +410,7 @@ struct BindStream {
                   if (abs(val) > kmSecOverflowLimit) {
                     SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
                              col + 1, "('", bind_schema->children[col]->name, "') Row #",
-                             row + 1,
-                             "has value which exceeds postgres timestamp limits");
+                             row + 1, "has value which exceeds postgres temporal limits");
                     return ADBC_STATUS_INVALID_ARGUMENT;
                   }
                   val *= 1000;
@@ -422,8 +422,20 @@ struct BindStream {
                   break;
               }
 
-              const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
-              std::memcpy(param_values[col], &value, sizeof(int64_t));
+              if (bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) {
+                // 2000-01-01 00:00:00.000000 in microseconds
+                constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
+                const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
+                std::memcpy(param_values[col], &value, sizeof(int64_t));
+              } else if (bind_schema_fields[col].type ==
+                         ArrowType::NANOARROW_TYPE_TIMESTAMP) {
+                // postgres stores an interval as a 64 bit offset in microsecond
+                // resolution alongside a 32 bit day and 32 bit month
+                // for now we just send 0 for the day / month values
+                const uint64_t value = ToNetworkInt64(val);
+                std::memcpy(param_values[col], &value, sizeof(int64_t));
+                std::memset(param_values[col] + sizeof(int64_t), 0, sizeof(int64_t));
+              }
               break;
             }
             default:
@@ -786,6 +798,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         } else {
           create += " TIMESTAMP";
         }
+        break;
+      case ArrowType::NANOARROW_TYPE_DURATION:
+        create += " INTERVAL";
         break;
       default:
         SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",

@@ -230,6 +230,7 @@ class StatementTest {
   void TestSqlIngestBinary();
 
   // Temporal
+  void TestSqlIngestDuration();
   void TestSqlIngestTimestamp();
   void TestSqlIngestTimestampTz();
 
@@ -274,8 +275,8 @@ class StatementTest {
   template <typename CType>
   void TestSqlIngestNumericType(ArrowType type);
 
-  template <enum ArrowTimeUnit TU>
-  void TestSqlIngestTemporalType(const char* timezone);
+  template <enum ArrowType T>
+  void TestSqlIngestTemporalType(enum ArrowTimeUnit, const char* timezone);
 
   virtual void ValidateIngestedTemporalData(struct ArrowArrayView* values,
                                             enum ArrowTimeUnit unit,
@@ -299,6 +300,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                         \
   TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
   TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
+  TEST_F(FIXTURE, SqlIngestDuration) { TestSqlIngestDuration(); }                       \
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
