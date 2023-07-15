@@ -226,6 +226,7 @@ struct BindStream {
         case ArrowType::NANOARROW_TYPE_DURATION:
           type_id = PostgresTypeId::kInterval;
           param_lengths[i] = 16;
+          break;
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                    static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
@@ -428,7 +429,7 @@ struct BindStream {
                 const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
                 std::memcpy(param_values[col], &value, sizeof(int64_t));
               } else if (bind_schema_fields[col].type ==
-                         ArrowType::NANOARROW_TYPE_TIMESTAMP) {
+                         ArrowType::NANOARROW_TYPE_DURATION) {
                 // postgres stores an interval as a 64 bit offset in microsecond
                 // resolution alongside a 32 bit day and 32 bit month
                 // for now we just send 0 for the day / month values

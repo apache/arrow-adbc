@@ -212,6 +212,32 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
   }
 };
 
+// Reader for Durations; Similar to PostgresCopyNetworkEndianFieldReader but
+// discards an extra 64 bits per read (representing the postgres day / month)
+class PostgresIntervalReader : public PostgresCopyFieldReader {
+ public:
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
+                      ArrowError* error) override {
+    if (field_size_bytes <= 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
+    if (field_size_bytes != static_cast<int32_t>(sizeof(int64_t) * 2)) {
+      ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
+                    static_cast<int>(sizeof(int64_t)),
+                    static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    int64_t value = ReadUnsafe<int64_t>(data);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &value, sizeof(int64_t)));
+
+    // discard unnecessary bits
+    ReadUnsafe<int64_t>(data);
+    return AppendValid(array);
+  }
+};
+
 // Converts COPY resulting from the Postgres NUMERIC type into a string.
 // Rewritten based on the Postgres implementation of NUMERIC cast to string in
 // src/backend/utils/adt/numeric.c : get_str_from_var() (Note that in the initial source,
@@ -831,6 +857,15 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
           constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
           *out = new PostgresCopyNetworkEndianFieldReader<int64_t,
                                                           kPostgresTimestampEpoch>();
+          return NANOARROW_OK;
+        }
+        default:
+          return ErrorCantConvert(error, pg_type, schema_view);
+      }
+    case NANOARROW_TYPE_DURATION:
+      switch (pg_type.type_id()) {
+        case PostgresTypeId::kInterval: {
+          *out = new PostgresIntervalReader();
           return NANOARROW_OK;
         }
         default:
