@@ -223,6 +223,10 @@ struct BindStream {
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
+        case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+          type_id = PostgresTypeId::kInterval;
+          param_lengths[i] = 8;
+          break;
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                    static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
@@ -802,6 +806,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         } else {
           create += " TIMESTAMP";
         }
+        break;
+      case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+        create += " INTERVAL";
         break;
       default:
         SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",

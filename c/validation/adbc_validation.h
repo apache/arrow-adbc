@@ -232,6 +232,7 @@ class StatementTest {
   // Temporal
   void TestSqlIngestTimestamp();
   void TestSqlIngestTimestampTz();
+  void TestSqlIngestInterval();
 
   // ---- End Type-specific tests ----------------
 
