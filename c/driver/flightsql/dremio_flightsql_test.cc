@@ -87,6 +87,8 @@ class DremioFlightSqlStatementTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
+  void TestSqlIngestTableEscaping() { GTEST_SKIP() << "Table escaping not implemented"; }
+
  protected:
   DremioFlightSqlQuirks quirks_;
 };

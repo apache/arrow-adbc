@@ -1193,6 +1193,31 @@ void StatementTest::TestSqlIngestTimestampTz() {
       TestSqlIngestTemporalType<NANOARROW_TIME_UNIT_NANO>("America/Los_Angeles"));
 }
 
+void StatementTest::TestSqlIngestTableEscaping() {
+  std::string name = "create_table_escaping";
+
+  ASSERT_THAT(quirks()->DropTable(&connection, name, &error),
+              adbc_validation::IsOkStatus(&error));
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(MakeSchema(&schema.value, {{"index", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                  {42, -42, std::nullopt})),
+              IsOkErrno());
+
+  Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error), IsOkErrno());
+  ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     name.c_str(), &error),
+              IsOkErrno());
+  ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+              IsOkErrno());
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+              IsOkErrno());
+  ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkErrno());
+}
+
 void StatementTest::TestSqlIngestAppend() {
   if (!quirks()->supports_bulk_ingest()) {
     GTEST_SKIP();
