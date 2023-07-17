@@ -94,6 +94,8 @@ class DuckDbStatementTest : public ::testing::Test,
   // Accepts Prepare() without any query
   void TestSqlPrepareErrorNoQuery() { GTEST_SKIP(); }
 
+  void TestSqlIngestTableEscaping() { GTEST_SKIP() << "Table escaping not implemented"; }
+
  protected:
   DuckDbQuirks quirks_;
 };
