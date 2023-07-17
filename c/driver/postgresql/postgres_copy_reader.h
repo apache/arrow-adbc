@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cinttypes>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -229,12 +230,20 @@ class PostgresCopyIntervalFieldReader : public PostgresCopyFieldReader {
     }
 
     // postgres stores time as usec, arrow stores as ns
-    const int64_t time = ReadUnsafe<int64_t>(data) * 1000;
+    const int64_t time_usec = ReadUnsafe<int64_t>(data);
+
+    if ((time_usec > INT64_MAX / 1000) | (time_usec < INT64_MIN / 1000)) {
+      ArrowErrorSet(error, "[libpq] Interval with time value %" PRId64
+                           " usec would overflow when converting to nanoseconds");
+      return EINVAL;
+    }
+
+    const int64_t time = time_usec * 1000;
     const int32_t days = ReadUnsafe<int32_t>(data);
     const int32_t months = ReadUnsafe<int32_t>(data);
 
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &days, sizeof(int32_t)));
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &months, sizeof(int32_t)));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &days, sizeof(int32_t)));
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &time, sizeof(int64_t)));
     return AppendValid(array);
   }
