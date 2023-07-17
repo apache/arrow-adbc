@@ -522,34 +522,34 @@ serialize accesses to a connection.</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.close" title="adbc_driver_manager.AdbcConnection.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.close" title="adbc_driver_manager.AdbcConnection.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
 <td><p>Release the handle to the connection.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.commit" title="adbc_driver_manager.AdbcConnection.commit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">commit</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.commit" title="adbc_driver_manager.AdbcConnection.commit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">commit</span></code></a>()</p></td>
 <td><p>Commit the current transaction.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_info" title="adbc_driver_manager.AdbcConnection.get_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_info</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_info" title="adbc_driver_manager.AdbcConnection.get_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_info</span></code></a>([info_codes])</p></td>
 <td><p>Get metadata about the database/driver.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_objects" title="adbc_driver_manager.AdbcConnection.get_objects"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_objects</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_objects" title="adbc_driver_manager.AdbcConnection.get_objects"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_objects</span></code></a>(depth[, catalog, db_schema, ...])</p></td>
 <td><p>Get a hierarchical view of database objects.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_table_schema" title="adbc_driver_manager.AdbcConnection.get_table_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_table_schema</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_table_schema" title="adbc_driver_manager.AdbcConnection.get_table_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_table_schema</span></code></a>(catalog, db_schema, table_name)</p></td>
 <td><p>Get the Arrow schema of a table.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_table_types" title="adbc_driver_manager.AdbcConnection.get_table_types"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_table_types</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_table_types" title="adbc_driver_manager.AdbcConnection.get_table_types"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_table_types</span></code></a>()</p></td>
 <td><p>Get the list of supported table types.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.read_partition" title="adbc_driver_manager.AdbcConnection.read_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_partition</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.read_partition" title="adbc_driver_manager.AdbcConnection.read_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_partition</span></code></a>(partition)</p></td>
 <td><p>Fetch a single partition from execute_partitions.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.rollback" title="adbc_driver_manager.AdbcConnection.rollback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rollback</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.rollback" title="adbc_driver_manager.AdbcConnection.rollback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rollback</span></code></a>()</p></td>
 <td><p>Rollback the current transaction.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_autocommit" title="adbc_driver_manager.AdbcConnection.set_autocommit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_autocommit</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_autocommit" title="adbc_driver_manager.AdbcConnection.set_autocommit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_autocommit</span></code></a>(enabled)</p></td>
 <td><p>Toggle whether autocommit is enabled.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_options" title="adbc_driver_manager.AdbcConnection.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.set_options" title="adbc_driver_manager.AdbcConnection.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a>(**kwargs)</p></td>
 <td><p>Set arbitrary key-value options.</p></td>
 </tr>
 </tbody>
@@ -557,31 +557,31 @@ serialize accesses to a connection.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.close">
-<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.close" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.close" title="Permalink to this definition">#</a></dt>
 <dd><p>Release the handle to the connection.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.commit">
-<span class="sig-name descname"><span class="pre">commit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.commit" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">commit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.commit" title="Permalink to this definition">#</a></dt>
 <dd><p>Commit the current transaction.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.get_info">
-<span class="sig-name descname"><span class="pre">get_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_info" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">info_codes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle" title="adbc_driver_manager._lib.ArrowArrayStreamHandle"><span class="pre">ArrowArrayStreamHandle</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_info" title="Permalink to this definition">#</a></dt>
 <dd><p>Get metadata about the database/driver.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.get_objects">
-<span class="sig-name descname"><span class="pre">get_objects</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_objects" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_objects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">depth</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalog</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle" title="adbc_driver_manager._lib.ArrowArrayStreamHandle"><span class="pre">ArrowArrayStreamHandle</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_objects" title="Permalink to this definition">#</a></dt>
 <dd><p>Get a hierarchical view of database objects.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.get_table_schema">
-<span class="sig-name descname"><span class="pre">get_table_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_table_schema" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_table_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalog</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_name</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle" title="adbc_driver_manager._lib.ArrowSchemaHandle"><span class="pre">ArrowSchemaHandle</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_table_schema" title="Permalink to this definition">#</a></dt>
 <dd><p>Get the Arrow schema of a table.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -595,31 +595,31 @@ serialize accesses to a connection.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.get_table_types">
-<span class="sig-name descname"><span class="pre">get_table_types</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_table_types" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_table_types</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle" title="adbc_driver_manager._lib.ArrowArrayStreamHandle"><span class="pre">ArrowArrayStreamHandle</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_table_types" title="Permalink to this definition">#</a></dt>
 <dd><p>Get the list of supported table types.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.read_partition">
-<span class="sig-name descname"><span class="pre">read_partition</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.read_partition" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">read_partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">partition</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle" title="adbc_driver_manager._lib.ArrowArrayStreamHandle"><span class="pre">ArrowArrayStreamHandle</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.read_partition" title="Permalink to this definition">#</a></dt>
 <dd><p>Fetch a single partition from execute_partitions.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.rollback">
-<span class="sig-name descname"><span class="pre">rollback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.rollback" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rollback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.rollback" title="Permalink to this definition">#</a></dt>
 <dd><p>Rollback the current transaction.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.set_autocommit">
-<span class="sig-name descname"><span class="pre">set_autocommit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.set_autocommit" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_autocommit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.set_autocommit" title="Permalink to this definition">#</a></dt>
 <dd><p>Toggle whether autocommit is enabled.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.set_options">
-<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.set_options" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.set_options" title="Permalink to this definition">#</a></dt>
 <dd><p>Set arbitrary key-value options.</p>
 <p>Note, not all drivers support setting options after creation.</p>
 <div class="admonition seealso">
@@ -652,10 +652,10 @@ database driver to load.</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.close" title="adbc_driver_manager.AdbcDatabase.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.close" title="adbc_driver_manager.AdbcDatabase.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
 <td><p>Release the handle to the database.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.set_options" title="adbc_driver_manager.AdbcDatabase.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcDatabase.set_options" title="adbc_driver_manager.AdbcDatabase.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a>(**kwargs)</p></td>
 <td><p>Set arbitrary key-value options.</p></td>
 </tr>
 </tbody>
@@ -663,13 +663,13 @@ database driver to load.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcDatabase.close">
-<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcDatabase.close" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcDatabase.close" title="Permalink to this definition">#</a></dt>
 <dd><p>Release the handle to the database.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcDatabase.set_options">
-<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcDatabase.set_options" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcDatabase.set_options" title="Permalink to this definition">#</a></dt>
 <dd><p>Set arbitrary key-value options.</p>
 <p>Note, not all drivers support setting options after creation.</p>
 <div class="admonition seealso">
@@ -702,34 +702,34 @@ serialize accesses to a connection.</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.bind" title="adbc_driver_manager.AdbcStatement.bind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bind</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.bind" title="adbc_driver_manager.AdbcStatement.bind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bind</span></code></a>(data, schema)</p></td>
 <td><p>Bind an ArrowArray to this statement.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.bind_stream" title="adbc_driver_manager.AdbcStatement.bind_stream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bind_stream</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.bind_stream" title="adbc_driver_manager.AdbcStatement.bind_stream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bind_stream</span></code></a>(stream)</p></td>
 <td><p>Bind an ArrowArrayStream to this statement.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_partitions" title="adbc_driver_manager.AdbcStatement.execute_partitions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_partitions</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_partitions" title="adbc_driver_manager.AdbcStatement.execute_partitions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_partitions</span></code></a>()</p></td>
 <td><p>Execute the query and get the partitions of the result set.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_query" title="adbc_driver_manager.AdbcStatement.execute_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_query</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_query" title="adbc_driver_manager.AdbcStatement.execute_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_query</span></code></a>()</p></td>
 <td><p>Execute the query and get the result set.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_update" title="adbc_driver_manager.AdbcStatement.execute_update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_update</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.execute_update" title="adbc_driver_manager.AdbcStatement.execute_update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_update</span></code></a>()</p></td>
 <td><p>Execute the query without a result set.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema" title="adbc_driver_manager.AdbcStatement.get_parameter_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter_schema</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema" title="adbc_driver_manager.AdbcStatement.get_parameter_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_parameter_schema</span></code></a>()</p></td>
 <td><p>Get the Arrow schema for bound parameters.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare" title="adbc_driver_manager.AdbcStatement.prepare"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.prepare" title="adbc_driver_manager.AdbcStatement.prepare"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare</span></code></a>()</p></td>
 <td><p>Turn this statement into a prepared statement.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_options" title="adbc_driver_manager.AdbcStatement.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_options" title="adbc_driver_manager.AdbcStatement.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a>(**kwargs)</p></td>
 <td><p>Set arbitrary key-value options.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_sql_query" title="adbc_driver_manager.AdbcStatement.set_sql_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_sql_query</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_sql_query" title="adbc_driver_manager.AdbcStatement.set_sql_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_sql_query</span></code></a>(query)</p></td>
 <td><p>Set a SQL query to be executed.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_substrait_plan" title="adbc_driver_manager.AdbcStatement.set_substrait_plan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_substrait_plan</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_substrait_plan" title="adbc_driver_manager.AdbcStatement.set_substrait_plan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_substrait_plan</span></code></a>(plan)</p></td>
 <td><p>Set a Substrait plan to be executed.</p></td>
 </tr>
 </tbody>
@@ -746,7 +746,7 @@ serialize accesses to a connection.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.bind">
-<span class="sig-name descname"><span class="pre">bind</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.bind" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">bind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.bind" title="Permalink to this definition">#</a></dt>
 <dd><p>Bind an ArrowArray to this statement.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -760,7 +760,7 @@ serialize accesses to a connection.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.bind_stream">
-<span class="sig-name descname"><span class="pre">bind_stream</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.bind_stream" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">bind_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.bind_stream" title="Permalink to this definition">#</a></dt>
 <dd><p>Bind an ArrowArrayStream to this statement.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -773,7 +773,7 @@ serialize accesses to a connection.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.execute_partitions">
-<span class="sig-name descname"><span class="pre">execute_partitions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.execute_partitions" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">execute_partitions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle" title="adbc_driver_manager._lib.ArrowSchemaHandle"><span class="pre">ArrowSchemaHandle</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.execute_partitions" title="Permalink to this definition">#</a></dt>
 <dd><p>Execute the query and get the partitions of the result set.</p>
 <p>Not all drivers will support this.</p>
 <dl class="field-list simple">
@@ -792,7 +792,7 @@ serialize accesses to a connection.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.execute_query">
-<span class="sig-name descname"><span class="pre">execute_query</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.execute_query" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">execute_query</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle" title="adbc_driver_manager._lib.ArrowArrayStreamHandle"><span class="pre">ArrowArrayStreamHandle</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.execute_query" title="Permalink to this definition">#</a></dt>
 <dd><p>Execute the query and get the result set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -808,7 +808,7 @@ serialize accesses to a connection.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.execute_update">
-<span class="sig-name descname"><span class="pre">execute_update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.execute_update" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">execute_update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.execute_update" title="Permalink to this definition">#</a></dt>
 <dd><p>Execute the query without a result set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -822,7 +822,7 @@ serialize accesses to a connection.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.get_parameter_schema">
-<span class="sig-name descname"><span class="pre">get_parameter_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_parameter_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle" title="adbc_driver_manager._lib.ArrowSchemaHandle"><span class="pre">ArrowSchemaHandle</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.get_parameter_schema" title="Permalink to this definition">#</a></dt>
 <dd><p>Get the Arrow schema for bound parameters.</p>
 <p>This retrieves an Arrow schema describing the number, names,
 and types of the parameters in a parameterized statement.  The
@@ -846,13 +846,13 @@ the type of the corresponding field will be NA (NullType).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.prepare">
-<span class="sig-name descname"><span class="pre">prepare</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.prepare" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">prepare</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.prepare" title="Permalink to this definition">#</a></dt>
 <dd><p>Turn this statement into a prepared statement.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.set_options">
-<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.set_options" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.set_options" title="Permalink to this definition">#</a></dt>
 <dd><p>Set arbitrary key-value options.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
@@ -865,13 +865,13 @@ the type of the corresponding field will be NA (NullType).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.set_sql_query">
-<span class="sig-name descname"><span class="pre">set_sql_query</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.set_sql_query" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_sql_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.set_sql_query" title="Permalink to this definition">#</a></dt>
 <dd><p>Set a SQL query to be executed.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.set_substrait_plan">
-<span class="sig-name descname"><span class="pre">set_substrait_plan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.set_substrait_plan" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_substrait_plan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.set_substrait_plan" title="Permalink to this definition">#</a></dt>
 <dd><p>Set a Substrait plan to be executed.</p>
 </dd></dl>
 
