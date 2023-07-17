@@ -358,10 +358,15 @@ func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 
 	// XXX: there IS data in this result set, but Snowflake doesn't
 	// appear to support getting the results as Arrow
-	_, _, err := suite.stmt.ExecuteQuery(suite.ctx)
-	var adbcErr adbc.Error
-	suite.ErrorAs(err, &adbcErr)
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
 
-	suite.Equal(adbc.StatusInternal, adbcErr.Code)
-	suite.Contains(adbcErr.Msg, "Cannot get Arrow data from this result set")
+	suite.True(rdr.Next())
+	rec := rdr.Record()
+	suite.Equal(n, rec.NumRows())
+	suite.EqualValues(25, rec.NumCols())
+
+	suite.False(rdr.Next())
+	suite.NoError(rdr.Err())
 }

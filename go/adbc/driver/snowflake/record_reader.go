@@ -19,7 +19,9 @@ package snowflake
 
 import (
 	"context"
+	"encoding/hex"
 	"math"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -243,6 +245,163 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 	return out, getRecTransformer(out, transformers)
 }
 
+func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader) (*arrow.Schema, error) {
+	var loc *time.Location
+
+	metadata := ld.RowTypes()
+	fields := make([]arrow.Field, len(metadata))
+	for i, srcMeta := range metadata {
+		fields[i] = arrow.Field{
+			Name:     srcMeta.Name,
+			Nullable: srcMeta.Nullable,
+			Metadata: arrow.MetadataFrom(map[string]string{
+				"SNOWFLAKE_TYPE": srcMeta.Type,
+			}),
+		}
+		switch srcMeta.Type {
+		case "fixed":
+			fields[i].Type = arrow.PrimitiveTypes.Int64
+		case "real":
+			fields[i].Type = arrow.PrimitiveTypes.Float64
+		case "date":
+			fields[i].Type = arrow.PrimitiveTypes.Date32
+		case "time":
+			fields[i].Type = arrow.FixedWidthTypes.Time64ns
+		case "timestamp_ntz", "timestamp_tz":
+			fields[i].Type = arrow.FixedWidthTypes.Timestamp_ns
+		case "timestamp_ltz":
+			if loc == nil {
+				loc = time.Now().Location()
+			}
+			fields[i].Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+		case "binary":
+			fields[i].Type = arrow.BinaryTypes.Binary
+		default:
+			fields[i].Type = arrow.BinaryTypes.String
+		}
+	}
+	return arrow.NewSchema(fields, nil), nil
+}
+
+func extractTimestamp(src *string) (sec, nsec int64, err error) {
+	s, ms, hasFraction := strings.Cut(*src, ".")
+	sec, err = strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return
+	}
+
+	if !hasFraction {
+		return
+	}
+
+	nsec, err = strconv.ParseInt(ms+strings.Repeat("0", 9-len(ms)), 10, 64)
+	return
+}
+
+func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowflake.ArrowStreamLoader) (arrow.Record, error) {
+	rawData := ld.JSONData()
+	fieldBuilders := bldr.Fields()
+	for _, rec := range rawData {
+		for i, col := range rec {
+			field := fieldBuilders[i]
+
+			if col == nil {
+				field.AppendNull()
+				continue
+			}
+
+			switch fb := field.(type) {
+			case *array.Time64Builder:
+				sec, nsec, err := extractTimestamp(col)
+				if err != nil {
+					return nil, err
+				}
+
+				fb.Append(arrow.Time64(sec*1e9 + nsec))
+			case *array.TimestampBuilder:
+				tz, err := fb.Type().(*arrow.TimestampType).GetZone()
+				if err != nil {
+					return nil, err
+				}
+
+				if tz != time.UTC {
+					sec, nsec, err := extractTimestamp(col)
+					if err != nil {
+						return nil, err
+					}
+					val := time.Unix(sec, nsec).In(loc)
+					ts, err := arrow.TimestampFromTime(val, arrow.Nanosecond)
+					if err != nil {
+						return nil, err
+					}
+					fb.Append(ts)
+					break
+				}
+
+				snowflakeType, _ := bldr.Schema().Field(i).Metadata.GetValue("SNOWFLAKE_TYPE")
+				if snowflakeType == "timestamp_ntz" {
+					sec, nsec, err := extractTimestamp(col)
+					if err != nil {
+						return nil, err
+					}
+
+					fb.Append(arrow.Timestamp(sec*1e9 + nsec))
+					break
+				}
+
+				// "timestamp_tz" should be value + offset separated by space
+				tm := strings.Split(*col, " ")
+				if len(tm) != 2 {
+					return nil, adbc.Error{
+						Msg:        "invalid TIMESTAMP_TZ data. value doesn't consist of two numeric values separated by a space: " + *col,
+						SqlState:   [5]byte{'2', '2', '0', '0', '7'},
+						VendorCode: 268000,
+						Code:       adbc.StatusInvalidData,
+					}
+				}
+
+				sec, nsec, err := extractTimestamp(&tm[0])
+				if err != nil {
+					return nil, err
+				}
+				offset, err := strconv.ParseInt(tm[1], 10, 64)
+				if err != nil {
+					return nil, adbc.Error{
+						Msg:        "invalid TIMESTAMP_TZ data. offset value is not an integer: " + tm[1],
+						SqlState:   [5]byte{'2', '2', '0', '0', '7'},
+						VendorCode: 268000,
+						Code:       adbc.StatusInvalidData,
+					}
+				}
+
+				loc := gosnowflake.Location(int(offset) - 1440)
+				tt := time.Unix(sec, nsec).In(loc)
+				ts, err := arrow.TimestampFromTime(tt, arrow.Nanosecond)
+				if err != nil {
+					return nil, err
+				}
+				fb.Append(ts)
+			case *array.BinaryBuilder:
+				b, err := hex.DecodeString(*col)
+				if err != nil {
+					return nil, adbc.Error{
+						Msg:        err.Error(),
+						VendorCode: 268002,
+						SqlState:   [5]byte{'2', '2', '0', '0', '3'},
+						Code:       adbc.StatusInvalidData,
+					}
+				}
+				fb.Append(b)
+			default:
+				if err := fb.AppendValueFromString(*col); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+	return bldr.NewRecord(), nil
+}
+
 type reader struct {
 	refCount   int64
 	schema     *arrow.Schema
@@ -263,10 +422,24 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	if len(batches) == 0 {
 		if ld.TotalRows() != 0 {
 			// XXX(https://github.com/apache/arrow-adbc/issues/863): Snowflake won't return Arrow data for certain queries
-			return nil, adbc.Error{
-				Msg:  "[Snowflake] Cannot get Arrow data from this result set (see apache/arrow-adbc#863)",
-				Code: adbc.StatusInternal,
+			schema, err := rowTypesToArrowSchema(ctx, ld)
+			if err != nil {
+				return nil, adbc.Error{
+					Msg:  err.Error(),
+					Code: adbc.StatusInternal,
+				}
 			}
+
+			bldr := array.NewRecordBuilder(alloc, schema)
+			defer bldr.Release()
+
+			rec, err := jsonDataToArrow(ctx, bldr, ld)
+			if err != nil {
+				return nil, err
+			}
+			defer rec.Release()
+
+			return array.NewRecordReader(schema, []arrow.Record{rec})
 		}
 		schema := arrow.NewSchema([]arrow.Field{}, nil)
 		reader, err := array.NewRecordReader(schema, []arrow.Record{})
