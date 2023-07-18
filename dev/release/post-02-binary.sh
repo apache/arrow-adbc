@@ -39,6 +39,7 @@ main() {
     header "Publishing release ${version}"
 
     gh release edit \
+       --verify-tag \
        --repo "${REPOSITORY}" \
        "${tag}" \
        --title="ADBC Libraries ${version}" \
