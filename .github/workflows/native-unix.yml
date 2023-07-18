@@ -216,7 +216,8 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install -c conda-forge \
-            --file ci/conda_env_cpp.txt
+            --file ci/conda_env_cpp.txt \
+            --file ci/conda_env_cpp_lint.txt
 
       - name: clang-tidy
         shell: bash -l {0}
