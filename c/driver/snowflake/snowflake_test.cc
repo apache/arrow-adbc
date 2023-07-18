@@ -178,6 +178,28 @@ class SnowflakeStatementTest : public ::testing::Test,
   }
 
  protected:
+  void ValidateIngestedTemporalData(struct ArrowArrayView* values,
+                                    enum ArrowTimeUnit unit,
+                                    const char* timezone) override {
+    std::vector<std::optional<int64_t>> expected;
+    switch (unit) {
+      case NANOARROW_TIME_UNIT_SECOND:
+        expected = {std::nullopt, -42, 0, 42};
+        break;
+      case NANOARROW_TIME_UNIT_MILLI:
+        expected = {std::nullopt, -42000, 0, 42000};
+        break;
+      case NANOARROW_TIME_UNIT_MICRO:
+        expected = {std::nullopt, -42, 0, 42};
+        break;
+      case NANOARROW_TIME_UNIT_NANO:
+        expected = {std::nullopt, -42, 0, 42};
+        break;
+    }
+    ASSERT_NO_FATAL_FAILURE(
+        adbc_validation::CompareArray<std::int64_t>(values, expected));
+  }
+
   SnowflakeQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(SnowflakeStatementTest)
