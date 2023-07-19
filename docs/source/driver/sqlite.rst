@@ -41,6 +41,16 @@ Installation
 
          mamba install libadbc-driver-sqlite
 
+   .. tab-item:: Go
+      :sync: go
+
+      Install the C/C++ package and use the Go driver manager.
+      Requires CGO.
+
+      .. code-block:: shell
+
+         go get github.com/apache/arrow-adbc/go/adbc/drivermgr
+
    .. tab-item:: Python
       :sync: python
 
@@ -59,17 +69,6 @@ Installation
 
          # install.packages("pak")
          pak::pak("apache/arrow-adbc/r/adbcsqlite")
-
-   .. tab-item:: Go
-      :sync: go
-
-      Install the C/C++ package and use the Go driver manager.
-      Requires CGO.
-
-      .. code-block:: shell
-
-         go get github.com/apache/arrow-adbc/go/adbc/drivermgr
-
 
 Usage
 =====
