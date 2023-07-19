@@ -44,6 +44,7 @@ To learn more about ADBC, see the `introductory blog post
 
    driver/installation
    driver/status
+   driver/duckdb
    driver/flight_sql
    driver/jdbc
    driver/postgresql
