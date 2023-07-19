@@ -65,10 +65,11 @@ build_subproject() {
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
 
-    clang-tidy \
-        -p "${build_dir}/compile_commands.json" \
-        --fix \
-        --quiet \
+    run-clang-tidy \
+        -j $(nproc) \
+        -p "${build_dir}" \
+        -fix \
+        -quiet \
         $(jq -r ".[] | .file" "${build_dir}/compile_commands.json")
 
     set +x
