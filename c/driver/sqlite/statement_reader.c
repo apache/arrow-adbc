@@ -719,7 +719,10 @@ AdbcStatusCode StatementReaderAppendInt64ToBinary(struct ArrowBuffer* offsets,
   int written = 0;
   while (1) {
     written = snprintf(output, buffer_size, "%" PRId64, value);
-    if (written >= buffer_size) {
+    if (written < 0) {
+      SetError(error, "Encoding error when upcasting double to string");
+      return ADBC_STATUS_INTERNAL;
+    } else if (((size_t)written) >= buffer_size) {
       // Truncated, resize and try again
       // Check for overflow - presumably this can never happen...?
       if (UINT_MAX - buffer_size < buffer_size) {
@@ -749,7 +752,10 @@ AdbcStatusCode StatementReaderAppendDoubleToBinary(struct ArrowBuffer* offsets,
   int written = 0;
   while (1) {
     written = snprintf(output, buffer_size, "%e", value);
-    if (written >= buffer_size) {
+    if (written < 0) {
+      SetError(error, "Encoding error when upcasting double to string");
+      return ADBC_STATUS_INTERNAL;
+    } else if (((size_t)written) >= buffer_size) {
       // Truncated, resize and try again
       // Check for overflow - presumably this can never happen...?
       if (UINT_MAX - buffer_size < buffer_size) {
@@ -977,7 +983,7 @@ AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
 
   if (status == ADBC_STATUS_OK && !reader->done) {
     int64_t num_rows = 0;
-    while (num_rows < batch_size) {
+    while (((size_t)num_rows) < batch_size) {
       int rc = sqlite3_step(stmt);
       if (rc == SQLITE_DONE) {
         if (!binder) {
