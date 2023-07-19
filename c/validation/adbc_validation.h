@@ -20,6 +20,7 @@
 
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include <adbc.h>
@@ -30,6 +31,8 @@ namespace adbc_validation {
 
 #define ADBCV_STRINGIFY(s) #s
 #define ADBCV_STRINGIFY_VALUE(s) ADBCV_STRINGIFY(s)
+
+using SqlInfoValue = std::variant<std::string, int64_t>;
 
 /// \brief Configuration for driver-specific behavior.
 class DriverQuirks {
@@ -100,6 +103,11 @@ class DriverQuirks {
 
   /// \brief Whether GetSqlInfo is implemented
   virtual bool supports_get_sql_info() const { return true; }
+
+  /// \brief The expected value for a given info code
+  virtual std::optional<SqlInfoValue> supports_get_sql_info(uint32_t info_code) const {
+    return std::nullopt;
+  }
 
   /// \brief Whether GetObjects is implemented
   virtual bool supports_get_objects() const { return true; }
