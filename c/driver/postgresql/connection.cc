@@ -242,7 +242,8 @@ class PqGetObjectsHelper {
   AdbcStatusCode AppendSchemas(std::string db_name) {
     // postgres only allows you to list schemas for the currently connected db
     if (!strcmp(db_name.c_str(), PQdb(conn_))) {
-      struct StringBuilder query = {0};
+      struct StringBuilder query;
+      std::memset(&query, 0, sizeof(query));
       if (StringBuilderInit(&query, /*initial_size*/ 256)) {
         return ADBC_STATUS_INTERNAL;
       }
@@ -291,7 +292,8 @@ class PqGetObjectsHelper {
   }
 
   AdbcStatusCode AppendCatalogs() {
-    struct StringBuilder query = {0};
+    struct StringBuilder query;
+    std::memset(&query, 0, sizeof(query));
     if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
 
     if (StringBuilderAppend(&query, "%s", "SELECT datname FROM pg_catalog.pg_database")) {
@@ -330,7 +332,8 @@ class PqGetObjectsHelper {
   }
 
   AdbcStatusCode AppendTables(std::string schema_name) {
-    struct StringBuilder query = {0};
+    struct StringBuilder query;
+    std::memset(&query, 0, sizeof(query));
     if (StringBuilderInit(&query, /*initial_size*/ 512)) {
       return ADBC_STATUS_INTERNAL;
     }
@@ -429,7 +432,8 @@ class PqGetObjectsHelper {
   }
 
   AdbcStatusCode AppendColumns(std::string schema_name, std::string table_name) {
-    struct StringBuilder query = {0};
+    struct StringBuilder query;
+    std::memset(&query, 0, sizeof(query));
     if (StringBuilderInit(&query, /*initial_size*/ 512)) {
       return ADBC_STATUS_INTERNAL;
     }
@@ -516,7 +520,8 @@ class PqGetObjectsHelper {
   }
 
   AdbcStatusCode AppendConstraints(std::string schema_name, std::string table_name) {
-    struct StringBuilder query = {0};
+    struct StringBuilder query;
+    std::memset(&query, 0, sizeof(query));
     if (StringBuilderInit(&query, /*initial_size*/ 4096)) {
       return ADBC_STATUS_INTERNAL;
     }
@@ -796,8 +801,10 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
     info_codes_length = sizeof(kSupportedInfoCodes) / sizeof(kSupportedInfoCodes[0]);
   }
 
-  struct ArrowSchema schema = {0};
-  struct ArrowArray array = {0};
+  struct ArrowSchema schema;
+  std::memset(&schema, 0, sizeof(schema));
+  struct ArrowArray array;
+  std::memset(&array, 0, sizeof(array));
 
   AdbcStatusCode status =
       PostgresConnectionGetInfoImpl(codes, info_codes_length, &schema, &array, error);
@@ -814,8 +821,10 @@ AdbcStatusCode PostgresConnection::GetObjects(
     struct AdbcConnection* connection, int depth, const char* catalog,
     const char* db_schema, const char* table_name, const char** table_types,
     const char* column_name, struct ArrowArrayStream* out, struct AdbcError* error) {
-  struct ArrowSchema schema = {0};
-  struct ArrowArray array = {0};
+  struct ArrowSchema schema;
+  std::memset(&schema, 0, sizeof(schema));
+  struct ArrowArray array;
+  std::memset(&array, 0, sizeof(array));
 
   PqGetObjectsHelper helper =
       PqGetObjectsHelper(conn_, depth, catalog, db_schema, table_name, table_types,
@@ -837,7 +846,8 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   struct ArrowSchema* schema,
                                                   struct AdbcError* error) {
   AdbcStatusCode final_status = ADBC_STATUS_OK;
-  struct StringBuilder query = {0};
+  struct StringBuilder query;
+  std::memset(&query, 0, sizeof(query));
   std::vector<std::string> params;
   if (StringBuilderInit(&query, /*initial_size=*/256) != 0) return ADBC_STATUS_INTERNAL;
 
@@ -937,8 +947,10 @@ AdbcStatusCode PostgresConnectionGetTableTypesImpl(struct ArrowSchema* schema,
 AdbcStatusCode PostgresConnection::GetTableTypes(struct AdbcConnection* connection,
                                                  struct ArrowArrayStream* out,
                                                  struct AdbcError* error) {
-  struct ArrowSchema schema = {0};
-  struct ArrowArray array = {0};
+  struct ArrowSchema schema;
+  std::memset(&schema, 0, sizeof(schema));
+  struct ArrowArray array;
+  std::memset(&array, 0, sizeof(array));
 
   AdbcStatusCode status = PostgresConnectionGetTableTypesImpl(&schema, &array, error);
   if (status != ADBC_STATUS_OK) {
