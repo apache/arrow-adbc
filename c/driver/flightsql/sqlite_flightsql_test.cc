@@ -16,6 +16,7 @@
 // under the License.
 
 #include <chrono>
+#include <optional>
 #include <random>
 #include <thread>
 
@@ -92,6 +93,25 @@ class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
   bool supports_concurrent_statements() const override { return true; }
   bool supports_transactions() const override { return false; }
   bool supports_get_sql_info() const override { return true; }
+  std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
+      uint32_t info_code) const override {
+    switch (info_code) {
+      case ADBC_INFO_DRIVER_NAME:
+        return "ADBC Flight SQL Driver - Go";
+      case ADBC_INFO_DRIVER_VERSION:
+        return "(unknown or development build)";
+      case ADBC_INFO_DRIVER_ADBC_VERSION:
+        return ADBC_VERSION_1_1_0;
+      case ADBC_INFO_VENDOR_NAME:
+        return "db_name";
+      case ADBC_INFO_VENDOR_VERSION:
+        return "sqlite 3";
+      case ADBC_INFO_VENDOR_ARROW_VERSION:
+        return "12.0.0";
+      default:
+        return std::nullopt;
+    }
+  }
   bool supports_get_objects() const override { return true; }
   bool supports_bulk_ingest() const override { return false; }
   bool supports_partitioned_data() const override { return true; }

@@ -26,6 +26,7 @@
 #include <string_view>
 #include <tuple>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include <adbc.h>
@@ -255,79 +256,99 @@ void ConnectionTest::TestMetadataGetInfo() {
     GTEST_SKIP();
   }
 
-  StreamReader reader;
-  std::vector<uint32_t> info = {
-      ADBC_INFO_DRIVER_NAME,
-      ADBC_INFO_DRIVER_VERSION,
-      ADBC_INFO_VENDOR_NAME,
-      ADBC_INFO_VENDOR_VERSION,
-  };
+  for (uint32_t info_code : {
+           ADBC_INFO_DRIVER_NAME,
+           ADBC_INFO_DRIVER_VERSION,
+           ADBC_INFO_DRIVER_ADBC_VERSION,
+           ADBC_INFO_VENDOR_NAME,
+           ADBC_INFO_VENDOR_VERSION,
+       }) {
+    uint32_t info[] = {info_code};
 
-  ASSERT_THAT(AdbcConnectionGetInfo(&connection, info.data(), info.size(),
-                                    &reader.stream.value, &error),
-              IsOkStatus(&error));
-  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-  ASSERT_NO_FATAL_FAILURE(CompareSchema(
-      &reader.schema.value, {
-                                {"info_name", NANOARROW_TYPE_UINT32, NOT_NULL},
-                                {"info_value", NANOARROW_TYPE_DENSE_UNION, NULLABLE},
-                            }));
-  ASSERT_NO_FATAL_FAILURE(
-      CompareSchema(reader.schema->children[1],
-                    {
-                        {"string_value", NANOARROW_TYPE_STRING, NULLABLE},
-                        {"bool_value", NANOARROW_TYPE_BOOL, NULLABLE},
-                        {"int64_value", NANOARROW_TYPE_INT64, NULLABLE},
-                        {"int32_bitmask", NANOARROW_TYPE_INT32, NULLABLE},
-                        {"string_list", NANOARROW_TYPE_LIST, NULLABLE},
-                        {"int32_to_int32_list_map", NANOARROW_TYPE_MAP, NULLABLE},
-                    }));
-  ASSERT_NO_FATAL_FAILURE(CompareSchema(reader.schema->children[1]->children[4],
-                                        {
-                                            {"item", NANOARROW_TYPE_STRING, NULLABLE},
-                                        }));
-  ASSERT_NO_FATAL_FAILURE(CompareSchema(reader.schema->children[1]->children[5],
-                                        {
-                                            {"entries", NANOARROW_TYPE_STRUCT, NOT_NULL},
-                                        }));
-  ASSERT_NO_FATAL_FAILURE(
-      CompareSchema(reader.schema->children[1]->children[5]->children[0],
-                    {
-                        {"key", NANOARROW_TYPE_INT32, NOT_NULL},
-                        {"value", NANOARROW_TYPE_LIST, NULLABLE},
-                    }));
-  ASSERT_NO_FATAL_FAILURE(
-      CompareSchema(reader.schema->children[1]->children[5]->children[0]->children[1],
-                    {
-                        {"item", NANOARROW_TYPE_INT32, NULLABLE},
-                    }));
+    StreamReader reader;
+    ASSERT_THAT(AdbcConnectionGetInfo(&connection, info, 1, &reader.stream.value, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
 
-  std::vector<uint32_t> seen;
-  while (true) {
-    ASSERT_NO_FATAL_FAILURE(reader.Next());
-    if (!reader.array->release) break;
+    ASSERT_NO_FATAL_FAILURE(CompareSchema(
+        &reader.schema.value, {
+                                  {"info_name", NANOARROW_TYPE_UINT32, NOT_NULL},
+                                  {"info_value", NANOARROW_TYPE_DENSE_UNION, NULLABLE},
+                              }));
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(reader.schema->children[1],
+                      {
+                          {"string_value", NANOARROW_TYPE_STRING, NULLABLE},
+                          {"bool_value", NANOARROW_TYPE_BOOL, NULLABLE},
+                          {"int64_value", NANOARROW_TYPE_INT64, NULLABLE},
+                          {"int32_bitmask", NANOARROW_TYPE_INT32, NULLABLE},
+                          {"string_list", NANOARROW_TYPE_LIST, NULLABLE},
+                          {"int32_to_int32_list_map", NANOARROW_TYPE_MAP, NULLABLE},
+                      }));
+    ASSERT_NO_FATAL_FAILURE(CompareSchema(reader.schema->children[1]->children[4],
+                                          {
+                                              {"item", NANOARROW_TYPE_STRING, NULLABLE},
+                                          }));
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(reader.schema->children[1]->children[5],
+                      {
+                          {"entries", NANOARROW_TYPE_STRUCT, NOT_NULL},
+                      }));
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(reader.schema->children[1]->children[5]->children[0],
+                      {
+                          {"key", NANOARROW_TYPE_INT32, NOT_NULL},
+                          {"value", NANOARROW_TYPE_LIST, NULLABLE},
+                      }));
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(reader.schema->children[1]->children[5]->children[0]->children[1],
+                      {
+                          {"item", NANOARROW_TYPE_INT32, NULLABLE},
+                      }));
 
-    for (int64_t row = 0; row < reader.array->length; row++) {
-      ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], row));
-      const uint32_t code =
-          reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
-      seen.push_back(code);
+    std::vector<uint32_t> seen;
+    while (true) {
+      ASSERT_NO_FATAL_FAILURE(reader.Next());
+      if (!reader.array->release) break;
 
-      switch (code) {
-        case ADBC_INFO_DRIVER_NAME:
-        case ADBC_INFO_DRIVER_VERSION:
-        case ADBC_INFO_VENDOR_NAME:
-        case ADBC_INFO_VENDOR_VERSION:
-          // UTF8
-          ASSERT_EQ(uint8_t(0),
-                    reader.array_view->children[1]->buffer_views[0].data.as_uint8[row]);
-        default:
-          // Ignored
-          break;
+      for (int64_t row = 0; row < reader.array->length; row++) {
+        ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], row));
+        const uint32_t code =
+            reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
+        seen.push_back(code);
+
+        std::optional<SqlInfoValue> expected = quirks()->supports_get_sql_info(code);
+        ASSERT_TRUE(expected.has_value()) << "Got unexpected info code " << code;
+
+        uint8_t type_code =
+            reader.array_view->children[1]->buffer_views[0].data.as_uint8[row];
+        int32_t offset =
+            reader.array_view->children[1]->buffer_views[1].data.as_int32[row];
+        ASSERT_NO_FATAL_FAILURE(std::visit(
+            [&](auto&& expected_value) {
+              using T = std::decay_t<decltype(expected_value)>;
+              if constexpr (std::is_same_v<T, int64_t>) {
+                ASSERT_EQ(uint8_t(2), type_code);
+                ASSERT_EQ(expected_value,
+                          ArrowArrayViewGetIntUnsafe(
+                              reader.array_view->children[1]->children[2], offset));
+              } else if constexpr (std::is_same_v<T, std::string>) {
+                ASSERT_EQ(uint8_t(0), type_code);
+                struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(
+                    reader.array_view->children[1]->children[0], offset);
+                ASSERT_EQ(expected_value,
+                          std::string_view(static_cast<const char*>(view.data),
+                                           view.size_bytes));
+              } else {
+                static_assert(!sizeof(T), "not yet implemented");
+              }
+            },
+            *expected))
+            << "code: " << type_code;
       }
     }
+    ASSERT_THAT(seen, ::testing::IsSupersetOf(info));
   }
-  ASSERT_THAT(seen, ::testing::UnorderedElementsAreArray(info));
 }
 
 void ConnectionTest::TestMetadataGetTableSchema() {
