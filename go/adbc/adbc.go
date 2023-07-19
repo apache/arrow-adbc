@@ -753,7 +753,7 @@ type ConnectionGetStatistics interface {
 	//		statistic_name | utf8 not null
 	//		statistic_key  | int16 not null
 	//
-	GetStatisticNames() (array.RecordReader, error)
+	GetStatisticNames(ctx context.Context) (array.RecordReader, error)
 }
 
 // StatementExecuteSchema is a Statement that also supports ExecuteSchema.
