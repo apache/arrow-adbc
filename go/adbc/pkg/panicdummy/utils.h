@@ -26,19 +26,30 @@
 #include <stdlib.h>
 #include "../../drivermgr/adbc.h"
 
+AdbcStatusCode PanicDummyDatabaseGetOption(struct AdbcDatabase*, const char*, char*,
+                                           size_t*, struct AdbcError*);
+AdbcStatusCode PanicDummyDatabaseGetOptionBytes(struct AdbcDatabase*, const char*,
+                                                uint8_t*, size_t*, struct AdbcError*);
+AdbcStatusCode PanicDummyDatabaseGetOptionDouble(struct AdbcDatabase*, const char*,
+                                                 double*, struct AdbcError*);
+AdbcStatusCode PanicDummyDatabaseGetOptionInt(struct AdbcDatabase*, const char*, int64_t*,
+                                              struct AdbcError*);
+AdbcStatusCode PanicDummyDatabaseInit(struct AdbcDatabase* db, struct AdbcError* err);
 AdbcStatusCode PanicDummyDatabaseNew(struct AdbcDatabase* db, struct AdbcError* err);
+AdbcStatusCode PanicDummyDatabaseRelease(struct AdbcDatabase* db, struct AdbcError* err);
 AdbcStatusCode PanicDummyDatabaseSetOption(struct AdbcDatabase* db, const char* key,
                                            const char* value, struct AdbcError* err);
-AdbcStatusCode PanicDummyDatabaseInit(struct AdbcDatabase* db, struct AdbcError* err);
-AdbcStatusCode PanicDummyDatabaseRelease(struct AdbcDatabase* db, struct AdbcError* err);
-AdbcStatusCode PanicDummyConnectionNew(struct AdbcConnection* cnxn,
-                                       struct AdbcError* err);
-AdbcStatusCode PanicDummyConnectionSetOption(struct AdbcConnection* cnxn, const char* key,
-                                             const char* val, struct AdbcError* err);
-AdbcStatusCode PanicDummyConnectionInit(struct AdbcConnection* cnxn,
-                                        struct AdbcDatabase* db, struct AdbcError* err);
-AdbcStatusCode PanicDummyConnectionRelease(struct AdbcConnection* cnxn,
-                                           struct AdbcError* err);
+AdbcStatusCode PanicDummyDatabaseSetOptionBytes(struct AdbcDatabase*, const char*,
+                                                const uint8_t*, size_t,
+                                                struct AdbcError*);
+AdbcStatusCode PanicDummyDatabaseSetOptionDouble(struct AdbcDatabase*, const char*,
+                                                 double, struct AdbcError*);
+AdbcStatusCode PanicDummyDatabaseSetOptionInt(struct AdbcDatabase*, const char*, int64_t,
+                                              struct AdbcError*);
+
+AdbcStatusCode PanicDummyConnectionCancel(struct AdbcConnection*, struct AdbcError*);
+AdbcStatusCode PanicDummyConnectionCommit(struct AdbcConnection* cnxn,
+                                          struct AdbcError* err);
 AdbcStatusCode PanicDummyConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes,
                                            size_t len, struct ArrowArrayStream* out,
                                            struct AdbcError* err);
@@ -46,51 +57,99 @@ AdbcStatusCode PanicDummyConnectionGetObjects(
     struct AdbcConnection* cnxn, int depth, const char* catalog, const char* dbSchema,
     const char* tableName, const char** tableType, const char* columnName,
     struct ArrowArrayStream* out, struct AdbcError* err);
+AdbcStatusCode PanicDummyConnectionGetOption(struct AdbcConnection*, const char*, char*,
+                                             size_t*, struct AdbcError*);
+AdbcStatusCode PanicDummyConnectionGetOptionBytes(struct AdbcConnection*, const char*,
+                                                  uint8_t*, size_t*, struct AdbcError*);
+AdbcStatusCode PanicDummyConnectionGetOptionDouble(struct AdbcConnection*, const char*,
+                                                   double*, struct AdbcError*);
+AdbcStatusCode PanicDummyConnectionGetOptionInt(struct AdbcConnection*, const char*,
+                                                int64_t*, struct AdbcError*);
+AdbcStatusCode PanicDummyConnectionGetStatistics(struct AdbcConnection*, const char*,
+                                                 const char*, const char*, char,
+                                                 struct ArrowArrayStream*,
+                                                 struct AdbcError*);
+AdbcStatusCode PanicDummyConnectionGetStatisticNames(struct AdbcConnection*,
+                                                     struct ArrowArrayStream*,
+                                                     struct AdbcError*);
 AdbcStatusCode PanicDummyConnectionGetTableSchema(
     struct AdbcConnection* cnxn, const char* catalog, const char* dbSchema,
     const char* tableName, struct ArrowSchema* schema, struct AdbcError* err);
 AdbcStatusCode PanicDummyConnectionGetTableTypes(struct AdbcConnection* cnxn,
                                                  struct ArrowArrayStream* out,
                                                  struct AdbcError* err);
+AdbcStatusCode PanicDummyConnectionInit(struct AdbcConnection* cnxn,
+                                        struct AdbcDatabase* db, struct AdbcError* err);
+AdbcStatusCode PanicDummyConnectionNew(struct AdbcConnection* cnxn,
+                                       struct AdbcError* err);
 AdbcStatusCode PanicDummyConnectionReadPartition(struct AdbcConnection* cnxn,
                                                  const uint8_t* serialized,
                                                  size_t serializedLen,
                                                  struct ArrowArrayStream* out,
                                                  struct AdbcError* err);
-AdbcStatusCode PanicDummyConnectionCommit(struct AdbcConnection* cnxn,
-                                          struct AdbcError* err);
+AdbcStatusCode PanicDummyConnectionRelease(struct AdbcConnection* cnxn,
+                                           struct AdbcError* err);
 AdbcStatusCode PanicDummyConnectionRollback(struct AdbcConnection* cnxn,
                                             struct AdbcError* err);
-AdbcStatusCode PanicDummyStatementNew(struct AdbcConnection* cnxn,
-                                      struct AdbcStatement* stmt, struct AdbcError* err);
-AdbcStatusCode PanicDummyStatementRelease(struct AdbcStatement* stmt,
-                                          struct AdbcError* err);
-AdbcStatusCode PanicDummyStatementPrepare(struct AdbcStatement* stmt,
-                                          struct AdbcError* err);
-AdbcStatusCode PanicDummyStatementExecuteQuery(struct AdbcStatement* stmt,
-                                               struct ArrowArrayStream* out,
-                                               int64_t* affected, struct AdbcError* err);
-AdbcStatusCode PanicDummyStatementSetSqlQuery(struct AdbcStatement* stmt,
-                                              const char* query, struct AdbcError* err);
-AdbcStatusCode PanicDummyStatementSetSubstraitPlan(struct AdbcStatement* stmt,
-                                                   const uint8_t* plan, size_t length,
-                                                   struct AdbcError* err);
+AdbcStatusCode PanicDummyConnectionSetOption(struct AdbcConnection* cnxn, const char* key,
+                                             const char* val, struct AdbcError* err);
+AdbcStatusCode PanicDummyConnectionSetOptionBytes(struct AdbcConnection*, const char*,
+                                                  const uint8_t*, size_t,
+                                                  struct AdbcError*);
+AdbcStatusCode PanicDummyConnectionSetOptionDouble(struct AdbcConnection*, const char*,
+                                                   double, struct AdbcError*);
+AdbcStatusCode PanicDummyConnectionSetOptionInt(struct AdbcConnection*, const char*,
+                                                int64_t, struct AdbcError*);
+
 AdbcStatusCode PanicDummyStatementBind(struct AdbcStatement* stmt,
                                        struct ArrowArray* values,
                                        struct ArrowSchema* schema, struct AdbcError* err);
 AdbcStatusCode PanicDummyStatementBindStream(struct AdbcStatement* stmt,
                                              struct ArrowArrayStream* stream,
                                              struct AdbcError* err);
-AdbcStatusCode PanicDummyStatementGetParameterSchema(struct AdbcStatement* stmt,
-                                                     struct ArrowSchema* schema,
-                                                     struct AdbcError* err);
-AdbcStatusCode PanicDummyStatementSetOption(struct AdbcStatement* stmt, const char* key,
-                                            const char* value, struct AdbcError* err);
+AdbcStatusCode PanicDummyStatementCancel(struct AdbcStatement*, struct AdbcError*);
+AdbcStatusCode PanicDummyStatementExecuteQuery(struct AdbcStatement* stmt,
+                                               struct ArrowArrayStream* out,
+                                               int64_t* affected, struct AdbcError* err);
 AdbcStatusCode PanicDummyStatementExecutePartitions(struct AdbcStatement* stmt,
                                                     struct ArrowSchema* schema,
                                                     struct AdbcPartitions* partitions,
                                                     int64_t* affected,
                                                     struct AdbcError* err);
+AdbcStatusCode PanicDummyStatementExecuteSchema(struct AdbcStatement*,
+                                                struct ArrowSchema*, struct AdbcError*);
+AdbcStatusCode PanicDummyStatementGetOption(struct AdbcStatement*, const char*, char*,
+                                            size_t*, struct AdbcError*);
+AdbcStatusCode PanicDummyStatementGetOptionBytes(struct AdbcStatement*, const char*,
+                                                 uint8_t*, size_t*, struct AdbcError*);
+AdbcStatusCode PanicDummyStatementGetOptionDouble(struct AdbcStatement*, const char*,
+                                                  double*, struct AdbcError*);
+AdbcStatusCode PanicDummyStatementGetOptionInt(struct AdbcStatement*, const char*,
+                                               int64_t*, struct AdbcError*);
+AdbcStatusCode PanicDummyStatementGetParameterSchema(struct AdbcStatement* stmt,
+                                                     struct ArrowSchema* schema,
+                                                     struct AdbcError* err);
+AdbcStatusCode PanicDummyStatementNew(struct AdbcConnection* cnxn,
+                                      struct AdbcStatement* stmt, struct AdbcError* err);
+AdbcStatusCode PanicDummyStatementPrepare(struct AdbcStatement* stmt,
+                                          struct AdbcError* err);
+AdbcStatusCode PanicDummyStatementRelease(struct AdbcStatement* stmt,
+                                          struct AdbcError* err);
+AdbcStatusCode PanicDummyStatementSetOption(struct AdbcStatement* stmt, const char* key,
+                                            const char* value, struct AdbcError* err);
+AdbcStatusCode PanicDummyStatementSetOptionBytes(struct AdbcStatement*, const char*,
+                                                 const uint8_t*, size_t,
+                                                 struct AdbcError*);
+AdbcStatusCode PanicDummyStatementSetOptionDouble(struct AdbcStatement*, const char*,
+                                                  double, struct AdbcError*);
+AdbcStatusCode PanicDummyStatementSetOptionInt(struct AdbcStatement*, const char*,
+                                               int64_t, struct AdbcError*);
+AdbcStatusCode PanicDummyStatementSetSqlQuery(struct AdbcStatement* stmt,
+                                              const char* query, struct AdbcError* err);
+AdbcStatusCode PanicDummyStatementSetSubstraitPlan(struct AdbcStatement* stmt,
+                                                   const uint8_t* plan, size_t length,
+                                                   struct AdbcError* err);
+
 AdbcStatusCode PanicDummyDriverInit(int version, void* rawDriver, struct AdbcError* err);
 
 static inline void PanicDummyerrRelease(struct AdbcError* error) {

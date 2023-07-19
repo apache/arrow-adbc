@@ -427,11 +427,7 @@ func (d *database) GetOptionDouble(key string) (float64, error) {
 func (d *database) SetOption(key, value string) error {
 	// We can't change most options post-init
 	switch key {
-	case OptionTimeoutFetch:
-		fallthrough
-	case OptionTimeoutQuery:
-		fallthrough
-	case OptionTimeoutUpdate:
+	case OptionTimeoutFetch, OptionTimeoutQuery, OptionTimeoutUpdate:
 		return d.timeout.setTimeoutString(key, value)
 	}
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
@@ -1154,6 +1150,8 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 						infoNameBldr.Append(uint32(adbc.InfoVendorVersion))
 					case flightsql.SqlInfoFlightSqlServerArrowVersion:
 						infoNameBldr.Append(uint32(adbc.InfoVendorArrowVersion))
+					default:
+						continue
 					}
 
 					infoValueBldr.Append(info.TypeCode(i))
