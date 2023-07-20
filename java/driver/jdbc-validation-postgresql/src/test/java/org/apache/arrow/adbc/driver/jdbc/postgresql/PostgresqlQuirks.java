@@ -37,6 +37,9 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
   static final String POSTGRESQL_URL_ENV_VAR = "ADBC_JDBC_POSTGRESQL_URL";
   static final String POSTGRESQL_USER_ENV_VAR = "ADBC_JDBC_POSTGRESQL_USER";
   static final String POSTGRESQL_PASSWORD_ENV_VAR = "ADBC_JDBC_POSTGRESQL_PASSWORD";
+  static final String POSTGRESQL_DATABASE_ENV_VAR = "ADBC_JDBC_POSTGRESQL_DATABASE";
+
+  String catalog = "postgres";
 
   static String makeJdbcUrl() {
     final String postgresUrl = System.getenv(POSTGRESQL_URL_ENV_VAR);
@@ -49,12 +52,21 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
     return String.format("jdbc:postgresql://%s?user=%s&password=%s", postgresUrl, user, password);
   }
 
+  public Connection getJdbcConnection() throws SQLException {
+    return DriverManager.getConnection(makeJdbcUrl());
+  }
+
   @Override
   public AdbcDatabase initDatabase(BufferAllocator allocator) throws AdbcException {
     String url = makeJdbcUrl();
 
+    final String catalog = System.getenv(POSTGRESQL_DATABASE_ENV_VAR);
+    Assumptions.assumeFalse(
+        catalog == null, "PostgreSQL catalog not found, set " + POSTGRESQL_DATABASE_ENV_VAR);
+    this.catalog = catalog;
+
     final Map<String, Object> parameters = new HashMap<>();
-    parameters.put(AdbcDriver.PARAM_URL, url);
+    AdbcDriver.PARAM_URI.set(parameters, url);
     parameters.put(JdbcDriver.PARAM_JDBC_QUIRKS, StandardJdbcQuirks.POSTGRESQL);
     return new JdbcDriver(allocator).open(parameters);
   }
@@ -71,8 +83,12 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
 
   @Override
   public String defaultCatalog() {
-    // XXX: this should really come from configuration
-    return "postgres";
+    return catalog;
+  }
+
+  @Override
+  public String defaultDbSchema() {
+    return "public";
   }
 
   @Override
@@ -93,5 +109,10 @@ public class PostgresqlQuirks extends SqlValidationQuirks {
   @Override
   public TimeUnit defaultTimestampUnit() {
     return TimeUnit.MICROSECOND;
+  }
+
+  @Override
+  public boolean supportsCurrentCatalog() {
+    return true;
   }
 }

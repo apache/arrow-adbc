@@ -26,14 +26,14 @@ public interface AdbcDriver {
    *
    * @since ADBC API revision 1.1.0
    */
-  AdbcOptionKey<String> PARAM_PASSWORD = new AdbcOptionKey<>("password", String.class);
+  TypedKey<String> PARAM_PASSWORD = new TypedKey<>("password", String.class);
 
   /**
    * The standard parameter name for a connection URI (type String).
    *
    * @since ADBC API revision 1.1.0
    */
-  AdbcOptionKey<String> PARAM_URI = new AdbcOptionKey<>("uri", String.class);
+  TypedKey<String> PARAM_URI = new TypedKey<>("uri", String.class);
 
   /**
    * The standard parameter name for a connection URL (type String).
@@ -47,7 +47,7 @@ public interface AdbcDriver {
    *
    * @since ADBC API revision 1.1.0
    */
-  AdbcOptionKey<String> PARAM_USERNAME = new AdbcOptionKey<>("username", String.class);
+  TypedKey<String> PARAM_USERNAME = new TypedKey<>("username", String.class);
 
   /** The standard parameter name for SQL quirks configuration (type SqlQuirks). */
   String PARAM_SQL_QUIRKS = "adbc.sql.quirks";

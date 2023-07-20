@@ -258,7 +258,7 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
    * <table border="1">
    *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
    *   <tr><td>db_schema_name</td>          <td>utf8</td>                   </tr>
-   *   <tr><td>db_schema_tables</td>        <td>list[TABLE_SCHEMA]</td>     </tr>
+   *   <tr><td>db_schema_statistics</td>    <td>list[STATISTICS_SCHEMA]</td></tr>
    *   <caption>The definition of DB_SCHEMA_SCHEMA.</caption>
    * </table>
    *
@@ -268,7 +268,7 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
    *   <tr><th>Field Name</th>              <th>Field Type</th>             <th>Comments</th></tr>
    *   <tr><td>table_name</td>              <td>utf8 not null</td>          <td></td></tr>
    *   <tr><td>column_name</td>             <td>utf8</td>                   <td>(1)</td></tr>
-   *   <tr><td>statistic_key</td>           <td>int16</td>                  <td>(2)</td></tr>
+   *   <tr><td>statistic_key</td>           <td>int16 not null</td>         <td>(2)</td></tr>
    *   <tr><td>statistic_value</td>         <td>VALUE_SCHEMA not null</td>  <td></td></tr>
    *   <tr><td>statistic_is_approximate</td><td>bool not null</td>          <td>(3)</td></tr>
    *   <caption>The definition of STATISTICS_SCHEMA.</caption>
@@ -291,7 +291,6 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
    *   <tr><td>int64</td>                   <td>int64</td>                  </td></tr>
    *   <tr><td>uint64</td>                  <td>uint64</td>                 </td></tr>
    *   <tr><td>float64</td>                 <td>float64</td>                </td></tr>
-   *   <tr><td>decimal256</td>              <td>decimal256</td>             </td></tr>
    *   <tr><td>binary</td>                  <td>binary</td>                 </td></tr>
    *   <caption>The definition of VALUE_SCHEMA.</caption>
    * </table>
@@ -314,6 +313,18 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
     throw AdbcException.notImplemented("Connection does not support getStatistics()");
   }
 
+  /**
+   * Get the names of additional statistics defined by this driver.
+   *
+   * <p>The result is an Arrow dataset with the following schema:
+   *
+   * <table border="1">
+   *   <tr><th>Field Name</th>              <th>Field Type</th>    </tr>
+   *   <tr><td>statistic_name</td>          <td>utf8 not null</td> </tr>
+   *   <tr><td>statistic_key</td>           <td>int16 not null</td></tr>
+   *   <caption>The definition of the GetStatistics result schema.</caption>
+   * </table>
+   */
   default ArrowReader getStatisticNames() throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support getStatisticNames()");
   }
@@ -408,7 +419,7 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
    *
    * @since ADBC API revision 1.1.0
    */
-  default void setCurrentDbSchema(String catalog) throws AdbcException {
+  default void setCurrentDbSchema(String dbSchema) throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support current catalog");
   }
 

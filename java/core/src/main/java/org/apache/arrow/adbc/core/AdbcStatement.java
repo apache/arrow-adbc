@@ -58,7 +58,7 @@ public interface AdbcStatement extends AutoCloseable, AdbcOptions {
   /**
    * Set a generic query option.
    *
-   * @deprecated Prefer {@link #setOption(AdbcOptionKey, Object)}.
+   * @deprecated Prefer {@link #setOption(TypedKey, Object)}.
    */
   default void setOption(String key, Object value) throws AdbcException {
     throw AdbcException.notImplemented("Unsupported option " + key);
