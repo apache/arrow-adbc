@@ -25,10 +25,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcInfoCode;
 import org.apache.arrow.adbc.core.StandardSchemas;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
+import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.UInt4Vector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -37,6 +39,7 @@ import org.apache.arrow.vector.complex.DenseUnionVector;
 /** Helper class to track state needed to build up the info structure. */
 final class InfoMetadataBuilder implements AutoCloseable {
   private static final byte STRING_VALUE_TYPE_ID = (byte) 0;
+  private static final byte BIGINT_VALUE_TYPE_ID = (byte) 2;
   private static final Map<Integer, AddInfo> SUPPORTED_CODES = new HashMap<>();
   private final Collection<Integer> requestedCodes;
   private final DatabaseMetaData dbmd;
@@ -45,6 +48,7 @@ final class InfoMetadataBuilder implements AutoCloseable {
   final UInt4Vector infoCodes;
   final DenseUnionVector infoValues;
   final VarCharVector stringValues;
+  final BigIntVector bigIntValues;
 
   @FunctionalInterface
   interface AddInfo {
@@ -74,6 +78,11 @@ final class InfoMetadataBuilder implements AutoCloseable {
           final String driverVersion = b.dbmd.getDriverVersion() + " (ADBC Driver Version 0.0.1)";
           b.setStringValue(idx, driverVersion);
         });
+    SUPPORTED_CODES.put(
+        AdbcInfoCode.DRIVER_ADBC_VERSION.getValue(),
+        (b, idx) -> {
+          b.setBigIntValue(idx, AdbcDriver.ADBC_VERSION_1_1_0);
+        });
   }
 
   InfoMetadataBuilder(BufferAllocator allocator, Connection connection, int[] infoCodes)
@@ -86,7 +95,18 @@ final class InfoMetadataBuilder implements AutoCloseable {
     this.dbmd = connection.getMetaData();
     this.infoCodes = (UInt4Vector) root.getVector(0);
     this.infoValues = (DenseUnionVector) root.getVector(1);
-    this.stringValues = this.infoValues.getVarCharVector((byte) 0);
+    this.stringValues = this.infoValues.getVarCharVector(STRING_VALUE_TYPE_ID);
+    this.bigIntValues = this.infoValues.getBigIntVector(BIGINT_VALUE_TYPE_ID);
+  }
+
+  void setBigIntValue(int index, long value) {
+    infoValues.setValueCount(index + 1);
+    infoValues.setTypeId(index, BIGINT_VALUE_TYPE_ID);
+    bigIntValues.setSafe(index, value);
+    infoValues
+        .getOffsetBuffer()
+        .setInt((long) index * DenseUnionVector.OFFSET_WIDTH, bigIntValues.getValueCount());
+    bigIntValues.setValueCount(bigIntValues.getValueCount() + 1);
   }
 
   void setStringValue(int index, final String value) {

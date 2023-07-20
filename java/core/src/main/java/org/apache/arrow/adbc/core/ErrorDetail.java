@@ -14,35 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.arrow.adbc.core;
 
-import java.util.Map;
 import java.util.Objects;
 
-/**
- * A typesafe option key.
- *
- * @since ADBC API revision 1.1.0
- * @param <T> The option value type.
- */
-public final class AdbcOptionKey<T> {
+/** Additional details (not necessarily human-readable) contained in an {@link AdbcException}. */
+public class ErrorDetail {
   private final String key;
-  private final Class<T> type;
+  private final Object value;
 
-  public AdbcOptionKey(String key, Class<T> type) {
+  public ErrorDetail(String key, Object value) {
     this.key = Objects.requireNonNull(key);
-    this.type = Objects.requireNonNull(type);
+    this.value = Objects.requireNonNull(value);
   }
 
-  /**
-   * Set this option in an options map (like for {@link AdbcDriver#open(Map)}.
-   *
-   * @param options The options.
-   * @param value The option value.
-   */
-  public void set(Map<String, Object> options, T value) {
-    options.put(key, value);
+  public String getKey() {
+    return key;
+  }
+
+  public Object getValue() {
+    return value;
   }
 
   @Override
@@ -53,17 +44,17 @@ public final class AdbcOptionKey<T> {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    AdbcOptionKey<?> that = (AdbcOptionKey<?>) o;
-    return Objects.equals(key, that.key) && Objects.equals(type, that.type);
+    ErrorDetail that = (ErrorDetail) o;
+    return Objects.equals(getKey(), that.getKey()) && Objects.equals(getValue(), that.getValue());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(key, type);
+    return Objects.hash(getKey(), getValue());
   }
 
   @Override
   public String toString() {
-    return "AdbcOptionKey{" + key + ", " + type + '}';
+    return "ErrorDetail{" + "key='" + key + '\'' + ", value=" + value + '}';
   }
 }
