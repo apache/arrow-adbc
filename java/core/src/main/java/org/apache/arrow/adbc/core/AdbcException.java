@@ -16,7 +16,6 @@
  */
 package org.apache.arrow.adbc.core;
 
-import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -37,7 +36,7 @@ public class AdbcException extends Exception {
   private final AdbcStatusCode status;
   private final String sqlState;
   private final int vendorCode;
-  private Collection<ByteBuffer> details;
+  private Collection<ErrorDetail> details;
 
   public AdbcException(
       String message, Throwable cause, AdbcStatusCode status, String sqlState, int vendorCode) {
@@ -50,7 +49,7 @@ public class AdbcException extends Exception {
       AdbcStatusCode status,
       String sqlState,
       int vendorCode,
-      Collection<ByteBuffer> details) {
+      Collection<ErrorDetail> details) {
     super(message, cause);
     this.status = status;
     this.sqlState = sqlState;
@@ -94,14 +93,14 @@ public class AdbcException extends Exception {
   }
 
   /**
-   * Get extra driver-specific binary error details.
+   * Get extra driver-specific error details.
    *
    * <p>This allows drivers to return custom, structured error information (for example, JSON or
    * Protocol Buffers) that can be optionally parsed by clients, beyond the standard AdbcError
    * fields, without having to encode it in the error message. The encoding of the data is
    * driver-defined.
    */
-  public Collection<ByteBuffer> getDetails() {
+  public Collection<ErrorDetail> getDetails() {
     return details;
   }
 
@@ -115,7 +114,7 @@ public class AdbcException extends Exception {
   /**
    * Copy this exception with different details (a convenience for use with the static factories).
    */
-  public AdbcException withDetails(Collection<ByteBuffer> details) {
+  public AdbcException withDetails(Collection<ErrorDetail> details) {
     return new AdbcException(getMessage(), getCause(), status, sqlState, vendorCode, details);
   }
 

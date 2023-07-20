@@ -27,7 +27,7 @@ public interface AdbcOptions {
    * @return The option value.
    * @param <T> The option value type.
    */
-  default <T> T getOption(AdbcOptionKey<T> key) throws AdbcException {
+  default <T> T getOption(TypedKey<T> key) throws AdbcException {
     throw AdbcException.notImplemented("Unsupported option " + key);
   }
 
@@ -39,7 +39,7 @@ public interface AdbcOptions {
    * @param value The option value.
    * @param <T> The option value type.
    */
-  default <T> void setOption(AdbcOptionKey<T> key, T value) throws AdbcException {
+  default <T> void setOption(TypedKey<T> key, T value) throws AdbcException {
     throw AdbcException.notImplemented("Unsupported option " + key);
   }
 }

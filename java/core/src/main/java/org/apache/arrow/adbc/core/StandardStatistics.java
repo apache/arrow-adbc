@@ -32,39 +32,39 @@ public enum StandardStatistics {
    *
    * <p>For example, this is roughly the average length of a string for a string column.
    */
-  AVERAGE_BYTE_WIDTH("adbc.statistic.byte_width", 0),
+  AVERAGE_BYTE_WIDTH("adbc.statistic.byte_width", (short) 0),
   /**
    * The distinct value count (NDV) statistic. The number of distinct values in the column. Value
    * type is int64 (when not approximate) or float64 (when approximate).
    */
-  DISTINCT_COUNT("adbc.statistic.distinct_count", 1),
+  DISTINCT_COUNT("adbc.statistic.distinct_count", (short) 1),
   /**
    * The max byte width statistic. The maximum size in bytes of a row in the column. Value type is
    * int64 (when not approximate) or float64 (when approximate).
    *
    * <p>For example, this is the maximum length of a string for a string column.
    */
-  MAX_BYTE_WIDTH("adbc.statistic.byte_width", 2),
+  MAX_BYTE_WIDTH("adbc.statistic.byte_width", (short) 2),
   /** The max value statistic. Value type is column-dependent. */
-  MAX_VALUE_NAME("adbc.statistic.byte_width", 3),
+  MAX_VALUE("adbc.statistic.byte_width", (short) 3),
   /** The min value statistic. Value type is column-dependent. */
-  MIN_VALUE_NAME("adbc.statistic.byte_width", 4),
+  MIN_VALUE("adbc.statistic.byte_width", (short) 4),
   /**
    * The null count statistic. The number of values that are null in the column. Value type is int64
    * (when not approximate) or float64 (when approximate).
    */
-  NULL_COUNT_NAME("adbc.statistic.null_count", 5),
+  NULL_COUNT("adbc.statistic.null_count", (short) 5),
   /**
    * The row count statistic. The number of rows in the column or table. Value type is int64 (when
    * not approximate) or float64 (when approximate).
    */
-  ROW_COUNT_NAME("adbc.statistic.row_count", 6),
+  ROW_COUNT("adbc.statistic.row_count", (short) 6),
   ;
 
   private final String name;
-  private final int key;
+  private final short key;
 
-  StandardStatistics(String name, int key) {
+  StandardStatistics(String name, short key) {
     this.name = Objects.requireNonNull(name);
     this.key = key;
   }
@@ -75,7 +75,7 @@ public enum StandardStatistics {
   }
 
   /** Get the dictionary-encoded name. */
-  public int getKey() {
+  public short getKey() {
     return key;
   }
 }
