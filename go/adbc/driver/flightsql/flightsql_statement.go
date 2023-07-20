@@ -239,7 +239,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}
 
 	if err != nil {
-		return nil, -1, adbcFromFlightStatus(err)
+		return nil, -1, adbcFromFlightStatus(err, "ExecuteQuery")
 	}
 
 	nrec = info.TotalRecords
@@ -259,7 +259,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	}
 
 	if err != nil {
-		err = adbcFromFlightStatus(err)
+		err = adbcFromFlightStatus(err, "ExecuteUpdate")
 	}
 
 	return
@@ -271,7 +271,7 @@ func (s *statement) Prepare(ctx context.Context) error {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	prep, err := s.query.prepare(ctx, s.cnxn, s.timeouts)
 	if err != nil {
-		return adbcFromFlightStatus(err)
+		return adbcFromFlightStatus(err, "Prepare")
 	}
 	s.prepared = prep
 	return nil
@@ -394,13 +394,13 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 	}
 
 	if err != nil {
-		return nil, out, -1, adbcFromFlightStatus(err)
+		return nil, out, -1, adbcFromFlightStatus(err, "ExecutePartitions")
 	}
 
 	if len(info.Schema) > 0 {
 		sc, err = flight.DeserializeSchema(info.Schema, s.alloc)
 		if err != nil {
-			return nil, out, -1, adbcFromFlightStatus(err)
+			return nil, out, -1, adbcFromFlightStatus(err, "ExecutePartitions: could not deserialize FlightInfo schema:")
 		}
 	}
 

@@ -90,7 +90,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	} else {
 		rdr, err := doGet(ctx, cl, endpoints[0], clCache, opts...)
 		if err != nil {
-			return nil, adbcFromFlightStatus(err)
+			return nil, adbcFromFlightStatus(err, "DoGet: endpoint 0: remote: %s", endpoints[0].Location)
 		}
 		schema = rdr.Schema()
 		group.Go(func() error {
@@ -135,7 +135,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 
 			rdr, err := doGet(ctx, cl, endpoint, clCache, opts...)
 			if err != nil {
-				return err
+				return adbcFromFlightStatus(err, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
 			}
 			defer rdr.Release()
 

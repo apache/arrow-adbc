@@ -892,10 +892,10 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	info, err := c.cl.GetSqlInfo(ctx, translated, c.timeouts)
 	if err == nil {
-		for _, endpoint := range info.Endpoint {
+		for i, endpoint := range info.Endpoint {
 			rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache, c.timeouts)
 			if err != nil {
-				return nil, adbcFromFlightStatus(err)
+				return nil, adbcFromFlightStatus(err, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
 			}
 
 			for rdr.Next() {
@@ -922,11 +922,11 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 			}
 
 			if rdr.Err() != nil {
-				return nil, adbcFromFlightStatus(rdr.Err())
+				return nil, adbcFromFlightStatus(rdr.Err(), "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
 			}
 		}
 	} else if grpcstatus.Code(err) != grpccodes.Unimplemented {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetInfo(GetSqlInfo)")
 	}
 
 	final := bldr.NewRecord()
@@ -1032,12 +1032,12 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
 	info, err := c.cl.GetCatalogs(ctx)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetObjects(GetCatalogs)")
 	}
 
 	rdr, err := c.readInfo(ctx, schema_ref.Catalogs, info)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetObjects(GetCatalogs)")
 	}
 	defer rdr.Release()
 
@@ -1058,7 +1058,7 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 	}
 
 	if err = rdr.Err(); err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetObjects(GetCatalogs)")
 	}
 
 	return g.Finish()
@@ -1069,7 +1069,7 @@ func (c *cnxn) readInfo(ctx context.Context, expectedSchema *arrow.Schema, info 
 	// use a default queueSize for the reader
 	rdr, err := newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache, 5)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "DoGet")
 	}
 
 	if !rdr.Schema().Equal(expectedSchema) {
@@ -1091,12 +1091,12 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 	// Pre-populate the map of which schemas are in which catalogs
 	info, err := c.cl.GetDBSchemas(ctx, &flightsql.GetDBSchemasOpts{DbSchemaFilterPattern: dbSchema})
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetObjects(GetDBSchemas)")
 	}
 
 	rdr, err := c.readInfo(ctx, schema_ref.DBSchemas, info)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetObjects(GetDBSchemas)")
 	}
 	defer rdr.Release()
 
@@ -1117,7 +1117,7 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 	if rdr.Err() != nil {
 		result = nil
-		err = adbcFromFlightStatus(rdr.Err())
+		err = adbcFromFlightStatus(rdr.Err(), "GetObjects(GetDBSchemas)")
 	}
 	return
 }
@@ -1137,7 +1137,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		IncludeSchema:          includeSchema,
 	})
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetObjects(GetTables)")
 	}
 
 	expectedSchema := schema_ref.Tables
@@ -1146,7 +1146,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	}
 	rdr, err := c.readInfo(ctx, expectedSchema, info)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetObjects(GetTables)")
 	}
 	defer rdr.Release()
 
@@ -1195,7 +1195,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 
 	if rdr.Err() != nil {
 		result = nil
-		err = adbcFromFlightStatus(rdr.Err())
+		err = adbcFromFlightStatus(rdr.Err(), "GetObjects(GetTables)")
 	}
 	return
 }
@@ -1211,12 +1211,12 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	info, err := c.cl.GetTables(ctx, opts, c.timeouts)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetTableSchema(GetTables)")
 	}
 
 	rdr, err := doGet(ctx, c.cl, info.Endpoint[0], c.clientCache, c.timeouts)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetTableSchema(DoGet)")
 	}
 	defer rdr.Release()
 
@@ -1228,7 +1228,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 				Code: adbc.StatusNotFound,
 			}
 		}
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetTableSchema(DoGet)")
 	}
 
 	if rec.NumRows() == 0 {
@@ -1246,7 +1246,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	schemaBytes := rec.Column(4).(*array.Binary).Value(0)
 	s, err := flight.DeserializeSchema(schemaBytes, c.db.alloc)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetTableSchema")
 	}
 	return s, nil
 }
@@ -1262,7 +1262,7 @@ func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	info, err := c.cl.GetTableTypes(ctx, c.timeouts)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "GetTableTypes")
 	}
 
 	return newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache, 5)
@@ -1289,12 +1289,12 @@ func (c *cnxn) Commit(ctx context.Context) error {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	err := c.txn.Commit(ctx, c.timeouts)
 	if err != nil {
-		return adbcFromFlightStatus(err)
+		return adbcFromFlightStatus(err, "Commit")
 	}
 
 	c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts)
 	if err != nil {
-		return adbcFromFlightStatus(err)
+		return adbcFromFlightStatus(err, "BeginTransaction")
 	}
 	return nil
 }
@@ -1320,12 +1320,12 @@ func (c *cnxn) Rollback(ctx context.Context) error {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	err := c.txn.Rollback(ctx, c.timeouts)
 	if err != nil {
-		return adbcFromFlightStatus(err)
+		return adbcFromFlightStatus(err, "Rollback")
 	}
 
 	c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts)
 	if err != nil {
-		return adbcFromFlightStatus(err)
+		return adbcFromFlightStatus(err, "BeginTransaction")
 	}
 	return nil
 }
@@ -1428,7 +1428,7 @@ func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (r
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	rdr, err = doGet(ctx, c.cl, info.Endpoint[0], c.clientCache, c.timeouts)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err)
+		return nil, adbcFromFlightStatus(err, "ReadPartition(DoGet)")
 	}
 	return rdr, nil
 }
