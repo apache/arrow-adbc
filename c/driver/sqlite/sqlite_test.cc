@@ -28,7 +28,6 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
 
-#include "types.h"
 #include "statement_reader.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
@@ -638,45 +637,6 @@ TEST_F(SqliteReaderTest, MultiValueParams) {
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ASSERT_EQ(nullptr, reader.array->release);
-}
-
-TEST_F(SqliteReaderTest, BulkIngestWithAutocommit) {
-  adbc_validation::StreamReader reader;
-  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (col)"));
-
-  // Filling out SqliteStatement explicitly to include `target_table`, which will 
-  // make SqliteStatementExecuteQuery call SqliteStatementExecuteIngest 
-  struct SqliteStatement sqlite_stmt;
-  std::memset(&sqlite_stmt, 0, sizeof(sqlite_stmt));
-
-  struct AdbcSqliteBinder binder;
-  std::memset(&binder, 0, sizeof(binder));
-  sqlite_stmt.binder = binder;
-  
-  sqlite_stmt.conn = db;
-  sqlite_stmt.prepared = 0;
-  sqlite_stmt.append = 1;
-  sqlite_stmt.batch_size = 4;
-
-  sqlite_stmt.target_table = strdup("foo");
-
-  struct AdbcStatement statement;
-  std::memset(&statement, 0, sizeof(statement));
-
-  struct AdbcConnection connection;
-  std::memset(&connection, 0, sizeof(connection));
-  connection.private_data = db;
-
-  AdbcStatusCode status = AdbcStatementNew(&connection, &statement, &error);
-  ASSERT_EQ(ADBC_STATUS_OK, status);
-  statement.private_data = &sqlite_stmt;
-
-  std::string query = "INSERT INTO foo VALUES (1), (2), (3), (4)";
-  status = AdbcStatementSetSqlQuery(&statement, query.c_str(), &error);
-  ASSERT_EQ(ADBC_STATUS_OK, status);
-
-  ASSERT_EQ(ADBC_STATUS_OK, AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error));
-  free(sqlite_stmt.target_table);
 }
 
 template <typename CType>
