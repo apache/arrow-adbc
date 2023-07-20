@@ -572,8 +572,11 @@ jobs:
         shell: bash -l {0}
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
-      # Docs requires Python packages since it runs doctests
-      - name: Test Docs
+      - name: Test Recipes (C++)
+        shell: bash -l {0}
+        run: |
+          ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe
+      - name: Test Recipes (Python)
         shell: bash -l {0}
         env:
           ADBC_POSTGRESQL_TEST_URI: "postgres://localhost:5432/postgres?user=postgres&password=password"
