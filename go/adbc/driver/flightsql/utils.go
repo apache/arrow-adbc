@@ -18,12 +18,14 @@
 package flightsql
 
 import (
+	"fmt"
+
 	"github.com/apache/arrow-adbc/go/adbc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func adbcFromFlightStatus(err error) error {
+func adbcFromFlightStatus(err error, context string, args ...any) error {
 	if _, ok := err.(adbc.Error); ok {
 		return err
 	}
@@ -70,8 +72,9 @@ func adbcFromFlightStatus(err error) error {
 		adbcCode = adbc.StatusUnknown
 	}
 
+	// People don't read error messages, so backload the context and frontload the server error
 	return adbc.Error{
-		Msg:  grpcStatus.Message(),
+		Msg:  fmt.Sprintf("[FlightSQL] %s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
 		Code: adbcCode,
 	}
 }
