@@ -87,8 +87,8 @@ func adbcFromFlightStatus(err error, context string, args ...any) error {
 	}
 
 	return adbc.Error{
-		Msg:  fmt.Sprintf("[FlightSQL] %s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
-		Code: adbcCode,
+		Msg:     fmt.Sprintf("[FlightSQL] %s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
+		Code:    adbcCode,
 		Details: details,
 	}
 }
