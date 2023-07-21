@@ -35,17 +35,34 @@ void FlightSQL_release_error(struct AdbcError* error) {
   error->release = NULL;
 }
 
-AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
-  return FlightSQLDatabaseNew(database, error);
+AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
+                                     char* value, size_t* length,
+                                     struct AdbcError* error) {
+  return FlightSQLDatabaseGetOption(database, key, value, length, error);
 }
 
-AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
-                                     const char* value, struct AdbcError* error) {
-  return FlightSQLDatabaseSetOption(database, key, value, error);
+AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          uint8_t* value, size_t* length,
+                                          struct AdbcError* error) {
+  return FlightSQLDatabaseGetOptionBytes(database, key, value, length, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double* value, struct AdbcError* error) {
+  return FlightSQLDatabaseGetOptionDouble(database, key, value, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t* value, struct AdbcError* error) {
+  return FlightSQLDatabaseGetOptionInt(database, key, value, error);
 }
 
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
   return FlightSQLDatabaseInit(database, error);
+}
+
+AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
+  return FlightSQLDatabaseNew(database, error);
 }
 
 AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
@@ -53,25 +70,35 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
   return FlightSQLDatabaseRelease(database, error);
 }
 
-AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
-                                 struct AdbcError* error) {
-  return FlightSQLConnectionNew(connection, error);
+AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
+                                     const char* value, struct AdbcError* error) {
+  return FlightSQLDatabaseSetOption(database, key, value, error);
 }
 
-AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
-                                       const char* value, struct AdbcError* error) {
-  return FlightSQLConnectionSetOption(connection, key, value, error);
+AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          const uint8_t* value, size_t length,
+                                          struct AdbcError* error) {
+  return FlightSQLDatabaseSetOptionBytes(database, key, value, length, error);
 }
 
-AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
-                                  struct AdbcDatabase* database,
-                                  struct AdbcError* error) {
-  return FlightSQLConnectionInit(connection, database, error);
+AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double value, struct AdbcError* error) {
+  return FlightSQLDatabaseSetOptionDouble(database, key, value, error);
 }
 
-AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
-                                     struct AdbcError* error) {
-  return FlightSQLConnectionRelease(connection, error);
+AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t value, struct AdbcError* error) {
+  return FlightSQLDatabaseSetOptionInt(database, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
+                                    struct AdbcError* error) {
+  return FlightSQLConnectionCancel(connection, error);
+}
+
+AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
+                                    struct AdbcError* error) {
+  return FlightSQLConnectionCommit(connection, error);
 }
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
@@ -79,8 +106,8 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
   if (out) memset(out, 0, sizeof(*out));
-  return FlightSQLConnectionGetInfo(connection, info_codes, info_codes_length, out,
-                                    error);
+  return FlightSQLConnectionGetInfo(connection, info_codes, info_codes_length,
+                                      out, error);
 }
 
 AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
@@ -91,7 +118,46 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         struct AdbcError* error) {
   if (out) memset(out, 0, sizeof(*out));
   return FlightSQLConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
-                                       table_type, column_name, out, error);
+                                         table_type, column_name, out, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
+                                       char* value, size_t* length,
+                                       struct AdbcError* error) {
+  return FlightSQLConnectionGetOption(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, uint8_t* value,
+                                            size_t* length, struct AdbcError* error) {
+  return FlightSQLConnectionGetOptionBytes(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double* value,
+                                             struct AdbcError* error) {
+  return FlightSQLConnectionGetOptionDouble(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t* value,
+                                          struct AdbcError* error) {
+  return FlightSQLConnectionGetOptionInt(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
+                                           const char* catalog, const char* db_schema,
+                                           const char* table_name, char approximate,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error) {
+  return FlightSQLConnectionGetStatistics(connection, catalog, db_schema, table_name,
+                                            approximate, out, error);
+}
+
+AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
+                                               struct ArrowArrayStream* out,
+                                               struct AdbcError* error) {
+  return FlightSQLConnectionGetStatisticNames(connection, out, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -101,7 +167,7 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
                                             struct AdbcError* error) {
   if (schema) memset(schema, 0, sizeof(*schema));
   return FlightSQLConnectionGetTableSchema(connection, catalog, db_schema, table_name,
-                                           schema, error);
+                                        schema, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
@@ -111,6 +177,17 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
   return FlightSQLConnectionGetTableTypes(connection, out, error);
 }
 
+AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
+                                  struct AdbcDatabase* database,
+                                  struct AdbcError* error) {
+  return FlightSQLConnectionInit(connection, database, error);
+}
+
+AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
+                                 struct AdbcError* error) {
+  return FlightSQLConnectionNew(connection, error);
+}
+
 AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
                                            const uint8_t* serialized_partition,
                                            size_t serialized_length,
@@ -118,12 +195,12 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
                                            struct AdbcError* error) {
   if (out) memset(out, 0, sizeof(*out));
   return FlightSQLConnectionReadPartition(connection, serialized_partition,
-                                          serialized_length, out, error);
+                                       serialized_length, out, error);
 }
 
-AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
-                                    struct AdbcError* error) {
-  return FlightSQLConnectionCommit(connection, error);
+AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
+                                     struct AdbcError* error) {
+  return FlightSQLConnectionRelease(connection, error);
 }
 
 AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
@@ -131,39 +208,32 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
   return FlightSQLConnectionRollback(connection, error);
 }
 
-AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
-                                struct AdbcStatement* statement,
-                                struct AdbcError* error) {
-  return FlightSQLStatementNew(connection, statement, error);
+AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
+                                       const char* value, struct AdbcError* error) {
+  return FlightSQLConnectionSetOption(connection, key, value, error);
 }
 
-AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
-                                    struct AdbcError* error) {
-  return FlightSQLStatementRelease(statement, error);
+AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, const uint8_t* value,
+                                            size_t length, struct AdbcError* error) {
+  return FlightSQLConnectionSetOptionBytes(connection, key, value, length, error);
 }
 
-AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
-                                         struct ArrowArrayStream* out,
-                                         int64_t* rows_affected,
-                                         struct AdbcError* error) {
-  if (out) memset(out, 0, sizeof(*out));
-  return FlightSQLStatementExecuteQuery(statement, out, rows_affected, error);
-}
-
-AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
-                                    struct AdbcError* error) {
-  return FlightSQLStatementPrepare(statement, error);
-}
-
-AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
-                                        const char* query, struct AdbcError* error) {
-  return FlightSQLStatementSetSqlQuery(statement, query, error);
-}
-
-AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
-                                             const uint8_t* plan, size_t length,
+AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double value,
                                              struct AdbcError* error) {
-  return FlightSQLStatementSetSubstraitPlan(statement, plan, length, error);
+  return FlightSQLConnectionSetOptionDouble(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t value,
+                                          struct AdbcError* error) {
+  return FlightSQLConnectionSetOptionInt(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
+                                   struct AdbcError* error) {
+  return FlightSQLStatementCancel(statement, error);
 }
 
 AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
@@ -178,18 +248,6 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
   return FlightSQLStatementBindStream(statement, stream, error);
 }
 
-AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
-                                               struct ArrowSchema* schema,
-                                               struct AdbcError* error) {
-  if (schema) memset(schema, 0, sizeof(*schema));
-  return FlightSQLStatementGetParameterSchema(statement, schema, error);
-}
-
-AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
-                                      const char* value, struct AdbcError* error) {
-  return FlightSQLStatementSetOption(statement, key, value, error);
-}
-
 AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               struct ArrowSchema* schema,
                                               struct AdbcPartitions* partitions,
@@ -197,8 +255,104 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               struct AdbcError* error) {
   if (schema) memset(schema, 0, sizeof(*schema));
   if (partitions) memset(partitions, 0, sizeof(*partitions));
-  return FlightSQLStatementExecutePartitions(statement, schema, partitions, rows_affected,
-                                             error);
+  return FlightSQLStatementExecutePartitions(statement, schema, partitions,
+                                               rows_affected, error);
+}
+
+AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
+                                         struct ArrowArrayStream* out,
+                                         int64_t* rows_affected,
+                                         struct AdbcError* error) {
+  if (out) memset(out, 0, sizeof(*out));
+  return FlightSQLStatementExecuteQuery(statement, out, rows_affected, error);
+}
+
+AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcError* error) {
+  if (schema) memset(schema, 0, sizeof(*schema));
+  return FlightSQLStatementExecuteSchema(statement, schema, error);
+}
+
+AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
+                                      char* value, size_t* length,
+                                      struct AdbcError* error) {
+  return FlightSQLStatementGetOption(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, uint8_t* value,
+                                           size_t* length, struct AdbcError* error) {
+  return FlightSQLStatementGetOptionBytes(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double* value,
+                                            struct AdbcError* error) {
+  return FlightSQLStatementGetOptionDouble(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement,
+                                         const char* key, int64_t* value,
+                                         struct AdbcError* error) {
+  return FlightSQLStatementGetOptionInt(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
+                                               struct ArrowSchema* schema,
+                                               struct AdbcError* error) {
+  if (schema) memset(schema, 0, sizeof(*schema));
+  return FlightSQLStatementGetParameterSchema(statement, schema, error);
+}
+
+AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
+                                struct AdbcStatement* statement,
+                                struct AdbcError* error) {
+  return FlightSQLStatementNew(connection, statement, error);
+}
+
+AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
+                                    struct AdbcError* error) {
+  return FlightSQLStatementPrepare(statement, error);
+}
+
+AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
+                                    struct AdbcError* error) {
+  return FlightSQLStatementRelease(statement, error);
+}
+
+AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
+                                        const char* query, struct AdbcError* error) {
+  return FlightSQLStatementSetSqlQuery(statement, query, error);
+}
+
+AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
+                                             const uint8_t* plan, size_t length,
+                                             struct AdbcError* error) {
+  return FlightSQLStatementSetSubstraitPlan(statement, plan, length, error);
+}
+
+AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
+                                      const char* value, struct AdbcError* error) {
+  return FlightSQLStatementSetOption(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, const uint8_t* value,
+                                           size_t length, struct AdbcError* error) {
+  return FlightSQLStatementSetOptionBytes(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double value,
+                                            struct AdbcError* error) {
+  return FlightSQLStatementSetOptionDouble(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
+                                         const char* key, int64_t value,
+                                         struct AdbcError* error) {
+  return FlightSQLStatementSetOptionInt(statement, key, value, error);
 }
 
 ADBC_EXPORT
