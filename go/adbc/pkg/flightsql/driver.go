@@ -1001,6 +1001,7 @@ func FlightSQLConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, c
 	if e != nil {
 		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
 	}
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }
@@ -1028,6 +1029,7 @@ func FlightSQLConnectionGetStatistics(cnxn *C.struct_AdbcConnection, catalog, db
 		return C.AdbcStatusCode(conn.errToAdbcErr(err, e))
 	}
 
+	defer rdr.Release()
 	cdata.ExportRecordReader(rdr, toCdataStream(out))
 	return C.ADBC_STATUS_OK
 }

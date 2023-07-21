@@ -1066,29 +1066,6 @@ AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const c
                                           uint8_t* value, size_t* length,
                                           struct AdbcError* error);
 
-/// \brief Get an integer option of the database.
-///
-/// This must always be thread-safe (other operations are not).
-///
-/// For standard options, drivers must always support getting the
-/// option value (if they support getting option values at all) via
-/// the type specified in the option.  (For example, an option set via
-/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
-/// may also support getting a converted option value via other
-/// getters if needed.  (For example, getting the integer
-/// representation of a double option.)
-///
-/// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
-/// \param[in] database The database.
-/// \param[in] key The option to get.
-/// \param[out] value The option value.
-/// \param[out] error An optional location to return an error
-///   message if necessary.
-/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
-AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
-                                        int64_t* value, struct AdbcError* error);
-
 /// \brief Get a double option of the database.
 ///
 /// This must always be thread-safe (other operations are not).
@@ -1111,6 +1088,29 @@ AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const cha
 /// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
 AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
                                            double* value, struct AdbcError* error);
+
+/// \brief Get an integer option of the database.
+///
+/// This must always be thread-safe (other operations are not).
+///
+/// For standard options, drivers must always support getting the
+/// option value (if they support getting option values at all) via
+/// the type specified in the option.  (For example, an option set via
+/// SetOptionDouble must be retrievable via GetOptionDouble.)  Drivers
+/// may also support getting a converted option value via other
+/// getters if needed.  (For example, getting the integer
+/// representation of a double option.)
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to get.
+/// \param[out] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_FOUND if the option is not recognized.
+AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t* value, struct AdbcError* error);
 
 /// \brief Set a char* option.
 ///
@@ -1143,20 +1143,6 @@ AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const c
                                           const uint8_t* value, size_t length,
                                           struct AdbcError* error);
 
-/// \brief Set an integer option on a database.
-///
-/// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
-/// \param[in] database The database.
-/// \param[in] key The option to set.
-/// \param[in] value The option value.
-/// \param[out] error An optional location to return an error
-///   message if necessary.
-/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
-ADBC_EXPORT
-AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
-                                        int64_t value, struct AdbcError* error);
-
 /// \brief Set a double option on a database.
 ///
 /// \since ADBC API revision 1.1.0
@@ -1170,6 +1156,20 @@ AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const cha
 ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
                                            double value, struct AdbcError* error);
+
+/// \brief Set an integer option on a database.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+/// \param[in] database The database.
+/// \param[in] key The option to set.
+/// \param[in] value The option value.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the option is not recognized
+ADBC_EXPORT
+AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t value, struct AdbcError* error);
 
 /// \brief Finish setting options and initialize the database.
 ///
