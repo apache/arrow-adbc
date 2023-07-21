@@ -108,9 +108,10 @@ def connect(
     db_kwargs : dict, optional
         Initial database connection parameters.
     """
-    return adbc_driver_manager.AdbcDatabase(
-        driver=_driver_path(), uri=uri, **(db_kwargs or {})
-    )
+    kwargs = (db_kwargs or {}).copy()
+    if uri is not None:
+        kwargs["uri"] = uri
+    return adbc_driver_manager.AdbcDatabase(driver=_driver_path(), **kwargs)
 
 
 @functools.cache
