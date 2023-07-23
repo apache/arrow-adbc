@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using System;
 using System.Runtime.InteropServices;
 
 namespace Apache.Arrow.Adbc.C
@@ -86,6 +87,10 @@ namespace Apache.Arrow.Adbc.C
         /// Unlike other structures, this is an embedded callback to make it
         /// easier for the driver manager and driver to cooperate.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcError*, void> release;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcError*, void> release;
+#else
+        internal IntPtr release;
+#endif
     };
 }
