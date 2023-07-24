@@ -59,8 +59,8 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, long*, CAdbcError*, AdbcStatusCode> StatementExecuteQueryPtr => &ExecuteStatementQuery;
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementNewPtr => &NewStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementReleasePtr => &ReleaseStatement;
-        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> StatementSetSqlQueryPtr => &SetStatementSqlQuery;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementPreparePtr => &PrepareStatement;
+        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> StatementSetSqlQueryPtr => &SetStatementSqlQuery;
 #else
         private static IntPtr ReleaseErrorPtr => s_releaseError.Pointer;
         internal unsafe delegate AdbcStatusCode DriverRelease(CAdbcDriver* driver, CAdbcError* error);
@@ -68,8 +68,8 @@ namespace Apache.Arrow.Adbc.C
         private static IntPtr ReleaseDriverPtr => s_releaseDriver.Pointer;
 
         private static unsafe readonly NativeDelegate<DatabaseFn> s_databaseInit = new NativeDelegate<DatabaseFn>(InitDatabase);
-        private static unsafe readonly NativeDelegate<DatabaseFn> s_databaseRelease = new NativeDelegate<DatabaseFn>(ReleaseDatabase);
         private static IntPtr DatabaseInitPtr => s_databaseInit.Pointer;
+        private static unsafe readonly NativeDelegate<DatabaseFn> s_databaseRelease = new NativeDelegate<DatabaseFn>(ReleaseDatabase);
         private static IntPtr DatabaseReleasePtr => s_databaseRelease.Pointer;
         internal unsafe delegate AdbcStatusCode DatabaseSetOption(CAdbcDatabase* database, byte* name, byte* value, CAdbcError* error);
         private static unsafe readonly NativeDelegate<DatabaseSetOption> s_databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
@@ -123,6 +123,8 @@ namespace Apache.Arrow.Adbc.C
 #endif
 
 /*
+ * Not yet implemented
+
         unsafe delegate AdbcStatusCode StatementBindStream(CAdbcStatement* statement, CArrowArrayStream* stream, CAdbcError* error);
         unsafe delegate AdbcStatusCode StatementExecutePartitions(CAdbcStatement* statement, CArrowSchema* schema, CAdbcPartitions* partitions, long* rows_affected, CAdbcError* error);
         unsafe delegate AdbcStatusCode StatementGetParameterSchema(CAdbcStatement* statement, CArrowSchema* schema, CAdbcError* error);
