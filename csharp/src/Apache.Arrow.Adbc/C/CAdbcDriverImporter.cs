@@ -130,7 +130,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void Dispose()
             {
-                if (_nativeDriver.release != null)
+                if (_nativeDriver.release != default)
                 {
                     using (CallHelper caller = new CallHelper())
                     {
@@ -140,7 +140,7 @@ namespace Apache.Arrow.Adbc.C
                         }
                         finally
                         {
-                            _nativeDriver.release = null;
+                            _nativeDriver.release = default;
                         }
                     }
 
@@ -295,7 +295,8 @@ namespace Apache.Arrow.Adbc.C
                 TranslateCode(init(version, ref driver, ref this._error));
             }
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcDriver*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDriver nativeDriver)
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcDriver*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDriver nativeDriver)
             {
                 fixed (CAdbcDriver* driver = &nativeDriver)
                 fixed (CAdbcError* e = &_error)
@@ -303,8 +304,19 @@ namespace Apache.Arrow.Adbc.C
                     TranslateCode(fn(driver, e));
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcDriver nativeDriver)
+            {
+                fixed (CAdbcDriver* driver = &nativeDriver)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.DriverRelease>(fn)(driver, e));
+                }
+            }
+#endif
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase)
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase)
             {
                 fixed (CAdbcDatabase* db = &nativeDatabase)
                 fixed (CAdbcError* e = &_error)
@@ -312,8 +324,19 @@ namespace Apache.Arrow.Adbc.C
                     TranslateCode(fn(db, e));
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcDatabase nativeDatabase)
+            {
+                fixed (CAdbcDatabase* db = &nativeDatabase)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.DatabaseFn>(fn)(db, e));
+                }
+            }
+#endif
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase, string key, string value)
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase, string key, string value)
             {
                 fixed (CAdbcDatabase* db = &nativeDatabase)
                 fixed (CAdbcError* e = &_error)
@@ -331,8 +354,29 @@ namespace Apache.Arrow.Adbc.C
                     }
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcDatabase nativeDatabase, string key, string value)
+            {
+                fixed (CAdbcDatabase* db = &nativeDatabase)
+                fixed (CAdbcError* e = &_error)
+                {
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (Utf8Helper utf8Value = new Utf8Helper(value))
+                    {
+                        unsafe
+                        {
+                            IntPtr keyPtr = utf8Key;
+                            IntPtr valuePtr = utf8Value;
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcConnection*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection)
+                            TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.DatabaseSetOption>(fn)(db, (byte*)keyPtr, (byte*)valuePtr, e));
+                        }
+                    }
+                }
+            }
+#endif
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection)
             {
                 fixed (CAdbcConnection* cn = &nativeConnection)
                 fixed (CAdbcError* e = &_error)
@@ -340,8 +384,19 @@ namespace Apache.Arrow.Adbc.C
                     TranslateCode(fn(cn, e));
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcConnection nativeConnection)
+            {
+                fixed (CAdbcConnection* cn = &nativeConnection)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionFn>(fn)(cn, e));
+                }
+            }
+#endif
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection, string key, string value)
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection, string key, string value)
             {
                 fixed (CAdbcConnection* cn = &nativeConnection)
                 fixed (CAdbcError* e = &_error)
@@ -359,8 +414,29 @@ namespace Apache.Arrow.Adbc.C
                     }
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcConnection nativeConnection, string key, string value)
+            {
+                fixed (CAdbcConnection* cn = &nativeConnection)
+                fixed (CAdbcError* e = &_error)
+                {
+                    using (Utf8Helper utf8Key = new Utf8Helper(key))
+                    using (Utf8Helper utf8Value = new Utf8Helper(value))
+                    {
+                        unsafe
+                        {
+                            IntPtr keyPtr = utf8Key;
+                            IntPtr valuePtr = utf8Value;
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcConnection*, CAdbcDatabase*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection, ref CAdbcDatabase database)
+                            TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionSetOption>(fn)(cn, (byte*)keyPtr, (byte*)valuePtr, e));
+                        }
+                    }
+                }
+            }
+#endif
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, CAdbcDatabase*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection, ref CAdbcDatabase database)
             {
                 fixed (CAdbcConnection* cn = &nativeConnection)
                 fixed (CAdbcDatabase* db = &database)
@@ -369,8 +445,20 @@ namespace Apache.Arrow.Adbc.C
                     TranslateCode(fn(cn, db, e));
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcConnection nativeConnection, ref CAdbcDatabase database)
+            {
+                fixed (CAdbcConnection* cn = &nativeConnection)
+                fixed (CAdbcDatabase* db = &database)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionInit>(fn)(cn, db, e));
+                }
+            }
+#endif
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcConnection*, CAdbcStatement*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection, ref CAdbcStatement nativeStatement)
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, CAdbcStatement*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeConnection, ref CAdbcStatement nativeStatement)
             {
                 fixed (CAdbcConnection* cn = &nativeConnection)
                 fixed (CAdbcStatement* stmt = &nativeStatement)
@@ -379,8 +467,20 @@ namespace Apache.Arrow.Adbc.C
                     TranslateCode(fn(cn, stmt, e));
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcConnection nativeConnection, ref CAdbcStatement nativeStatement)
+            {
+                fixed (CAdbcConnection* cn = &nativeConnection)
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementNew>(fn)(cn, stmt, e));
+                }
+            }
+#endif
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcStatement*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement)
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement)
             {
                 fixed (CAdbcStatement* stmt = &nativeStatement)
                 fixed (CAdbcError* e = &_error)
@@ -388,8 +488,19 @@ namespace Apache.Arrow.Adbc.C
                     TranslateCode(fn(stmt, e));
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcStatement nativeStatement)
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementFn>(fn)(stmt, e));
+                }
+            }
+#endif
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement, string sqlQuery)
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement, string sqlQuery)
             {
                 fixed (CAdbcStatement* stmt = &nativeStatement)
                 fixed (CAdbcError* e = &_error)
@@ -402,8 +513,24 @@ namespace Apache.Arrow.Adbc.C
                     }
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcStatement nativeStatement, string sqlQuery)
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (CAdbcError* e = &_error)
+                {
+                    using (Utf8Helper query = new Utf8Helper(sqlQuery))
+                    {
+                        IntPtr bQuery = (IntPtr)(query);
 
-            public unsafe void Call(delegate* unmanaged[Stdcall]<CAdbcStatement*, CArrowArrayStream*, long*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement, CArrowArrayStream* arrowStream, ref long nRows)
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementSetSqlQuery>(fn)(stmt, (byte*)bQuery, e));
+                    }
+                }
+            }
+#endif
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, long*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcStatement nativeStatement, CArrowArrayStream* arrowStream, ref long nRows)
             {
                 fixed (CAdbcStatement* stmt = &nativeStatement)
                 fixed (long* rows = &nRows)
@@ -412,15 +539,30 @@ namespace Apache.Arrow.Adbc.C
                     TranslateCode(fn(stmt, arrowStream, rows, e));
                 }
             }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcStatement nativeStatement, CArrowArrayStream* arrowStream, ref long nRows)
+            {
+                fixed (CAdbcStatement* stmt = &nativeStatement)
+                fixed (long* rows = &nRows)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementExecuteQuery>(fn)(stmt, arrowStream, rows, e));
+                }
+            }
+#endif
 
             public unsafe void Dispose()
             {
-                if (_error.release != null)
+                if (_error.release != default)
                 {
                     fixed (CAdbcError* err = &_error)
                     {
+#if NET5_0_OR_GREATER
                         _error.release(err);
-                        _error.release = null;
+#else
+                        Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ErrorRelease>(err->release)(err);
+#endif
+                        _error.release = default;
                     }
                 }
             }

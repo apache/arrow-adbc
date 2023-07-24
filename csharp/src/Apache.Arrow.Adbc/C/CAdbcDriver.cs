@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using System;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
 
@@ -52,7 +53,11 @@ namespace Apache.Arrow.Adbc.C
         /// This is an embedded callback to make it easier for the driver
         /// manager and driver to cooperate.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcDriver*, CAdbcError*, AdbcStatusCode> release;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDriver*, CAdbcError*, AdbcStatusCode> release;
+#else
+        internal IntPtr release;
+#endif
 
         /// <summary>
         /// Finish setting options and initialize the database.
@@ -60,7 +65,11 @@ namespace Apache.Arrow.Adbc.C
         /// Some drivers may support setting options after initialization
         /// as well.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> DatabaseInit;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> DatabaseInit;
+#else
+        internal IntPtr DatabaseInit;
+#endif
 
         /// <summary>
         /// Allocate a new (but uninitialized) database.
@@ -71,7 +80,11 @@ namespace Apache.Arrow.Adbc.C
         /// the private_data field to point to the newly allocated struct.
         /// This struct should be released when AdbcDatabaseRelease is called.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> DatabaseNew;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> DatabaseNew;
+#else
+        internal IntPtr DatabaseNew;
+#endif
 
         /// <summary>
         /// Set a byte* option.
@@ -80,12 +93,20 @@ namespace Apache.Arrow.Adbc.C
         /// support setting options after initialization as well.
         ///
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> DatabaseSetOption;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, byte*, byte*, CAdbcError*, AdbcStatusCode> DatabaseSetOption;
+#else
+        internal IntPtr DatabaseSetOption;
+#endif
 
         /// <summary>
         /// Destroy this database. No connections may exist.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> DatabaseRelease;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> DatabaseRelease;
+#else
+        internal IntPtr DatabaseRelease;
+#endif
 
         /// <summary>
         /// Commit any pending transactions. Only used if autocommit is
@@ -94,7 +115,11 @@ namespace Apache.Arrow.Adbc.C
         /// Behavior is undefined if this is mixed with SQL transaction
         /// statements.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionCommit; // ConnectionFn
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionCommit;
+#else
+        internal IntPtr ConnectionCommit;
+#endif
 
         /// <summary>
         /// Get metadata about the database/driver.
@@ -122,7 +147,11 @@ namespace Apache.Arrow.Adbc.C
         /// for ADBC usage.  Drivers/vendors will ignore requests for
         /// unrecognized codes (the row will be omitted from the result).
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetInfo;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetInfo;
+#else
+        internal IntPtr ConnectionGetInfo;
+#endif
 
         /// <summary>
         ///  Get a hierarchical view of all catalogs, database schemas,
@@ -151,12 +180,20 @@ namespace Apache.Arrow.Adbc.C
         /// | table_columns            | list<COLUMN_SCHEMA>     |
         /// | table_constraints        | list<CONSTRAINT_SCHEMA> |
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetObjects;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetObjects;
+#else
+        internal IntPtr ConnectionGetObjects;
+#endif
 
         /// <summary>
         /// Get the Arrow schema of a table.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, byte*, byte*, byte*, CArrowSchema*, CAdbcError*, AdbcStatusCode> ConnectionGetTableSchema;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, byte*, byte*, CArrowSchema*, CAdbcError*, AdbcStatusCode> ConnectionGetTableSchema;
+#else
+        internal IntPtr ConnectionGetTableSchema;
+#endif
 
         /// <summary>
         /// Get a list of table types in the database.
@@ -167,7 +204,11 @@ namespace Apache.Arrow.Adbc.C
         /// ---------------|--------------
         /// table_type     | utf8 not null
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetTableTypes;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionGetTableTypes;
+#else
+        internal IntPtr ConnectionGetTableTypes;
+#endif
 
         /// <summary>
         /// Finish setting options and initialize the connection.
@@ -175,7 +216,11 @@ namespace Apache.Arrow.Adbc.C
         /// Some drivers may support setting options after initialization
         /// as well.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, CAdbcDatabase*, CAdbcError*, AdbcStatusCode> ConnectionInit;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, CAdbcDatabase*, CAdbcError*, AdbcStatusCode> ConnectionInit;
+#else
+        internal IntPtr ConnectionInit;
+#endif
 
         /// <summary>
         /// Allocate a new (but uninitialized) connection.
@@ -187,7 +232,11 @@ namespace Apache.Arrow.Adbc.C
         /// This struct should be released when AdbcConnectionRelease is
         /// called.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionNew; // ConnectionFn
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionNew;
+#else
+        internal IntPtr ConnectionNew;
+#endif
 
         /// <summary>
         /// Set a byte* option.
@@ -195,7 +244,11 @@ namespace Apache.Arrow.Adbc.C
         /// Options may be set before AdbcConnectionInit.  Some  drivers may
         /// support setting options after initialization as well.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> ConnectionSetOption;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, byte*, CAdbcError*, AdbcStatusCode> ConnectionSetOption;
+#else
+        internal IntPtr ConnectionSetOption;
+#endif
 
         /// <summary>
         /// Construct a statement for a partition of a query. The
@@ -203,12 +256,20 @@ namespace Apache.Arrow.Adbc.C
         ///
         /// A partition can be retrieved from AdbcPartitions.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionReadPartition;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> ConnectionReadPartition;
+#else
+        internal IntPtr ConnectionReadPartition;
+#endif
 
         /// <summary>
         /// Destroy this connection.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionRelease; // ConnectionFn
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionRelease;
+#else
+        internal IntPtr ConnectionRelease;
+#endif
 
         /// <summary>
         /// Roll back any pending transactions. Only used if autocommit is disabled.
@@ -216,32 +277,52 @@ namespace Apache.Arrow.Adbc.C
         /// Behavior is undefined if this is mixed with SQL transaction
         /// statements.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionRollback; // ConnectionFn
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionRollback;
+#else
+        internal IntPtr ConnectionRollback;
+#endif
 
         /// <summary>
         /// Bind Arrow data. This can be used for bulk inserts or prepared
         /// statements.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, CArrowArray*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementBind;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, CArrowArray*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementBind;
+#else
+        internal IntPtr StatementBind;
+#endif
 
         /// <summary>
         /// Bind Arrow data. This can be used for bulk inserts or prepared
         /// statements.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> StatementBindStream;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> StatementBindStream;
+#else
+        internal IntPtr StatementBindStream;
+#endif
 
         /// <summary>
         /// Execute a statement and get the results.
         ///
         /// This invalidates any prior result sets.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, CArrowArrayStream*, long*, CAdbcError*, AdbcStatusCode> StatementExecuteQuery;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, long*, CAdbcError*, AdbcStatusCode> StatementExecuteQuery;
+#else
+        internal IntPtr StatementExecuteQuery;
+#endif
 
         /// <summary>
         /// Execute a statement and get the results as a partitioned result
         /// set.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, CArrowSchema*, CAdbcPartitions*, long*, CAdbcError*, AdbcStatusCode> StatementExecutePartitions;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcPartitions*, long*, CAdbcError*, AdbcStatusCode> StatementExecutePartitions;
+#else
+        internal IntPtr StatementExecutePartitions;
+#endif
 
         /// <summary>
         /// Get the schema for bound parameters.
@@ -258,7 +339,11 @@ namespace Apache.Arrow.Adbc.C
         ///
         /// This should be called after AdbcStatementPrepare.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementGetParameterSchema;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementGetParameterSchema;
+#else
+        internal IntPtr StatementGetParameterSchema;
+#endif
 
         /// <summary>
         /// Create a new statement for a given connection.
@@ -269,7 +354,11 @@ namespace Apache.Arrow.Adbc.C
         /// the private_data field to point to the newly allocated struct.
         /// This struct should be released when AdbcStatementRelease is called.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcConnection*, CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementNew;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcConnection*, CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementNew;
+#else
+        internal IntPtr StatementNew;
+#endif
 
         /// <summary>
         /// Turn this statement into a prepared statement to be
@@ -277,17 +366,29 @@ namespace Apache.Arrow.Adbc.C
         ///
         /// This invalidates any prior result sets.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementPrepare; // StatementFn
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementPrepare;
+#else
+        internal IntPtr StatementPrepare;
+#endif
 
         /// <summary>
         /// Destroy a statement.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementRelease; // StatementFn
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementRelease;
+#else
+        internal IntPtr StatementRelease;
+#endif
 
         /// <summary>
         /// Set a string option on a statement.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, byte*, byte*, CAdbcError*, AdbcStatusCode> StatementSetOption;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, byte*, CAdbcError*, AdbcStatusCode> StatementSetOption;
+#else
+        internal IntPtr StatementSetOption;
+#endif
 
         /// <summary>
         /// Set the SQL query to execute.
@@ -296,7 +397,11 @@ namespace Apache.Arrow.Adbc.C
         /// queries expected to be executed repeatedly, StatementPrepare
         /// the statement first.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> StatementSetSqlQuery;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> StatementSetSqlQuery;
+#else
+        internal IntPtr StatementSetSqlQuery;
+#endif
 
         /// <summary>
         /// Set the Substrait plan to execute.
@@ -305,6 +410,10 @@ namespace Apache.Arrow.Adbc.C
         /// queries expected to be executed repeatedly, AdbcStatementPrepare
         /// the statement first.
         /// </summary>
-        public delegate* unmanaged[Stdcall]<CAdbcStatement*, byte*, int, CAdbcError*, AdbcStatusCode> StatementSetSubstraitPlan;
+#if NET5_0_OR_GREATER
+        internal delegate* unmanaged<CAdbcStatement*, byte*, int, CAdbcError*, AdbcStatusCode> StatementSetSubstraitPlan;
+#else
+        internal IntPtr StatementSetSubstraitPlan;
+#endif
     }
 }
