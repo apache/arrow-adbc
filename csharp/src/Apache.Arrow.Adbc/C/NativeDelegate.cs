@@ -27,6 +27,7 @@ namespace Apache.Arrow.Adbc.C
         public NativeDelegate(T managedDelegate)
         {
             _managedDelegate = managedDelegate;
+            Pointer = Marshal.GetFunctionPointerForDelegate(managedDelegate);
         }
 
         public IntPtr Pointer { get; }
