@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.C
         /// easier for the driver manager and driver to cooperate.
         /// </summary>
 #if NET5_0_OR_GREATER
-        public delegate* unmanaged<CAdbcPartitions*, void> release;
+        internal delegate* unmanaged<CAdbcPartitions*, void> release;
 #else
         internal IntPtr release;
 #endif
