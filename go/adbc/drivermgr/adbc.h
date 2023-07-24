@@ -1292,9 +1292,11 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 /// or while consuming an ArrowArrayStream returned from such.
 /// Calling this function should make the other functions return
 /// ADBC_STATUS_CANCELLED (from ADBC functions) or ECANCELED (from
-/// methods of ArrowArrayStream).
+/// methods of ArrowArrayStream).  (It is not guaranteed to, for
+/// instance, the result set may be buffered in memory already.)
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not).  It is
+/// not necessarily signal-safe.
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
@@ -1947,9 +1949,11 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
 /// or while consuming an ArrowArrayStream returned from such.
 /// Calling this function should make the other functions return
 /// ADBC_STATUS_CANCELLED (from ADBC functions) or ECANCELED (from
-/// methods of ArrowArrayStream).
+/// methods of ArrowArrayStream).  (It is not guaranteed to, for
+/// instance, the result set may be buffered in memory already.)
 ///
-/// This must always be thread-safe (other operations are not).
+/// This must always be thread-safe (other operations are not).  It is
+/// not necessarily signal-safe.
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
