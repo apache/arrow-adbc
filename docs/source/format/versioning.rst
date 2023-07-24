@@ -29,14 +29,19 @@ choices were made:
 Of course, we can never add/remove/change struct members, and we can
 never change the signatures of existing functions.
 
-The main point of concern is compatibility of :cpp:class:`AdbcDriver`.
+In ADBC 1.1.0, it was decided this would only apply to the "public"
+API, and not the driver-internal API (:cpp:class:`AdbcDriver`).  New
+members were added to this struct in the 1.1.0 revision.
+Compatibility is handled as follows:
 
 The driver entrypoint, :cpp:type:`AdbcDriverInitFunc`, is given a
-version and a pointer to a table of function pointers to initialize.
-The type of the table will depend on the version; when a new version
-of ADBC is accepted, then a new table of function pointers will be
-added.  That way, the driver knows the type of the table.  If/when we
-add a new ADBC version, the following scenarios are possible:
+version and a pointer to a table of function pointers to initialize
+(the :cpp:class:`AdbcDriver`).  The size of the table will depend on
+the version; when a new version of ADBC is accepted, then a new table
+of function pointers may be expanded.  For each version, the driver
+knows the expected size of the table, and must not read/write fields
+beyond that size.  If/when we add a new ADBC version, the following
+scenarios are possible:
 
 - An updated client application uses an old driver library.  The
   client will pass a `version` field greater than what the driver
@@ -46,7 +51,8 @@ add a new ADBC version, the following scenarios are possible:
 - An old client application uses an updated driver library.  The
   client will pass a ``version`` lower than what the driver
   recognizes, so the driver can either error, or if it can still
-  implement the old API contract, initialize the older table.
+  implement the old API contract, initialize the subset of the table
+  corresponding to the older version.
 
 This approach does not let us change the signatures of existing
 functions, but we can add new functions and remove existing ones.
@@ -64,7 +70,7 @@ backwards-incompatible versions such as 2.0.0, but which still
 implement the API standard version 1.0.0.
 
 Similarly, this documentation describes the ADBC API standard version
-1.0.0.  If/when a compatible revision is made (e.g. new standard
-options are defined), the next version would be 1.1.0.  If
-incompatible changes are made (e.g. new API functions), the next
-version would be 2.0.0.
+1.1.0.  If/when a compatible revision is made (e.g. new standard
+options or API functions are defined), the next version would be
+1.2.0.  If incompatible changes are made (e.g. changing the signature
+or semantics of a function), the next version would be 2.0.0.
