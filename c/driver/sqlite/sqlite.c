@@ -1101,7 +1101,10 @@ AdbcStatusCode SqliteStatementExecuteIngest(struct SqliteStatement* stmt,
   AdbcStatusCode status = SqliteStatementInitIngest(stmt, &insert, error);
 
   int64_t row_count = 0;
+  int is_autocommit = sqlite3_get_autocommit(stmt->conn);
   if (status == ADBC_STATUS_OK) {
+    if (is_autocommit) sqlite3_exec(stmt->conn, "BEGIN TRANSACTION", 0, 0, 0);
+
     while (1) {
       char finished = 0;
       status =
@@ -1120,6 +1123,8 @@ AdbcStatusCode SqliteStatementExecuteIngest(struct SqliteStatement* stmt,
       }
       row_count++;
     }
+
+    if (is_autocommit) sqlite3_exec(stmt->conn, "COMMIT", 0, 0, 0);
   }
 
   if (rows_affected) *rows_affected = row_count;
