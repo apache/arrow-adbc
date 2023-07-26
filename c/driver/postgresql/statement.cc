@@ -626,15 +626,19 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 
   // Check the server-side response
   result_ = PQgetResult(conn_);
-  const int pq_status = PQresultStatus(result_);
+  const ExecStatusType pq_status = PQresultStatus(result_);
   if (pq_status != PGRES_COMMAND_OK) {
-    StringBuilderAppend(&error_builder_, "[libpq] Query failed [%d]: %s", pq_status,
-                        PQresultErrorMessage(result_));
+    const char* sqlstate = PQresultErrorField(result_, PG_DIAG_SQLSTATE);
+    StringBuilderAppend(&error_builder_, "[libpq] Query failed [%s]: %s",
+                        PQresStatus(pq_status), PQresultErrorMessage(result_));
 
     if (tmp.release != nullptr) {
       tmp.release(&tmp);
     }
 
+    if (sqlstate != nullptr && std::strcmp(sqlstate, "57014") == 0) {
+      return ECANCELED;
+    }
     return EIO;
   }
 
@@ -1038,7 +1042,7 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     result = std::to_string(reader_.batch_size_hint_bytes_);
   } else {
-    SetError(error, "[libq] Unknown statement option '%s'", key);
+    SetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_FOUND;
   }
 
@@ -1052,13 +1056,13 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
 AdbcStatusCode PostgresStatement::GetOptionBytes(const char* key, uint8_t* value,
                                                  size_t* length,
                                                  struct AdbcError* error) {
-  SetError(error, "[libq] Unknown statement option '%s'", key);
+  SetError(error, "[libpq] Unknown statement option '%s'", key);
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode PostgresStatement::GetOptionDouble(const char* key, double* value,
                                                   struct AdbcError* error) {
-  SetError(error, "[libq] Unknown statement option '%s'", key);
+  SetError(error, "[libpq] Unknown statement option '%s'", key);
   return ADBC_STATUS_NOT_FOUND;
 }
 
@@ -1069,7 +1073,7 @@ AdbcStatusCode PostgresStatement::GetOptionInt(const char* key, int64_t* value,
     *value = reader_.batch_size_hint_bytes_;
     return ADBC_STATUS_OK;
   }
-  SetError(error, "[libq] Unknown statement option '%s'", key);
+  SetError(error, "[libpq] Unknown statement option '%s'", key);
   return ADBC_STATUS_NOT_FOUND;
 }
 
@@ -1133,7 +1137,7 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
 
     this->reader_.batch_size_hint_bytes_ = int_value;
   } else {
-    SetError(error, "[libq] Unknown statement option '%s'", key);
+    SetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return ADBC_STATUS_OK;
@@ -1141,13 +1145,13 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
 
 AdbcStatusCode PostgresStatement::SetOptionBytes(const char* key, const uint8_t* value,
                                                  size_t length, struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  SetError(error, "%s%s", "[libpq] Unknown statement option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresStatement::SetOptionDouble(const char* key, double value,
                                                   struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  SetError(error, "%s%s", "[libpq] Unknown statement option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -1162,7 +1166,7 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
     this->reader_.batch_size_hint_bytes_ = value;
     return ADBC_STATUS_OK;
   }
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  SetError(error, "[libpq] Unknown statement option '%s'", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
