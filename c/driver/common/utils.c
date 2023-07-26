@@ -244,6 +244,19 @@ AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode AdbcConnectionGetInfoAppendInt(struct ArrowArray* array,
+                                              uint32_t info_code, int64_t info_value,
+                                              struct AdbcError* error) {
+  CHECK_NA(INTERNAL, ArrowArrayAppendUInt(array->children[0], info_code), error);
+  // Append to type variant
+  CHECK_NA(INTERNAL, ArrowArrayAppendInt(array->children[1]->children[2], info_value),
+           error);
+  // Append type code/offset
+  CHECK_NA(INTERNAL, ArrowArrayFinishUnionElement(array->children[1], /*type_id=*/2),
+           error);
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
                                                struct AdbcError* error) {
   ArrowSchemaInit(schema);

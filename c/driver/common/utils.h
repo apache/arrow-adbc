@@ -117,6 +117,9 @@ AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
                                                  uint32_t info_code,
                                                  const char* info_value,
                                                  struct AdbcError* error);
+AdbcStatusCode AdbcConnectionGetInfoAppendInt(struct ArrowArray* array,
+                                              uint32_t info_code, int64_t info_value,
+                                              struct AdbcError* error);
 
 AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
                                                struct AdbcError* error);

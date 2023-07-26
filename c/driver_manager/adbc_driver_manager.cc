@@ -132,23 +132,23 @@ static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError*
 
 AdbcStatusCode DatabaseGetOption(struct AdbcDatabase* database, const char* key,
                                  char* value, size_t* length, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode DatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
                                       uint8_t* value, size_t* length,
                                       struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode DatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
                                     int64_t* value, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode DatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
                                        double* value, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode DatabaseSetOption(struct AdbcDatabase* database, const char* key,
@@ -195,24 +195,24 @@ AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, co
 
 AdbcStatusCode ConnectionGetOption(struct AdbcConnection* connection, const char* key,
                                    char* value, size_t* length, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode ConnectionGetOptionBytes(struct AdbcConnection* connection,
                                         const char* key, uint8_t* value, size_t* length,
                                         struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode ConnectionGetOptionInt(struct AdbcConnection* connection, const char* key,
                                       int64_t* value, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode ConnectionGetOptionDouble(struct AdbcConnection* connection,
                                          const char* key, double* value,
                                          struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode ConnectionGetTableSchema(struct AdbcConnection*, const char*, const char*,
@@ -284,23 +284,23 @@ AdbcStatusCode StatementExecuteSchema(struct AdbcStatement* statement,
 
 AdbcStatusCode StatementGetOption(struct AdbcStatement* statement, const char* key,
                                   char* value, size_t* length, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode StatementGetOptionBytes(struct AdbcStatement* statement, const char* key,
                                        uint8_t* value, size_t* length,
                                        struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode StatementGetOptionInt(struct AdbcStatement* statement, const char* key,
                                      int64_t* value, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode StatementGetOptionDouble(struct AdbcStatement* statement, const char* key,
                                         double* value, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode StatementGetParameterSchema(struct AdbcStatement* statement,
@@ -535,11 +535,11 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   // So we don't confuse a driver into thinking it's initialized already
   database->private_data = nullptr;
   if (args->init_func) {
-    status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_1_0_0,
+    status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_1_1_0,
                                         database->private_driver, error);
   } else {
     status = AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(),
-                            ADBC_VERSION_1_0_0, database->private_driver, error);
+                            ADBC_VERSION_1_1_0, database->private_driver, error);
   }
   if (status != ADBC_STATUS_OK) {
     // Restore private_data so it will be released by AdbcDatabaseRelease
@@ -1375,30 +1375,30 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
     FILL_DEFAULT(driver, DatabaseGetOption);
     FILL_DEFAULT(driver, DatabaseGetOptionBytes);
-    FILL_DEFAULT(driver, DatabaseGetOptionInt);
     FILL_DEFAULT(driver, DatabaseGetOptionDouble);
+    FILL_DEFAULT(driver, DatabaseGetOptionInt);
     FILL_DEFAULT(driver, DatabaseSetOptionBytes);
-    FILL_DEFAULT(driver, DatabaseSetOptionInt);
     FILL_DEFAULT(driver, DatabaseSetOptionDouble);
+    FILL_DEFAULT(driver, DatabaseSetOptionInt);
 
     FILL_DEFAULT(driver, ConnectionCancel);
     FILL_DEFAULT(driver, ConnectionGetOption);
     FILL_DEFAULT(driver, ConnectionGetOptionBytes);
-    FILL_DEFAULT(driver, ConnectionGetOptionInt);
     FILL_DEFAULT(driver, ConnectionGetOptionDouble);
+    FILL_DEFAULT(driver, ConnectionGetOptionInt);
     FILL_DEFAULT(driver, ConnectionSetOptionBytes);
-    FILL_DEFAULT(driver, ConnectionSetOptionInt);
     FILL_DEFAULT(driver, ConnectionSetOptionDouble);
+    FILL_DEFAULT(driver, ConnectionSetOptionInt);
 
     FILL_DEFAULT(driver, StatementCancel);
     FILL_DEFAULT(driver, StatementExecuteSchema);
     FILL_DEFAULT(driver, StatementGetOption);
     FILL_DEFAULT(driver, StatementGetOptionBytes);
-    FILL_DEFAULT(driver, StatementGetOptionInt);
     FILL_DEFAULT(driver, StatementGetOptionDouble);
+    FILL_DEFAULT(driver, StatementGetOptionInt);
     FILL_DEFAULT(driver, StatementSetOptionBytes);
-    FILL_DEFAULT(driver, StatementSetOptionInt);
     FILL_DEFAULT(driver, StatementSetOptionDouble);
+    FILL_DEFAULT(driver, StatementSetOptionInt);
   }
 
   return ADBC_STATUS_OK;
