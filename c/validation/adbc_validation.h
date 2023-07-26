@@ -88,9 +88,21 @@ class DriverQuirks {
     return ingest_type;
   }
 
+  /// \brief Whether bulk ingest is supported
+  virtual bool supports_bulk_ingest(const char* mode) const { return true; }
+
+  /// \brief Whether we can cancel queries.
+  virtual bool supports_cancel() const { return false; }
+
   /// \brief Whether two statements can be used at the same time on a
   ///   single connection
   virtual bool supports_concurrent_statements() const { return false; }
+
+  /// \brief Whether AdbcStatementExecuteSchema should work
+  virtual bool supports_execute_schema() const { return false; }
+
+  /// \brief Whether GetOption* should work
+  virtual bool supports_get_option() const { return true; }
 
   /// \brief Whether AdbcStatementExecutePartitions should work
   virtual bool supports_partitioned_data() const { return false; }
@@ -112,8 +124,11 @@ class DriverQuirks {
   /// \brief Whether GetObjects is implemented
   virtual bool supports_get_objects() const { return true; }
 
-  /// \brief Whether bulk ingest is supported
-  virtual bool supports_bulk_ingest() const { return true; }
+  /// \brief Whether we can get ADBC_CONNECTION_OPTION_CURRENT_CATALOG
+  virtual bool supports_metadata_current_catalog() const { return false; }
+
+  /// \brief Whether we can get ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA
+  virtual bool supports_metadata_current_db_schema() const { return false; }
 
   /// \brief Whether dynamic parameter bindings are supported for prepare
   virtual bool supports_dynamic_parameter_binding() const { return true; }
@@ -165,6 +180,9 @@ class ConnectionTest {
 
   void TestAutocommitToggle();
 
+  void TestMetadataCurrentCatalog();
+  void TestMetadataCurrentDbSchema();
+
   void TestMetadataGetInfo();
   void TestMetadataGetTableSchema();
   void TestMetadataGetTableTypes();
@@ -176,6 +194,7 @@ class ConnectionTest {
   void TestMetadataGetObjectsColumns();
   void TestMetadataGetObjectsConstraints();
   void TestMetadataGetObjectsPrimaryKey();
+  void TestMetadataGetObjectsCancel();
 
  protected:
   struct AdbcError error;
@@ -183,28 +202,31 @@ class ConnectionTest {
   struct AdbcConnection connection;
 };
 
-#define ADBCV_TEST_CONNECTION(FIXTURE)                                                \
-  static_assert(std::is_base_of<adbc_validation::ConnectionTest, FIXTURE>::value,     \
-                ADBCV_STRINGIFY(FIXTURE) " must inherit from ConnectionTest");        \
-  TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                         \
-  TEST_F(FIXTURE, Release) { TestRelease(); }                                         \
-  TEST_F(FIXTURE, Concurrent) { TestConcurrent(); }                                   \
-  TEST_F(FIXTURE, AutocommitDefault) { TestAutocommitDefault(); }                     \
-  TEST_F(FIXTURE, AutocommitToggle) { TestAutocommitToggle(); }                       \
-  TEST_F(FIXTURE, MetadataGetInfo) { TestMetadataGetInfo(); }                         \
-  TEST_F(FIXTURE, MetadataGetTableSchema) { TestMetadataGetTableSchema(); }           \
-  TEST_F(FIXTURE, MetadataGetTableTypes) { TestMetadataGetTableTypes(); }             \
-  TEST_F(FIXTURE, MetadataGetObjectsCatalogs) { TestMetadataGetObjectsCatalogs(); }   \
-  TEST_F(FIXTURE, MetadataGetObjectsDbSchemas) { TestMetadataGetObjectsDbSchemas(); } \
-  TEST_F(FIXTURE, MetadataGetObjectsTables) { TestMetadataGetObjectsTables(); }       \
-  TEST_F(FIXTURE, MetadataGetObjectsTablesTypes) {                                    \
-    TestMetadataGetObjectsTablesTypes();                                              \
-  }                                                                                   \
-  TEST_F(FIXTURE, MetadataGetObjectsColumns) { TestMetadataGetObjectsColumns(); }     \
-  TEST_F(FIXTURE, MetadataGetObjectsConstraints) {                                    \
-    TestMetadataGetObjectsConstraints();                                              \
-  }                                                                                   \
-  TEST_F(FIXTURE, MetadataGetObjectsPrimaryKey) { TestMetadataGetObjectsPrimaryKey(); }
+#define ADBCV_TEST_CONNECTION(FIXTURE)                                                  \
+  static_assert(std::is_base_of<adbc_validation::ConnectionTest, FIXTURE>::value,       \
+                ADBCV_STRINGIFY(FIXTURE) " must inherit from ConnectionTest");          \
+  TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                           \
+  TEST_F(FIXTURE, Release) { TestRelease(); }                                           \
+  TEST_F(FIXTURE, Concurrent) { TestConcurrent(); }                                     \
+  TEST_F(FIXTURE, AutocommitDefault) { TestAutocommitDefault(); }                       \
+  TEST_F(FIXTURE, AutocommitToggle) { TestAutocommitToggle(); }                         \
+  TEST_F(FIXTURE, MetadataCurrentCatalog) { TestMetadataCurrentCatalog(); }             \
+  TEST_F(FIXTURE, MetadataCurrentDbSchema) { TestMetadataCurrentDbSchema(); }           \
+  TEST_F(FIXTURE, MetadataGetInfo) { TestMetadataGetInfo(); }                           \
+  TEST_F(FIXTURE, MetadataGetTableSchema) { TestMetadataGetTableSchema(); }             \
+  TEST_F(FIXTURE, MetadataGetTableTypes) { TestMetadataGetTableTypes(); }               \
+  TEST_F(FIXTURE, MetadataGetObjectsCatalogs) { TestMetadataGetObjectsCatalogs(); }     \
+  TEST_F(FIXTURE, MetadataGetObjectsDbSchemas) { TestMetadataGetObjectsDbSchemas(); }   \
+  TEST_F(FIXTURE, MetadataGetObjectsTables) { TestMetadataGetObjectsTables(); }         \
+  TEST_F(FIXTURE, MetadataGetObjectsTablesTypes) {                                      \
+    TestMetadataGetObjectsTablesTypes();                                                \
+  }                                                                                     \
+  TEST_F(FIXTURE, MetadataGetObjectsColumns) { TestMetadataGetObjectsColumns(); }       \
+  TEST_F(FIXTURE, MetadataGetObjectsConstraints) {                                      \
+    TestMetadataGetObjectsConstraints();                                                \
+  }                                                                                     \
+  TEST_F(FIXTURE, MetadataGetObjectsPrimaryKey) { TestMetadataGetObjectsPrimaryKey(); } \
+  TEST_F(FIXTURE, MetadataGetObjectsCancel) { TestMetadataGetObjectsCancel(); }
 
 class StatementTest {
  public:
@@ -245,6 +267,8 @@ class StatementTest {
 
   void TestSqlIngestTableEscaping();
   void TestSqlIngestAppend();
+  void TestSqlIngestReplace();
+  void TestSqlIngestCreateAppend();
   void TestSqlIngestErrors();
   void TestSqlIngestMultipleConnections();
   void TestSqlIngestSample();
@@ -264,7 +288,14 @@ class StatementTest {
   void TestSqlQueryFloats();
   void TestSqlQueryStrings();
 
+  void TestSqlQueryCancel();
   void TestSqlQueryErrors();
+
+  void TestSqlSchemaInts();
+  void TestSqlSchemaFloats();
+  void TestSqlSchemaStrings();
+
+  void TestSqlSchemaErrors();
 
   void TestTransactions();
 
@@ -312,6 +343,8 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
+  TEST_F(FIXTURE, SqlIngestReplace) { TestSqlIngestReplace(); }                         \
+  TEST_F(FIXTURE, SqlIngestCreateAppend) { TestSqlIngestCreateAppend(); }               \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
   TEST_F(FIXTURE, SqlIngestSample) { TestSqlIngestSample(); }                           \
@@ -329,7 +362,12 @@ class StatementTest {
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
   TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                           \
+  TEST_F(FIXTURE, SqlQueryCancel) { TestSqlQueryCancel(); }                             \
   TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                             \
+  TEST_F(FIXTURE, SqlSchemaInts) { TestSqlSchemaInts(); }                               \
+  TEST_F(FIXTURE, SqlSchemaFloats) { TestSqlSchemaFloats(); }                           \
+  TEST_F(FIXTURE, SqlSchemaStrings) { TestSqlSchemaStrings(); }                         \
+  TEST_F(FIXTURE, SqlSchemaErrors) { TestSqlSchemaErrors(); }                           \
   TEST_F(FIXTURE, Transactions) { TestTransactions(); }                                 \
   TEST_F(FIXTURE, ConcurrentStatements) { TestConcurrentStatements(); }                 \
   TEST_F(FIXTURE, ResultInvalidation) { TestResultInvalidation(); }

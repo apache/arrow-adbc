@@ -843,12 +843,13 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
 
 class PostgresCopyStreamReader {
  public:
-  ArrowErrorCode Init(const PostgresType& pg_type) {
+  ArrowErrorCode Init(PostgresType pg_type) {
     if (pg_type.type_id() != PostgresTypeId::kRecord) {
       return EINVAL;
     }
 
-    root_reader_.Init(pg_type);
+    pg_type_ = std::move(pg_type);
+    root_reader_.Init(pg_type_);
     array_size_approx_bytes_ = 0;
     return NANOARROW_OK;
   }
@@ -972,7 +973,10 @@ class PostgresCopyStreamReader {
     return NANOARROW_OK;
   }
 
+  const PostgresType& pg_type() const { return pg_type_; }
+
  private:
+  PostgresType pg_type_;
   PostgresCopyFieldTupleReader root_reader_;
   nanoarrow::UniqueSchema schema_;
   nanoarrow::UniqueArray array_;

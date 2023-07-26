@@ -29,8 +29,10 @@ namespace adbcpq {
 class PostgresDatabase;
 class PostgresConnection {
  public:
-  PostgresConnection() : database_(nullptr), conn_(nullptr), autocommit_(true) {}
+  PostgresConnection()
+      : database_(nullptr), conn_(nullptr), cancel_(nullptr), autocommit_(true) {}
 
+  AdbcStatusCode Cancel(struct AdbcError* error);
   AdbcStatusCode Commit(struct AdbcError* error);
   AdbcStatusCode GetInfo(struct AdbcConnection* connection, uint32_t* info_codes,
                          size_t info_codes_length, struct ArrowArrayStream* out,
@@ -40,6 +42,14 @@ class PostgresConnection {
                             const char* table_name, const char** table_types,
                             const char* column_name, struct ArrowArrayStream* out,
                             struct AdbcError* error);
+  AdbcStatusCode GetOption(const char* option, char* value, size_t* length,
+                           struct AdbcError* error);
+  AdbcStatusCode GetOptionBytes(const char* option, uint8_t* value, size_t* length,
+                                struct AdbcError* error);
+  AdbcStatusCode GetOptionDouble(const char* option, double* value,
+                                 struct AdbcError* error);
+  AdbcStatusCode GetOptionInt(const char* option, int64_t* value,
+                              struct AdbcError* error);
   AdbcStatusCode GetTableSchema(const char* catalog, const char* db_schema,
                                 const char* table_name, struct ArrowSchema* schema,
                                 struct AdbcError* error);
@@ -49,6 +59,10 @@ class PostgresConnection {
   AdbcStatusCode Release(struct AdbcError* error);
   AdbcStatusCode Rollback(struct AdbcError* error);
   AdbcStatusCode SetOption(const char* key, const char* value, struct AdbcError* error);
+  AdbcStatusCode SetOptionBytes(const char* key, const uint8_t* value, size_t length,
+                                struct AdbcError* error);
+  AdbcStatusCode SetOptionDouble(const char* key, double value, struct AdbcError* error);
+  AdbcStatusCode SetOptionInt(const char* key, int64_t value, struct AdbcError* error);
 
   PGconn* conn() const { return conn_; }
   const std::shared_ptr<PostgresTypeResolver>& type_resolver() const {
@@ -60,6 +74,7 @@ class PostgresConnection {
   std::shared_ptr<PostgresDatabase> database_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   PGconn* conn_;
+  PGcancel* cancel_;
   bool autocommit_;
 };
 }  // namespace adbcpq

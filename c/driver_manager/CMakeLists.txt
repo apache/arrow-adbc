@@ -55,10 +55,9 @@ if(ADBC_BUILD_TESTS)
                 driver-manager
                 SOURCES
                 adbc_driver_manager_test.cc
-                ../validation/adbc_validation.cc
-                ../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
                 adbc_driver_common
+                adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
@@ -73,8 +72,8 @@ if(ADBC_BUILD_TESTS)
                 SOURCES
                 adbc_version_100.c
                 adbc_version_100_compatibility_test.cc
-                ../validation/adbc_validation_util.cc
                 EXTRA_LINK_LIBS
+                adbc_validation_util
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-version-100-compatibility-test PRIVATE cxx_std_17)

@@ -83,13 +83,91 @@ AdbcStatusCode PostgresDatabaseRelease(struct AdbcDatabase* database,
   return status;
 }
 
+AdbcStatusCode PostgresDatabaseGetOption(struct AdbcDatabase* database, const char* key,
+                                         char* value, size_t* length,
+                                         struct AdbcError* error) {
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr = reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
+  return (*ptr)->GetOption(key, value, length, error);
+}
+
+AdbcStatusCode PostgresDatabaseGetOptionBytes(struct AdbcDatabase* database,
+                                              const char* key, uint8_t* value,
+                                              size_t* length, struct AdbcError* error) {
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr = reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
+  return (*ptr)->GetOptionBytes(key, value, length, error);
+}
+
+AdbcStatusCode PostgresDatabaseGetOptionDouble(struct AdbcDatabase* database,
+                                               const char* key, double* value,
+                                               struct AdbcError* error) {
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr = reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
+  return (*ptr)->GetOptionDouble(key, value, error);
+}
+
+AdbcStatusCode PostgresDatabaseGetOptionInt(struct AdbcDatabase* database,
+                                            const char* key, int64_t* value,
+                                            struct AdbcError* error) {
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr = reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
+  return (*ptr)->GetOptionInt(key, value, error);
+}
+
 AdbcStatusCode PostgresDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                          const char* value, struct AdbcError* error) {
   if (!database || !database->private_data) return ADBC_STATUS_INVALID_STATE;
   auto ptr = reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
   return (*ptr)->SetOption(key, value, error);
 }
+
+AdbcStatusCode PostgresDatabaseSetOptionBytes(struct AdbcDatabase* database,
+                                              const char* key, const uint8_t* value,
+                                              size_t length, struct AdbcError* error) {
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr = reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
+  return (*ptr)->SetOptionBytes(key, value, length, error);
+}
+
+AdbcStatusCode PostgresDatabaseSetOptionDouble(struct AdbcDatabase* database,
+                                               const char* key, double value,
+                                               struct AdbcError* error) {
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr = reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
+  return (*ptr)->SetOptionDouble(key, value, error);
+}
+
+AdbcStatusCode PostgresDatabaseSetOptionInt(struct AdbcDatabase* database,
+                                            const char* key, int64_t value,
+                                            struct AdbcError* error) {
+  if (!database->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr = reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
+  return (*ptr)->SetOptionInt(key, value, error);
+}
 }  // namespace
+
+AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
+                                     char* value, size_t* length,
+                                     struct AdbcError* error) {
+  return PostgresDatabaseGetOption(database, key, value, length, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          uint8_t* value, size_t* length,
+                                          struct AdbcError* error) {
+  return PostgresDatabaseGetOptionBytes(database, key, value, length, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t* value, struct AdbcError* error) {
+  return PostgresDatabaseGetOptionInt(database, key, value, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double* value, struct AdbcError* error) {
+  return PostgresDatabaseGetOptionDouble(database, key, value, error);
+}
 
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
   return PostgresDatabaseInit(database, error);
@@ -109,10 +187,34 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
   return PostgresDatabaseSetOption(database, key, value, error);
 }
 
+AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          const uint8_t* value, size_t length,
+                                          struct AdbcError* error) {
+  return PostgresDatabaseSetOptionBytes(database, key, value, length, error);
+}
+
+AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t value, struct AdbcError* error) {
+  return PostgresDatabaseSetOptionInt(database, key, value, error);
+}
+
+AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double value, struct AdbcError* error) {
+  return PostgresDatabaseSetOptionDouble(database, key, value, error);
+}
+
 // ---------------------------------------------------------------------
 // AdbcConnection
 
 namespace {
+AdbcStatusCode PostgresConnectionCancel(struct AdbcConnection* connection,
+                                        struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->Cancel(error);
+}
+
 AdbcStatusCode PostgresConnectionCommit(struct AdbcConnection* connection,
                                         struct AdbcError* error) {
   if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
@@ -140,6 +242,42 @@ AdbcStatusCode PostgresConnectionGetObjects(
       reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
   return (*ptr)->GetObjects(connection, depth, catalog, db_schema, table_name,
                             table_types, column_name, stream, error);
+}
+
+AdbcStatusCode PostgresConnectionGetOption(struct AdbcConnection* connection,
+                                           const char* key, char* value, size_t* length,
+                                           struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetOption(key, value, length, error);
+}
+
+AdbcStatusCode PostgresConnectionGetOptionBytes(struct AdbcConnection* connection,
+                                                const char* key, uint8_t* value,
+                                                size_t* length, struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetOptionBytes(key, value, length, error);
+}
+
+AdbcStatusCode PostgresConnectionGetOptionDouble(struct AdbcConnection* connection,
+                                                 const char* key, double* value,
+                                                 struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetOptionDouble(key, value, error);
+}
+
+AdbcStatusCode PostgresConnectionGetOptionInt(struct AdbcConnection* connection,
+                                              const char* key, int64_t* value,
+                                              struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetOptionInt(key, value, error);
 }
 
 AdbcStatusCode PostgresConnectionGetTableSchema(
@@ -213,7 +351,40 @@ AdbcStatusCode PostgresConnectionSetOption(struct AdbcConnection* connection,
   return (*ptr)->SetOption(key, value, error);
 }
 
+AdbcStatusCode PostgresConnectionSetOptionBytes(struct AdbcConnection* connection,
+                                                const char* key, const uint8_t* value,
+                                                size_t length, struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->SetOptionBytes(key, value, length, error);
+}
+
+AdbcStatusCode PostgresConnectionSetOptionDouble(struct AdbcConnection* connection,
+                                                 const char* key, double value,
+                                                 struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->SetOptionDouble(key, value, error);
+}
+
+AdbcStatusCode PostgresConnectionSetOptionInt(struct AdbcConnection* connection,
+                                              const char* key, int64_t value,
+                                              struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->SetOptionInt(key, value, error);
+}
+
 }  // namespace
+
+AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
+                                    struct AdbcError* error) {
+  return PostgresConnectionCancel(connection, error);
+}
+
 AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
                                     struct AdbcError* error) {
   return PostgresConnectionCommit(connection, error);
@@ -235,6 +406,30 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         struct AdbcError* error) {
   return PostgresConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
                                       table_types, column_name, stream, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
+                                       char* value, size_t* length,
+                                       struct AdbcError* error) {
+  return PostgresConnectionGetOption(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, uint8_t* value,
+                                            size_t* length, struct AdbcError* error) {
+  return PostgresConnectionGetOptionBytes(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t* value,
+                                          struct AdbcError* error) {
+  return PostgresConnectionGetOptionInt(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double* value,
+                                             struct AdbcError* error) {
+  return PostgresConnectionGetOptionDouble(connection, key, value, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -287,6 +482,24 @@ AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const 
   return PostgresConnectionSetOption(connection, key, value, error);
 }
 
+AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, const uint8_t* value,
+                                            size_t length, struct AdbcError* error) {
+  return PostgresConnectionSetOptionBytes(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t value,
+                                          struct AdbcError* error) {
+  return PostgresConnectionSetOptionInt(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double value,
+                                             struct AdbcError* error) {
+  return PostgresConnectionSetOptionDouble(connection, key, value, error);
+}
+
 // ---------------------------------------------------------------------
 // AdbcStatement
 
@@ -310,6 +523,14 @@ AdbcStatusCode PostgresStatementBindStream(struct AdbcStatement* statement,
   return (*ptr)->Bind(stream, error);
 }
 
+AdbcStatusCode PostgresStatementCancel(struct AdbcStatement* statement,
+                                       struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto* ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return (*ptr)->Cancel(error);
+}
+
 AdbcStatusCode PostgresStatementExecutePartitions(struct AdbcStatement* statement,
                                                   struct ArrowSchema* schema,
                                                   struct AdbcPartitions* partitions,
@@ -329,16 +550,49 @@ AdbcStatusCode PostgresStatementExecuteQuery(struct AdbcStatement* statement,
   return (*ptr)->ExecuteQuery(output, rows_affected, error);
 }
 
-AdbcStatusCode PostgresStatementGetPartitionDesc(struct AdbcStatement* statement,
-                                                 uint8_t* partition_desc,
-                                                 struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+AdbcStatusCode PostgresStatementExecuteSchema(struct AdbcStatement* statement,
+                                              struct ArrowSchema* schema,
+                                              struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto* ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return (*ptr)->ExecuteSchema(schema, error);
 }
 
-AdbcStatusCode PostgresStatementGetPartitionDescSize(struct AdbcStatement* statement,
-                                                     size_t* length,
-                                                     struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+AdbcStatusCode PostgresStatementGetOption(struct AdbcStatement* statement,
+                                          const char* key, char* value, size_t* length,
+                                          struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return (*ptr)->GetOption(key, value, length, error);
+}
+
+AdbcStatusCode PostgresStatementGetOptionBytes(struct AdbcStatement* statement,
+                                               const char* key, uint8_t* value,
+                                               size_t* length, struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return (*ptr)->GetOptionBytes(key, value, length, error);
+}
+
+AdbcStatusCode PostgresStatementGetOptionDouble(struct AdbcStatement* statement,
+                                                const char* key, double* value,
+                                                struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return (*ptr)->GetOptionDouble(key, value, error);
+}
+
+AdbcStatusCode PostgresStatementGetOptionInt(struct AdbcStatement* statement,
+                                             const char* key, int64_t* value,
+                                             struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return (*ptr)->GetOptionInt(key, value, error);
 }
 
 AdbcStatusCode PostgresStatementGetParameterSchema(struct AdbcStatement* statement,
@@ -386,6 +640,33 @@ AdbcStatusCode PostgresStatementSetOption(struct AdbcStatement* statement,
   return (*ptr)->SetOption(key, value, error);
 }
 
+AdbcStatusCode PostgresStatementSetOptionBytes(struct AdbcStatement* statement,
+                                               const char* key, const uint8_t* value,
+                                               size_t length, struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return (*ptr)->SetOptionBytes(key, value, length, error);
+}
+
+AdbcStatusCode PostgresStatementSetOptionDouble(struct AdbcStatement* statement,
+                                                const char* key, double value,
+                                                struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return (*ptr)->SetOptionDouble(key, value, error);
+}
+
+AdbcStatusCode PostgresStatementSetOptionInt(struct AdbcStatement* statement,
+                                             const char* key, int64_t value,
+                                             struct AdbcError* error) {
+  if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresStatement>*>(statement->private_data);
+  return (*ptr)->SetOptionInt(key, value, error);
+}
+
 AdbcStatusCode PostgresStatementSetSqlQuery(struct AdbcStatement* statement,
                                             const char* query, struct AdbcError* error) {
   if (!statement->private_data) return ADBC_STATUS_INVALID_STATE;
@@ -407,6 +688,11 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
   return PostgresStatementBindStream(statement, stream, error);
 }
 
+AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
+                                   struct AdbcError* error) {
+  return PostgresStatementCancel(statement, error);
+}
+
 AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               ArrowSchema* schema,
                                               struct AdbcPartitions* partitions,
@@ -423,16 +709,32 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
   return PostgresStatementExecuteQuery(statement, output, rows_affected, error);
 }
 
-AdbcStatusCode AdbcStatementGetPartitionDesc(struct AdbcStatement* statement,
-                                             uint8_t* partition_desc,
-                                             struct AdbcError* error) {
-  return PostgresStatementGetPartitionDesc(statement, partition_desc, error);
+AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
+                                          ArrowSchema* schema, struct AdbcError* error) {
+  return PostgresStatementExecuteSchema(statement, schema, error);
 }
 
-AdbcStatusCode AdbcStatementGetPartitionDescSize(struct AdbcStatement* statement,
-                                                 size_t* length,
-                                                 struct AdbcError* error) {
-  return PostgresStatementGetPartitionDescSize(statement, length, error);
+AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
+                                      char* value, size_t* length,
+                                      struct AdbcError* error) {
+  return PostgresStatementGetOption(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, uint8_t* value,
+                                           size_t* length, struct AdbcError* error) {
+  return PostgresStatementGetOptionBytes(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const char* key,
+                                         int64_t* value, struct AdbcError* error) {
+  return PostgresStatementGetOptionInt(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double* value,
+                                            struct AdbcError* error) {
+  return PostgresStatementGetOptionDouble(statement, key, value, error);
 }
 
 AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
@@ -462,6 +764,23 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
   return PostgresStatementSetOption(statement, key, value, error);
 }
 
+AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, const uint8_t* value,
+                                           size_t length, struct AdbcError* error) {
+  return PostgresStatementSetOptionBytes(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const char* key,
+                                         int64_t value, struct AdbcError* error) {
+  return PostgresStatementSetOptionInt(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double value,
+                                            struct AdbcError* error) {
+  return PostgresStatementSetOptionDouble(statement, key, value, error);
+}
+
 AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
                                         const char* query, struct AdbcError* error) {
   return PostgresStatementSetSqlQuery(statement, query, error);
@@ -469,12 +788,47 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
 
 extern "C" {
 ADBC_EXPORT
-AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* error) {
-  if (version != ADBC_VERSION_1_0_0) return ADBC_STATUS_NOT_IMPLEMENTED;
+AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
+                                    struct AdbcError* error) {
+  if (version != ADBC_VERSION_1_0_0 && version != ADBC_VERSION_1_1_0) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
   if (!raw_driver) return ADBC_STATUS_INVALID_ARGUMENT;
 
   auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
-  std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
+  if (version >= ADBC_VERSION_1_1_0) {
+    std::memset(driver, 0, ADBC_DRIVER_1_1_0_SIZE);
+
+    driver->DatabaseGetOption = PostgresDatabaseGetOption;
+    driver->DatabaseGetOptionBytes = PostgresDatabaseGetOptionBytes;
+    driver->DatabaseGetOptionDouble = PostgresDatabaseGetOptionDouble;
+    driver->DatabaseGetOptionInt = PostgresDatabaseGetOptionInt;
+    driver->DatabaseSetOptionBytes = PostgresDatabaseSetOptionBytes;
+    driver->DatabaseSetOptionDouble = PostgresDatabaseSetOptionDouble;
+    driver->DatabaseSetOptionInt = PostgresDatabaseSetOptionInt;
+
+    driver->ConnectionCancel = PostgresConnectionCancel;
+    driver->ConnectionGetOption = PostgresConnectionGetOption;
+    driver->ConnectionGetOptionBytes = PostgresConnectionGetOptionBytes;
+    driver->ConnectionGetOptionDouble = PostgresConnectionGetOptionDouble;
+    driver->ConnectionGetOptionInt = PostgresConnectionGetOptionInt;
+    driver->ConnectionSetOptionBytes = PostgresConnectionSetOptionBytes;
+    driver->ConnectionSetOptionDouble = PostgresConnectionSetOptionDouble;
+    driver->ConnectionSetOptionInt = PostgresConnectionSetOptionInt;
+
+    driver->StatementCancel = PostgresStatementCancel;
+    driver->StatementExecuteSchema = PostgresStatementExecuteSchema;
+    driver->StatementGetOption = PostgresStatementGetOption;
+    driver->StatementGetOptionBytes = PostgresStatementGetOptionBytes;
+    driver->StatementGetOptionDouble = PostgresStatementGetOptionDouble;
+    driver->StatementGetOptionInt = PostgresStatementGetOptionInt;
+    driver->StatementSetOptionBytes = PostgresStatementSetOptionBytes;
+    driver->StatementSetOptionDouble = PostgresStatementSetOptionDouble;
+    driver->StatementSetOptionInt = PostgresStatementSetOptionInt;
+  } else {
+    std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
+  }
+
   driver->DatabaseInit = PostgresDatabaseInit;
   driver->DatabaseNew = PostgresDatabaseNew;
   driver->DatabaseRelease = PostgresDatabaseRelease;
@@ -502,6 +856,12 @@ AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* e
   driver->StatementRelease = PostgresStatementRelease;
   driver->StatementSetOption = PostgresStatementSetOption;
   driver->StatementSetSqlQuery = PostgresStatementSetSqlQuery;
+
   return ADBC_STATUS_OK;
+}
+
+ADBC_EXPORT
+AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* error) {
+  return PostgresqlDriverInit(version, raw_driver, error);
 }
 }

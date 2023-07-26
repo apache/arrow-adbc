@@ -36,8 +36,9 @@
 namespace {
 
 static const uint32_t kSupportedInfoCodes[] = {
-    ADBC_INFO_VENDOR_NAME,    ADBC_INFO_VENDOR_VERSION,       ADBC_INFO_DRIVER_NAME,
-    ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ARROW_VERSION,
+    ADBC_INFO_VENDOR_NAME,          ADBC_INFO_VENDOR_VERSION,
+    ADBC_INFO_DRIVER_NAME,          ADBC_INFO_DRIVER_VERSION,
+    ADBC_INFO_DRIVER_ARROW_VERSION, ADBC_INFO_DRIVER_ADBC_VERSION,
 };
 
 static const std::unordered_map<std::string, std::string> kPgTableTypes = {
@@ -114,8 +115,10 @@ class PqResultHelper {
     result_ = PQexecPrepared(conn_, "", param_values_.size(), param_c_strs.data(), NULL,
                              NULL, 0);
 
-    if (PQresultStatus(result_) != PGRES_TUPLES_OK) {
-      SetError(error_, "[libpq] Failed to execute query: %s", PQerrorMessage(conn_));
+    ExecStatusType status = PQresultStatus(result_);
+    if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {
+      SetError(error_, "[libpq] Failed to execute query '%s': %s", query_.c_str(),
+               PQerrorMessage(conn_));
       return ADBC_STATUS_IO;
     }
 
@@ -729,6 +732,20 @@ class PqGetObjectsHelper {
 
 namespace adbcpq {
 
+AdbcStatusCode PostgresConnection::Cancel(struct AdbcError* error) {
+  // > errbuf must be a char array of size errbufsize (the recommended size is
+  // > 256 bytes).
+  // https://www.postgresql.org/docs/current/libpq-cancel.html
+  char errbuf[256];
+  // > The return value is 1 if the cancel request was successfully dispatched
+  // > and 0 if not.
+  if (PQcancel(cancel_, errbuf, sizeof(errbuf)) != 1) {
+    SetError(error, "[libpq] Failed to cancel operation: %s", errbuf);
+    return ADBC_STATUS_UNKNOWN;
+  }
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
   if (autocommit_) {
     SetError(error, "%s", "[libpq] Cannot commit when autocommit is enabled");
@@ -775,6 +792,10 @@ AdbcStatusCode PostgresConnectionGetInfoImpl(const uint32_t* info_codes,
       case ADBC_INFO_DRIVER_ARROW_VERSION:
         RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
                                                      NANOARROW_VERSION, error));
+        break;
+      case ADBC_INFO_DRIVER_ADBC_VERSION:
+        RAISE_ADBC(AdbcConnectionGetInfoAppendInt(array, info_codes[i],
+                                                  ADBC_VERSION_1_1_0, error));
         break;
       default:
         // Ignore
@@ -838,6 +859,47 @@ AdbcStatusCode PostgresConnection::GetObjects(
   }
 
   return BatchToArrayStream(&array, &schema, out, error);
+}
+
+AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
+                                             size_t* length, struct AdbcError* error) {
+  std::string output;
+  if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_CATALOG) == 0) {
+    output = PQdb(conn_);
+  } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
+    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA", {}, error};
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+    auto it = result_helper.begin();
+    if (it == result_helper.end()) {
+      SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+      return ADBC_STATUS_INTERNAL;
+    }
+    output = (*it)[0].data;
+  } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_AUTOCOMMIT) == 0) {
+    output = autocommit_ ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED;
+  } else {
+    return ADBC_STATUS_NOT_FOUND;
+  }
+
+  if (output.size() + 1 <= *length) {
+    std::memcpy(value, output.c_str(), output.size() + 1);
+  }
+  *length = output.size() + 1;
+  return ADBC_STATUS_OK;
+}
+AdbcStatusCode PostgresConnection::GetOptionBytes(const char* option, uint8_t* value,
+                                                  size_t* length,
+                                                  struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresConnection::GetOptionInt(const char* option, int64_t* value,
+                                                struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresConnection::GetOptionDouble(const char* option, double* value,
+                                                   struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
@@ -964,16 +1026,26 @@ AdbcStatusCode PostgresConnection::GetTableTypes(struct AdbcConnection* connecti
 AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
                                         struct AdbcError* error) {
   if (!database || !database->private_data) {
-    SetError(error, "%s", "[libpq] Must provide an initialized AdbcDatabase");
+    SetError(error, "[libpq] Must provide an initialized AdbcDatabase");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   database_ =
       *reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
   type_resolver_ = database_->type_resolver();
-  return database_->Connect(&conn_, error);
+  RAISE_ADBC(database_->Connect(&conn_, error));
+  cancel_ = PQgetCancel(conn_);
+  if (!cancel_) {
+    SetError(error, "[libpq] Could not initialize PGcancel");
+    return ADBC_STATUS_UNKNOWN;
+  }
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::Release(struct AdbcError* error) {
+  if (cancel_) {
+    PQfreeCancel(cancel_);
+    cancel_ = nullptr;
+  }
   if (conn_) {
     return database_->Disconnect(&conn_, error);
   }
@@ -1023,8 +1095,35 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
       autocommit_ = autocommit;
     }
     return ADBC_STATUS_OK;
+  } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
+    // PostgreSQL doesn't accept a parameter here
+    PqResultHelper result_helper{
+        conn_, std::string("SET search_path TO ") + value, {}, error};
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+    return ADBC_STATUS_OK;
   }
   SetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
+
+AdbcStatusCode PostgresConnection::SetOptionBytes(const char* key, const uint8_t* value,
+                                                  size_t length,
+                                                  struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresConnection::SetOptionDouble(const char* key, double value,
+                                                   struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresConnection::SetOptionInt(const char* key, int64_t value,
+                                                struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 }  // namespace adbcpq

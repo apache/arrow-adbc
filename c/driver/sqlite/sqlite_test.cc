@@ -91,7 +91,27 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  bool supports_bulk_ingest(const char* mode) const override {
+    return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
+           std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;
+  }
   bool supports_concurrent_statements() const override { return true; }
+  bool supports_get_option() const override { return false; }
+  std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
+      uint32_t info_code) const override {
+    switch (info_code) {
+      case ADBC_INFO_DRIVER_NAME:
+        return "ADBC SQLite Driver";
+      case ADBC_INFO_DRIVER_VERSION:
+        return "(unknown)";
+      case ADBC_INFO_VENDOR_NAME:
+        return "SQLite";
+      case ADBC_INFO_VENDOR_VERSION:
+        return "3.";
+      default:
+        return std::nullopt;
+    }
+  }
 
   std::string catalog() const override { return "main"; }
   std::string db_schema() const override { return ""; }
