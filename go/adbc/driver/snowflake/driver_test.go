@@ -187,7 +187,7 @@ func (s *SnowflakeQuirks) SupportsCurrentCatalogSchema() bool    { return true }
 func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return false }
 func (s *SnowflakeQuirks) SupportsGetSetOptions() bool           { return true }
 func (s *SnowflakeQuirks) SupportsPartitionedData() bool         { return false }
-func (s *SnowflakeQuirks) SupportsStatistics() bool              { return true }
+func (s *SnowflakeQuirks) SupportsStatistics() bool              { return false }
 func (s *SnowflakeQuirks) SupportsTransactions() bool            { return true }
 func (s *SnowflakeQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *SnowflakeQuirks) SupportsDynamicParameterBinding() bool { return false }
