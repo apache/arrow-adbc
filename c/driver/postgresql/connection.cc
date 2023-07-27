@@ -52,10 +52,10 @@ struct PqRecord {
 };
 
 // Used by PqResultHelper to provide index-based access to the records within each
-// row of a pg_result
+// row of a PGresult
 class PqResultRow {
  public:
-  PqResultRow(pg_result* result, int row_num) : result_(result), row_num_(row_num) {
+  PqResultRow(PGresult* result, int row_num) : result_(result), row_num_(row_num) {
     ncols_ = PQnfields(result);
   }
 
@@ -69,7 +69,7 @@ class PqResultRow {
   }
 
  private:
-  pg_result* result_ = nullptr;
+  PGresult* result_ = nullptr;
   int row_num_;
   int ncols_;
 };
@@ -167,7 +167,7 @@ class PqResultHelper {
   iterator end() { return iterator(*this, NumRows()); }
 
  private:
-  pg_result* result_ = nullptr;
+  PGresult* result_ = nullptr;
   PGconn* conn_;
   std::string query_;
   std::vector<std::string> param_values_;

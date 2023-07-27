@@ -30,6 +30,7 @@ add_arrow_lib(adbc_driver_postgresql
               SOURCES
               connection.cc
               database.cc
+              error.cc
               postgresql.cc
               statement.cc
               OUTPUTS

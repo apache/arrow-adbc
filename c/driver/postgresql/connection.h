@@ -23,6 +23,7 @@
 #include <adbc.h>
 #include <libpq-fe.h>
 
+#include "error.h"
 #include "postgres_type.h"
 
 namespace adbcpq {
@@ -69,10 +70,12 @@ class PostgresConnection {
     return type_resolver_;
   }
   bool autocommit() const { return autocommit_; }
+  ErrorDetailsState* error_details() { return &error_details_; }
 
  private:
   std::shared_ptr<PostgresDatabase> database_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
+  ErrorDetailsState error_details_;
   PGconn* conn_;
   PGcancel* cancel_;
   bool autocommit_;

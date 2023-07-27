@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -38,6 +39,8 @@ extern "C" {
 /// Set error details using a format string.
 void SetError(struct AdbcError* error, const char* format,
               ...) ADBC_CHECK_PRINTF_ATTRIBUTE;
+
+void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args);
 
 struct StringBuilder {
   char* buffer;

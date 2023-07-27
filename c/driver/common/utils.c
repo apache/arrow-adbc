@@ -34,6 +34,13 @@ static void ReleaseError(struct AdbcError* error) {
 }
 
 void SetError(struct AdbcError* error, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  SetErrorVariadic(error, format, args);
+  va_end(args);
+}
+
+void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args) {
   if (!error) return;
   if (error->release) {
     // TODO: combine the errors if possible
@@ -44,10 +51,7 @@ void SetError(struct AdbcError* error, const char* format, ...) {
 
   error->release = &ReleaseError;
 
-  va_list args;
-  va_start(args, format);
   vsnprintf(error->message, kErrorBufferSize, format, args);
-  va_end(args);
 }
 
 struct SingleBatchArrayStream {

@@ -27,6 +27,7 @@
 #include <nanoarrow/nanoarrow.h>
 
 #include "common/utils.h"
+#include "error.h"
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 
@@ -40,8 +41,9 @@ class PostgresStatement;
 /// \brief An ArrowArrayStream that reads tuples from a PGresult.
 class TupleReader final {
  public:
-  TupleReader(PGconn* conn)
+  TupleReader(PGconn* conn, ErrorDetailsState* error_details)
       : conn_(conn),
+        error_details_(error_details),
         result_(nullptr),
         pgbuf_(nullptr),
         copy_reader_(nullptr),
@@ -78,6 +80,7 @@ class TupleReader final {
   static void ReleaseTrampoline(struct ArrowArrayStream* self);
 
   PGconn* conn_;
+  ErrorDetailsState* error_details_;
   PGresult* result_;
   char* pgbuf_;
   struct ArrowBufferView data_;
@@ -90,7 +93,10 @@ class TupleReader final {
 class PostgresStatement {
  public:
   PostgresStatement()
-      : connection_(nullptr), query_(), prepared_(false), reader_(nullptr) {
+      : connection_(nullptr),
+        query_(),
+        prepared_(false),
+        reader_(nullptr, &error_details_) {
     std::memset(&bind_, 0, sizeof(bind_));
   }
 
@@ -136,6 +142,8 @@ class PostgresStatement {
                                           struct AdbcError* error);
   AdbcStatusCode SetupReader(struct AdbcError* error);
 
+  ErrorDetailsState* error_details() { return &error_details_; }
+
  private:
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::shared_ptr<PostgresConnection> connection_;
@@ -158,6 +166,7 @@ class PostgresStatement {
     IngestMode mode = IngestMode::kCreate;
   } ingest_;
 
+  ErrorDetailsState error_details_;
   TupleReader reader_;
 };
 }  // namespace adbcpq

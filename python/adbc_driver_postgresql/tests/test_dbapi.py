@@ -119,11 +119,34 @@ def test_query_cancel(postgres: dbapi.Connection) -> None:
         with pytest.raises(OSError, match="canceling statement"):
             cur.fetchone()
 
+        num_details = cur.adbc_statement.get_option_int("adbc.error_details")
+        assert num_details > 0
+
+        details = {
+            cur.adbc_statement.get_option(
+                f"adbc.error_details.{i}"
+            ): cur.adbc_statement.get_option_bytes(f"adbc.error_details.{i}")
+            for i in range(num_details)
+        }
+        assert details["SQLSTATE"] == b"57014"
+
 
 def test_query_execute_schema(postgres: dbapi.Connection) -> None:
     with postgres.cursor() as cur:
         schema = cur.adbc_execute_schema("SELECT 1 AS foo")
         assert schema == pyarrow.schema([("foo", "int32")])
+
+
+def test_query_invalid(postgres: dbapi.Connection) -> None:
+    with postgres.cursor() as cur:
+        with pytest.raises(
+            postgres.OperationalError, match="failed to prepare query"
+        ) as excinfo:
+            cur.execute("SELECT * FROM tabledoesnotexist")
+
+        assert len(excinfo.value.details) > 0
+        details = dict(excinfo.value.details)
+        assert details["SQLSTATE"] == b"42P01"
 
 
 def test_query_trivial(postgres: dbapi.Connection):
