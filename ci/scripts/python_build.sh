@@ -46,7 +46,7 @@ build_subproject() {
         export ADBC_SNOWFLAKE_LIBRARY="${install_dir}/lib/libadbc_driver_snowflake.${ADBC_LIBRARY_SUFFIX}"
     fi
 
-    python -m pip install "${source_dir}/python/${subproject}"
+    python -m pip install --no-deps "${source_dir}/python/${subproject}"
 }
 
 main() {
