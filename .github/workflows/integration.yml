@@ -246,6 +246,7 @@ jobs:
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_POSTGRESQL: "1"
         run: |
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
@@ -307,8 +308,9 @@ jobs:
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_SNOWFLAKE: "1"
           ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
-          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          env BUILD_DRIVER_MANAGER=0 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
