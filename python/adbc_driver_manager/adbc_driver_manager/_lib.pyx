@@ -69,6 +69,8 @@ cdef extern from "adbc.h" nogil:
     cdef const char* ADBC_INGEST_OPTION_MODE
     cdef const char* ADBC_INGEST_OPTION_MODE_APPEND
     cdef const char* ADBC_INGEST_OPTION_MODE_CREATE
+    cdef const char* ADBC_INGEST_OPTION_MODE_REPLACE
+    cdef const char* ADBC_INGEST_OPTION_MODE_CREATE_APPEND
 
     cdef int ADBC_OBJECT_DEPTH_ALL
     cdef int ADBC_OBJECT_DEPTH_CATALOGS
@@ -112,11 +114,22 @@ cdef extern from "adbc.h" nogil:
         CAdbcPartitionsRelease release
 
     CAdbcStatusCode AdbcDatabaseNew(CAdbcDatabase* database, CAdbcError* error)
+    CAdbcStatusCode AdbcDatabaseGetOption(
+        CAdbcDatabase*, const char*, char*, size_t*, CAdbcError*);
+    CAdbcStatusCode AdbcDatabaseGetOptionBytes(
+        CAdbcDatabase*, const char*, uint8_t*, size_t*, CAdbcError*);
+    CAdbcStatusCode AdbcDatabaseGetOptionDouble(
+        CAdbcDatabase*, const char*, double*, CAdbcError*);
+    CAdbcStatusCode AdbcDatabaseGetOptionInt(
+        CAdbcDatabase*, const char*, int64_t*, CAdbcError*);
     CAdbcStatusCode AdbcDatabaseSetOption(
-        CAdbcDatabase* database,
-        const char* key,
-        const char* value,
-        CAdbcError* error)
+        CAdbcDatabase*, const char*, const char*, CAdbcError*)
+    CAdbcStatusCode AdbcDatabaseSetOptionBytes(
+        CAdbcDatabase*, const char*, const uint8_t*, size_t, CAdbcError*)
+    CAdbcStatusCode AdbcDatabaseSetOptionDouble(
+        CAdbcDatabase*, const char*, double, CAdbcError*)
+    CAdbcStatusCode AdbcDatabaseSetOptionInt(
+        CAdbcDatabase*, const char*, int64_t, CAdbcError*)
     CAdbcStatusCode AdbcDatabaseInit(CAdbcDatabase* database, CAdbcError* error)
     CAdbcStatusCode AdbcDatabaseRelease(CAdbcDatabase* database, CAdbcError* error)
 
@@ -126,6 +139,7 @@ cdef extern from "adbc.h" nogil:
         CAdbcDriverInitFunc init_func,
         CAdbcError* error)
 
+    CAdbcStatusCode AdbcConnectionCancel(CAdbcConnection*, CAdbcError*)
     CAdbcStatusCode AdbcConnectionCommit(
         CAdbcConnection* connection,
         CAdbcError* error)
@@ -154,6 +168,19 @@ cdef extern from "adbc.h" nogil:
         const char* column_name,
         CArrowArrayStream* stream,
         CAdbcError* error)
+    CAdbcStatusCode AdbcConnectionGetOption(
+        CAdbcConnection*, const char*, char*, size_t*, CAdbcError*);
+    CAdbcStatusCode AdbcConnectionGetOptionBytes(
+        CAdbcConnection*, const char*, uint8_t*, size_t*, CAdbcError*);
+    CAdbcStatusCode AdbcConnectionGetOptionDouble(
+        CAdbcConnection*, const char*, double*, CAdbcError*);
+    CAdbcStatusCode AdbcConnectionGetOptionInt(
+        CAdbcConnection*, const char*, int64_t*, CAdbcError*);
+    CAdbcStatusCode AdbcConnectionGetStatistics(
+        CAdbcConnection*, const char*, const char*, const char*,
+        char, CArrowArrayStream*, CAdbcError*);
+    CAdbcStatusCode AdbcConnectionGetStatisticNames(
+        CAdbcConnection*, CArrowArrayStream*, CAdbcError*);
     CAdbcStatusCode AdbcConnectionGetTableSchema(
         CAdbcConnection* connection,
         const char* catalog,
@@ -172,20 +199,24 @@ cdef extern from "adbc.h" nogil:
     CAdbcStatusCode AdbcConnectionNew(
         CAdbcConnection* connection,
         CAdbcError* error)
-    CAdbcStatusCode AdbcConnectionSetOption(
-        CAdbcConnection* connection,
-        const char* key,
-        const char* value,
-        CAdbcError* error)
     CAdbcStatusCode AdbcConnectionRelease(
         CAdbcConnection* connection,
         CAdbcError* error)
-
+    CAdbcStatusCode AdbcConnectionSetOption(
+        CAdbcConnection*, const char*, const char*, CAdbcError*)
+    CAdbcStatusCode AdbcConnectionSetOptionBytes(
+        CAdbcConnection*, const char*, const uint8_t*, size_t, CAdbcError*)
+    CAdbcStatusCode AdbcConnectionSetOptionDouble(
+        CAdbcConnection*, const char*, double, CAdbcError*)
+    CAdbcStatusCode AdbcConnectionSetOptionInt(
+        CAdbcConnection*, const char*, int64_t, CAdbcError*)
     CAdbcStatusCode AdbcStatementBind(
         CAdbcStatement* statement,
         CArrowArray*,
         CArrowSchema*,
         CAdbcError* error)
+
+    CAdbcStatusCode AdbcStatementCancel(CAdbcStatement*, CAdbcError*)
     CAdbcStatusCode AdbcStatementBindStream(
         CAdbcStatement* statement,
         CArrowArrayStream*,
@@ -199,6 +230,16 @@ cdef extern from "adbc.h" nogil:
         CAdbcStatement* statement,
         CArrowArrayStream* out, int64_t* rows_affected,
         CAdbcError* error)
+    CAdbcStatusCode AdbcStatementExecuteSchema(
+        CAdbcStatement*, CArrowSchema*, CAdbcError*)
+    CAdbcStatusCode AdbcStatementGetOption(
+        CAdbcStatement*, const char*, char*, size_t*, CAdbcError*);
+    CAdbcStatusCode AdbcStatementGetOptionBytes(
+        CAdbcStatement*, const char*, uint8_t*, size_t*, CAdbcError*);
+    CAdbcStatusCode AdbcStatementGetOptionDouble(
+        CAdbcStatement*, const char*, double*, CAdbcError*);
+    CAdbcStatusCode AdbcStatementGetOptionInt(
+        CAdbcStatement*, const char*, int64_t*, CAdbcError*);
     CAdbcStatusCode AdbcStatementGetParameterSchema(
         CAdbcStatement* statement,
         CArrowSchema* schema,
@@ -211,10 +252,13 @@ cdef extern from "adbc.h" nogil:
         CAdbcStatement* statement,
         CAdbcError* error)
     CAdbcStatusCode AdbcStatementSetOption(
-        CAdbcStatement* statement,
-        const char* key,
-        const char* value,
-        CAdbcError* error)
+        CAdbcStatement*, const char*, const char*, CAdbcError*)
+    CAdbcStatusCode AdbcStatementSetOptionBytes(
+        CAdbcStatement*, const char*, const uint8_t*, size_t, CAdbcError*)
+    CAdbcStatusCode AdbcStatementSetOptionDouble(
+        CAdbcStatement*, const char*, double, CAdbcError*)
+    CAdbcStatusCode AdbcStatementSetOptionInt(
+        CAdbcStatement*, const char*, int64_t, CAdbcError*)
     CAdbcStatusCode AdbcStatementSetSqlQuery(
         CAdbcStatement* statement,
         const char* query,
@@ -348,6 +392,8 @@ NotSupportedError.__module__ = "adbc_driver_manager"
 INGEST_OPTION_MODE = ADBC_INGEST_OPTION_MODE.decode("utf-8")
 INGEST_OPTION_MODE_APPEND = ADBC_INGEST_OPTION_MODE_APPEND.decode("utf-8")
 INGEST_OPTION_MODE_CREATE = ADBC_INGEST_OPTION_MODE_CREATE.decode("utf-8")
+INGEST_OPTION_MODE_REPLACE = ADBC_INGEST_OPTION_MODE_REPLACE.decode("utf-8")
+INGEST_OPTION_MODE_CREATE_APPEND = ADBC_INGEST_OPTION_MODE_CREATE_APPEND.decode("utf-8")
 INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
 
 
@@ -521,6 +567,11 @@ class GetObjectsDepth(enum.IntEnum):
     COLUMNS = ADBC_OBJECT_DEPTH_COLUMNS
 
 
+# Assume a driver won't return more than 128 MiB of option data at
+# once.
+_MAX_OPTION_SIZE = 2**27
+
+
 cdef class AdbcDatabase(_AdbcHandle):
     """
     An instance of a database.
@@ -581,8 +632,96 @@ cdef class AdbcDatabase(_AdbcHandle):
                 status = AdbcDatabaseRelease(&self.database, &c_error)
             check_error(status, &c_error)
 
+    def get_option(self, key: str) -> str:
+        """Get the value of a string option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef uint8_t* c_value = NULL
+        cdef size_t c_len = 0
+
+        buf = bytearray(1024)
+        while True:
+            c_value = buf
+            c_len = len(buf)
+            check_error(
+                AdbcDatabaseGetOption(
+                    &self.database, c_key, buf, &c_len, &c_error),
+                &c_error)
+            if c_len <= len(buf):
+                # Entire value read
+                break
+            else:
+                # Buffer too small
+                new_len = len(buf) * 2
+                if new_len > _MAX_OPTION_SIZE:
+                    raise RuntimeError(
+                        f"Could not read option {key}: "
+                        f"would need more than {len(buf)} bytes")
+                buf = bytearray(new_len)
+
+        # Remove trailing null terminator
+        if c_len > 0:
+            c_len -= 1
+        return buf[:c_len].decode("utf-8")
+
+    def get_option_bytes(self, key: str) -> bytes:
+        """Get the value of a binary option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef uint8_t* c_value = NULL
+        cdef size_t c_len = 0
+
+        buf = bytearray(1024)
+        while True:
+            c_value = buf
+            c_len = len(buf)
+            check_error(
+                AdbcDatabaseGetOptionBytes(
+                    &self.database, c_key, buf, &c_len, &c_error),
+                &c_error)
+            if c_len <= len(buf):
+                # Entire value read
+                break
+            else:
+                # Buffer too small
+                new_len = len(buf) * 2
+                if new_len > _MAX_OPTION_SIZE:
+                    raise RuntimeError(
+                        f"Could not read option {key}: "
+                        f"would need more than {len(buf)} bytes")
+                buf = bytearray(new_len)
+
+        return bytes(buf[:c_len])
+
+    def get_option_float(self, key: str) -> float:
+        """Get the value of a floating-point option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef double c_value = 0.0
+        check_error(
+            AdbcDatabaseGetOptionDouble(
+                &self.database, c_key, &c_value, &c_error),
+            &c_error)
+        return c_value
+
+    def get_option_int(self, key: str) -> int:
+        """Get the value of an integer option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef int64_t c_value = 0
+        check_error(
+            AdbcDatabaseGetOptionInt(
+                &self.database, c_key, &c_value, &c_error),
+            &c_error)
+        return c_value
+
     def set_options(self, **kwargs) -> None:
-        """Set arbitrary key-value options.
+        """
+        Set arbitrary key-value options.
 
         Pass options as kwargs: ``set_options(**{"some.option": "value"})``.
 
@@ -591,7 +730,6 @@ cdef class AdbcDatabase(_AdbcHandle):
         See Also
         --------
         adbc_driver_manager.DatabaseOptions : Standard option names.
-
         """
         cdef CAdbcError c_error = empty_error()
         cdef char* c_key = NULL
@@ -602,12 +740,28 @@ cdef class AdbcDatabase(_AdbcHandle):
 
             if value is None:
                 c_value = NULL
-            else:
+                status = AdbcDatabaseSetOption(
+                    &self.database, c_key, c_value, &c_error)
+            elif isinstance(value, str):
                 value = value.encode("utf-8")
                 c_value = value
+                status = AdbcDatabaseSetOption(
+                    &self.database, c_key, c_value, &c_error)
+            elif isinstance(value, bytes):
+                c_value = value
+                status = AdbcDatabaseSetOptionBytes(
+                    &self.database, c_key, <const uint8_t*> c_value, len(value), &c_error)
+            elif isinstance(value, float):
+                status = AdbcDatabaseSetOptionDouble(
+                    &self.database, c_key, value, &c_error)
+            elif isinstance(value, int):
+                status = AdbcDatabaseSetOptionInt(
+                    &self.database, c_key, value, &c_error)
+            else:
+                raise ValueError(
+                    f"Unsupported type {type(value)} for value {value!r} "
+                    f"of option {key}")
 
-            status = AdbcDatabaseSetOption(
-                &self.database, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
 
@@ -660,6 +814,14 @@ cdef class AdbcConnection(_AdbcHandle):
         check_error(status, &c_error)
 
         database._open_child()
+
+    def cancel(self) -> None:
+        """Attempt to cancel any ongoing operations on the connection."""
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        with nogil:
+            status = AdbcConnectionCancel(&self.connection, &c_error)
+        check_error(status, &c_error)
 
     def commit(self) -> None:
         """Commit the current transaction."""
@@ -748,6 +910,93 @@ cdef class AdbcConnection(_AdbcHandle):
         check_error(status, &c_error)
 
         return stream
+
+    def get_option(self, key: str) -> str:
+        """Get the value of a string option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef uint8_t* c_value = NULL
+        cdef size_t c_len = 0
+
+        buf = bytearray(1024)
+        while True:
+            c_value = buf
+            c_len = len(buf)
+            check_error(
+                AdbcConnectionGetOption(
+                    &self.connection, c_key, buf, &c_len, &c_error),
+                &c_error)
+            if c_len <= len(buf):
+                # Entire value read
+                break
+            else:
+                # Buffer too small
+                new_len = len(buf) * 2
+                if new_len > _MAX_OPTION_SIZE:
+                    raise RuntimeError(
+                        f"Could not read option {key}: "
+                        f"would need more than {len(buf)} bytes")
+                buf = bytearray(new_len)
+
+        # Remove trailing null terminator
+        if c_len > 0:
+            c_len -= 1
+        return buf[:c_len].decode("utf-8")
+
+    def get_option_bytes(self, key: str) -> bytes:
+        """Get the value of a binary option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef uint8_t* c_value = NULL
+        cdef size_t c_len = 0
+
+        buf = bytearray(1024)
+        while True:
+            c_value = buf
+            c_len = len(buf)
+            check_error(
+                AdbcConnectionGetOptionBytes(
+                    &self.connection, c_key, buf, &c_len, &c_error),
+                &c_error)
+            if c_len <= len(buf):
+                # Entire value read
+                break
+            else:
+                # Buffer too small
+                new_len = len(buf) * 2
+                if new_len > _MAX_OPTION_SIZE:
+                    raise RuntimeError(
+                        f"Could not read option {key}: "
+                        f"would need more than {len(buf)} bytes")
+                buf = bytearray(new_len)
+
+        return bytes(buf[:c_len])
+
+    def get_option_float(self, key: str) -> float:
+        """Get the value of a floating-point option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef double c_value = 0.0
+        check_error(
+            AdbcConnectionGetOptionDouble(
+                &self.connection, c_key, &c_value, &c_error),
+            &c_error)
+        return c_value
+
+    def get_option_int(self, key: str) -> int:
+        """Get the value of an integer option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef int64_t c_value = 0
+        check_error(
+            AdbcConnectionGetOptionInt(
+                &self.connection, c_key, &c_value, &c_error),
+            &c_error)
+        return c_value
 
     def get_table_schema(self, catalog, db_schema, table_name) -> ArrowSchemaHandle:
         """
@@ -858,12 +1107,28 @@ cdef class AdbcConnection(_AdbcHandle):
 
             if value is None:
                 c_value = NULL
-            else:
+                status = AdbcConnectionSetOption(
+                    &self.connection, c_key, c_value, &c_error)
+            elif isinstance(value, str):
                 value = value.encode("utf-8")
                 c_value = value
+                status = AdbcConnectionSetOption(
+                    &self.connection, c_key, c_value, &c_error)
+            elif isinstance(value, bytes):
+                c_value = value
+                status = AdbcConnectionSetOptionBytes(
+                    &self.connection, c_key, <const uint8_t*> c_value, len(value), &c_error)
+            elif isinstance(value, float):
+                status = AdbcConnectionSetOptionDouble(
+                    &self.connection, c_key, value, &c_error)
+            elif isinstance(value, int):
+                status = AdbcConnectionSetOptionInt(
+                    &self.connection, c_key, value, &c_error)
+            else:
+                raise ValueError(
+                    f"Unsupported type {type(value)} for value {value!r} "
+                    f"of option {key}")
 
-            status = AdbcConnectionSetOption(
-                &self.connection, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
     def close(self) -> None:
@@ -974,7 +1239,16 @@ cdef class AdbcStatement(_AdbcHandle):
                 &c_error)
         check_error(status, &c_error)
 
+    def cancel(self) -> None:
+        """Attempt to cancel any ongoing operations on the connection."""
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        with nogil:
+            status = AdbcStatementCancel(&self.statement, &c_error)
+        check_error(status, &c_error)
+
     def close(self) -> None:
+        """Release the handle to the statement."""
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
         self.connection._close_child()
@@ -1048,6 +1322,25 @@ cdef class AdbcStatement(_AdbcHandle):
 
         return (partitions, schema, rows_affected)
 
+    def execute_schema(self) -> ArrowSchemaHandle:
+        """
+        Get the schema of the result set without executing the query.
+
+        Returns
+        -------
+        ArrowSchemaHandle
+            The schema of the result set.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef ArrowSchemaHandle schema = ArrowSchemaHandle()
+        with nogil:
+            status = AdbcStatementExecuteSchema(
+                &self.statement,
+                &schema.schema,
+                &c_error)
+        check_error(status, &c_error)
+        return schema
+
     def execute_update(self) -> int:
         """
         Execute the query without a result set.
@@ -1067,6 +1360,93 @@ cdef class AdbcStatement(_AdbcHandle):
                 &c_error)
         check_error(status, &c_error)
         return rows_affected
+
+    def get_option(self, key: str) -> str:
+        """Get the value of a string option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef uint8_t* c_value = NULL
+        cdef size_t c_len = 0
+
+        buf = bytearray(1024)
+        while True:
+            c_value = buf
+            c_len = len(buf)
+            check_error(
+                AdbcStatementGetOption(
+                    &self.statement, c_key, buf, &c_len, &c_error),
+                &c_error)
+            if c_len <= len(buf):
+                # Entire value read
+                break
+            else:
+                # Buffer too small
+                new_len = len(buf) * 2
+                if new_len > _MAX_OPTION_SIZE:
+                    raise RuntimeError(
+                        f"Could not read option {key}: "
+                        f"would need more than {len(buf)} bytes")
+                buf = bytearray(new_len)
+
+        # Remove trailing null terminator
+        if c_len > 0:
+            c_len -= 1
+        return buf[:c_len].decode("utf-8")
+
+    def get_option_bytes(self, key: str) -> bytes:
+        """Get the value of a binary option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef uint8_t* c_value = NULL
+        cdef size_t c_len = 0
+
+        buf = bytearray(1024)
+        while True:
+            c_value = buf
+            c_len = len(buf)
+            check_error(
+                AdbcStatementGetOptionBytes(
+                    &self.statement, c_key, buf, &c_len, &c_error),
+                &c_error)
+            if c_len <= len(buf):
+                # Entire value read
+                break
+            else:
+                # Buffer too small
+                new_len = len(buf) * 2
+                if new_len > _MAX_OPTION_SIZE:
+                    raise RuntimeError(
+                        f"Could not read option {key}: "
+                        f"would need more than {len(buf)} bytes")
+                buf = bytearray(new_len)
+
+        return bytes(buf[:c_len])
+
+    def get_option_float(self, key: str) -> float:
+        """Get the value of a floating-point option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef double c_value = 0.0
+        check_error(
+            AdbcStatementGetOptionDouble(
+                &self.statement, c_key, &c_value, &c_error),
+            &c_error)
+        return c_value
+
+    def get_option_int(self, key: str) -> int:
+        """Get the value of an integer option."""
+        cdef CAdbcError c_error = empty_error()
+        key_bytes = key.encode("utf-8")
+        cdef char* c_key = key_bytes
+        cdef int64_t c_value = 0
+        check_error(
+            AdbcStatementGetOptionInt(
+                &self.statement, c_key, &c_value, &c_error),
+            &c_error)
+        return c_value
 
     def get_parameter_schema(self) -> ArrowSchemaHandle:
         """Get the Arrow schema for bound parameters.
@@ -1125,12 +1505,28 @@ cdef class AdbcStatement(_AdbcHandle):
 
             if value is None:
                 c_value = NULL
-            else:
+                status = AdbcStatementSetOption(
+                    &self.statement, c_key, c_value, &c_error)
+            elif isinstance(value, str):
                 value = value.encode("utf-8")
                 c_value = value
+                status = AdbcStatementSetOption(
+                    &self.statement, c_key, c_value, &c_error)
+            elif isinstance(value, bytes):
+                c_value = value
+                status = AdbcStatementSetOptionBytes(
+                    &self.statement, c_key, <const uint8_t*> c_value, len(value), &c_error)
+            elif isinstance(value, float):
+                status = AdbcStatementSetOptionDouble(
+                    &self.statement, c_key, value, &c_error)
+            elif isinstance(value, int):
+                status = AdbcStatementSetOptionInt(
+                    &self.statement, c_key, value, &c_error)
+            else:
+                raise ValueError(
+                    f"Unsupported type {type(value)} for value {value!r} "
+                    f"of option {key}")
 
-            status = AdbcStatementSetOption(
-                &self.statement, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
     def set_sql_query(self, str query not None) -> None:

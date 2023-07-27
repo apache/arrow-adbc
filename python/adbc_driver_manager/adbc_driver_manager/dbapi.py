@@ -43,6 +43,8 @@ try:
 except ImportError as e:
     raise ImportError("PyArrow is required for the DBAPI-compatible interface") from e
 
+import adbc_driver_manager
+
 from . import _lib
 
 if typing.TYPE_CHECKING:
@@ -78,6 +80,7 @@ _KNOWN_INFO_VALUES = {
     100: "driver_name",
     101: "driver_version",
     102: "driver_arrow_version",
+    103: "driver_adbc_version",
 }
 
 # ----------------------------------------------------------
@@ -344,6 +347,16 @@ class Connection(_Closeable):
     # API Extensions
     # ------------------------------------------------------------
 
+    def adbc_cancel(self) -> None:
+        """
+        Cancel any ongoing operations on this connection.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        self._conn.cancel()
+
     def adbc_clone(self) -> "Connection":
         """
         Create a new Connection sharing the same underlying database.
@@ -478,6 +491,40 @@ class Connection(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         return self._conn
+
+    @property
+    def adbc_current_catalog(self) -> str:
+        """
+        The name of the current catalog.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        key = adbc_driver_manager.ConnectionOptions.CURRENT_CATALOG.value
+        return self._conn.get_option(key)
+
+    @adbc_current_catalog.setter
+    def adbc_current_catalog(self, catalog: str) -> None:
+        key = adbc_driver_manager.ConnectionOptions.CURRENT_CATALOG.value
+        self._conn.set_options(**{key: catalog})
+
+    @property
+    def adbc_current_db_schema(self) -> str:
+        """
+        The name of the current schema.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        key = adbc_driver_manager.ConnectionOptions.CURRENT_DB_SCHEMA.value
+        return self._conn.get_option(key)
+
+    @adbc_current_db_schema.setter
+    def adbc_current_db_schema(self, db_schema: str) -> None:
+        key = adbc_driver_manager.ConnectionOptions.CURRENT_DB_SCHEMA.value
+        self._conn.set_options(**{key: db_schema})
 
     @property
     def adbc_database(self) -> _lib.AdbcDatabase:
@@ -729,11 +776,21 @@ class Cursor(_Closeable):
     # API Extensions
     # ------------------------------------------------------------
 
+    def adbc_cancel(self) -> None:
+        """
+        Cancel any ongoing operations on this statement.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        self._stmt.cancel()
+
     def adbc_ingest(
         self,
         table_name: str,
         data: Union[pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader],
-        mode: Literal["append", "create"] = "create",
+        mode: Literal["append", "create", "replace", "append_create"] = "create",
     ) -> int:
         """
         Ingest Arrow data into a database table.
@@ -748,7 +805,12 @@ class Cursor(_Closeable):
         data
             The Arrow data to insert.
         mode
-            Whether to append data to an existing table, or create a new table.
+            How to deal with existing data:
+
+            - 'append': append to a table (error if table does not exist)
+            - 'create': create a table and insert (error if table exists)
+            - 'create_append': create a table (if not exists) and insert
+            - 'replace': drop existing table (if any), then same as 'create'
 
         Returns
         -------
@@ -764,6 +826,10 @@ class Cursor(_Closeable):
             c_mode = _lib.INGEST_OPTION_MODE_APPEND
         elif mode == "create":
             c_mode = _lib.INGEST_OPTION_MODE_CREATE
+        elif mode == "create_append":
+            c_mode = _lib.INGEST_OPTION_MODE_CREATE_APPEND
+        elif mode == "replace":
+            c_mode = _lib.INGEST_OPTION_MODE_REPLACE
         else:
             raise ValueError(f"Invalid value for 'mode': {mode}")
         self._stmt.set_options(
@@ -809,6 +875,23 @@ class Cursor(_Closeable):
         self._prepare_execute(operation, parameters)
         partitions, schema, self._rowcount = self._stmt.execute_partitions()
         return partitions, pyarrow.Schema._import_from_c(schema.address)
+
+    def adbc_execute_schema(self, operation, parameters=None) -> pyarrow.Schema:
+        """
+        Get the schema of the result set of a query without executing it.
+
+        Returns
+        -------
+        pyarrow.Schema
+            The schema of the result set.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        self._prepare_execute(operation, parameters)
+        schema = self._stmt.execute_schema()
+        return pyarrow.Schema._import_from_c(schema.address)
 
     def adbc_prepare(self, operation: Union[bytes, str]) -> Optional[pyarrow.Schema]:
         """
