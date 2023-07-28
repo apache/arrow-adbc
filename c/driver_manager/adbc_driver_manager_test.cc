@@ -232,6 +232,9 @@ class SqliteStatementTest : public ::testing::Test,
   void TestSqlIngestTimestampTz() {
     GTEST_SKIP() << "Cannot ingest TIMESTAMP WITH TIMEZONE (not implemented)";
   }
+  void TestSqlIngestInterval() {
+    GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
+  }
 
  protected:
   SqliteQuirks quirks_;

@@ -223,6 +223,10 @@ struct BindStream {
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
+        case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+          type_id = PostgresTypeId::kInterval;
+          param_lengths[i] = 16;
+          break;
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                    static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
@@ -424,6 +428,23 @@ struct BindStream {
 
               const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
               std::memcpy(param_values[col], &value, sizeof(int64_t));
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
+              const auto buf =
+                  array_view->children[col]->buffer_views[1].data.as_uint8 + row * 16;
+              const int32_t raw_months = *(int32_t*)buf;
+              const int32_t raw_days = *(int32_t*)(buf + 4);
+              const int64_t raw_ns = *(int64_t*)(buf + 8);
+
+              const uint32_t months = ToNetworkInt32(raw_months);
+              const uint32_t days = ToNetworkInt32(raw_days);
+              const uint64_t ms = ToNetworkInt64(raw_ns / 1000);
+
+              std::memcpy(param_values[col], &ms, sizeof(uint64_t));
+              std::memcpy(param_values[col] + sizeof(uint64_t), &days, sizeof(uint32_t));
+              std::memcpy(param_values[col] + sizeof(uint64_t) + sizeof(uint32_t),
+                          &months, sizeof(uint32_t));
               break;
             }
             default:
@@ -786,6 +807,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         } else {
           create += " TIMESTAMP";
         }
+        break;
+      case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+        create += " INTERVAL";
         break;
       default:
         SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",

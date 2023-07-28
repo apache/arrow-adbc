@@ -232,6 +232,7 @@ class StatementTest {
   // Temporal
   void TestSqlIngestTimestamp();
   void TestSqlIngestTimestampTz();
+  void TestSqlIngestInterval();
 
   // ---- End Type-specific tests ----------------
 
@@ -302,6 +303,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
+  TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \

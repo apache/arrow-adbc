@@ -229,6 +229,9 @@ class SqliteFlightSqlStatementTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
   void TestSqlIngestTableEscaping() { GTEST_SKIP() << "Table escaping not implemented"; }
+  void TestSqlIngestInterval() {
+    GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
+  }
 
  protected:
   SqliteFlightSqlQuirks quirks_;

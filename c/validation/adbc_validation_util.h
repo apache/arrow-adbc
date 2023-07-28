@@ -264,6 +264,10 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
           return errno_res;
         }
+      } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
+        if (int errno_res = ArrowArrayAppendInterval(array, *v); errno_res != 0) {
+          return errno_res;
+        }
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
         return ENOTSUP;
@@ -375,6 +379,13 @@ void CompareArray(struct ArrowArrayView* array,
         struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
         std::string str(view.data, view.size_bytes);
         ASSERT_EQ(*v, str);
+      } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        const auto buf = array->buffer_views[1].data.as_uint8;
+        const auto record = buf + i * 16;
+        ASSERT_EQ(memcmp(record, &(*v)->months, 4), 0);
+        ASSERT_EQ(memcmp(record + 4, &(*v)->days, 4), 0);
+        ASSERT_EQ(memcmp(record + 8, &(*v)->ns, 8), 0);
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
       }
