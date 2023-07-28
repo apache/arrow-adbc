@@ -119,13 +119,13 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
 
 #if defined(_WIN32)
   if (gmtime_s(&broken_down_time, &time) != 0) {
-    SetError(error, "Could not convert date %" PRId32 " with to broken down time", value);
+    SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 #else
   if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
-    SetError(error, "Could not convert date %" PRId32 " with to broken down time", value);
+    SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
