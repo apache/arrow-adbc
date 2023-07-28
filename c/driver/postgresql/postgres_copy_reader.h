@@ -232,7 +232,7 @@ class PostgresCopyIntervalFieldReader : public PostgresCopyFieldReader {
     // postgres stores time as usec, arrow stores as ns
     const int64_t time_usec = ReadUnsafe<int64_t>(data);
 
-    if ((time_usec > INT64_MAX / 1000) | (time_usec < INT64_MIN / 1000)) {
+    if ((time_usec > INT64_MAX / 1000) || (time_usec < INT64_MIN / 1000)) {
       ArrowErrorSet(error, "[libpq] Interval with time value %" PRId64
                            " usec would overflow when converting to nanoseconds");
       return EINVAL;
