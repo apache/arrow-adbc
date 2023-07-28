@@ -22,8 +22,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
-using static Apache.Arrow.Adbc.C.CAdbcDriverExporter;
-using System.Data.Common;
 
 #if NETSTANDARD
 using Apache.Arrow.Adbc.Extensions;
@@ -672,10 +670,10 @@ namespace Apache.Arrow.Adbc.C
                 fixed (CAdbcConnection* cn = &connection)
                 fixed (CAdbcError* e = &_error)
                 {
-#if NETSTANDARD
-                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetObjects>(fn)(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
-#else
+#if NET5_0_OR_GREATER
                     TranslateCode(fn(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
+#else
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetObjects>(fn)(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
 #endif
                 }
             }
