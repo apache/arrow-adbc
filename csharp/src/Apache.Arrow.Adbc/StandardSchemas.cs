@@ -67,7 +67,7 @@ namespace Apache.Arrow.Adbc
                                 )
                             },
                             // TBD if this line is the best approach but its a good one-liner
-                            new int[] {0, 1, 2, 3, 4, 5}.SelectMany(BitConverter.GetBytes).ToArray(),
+                            new int[] {0, 1, 2, 3, 4, 5}.ToArray(),
                             UnionMode.Dense),
                         true)
                 },
