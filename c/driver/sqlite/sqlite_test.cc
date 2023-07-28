@@ -201,9 +201,9 @@ class SqliteStatementTest : public ::testing::Test,
   }
 
  protected:
-  void ValidateIngestedTemporalData(struct ArrowArrayView* values,
-                                    enum ArrowTimeUnit unit,
-                                    const char* timezone) override {
+  void ValidateIngestedTimestampData(struct ArrowArrayView* values,
+                                     enum ArrowTimeUnit unit,
+                                     const char* timezone) override {
     std::vector<std::optional<std::string>> expected;
     switch (unit) {
       case (NANOARROW_TIME_UNIT_SECOND):
