@@ -93,7 +93,7 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
   return AdbcSqliteBinderSet(binder, error);
 }
 
-#define MILLISECONDS_PER_DAY 86400000;
+#define SECONDS_PER_DAY 86400;
 
 /*
   Allocates to buf on success. Caller is responsible for freeing.
@@ -104,15 +104,15 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
   int strlen = 10;
 
 #if SIZEOF_TIME_T < 8
-  if ((seconds > INT32_MAX / MILLISECONDS_PER_DAY) ||
-      (seconds < INT32_MIN / MILLISECONDS_PER_DAY)) {
+  if ((seconds > INT32_MAX / SECONDS_PER_DAY) ||
+      (seconds < INT32_MIN / SECONDS_PER_DAY)) {
     SetError(error, "Date %" PRId32 " exceeds platform time_t bounds", value);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
-  const time_t time = (time_t)(value * MILLISECONDS_PER_DAY);
+  const time_t time = (time_t)(value * SECONDS_PER_DAY);
 #else
-  const time_t time = value * MILLISECONDS_PER_DAY;
+  const time_t time = value * SECONDS_PER_DAY;
 #endif
 
   struct tm broken_down_time;
