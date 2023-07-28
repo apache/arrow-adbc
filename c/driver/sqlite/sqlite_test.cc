@@ -77,6 +77,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE:
         return NANOARROW_TYPE_DOUBLE;
+      case NANOARROW_TYPE_DATE32:
       case NANOARROW_TYPE_TIMESTAMP:
         return NANOARROW_TYPE_STRING;
       default:
