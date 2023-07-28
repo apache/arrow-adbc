@@ -1266,10 +1266,8 @@ void StatementTest::TestSqlIngestInterval() {
     ASSERT_EQ(1, reader.array->n_children);
 
     if (round_trip_type == type) {
-      // XXX: for now we can't compare values; we would need casting
-      // need to extend CompareArray to support intervals
-      // ASSERT_NO_FATAL_FAILURE(
-      //    CompareArray<CType>(reader.array_view->children[0], values));
+      ASSERT_NO_FATAL_FAILURE(
+          CompareArray<ArrowInterval*>(reader.array_view->children[0], values));
     }
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
