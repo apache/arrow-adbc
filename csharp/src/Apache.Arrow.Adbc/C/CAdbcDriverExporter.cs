@@ -75,7 +75,7 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe readonly NativeDelegate<DatabaseSetOption> s_databaseSetOption = new NativeDelegate<DatabaseSetOption>(SetDatabaseOption);
         private static IntPtr DatabaseSetOptionPtr => s_databaseSetOption.Pointer;
 
-        private unsafe delegate AdbcStatusCode ConnectionGetObjects(CAdbcConnection* connection, int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte* column_name, CArrowArrayStream* stream, CAdbcError* error);
+        internal unsafe delegate AdbcStatusCode ConnectionGetObjects(CAdbcConnection* connection, int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte* column_name, CArrowArrayStream* stream, CAdbcError* error);
         private static unsafe readonly NativeDelegate<ConnectionGetObjects> s_connectionGetObjects = new NativeDelegate<ConnectionGetObjects>(GetConnectionObjects);
         private static IntPtr ConnectionGetObjectsPtr => s_connectionGetObjects.Pointer;
         private unsafe delegate AdbcStatusCode ConnectionGetTableSchema(CAdbcConnection* connection, byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* schema, CAdbcError* error);
@@ -93,7 +93,7 @@ namespace Apache.Arrow.Adbc.C
         private static IntPtr ConnectionCommitPtr => s_connectionCommit.Pointer;
         private static unsafe readonly NativeDelegate<ConnectionFn> s_connectionRelease = new NativeDelegate<ConnectionFn>(ReleaseConnection);
         private static IntPtr ConnectionReleasePtr => s_connectionRelease.Pointer;
-        private unsafe delegate AdbcStatusCode ConnectionGetInfo(CAdbcConnection* connection, byte* info_codes, int info_codes_length, CArrowArrayStream* stream, CAdbcError* error);
+        internal unsafe delegate AdbcStatusCode ConnectionGetInfo(CAdbcConnection* connection, byte* info_codes, int info_codes_length, CArrowArrayStream* stream, CAdbcError* error);
         private static unsafe readonly NativeDelegate<ConnectionGetInfo> s_connectionGetInfo = new NativeDelegate<ConnectionGetInfo>(GetConnectionInfo);
         private static IntPtr ConnectionGetInfoPtr => s_connectionGetInfo.Pointer;
         private unsafe delegate AdbcStatusCode ConnectionReadPartition(CAdbcConnection* connection, byte* serialized_partition, int serialized_length, CArrowArrayStream* stream, CAdbcError* error);

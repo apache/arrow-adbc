@@ -18,8 +18,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
+using Apache.Arrow.Ipc;
+using static Apache.Arrow.Adbc.C.CAdbcDriverExporter;
+using System.Data.Common;
 
 #if NETSTANDARD
 using Apache.Arrow.Adbc.Extensions;
@@ -220,6 +224,38 @@ namespace Apache.Arrow.Adbc.C
                 return new AdbcStatementNative(_nativeDriver, nativeStatement);
             }
 
+            public override IArrowArrayStream GetInfo(List<AdbcInfoCode> codes)
+            {
+                return GetInfo(codes.Select(x => (int)x).ToList<int>());
+            }
+
+            public override unsafe IArrowArrayStream GetInfo(List<int> codes)
+            {
+                CArrowArrayStream* nativeArrayStream = CArrowArrayStream.Create();
+
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.ConnectionGetInfo, ref _nativeConnection, codes, nativeArrayStream);
+                }
+
+                IArrowArrayStream arrowArrayStream = CArrowArrayStreamImporter.ImportArrayStream(nativeArrayStream);
+
+                return arrowArrayStream;
+            }
+
+            public override unsafe IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern)
+            {
+                CArrowArrayStream* nativeArrayStream = CArrowArrayStream.Create();
+
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.ConnectionGetObjects, ref _nativeConnection, (int)depth, catalogPattern, dbSchemaPattern, tableNamePattern, tableTypes, columnNamePattern, nativeArrayStream);
+                }
+
+                IArrowArrayStream arrowArrayStream = CArrowArrayStreamImporter.ImportArrayStream(nativeArrayStream);
+
+                return arrowArrayStream;
+            }
         }
 
         /// <summary>
@@ -567,6 +603,83 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, byte*, int, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
+#else
+            public unsafe void Call(IntPtr ptr, ref CAdbcConnection connection, List<int> infoCodes, CArrowArrayStream* stream)
+#endif
+            {
+                int numInts = infoCodes.Count;
+
+                // Calculate the total number of bytes needed
+                int totalBytes = numInts * sizeof(int);
+
+                IntPtr bytePtr = Marshal.AllocHGlobal(totalBytes);
+
+                int[] intArray = infoCodes.ToArray();
+                Marshal.Copy(intArray, 0, bytePtr, numInts);
+
+                fixed (CAdbcConnection* cn = &connection)
+                fixed (CAdbcError* e = &_error)
+                {
+#if NET5_0_OR_GREATER
+                    TranslateCode(fn(cn, (byte*)bytePtr, infoCodes.Count, stream, e));
+#else
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetInfo>(ptr)(cn, (byte*)bytePtr, infoCodes.Count, stream, e));
+#endif
+                }
+            }
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, int, byte*, byte*, byte*, byte**, byte*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection connection, int depth, string catalog, string db_schema, string table_name, List<string> table_types, string column_name, CArrowArrayStream* stream)
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcConnection connection, int depth, string catalog, string db_schema, string table_name, List<string> table_types, string column_name, CArrowArrayStream* stream)
+#endif
+            {
+                byte* bcatalog, bDb_schema, bTable_name, bColumn_Name;
+                byte** bTable_type = (byte**)Marshal.AllocHGlobal(IntPtr.Size * table_types.Count);
+
+                for (int i = 0; i < table_types.Count; i++)
+                {
+                    string tableType = table_types[i];
+#if NETSTANDARD
+                    bTable_type[i] = (byte*)MarshalExtensions.StringToCoTaskMemUTF8(tableType);
+#else
+                    bTable_type[i] = (byte*)Marshal.StringToCoTaskMemUTF8(tableType);
+#endif
+                }
+
+                using (Utf8Helper helper = new Utf8Helper(catalog))
+                {
+                    bcatalog = (byte*)(IntPtr)(helper);
+                }
+
+                using (Utf8Helper helper = new Utf8Helper(db_schema))
+                {
+                    bDb_schema = (byte*)(IntPtr)(helper);
+                }
+
+                using (Utf8Helper helper = new Utf8Helper(table_name))
+                {
+                    bTable_name = (byte*)(IntPtr)(helper);
+                }
+
+                using (Utf8Helper helper = new Utf8Helper(column_name))
+                {
+                    bColumn_Name = (byte*)(IntPtr)(helper);
+                }
+
+                fixed (CAdbcConnection* cn = &connection)
+                fixed (CAdbcError* e = &_error)
+                {
+#if NETSTANDARD
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetObjects>(fn)(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
+#else
+                    TranslateCode(fn(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
+#endif
+                }
+            }
+
             private unsafe void TranslateCode(AdbcStatusCode statusCode)
             {
                 if (statusCode != AdbcStatusCode.Success)
@@ -580,7 +693,9 @@ namespace Apache.Arrow.Adbc.C
                         message = Marshal.PtrToStringUTF8((IntPtr)_error.message);
 #endif
                     }
+
                     Dispose();
+
                     throw new AdbcException(message);
                 }
             }
