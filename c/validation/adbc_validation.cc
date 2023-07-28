@@ -1206,16 +1206,29 @@ void StatementTest::TestSqlIngestInterval() {
   struct ArrowError na_error;
   const enum ArrowType type = NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO;
   // values are days, months, ns
-  const std::vector<std::optional<std::tuple<int32_t, int32_t, int64_t>>> values = {
-      std::nullopt, std::tuple<int32_t, int32_t, int64_t>(-5, -5, -42000),
-      std::tuple<int32_t, int32_t, int64_t>(0, 0, 0),
-      std::tuple<int32_t, int32_t, int64_t>(5, 5, 42000)};
+  struct ArrowInterval neg_interval;
+  struct ArrowInterval zero_interval;
+  struct ArrowInterval pos_interval;
+
+  ArrowIntervalInit(&neg_interval, type);
+  ArrowIntervalInit(&zero_interval, type);
+  ArrowIntervalInit(&pos_interval, type);
+
+  neg_interval.months = -5;
+  neg_interval.days = -5;
+  neg_interval.ns = -42000;
+
+  pos_interval.months = 5;
+  pos_interval.days = 5;
+  pos_interval.ns = 42000;
+
+  const std::vector<std::optional<ArrowInterval*>> values = {
+      std::nullopt, &neg_interval, &zero_interval, &pos_interval};
 
   ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
 
-  // TODO: ASSERT_THAT gets tripped up from templates with nested <>'s
-  MakeBatch<std::tuple<int32_t, int32_t, int64_t>>(&schema.value, &array.value, &na_error,
-                                                   values);
+  ASSERT_THAT(MakeBatch<ArrowInterval*>(&schema.value, &array.value, &na_error, values),
+              IsOkErrno());
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,

@@ -206,12 +206,8 @@ struct GetObjectsReader {
   }
   ~GetObjectsReader() { AdbcGetObjectsDataDelete(get_objects_data_); }
 
-  struct AdbcGetObjectsData* operator*() {
-    return get_objects_data_;
-  }
-  struct AdbcGetObjectsData* operator->() {
-    return get_objects_data_;
-  }
+  struct AdbcGetObjectsData* operator*() { return get_objects_data_; }
+  struct AdbcGetObjectsData* operator->() { return get_objects_data_; }
 
  private:
   struct AdbcGetObjectsData* get_objects_data_;
@@ -262,6 +258,10 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         view.data.as_char = v->c_str();
         view.size_bytes = v->size();
         if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
+          return errno_res;
+        }
+      } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
+        if (int errno_res = ArrowArrayAppendInterval(array, *v); errno_res != 0) {
           return errno_res;
         }
       } else {

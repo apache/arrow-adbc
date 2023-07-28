@@ -873,7 +873,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
       }
-    case NANOARROW_TYPE_DURATION:
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kInterval: {
           *out = new PostgresCopyIntervalFieldReader();
