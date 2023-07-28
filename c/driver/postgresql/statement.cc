@@ -225,7 +225,7 @@ struct BindStream {
           break;
         case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
           type_id = PostgresTypeId::kInterval;
-          param_lengths[i] = 8;
+          param_lengths[i] = 16;
           break;
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
@@ -431,19 +431,18 @@ struct BindStream {
               break;
             }
             case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
-              const uint32_t days = ToNetworkFloat4(
+              const uint32_t days = ToNetworkInt32(
                   array_view->children[col]->buffer_views[1].data.as_int32[row]);
-              const uint32_t months = ToNetworkFloat4(
+              const uint32_t months = ToNetworkInt32(
                   array_view->children[col]->buffer_views[1].data.as_int32[row] + 1);
               const int64_t raw_ns =
                   array_view->children[col]->buffer_views[1].data.as_int64[row] + 1;
-              const uint64_t ms = ToNetworkFloat4(raw_ns / 1000);
+              const uint64_t ms = ToNetworkInt64(raw_ns / 1000);
 
               std::memcpy(param_values[col], &ms, sizeof(uint64_t));
               std::memcpy(param_values[col] + sizeof(uint64_t), &days, sizeof(uint32_t));
               std::memcpy(param_values[col] + sizeof(uint64_t) + sizeof(uint32_t),
                           &months, sizeof(uint32_t));
-              break;
               break;
             }
             default:

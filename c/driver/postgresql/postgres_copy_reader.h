@@ -222,9 +222,9 @@ class PostgresCopyIntervalFieldReader : public PostgresCopyFieldReader {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    if (field_size_bytes != 128) {
+    if (field_size_bytes != 16) {
       ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
-                    128,
+                    16,
                     static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
