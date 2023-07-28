@@ -1037,6 +1037,11 @@ void StatementTest::TestSqlIngestNumericType(ArrowType type) {
     // values. Likely a bug on our side, but for now, avoid them.
     values.push_back(static_cast<CType>(-1.5));
     values.push_back(static_cast<CType>(1.5));
+  } else if (type == ArrowType::NANOARROW_TYPE_DATE32) {
+    // Different databases may choose different epochs, so providing
+    // max values for DATE types is likely to cause overflows
+    values.push_back(static_cast<CType>(-20000));
+    values.push_back(static_cast<CType>(20000));
   } else {
     values.push_back(std::numeric_limits<CType>::lowest());
     values.push_back(std::numeric_limits<CType>::max());
@@ -1093,6 +1098,10 @@ void StatementTest::TestSqlIngestString() {
 void StatementTest::TestSqlIngestBinary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
       NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x00\x01\x02\x04", "\xFE\xFF"}));
+}
+
+void StatementTest::TestSqlIngestDate32() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<int32_t>(NANOARROW_TYPE_DATE32));
 }
 
 template <enum ArrowTimeUnit TU>

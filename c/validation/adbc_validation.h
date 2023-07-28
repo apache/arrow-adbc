@@ -230,6 +230,7 @@ class StatementTest {
   void TestSqlIngestBinary();
 
   // Temporal
+  void TestSqlIngestDate32();
   void TestSqlIngestTimestamp();
   void TestSqlIngestTimestampTz();
   void TestSqlIngestInterval();
@@ -301,6 +302,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                         \
   TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
   TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
+  TEST_F(FIXTURE, SqlIngestDate32) { TestSqlIngestDate32(); }                           \
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
