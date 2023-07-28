@@ -93,7 +93,7 @@ ROWID = adbc_driver_manager.dbapi.ROWID
 
 
 def connect(
-    uri: str,
+    uri: typing.Optional[str] = None,
     db_kwargs: typing.Optional[typing.Dict[str, str]] = None,
     conn_kwargs: typing.Optional[typing.Dict[str, str]] = None,
     **kwargs,
@@ -103,7 +103,7 @@ def connect(
 
     Parameters
     ----------
-    uri : str
+    uri : str, optional
         The URI to connect to.
     db_kwargs : dict, optional
         Initial database connection parameters.

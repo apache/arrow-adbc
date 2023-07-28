@@ -27,7 +27,7 @@ use arrow_array::cast::{as_primitive_array, as_string_array, as_union_array};
 use arrow_array::types::UInt32Type;
 use arrow_array::{Array, ArrayRef, UnionArray};
 use arrow_array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
-use arrow_schema::{ArrowError, DataType, Field, Schema, UnionMode};
+use arrow_schema::{ArrowError, DataType, Field, Fields, Schema, UnionFields, UnionMode};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use once_cell::sync::Lazy;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
@@ -59,41 +59,43 @@ static INFO_SCHEMA: Lazy<Arc<Schema>> = Lazy::new(|| {
         Field::new(
             "info_value",
             DataType::Union(
-                vec![
-                    Field::new("string_value", DataType::Utf8, true),
-                    Field::new("bool_value", DataType::Boolean, true),
-                    Field::new("int64_value", DataType::Int64, true),
-                    Field::new("int32_bitmask", DataType::Int32, true),
-                    Field::new(
-                        "string_list",
-                        DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
-                        true,
-                    ),
-                    Field::new(
-                        "int32_to_int32_list_map",
-                        DataType::Map(
-                            Box::new(Field::new(
-                                "entries",
-                                DataType::Struct(vec![
-                                    Field::new("keys", DataType::Int32, false),
-                                    Field::new(
-                                        "values",
-                                        DataType::List(Box::new(Field::new(
-                                            "item",
-                                            DataType::Int32,
-                                            true,
-                                        ))),
-                                        true,
-                                    ),
-                                ]),
-                                false,
-                            )),
-                            false,
+                UnionFields::new(
+                    vec![0, 1, 2, 3, 4, 5],
+                    vec![
+                        Field::new("string_value", DataType::Utf8, true),
+                        Field::new("bool_value", DataType::Boolean, true),
+                        Field::new("int64_value", DataType::Int64, true),
+                        Field::new("int32_bitmask", DataType::Int32, true),
+                        Field::new(
+                            "string_list",
+                            DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
+                            true,
                         ),
-                        true,
-                    ),
-                ],
-                vec![0, 1, 2, 3, 4, 5],
+                        Field::new(
+                            "int32_to_int32_list_map",
+                            DataType::Map(
+                                Arc::new(Field::new(
+                                    "entries",
+                                    DataType::Struct(Fields::from(vec![
+                                        Field::new("keys", DataType::Int32, false),
+                                        Field::new(
+                                            "values",
+                                            DataType::List(Arc::new(Field::new(
+                                                "item",
+                                                DataType::Int32,
+                                                true,
+                                            ))),
+                                            true,
+                                        ),
+                                    ])),
+                                    false,
+                                )),
+                                false,
+                            ),
+                            true,
+                        ),
+                    ],
+                ),
                 UnionMode::Dense,
             ),
             true,
@@ -167,15 +169,16 @@ pub fn export_info_data(
     let info_schema = INFO_SCHEMA.clone();
     let union_fields = {
         match info_schema.field(1).data_type() {
-            DataType::Union(fields, _, _) => fields,
+            DataType::Union(fields, _) => fields,
             _ => unreachable!(),
         }
     };
     let children = union_fields
         .iter()
-        .map(|f| f.to_owned())
+        .map(|f| (**f.1).clone())
         .zip(arrays.into_iter())
         .collect();
+
     let info_value = UnionArray::try_new(
         &[0, 1, 2, 3, 4, 5],
         type_id.finish(),

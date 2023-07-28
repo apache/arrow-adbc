@@ -100,31 +100,6 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
          AdbcDatabaseSetOption(&database, "uri", "postgresql://localhost:5433", nullptr);
          AdbcDatabaseInit(&database, nullptr);
 
-   .. tab-item:: Python
-      :sync: python
-
-      .. code-block:: python
-
-         import adbc_driver_postgresql.dbapi
-
-         uri = "postgresql://user:pass@localhost:5433/postgres"
-         with adbc_driver_postgresql.dbapi.connect(uri) as conn:
-             pass
-
-      For more examples, see :doc:`../python/recipe/postgresql`.
-
-   .. tab-item:: R
-      :sync: r
-
-      .. code-block:: r
-
-         library(adbcdrivermanager)
-
-         # Use the driver manager to connect to a database
-         uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI")
-         db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
-         con <- adbc_connection_init(db)
-
    .. tab-item:: Go
       :sync: go
 
@@ -157,6 +132,31 @@ the :cpp:class:`AdbcDatabase`.  This should be a `connection URI
             }
             defer cnxn.Close()
          }
+
+   .. tab-item:: Python
+      :sync: python
+
+      .. code-block:: python
+
+         import adbc_driver_postgresql.dbapi
+
+         uri = "postgresql://user:pass@localhost:5433/postgres"
+         with adbc_driver_postgresql.dbapi.connect(uri) as conn:
+             pass
+
+      For more examples, see :doc:`../python/recipe/postgresql`.
+
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: r
+
+         library(adbcdrivermanager)
+
+         # Use the driver manager to connect to a database
+         uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI")
+         db <- adbc_database_init(adbcpostgresql::adbcpostgresql(), uri = uri)
+         con <- adbc_connection_init(db)
 
 Supported Features
 ==================

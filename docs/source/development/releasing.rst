@@ -160,7 +160,7 @@ Build source and binaries and submit them
     # On macOS the only way I could get this to work was running "echo
     # "UPDATESTARTUPTTY" | gpg-connect-agent" before running this
     # comment otherwise I got errors referencing "ioctl" errors.
-    dev/release/02-sign.sh <version> <rc-number>
+    dev/release/02-sign.sh <prev-version> <version> <rc-number>
 
     # Upload the source release tarball and signs to
     # https://dist.apache.org/repos/dist/dev/arrow .

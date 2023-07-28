@@ -236,6 +236,7 @@ class StatementTest {
 
   // ---- End Type-specific tests ----------------
 
+  void TestSqlIngestTableEscaping();
   void TestSqlIngestAppend();
   void TestSqlIngestErrors();
   void TestSqlIngestMultipleConnections();
@@ -303,6 +304,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
+  TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \

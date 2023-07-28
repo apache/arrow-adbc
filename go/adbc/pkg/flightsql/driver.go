@@ -21,7 +21,11 @@
 
 package main
 
-// #cgo CXXFLAGS: -std=c++11
+// ADBC_EXPORTING is required on Windows, or else the symbols
+// won't be accessible to the driver manager
+
+// #cgo CFLAGS: -DADBC_EXPORTING
+// #cgo CXXFLAGS: -std=c++11 -DADBC_EXPORTING
 // #include "../../drivermgr/adbc.h"
 // #include "utils.h"
 // #include <stdint.h>
