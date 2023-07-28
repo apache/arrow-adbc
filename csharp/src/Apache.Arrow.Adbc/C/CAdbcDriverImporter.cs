@@ -635,6 +635,15 @@ namespace Apache.Arrow.Adbc.C
 #endif
             {
                 byte* bcatalog, bDb_schema, bTable_name, bColumn_Name;
+
+                if(table_types == null)
+                {
+                    table_types = new List<string>();
+                }
+
+                // need to terminate with a null entry per https://github.com/apache/arrow-adbc/blob/b97e22c4d6524b60bf261e1970155500645be510/adbc.h#L909-L911
+                table_types.Add(null);
+
                 byte** bTable_type = (byte**)Marshal.AllocHGlobal(IntPtr.Size * table_types.Count);
 
                 for (int i = 0; i < table_types.Count; i++)
