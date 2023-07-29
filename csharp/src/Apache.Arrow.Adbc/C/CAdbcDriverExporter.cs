@@ -78,10 +78,10 @@ namespace Apache.Arrow.Adbc.C
         internal unsafe delegate AdbcStatusCode ConnectionGetObjects(CAdbcConnection* connection, int depth, byte* catalog, byte* db_schema, byte* table_name, byte** table_type, byte* column_name, CArrowArrayStream* stream, CAdbcError* error);
         private static unsafe readonly NativeDelegate<ConnectionGetObjects> s_connectionGetObjects = new NativeDelegate<ConnectionGetObjects>(GetConnectionObjects);
         private static IntPtr ConnectionGetObjectsPtr => s_connectionGetObjects.Pointer;
-        private unsafe delegate AdbcStatusCode ConnectionGetTableSchema(CAdbcConnection* connection, byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* schema, CAdbcError* error);
+        internal unsafe delegate AdbcStatusCode ConnectionGetTableSchema(CAdbcConnection* connection, byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* schema, CAdbcError* error);
         private static unsafe readonly NativeDelegate<ConnectionGetTableSchema> s_connectionGetTableSchema = new NativeDelegate<ConnectionGetTableSchema>(GetConnectionTableSchema);
         private static IntPtr ConnectionGetTableSchemaPtr => s_connectionGetTableSchema.Pointer;
-        private unsafe delegate AdbcStatusCode ConnectionGetTableTypes(CAdbcConnection* connection, CArrowArrayStream* stream, CAdbcError* error);
+        internal unsafe delegate AdbcStatusCode ConnectionGetTableTypes(CAdbcConnection* connection, CArrowArrayStream* stream, CAdbcError* error);
         private static unsafe readonly NativeDelegate<ConnectionGetTableTypes> s_connectionGetTableTypes = new NativeDelegate<ConnectionGetTableTypes>(GetConnectionTableTypes);
         private static IntPtr ConnectionGetTableTypesPtr => s_connectionGetTableTypes.Pointer;
         internal unsafe delegate AdbcStatusCode ConnectionInit(CAdbcConnection* connection, CAdbcDatabase* database, CAdbcError* error);

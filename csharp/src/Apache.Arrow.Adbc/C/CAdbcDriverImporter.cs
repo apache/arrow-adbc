@@ -22,6 +22,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
+using System.Net.NetworkInformation;
 
 #if NETSTANDARD
 using Apache.Arrow.Adbc.Extensions;
@@ -253,6 +254,34 @@ namespace Apache.Arrow.Adbc.C
                 IArrowArrayStream arrowArrayStream = CArrowArrayStreamImporter.ImportArrayStream(nativeArrayStream);
 
                 return arrowArrayStream;
+            }
+
+            public override unsafe IArrowArrayStream GetTableTypes()
+            {
+                CArrowArrayStream* nativeArrayStream = CArrowArrayStream.Create();
+
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.ConnectionGetTableTypes, ref _nativeConnection, nativeArrayStream);
+                }
+
+                IArrowArrayStream arrowArrayStream = CArrowArrayStreamImporter.ImportArrayStream(nativeArrayStream);
+
+                return arrowArrayStream;
+            }
+
+            public override unsafe Schema GetTableSchema(string catalog, string db_schema, string table_name)
+            {
+                CArrowSchema* nativeSchema = CArrowSchema.Create();
+              
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.ConnectionGetTableSchema, ref _nativeConnection, catalog, db_schema, table_name, nativeSchema);
+                }
+
+                Schema schema = CArrowSchemaImporter.ImportSchema(nativeSchema);
+
+                return schema;
             }
         }
 
@@ -581,6 +610,80 @@ namespace Apache.Arrow.Adbc.C
                 fixed (CAdbcError* e = &_error)
                 {
                     TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.StatementExecuteQuery>(fn)(stmt, arrowStream, rows, e));
+                }
+            }
+#endif
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, byte*, byte*, byte*, CArrowSchema*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeconnection, string catalog, string dbSchema, string tableName, CArrowSchema* nativeSchema)
+            {
+                byte* bCatalog, bDb_schema, bTable_name;
+
+                using (Utf8Helper helper = new Utf8Helper(catalog))
+                {
+                    bCatalog = (byte*)(IntPtr)(helper);
+                }
+
+                using (Utf8Helper helper = new Utf8Helper(dbSchema))
+                {
+                    bDb_schema = (byte*)(IntPtr)(helper);
+                }
+
+                using (Utf8Helper helper = new Utf8Helper(tableName))
+                {
+                    bTable_name = (byte*)(IntPtr)(helper);
+                }
+
+                fixed (CAdbcConnection* connection = &nativeconnection)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(fn(connection, bCatalog, bDb_schema, bTable_name, nativeSchema, e));
+                }
+            }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcConnection nativeconnection, string catalog, string dbSchema, string tableName, CArrowSchema* nativeSchema)
+            {
+                byte* bCatalog, bDb_schema, bTable_name;
+
+                using (Utf8Helper helper = new Utf8Helper(catalog))
+                {
+                    bCatalog = (byte*)(IntPtr)(helper);
+                }
+
+                using (Utf8Helper helper = new Utf8Helper(dbSchema))
+                {
+                    bDb_schema = (byte*)(IntPtr)(helper);
+                }
+
+                using (Utf8Helper helper = new Utf8Helper(tableName))
+                {
+                    bTable_name = (byte*)(IntPtr)(helper);
+                }
+
+                fixed (CAdbcConnection* connection = &nativeconnection)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetTableSchema>(fn)(connection, bCatalog, bDb_schema, bTable_name, nativeSchema, e));
+                }
+            }
+#endif
+
+#if NET5_0_OR_GREATER
+            public unsafe void Call(delegate* unmanaged<CAdbcConnection*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcConnection nativeconnection, CArrowArrayStream* arrowStream)
+            {
+                fixed (CAdbcConnection* connection = &nativeconnection)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(fn(connection, arrowStream, e));
+                }
+            }
+#else
+            public unsafe void Call(IntPtr fn, ref CAdbcConnection nativeconnection, CArrowArrayStream* arrowStream)
+            {
+                fixed (CAdbcConnection* connection = &nativeconnection)
+                fixed (CAdbcError* e = &_error)
+                {
+                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetTableTypes>(fn)(connection, arrowStream, e));
                 }
             }
 #endif
