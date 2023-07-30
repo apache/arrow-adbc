@@ -619,25 +619,19 @@ namespace Apache.Arrow.Adbc.C
             {
                 byte* bCatalog, bDb_schema, bTable_name;
 
-                using (Utf8Helper helper = new Utf8Helper(catalog))
+                using (Utf8Helper catalogHelper = new Utf8Helper(catalog))
+                using (Utf8Helper schemaHelper = new Utf8Helper(dbSchema))
+                using (Utf8Helper tableNameHelper = new Utf8Helper(tableName))
                 {
-                    bCatalog = (byte*)(IntPtr)(helper);
-                }
+                    bCatalog = (byte*)(IntPtr)(catalogHelper);
+                    bDb_schema = (byte*)(IntPtr)(schemaHelper);
+                    bTable_name = (byte*)(IntPtr)(tableNameHelper);
 
-                using (Utf8Helper helper = new Utf8Helper(dbSchema))
-                {
-                    bDb_schema = (byte*)(IntPtr)(helper);
-                }
-
-                using (Utf8Helper helper = new Utf8Helper(tableName))
-                {
-                    bTable_name = (byte*)(IntPtr)(helper);
-                }
-
-                fixed (CAdbcConnection* connection = &nativeconnection)
-                fixed (CAdbcError* e = &_error)
-                {
-                    TranslateCode(fn(connection, bCatalog, bDb_schema, bTable_name, nativeSchema, e));
+                    fixed (CAdbcConnection* connection = &nativeconnection)
+                    fixed (CAdbcError* e = &_error)
+                    {
+                        TranslateCode(fn(connection, bCatalog, bDb_schema, bTable_name, nativeSchema, e));
+                    }
                 }
             }
 #else
@@ -645,25 +639,19 @@ namespace Apache.Arrow.Adbc.C
             {
                 byte* bCatalog, bDb_schema, bTable_name;
 
-                using (Utf8Helper helper = new Utf8Helper(catalog))
+                using (Utf8Helper catalogHelper = new Utf8Helper(catalog))
+                using (Utf8Helper schemaHelper = new Utf8Helper(dbSchema))
+                using (Utf8Helper tableNameHelper = new Utf8Helper(tableName))
                 {
-                    bCatalog = (byte*)(IntPtr)(helper);
-                }
+                    bCatalog = (byte*)(IntPtr)(catalogHelper);
+                    bDb_schema = (byte*)(IntPtr)(schemaHelper);
+                    bTable_name = (byte*)(IntPtr)(tableNameHelper);
 
-                using (Utf8Helper helper = new Utf8Helper(dbSchema))
-                {
-                    bDb_schema = (byte*)(IntPtr)(helper);
-                }
-
-                using (Utf8Helper helper = new Utf8Helper(tableName))
-                {
-                    bTable_name = (byte*)(IntPtr)(helper);
-                }
-
-                fixed (CAdbcConnection* connection = &nativeconnection)
-                fixed (CAdbcError* e = &_error)
-                {
-                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetTableSchema>(fn)(connection, bCatalog, bDb_schema, bTable_name, nativeSchema, e));
+                    fixed (CAdbcConnection* connection = &nativeconnection)
+                    fixed (CAdbcError* e = &_error)
+                    {
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetTableSchema>(fn)(connection, bCatalog, bDb_schema, bTable_name, nativeSchema, e));
+                    }
                 }
             }
 #endif
@@ -759,34 +747,25 @@ namespace Apache.Arrow.Adbc.C
 #endif
                 }
 
-                using (Utf8Helper helper = new Utf8Helper(catalog))
+                using (Utf8Helper catalogHelper = new Utf8Helper(catalog))
+                using (Utf8Helper schemaHelper = new Utf8Helper(db_schema))
+                using (Utf8Helper tableNameHelper = new Utf8Helper(table_name))
+                using (Utf8Helper columnNameHelper = new Utf8Helper(column_name))
                 {
-                    bcatalog = (byte*)(IntPtr)(helper);
-                }
+                    bcatalog = (byte*)(IntPtr)(catalogHelper);
+                    bDb_schema = (byte*)(IntPtr)(schemaHelper);
+                    bTable_name = (byte*)(IntPtr)(tableNameHelper);
+                    bColumn_Name = (byte*)(IntPtr)(columnNameHelper);
 
-                using (Utf8Helper helper = new Utf8Helper(db_schema))
-                {
-                    bDb_schema = (byte*)(IntPtr)(helper);
-                }
-
-                using (Utf8Helper helper = new Utf8Helper(table_name))
-                {
-                    bTable_name = (byte*)(IntPtr)(helper);
-                }
-
-                using (Utf8Helper helper = new Utf8Helper(column_name))
-                {
-                    bColumn_Name = (byte*)(IntPtr)(helper);
-                }
-
-                fixed (CAdbcConnection* cn = &connection)
-                fixed (CAdbcError* e = &_error)
-                {
+                    fixed (CAdbcConnection* cn = &connection)
+                    fixed (CAdbcError* e = &_error)
+                    {
 #if NET5_0_OR_GREATER
-                    TranslateCode(fn(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
+                        TranslateCode(fn(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
 #else
-                    TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetObjects>(fn)(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
+                        TranslateCode(Marshal.GetDelegateForFunctionPointer<CAdbcDriverExporter.ConnectionGetObjects>(fn)(cn, depth, bcatalog, bDb_schema, bTable_name, bTable_type, bColumn_Name, stream, e));
 #endif
+                    }
                 }
             }
 
