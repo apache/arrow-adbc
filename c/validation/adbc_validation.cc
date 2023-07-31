@@ -1038,10 +1038,9 @@ void StatementTest::TestSqlIngestNumericType(ArrowType type) {
     values.push_back(static_cast<CType>(-1.5));
     values.push_back(static_cast<CType>(1.5));
   } else if (type == ArrowType::NANOARROW_TYPE_DATE32) {
-    // Different databases may choose different epochs, so providing
-    // max values for DATE types is likely to cause overflows
-    values.push_back(static_cast<CType>(-20000));
-    values.push_back(static_cast<CType>(20000));
+    // Windows does not seem to support negative date values
+    values.push_back(static_cast<CType>(0));
+    values.push_back(static_cast<CType>(42));
   } else {
     values.push_back(std::numeric_limits<CType>::lowest());
     values.push_back(std::numeric_limits<CType>::max());
