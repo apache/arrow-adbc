@@ -119,6 +119,7 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
 
 #if defined(_WIN32)
   if (gmtime_s(&broken_down_time, &time) != 0) {
+    printf("not able to use time value of %lld\n", time);
     SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
