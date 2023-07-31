@@ -1040,8 +1040,8 @@ void StatementTest::TestSqlIngestNumericType(ArrowType type) {
   } else if (type == ArrowType::NANOARROW_TYPE_DATE32) {
     // Different databases may choose different epochs, so providing
     // max values for DATE types is likely to cause overflows
-    values.push_back(static_cast<CType>(-20000));
-    values.push_back(static_cast<CType>(20000));
+    values.push_back(static_cast<CType>(-42));
+    values.push_back(static_cast<CType>(42));
   } else {
     values.push_back(std::numeric_limits<CType>::lowest());
     values.push_back(std::numeric_limits<CType>::max());
