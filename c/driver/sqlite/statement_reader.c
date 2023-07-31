@@ -93,7 +93,7 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
   return AdbcSqliteBinderSet(binder, error);
 }
 
-#define SECONDS_PER_DAY 86400;
+#define SECONDS_PER_DAY 86400
 
 /*
   Allocates to buf on success. Caller is responsible for freeing.
