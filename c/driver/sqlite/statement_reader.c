@@ -116,7 +116,7 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
 #endif
 
   struct tm broken_down_time;
-  time = -20000 * SECONDS_PER_DAY;  // debug
+  time = -2 * SECONDS_PER_DAY;  // debug
 
 #if defined(_WIN32)
   if (gmtime_s(&broken_down_time, &time) != 0) {
