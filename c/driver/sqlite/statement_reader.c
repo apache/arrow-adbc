@@ -110,16 +110,16 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
-  const time_t time = (time_t)(value * SECONDS_PER_DAY);
+  time_t time = (time_t)(value * SECONDS_PER_DAY);
 #else
-  const time_t time = value * SECONDS_PER_DAY;
+  time_t time = value * SECONDS_PER_DAY;
 #endif
 
   struct tm broken_down_time;
+  time = 0;  // debug
 
 #if defined(_WIN32)
   if (gmtime_s(&broken_down_time, &time) != 0) {
-    printf("not able to use time value of %lld\n", time);
     SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
