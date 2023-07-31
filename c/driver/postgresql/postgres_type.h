@@ -258,6 +258,11 @@ class PostgresType {
                                        NANOARROW_TIME_UNIT_MICRO, /*timezone=*/"UTC"));
         break;
 
+      case PostgresTypeId::kInterval:
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
+        break;
+
       // ---- Nested --------------------
       case PostgresTypeId::kRecord:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_children()));

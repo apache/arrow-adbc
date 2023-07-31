@@ -22,7 +22,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
-using System.Net.NetworkInformation;
 
 #if NETSTANDARD
 using Apache.Arrow.Adbc.Extensions;
@@ -273,7 +272,7 @@ namespace Apache.Arrow.Adbc.C
             public override unsafe Schema GetTableSchema(string catalog, string db_schema, string table_name)
             {
                 CArrowSchema* nativeSchema = CArrowSchema.Create();
-              
+
                 using (CallHelper caller = new CallHelper())
                 {
                     caller.Call(_nativeDriver.ConnectionGetTableSchema, ref _nativeConnection, catalog, db_schema, table_name, nativeSchema);
@@ -727,7 +726,7 @@ namespace Apache.Arrow.Adbc.C
             {
                 byte* bcatalog, bDb_schema, bTable_name, bColumn_Name;
 
-                if(table_types == null)
+                if (table_types == null)
                 {
                     table_types = new List<string>();
                 }

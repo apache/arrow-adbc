@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cinttypes>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -212,7 +213,43 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
   }
 };
 
-// Converts COPY resulting from the Postgres NUMERIC type into a string.
+// Reader for Intervals
+class PostgresCopyIntervalFieldReader : public PostgresCopyFieldReader {
+ public:
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
+                      ArrowError* error) override {
+    if (field_size_bytes <= 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
+    if (field_size_bytes != 16) {
+      ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
+                    16,
+                    static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    // postgres stores time as usec, arrow stores as ns
+    const int64_t time_usec = ReadUnsafe<int64_t>(data);
+
+    if ((time_usec > INT64_MAX / 1000) || (time_usec < INT64_MIN / 1000)) {
+      ArrowErrorSet(error, "[libpq] Interval with time value %" PRId64
+                           " usec would overflow when converting to nanoseconds");
+      return EINVAL;
+    }
+
+    const int64_t time = time_usec * 1000;
+    const int32_t days = ReadUnsafe<int32_t>(data);
+    const int32_t months = ReadUnsafe<int32_t>(data);
+
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &months, sizeof(int32_t)));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &days, sizeof(int32_t)));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &time, sizeof(int64_t)));
+    return AppendValid(array);
+  }
+};
+
+// // Converts COPY resulting from the Postgres NUMERIC type into a string.
 // Rewritten based on the Postgres implementation of NUMERIC cast to string in
 // src/backend/utils/adt/numeric.c : get_str_from_var() (Note that in the initial source,
 // DEC_DIGITS is always 4 and DBASE is always 10000).
@@ -836,6 +873,16 @@ static inline ArrowErrorCode MakeCopyFieldReader(const PostgresType& pg_type,
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
       }
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+      switch (pg_type.type_id()) {
+        case PostgresTypeId::kInterval: {
+          *out = new PostgresCopyIntervalFieldReader();
+          return NANOARROW_OK;
+        }
+        default:
+          return ErrorCantConvert(error, pg_type, schema_view);
+      }
+
     default:
       return ErrorCantConvert(error, pg_type, schema_view);
   }
