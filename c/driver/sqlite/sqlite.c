@@ -1027,10 +1027,11 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
       goto cleanup;
     }
 
-    int status = ArrowSchemaViewInit(&view, stmt->binder.schema.children[i], &arrow_error);
+    int status =
+        ArrowSchemaViewInit(&view, stmt->binder.schema.children[i], &arrow_error);
     if (status != 0) {
       SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
-              strerror(status), status, arrow_error.message);
+               strerror(status), status, arrow_error.message);
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
@@ -1057,11 +1058,11 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
         break;
       default:
         SetError(error, "[SQLite] Field #%d ('%s') has unsupported type for ingestion",
-                i + 1, stmt->binder.schema.children[i]->name);
+                 i + 1, stmt->binder.schema.children[i]->name);
         code = ADBC_STATUS_NOT_IMPLEMENTED;
         goto cleanup;
     }
-  
+
     if (i > 0) {
       if (StringBuilderAppend(&insert_query, "%s", ", ") != 0) {
         SetError(error, "[SQLite] Call to StringBuilderAppend failed");
