@@ -93,6 +93,59 @@ AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
   return AdbcSqliteBinderSet(binder, error);
 }
 
+#define SECONDS_PER_DAY 86400
+
+/*
+  Allocates to buf on success. Caller is responsible for freeing.
+  On failure sets error and contents of buf are undefined.
+*/
+static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
+                                             struct AdbcError* error) {
+  int strlen = 10;
+
+#if SIZEOF_TIME_T < 8
+  if ((seconds > INT32_MAX / SECONDS_PER_DAY) ||
+      (seconds < INT32_MIN / SECONDS_PER_DAY)) {
+    SetError(error, "Date %" PRId32 " exceeds platform time_t bounds", value);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  time_t time = (time_t)(value * SECONDS_PER_DAY);
+#else
+  time_t time = value * SECONDS_PER_DAY;
+#endif
+
+  struct tm broken_down_time;
+
+#if defined(_WIN32)
+  if (gmtime_s(&broken_down_time, &time) != 0) {
+    SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#else
+  if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
+    SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
+
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+#endif
+
+  char* tsstr = malloc(strlen + 1);
+  if (tsstr == NULL) {
+    return ADBC_STATUS_IO;
+  }
+
+  if (strftime(tsstr, strlen + 1, "%Y-%m-%d", &broken_down_time) == 0) {
+    SetError(error, "Call to strftime for date %" PRId32 " with failed", value);
+    free(tsstr);
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  *buf = tsstr;
+  return ADBC_STATUS_OK;
+}
+
 /*
   Allocates to buf on success. Caller is responsible for freeing.
   On failure sets error and contents of buf are undefined.
@@ -298,6 +351,28 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
           status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
                                      SQLITE_STATIC);
+          break;
+        }
+        case NANOARROW_TYPE_DATE32: {
+          int64_t value =
+              ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
+          char* tsstr;
+
+          if ((value > INT32_MAX) || (value < INT32_MIN)) {
+            SetError(error,
+                     "Column %d has value %" PRId64
+                     " which exceeds the expected range "
+                     "for an Arrow DATE32 type",
+                     col, value);
+            return ADBC_STATUS_INVALID_DATA;
+          }
+
+          RAISE_ADBC(ArrowDate32ToIsoString((int32_t)value, &tsstr, error));
+          // SQLITE_TRANSIENT ensures the value is copied during bind
+          status =
+              sqlite3_bind_text(stmt, col + 1, tsstr, strlen(tsstr), SQLITE_TRANSIENT);
+
+          free(tsstr);
           break;
         }
         case NANOARROW_TYPE_TIMESTAMP: {
