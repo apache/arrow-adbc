@@ -1008,6 +1008,8 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     goto cleanup;
   }
 
+  struct ArrowError arrow_error = {0};
+  struct ArrowSchemaView view = {0};
   for (int i = 0; i < stmt->binder.schema.n_children; i++) {
     if (i > 0) {
       sqlite3_str_appendf(create_query, "%s", ", ");
@@ -1025,6 +1027,41 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
       goto cleanup;
     }
 
+    int status = ArrowSchemaViewInit(&view, stmt->binder.schema.children[i], &arrow_error);
+    if (status != 0) {
+      SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
+              strerror(status), status, arrow_error.message);
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
+
+    switch (view.type) {
+      case NANOARROW_TYPE_INT8:
+      case NANOARROW_TYPE_INT16:
+      case NANOARROW_TYPE_INT32:
+      case NANOARROW_TYPE_INT64:
+        sqlite3_str_appendf(create_query, " INTEGER");
+        break;
+      case NANOARROW_TYPE_FLOAT:
+      case NANOARROW_TYPE_DOUBLE:
+        sqlite3_str_appendf(create_query, " REAL");
+        break;
+      case NANOARROW_TYPE_STRING:
+        sqlite3_str_appendf(create_query, " TEXT");
+        break;
+      case NANOARROW_TYPE_BINARY:
+        sqlite3_str_appendf(create_query, " BLOB");
+        break;
+      case NANOARROW_TYPE_TIMESTAMP:
+        sqlite3_str_appendf(create_query, " TEXT");
+        break;
+      default:
+        SetError(error, "[SQLite] Field #%d ('%s') has unsupported type for ingestion",
+                i + 1, stmt->binder.schema.children[i]->name);
+        code = ADBC_STATUS_NOT_IMPLEMENTED;
+        goto cleanup;
+    }
+  
     if (i > 0) {
       if (StringBuilderAppend(&insert_query, "%s", ", ") != 0) {
         SetError(error, "[SQLite] Call to StringBuilderAppend failed");

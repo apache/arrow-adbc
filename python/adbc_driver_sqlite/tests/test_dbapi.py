@@ -18,6 +18,7 @@
 from pathlib import Path
 
 import pytest
+import pyarrow as pa
 
 from adbc_driver_sqlite import dbapi
 
@@ -57,3 +58,25 @@ def test_autocommit(tmp_path: Path) -> None:
         assert not conn._autocommit
         with conn.cursor() as cur:
             cur.executescript("PRAGMA journal_mode = WAL")
+
+
+def test_create_types(tmp_path: Path) -> None:
+    db = tmp_path / "foo.sqlite"
+    with dbapi.connect(f"file:{db}") as conn:
+        tbl = pa.Table.from_pydict({'numbers': [1, 2], 'letters': ['a', 'b']})
+
+        type_mapping = {
+            'int64': 'INTEGER', 
+            'string': 'TEXT'
+        }
+        expected_types = [type_mapping[str(field.type)] for field in tbl.schema]
+
+        with conn.cursor() as cur:
+            cur.adbc_ingest("foo", tbl, "create")
+            cur.execute("PRAGMA table_info('foo')")
+            table_info = cur.fetchall()
+
+            assert len(table_info) == len(tbl.columns)
+
+            actual_types = [column[2] for column in table_info]
+            assert actual_types == expected_types
