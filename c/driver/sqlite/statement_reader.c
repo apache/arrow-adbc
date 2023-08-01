@@ -104,8 +104,7 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
   int strlen = 10;
 
 #if SIZEOF_TIME_T < 8
-  if ((seconds > INT32_MAX / SECONDS_PER_DAY) ||
-      (seconds < INT32_MIN / SECONDS_PER_DAY)) {
+  if ((value > INT32_MAX / SECONDS_PER_DAY) || (value < INT32_MIN / SECONDS_PER_DAY)) {
     SetError(error, "Date %" PRId32 " exceeds platform time_t bounds", value);
 
     return ADBC_STATUS_INVALID_ARGUMENT;

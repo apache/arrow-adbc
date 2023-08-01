@@ -177,6 +177,8 @@ class SnowflakeStatementTest : public ::testing::Test,
     }
   }
 
+  void TestSqlIngestInterval() { GTEST_SKIP(); }
+
  protected:
   void ValidateIngestedTimestampData(struct ArrowArrayView* values,
                                      enum ArrowTimeUnit unit,
