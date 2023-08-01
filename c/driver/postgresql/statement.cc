@@ -28,6 +28,7 @@
 
 #include <adbc.h>
 #include <libpq-fe.h>
+#include <postgresql/error.h>
 #include <nanoarrow/nanoarrow.hpp>
 
 #include "common/utils.h"
@@ -262,20 +263,23 @@ struct BindStream {
         if (autocommit) {
           PGresult* begin_result = PQexec(conn, "BEGIN");
           if (PQresultStatus(begin_result) != PGRES_COMMAND_OK) {
-            SetError(error, "[libpq] Failed to begin transaction for timezone data: %s",
-                     PQerrorMessage(conn));
+            AdbcStatusCode code =
+                SetError(error, begin_result,
+                         "[libpq] Failed to begin transaction for timezone data: %s",
+                         PQerrorMessage(conn));
             PQclear(begin_result);
-            return ADBC_STATUS_IO;
+            return code;
           }
           PQclear(begin_result);
         }
 
         PGresult* get_tz_result = PQexec(conn, "SELECT current_setting('TIMEZONE')");
         if (PQresultStatus(get_tz_result) != PGRES_TUPLES_OK) {
-          SetError(error, "[libpq] Could not query current timezone: %s",
-                   PQerrorMessage(conn));
+          AdbcStatusCode code = SetError(error, get_tz_result,
+                                         "[libpq] Could not query current timezone: %s",
+                                         PQerrorMessage(conn));
           PQclear(get_tz_result);
-          return ADBC_STATUS_IO;
+          return code;
         }
 
         tz_setting = std::string(PQgetvalue(get_tz_result, 0, 0));
@@ -283,10 +287,11 @@ struct BindStream {
 
         PGresult* set_utc_result = PQexec(conn, "SET TIME ZONE 'UTC'");
         if (PQresultStatus(set_utc_result) != PGRES_COMMAND_OK) {
-          SetError(error, "[libpq] Failed to set time zone to UTC: %s",
-                   PQerrorMessage(conn));
+          AdbcStatusCode code = SetError(error, set_utc_result,
+                                         "[libpq] Failed to set time zone to UTC: %s",
+                                         PQerrorMessage(conn));
           PQclear(set_utc_result);
-          return ADBC_STATUS_IO;
+          return code;
         }
         PQclear(set_utc_result);
         break;
@@ -296,10 +301,11 @@ struct BindStream {
     PGresult* result = PQprepare(conn, /*stmtName=*/"", query.c_str(),
                                  /*nParams=*/bind_schema->n_children, param_types.data());
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      SetError(error, "[libpq] Failed to prepare query: %s\nQuery was:%s",
-               PQerrorMessage(conn), query.c_str());
+      AdbcStatusCode code =
+          SetError(error, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
+                   PQerrorMessage(conn), query.c_str());
       PQclear(result);
-      return ADBC_STATUS_IO;
+      return code;
     }
     PQclear(result);
     return ADBC_STATUS_OK;
@@ -441,10 +447,11 @@ struct BindStream {
                                 /*resultFormat=*/0 /*text*/);
 
         if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-          SetError(error, "%s%s", "[libpq] Failed to execute prepared statement: ",
-                   PQerrorMessage(conn));
+          AdbcStatusCode code = SetError(
+              error, result, "%s%s",
+              "[libpq] Failed to execute prepared statement: ", PQerrorMessage(conn));
           PQclear(result);
-          return ADBC_STATUS_IO;
+          return code;
         }
 
         PQclear(result);
@@ -455,18 +462,21 @@ struct BindStream {
         std::string reset_query = "SET TIME ZONE '" + tz_setting + "'";
         PGresult* reset_tz_result = PQexec(conn, reset_query.c_str());
         if (PQresultStatus(reset_tz_result) != PGRES_COMMAND_OK) {
-          SetError(error, "[libpq] Failed to reset time zone: %s", PQerrorMessage(conn));
+          AdbcStatusCode code =
+              SetError(error, reset_tz_result, "[libpq] Failed to reset time zone: %s",
+                       PQerrorMessage(conn));
           PQclear(reset_tz_result);
-          return ADBC_STATUS_IO;
+          return code;
         }
         PQclear(reset_tz_result);
 
         PGresult* commit_result = PQexec(conn, "COMMIT");
         if (PQresultStatus(commit_result) != PGRES_COMMAND_OK) {
-          SetError(error, "[libpq] Failed to commit transaction: %s",
-                   PQerrorMessage(conn));
+          AdbcStatusCode code =
+              SetError(error, commit_result, "[libpq] Failed to commit transaction: %s",
+                       PQerrorMessage(conn));
           PQclear(commit_result);
-          return ADBC_STATUS_IO;
+          return code;
         }
         PQclear(commit_result);
       }
@@ -773,10 +783,11 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
                                       /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                       /*resultFormat=*/1 /*(binary)*/);
       if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-        SetError(error, "[libpq] Failed to drop table: %s\nQuery was: %s",
-                 PQerrorMessage(connection_->conn()), drop.c_str());
+        AdbcStatusCode code =
+            SetError(error, result, "[libpq] Failed to drop table: %s\nQuery was: %s",
+                     PQerrorMessage(connection_->conn()), drop.c_str());
         PQclear(result);
-        return ADBC_STATUS_IO;
+        return code;
       }
       PQclear(result);
       break;
@@ -837,10 +848,11 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
                                   /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                   /*resultFormat=*/1 /*(binary)*/);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "[libpq] Failed to create table: %s\nQuery was: %s",
-             PQerrorMessage(connection_->conn()), create.c_str());
+    AdbcStatusCode code =
+        SetError(error, result, "[libpq] Failed to create table: %s\nQuery was: %s",
+                 PQerrorMessage(connection_->conn()), create.c_str());
     PQclear(result);
-    return ADBC_STATUS_IO;
+    return code;
   }
   PQclear(result);
   return ADBC_STATUS_OK;
@@ -936,11 +948,12 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
     if (PQresultStatus(reader_.result_) != PGRES_COPY_OUT) {
-      SetError(error,
-               "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
-               PQerrorMessage(connection_->conn()), copy_query.c_str());
+      AdbcStatusCode code = SetError(
+          error, reader_.result_,
+          "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
+          PQerrorMessage(connection_->conn()), copy_query.c_str());
       ClearResult();
-      return ADBC_STATUS_IO;
+      return code;
     }
     // Result is read from the connection, not the result, but we won't clear it here
   }
@@ -1009,10 +1022,11 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
                      /*paramFormats=*/nullptr, /*resultFormat=*/kPgBinaryFormat);
   ExecStatusType status = PQresultStatus(result);
   if (status != PGRES_COMMAND_OK && status != PGRES_TUPLES_OK) {
-    SetError(error, "[libpq] Failed to execute query: %s\nQuery was:%s",
-             PQerrorMessage(connection_->conn()), query_.c_str());
+    AdbcStatusCode code =
+        SetError(error, result, "[libpq] Failed to execute query: %s\nQuery was:%s",
+                 PQerrorMessage(connection_->conn()), query_.c_str());
     PQclear(result);
-    return ADBC_STATUS_IO;
+    return code;
   }
   if (rows_affected) *rows_affected = PQntuples(reader_.result_);
   PQclear(result);
@@ -1115,6 +1129,7 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
   if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
     query_.clear();
     ingest_.target = value;
+    prepared_ = false;
   } else if (std::strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
     if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE) == 0) {
       ingest_.mode = IngestMode::kCreate;
@@ -1128,6 +1143,7 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
       SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
+    prepared_ = false;
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     int64_t int_value = std::atol(value);
     if (int_value <= 0) {
@@ -1175,22 +1191,24 @@ AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
   PGresult* result = PQprepare(connection_->conn(), /*stmtName=*/"", query_.c_str(),
                                /*nParams=*/0, nullptr);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error,
-             "[libpq] Failed to execute query: could not infer schema: failed to "
-             "prepare query: %s\nQuery was:%s",
-             PQerrorMessage(connection_->conn()), query_.c_str());
+    AdbcStatusCode code =
+        SetError(error, result,
+                 "[libpq] Failed to execute query: could not infer schema: failed to "
+                 "prepare query: %s\nQuery was:%s",
+                 PQerrorMessage(connection_->conn()), query_.c_str());
     PQclear(result);
-    return ADBC_STATUS_IO;
+    return code;
   }
   PQclear(result);
   result = PQdescribePrepared(connection_->conn(), /*stmtName=*/"");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error,
-             "[libpq] Failed to execute query: could not infer schema: failed to "
-             "describe prepared statement: %s\nQuery was:%s",
-             PQerrorMessage(connection_->conn()), query_.c_str());
+    AdbcStatusCode code =
+        SetError(error, result,
+                 "[libpq] Failed to execute query: could not infer schema: failed to "
+                 "describe prepared statement: %s\nQuery was:%s",
+                 PQerrorMessage(connection_->conn()), query_.c_str());
     PQclear(result);
-    return ADBC_STATUS_IO;
+    return code;
   }
 
   // Resolve the information from the PGresult into a PostgresType

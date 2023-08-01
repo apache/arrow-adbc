@@ -23,6 +23,13 @@
 extern "C" {
 #endif
 
+struct AdbcErrorVersion100 {
+  char* message;
+  int32_t vendor_code;
+  char sqlstate[5];
+  void (*release)(struct AdbcError* error);
+};
+
 struct AdbcDriverVersion100 {
   void* private_data;
   void* private_manager;

@@ -32,7 +32,9 @@
 
 #include "common/utils.h"
 #include "database.h"
+#include "error.h"
 
+namespace adbcpq {
 namespace {
 
 static const uint32_t kSupportedInfoCodes[] = {
@@ -52,10 +54,10 @@ struct PqRecord {
 };
 
 // Used by PqResultHelper to provide index-based access to the records within each
-// row of a pg_result
+// row of a PGresult
 class PqResultRow {
  public:
-  PqResultRow(pg_result* result, int row_num) : result_(result), row_num_(row_num) {
+  PqResultRow(PGresult* result, int row_num) : result_(result), row_num_(row_num) {
     ncols_ = PQnfields(result);
   }
 
@@ -69,7 +71,7 @@ class PqResultRow {
   }
 
  private:
-  pg_result* result_ = nullptr;
+  PGresult* result_ = nullptr;
   int row_num_;
   int ncols_;
 };
@@ -95,10 +97,11 @@ class PqResultHelper {
     PGresult* result =
         PQprepare(conn_, /*stmtName=*/"", query_.c_str(), param_values_.size(), NULL);
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      SetError(error_, "[libpq] Failed to prepare query: %s\nQuery was:%s",
-               PQerrorMessage(conn_), query_.c_str());
+      AdbcStatusCode code =
+          SetError(error_, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
+                   PQerrorMessage(conn_), query_.c_str());
       PQclear(result);
-      return ADBC_STATUS_IO;
+      return code;
     }
 
     PQclear(result);
@@ -117,9 +120,10 @@ class PqResultHelper {
 
     ExecStatusType status = PQresultStatus(result_);
     if (status != PGRES_TUPLES_OK && status != PGRES_COMMAND_OK) {
-      SetError(error_, "[libpq] Failed to execute query '%s': %s", query_.c_str(),
-               PQerrorMessage(conn_));
-      return ADBC_STATUS_IO;
+      AdbcStatusCode error =
+          SetError(error_, result_, "[libpq] Failed to execute query '%s': %s",
+                   query_.c_str(), PQerrorMessage(conn_));
+      return error;
     }
 
     return ADBC_STATUS_OK;
@@ -167,7 +171,7 @@ class PqResultHelper {
   iterator end() { return iterator(*this, NumRows()); }
 
  private:
-  pg_result* result_ = nullptr;
+  PGresult* result_ = nullptr;
   PGconn* conn_;
   std::string query_;
   std::vector<std::string> param_values_;
@@ -730,8 +734,6 @@ class PqGetObjectsHelper {
 
 }  // namespace
 
-namespace adbcpq {
-
 AdbcStatusCode PostgresConnection::Cancel(struct AdbcError* error) {
   // > errbuf must be a char array of size errbufsize (the recommended size is
   // > 256 bytes).
@@ -754,9 +756,10 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
 
   PGresult* result = PQexec(conn_, "COMMIT");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "%s%s", "[libpq] Failed to commit: ", PQerrorMessage(conn_));
+    AdbcStatusCode code = SetError(error, result, "%s%s",
+                                   "[libpq] Failed to commit: ", PQerrorMessage(conn_));
     PQclear(result);
-    return ADBC_STATUS_IO;
+    return code;
   }
   PQclear(result);
   return ADBC_STATUS_OK;

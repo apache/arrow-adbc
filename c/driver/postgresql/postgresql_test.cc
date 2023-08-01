@@ -25,8 +25,9 @@
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
-#include "common/utils.h"
 
+#include "common/utils.h"
+#include "database.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
@@ -139,6 +140,20 @@ class PostgresDatabaseTest : public ::testing::Test,
   PostgresQuirks quirks_;
 };
 ADBCV_TEST_DATABASE(PostgresDatabaseTest)
+
+TEST_F(PostgresDatabaseTest, AdbcDriverBackwardsCompatibility) {
+  // XXX: sketchy cast
+  auto* driver = static_cast<struct AdbcDriver*>(malloc(ADBC_DRIVER_1_0_0_SIZE));
+  std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
+
+  ASSERT_THAT(::PostgresqlDriverInit(ADBC_VERSION_1_0_0, driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(::PostgresqlDriverInit(424242, driver, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+
+  free(driver);
+}
 
 class PostgresConnectionTest : public ::testing::Test,
                                public adbc_validation::ConnectionTest {
@@ -537,13 +552,13 @@ TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
                                            /*db_schema=*/nullptr,
                                            "0'::int; DROP TABLE bulk_ingest;--",
                                            &schema.value, &error),
-              IsStatus(ADBC_STATUS_IO, &error));
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
 
   ASSERT_THAT(
       AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
                                    /*db_schema=*/"0'::int; DROP TABLE bulk_ingest;--",
                                    "DROP TABLE bulk_ingest;", &schema.value, &error),
-      IsStatus(ADBC_STATUS_IO, &error));
+      IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
 
   ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
                                            /*db_schema=*/nullptr, "bulk_ingest",
@@ -586,11 +601,27 @@ TEST_F(PostgresConnectionTest, MetadataSetCurrentDbSchema) {
               IsOkStatus(&error));
 
   // Table does not exist in this schema
+  error.vendor_code = ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
   ASSERT_THAT(
       AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM schematable", &error),
       IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
-              IsStatus(ADBC_STATUS_IO, &error));
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  // 42P01 = table not found
+  ASSERT_EQ("42P01", std::string_view(error.sqlstate, 5));
+  ASSERT_NE(0, AdbcErrorGetDetailCount(&error));
+  bool found = false;
+  for (int i = 0; i < AdbcErrorGetDetailCount(&error); i++) {
+    struct AdbcErrorDetail detail = AdbcErrorGetDetail(&error, i);
+    if (std::strcmp(detail.key, "PG_DIAG_MESSAGE_PRIMARY") == 0) {
+      found = true;
+      std::string_view message(reinterpret_cast<const char*>(detail.value),
+                               detail.value_length);
+      ASSERT_THAT(message, ::testing::HasSubstr("schematable"));
+    }
+  }
+  error.release(&error);
+  ASSERT_TRUE(found) << "Did not find expected error detail";
 
   ASSERT_THAT(
       AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA,
@@ -759,6 +790,28 @@ TEST_F(PostgresStatementTest, BatchSizeHint) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+}
+
+// Test that an ADBC 1.0.0-sized error still works
+TEST_F(PostgresStatementTest, AdbcErrorBackwardsCompatibility) {
+  // XXX: sketchy cast
+  auto* error = static_cast<struct AdbcError*>(malloc(ADBC_ERROR_1_0_0_SIZE));
+  std::memset(error, 0, ADBC_ERROR_1_0_0_SIZE);
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, error), IsOkStatus(error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM thistabledoesnotexist", error),
+      IsOkStatus(error));
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, error));
+
+  ASSERT_EQ("42P01", std::string_view(error->sqlstate, 5));
+  ASSERT_EQ(0, AdbcErrorGetDetailCount(error));
+
+  error->release(error);
+  free(error);
 }
 
 struct TypeTestCase {

@@ -34,7 +34,7 @@ using adbcpq::PostgresStatement;
 // ---------------------------------------------------------------------
 // ADBC interface implementation - as private functions so that these
 // don't get replaced by the dynamic linker. If we implemented these
-// under the Adbc* names, then DriverInit, the linker may resolve
+// under the Adbc* names, then in DriverInit, the linker may resolve
 // functions to the address of the functions provided by the driver
 // manager instead of our functions.
 //
@@ -46,6 +46,17 @@ using adbcpq::PostgresStatement;
 //   consequences and complicates the build setup
 //
 // So in the end some manual effort here was chosen.
+
+// ---------------------------------------------------------------------
+// AdbcError
+
+int AdbcErrorGetDetailCount(struct AdbcError* error) {
+  return CommonErrorGetDetailCount(error);
+}
+
+struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
+  return CommonErrorGetDetail(error, index);
+}
 
 // ---------------------------------------------------------------------
 // AdbcDatabase
@@ -798,6 +809,9 @@ AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
   auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
   if (version >= ADBC_VERSION_1_1_0) {
     std::memset(driver, 0, ADBC_DRIVER_1_1_0_SIZE);
+
+    driver->ErrorGetDetailCount = CommonErrorGetDetailCount;
+    driver->ErrorGetDetail = CommonErrorGetDetail;
 
     driver->DatabaseGetOption = PostgresDatabaseGetOption;
     driver->DatabaseGetOptionBytes = PostgresDatabaseGetOptionBytes;

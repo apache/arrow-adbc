@@ -18,14 +18,46 @@
 #include "utils.h"
 
 #include <errno.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <assert.h>
+#include "adbc.h"
 
-static size_t kErrorBufferSize = 256;
+static size_t kErrorBufferSize = 1024;
+
+/// For ADBC 1.1.0, the structure held in private_data.
+struct AdbcErrorDetails {
+  char* message;
+
+  // The metadata keys (may be NULL).
+  char** keys;
+  // The metadata values (may be NULL).
+  uint8_t** values;
+  // The metadata value lengths (may be NULL).
+  size_t* lengths;
+  // The number of initialized metadata.
+  int count;
+  // The length of the keys/values/lengths arrays above.
+  int capacity;
+};
+
+static void ReleaseErrorWithDetails(struct AdbcError* error) {
+  struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+  free(details->message);
+
+  for (int i = 0; i < details->count; i++) {
+    free(details->keys[i]);
+    free(details->values[i]);
+  }
+
+  free(details->keys);
+  free(details->values);
+  free(details->lengths);
+  free(error->private_data);
+  *error = ADBC_ERROR_INIT;
+}
 
 static void ReleaseError(struct AdbcError* error) {
   free(error->message);
@@ -34,20 +66,126 @@ static void ReleaseError(struct AdbcError* error) {
 }
 
 void SetError(struct AdbcError* error, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  SetErrorVariadic(error, format, args);
+  va_end(args);
+}
+
+void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args) {
   if (!error) return;
   if (error->release) {
     // TODO: combine the errors if possible
     error->release(error);
   }
-  error->message = malloc(kErrorBufferSize);
-  if (!error->message) return;
 
-  error->release = &ReleaseError;
+  if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
+    error->private_data = malloc(sizeof(struct AdbcErrorDetails));
+    if (!error->private_data) return;
 
-  va_list args;
-  va_start(args, format);
+    struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+
+    details->message = malloc(kErrorBufferSize);
+    if (!details->message) {
+      free(details);
+      return;
+    }
+    details->keys = NULL;
+    details->values = NULL;
+    details->lengths = NULL;
+    details->count = 0;
+    details->capacity = 0;
+
+    error->message = details->message;
+    error->release = &ReleaseErrorWithDetails;
+  } else {
+    error->message = malloc(kErrorBufferSize);
+    if (!error->message) return;
+
+    error->release = &ReleaseError;
+  }
+
   vsnprintf(error->message, kErrorBufferSize, format, args);
-  va_end(args);
+}
+
+void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* detail,
+                       size_t detail_length) {
+  if (error->release != ReleaseErrorWithDetails) return;
+
+  struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+  if (details->count >= details->capacity) {
+    int new_capacity = (details->capacity == 0) ? 4 : (2 * details->capacity);
+    char** new_keys = calloc(new_capacity, sizeof(char*));
+    if (!new_keys) {
+      return;
+    }
+
+    uint8_t** new_values = calloc(new_capacity, sizeof(uint8_t*));
+    if (!new_values) {
+      free(new_keys);
+      return;
+    }
+
+    size_t* new_lengths = calloc(new_capacity, sizeof(size_t*));
+    if (!new_lengths) {
+      free(new_keys);
+      free(new_values);
+      return;
+    }
+
+    memcpy(new_keys, details->keys, sizeof(char*) * details->count);
+    free(details->keys);
+    details->keys = new_keys;
+
+    memcpy(new_values, details->values, sizeof(uint8_t*) * details->count);
+    free(details->values);
+    details->values = new_values;
+
+    memcpy(new_lengths, details->lengths, sizeof(size_t) * details->count);
+    free(details->lengths);
+    details->lengths = new_lengths;
+
+    details->capacity = new_capacity;
+  }
+
+  char* key_data = strdup(key);
+  if (!key_data) return;
+  uint8_t* value_data = malloc(detail_length);
+  if (!value_data) {
+    free(key_data);
+    return;
+  }
+  memcpy(value_data, detail, detail_length);
+
+  int index = details->count;
+  details->keys[index] = key_data;
+  details->values[index] = value_data;
+  details->lengths[index] = detail_length;
+
+  details->count++;
+}
+
+int CommonErrorGetDetailCount(struct AdbcError* error) {
+  if (error->release != ReleaseErrorWithDetails) {
+    return 0;
+  }
+  struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+  return details->count;
+}
+
+struct AdbcErrorDetail CommonErrorGetDetail(struct AdbcError* error, int index) {
+  if (error->release != ReleaseErrorWithDetails) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+  struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+  if (index < 0 || index >= details->count) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+  return (struct AdbcErrorDetail){
+      .key = details->keys[index],
+      .value = details->values[index],
+      .value_length = details->lengths[index],
+  };
 }
 
 struct SingleBatchArrayStream {

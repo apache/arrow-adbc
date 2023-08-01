@@ -63,7 +63,7 @@ with conn.cursor() as cur:
 with conn.cursor() as cur:
     try:
         cur.adbc_ingest("example", data, mode="create")
-    except conn.OperationalError:
+    except conn.ProgrammingError:
         pass
     else:
         raise RuntimeError("Should have failed!")
