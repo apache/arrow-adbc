@@ -1010,13 +1010,6 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
 
   struct ArrowError arrow_error = {0};
   struct ArrowSchemaView view = {0};
-
-  int status = ArrowSchemaViewInit(&view, &stmt->binder.schema, &arrow_error);
-  if (status != 0) {
-    code = ADBC_STATUS_INTERNAL;
-    goto cleanup;
-  }
-
   for (int i = 0; i < stmt->binder.schema.n_children; i++) {
     if (i > 0) {
       sqlite3_str_appendf(create_query, "%s", ", ");
@@ -1030,6 +1023,15 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     sqlite3_str_appendf(create_query, "%Q", stmt->binder.schema.children[i]->name);
     if (sqlite3_str_errcode(create_query)) {
       SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
+
+    int status =
+        ArrowSchemaViewInit(&view, stmt->binder.schema.children[i], &arrow_error);
+    if (status != 0) {
+      SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
+               strerror(status), status, arrow_error.message);
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
