@@ -220,6 +220,10 @@ struct BindStream {
           type_id = PostgresTypeId::kBytea;
           param_lengths[i] = 0;
           break;
+        case ArrowType::NANOARROW_TYPE_DATE32:
+          type_id = PostgresTypeId::kDate;
+          param_lengths[i] = 4;
+          break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
@@ -388,6 +392,22 @@ struct BindStream {
               // TODO: overflow check?
               param_lengths[col] = static_cast<int>(view.size_bytes);
               param_values[col] = const_cast<char*>(view.data.as_char);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_DATE32: {
+              // 2000-01-01
+              constexpr int32_t kPostgresDateEpoch = 10957;
+              const int32_t raw_value =
+                  array_view->children[col]->buffer_views[1].data.as_int32[row];
+              if (raw_value < INT32_MIN + kPostgresDateEpoch) {
+                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
+                         "('", bind_schema->children[col]->name, "') Row #", row + 1,
+                         "has value which exceeds postgres date limits");
+                return ADBC_STATUS_INVALID_ARGUMENT;
+              }
+
+              const uint32_t value = ToNetworkInt32(raw_value - kPostgresDateEpoch);
+              std::memcpy(param_values[col], &value, sizeof(int32_t));
               break;
             }
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
@@ -799,6 +819,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_BINARY:
         create += " BYTEA";
+        break;
+      case ArrowType::NANOARROW_TYPE_DATE32:
+        create += " DATE";
         break;
       case ArrowType::NANOARROW_TYPE_TIMESTAMP:
         if (strcmp("", source_schema_fields[i].timezone)) {
