@@ -411,28 +411,25 @@ struct BindStream {
               break;
             }
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
-              int64_t raw_value =
-                  array_view->children[col]->buffer_views[1].data.as_int64[row];
+              int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
               // 2000-01-01 00:00:00.000000 in microseconds
               constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
               psnip_safe_bool overflow_safe = true;
 
               auto unit = bind_schema_fields[col].time_unit;
-              int64_t scaled_value;
 
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-                  overflow_safe = psnip_safe_int64_mul(&scaled_value, raw_value, 1000000);
+                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000000);
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
-                  overflow_safe = psnip_safe_int64_mul(&scaled_value, raw_value, 1000);
+                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000);
                   break;
                 case NANOARROW_TIME_UNIT_MICRO:
-                  scaled_value = raw_value;
                   break;
                 case NANOARROW_TIME_UNIT_NANO:
-                  scaled_value = raw_value / 1000;
+                  val /= 1000;
                   break;
               }
 
@@ -444,8 +441,7 @@ struct BindStream {
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
-              const uint64_t value =
-                  ToNetworkInt64(scaled_value - kPostgresTimestampEpoch);
+              const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
               std::memcpy(param_values[col], &value, sizeof(int64_t));
               break;
             }
