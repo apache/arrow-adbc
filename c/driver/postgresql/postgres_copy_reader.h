@@ -30,6 +30,7 @@
 
 #include "postgres_type.h"
 #include "postgres_util.h"
+#include "vendor/portable-snippets/safe-math.h"
 
 // R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
 #if defined(_WIN32) && !defined(MSVC) && !defined(ENODATA)
@@ -231,14 +232,16 @@ class PostgresCopyIntervalFieldReader : public PostgresCopyFieldReader {
 
     // postgres stores time as usec, arrow stores as ns
     const int64_t time_usec = ReadUnsafe<int64_t>(data);
+    int64_t time;
 
-    if ((time_usec > INT64_MAX / 1000) || (time_usec < INT64_MIN / 1000)) {
-      ArrowErrorSet(error, "[libpq] Interval with time value %" PRId64
-                           " usec would overflow when converting to nanoseconds");
+    if (!psnip_safe_int64_mul(&time, time_usec, 1000)) {
+      ArrowErrorSet(error,
+                    "[libpq] Interval with time value %" PRId64
+                    " usec would overflow when converting to nanoseconds",
+                    time_usec);
       return EINVAL;
     }
 
-    const int64_t time = time_usec * 1000;
     const int32_t days = ReadUnsafe<int32_t>(data);
     const int32_t months = ReadUnsafe<int32_t>(data);
 

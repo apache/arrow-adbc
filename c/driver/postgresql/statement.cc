@@ -35,6 +35,7 @@
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
+#include "vendor/portable-snippets/safe-math.h"
 
 namespace adbcpq {
 
@@ -414,36 +415,30 @@ struct BindStream {
 
               // 2000-01-01 00:00:00.000000 in microseconds
               constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
-              constexpr int64_t kSecOverflowLimit = 9223372036854;
-              constexpr int64_t kmSecOverflowLimit = 9223372036854775;
+              psnip_safe_bool overflow_safe = true;
 
               auto unit = bind_schema_fields[col].time_unit;
+
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-                  if (abs(val) > kSecOverflowLimit) {
-                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
-                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
-                             row + 1,
-                             "has value which exceeds postgres timestamp limits");
-                    return ADBC_STATUS_INVALID_ARGUMENT;
-                  }
-                  val *= 1000000;
+                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000000);
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
-                  if (abs(val) > kmSecOverflowLimit) {
-                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
-                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
-                             row + 1,
-                             "has value which exceeds postgres timestamp limits");
-                    return ADBC_STATUS_INVALID_ARGUMENT;
-                  }
-                  val *= 1000;
+                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000);
                   break;
                 case NANOARROW_TIME_UNIT_MICRO:
                   break;
                 case NANOARROW_TIME_UNIT_NANO:
                   val /= 1000;
                   break;
+              }
+
+              if (!overflow_safe) {
+                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
+                         " (' ", bind_schema->children[col]->name, " ') Row # ", row + 1,
+                         " has value which exceeds postgres timestamp limits");
+
+                return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
               const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
