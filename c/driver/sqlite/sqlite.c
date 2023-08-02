@@ -1030,6 +1030,8 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     int status =
         ArrowSchemaViewInit(&view, stmt->binder.schema.children[i], &arrow_error);
     if (status != 0) {
+      SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
+               strerror(status), status, arrow_error.message);
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
@@ -1050,7 +1052,11 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
         sqlite3_str_appendf(create_query, " REAL");
         break;
       case NANOARROW_TYPE_STRING:
+      case NANOARROW_TYPE_LARGE_STRING:
         sqlite3_str_appendf(create_query, " TEXT");
+        break;
+      case NANOARROW_TYPE_DATE32:
+        sqlite3_str_appendf(create_query, " INTEGER");
         break;
       case NANOARROW_TYPE_BINARY:
         sqlite3_str_appendf(create_query, " BLOB");
@@ -1059,6 +1065,8 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
         sqlite3_str_appendf(create_query, " TEXT");
         break;
       default:
+        SetError(error, "[SQLite] Field #%d ('%s') has unsupported type for ingestion",
+                 i + 1, stmt->binder.schema.children[i]->name);
         code = ADBC_STATUS_NOT_IMPLEMENTED;
         goto cleanup;
     }
