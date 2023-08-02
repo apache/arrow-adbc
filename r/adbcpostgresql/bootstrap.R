@@ -33,7 +33,8 @@ files_to_vendor <- c(
   "../../c/driver/common/utils.c",
   "../../c/vendor/nanoarrow/nanoarrow.h",
   "../../c/vendor/nanoarrow/nanoarrow.hpp",
-  "../../c/vendor/nanoarrow/nanoarrow.c"
+  "../../c/vendor/nanoarrow/nanoarrow.c",
+  "../../c/vendor/portable-snippets/safe-math.h"
 )
 
 if (all(file.exists(files_to_vendor))) {
