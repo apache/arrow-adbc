@@ -350,8 +350,9 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 var loc = time.Now().Location()
 
-func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
+func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
 	ret.Name, ret.Nullable = name, isnullable
+
 	switch dataType {
 	case "NUMBER":
 		if !numScale.Valid || numScale.Int16 == 0 {
@@ -406,7 +407,96 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 	}
 	md["ORDINAL_POSITION"] = strconv.Itoa(ordinalPos)
 
+	md["XDBC_DATA_TYPE"] = strconv.Itoa(int(ret.Type.ID()))
+	md["XDBC_TYPE_NAME"] = dataType
+
+	md["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(toXdbcDataType(ret.Type)))
+	md["XDBC_NULLABLE"] = strconv.FormatBool(isnullable)
+
+	if isnullable {
+		md["XDBC_IS_NULLABLE"] = "YES"
+	} else {
+		md["XDBC_IS_NULLABLE"] = "NO"
+	}
+
+	if numPrec.Valid {
+		md["XDBC_PRECISION"] = strconv.Itoa(int(numPrec.Int16))
+	}
+
+	if numScale.Valid {
+		md["XDBC_SCALE"] = strconv.Itoa(int(numScale.Int16))
+	}
+
+	if numPrec.Valid {
+		md["XDBC_PRECISION"] = strconv.Itoa(int(numPrec.Int16))
+	}
+
+	if numPrecRadix.Valid {
+		md["XDBC_NUM_PREC_RADIX"] = strconv.Itoa(int(numPrecRadix.Int16))
+	}
+
+	if charMaxLength.Valid {
+		md["CHARACTER_MAXIMUM_LENGTH"] = strconv.Itoa(int(charMaxLength.Int16))
+	}
+
+	if charOctetLength.Valid {
+		md["XDBC_CHAR_OCTET_LENGTH"] = strconv.Itoa(int(charOctetLength.Int16))
+	}
+
+	if datetimePrec.Valid {
+		md["XDBC_DATETIME_SUB"] = strconv.Itoa(int(datetimePrec.Int16))
+	}
+
 	ret.Metadata = arrow.MetadataFrom(md)
+
+	return
+}
+
+func toXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
+
+	xdbcType = XdbcDataType_XDBC_UNKNOWN_TYPE
+	switch dt.ID() {
+	case arrow.EXTENSION:
+		return toXdbcDataType(dt.(arrow.ExtensionType).StorageType())
+	case arrow.DICTIONARY:
+		return toXdbcDataType(dt.(*arrow.DictionaryType).ValueType)
+	case arrow.RUN_END_ENCODED:
+		return toXdbcDataType(dt.(*arrow.RunEndEncodedType).Encoded())
+	case arrow.INT8, arrow.UINT8:
+		return XdbcDataType_XDBC_TINYINT
+	case arrow.INT16, arrow.UINT16:
+		return XdbcDataType_XDBC_SMALLINT
+	case arrow.INT32, arrow.UINT32:
+		return XdbcDataType_XDBC_SMALLINT
+	case arrow.INT64, arrow.UINT64:
+		return XdbcDataType_XDBC_BIGINT
+	case arrow.FLOAT32, arrow.FLOAT16, arrow.FLOAT64:
+		return XdbcDataType_XDBC_FLOAT
+	case arrow.DECIMAL, arrow.DECIMAL256:
+		return XdbcDataType_XDBC_DECIMAL
+	case arrow.STRING, arrow.LARGE_STRING:
+		return XdbcDataType_XDBC_VARCHAR
+	case arrow.BINARY, arrow.LARGE_BINARY:
+		return XdbcDataType_XDBC_BINARY
+	case arrow.FIXED_SIZE_BINARY:
+		return XdbcDataType_XDBC_BINARY
+	case arrow.BOOL:
+		return XdbcDataType_XDBC_BIT
+	case arrow.TIME32, arrow.TIME64:
+		return XdbcDataType_XDBC_TIME
+	case arrow.DATE32, arrow.DATE64:
+		return XdbcDataType_XDBC_DATE
+	case arrow.TIMESTAMP:
+		return XdbcDataType_XDBC_TIMESTAMP
+	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
+		return XdbcDataType_XDBC_VARBINARY
+	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
+		return XdbcDataType_XDBC_VARBINARY
+	case arrow.STRUCT, arrow.MAP:
+		return XdbcDataType_XDBC_VARBINARY
+	default:
+		return XdbcDataType_XDBC_UNKNOWN_TYPE
+	}
 	return
 }
 
@@ -472,7 +562,8 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 				table_catalog, table_schema, table_name, column_name,
 				ordinal_position, is_nullable::boolean, data_type, numeric_precision,
 				numeric_precision_radix, numeric_scale, is_identity::boolean,
-				identity_generation, identity_increment, comment
+				identity_generation, identity_increment, 
+				character_maximum_length, character_octet_length, datetime_precision, comment
 		FROM ' || rec.database_name || '.INFORMATION_SCHEMA.COLUMNS';
 
 		  counter := counter + 1;
@@ -540,11 +631,11 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		defer rows.Close()
 
 		var (
-			colName, dataType                           string
-			identGen, identIncrement, comment           sql.NullString
-			ordinalPos                                  int
-			numericPrec, numericPrecRadix, numericScale sql.NullInt16
-			isNullable, isIdent                         bool
+			colName, dataType                                                                         string
+			identGen, identIncrement, comment                                                         sql.NullString
+			ordinalPos                                                                                int
+			numericPrec, numericPrecRadix, numericScale, charMaxLength, charOctetLength, datetimePrec sql.NullInt16
+			isNullable, isIdent                                                                       bool
 
 			prevKey      internal.CatalogAndSchema
 			curTableInfo *internal.TableInfo
@@ -556,7 +647,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			err = rows.Scan(&tblCat, &tblSchema, &tblName, &colName,
 				&ordinalPos, &isNullable, &dataType, &numericPrec,
 				&numericPrecRadix, &numericScale, &isIdent, &identGen,
-				&identIncrement, &comment)
+				&identIncrement, &charMaxLength, &charOctetLength, &datetimePrec, &comment)
 			if err != nil {
 				err = errToAdbcErr(adbc.StatusIO, err)
 				return
@@ -579,7 +670,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			}
 
 			prevKey = key
-			fieldList = append(fieldList, toField(colName, isNullable, dataType, numericPrec, numericPrecRadix, numericScale, isIdent, identGen, identIncrement, comment, ordinalPos))
+			fieldList = append(fieldList, toField(colName, isNullable, dataType, numericPrec, numericPrecRadix, numericScale, isIdent, identGen, identIncrement, charMaxLength, charOctetLength, datetimePrec, comment, ordinalPos))
 		}
 
 		if len(fieldList) > 0 && curTableInfo != nil {
@@ -847,3 +938,35 @@ func (c *cnxn) SetOption(key, value string) error {
 		}
 	}
 }
+
+// *
+// The JDBC/ODBC-defined type of any object.
+// All the values here are the sames as in the JDBC and ODBC specs.
+type XdbcDataType int32
+
+const (
+	XdbcDataType_XDBC_UNKNOWN_TYPE  XdbcDataType = 0
+	XdbcDataType_XDBC_CHAR          XdbcDataType = 1
+	XdbcDataType_XDBC_NUMERIC       XdbcDataType = 2
+	XdbcDataType_XDBC_DECIMAL       XdbcDataType = 3
+	XdbcDataType_XDBC_INTEGER       XdbcDataType = 4
+	XdbcDataType_XDBC_SMALLINT      XdbcDataType = 5
+	XdbcDataType_XDBC_FLOAT         XdbcDataType = 6
+	XdbcDataType_XDBC_REAL          XdbcDataType = 7
+	XdbcDataType_XDBC_DOUBLE        XdbcDataType = 8
+	XdbcDataType_XDBC_DATETIME      XdbcDataType = 9
+	XdbcDataType_XDBC_INTERVAL      XdbcDataType = 10
+	XdbcDataType_XDBC_VARCHAR       XdbcDataType = 12
+	XdbcDataType_XDBC_DATE          XdbcDataType = 91
+	XdbcDataType_XDBC_TIME          XdbcDataType = 92
+	XdbcDataType_XDBC_TIMESTAMP     XdbcDataType = 93
+	XdbcDataType_XDBC_LONGVARCHAR   XdbcDataType = -1
+	XdbcDataType_XDBC_BINARY        XdbcDataType = -2
+	XdbcDataType_XDBC_VARBINARY     XdbcDataType = -3
+	XdbcDataType_XDBC_LONGVARBINARY XdbcDataType = -4
+	XdbcDataType_XDBC_BIGINT        XdbcDataType = -5
+	XdbcDataType_XDBC_TINYINT       XdbcDataType = -6
+	XdbcDataType_XDBC_BIT           XdbcDataType = -7
+	XdbcDataType_XDBC_WCHAR         XdbcDataType = -8
+	XdbcDataType_XDBC_WVARCHAR      XdbcDataType = -9
+)
