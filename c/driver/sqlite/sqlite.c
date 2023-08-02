@@ -1008,6 +1008,8 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     goto cleanup;
   }
 
+  struct ArrowError arrow_error = {0};
+  struct ArrowSchemaView view = {0};
   for (int i = 0; i < stmt->binder.schema.n_children; i++) {
     if (i > 0) {
       sqlite3_str_appendf(create_query, "%s", ", ");
@@ -1023,6 +1025,42 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
       SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
+    }
+
+    int status =
+        ArrowSchemaViewInit(&view, stmt->binder.schema.children[i], &arrow_error);
+    if (status != 0) {
+      SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
+               strerror(status), status, arrow_error.message);
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
+
+    switch (view.type) {
+      case NANOARROW_TYPE_UINT8:
+      case NANOARROW_TYPE_UINT16:
+      case NANOARROW_TYPE_UINT32:
+      case NANOARROW_TYPE_UINT64:
+      case NANOARROW_TYPE_INT8:
+      case NANOARROW_TYPE_INT16:
+      case NANOARROW_TYPE_INT32:
+      case NANOARROW_TYPE_INT64:
+        sqlite3_str_appendf(create_query, " INTEGER");
+        break;
+      case NANOARROW_TYPE_FLOAT:
+      case NANOARROW_TYPE_DOUBLE:
+        sqlite3_str_appendf(create_query, " REAL");
+        break;
+      case NANOARROW_TYPE_STRING:
+      case NANOARROW_TYPE_LARGE_STRING:
+      case NANOARROW_TYPE_DATE32:
+        sqlite3_str_appendf(create_query, " TEXT");
+        break;
+      case NANOARROW_TYPE_BINARY:
+        sqlite3_str_appendf(create_query, " BLOB");
+        break;
+      default:
+        break;
     }
 
     if (i > 0) {
