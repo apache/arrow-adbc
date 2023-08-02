@@ -190,10 +190,10 @@ class SqliteStatementTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
-  void TestSqlIngestUInt8() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestUInt16() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestUInt32() { GTEST_SKIP() << "Not implemented"; }
-  void TestSqlIngestUInt64() { GTEST_SKIP() << "Not implemented"; }
+  void TestSqlIngestUInt64() {
+    std::vector<std::optional<uint64_t>> values = {std::nullopt, 0, INT64_MAX};
+    return TestSqlIngestType(NANOARROW_TYPE_UINT64, values);
+  }
 
   void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
   void TestSqlIngestInterval() {

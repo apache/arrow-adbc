@@ -1020,6 +1020,14 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
       }
     }
 
+    // necessary?  For debugging a segfault, will remove comment and if statement
+    // as needed before merging.
+    if (stmt->binder.batch.children[i] == NULL) {
+      SetError(error, "stmt->binder.batch.children[%d] is NULL", i);
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
+
     sqlite3_str_appendf(create_query, "%Q", stmt->binder.schema.children[i]->name);
     if (sqlite3_str_errcode(create_query)) {
       SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
@@ -1037,6 +1045,20 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     }
 
     switch (view.type) {
+      case NANOARROW_TYPE_UINT8:
+      case NANOARROW_TYPE_UINT16:
+      case NANOARROW_TYPE_UINT32:
+      case NANOARROW_TYPE_UINT64: {
+        uint64_t value = ArrowArrayViewGetUIntUnsafe(stmt->binder.batch.children[i],
+                                                     stmt->binder.next_row);
+        if (value > INT64_MAX) {
+          SetError(error,
+                   "Column %d has unsigned integer value %" PRIu64
+                   "out of range of int64_t",
+                   i, value);
+          return ADBC_STATUS_INVALID_ARGUMENT;
+        }
+      }
       case NANOARROW_TYPE_INT8:
       case NANOARROW_TYPE_INT16:
       case NANOARROW_TYPE_INT32:
