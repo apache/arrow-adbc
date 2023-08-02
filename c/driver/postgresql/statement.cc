@@ -451,15 +451,13 @@ struct BindStream {
               break;
             }
             case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
-              const auto buf =
-                  array_view->children[col]->buffer_views[1].data.as_uint8 + row * 16;
-              const int32_t raw_months = *(int32_t*)buf;
-              const int32_t raw_days = *(int32_t*)(buf + 4);
-              const int64_t raw_ns = *(int64_t*)(buf + 8);
+              struct ArrowInterval interval;
+              ArrowIntervalInit(&interval, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+              ArrowArrayViewGetIntervalUnsafe(array_view->children[col], row, &interval);
 
-              const uint32_t months = ToNetworkInt32(raw_months);
-              const uint32_t days = ToNetworkInt32(raw_days);
-              const uint64_t ms = ToNetworkInt64(raw_ns / 1000);
+              const uint32_t months = ToNetworkInt32(interval.months);
+              const uint32_t days = ToNetworkInt32(interval.days);
+              const uint64_t ms = ToNetworkInt64(interval.ns / 1000);
 
               std::memcpy(param_values[col], &ms, sizeof(uint64_t));
               std::memcpy(param_values[col] + sizeof(uint64_t), &days, sizeof(uint32_t));
