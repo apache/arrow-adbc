@@ -94,6 +94,16 @@ cdef extern from "adbc.h" nogil:
         char[5] sqlstate
         CAdbcErrorRelease release
 
+    cdef struct CAdbcErrorDetail"AdbcErrorDetail":
+        char* key
+        uint8_t* value
+        size_t value_length
+
+    int AdbcErrorGetDetailCount(CAdbcError* error)
+    CAdbcErrorDetail AdbcErrorGetDetail(CAdbcError* error, int index)
+
+    cdef int ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
+
     cdef struct CAdbcDriver"AdbcDriver":
         pass
 
@@ -326,13 +336,16 @@ class Error(Exception):
         A vendor-specific status code if present.
     sqlstate : str, optional
         The SQLSTATE code if present.
+    details : list[tuple[str, bytes]], optional
+        Additional error details, if present.
     """
 
-    def __init__(self, message, *, status_code, vendor_code=None, sqlstate=None):
+    def __init__(self, message, *, status_code, vendor_code=None, sqlstate=None, details=None):
         super().__init__(message)
         self.status_code = AdbcStatusCode(status_code)
         self.vendor_code = vendor_code
         self.sqlstate = sqlstate
+        self.details = details or []
 
 
 class InterfaceError(Error):
@@ -366,12 +379,13 @@ class ProgrammingError(DatabaseError):
 class NotSupportedError(DatabaseError):
     """An operation or some functionality is not supported."""
 
-    def __init__(self, message, *, vendor_code=None, sqlstate=None):
+    def __init__(self, message, *, vendor_code=None, sqlstate=None, details=None):
         super().__init__(
             message,
             status_code=AdbcStatusCode.NOT_IMPLEMENTED,
             vendor_code=vendor_code,
             sqlstate=sqlstate,
+            details=details,
         )
 
 
@@ -398,6 +412,8 @@ INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
 
 
 cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
+    cdef CAdbcErrorDetail c_detail
+
     if status == ADBC_STATUS_OK:
         return
 
@@ -408,14 +424,26 @@ cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
     if error != NULL:
         if error.message != NULL:
             message += ": "
-            message += error.message.decode("utf-8")
-        if error.vendor_code:
+            message += error.message.decode("utf-8", "replace")
+        if error.vendor_code and error.vendor_code != ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA:
             vendor_code = error.vendor_code
             message += f". Vendor code: {vendor_code}"
         if error.sqlstate[0] != 0:
             sqlstate = bytes(error.sqlstate[i] for i in range(5))
-            sqlstate = sqlstate.decode("ascii")
+            sqlstate = sqlstate.decode("ascii", "replace")
             message += f". SQLSTATE: {sqlstate}"
+
+        num_details = AdbcErrorGetDetailCount(error)
+        details = []
+        for index in range(num_details):
+            c_detail = AdbcErrorGetDetail(error, index)
+            if c_detail.key == NULL or c_detail.value == NULL:
+                # Shouldn't happen...
+                break
+            details.append(
+                (c_detail.key,
+                 PyBytes_FromStringAndSize(<const char*> c_detail.value, c_detail.value_length)))
+
         if error.release:
             error.release(error)
 
@@ -441,13 +469,15 @@ cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
                     ADBC_STATUS_UNAUTHORIZED):
         klass = ProgrammingError
     elif status == ADBC_STATUS_NOT_IMPLEMENTED:
-        raise NotSupportedError(message, vendor_code=vendor_code, sqlstate=sqlstate)
-    raise klass(message, status_code=status, vendor_code=vendor_code, sqlstate=sqlstate)
+        raise NotSupportedError(message, vendor_code=vendor_code, sqlstate=sqlstate, details=details)
+    raise klass(message, status_code=status, vendor_code=vendor_code, sqlstate=sqlstate, details=details)
 
 
 cdef CAdbcError empty_error():
     cdef CAdbcError error
     memset(&error, 0, cython.sizeof(error))
+    # We always want the extended error info
+    error.vendor_code = ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
     return error
 
 
@@ -607,8 +637,8 @@ cdef class AdbcDatabase(_AdbcHandle):
             elif value is None:
                 raise ValueError(f"value for key '{key}' cannot be None")
             else:
-                key = key.encode("utf-8")
-                value = value.encode("utf-8")
+                key = _to_bytes(key, "key")
+                value = _to_bytes(value, "value")
                 c_key = key
                 c_value = value
                 status = AdbcDatabaseSetOption(
@@ -632,10 +662,29 @@ cdef class AdbcDatabase(_AdbcHandle):
                 status = AdbcDatabaseRelease(&self.database, &c_error)
             check_error(status, &c_error)
 
-    def get_option(self, key: str) -> str:
-        """Get the value of a string option."""
+    def get_option(
+        self,
+        key: str | bytes,
+        *,
+        encoding="utf-8",
+        errors="strict",
+    ) -> str:
+        """
+        Get the value of a string option.
+
+        Parameters
+        ----------
+        key : str or bytes
+            The option to get.
+        encoding : str
+            The encoding of the option value.  This should almost
+            always be UTF-8.
+        errors : str
+            What to do about errors when decoding the option value
+            (see bytes.decode).
+        """
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef uint8_t* c_value = NULL
         cdef size_t c_len = 0
@@ -663,12 +712,12 @@ cdef class AdbcDatabase(_AdbcHandle):
         # Remove trailing null terminator
         if c_len > 0:
             c_len -= 1
-        return buf[:c_len].decode("utf-8")
+        return buf[:c_len].decode(encoding, errors)
 
     def get_option_bytes(self, key: str) -> bytes:
         """Get the value of a binary option."""
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef uint8_t* c_value = NULL
         cdef size_t c_len = 0
@@ -698,7 +747,7 @@ cdef class AdbcDatabase(_AdbcHandle):
     def get_option_float(self, key: str) -> float:
         """Get the value of a floating-point option."""
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef double c_value = 0.0
         check_error(
@@ -710,7 +759,7 @@ cdef class AdbcDatabase(_AdbcHandle):
     def get_option_int(self, key: str) -> int:
         """Get the value of an integer option."""
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef int64_t c_value = 0
         check_error(
@@ -733,7 +782,7 @@ cdef class AdbcDatabase(_AdbcHandle):
         cdef char* c_key = NULL
         cdef char* c_value = NULL
         for key, value in kwargs.items():
-            key = key.encode("utf-8")
+            key = _to_bytes(key, "option key")
             c_key = key
 
             if value is None:
@@ -741,7 +790,7 @@ cdef class AdbcDatabase(_AdbcHandle):
                 status = AdbcDatabaseSetOption(
                     &self.database, c_key, c_value, &c_error)
             elif isinstance(value, str):
-                value = value.encode("utf-8")
+                value = _to_bytes(value, "option value")
                 c_value = value
                 status = AdbcDatabaseSetOption(
                     &self.database, c_key, c_value, &c_error)
@@ -909,10 +958,29 @@ cdef class AdbcConnection(_AdbcHandle):
 
         return stream
 
-    def get_option(self, key: str) -> str:
-        """Get the value of a string option."""
+    def get_option(
+        self,
+        key: str | bytes,
+        *,
+        encoding="utf-8",
+        errors="strict",
+    ) -> str:
+        """
+        Get the value of a string option.
+
+        Parameters
+        ----------
+        key : str or bytes
+            The option to get.
+        encoding : str
+            The encoding of the option value.  This should almost
+            always be UTF-8.
+        errors : str
+            What to do about errors when decoding the option value
+            (see bytes.decode).
+        """
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef uint8_t* c_value = NULL
         cdef size_t c_len = 0
@@ -940,12 +1008,12 @@ cdef class AdbcConnection(_AdbcHandle):
         # Remove trailing null terminator
         if c_len > 0:
             c_len -= 1
-        return buf[:c_len].decode("utf-8")
+        return buf[:c_len].decode(encoding, errors)
 
     def get_option_bytes(self, key: str) -> bytes:
         """Get the value of a binary option."""
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef uint8_t* c_value = NULL
         cdef size_t c_len = 0
@@ -975,7 +1043,7 @@ cdef class AdbcConnection(_AdbcHandle):
     def get_option_float(self, key: str) -> float:
         """Get the value of a floating-point option."""
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef double c_value = 0.0
         check_error(
@@ -987,7 +1055,7 @@ cdef class AdbcConnection(_AdbcHandle):
     def get_option_int(self, key: str) -> int:
         """Get the value of an integer option."""
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef int64_t c_value = 0
         check_error(
@@ -1086,7 +1154,8 @@ cdef class AdbcConnection(_AdbcHandle):
         check_error(status, &c_error)
 
     def set_options(self, **kwargs) -> None:
-        """Set arbitrary key-value options.
+        """
+        Set arbitrary key-value options.
 
         Note, not all drivers support setting options after creation.
 
@@ -1098,7 +1167,7 @@ cdef class AdbcConnection(_AdbcHandle):
         cdef char* c_key = NULL
         cdef char* c_value = NULL
         for key, value in kwargs.items():
-            key = key.encode("utf-8")
+            key = _to_bytes(key, "option key")
             c_key = key
 
             if value is None:
@@ -1106,7 +1175,7 @@ cdef class AdbcConnection(_AdbcHandle):
                 status = AdbcConnectionSetOption(
                     &self.connection, c_key, c_value, &c_error)
             elif isinstance(value, str):
-                value = value.encode("utf-8")
+                value = _to_bytes(value, "option value")
                 c_value = value
                 status = AdbcConnectionSetOption(
                     &self.connection, c_key, c_value, &c_error)
@@ -1357,10 +1426,29 @@ cdef class AdbcStatement(_AdbcHandle):
         check_error(status, &c_error)
         return rows_affected
 
-    def get_option(self, key: str) -> str:
-        """Get the value of a string option."""
+    def get_option(
+        self,
+        key: str | bytes,
+        *,
+        encoding="utf-8",
+        errors="strict",
+    ) -> str:
+        """
+        Get the value of a string option.
+
+        Parameters
+        ----------
+        key : str or bytes
+            The option to get.
+        encoding : str
+            The encoding of the option value.  This should almost
+            always be UTF-8.
+        errors : str
+            What to do about errors when decoding the option value
+            (see bytes.decode).
+        """
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef uint8_t* c_value = NULL
         cdef size_t c_len = 0
@@ -1388,12 +1476,12 @@ cdef class AdbcStatement(_AdbcHandle):
         # Remove trailing null terminator
         if c_len > 0:
             c_len -= 1
-        return buf[:c_len].decode("utf-8")
+        return buf[:c_len].decode(encoding, errors)
 
     def get_option_bytes(self, key: str) -> bytes:
         """Get the value of a binary option."""
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef uint8_t* c_value = NULL
         cdef size_t c_len = 0
@@ -1423,7 +1511,7 @@ cdef class AdbcStatement(_AdbcHandle):
     def get_option_float(self, key: str) -> float:
         """Get the value of a floating-point option."""
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef double c_value = 0.0
         check_error(
@@ -1435,7 +1523,7 @@ cdef class AdbcStatement(_AdbcHandle):
     def get_option_int(self, key: str) -> int:
         """Get the value of an integer option."""
         cdef CAdbcError c_error = empty_error()
-        key_bytes = key.encode("utf-8")
+        key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef int64_t c_value = 0
         check_error(
@@ -1487,6 +1575,8 @@ cdef class AdbcStatement(_AdbcHandle):
         """
         Set arbitrary key-value options.
 
+        Note, not all drivers support setting options after creation.
+
         See Also
         --------
         adbc_driver_manager.StatementOptions : Standard option names.
@@ -1495,7 +1585,7 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef char* c_key = NULL
         cdef char* c_value = NULL
         for key, value in kwargs.items():
-            key = key.encode("utf-8")
+            key = _to_bytes(key, "option key")
             c_key = key
 
             if value is None:
@@ -1503,7 +1593,7 @@ cdef class AdbcStatement(_AdbcHandle):
                 status = AdbcStatementSetOption(
                     &self.statement, c_key, c_value, &c_error)
             elif isinstance(value, str):
-                value = value.encode("utf-8")
+                value = _to_bytes(value, "option value")
                 c_value = value
                 status = AdbcStatementSetOption(
                     &self.statement, c_key, c_value, &c_error)

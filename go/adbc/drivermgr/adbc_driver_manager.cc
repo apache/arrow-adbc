@@ -130,6 +130,12 @@ static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError*
 
 // Default stubs
 
+int ErrorGetDetailCount(struct AdbcError* error) { return 0; }
+
+struct AdbcErrorDetail ErrorGetDetail(struct AdbcError* error, int index) {
+  return {nullptr, nullptr, 0};
+}
+
 AdbcStatusCode DatabaseGetOption(struct AdbcDatabase* database, const char* key,
                                  char* value, size_t* length, struct AdbcError* error) {
   return ADBC_STATUS_NOT_FOUND;
@@ -366,6 +372,27 @@ struct TempConnection {
 
 // Direct implementations of API methods
 
+int AdbcErrorGetDetailCount(struct AdbcError* error) {
+  if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA && error->private_data &&
+      error->private_driver) {
+    return error->private_driver->ErrorGetDetailCount(error);
+  }
+  return 0;
+}
+
+struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
+  if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA && error->private_data &&
+      error->private_driver) {
+    return error->private_driver->ErrorGetDetail(error, index);
+  }
+  return {nullptr, nullptr, 0};
+}
+
+#define INIT_ERROR(ERROR, SOURCE)                                    \
+  if ((ERROR)->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) { \
+    (ERROR)->private_driver = (SOURCE)->private_driver;              \
+  }
+
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
   // Allocate a temporary structure to store options pre-Init
   database->private_data = new TempDatabase();
@@ -377,6 +404,7 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
                                      char* value, size_t* length,
                                      struct AdbcError* error) {
   if (database->private_driver) {
+    INIT_ERROR(error, database);
     return database->private_driver->DatabaseGetOption(database, key, value, length,
                                                        error);
   }
@@ -406,6 +434,7 @@ AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const c
                                           uint8_t* value, size_t* length,
                                           struct AdbcError* error) {
   if (database->private_driver) {
+    INIT_ERROR(error, database);
     return database->private_driver->DatabaseGetOptionBytes(database, key, value, length,
                                                             error);
   }
@@ -427,6 +456,7 @@ AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const c
 AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
                                         int64_t* value, struct AdbcError* error) {
   if (database->private_driver) {
+    INIT_ERROR(error, database);
     return database->private_driver->DatabaseGetOptionInt(database, key, value, error);
   }
   const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
@@ -441,6 +471,7 @@ AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const cha
 AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
                                            double* value, struct AdbcError* error) {
   if (database->private_driver) {
+    INIT_ERROR(error, database);
     return database->private_driver->DatabaseGetOptionDouble(database, key, value, error);
   }
   const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
@@ -455,6 +486,7 @@ AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const 
 AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
                                      const char* value, struct AdbcError* error) {
   if (database->private_driver) {
+    INIT_ERROR(error, database);
     return database->private_driver->DatabaseSetOption(database, key, value, error);
   }
 
@@ -473,6 +505,7 @@ AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const c
                                           const uint8_t* value, size_t length,
                                           struct AdbcError* error) {
   if (database->private_driver) {
+    INIT_ERROR(error, database);
     return database->private_driver->DatabaseSetOptionBytes(database, key, value, length,
                                                             error);
   }
@@ -485,6 +518,7 @@ AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const c
 AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
                                         int64_t value, struct AdbcError* error) {
   if (database->private_driver) {
+    INIT_ERROR(error, database);
     return database->private_driver->DatabaseSetOptionInt(database, key, value, error);
   }
 
@@ -496,6 +530,7 @@ AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const cha
 AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
                                            double value, struct AdbcError* error) {
   if (database->private_driver) {
+    INIT_ERROR(error, database);
     return database->private_driver->DatabaseSetOptionDouble(database, key, value, error);
   }
 
@@ -566,6 +601,7 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   auto double_options = std::move(args->double_options);
   delete args;
 
+  INIT_ERROR(error, database);
   for (const auto& option : options) {
     status = database->private_driver->DatabaseSetOption(database, option.first.c_str(),
                                                          option.second.c_str(), error);
@@ -616,6 +652,7 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
     }
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, database);
   auto status = database->private_driver->DatabaseRelease(database, error);
   if (database->private_driver->release) {
     database->private_driver->release(database->private_driver, error);
@@ -631,6 +668,7 @@ AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionCancel(connection, error);
 }
 
@@ -639,6 +677,7 @@ AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionCommit(connection, error);
 }
 
@@ -649,6 +688,7 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionGetInfo(connection, info_codes,
                                                        info_codes_length, out, error);
 }
@@ -662,6 +702,7 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionGetObjects(
       connection, depth, catalog, db_schema, table_name, table_types, column_name, stream,
       error);
@@ -687,6 +728,7 @@ AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const 
     *length = it->second.size() + 1;
     return ADBC_STATUS_OK;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionGetOption(connection, key, value, length,
                                                          error);
 }
@@ -711,6 +753,7 @@ AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
     *length = it->second.size() + 1;
     return ADBC_STATUS_OK;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionGetOptionBytes(connection, key, value,
                                                               length, error);
 }
@@ -732,6 +775,7 @@ AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
     *value = it->second;
     return ADBC_STATUS_OK;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionGetOptionInt(connection, key, value,
                                                             error);
 }
@@ -753,6 +797,7 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
     *value = it->second;
     return ADBC_STATUS_OK;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionGetOptionDouble(connection, key, value,
                                                                error);
 }
@@ -765,6 +810,7 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionGetTableSchema(
       connection, catalog, db_schema, table_name, schema, error);
 }
@@ -775,6 +821,7 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionGetTableTypes(connection, stream, error);
 }
 
@@ -824,6 +871,7 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
         connection, option.first.c_str(), option.second, error);
     if (status != ADBC_STATUS_OK) return status;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionInit(connection, database, error);
 }
 
@@ -845,6 +893,7 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionReadPartition(
       connection, serialized_partition, serialized_length, out, error);
 }
@@ -860,6 +909,7 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
     }
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   auto status = connection->private_driver->ConnectionRelease(connection, error);
   connection->private_driver = nullptr;
   return status;
@@ -870,6 +920,7 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionRollback(connection, error);
 }
 
@@ -885,6 +936,7 @@ AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const 
     args->options[key] = value;
     return ADBC_STATUS_OK;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionSetOption(connection, key, value, error);
 }
 
@@ -901,6 +953,7 @@ AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
     args->bytes_options[key] = std::string(reinterpret_cast<const char*>(value), length);
     return ADBC_STATUS_OK;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionSetOptionBytes(connection, key, value,
                                                               length, error);
 }
@@ -918,6 +971,7 @@ AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
     args->int_options[key] = value;
     return ADBC_STATUS_OK;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionSetOptionInt(connection, key, value,
                                                             error);
 }
@@ -935,6 +989,7 @@ AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
     args->double_options[key] = value;
     return ADBC_STATUS_OK;
   }
+  INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionSetOptionDouble(connection, key, value,
                                                                error);
 }
@@ -945,6 +1000,7 @@ AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementBind(statement, values, schema, error);
 }
 
@@ -954,6 +1010,7 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementBindStream(statement, stream, error);
 }
 
@@ -962,6 +1019,7 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementCancel(statement, error);
 }
 
@@ -974,6 +1032,7 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementExecutePartitions(
       statement, schema, partitions, rows_affected, error);
 }
@@ -985,6 +1044,7 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementExecuteQuery(statement, out, rows_affected,
                                                           error);
 }
@@ -995,6 +1055,7 @@ AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementExecuteSchema(statement, schema, error);
 }
 
@@ -1004,6 +1065,7 @@ AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const cha
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementGetOption(statement, key, value, length,
                                                        error);
 }
@@ -1014,6 +1076,7 @@ AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementGetOptionBytes(statement, key, value, length,
                                                             error);
 }
@@ -1023,6 +1086,7 @@ AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const 
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementGetOptionInt(statement, key, value, error);
 }
 
@@ -1032,6 +1096,7 @@ AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementGetOptionDouble(statement, key, value,
                                                              error);
 }
@@ -1042,6 +1107,7 @@ AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementGetParameterSchema(statement, schema, error);
 }
 
@@ -1051,6 +1117,7 @@ AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
   if (!connection->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, connection);
   auto status = connection->private_driver->StatementNew(connection, statement, error);
   statement->private_driver = connection->private_driver;
   return status;
@@ -1061,6 +1128,7 @@ AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementPrepare(statement, error);
 }
 
@@ -1069,6 +1137,7 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   auto status = statement->private_driver->StatementRelease(statement, error);
   statement->private_driver = nullptr;
   return status;
@@ -1079,6 +1148,7 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementSetOption(statement, key, value, error);
 }
 
@@ -1088,6 +1158,7 @@ AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementSetOptionBytes(statement, key, value, length,
                                                             error);
 }
@@ -1097,6 +1168,7 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const 
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementSetOptionInt(statement, key, value, error);
 }
 
@@ -1106,6 +1178,7 @@ AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementSetOptionDouble(statement, key, value,
                                                              error);
 }
@@ -1115,6 +1188,7 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementSetSqlQuery(statement, query, error);
 }
 
@@ -1124,6 +1198,7 @@ AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
   if (!statement->private_driver) {
     return ADBC_STATUS_INVALID_STATE;
   }
+  INIT_ERROR(error, statement);
   return statement->private_driver->StatementSetSubstraitPlan(statement, plan, length,
                                                               error);
 }
@@ -1373,6 +1448,9 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
   }
   if (version >= ADBC_VERSION_1_1_0) {
     auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
+    FILL_DEFAULT(driver, ErrorGetDetailCount);
+    FILL_DEFAULT(driver, ErrorGetDetail);
+
     FILL_DEFAULT(driver, DatabaseGetOption);
     FILL_DEFAULT(driver, DatabaseGetOptionBytes);
     FILL_DEFAULT(driver, DatabaseGetOptionDouble);

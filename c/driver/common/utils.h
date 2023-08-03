@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -35,9 +36,19 @@ extern "C" {
 #define ADBC_CHECK_PRINTF_ATTRIBUTE
 #endif
 
-/// Set error details using a format string.
+/// Set error message using a format string.
 void SetError(struct AdbcError* error, const char* format,
               ...) ADBC_CHECK_PRINTF_ATTRIBUTE;
+
+/// Set error message using a format string.
+void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args);
+
+/// Add an error detail.
+void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* detail,
+                       size_t detail_length);
+
+int CommonErrorGetDetailCount(struct AdbcError* error);
+struct AdbcErrorDetail CommonErrorGetDetail(struct AdbcError* error, int index);
 
 struct StringBuilder {
   char* buffer;
