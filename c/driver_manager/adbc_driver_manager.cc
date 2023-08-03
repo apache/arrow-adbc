@@ -221,6 +221,17 @@ AdbcStatusCode ConnectionGetOptionDouble(struct AdbcConnection* connection,
   return ADBC_STATUS_NOT_FOUND;
 }
 
+AdbcStatusCode ConnectionGetStatistics(struct AdbcConnection*, const char*, const char*,
+                                       const char*, char, struct ArrowArrayStream*,
+                                       struct AdbcError*) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionGetStatisticNames(struct AdbcConnection*,
+                                           struct ArrowArrayStream*, struct AdbcError*) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode ConnectionGetTableSchema(struct AdbcConnection*, const char*, const char*,
                                         const char*, struct ArrowSchema*,
                                         struct AdbcError* error) {
@@ -800,6 +811,29 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
   INIT_ERROR(error, connection);
   return connection->private_driver->ConnectionGetOptionDouble(connection, key, value,
                                                                error);
+}
+
+AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
+                                           const char* catalog, const char* db_schema,
+                                           const char* table_name, char approximate,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  INIT_ERROR(error, connection);
+  return connection->private_driver->ConnectionGetStatistics(
+      connection, catalog, db_schema, table_name, approximate == 1, out, error);
+}
+
+AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
+                                               struct ArrowArrayStream* out,
+                                               struct AdbcError* error) {
+  if (!connection->private_driver) {
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  INIT_ERROR(error, connection);
+  return connection->private_driver->ConnectionGetStatisticNames(connection, out, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -1464,6 +1498,8 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     FILL_DEFAULT(driver, ConnectionGetOptionBytes);
     FILL_DEFAULT(driver, ConnectionGetOptionDouble);
     FILL_DEFAULT(driver, ConnectionGetOptionInt);
+    FILL_DEFAULT(driver, ConnectionGetStatistics);
+    FILL_DEFAULT(driver, ConnectionGetStatisticNames);
     FILL_DEFAULT(driver, ConnectionSetOptionBytes);
     FILL_DEFAULT(driver, ConnectionSetOptionDouble);
     FILL_DEFAULT(driver, ConnectionSetOptionInt);

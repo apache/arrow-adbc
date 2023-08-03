@@ -291,6 +291,27 @@ AdbcStatusCode PostgresConnectionGetOptionInt(struct AdbcConnection* connection,
   return (*ptr)->GetOptionInt(key, value, error);
 }
 
+AdbcStatusCode PostgresConnectionGetStatistics(struct AdbcConnection* connection,
+                                               const char* catalog, const char* db_schema,
+                                               const char* table_name, char approximate,
+                                               struct ArrowArrayStream* out,
+                                               struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetStatistics(catalog, db_schema, table_name, approximate == 1, out,
+                               error);
+}
+
+AdbcStatusCode PostgresConnectionGetStatisticNames(struct AdbcConnection* connection,
+                                                   struct ArrowArrayStream* out,
+                                                   struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->GetStatisticNames(out, error);
+}
+
 AdbcStatusCode PostgresConnectionGetTableSchema(
     struct AdbcConnection* connection, const char* catalog, const char* db_schema,
     const char* table_name, struct ArrowSchema* schema, struct AdbcError* error) {
@@ -441,6 +462,21 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
                                              const char* key, double* value,
                                              struct AdbcError* error) {
   return PostgresConnectionGetOptionDouble(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
+                                           const char* catalog, const char* db_schema,
+                                           const char* table_name, char approximate,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error) {
+  return PostgresConnectionGetStatistics(connection, catalog, db_schema, table_name,
+                                         approximate, out, error);
+}
+
+AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
+                                               struct ArrowArrayStream* out,
+                                               struct AdbcError* error) {
+  return PostgresConnectionGetStatisticNames(connection, out, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -826,6 +862,8 @@ AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
     driver->ConnectionGetOptionBytes = PostgresConnectionGetOptionBytes;
     driver->ConnectionGetOptionDouble = PostgresConnectionGetOptionDouble;
     driver->ConnectionGetOptionInt = PostgresConnectionGetOptionInt;
+    driver->ConnectionGetStatistics = PostgresConnectionGetStatistics;
+    driver->ConnectionGetStatisticNames = PostgresConnectionGetStatisticNames;
     driver->ConnectionSetOptionBytes = PostgresConnectionSetOptionBytes;
     driver->ConnectionSetOptionDouble = PostgresConnectionSetOptionDouble;
     driver->ConnectionSetOptionInt = PostgresConnectionSetOptionInt;

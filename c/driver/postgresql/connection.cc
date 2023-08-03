@@ -19,6 +19,7 @@
 
 #include <cassert>
 #include <cinttypes>
+#include <cmath>
 #include <cstring>
 #include <memory>
 #include <sstream>
@@ -47,10 +48,21 @@ static const std::unordered_map<std::string, std::string> kPgTableTypes = {
     {"table", "r"},       {"view", "v"},          {"materialized_view", "m"},
     {"toast_table", "t"}, {"foreign_table", "f"}, {"partitioned_table", "p"}};
 
+/// \brief A single column in a single row of a result set.
 struct PqRecord {
   const char* data;
   const int len;
   const bool is_null;
+
+  // XXX: can't use optional due to R
+  std::pair<bool, double> ParseDouble() const {
+    char* end;
+    double result = std::strtod(data, &end);
+    if (errno != 0 || end == data) {
+      return std::make_pair(false, 0.0);
+    }
+    return std::make_pair(true, result);
+  }
 };
 
 // Used by PqResultHelper to provide index-based access to the records within each
@@ -903,6 +915,358 @@ AdbcStatusCode PostgresConnection::GetOptionInt(const char* option, int64_t* val
 AdbcStatusCode PostgresConnection::GetOptionDouble(const char* option, double* value,
                                                    struct AdbcError* error) {
   return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_schema,
+                                                   const char* table_name,
+                                                   struct ArrowSchema* schema,
+                                                   struct ArrowArray* array,
+                                                   struct AdbcError* error) {
+  // Set up schema
+  auto uschema = nanoarrow::UniqueSchema();
+  {
+    ArrowSchemaInit(uschema.get());
+    CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema.get(), /*num_columns=*/2), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema->children[0], NANOARROW_TYPE_STRING),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema->children[0], "catalog_name"), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema->children[1], NANOARROW_TYPE_LIST),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema->children[1], "catalog_db_schemas"),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema->children[1]->children[0], 2),
+             error);
+    uschema->children[1]->flags &= ~ARROW_FLAG_NULLABLE;
+
+    struct ArrowSchema* db_schema_schema = uschema->children[1]->children[0];
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(db_schema_schema->children[0], NANOARROW_TYPE_STRING),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetName(db_schema_schema->children[0], "db_schema_name"), error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(db_schema_schema->children[1], NANOARROW_TYPE_LIST),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetName(db_schema_schema->children[1], "db_schema_statistics"),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetTypeStruct(db_schema_schema->children[1]->children[0], 5),
+             error);
+    db_schema_schema->children[1]->flags &= ~ARROW_FLAG_NULLABLE;
+
+    struct ArrowSchema* statistics_schema = db_schema_schema->children[1]->children[0];
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(statistics_schema->children[0], NANOARROW_TYPE_STRING),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(statistics_schema->children[0], "table_name"),
+             error);
+    statistics_schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(statistics_schema->children[1], NANOARROW_TYPE_STRING),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(statistics_schema->children[1], "column_name"),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(statistics_schema->children[2], NANOARROW_TYPE_INT16),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetName(statistics_schema->children[2], "statistic_key"), error);
+    statistics_schema->children[2]->flags &= ~ARROW_FLAG_NULLABLE;
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetTypeUnion(statistics_schema->children[3],
+                                     NANOARROW_TYPE_DENSE_UNION, 4),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetName(statistics_schema->children[3], "statistic_value"),
+             error);
+    statistics_schema->children[3]->flags &= ~ARROW_FLAG_NULLABLE;
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(statistics_schema->children[4], NANOARROW_TYPE_BOOL),
+             error);
+    CHECK_NA(
+        INTERNAL,
+        ArrowSchemaSetName(statistics_schema->children[4], "statistic_is_approximate"),
+        error);
+    statistics_schema->children[4]->flags &= ~ARROW_FLAG_NULLABLE;
+
+    struct ArrowSchema* value_schema = statistics_schema->children[3];
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(value_schema->children[0], NANOARROW_TYPE_INT64), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(value_schema->children[0], "int64"), error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(value_schema->children[1], NANOARROW_TYPE_UINT64), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(value_schema->children[1], "uint64"), error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(value_schema->children[2], NANOARROW_TYPE_DOUBLE), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(value_schema->children[2], "float64"), error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(value_schema->children[3], NANOARROW_TYPE_BINARY), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(value_schema->children[3], "binary"), error);
+  }
+
+  // Set up builders
+  struct ArrowError na_error = {0};
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array, uschema.get(), &na_error),
+                  &na_error, error);
+  CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
+
+  struct ArrowArray* catalog_name_col = array->children[0];
+  struct ArrowArray* catalog_db_schemas_col = array->children[1];
+  struct ArrowArray* catalog_db_schemas_items = catalog_db_schemas_col->children[0];
+  struct ArrowArray* db_schema_name_col = catalog_db_schemas_items->children[0];
+  struct ArrowArray* db_schema_statistics_col = catalog_db_schemas_items->children[1];
+  struct ArrowArray* db_schema_statistics_items = db_schema_statistics_col->children[0];
+  struct ArrowArray* statistics_table_name_col = db_schema_statistics_items->children[0];
+  struct ArrowArray* statistics_column_name_col = db_schema_statistics_items->children[1];
+  struct ArrowArray* statistics_key_col = db_schema_statistics_items->children[2];
+  struct ArrowArray* statistics_value_col = db_schema_statistics_items->children[3];
+  struct ArrowArray* statistics_is_approximate_col =
+      db_schema_statistics_items->children[4];
+  // struct ArrowArray* value_int64_col = statistics_value_col->children[0];
+  // struct ArrowArray* value_uint64_col = statistics_value_col->children[1];
+  struct ArrowArray* value_float64_col = statistics_value_col->children[2];
+  // struct ArrowArray* value_binary_col = statistics_value_col->children[3];
+
+  // Query (could probably be massively improved)
+  std::string query = R"(
+    WITH
+      class AS (
+        SELECT nspname, relname, reltuples
+        FROM pg_namespace
+        INNER JOIN pg_class ON pg_class.relnamespace = pg_namespace.oid
+      )
+    SELECT tablename, attname, null_frac, avg_width, n_distinct, reltuples
+    FROM pg_stats
+    INNER JOIN class ON pg_stats.schemaname = class.nspname AND pg_stats.tablename = class.relname
+    WHERE pg_stats.schemaname = $1 AND tablename LIKE $2
+    ORDER BY tablename
+)";
+
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, ArrowCharView(PQdb(conn))),
+           error);
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(db_schema_name_col, ArrowCharView(db_schema)),
+           error);
+
+  constexpr int8_t kStatsVariantFloat64 = 2;
+
+  std::string prev_table;
+
+  {
+    PqResultHelper result_helper{
+        conn, query, {db_schema, table_name ? table_name : "%"}, error};
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+
+    for (PqResultRow row : result_helper) {
+      auto reltuples = row[5].ParseDouble();
+      if (!reltuples.first) {
+        SetError(error, "[libpq] Invalid double value in reltuples: '%s'", row[5].data);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      if (std::strcmp(prev_table.c_str(), row[0].data) != 0) {
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(statistics_table_name_col,
+                                        ArrowStringView{row[0].data, row[0].len}),
+                 error);
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(statistics_column_name_col, 1), error);
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_ROW_COUNT_KEY),
+                 error);
+        CHECK_NA(INTERNAL, ArrowArrayAppendDouble(value_float64_col, reltuples.second),
+                 error);
+        CHECK_NA(INTERNAL,
+                 ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
+                 error);
+        CHECK_NA(INTERNAL, ArrowArrayAppendInt(statistics_is_approximate_col, 1), error);
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
+        prev_table = std::string(row[0].data, row[0].len);
+      }
+
+      auto null_frac = row[2].ParseDouble();
+      if (!null_frac.first) {
+        SetError(error, "[libpq] Invalid double value in null_frac: '%s'", row[2].data);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_table_name_col,
+                                      ArrowStringView{row[0].data, row[0].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_column_name_col,
+                                      ArrowStringView{row[1].data, row[1].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_NULL_COUNT_KEY),
+               error);
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayAppendDouble(value_float64_col, null_frac.second * reltuples.second),
+          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
+               error);
+      CHECK_NA(INTERNAL, ArrowArrayAppendInt(statistics_is_approximate_col, 1), error);
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
+
+      auto average_byte_width = row[3].ParseDouble();
+      if (!average_byte_width.first) {
+        SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[3].data);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_table_name_col,
+                                      ArrowStringView{row[0].data, row[0].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_column_name_col,
+                                      ArrowStringView{row[1].data, row[1].len}),
+               error);
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY),
+          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendDouble(value_float64_col, average_byte_width.second),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
+               error);
+      CHECK_NA(INTERNAL, ArrowArrayAppendInt(statistics_is_approximate_col, 1), error);
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
+
+      auto n_distinct = row[4].ParseDouble();
+      if (!n_distinct.first) {
+        SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[4].data);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_table_name_col,
+                                      ArrowStringView{row[0].data, row[0].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_column_name_col,
+                                      ArrowStringView{row[1].data, row[1].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_DISTINCT_COUNT_KEY),
+               error);
+      // > If greater than zero, the estimated number of distinct values in
+      // > the column. If less than zero, the negative of the number of
+      // > distinct values divided by the number of rows.
+      // https://www.postgresql.org/docs/current/view-pg-stats.html
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayAppendDouble(value_float64_col,
+                                 n_distinct.second > 0
+                                     ? n_distinct.second
+                                     : (std::fabs(n_distinct.second) * reltuples.second)),
+          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
+               error);
+      CHECK_NA(INTERNAL, ArrowArrayAppendInt(statistics_is_approximate_col, 1), error);
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
+    }
+  }
+
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_col), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_items), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_col), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array, &na_error), &na_error,
+                  error);
+  uschema.move(schema);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresConnection::GetStatistics(const char* catalog,
+                                                 const char* db_schema,
+                                                 const char* table_name, bool approximate,
+                                                 struct ArrowArrayStream* out,
+                                                 struct AdbcError* error) {
+  // Simplify our jobs here
+  if (!approximate) {
+    SetError(error, "[libpq] Exact statistics are not implemented");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  } else if (!db_schema) {
+    SetError(error, "[libpq] Must request statistics for a single schema");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  } else if (catalog && std::strcmp(catalog, PQdb(conn_)) != 0) {
+    SetError(error, "[libpq] Can only request statistics for current catalog");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  struct ArrowSchema schema;
+  std::memset(&schema, 0, sizeof(schema));
+  struct ArrowArray array;
+  std::memset(&array, 0, sizeof(array));
+
+  AdbcStatusCode status = PostgresConnectionGetStatisticsImpl(
+      conn_, db_schema, table_name, &schema, &array, error);
+  if (status != ADBC_STATUS_OK) {
+    if (schema.release) schema.release(&schema);
+    if (array.release) array.release(&array);
+    return status;
+  }
+
+  return BatchToArrayStream(&array, &schema, out, error);
+}
+
+AdbcStatusCode PostgresConnectionGetStatisticNamesImpl(struct ArrowSchema* schema,
+                                                       struct ArrowArray* array,
+                                                       struct AdbcError* error) {
+  auto uschema = nanoarrow::UniqueSchema();
+  ArrowSchemaInit(uschema.get());
+
+  CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema.get(), NANOARROW_TYPE_STRUCT), error);
+  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(uschema.get(), /*num_columns=*/2),
+           error);
+
+  ArrowSchemaInit(uschema.get()->children[0]);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetType(uschema.get()->children[0], NANOARROW_TYPE_STRING), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema.get()->children[0], "statistic_name"),
+           error);
+  uschema.get()->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  ArrowSchemaInit(uschema.get()->children[1]);
+  CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema.get()->children[1], NANOARROW_TYPE_INT16),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema.get()->children[1], "statistic_key"),
+           error);
+  uschema.get()->children[1]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array, uschema.get(), NULL), error);
+  CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishBuildingDefault(array, NULL), error);
+
+  uschema.move(schema);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresConnection::GetStatisticNames(struct ArrowArrayStream* out,
+                                                     struct AdbcError* error) {
+  // We don't support any extended statistics, just return an empty stream
+  struct ArrowSchema schema;
+  std::memset(&schema, 0, sizeof(schema));
+  struct ArrowArray array;
+  std::memset(&array, 0, sizeof(array));
+
+  AdbcStatusCode status = PostgresConnectionGetStatisticNamesImpl(&schema, &array, error);
+  if (status != ADBC_STATUS_OK) {
+    if (schema.release) schema.release(&schema);
+    if (array.release) array.release(&array);
+    return status;
+  }
+  return BatchToArrayStream(&array, &schema, out, error);
+
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
