@@ -35,6 +35,61 @@ void PanicDummy_release_error(struct AdbcError* error) {
   error->release = NULL;
 }
 
+void PanicDummyReleaseErrWithDetails(struct AdbcError* error) {
+  if (!error || error->release != PanicDummyReleaseErrWithDetails ||
+      !error->private_data) {
+    return;
+  }
+
+  struct PanicDummyError* details =
+      (struct PanicDummyError*) error->private_data;
+  for (int i = 0; i < details->count; i++) {
+    free(details->keys[i]);
+    free(details->values[i]);
+  }
+  free(details->lengths);
+  free(details);
+
+  free(error->message);
+  error->message = NULL;
+  error->release = NULL;
+  error->private_data = NULL;
+}
+
+int PanicDummyErrorGetDetailCount(struct AdbcError* error) {
+  if (!error || error->release != PanicDummyReleaseErrWithDetails ||
+      !error->private_data) {
+    return 0;
+  }
+
+  return ((struct PanicDummyError*) error->private_data)->count;
+}
+
+struct AdbcErrorDetail PanicDummyErrorGetDetail(struct AdbcError* error, int index) {
+  if (!error || error->release != PanicDummyReleaseErrWithDetails ||
+      !error->private_data) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+  struct PanicDummyError* details = (struct PanicDummyError*) error->private_data;
+  if (index < 0 || index >= details->count) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+
+  return (struct AdbcErrorDetail){
+    .key = details->keys[index],
+    .value = details->values[index],
+    .value_length = details->lengths[index]
+  };
+}
+
+int AdbcErrorGetDetailCount(struct AdbcError* error) {
+  return PanicDummyErrorGetDetailCount(error);
+}
+
+struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
+  return PanicDummyErrorGetDetail(error, index);
+}
+
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
                                      char* value, size_t* length,
                                      struct AdbcError* error) {

@@ -86,3 +86,16 @@ static inline void {{.Prefix}}errRelease(struct AdbcError* error) {
 }
 
 void {{.Prefix}}_release_error(struct AdbcError* error);
+
+struct {{.Prefix}}Error {
+  char* message;
+  char** keys;
+  uint8_t** values;
+  size_t* lengths;
+  int count;
+};
+
+void {{.Prefix}}ReleaseErrWithDetails(struct AdbcError* error);
+
+int {{.Prefix}}ErrorGetDetailCount(struct AdbcError* error);
+struct AdbcErrorDetail {{.Prefix}}ErrorGetDetail(struct AdbcError* error, int index);

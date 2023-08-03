@@ -157,3 +157,16 @@ static inline void PanicDummyerrRelease(struct AdbcError* error) {
 }
 
 void PanicDummy_release_error(struct AdbcError* error);
+
+struct PanicDummyError {
+  char* message;
+  char** keys;
+  uint8_t** values;
+  size_t* lengths;
+  int count;
+};
+
+void PanicDummyReleaseErrWithDetails(struct AdbcError* error);
+
+int PanicDummyErrorGetDetailCount(struct AdbcError* error);
+struct AdbcErrorDetail PanicDummyErrorGetDetail(struct AdbcError* error, int index);

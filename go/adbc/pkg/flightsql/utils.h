@@ -153,3 +153,16 @@ AdbcStatusCode FlightSQLDriverInit(int version, void* rawDriver, struct AdbcErro
 static inline void FlightSQLerrRelease(struct AdbcError* error) { error->release(error); }
 
 void FlightSQL_release_error(struct AdbcError* error);
+
+struct FlightSQLError {
+  char* message;
+  char** keys;
+  uint8_t** values;
+  size_t* lengths;
+  int count;
+};
+
+void FlightSQLReleaseErrWithDetails(struct AdbcError* error);
+
+int FlightSQLErrorGetDetailCount(struct AdbcError* error);
+struct AdbcErrorDetail FlightSQLErrorGetDetail(struct AdbcError* error, int index);
