@@ -107,12 +107,12 @@ var (
 
 	StatisticsDBSchemaSchema = arrow.StructOf(
 		arrow.Field{Name: "db_schema_name", Type: arrow.BinaryTypes.String, Nullable: true},
-		arrow.Field{Name: "db_schema_statistics", Type: arrow.ListOf(StatisticsSchema), Nullable: true},
+		arrow.Field{Name: "db_schema_statistics", Type: arrow.ListOf(StatisticsSchema), Nullable: false},
 	)
 
 	GetStatisticsSchema = arrow.NewSchema([]arrow.Field{
 		{Name: "catalog_name", Type: arrow.BinaryTypes.String, Nullable: true},
-		{Name: "catalog_db_schemas", Type: arrow.ListOf(StatisticsDBSchemaSchema), Nullable: true},
+		{Name: "catalog_db_schemas", Type: arrow.ListOf(StatisticsDBSchemaSchema), Nullable: false},
 	}, nil)
 
 	GetStatisticNamesSchema = arrow.NewSchema([]arrow.Field{

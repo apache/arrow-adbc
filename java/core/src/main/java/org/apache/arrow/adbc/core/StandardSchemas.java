@@ -183,7 +183,7 @@ public final class StandardSchemas {
           new Field("db_schema_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
           new Field(
               "db_schema_statistics",
-              FieldType.nullable(ArrowType.List.INSTANCE),
+              FieldType.notNullable(ArrowType.List.INSTANCE),
               Collections.singletonList(
                   new Field(
                       "item", FieldType.nullable(ArrowType.Struct.INSTANCE), STATISTICS_SCHEMA))));
@@ -198,7 +198,7 @@ public final class StandardSchemas {
               new Field("catalog_name", FieldType.notNullable(ArrowType.Utf8.INSTANCE), null),
               new Field(
                   "catalog_db_schemas",
-                  FieldType.nullable(ArrowType.List.INSTANCE),
+                  FieldType.notNullable(ArrowType.List.INSTANCE),
                   Collections.singletonList(
                       new Field(
                           "item",

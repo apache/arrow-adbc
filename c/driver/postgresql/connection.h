@@ -50,6 +50,10 @@ class PostgresConnection {
                                  struct AdbcError* error);
   AdbcStatusCode GetOptionInt(const char* option, int64_t* value,
                               struct AdbcError* error);
+  AdbcStatusCode GetStatistics(const char* catalog, const char* db_schema,
+                               const char* table_name, bool approximate,
+                               struct ArrowArrayStream* out, struct AdbcError* error);
+  AdbcStatusCode GetStatisticNames(struct ArrowArrayStream* out, struct AdbcError* error);
   AdbcStatusCode GetTableSchema(const char* catalog, const char* db_schema,
                                 const char* table_name, struct ArrowSchema* schema,
                                 struct AdbcError* error);

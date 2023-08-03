@@ -247,18 +247,18 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
    * <p>The result is an Arrow dataset with the following schema:
    *
    * <table border="1">
-   *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
-   *   <tr><td>catalog_name</td>            <td>utf8</td>                   </tr>
-   *   <tr><td>catalog_db_schemas</td>      <td>list[DB_SCHEMA_SCHEMA]</td> </tr>
+   *   <tr><th>Field Name</th>              <th>Field Type</th>                      </tr>
+   *   <tr><td>catalog_name</td>            <td>utf8</td>                            </tr>
+   *   <tr><td>catalog_db_schemas</td>      <td>list[DB_SCHEMA_SCHEMA] not null</td> </tr>
    *   <caption>The definition of the GetStatistics result schema.</caption>
    * </table>
    *
    * <p>DB_SCHEMA_SCHEMA is a Struct with fields:
    *
    * <table border="1">
-   *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
-   *   <tr><td>db_schema_name</td>          <td>utf8</td>                   </tr>
-   *   <tr><td>db_schema_statistics</td>    <td>list[STATISTICS_SCHEMA]</td></tr>
+   *   <tr><th>Field Name</th>              <th>Field Type</th>                      </tr>
+   *   <tr><td>db_schema_name</td>          <td>utf8</td>                            </tr>
+   *   <tr><td>db_schema_statistics</td>    <td>list[STATISTICS_SCHEMA] not null</td></tr>
    *   <caption>The definition of DB_SCHEMA_SCHEMA.</caption>
    * </table>
    *

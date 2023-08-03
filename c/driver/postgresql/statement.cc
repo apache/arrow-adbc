@@ -28,11 +28,11 @@
 
 #include <adbc.h>
 #include <libpq-fe.h>
-#include <postgresql/error.h>
 #include <nanoarrow/nanoarrow.hpp>
 
 #include "common/utils.h"
 #include "connection.h"
+#include "error.h"
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"

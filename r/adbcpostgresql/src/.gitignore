@@ -23,6 +23,8 @@ connection.cc
 connection.h
 database.h
 database.cc
+error.h
+error.cc
 postgresql.cc
 statement.h
 statement.cc
