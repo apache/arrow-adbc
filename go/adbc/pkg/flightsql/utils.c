@@ -35,6 +35,61 @@ void FlightSQL_release_error(struct AdbcError* error) {
   error->release = NULL;
 }
 
+void FlightSQLReleaseErrWithDetails(struct AdbcError* error) {
+  if (!error || error->release != FlightSQLReleaseErrWithDetails ||
+      !error->private_data) {
+    return;
+  }
+
+  struct FlightSQLError* details =
+      (struct FlightSQLError*) error->private_data;
+  for (int i = 0; i < details->count; i++) {
+    free(details->keys[i]);
+    free(details->values[i]);
+  }
+  free(details->lengths);
+  free(details);
+
+  free(error->message);
+  error->message = NULL;
+  error->release = NULL;
+  error->private_data = NULL;
+}
+
+int FlightSQLErrorGetDetailCount(struct AdbcError* error) {
+  if (!error || error->release != FlightSQLReleaseErrWithDetails ||
+      !error->private_data) {
+    return 0;
+  }
+
+  return ((struct FlightSQLError*) error->private_data)->count;
+}
+
+struct AdbcErrorDetail FlightSQLErrorGetDetail(struct AdbcError* error, int index) {
+  if (!error || error->release != FlightSQLReleaseErrWithDetails ||
+      !error->private_data) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+  struct FlightSQLError* details = (struct FlightSQLError*) error->private_data;
+  if (index < 0 || index >= details->count) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+
+  return (struct AdbcErrorDetail){
+    .key = details->keys[index],
+    .value = details->values[index],
+    .value_length = details->lengths[index]
+  };
+}
+
+int AdbcErrorGetDetailCount(struct AdbcError* error) {
+  return FlightSQLErrorGetDetailCount(error);
+}
+
+struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
+  return FlightSQLErrorGetDetail(error, index);
+}
+
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
                                      char* value, size_t* length,
                                      struct AdbcError* error) {

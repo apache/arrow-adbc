@@ -33,6 +33,10 @@
 using adbc_validation::IsOkErrno;
 using adbc_validation::IsOkStatus;
 
+extern "C" {
+AdbcStatusCode FlightSQLDriverInit(int, void*, struct AdbcError*);
+}
+
 #define CHECK_OK(EXPR)                                              \
   do {                                                              \
     if (auto adbc_status = (EXPR); adbc_status != ADBC_STATUS_OK) { \
@@ -230,6 +234,20 @@ TEST_F(SqliteFlightSqlTest, TestGarbageInput) {
   ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
 }
 
+TEST_F(SqliteFlightSqlTest, AdbcDriverBackwardsCompatibility) {
+  // XXX: sketchy cast
+  auto* driver = static_cast<struct AdbcDriver*>(malloc(ADBC_DRIVER_1_0_0_SIZE));
+  std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
+
+  ASSERT_THAT(::FlightSQLDriverInit(ADBC_VERSION_1_0_0, driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(::FlightSQLDriverInit(424242, driver, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+
+  free(driver);
+}
+
 class SqliteFlightSqlConnectionTest : public ::testing::Test,
                                       public adbc_validation::ConnectionTest {
  public:
@@ -258,3 +276,22 @@ class SqliteFlightSqlStatementTest : public ::testing::Test,
   SqliteFlightSqlQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(SqliteFlightSqlStatementTest)
+
+// Test what happens when using the ADBC 1.1.0 error structure
+TEST_F(SqliteFlightSqlStatementTest, NonexistentTable) {
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value,
+                                       "SELECT * FROM tabledoesnotexist", &error),
+              IsOkStatus(&error));
+
+  for (auto vendor_code : {0, ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA}) {
+    error.vendor_code = vendor_code;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+    ASSERT_EQ(0, AdbcErrorGetDetailCount(&error));
+    error.release(&error);
+  }
+}

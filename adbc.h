@@ -35,7 +35,7 @@
 /// but not concurrent access.  Specific implementations may permit
 /// multiple threads.
 ///
-/// \version 1.0.0
+/// \version 1.1.0
 
 #pragma once
 
@@ -254,7 +254,6 @@ typedef uint8_t AdbcStatusCode;
 /// See the AdbcError documentation for usage.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA INT32_MIN
 
 /// \brief A detailed error message for an operation.
@@ -292,7 +291,6 @@ struct ADBC_EXPORT AdbcError {
   /// iff the error is unintialized/freed.
   ///
   /// \since ADBC API revision 1.1.0
-  /// \addtogroup adbc-1.1.0
   void* private_data;
 
   /// \brief The associated driver (used by the driver manager to help
@@ -302,7 +300,6 @@ struct ADBC_EXPORT AdbcError {
   /// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
   ///
   /// \since ADBC API revision 1.1.0
-  /// \addtogroup adbc-1.1.0
   struct AdbcDriver* private_driver;
 };
 
@@ -310,7 +307,6 @@ struct ADBC_EXPORT AdbcError {
 /// \brief A helper to initialize the full AdbcError structure.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_ERROR_INIT                           \
   (AdbcError{nullptr,                             \
              ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA, \
@@ -322,7 +318,6 @@ struct ADBC_EXPORT AdbcError {
 /// \brief A helper to initialize the full AdbcError structure.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_ERROR_INIT \
   ((struct AdbcError){  \
       NULL, ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA, {0, 0, 0, 0, 0}, NULL, NULL, NULL})
@@ -335,7 +330,6 @@ struct ADBC_EXPORT AdbcError {
 /// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_ERROR_1_0_0_SIZE (offsetof(struct AdbcError, private_data))
 /// \brief The size of the AdbcError structure in ADBC 1.1.0.
 ///
@@ -344,7 +338,6 @@ struct ADBC_EXPORT AdbcError {
 /// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_ERROR_1_1_0_SIZE (sizeof(struct AdbcError))
 
 /// \brief Extra key-value metadata for an error.
@@ -354,7 +347,6 @@ struct ADBC_EXPORT AdbcError {
 /// called.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 struct ADBC_EXPORT AdbcErrorDetail {
   /// \brief The metadata key.
   const char* key;
@@ -367,7 +359,6 @@ struct ADBC_EXPORT AdbcErrorDetail {
 /// \brief Get the number of metadata values available in an error.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 ADBC_EXPORT
 int AdbcErrorGetDetailCount(struct AdbcError* error);
 
@@ -377,7 +368,6 @@ int AdbcErrorGetDetailCount(struct AdbcError* error);
 /// fields.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 ADBC_EXPORT
 struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 
@@ -398,7 +388,6 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 /// point to an AdbcDriver.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_VERSION_1_1_0 1001000
 
 /// \brief Canonical option value for enabling an option.
@@ -418,7 +407,6 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 /// The type is char*.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_OPTION_URI "uri"
 /// \brief Canonical option name for usernames.
 ///
@@ -428,7 +416,6 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 /// The type is char*.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_OPTION_USERNAME "username"
 /// \brief Canonical option name for passwords.
 ///
@@ -438,45 +425,7 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 /// The type is char*.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_OPTION_PASSWORD "password"
-/// \brief Canonical option name for error details.
-///
-/// Should be used as the expected option name to retrieve error
-/// details from the driver.  This allows drivers to return custom,
-/// structured error information (for example, JSON or Protocol
-/// Buffers) that can be optionally parsed by clients, beyond the
-/// standard AdbcError fields, without having to encode it in the
-/// error message.  The encoding of the data is driver-defined.
-/// Drivers may provide multiple error details.
-///
-/// This can be used immediately after any API call that returns an
-/// error.  Additionally, if an ArrowArrayStream returned from an
-/// AdbcConnection or an AdbcStatement returns an error, this can be
-/// immediately called from the associated AdbcConnection or
-/// AdbcStatement to get further error details (if available).  Making
-/// other API calls with that connection or statement may clear this
-/// error value.
-///
-/// To use, call GetOptionInt with this option to get the number of
-/// available details.  Then, call GetOption with the option key
-/// ADBC_OPTION_ERROR_DETAILS_PREFIX + (zero-indexed index) to get the
-/// name of the error detail (for example, drivers that use gRPC
-/// underneath may provide the name of the gRPC trailer corresponding
-/// to the error detail).  GetOptionBytes with that option name will
-/// retrieve the value of the error detail (for example, a serialized
-/// Any-wrapped Protobuf).
-///
-/// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
-#define ADBC_OPTION_ERROR_DETAILS "adbc.error_details"
-
-/// \brief Canonical option name for error details.
-///
-/// \see ADBC_OPTION_ERROR_DETAILS
-/// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
-#define ADBC_OPTION_ERROR_DETAILS_PREFIX "adbc.error_details."
 
 /// \brief The database vendor/product name (e.g. the server name).
 ///   (type: utf8).
@@ -510,7 +459,6 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 /// The value should be one of the ADBC_VERSION constants.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \see AdbcConnectionGetInfo
 /// \see ADBC_VERSION_1_0_0
 /// \see ADBC_VERSION_1_1_0
@@ -608,7 +556,6 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 /// \see AdbcConnectionGetOption
 /// \see AdbcConnectionSetOption
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_CONNECTION_OPTION_CURRENT_CATALOG "adbc.connection.catalog"
 
 /// \brief The name of the canonical option for the current schema.
@@ -618,7 +565,6 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 /// \see AdbcConnectionGetOption
 /// \see AdbcConnectionSetOption
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA "adbc.connection.db_schema"
 
 /// \brief The name of the canonical option for making query execution
@@ -636,7 +582,6 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 ///
 /// \see AdbcStatementSetOption
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_STATEMENT_OPTION_INCREMENTAL "adbc.statement.exec.incremental"
 
 /// \brief The name of the option for getting the progress of a query.
@@ -647,7 +592,6 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 ///
 /// \see AdbcStatementGetOptionDouble
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_STATEMENT_OPTION_PROGRESS "adbc.statement.exec.progress"
 
 /// \brief The name of the canonical option for setting the isolation
@@ -768,13 +712,11 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 /// \brief Create the table and insert data; drop the original table
 ///   if it already exists.
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_INGEST_OPTION_MODE_REPLACE "adbc.ingest.mode.replace"
 /// \brief Insert data; create the table if it does not exist, or
 ///   error if the table exists, but the schema does not match the
 ///   schema of the data to append (ADBC_STATUS_ALREADY_EXISTS).
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_INGEST_OPTION_MODE_CREATE_APPEND "adbc.ingest.mode.create_append"
 
 /// @}
@@ -1075,7 +1017,6 @@ struct ADBC_EXPORT AdbcDriver {
 /// ADBC_VERSION_1_0_0.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_DRIVER_1_0_0_SIZE (offsetof(struct AdbcDriver, ErrorGetDetailCount))
 
 /// \brief The size of the AdbcDriver structure in ADBC 1.1.0.
@@ -1084,7 +1025,6 @@ struct ADBC_EXPORT AdbcDriver {
 /// ADBC_VERSION_1_1_0.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 #define ADBC_DRIVER_1_1_0_SIZE (sizeof(struct AdbcDriver))
 
 /// @}
@@ -1131,7 +1071,6 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] database The database.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -1172,7 +1111,6 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] database The database.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -1198,7 +1136,6 @@ AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const c
 /// representation of an integer option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] database The database.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -1222,7 +1159,6 @@ AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const 
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] database The database.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -1251,7 +1187,6 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
 /// \brief Set a bytestring option on a database.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] database The database.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.
@@ -1267,7 +1202,6 @@ AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const c
 /// \brief Set a double option on a database.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] database The database.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.
@@ -1281,7 +1215,6 @@ AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const 
 /// \brief Set an integer option on a database.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] database The database.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.
@@ -1341,7 +1274,6 @@ AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const 
 /// \brief Set a bytestring option on a connection.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] connection The connection.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.
@@ -1360,7 +1292,6 @@ AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
 /// support setting options after initialization as well.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.
@@ -1378,7 +1309,6 @@ AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
 /// support setting options after initialization as well.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.
@@ -1420,7 +1350,6 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 /// not necessarily signal-safe.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 ///
 /// \param[in] connection The connection to cancel.
 /// \param[out] error An optional location to return an error
@@ -1631,7 +1560,6 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 ///   value.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -1672,7 +1600,6 @@ AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const 
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] connection The connection.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -1698,7 +1625,6 @@ AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -1723,7 +1649,6 @@ AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -1781,7 +1706,6 @@ AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
 /// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[in] catalog The catalog (or nullptr).  May be a search
 ///   pattern (see section documentation).
@@ -1813,7 +1737,6 @@ AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
 /// statistic_key  | int16 not null
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] connection The database connection.
 /// \param[out] out The result set.
 /// \param[out] error Error details, if an error occurs.
@@ -1973,7 +1896,6 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
 /// AdbcStatementPrepare.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 ///
 /// \param[in] statement The statement to execute.
 /// \param[out] out The result schema.
@@ -2081,7 +2003,6 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
 /// not necessarily signal-safe.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 ///
 /// \param[in] statement The statement to cancel.
 /// \param[out] error An optional location to return an error
@@ -2122,7 +2043,6 @@ AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] statement The statement.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -2163,7 +2083,6 @@ AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const cha
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] statement The statement.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -2189,7 +2108,6 @@ AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] statement The statement.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -2213,7 +2131,6 @@ AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const 
 /// representation of a double option.)
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] statement The statement.
 /// \param[in] key The option to get.
 /// \param[out] value The option value.
@@ -2259,7 +2176,6 @@ AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const cha
 /// \brief Set a bytestring option on a statement.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] statement The statement.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.
@@ -2275,7 +2191,6 @@ AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
 /// \brief Set an integer option on a statement.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] statement The statement.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.
@@ -2289,7 +2204,6 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const 
 /// \brief Set a double option on a statement.
 ///
 /// \since ADBC API revision 1.1.0
-/// \addtogroup adbc-1.1.0
 /// \param[in] statement The statement.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.
