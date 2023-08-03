@@ -203,9 +203,10 @@ Drivers can expose additional rich error metadata.  This can be used to return
 structured error information.  For example, a driver could use something like
 the `Googleapis ErrorDetails`_.
 
-In C, special option values can be read after receiving an error to get error
-metadata.  In Go and Java, ``AdbcError`` and ``AdbcException`` respectively
-expose a list of additional metadata.
+In C, Go and Java, :cpp:class:`AdbcError`, ``AdbcError``, and
+``AdbcException`` respectively expose a list of additional metadata.  For C,
+see the documentation of :cpp:class:`AdbcError` to learn how the struct was
+expanded while preserving ABI.
 
 .. _Googleapis ErrorDetails: https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto
 

@@ -2711,6 +2711,24 @@ void StatementTest::TestConcurrentStatements() {
   ASSERT_NO_FATAL_FAILURE(reader1.GetSchema());
 }
 
+// Test that an ADBC 1.0.0-sized error still works
+void StatementTest::TestErrorCompatibility() {
+  // XXX: sketchy cast
+  auto* error = static_cast<struct AdbcError*>(malloc(ADBC_ERROR_1_0_0_SIZE));
+  std::memset(error, 0, ADBC_ERROR_1_0_0_SIZE);
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, error), IsOkStatus(error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM thistabledoesnotexist", error),
+      IsOkStatus(error));
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, error),
+              ::testing::Not(IsOkStatus(error)));
+  error->release(error);
+  free(error);
+}
+
 void StatementTest::TestResultInvalidation() {
   // Start reading from a statement, then overwrite it
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));

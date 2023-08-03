@@ -21,7 +21,9 @@
     Adbc*;
 
     # Expose driver-specific initialization routines
+    FlightSQLDriverInit;
     PostgresqlDriverInit;
+    SnowflakeDriverInit;
     SqliteDriverInit;
 
     # Export Postgres API for testing

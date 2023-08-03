@@ -153,3 +153,16 @@ AdbcStatusCode SnowflakeDriverInit(int version, void* rawDriver, struct AdbcErro
 static inline void SnowflakeerrRelease(struct AdbcError* error) { error->release(error); }
 
 void Snowflake_release_error(struct AdbcError* error);
+
+struct SnowflakeError {
+  char* message;
+  char** keys;
+  uint8_t** values;
+  size_t* lengths;
+  int count;
+};
+
+void SnowflakeReleaseErrWithDetails(struct AdbcError* error);
+
+int SnowflakeErrorGetDetailCount(struct AdbcError* error);
+struct AdbcErrorDetail SnowflakeErrorGetDetail(struct AdbcError* error, int index);

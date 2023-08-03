@@ -308,6 +308,7 @@ class StatementTest {
   void TestTransactions();
 
   void TestConcurrentStatements();
+  void TestErrorCompatibility();
   void TestResultInvalidation();
 
  protected:
@@ -380,6 +381,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlSchemaErrors) { TestSqlSchemaErrors(); }                           \
   TEST_F(FIXTURE, Transactions) { TestTransactions(); }                                 \
   TEST_F(FIXTURE, ConcurrentStatements) { TestConcurrentStatements(); }                 \
+  TEST_F(FIXTURE, ErrorCompatibility) { TestErrorCompatibility(); }                     \
   TEST_F(FIXTURE, ResultInvalidation) { TestResultInvalidation(); }
 
 }  // namespace adbc_validation
