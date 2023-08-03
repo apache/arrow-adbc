@@ -132,8 +132,70 @@ def test_query_trivial(postgres: dbapi.Connection):
         assert cur.fetchone() == (1,)
 
 
+def test_query_invalid(postgres: dbapi.Connection) -> None:
+    with postgres.cursor() as cur:
+        with pytest.raises(
+            postgres.ProgrammingError, match="failed to prepare query"
+        ) as excinfo:
+            cur.execute("SELECT * FROM tabledoesnotexist")
+
+        assert excinfo.value.sqlstate == "42P01"
+        assert len(excinfo.value.details) > 0
+
+
 def test_stmt_ingest(postgres: dbapi.Connection) -> None:
-    pass
+    table = pyarrow.table(
+        [
+            [1, 2, 3],
+            ["a", None, "b"],
+        ],
+        names=["ints", "strs"],
+    )
+    double_table = pyarrow.table(
+        [
+            [1, 1, 2, 2, 3, 3],
+            ["a", "a", None, None, "b", "b"],
+        ],
+        names=["ints", "strs"],
+    )
+
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_ingest")
+
+        with pytest.raises(
+            postgres.ProgrammingError, match='"test_ingest" does not exist'
+        ):
+            cur.adbc_ingest("test_ingest", table, mode="append")
+        postgres.rollback()
+
+        cur.adbc_ingest("test_ingest", table, mode="replace")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
+
+        with pytest.raises(
+            postgres.ProgrammingError, match='"test_ingest" already exists'
+        ):
+            cur.adbc_ingest("test_ingest", table, mode="create")
+
+        cur.adbc_ingest("test_ingest", table, mode="create_append")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == double_table
+
+        cur.adbc_ingest("test_ingest", table, mode="replace")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
+
+        cur.execute("DROP TABLE IF EXISTS test_ingest")
+
+        cur.adbc_ingest("test_ingest", table, mode="create_append")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
+
+        cur.execute("DROP TABLE IF EXISTS test_ingest")
+
+        cur.adbc_ingest("test_ingest", table, mode="create")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
 
 
 def test_ddl(postgres: dbapi.Connection):

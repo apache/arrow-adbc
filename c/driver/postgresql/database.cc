@@ -125,10 +125,10 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
 
 // Helpers for building the type resolver from queries
 static inline int32_t InsertPgAttributeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
 static inline int32_t InsertPgTypeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
 AdbcStatusCode PostgresDatabase::RebuildTypeResolver(struct AdbcError* error) {
   PGconn* conn = nullptr;
@@ -177,7 +177,7 @@ ORDER BY
   auto resolver = std::make_shared<PostgresTypeResolver>();
 
   // Insert record type definitions (this includes table schemas)
-  pg_result* result = PQexec(conn, kColumnsQuery.c_str());
+  PGresult* result = PQexec(conn, kColumnsQuery.c_str());
   ExecStatusType pq_status = PQresultStatus(result);
   if (pq_status == PGRES_TUPLES_OK) {
     InsertPgAttributeResult(result, resolver);
@@ -222,7 +222,7 @@ ORDER BY
 }
 
 static inline int32_t InsertPgAttributeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
   int num_rows = PQntuples(result);
   std::vector<std::pair<std::string, uint32_t>> columns;
   uint32_t current_type_oid = 0;
@@ -254,7 +254,7 @@ static inline int32_t InsertPgAttributeResult(
 }
 
 static inline int32_t InsertPgTypeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
   int num_rows = PQntuples(result);
   PostgresTypeResolver::Item item;
   int32_t n_added = 0;

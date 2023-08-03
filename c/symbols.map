@@ -20,6 +20,15 @@
     # Only expose symbols from the ADBC API
     Adbc*;
 
+    # Expose driver-specific initialization routines
+    PostgresqlDriverInit;
+    SqliteDriverInit;
+
+    # Export Postgres API for testing
+    extern "C++" {
+        *adbcpq::*;
+    };
+
   local:
     *;
 };

@@ -55,6 +55,9 @@ class AdbcVersion : public ::testing::Test {
 };
 
 TEST_F(AdbcVersion, StructSize) {
+  ASSERT_EQ(sizeof(AdbcErrorVersion100), ADBC_ERROR_1_0_0_SIZE);
+  ASSERT_EQ(sizeof(AdbcError), ADBC_ERROR_1_1_0_SIZE);
+
   ASSERT_EQ(sizeof(AdbcDriverVersion100), ADBC_DRIVER_1_0_0_SIZE);
   ASSERT_EQ(sizeof(AdbcDriver), ADBC_DRIVER_1_1_0_SIZE);
 }
@@ -74,30 +77,35 @@ TEST_F(AdbcVersion, OldDriverNewManager) {
                                          &driver, &error),
               IsOkStatus(&error));
 
-  ASSERT_NE(driver.DatabaseGetOption, nullptr);
-  ASSERT_NE(driver.DatabaseGetOptionInt, nullptr);
-  ASSERT_NE(driver.DatabaseGetOptionDouble, nullptr);
-  ASSERT_NE(driver.DatabaseSetOptionInt, nullptr);
-  ASSERT_NE(driver.DatabaseSetOptionDouble, nullptr);
+  EXPECT_NE(driver.ErrorGetDetailCount, nullptr);
+  EXPECT_NE(driver.ErrorGetDetail, nullptr);
 
-  ASSERT_NE(driver.ConnectionGetOption, nullptr);
-  ASSERT_NE(driver.ConnectionGetOptionInt, nullptr);
-  ASSERT_NE(driver.ConnectionGetOptionDouble, nullptr);
-  ASSERT_NE(driver.ConnectionSetOptionInt, nullptr);
-  ASSERT_NE(driver.ConnectionSetOptionDouble, nullptr);
+  EXPECT_NE(driver.DatabaseGetOption, nullptr);
+  EXPECT_NE(driver.DatabaseGetOptionBytes, nullptr);
+  EXPECT_NE(driver.DatabaseGetOptionDouble, nullptr);
+  EXPECT_NE(driver.DatabaseGetOptionInt, nullptr);
+  EXPECT_NE(driver.DatabaseSetOptionInt, nullptr);
+  EXPECT_NE(driver.DatabaseSetOptionDouble, nullptr);
 
-  ASSERT_NE(driver.StatementCancel, nullptr);
-  ASSERT_NE(driver.StatementExecuteSchema, nullptr);
-  ASSERT_NE(driver.StatementGetOption, nullptr);
-  ASSERT_NE(driver.StatementGetOptionInt, nullptr);
-  ASSERT_NE(driver.StatementGetOptionDouble, nullptr);
-  ASSERT_NE(driver.StatementSetOptionInt, nullptr);
-  ASSERT_NE(driver.StatementSetOptionDouble, nullptr);
+  EXPECT_NE(driver.ConnectionCancel, nullptr);
+  EXPECT_NE(driver.ConnectionGetOption, nullptr);
+  EXPECT_NE(driver.ConnectionGetOptionBytes, nullptr);
+  EXPECT_NE(driver.ConnectionGetOptionDouble, nullptr);
+  EXPECT_NE(driver.ConnectionGetOptionInt, nullptr);
+  EXPECT_NE(driver.ConnectionSetOptionInt, nullptr);
+  EXPECT_NE(driver.ConnectionSetOptionDouble, nullptr);
+
+  EXPECT_NE(driver.StatementCancel, nullptr);
+  EXPECT_NE(driver.StatementExecuteSchema, nullptr);
+  EXPECT_NE(driver.StatementGetOption, nullptr);
+  EXPECT_NE(driver.StatementGetOptionBytes, nullptr);
+  EXPECT_NE(driver.StatementGetOptionDouble, nullptr);
+  EXPECT_NE(driver.StatementGetOptionInt, nullptr);
+  EXPECT_NE(driver.StatementSetOptionInt, nullptr);
+  EXPECT_NE(driver.StatementSetOptionDouble, nullptr);
 }
 
-// Initialize a version 1.1.0 driver with the version 1.0.0 driver struct.
-TEST_F(AdbcVersion, NewDriverOldLayout) {
-  // TODO: no new drivers yet.
-}
+// N.B. see postgresql_test.cc for backwards compatibility test of AdbcError
+// N.B. see postgresql_test.cc for backwards compatibility test of AdbcDriver
 
 }  // namespace adbc

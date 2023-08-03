@@ -66,3 +66,10 @@ class PostgresDatabase {
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
 };
 }  // namespace adbcpq
+
+extern "C" {
+/// For applications that want to use the driver struct directly, this gives
+/// them access to the Init routine.
+ADBC_EXPORT
+AdbcStatusCode PostgresqlDriverInit(int, void*, struct AdbcError*);
+}

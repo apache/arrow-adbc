@@ -248,7 +248,25 @@ typedef uint8_t AdbcStatusCode;
 /// May indicate a database-side error only.
 #define ADBC_STATUS_UNAUTHORIZED 14
 
+/// \brief Inform the driver/driver manager that we are using the extended
+///   AdbcError struct from ADBC 1.1.0.
+///
+/// See the AdbcError documentation for usage.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA INT32_MIN
+
 /// \brief A detailed error message for an operation.
+///
+/// The caller must zero-initialize this struct (clarified in ADBC 1.1.0).
+///
+/// The structure was extended in ADBC 1.1.0.  Drivers and clients using ADBC
+/// 1.0.0 will not have the private_data or private_driver fields.  Drivers
+/// should read/write these fields if and only if vendor_code is equal to
+/// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.  Clients are required to initialize
+/// this struct to avoid the possibility of uninitialized values confusing the
+/// driver.
 struct ADBC_EXPORT AdbcError {
   /// \brief The error message.
   char* message;
@@ -266,7 +284,102 @@ struct ADBC_EXPORT AdbcError {
   /// Unlike other structures, this is an embedded callback to make it
   /// easier for the driver manager and driver to cooperate.
   void (*release)(struct AdbcError* error);
+
+  /// \brief Opaque implementation-defined state.
+  ///
+  /// This field may not be used unless vendor_code is
+  /// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.  If present, this field is NULLPTR
+  /// iff the error is unintialized/freed.
+  ///
+  /// \since ADBC API revision 1.1.0
+  /// \addtogroup adbc-1.1.0
+  void* private_data;
+
+  /// \brief The associated driver (used by the driver manager to help
+  ///   track state).
+  ///
+  /// This field may not be used unless vendor_code is
+  /// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
+  ///
+  /// \since ADBC API revision 1.1.0
+  /// \addtogroup adbc-1.1.0
+  struct AdbcDriver* private_driver;
 };
+
+#ifdef __cplusplus
+/// \brief A helper to initialize the full AdbcError structure.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_ERROR_INIT                           \
+  (AdbcError{nullptr,                             \
+             ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA, \
+             {0, 0, 0, 0, 0},                     \
+             nullptr,                             \
+             nullptr,                             \
+             nullptr})
+#else
+/// \brief A helper to initialize the full AdbcError structure.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_ERROR_INIT \
+  ((struct AdbcError){  \
+      NULL, ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA, {0, 0, 0, 0, 0}, NULL, NULL, NULL})
+#endif
+
+/// \brief The size of the AdbcError structure in ADBC 1.0.0.
+///
+/// Drivers written for ADBC 1.1.0 and later should never touch more than this
+/// portion of an AdbcDriver struct when vendor_code is not
+/// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_ERROR_1_0_0_SIZE (offsetof(struct AdbcError, private_data))
+/// \brief The size of the AdbcError structure in ADBC 1.1.0.
+///
+/// Drivers written for ADBC 1.1.0 and later should never touch more than this
+/// portion of an AdbcDriver struct when vendor_code is
+/// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+#define ADBC_ERROR_1_1_0_SIZE (sizeof(struct AdbcError))
+
+/// \brief Extra key-value metadata for an error.
+///
+/// The fields here are owned by the driver and should not be freed.  The
+/// fields here are invalidated when the release callback in AdbcError is
+/// called.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+struct ADBC_EXPORT AdbcErrorDetail {
+  /// \brief The metadata key.
+  const char* key;
+  /// \brief The binary metadata value.
+  const uint8_t* value;
+  /// \brief The length of the metadata value.
+  size_t value_length;
+};
+
+/// \brief Get the number of metadata values available in an error.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+ADBC_EXPORT
+int AdbcErrorGetDetailCount(struct AdbcError* error);
+
+/// \brief Get a metadata value in an error by index.
+///
+/// If index is invalid, returns an AdbcErrorDetail initialized with NULL/0
+/// fields.
+///
+/// \since ADBC API revision 1.1.0
+/// \addtogroup adbc-1.1.0
+ADBC_EXPORT
+struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
 
 /// @}
 
@@ -284,6 +397,7 @@ struct ADBC_EXPORT AdbcError {
 /// When passed to an AdbcDriverInitFunc(), the driver parameter must
 /// point to an AdbcDriver.
 ///
+/// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
 #define ADBC_VERSION_1_1_0 1001000
 
@@ -894,6 +1008,9 @@ struct ADBC_EXPORT AdbcDriver {
   ///
   /// @{
 
+  int (*ErrorGetDetailCount)(struct AdbcError* error);
+  struct AdbcErrorDetail (*ErrorGetDetail)(struct AdbcError* error, int index);
+
   AdbcStatusCode (*DatabaseGetOption)(struct AdbcDatabase*, const char*, char*, size_t*,
                                       struct AdbcError*);
   AdbcStatusCode (*DatabaseGetOptionBytes)(struct AdbcDatabase*, const char*, uint8_t*,
@@ -959,7 +1076,7 @@ struct ADBC_EXPORT AdbcDriver {
 ///
 /// \since ADBC API revision 1.1.0
 /// \addtogroup adbc-1.1.0
-#define ADBC_DRIVER_1_0_0_SIZE (offsetof(struct AdbcDriver, DatabaseGetOption))
+#define ADBC_DRIVER_1_0_0_SIZE (offsetof(struct AdbcDriver, ErrorGetDetailCount))
 
 /// \brief The size of the AdbcDriver structure in ADBC 1.1.0.
 /// Drivers written for ADBC 1.1.0 and later should never touch more

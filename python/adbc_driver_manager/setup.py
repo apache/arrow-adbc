@@ -72,10 +72,15 @@ version, cmdclass = get_version_and_cmdclass("adbc_driver_manager")
 # ------------------------------------------------------------
 # Resolve compiler flags
 
+build_type = os.environ.get("ADBC_BUILD_TYPE", "release")
+
 if sys.platform == "win32":
     extra_compile_args = ["/std:c++17", "/DADBC_EXPORTING"]
 else:
     extra_compile_args = ["-std=c++17"]
+    if build_type == "debug":
+        # Useful to step through driver manager code in GDB
+        extra_compile_args.extend(["-ggdb", "-Og"])
 
 # ------------------------------------------------------------
 # Setup
