@@ -136,6 +136,9 @@ class DriverQuirks {
   /// \brief Whether ExecuteQuery sets rows_affected appropriately
   virtual bool supports_rows_affected() const { return true; }
 
+  /// \brief Whether we can get statistics
+  virtual bool supports_statistics() const { return false; }
+
   /// \brief Default catalog to use for tests
   virtual std::string catalog() const { return ""; }
 
@@ -196,6 +199,8 @@ class ConnectionTest {
   void TestMetadataGetObjectsPrimaryKey();
   void TestMetadataGetObjectsCancel();
 
+  void TestMetadataGetStatisticNames();
+
  protected:
   struct AdbcError error;
   struct AdbcDatabase database;
@@ -226,7 +231,8 @@ class ConnectionTest {
     TestMetadataGetObjectsConstraints();                                                \
   }                                                                                     \
   TEST_F(FIXTURE, MetadataGetObjectsPrimaryKey) { TestMetadataGetObjectsPrimaryKey(); } \
-  TEST_F(FIXTURE, MetadataGetObjectsCancel) { TestMetadataGetObjectsCancel(); }
+  TEST_F(FIXTURE, MetadataGetObjectsCancel) { TestMetadataGetObjectsCancel(); }         \
+  TEST_F(FIXTURE, MetadataGetStatisticNames) { TestMetadataGetStatisticNames(); }
 
 class StatementTest {
  public:

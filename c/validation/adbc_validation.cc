@@ -1017,6 +1017,31 @@ void ConnectionTest::TestMetadataGetObjectsCancel() {
   }
 }
 
+void ConnectionTest::TestMetadataGetStatisticNames() {
+  if (!quirks()->supports_statistics()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  StreamReader reader;
+  ASSERT_THAT(AdbcConnectionGetStatisticNames(&connection, &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  ASSERT_NO_FATAL_FAILURE(CompareSchema(
+      &reader.schema.value, {
+                                {"statistic_name", NANOARROW_TYPE_STRING, NOT_NULL},
+                                {"statistic_key", NANOARROW_TYPE_INT16, NOT_NULL},
+                            }));
+
+  while (true) {
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    if (!reader.array->release) break;
+  }
+}
+
 //------------------------------------------------------------
 // Tests of AdbcStatement
 

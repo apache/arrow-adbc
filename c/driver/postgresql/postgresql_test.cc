@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
@@ -127,6 +128,7 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
   }
   bool supports_metadata_current_catalog() const override { return true; }
   bool supports_metadata_current_db_schema() const override { return true; }
+  bool supports_statistics() const override { return true; }
 };
 
 class PostgresDatabaseTest : public ::testing::Test,
@@ -635,6 +637,169 @@ TEST_F(PostgresConnectionTest, MetadataSetCurrentDbSchema) {
               IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+}
+
+TEST_F(PostgresConnectionTest, MetadataGetStatistics) {
+  if (!quirks()->supports_statistics()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  // Create sample table
+  {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value,
+                                         "DROP TABLE IF EXISTS statstable", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement.value,
+                                 "CREATE TABLE statstable (ints INT, strs TEXT)", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement.value,
+            "INSERT INTO statstable VALUES (1, 'a'), (NULL, 'bcd'), (-5, NULL)", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, "ANALYZE statstable", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcConnectionGetStatistics(&connection, nullptr, quirks()->db_schema().c_str(),
+                                  "statstable", 1, &reader.stream.value, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      &reader.schema.value, {
+                                {"catalog_name", NANOARROW_TYPE_STRING, true},
+                                {"catalog_db_schemas", NANOARROW_TYPE_LIST, false},
+                            }));
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      reader.schema->children[1]->children[0],
+      {
+          {"db_schema_name", NANOARROW_TYPE_STRING, true},
+          {"db_schema_statistics", NANOARROW_TYPE_LIST, false},
+      }));
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      reader.schema->children[1]->children[0]->children[1]->children[0],
+      {
+          {"table_name", NANOARROW_TYPE_STRING, false},
+          {"column_name", NANOARROW_TYPE_STRING, true},
+          {"statistic_key", NANOARROW_TYPE_INT16, false},
+          {"statistic_value", NANOARROW_TYPE_DENSE_UNION, false},
+          {"statistic_is_approximate", NANOARROW_TYPE_BOOL, false},
+      }));
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      reader.schema->children[1]->children[0]->children[1]->children[0]->children[3],
+      {
+          {"int64", NANOARROW_TYPE_INT64, true},
+          {"uint64", NANOARROW_TYPE_UINT64, true},
+          {"float64", NANOARROW_TYPE_DOUBLE, true},
+          {"binary", NANOARROW_TYPE_BINARY, true},
+      }));
+
+  std::vector<std::tuple<std::optional<std::string>, int16_t, int64_t>> seen;
+  while (true) {
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    if (!reader.array->release) break;
+
+    for (int64_t catalog_index = 0; catalog_index < reader.array->length;
+         catalog_index++) {
+      struct ArrowStringView catalog_name =
+          ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], catalog_index);
+      ASSERT_EQ(quirks()->catalog(),
+                std::string_view(catalog_name.data,
+                                 static_cast<int64_t>(catalog_name.size_bytes)));
+
+      struct ArrowArrayView* catalog_db_schemas = reader.array_view->children[1];
+      struct ArrowArrayView* schema_stats = catalog_db_schemas->children[0]->children[1];
+      struct ArrowArrayView* stats =
+          catalog_db_schemas->children[0]->children[1]->children[0];
+      for (int64_t schema_index =
+               ArrowArrayViewListChildOffset(catalog_db_schemas, catalog_index);
+           schema_index <
+           ArrowArrayViewListChildOffset(catalog_db_schemas, catalog_index + 1);
+           schema_index++) {
+        struct ArrowStringView schema_name = ArrowArrayViewGetStringUnsafe(
+            catalog_db_schemas->children[0]->children[0], schema_index);
+        ASSERT_EQ(quirks()->db_schema(),
+                  std::string_view(schema_name.data,
+                                   static_cast<int64_t>(schema_name.size_bytes)));
+
+        for (int64_t stat_index =
+                 ArrowArrayViewListChildOffset(schema_stats, schema_index);
+             stat_index < ArrowArrayViewListChildOffset(schema_stats, schema_index + 1);
+             stat_index++) {
+          struct ArrowStringView table_name =
+              ArrowArrayViewGetStringUnsafe(stats->children[0], stat_index);
+          ASSERT_EQ("statstable",
+                    std::string_view(table_name.data,
+                                     static_cast<int64_t>(table_name.size_bytes)));
+          std::optional<std::string> column_name;
+          if (!ArrowArrayViewIsNull(stats->children[1], stat_index)) {
+            struct ArrowStringView value =
+                ArrowArrayViewGetStringUnsafe(stats->children[1], stat_index);
+            column_name = std::string(value.data, value.size_bytes);
+          }
+          ASSERT_TRUE(ArrowArrayViewGetIntUnsafe(stats->children[4], stat_index));
+
+          const int16_t stat_key = static_cast<int16_t>(
+              ArrowArrayViewGetIntUnsafe(stats->children[2], stat_index));
+          const int32_t offset =
+              stats->children[3]->buffer_views[1].data.as_int32[stat_index];
+          int64_t stat_value;
+          switch (stat_key) {
+            case ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY:
+            case ADBC_STATISTIC_DISTINCT_COUNT_KEY:
+            case ADBC_STATISTIC_NULL_COUNT_KEY:
+            case ADBC_STATISTIC_ROW_COUNT_KEY:
+              stat_value = static_cast<int64_t>(
+                  std::round(100 * ArrowArrayViewGetDoubleUnsafe(
+                                       stats->children[3]->children[2], offset)));
+              break;
+            default:
+              continue;
+          }
+          seen.emplace_back(std::move(column_name), stat_key, stat_value);
+        }
+      }
+    }
+  }
+
+  ASSERT_THAT(seen,
+              ::testing::UnorderedElementsAreArray(
+                  std::vector<std::tuple<std::optional<std::string>, int16_t, int64_t>>{
+                      {"ints", ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY, 400},
+                      {"strs", ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY, 300},
+                      {"ints", ADBC_STATISTIC_NULL_COUNT_KEY, 100},
+                      {"strs", ADBC_STATISTIC_NULL_COUNT_KEY, 100},
+                      {"ints", ADBC_STATISTIC_DISTINCT_COUNT_KEY, 200},
+                      {"strs", ADBC_STATISTIC_DISTINCT_COUNT_KEY, 200},
+                      {std::nullopt, ADBC_STATISTIC_ROW_COUNT_KEY, 300},
+                  }));
 }
 
 ADBCV_TEST_CONNECTION(PostgresConnectionTest)

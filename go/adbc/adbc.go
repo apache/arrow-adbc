@@ -696,14 +696,14 @@ type ConnectionGetStatistics interface {
 	//		Field Name               | Field Type
 	//		-------------------------|----------------------------------
 	//		catalog_name             | utf8
-	//		catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>
+	//		catalog_db_schemas       | list<DB_SCHEMA_SCHEMA> not null
 	//
 	// DB_SCHEMA_SCHEMA is a Struct with fields:
 	//
 	//		Field Name               | Field Type
 	//		-------------------------|----------------------------------
 	//		db_schema_name           | utf8
-	//		db_schema_statistics     | list<STATISTICS_SCHEMA>
+	//		db_schema_statistics     | list<STATISTICS_SCHEMA> not null
 	//
 	// STATISTICS_SCHEMA is a Struct with fields:
 	//
