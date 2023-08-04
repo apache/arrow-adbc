@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cerrno>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -977,6 +978,45 @@ TEST_F(PostgresStatementTest, AdbcErrorBackwardsCompatibility) {
 
   error->release(error);
   free(error);
+}
+
+TEST_F(PostgresStatementTest, Cancel) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  for (const char* query : {
+           "DROP TABLE IF EXISTS test_cancel",
+           "CREATE TABLE test_cancel (ints INT)",
+           R"(INSERT INTO test_cancel (ints)
+              SELECT g :: INT FROM GENERATE_SERIES(1, 65536) temp(g))",
+       }) {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM test_cancel", &error),
+              IsOkStatus(&error));
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementCancel(&statement, &error), IsOkStatus(&error));
+
+  int retcode = 0;
+  while (true) {
+    retcode = reader.MaybeNext();
+    if (retcode != 0 || !reader.array->release) break;
+  }
+
+  ASSERT_EQ(ECANCELED, retcode);
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  const struct AdbcError* detail =
+      AdbcErrorFromArrayStream(&reader.stream.value, &status);
+  ASSERT_NE(nullptr, detail);
+  ASSERT_EQ(ADBC_STATUS_CANCELLED, status);
+  ASSERT_EQ("57014", std::string_view(detail->sqlstate, 5));
+  ASSERT_NE(0, AdbcErrorGetDetailCount(detail));
 }
 
 struct TypeTestCase {

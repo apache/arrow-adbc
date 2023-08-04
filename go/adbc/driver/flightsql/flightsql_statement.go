@@ -135,7 +135,9 @@ type statement struct {
 }
 
 func (s *statement) closePreparedStatement() error {
-	return s.prepared.Close(metadata.NewOutgoingContext(context.Background(), s.hdrs), s.timeouts)
+	var header, trailer metadata.MD
+	err := s.prepared.Close(metadata.NewOutgoingContext(context.Background(), s.hdrs), grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
+	return adbcFromFlightStatusWithDetails(err, header, trailer, "ClosePreparedStatement")
 }
 
 // Close releases any relevant resources associated with this statement
@@ -329,14 +331,16 @@ func (s *statement) SetSqlQuery(query string) error {
 func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var info *flight.FlightInfo
+	var header, trailer metadata.MD
+	opts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	if s.prepared != nil {
-		info, err = s.prepared.Execute(ctx, s.timeouts)
+		info, err = s.prepared.Execute(ctx, opts...)
 	} else {
-		info, err = s.query.execute(ctx, s.cnxn, s.timeouts)
+		info, err = s.query.execute(ctx, s.cnxn, opts...)
 	}
 
 	if err != nil {
-		return nil, -1, adbcFromFlightStatus(err, "ExecuteQuery")
+		return nil, -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
 	}
 
 	nrec = info.TotalRecords
@@ -348,15 +352,16 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 // set. It returns the number of rows affected if known, otherwise -1.
 func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
-
+	var header, trailer metadata.MD
+	opts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	if s.prepared != nil {
-		n, err = s.prepared.ExecuteUpdate(ctx, s.timeouts)
+		n, err = s.prepared.ExecuteUpdate(ctx, opts...)
 	} else {
-		n, err = s.query.executeUpdate(ctx, s.cnxn, s.timeouts)
+		n, err = s.query.executeUpdate(ctx, s.cnxn, opts...)
 	}
 
 	if err != nil {
-		err = adbcFromFlightStatus(err, "ExecuteUpdate")
+		err = adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
 	}
 
 	return
@@ -366,9 +371,10 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) error {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
-	prep, err := s.query.prepare(ctx, s.cnxn, s.timeouts)
+	var header, trailer metadata.MD
+	prep, err := s.query.prepare(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	if err != nil {
-		return adbcFromFlightStatus(err, "Prepare")
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "Prepare")
 	}
 	s.prepared = prep
 	return nil
@@ -484,14 +490,15 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 		err  error
 	)
 
+	var header, trailer metadata.MD
 	if s.prepared != nil {
-		info, err = s.prepared.Execute(ctx, s.timeouts)
+		info, err = s.prepared.Execute(ctx, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	} else {
-		info, err = s.query.execute(ctx, s.cnxn, s.timeouts)
+		info, err = s.query.execute(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	}
 
 	if err != nil {
-		return nil, out, -1, adbcFromFlightStatus(err, "ExecutePartitions")
+		return nil, out, -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecutePartitions")
 	}
 
 	if len(info.Schema) > 0 {
@@ -535,5 +542,10 @@ func (s *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, er
 		return
 	}
 
-	return s.query.executeSchema(ctx, s.cnxn, s.timeouts)
+	var header, trailer metadata.MD
+	schema, err = s.query.executeSchema(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
+	if err != nil {
+		err = adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteSchema")
+	}
+	return
 }

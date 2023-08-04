@@ -17,15 +17,48 @@
 
 #include "utils.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <assert.h>
-#include "adbc.h"
+#include <adbc.h>
 
 static size_t kErrorBufferSize = 1024;
+
+int AdbcStatusCodeToErrno(AdbcStatusCode code) {
+  switch (code) {
+    case ADBC_STATUS_OK:
+      return 0;
+    case ADBC_STATUS_UNKNOWN:
+      return EIO;
+    case ADBC_STATUS_NOT_IMPLEMENTED:
+      return ENOTSUP;
+    case ADBC_STATUS_NOT_FOUND:
+      return ENOENT;
+    case ADBC_STATUS_ALREADY_EXISTS:
+      return EEXIST;
+    case ADBC_STATUS_INVALID_ARGUMENT:
+    case ADBC_STATUS_INVALID_STATE:
+      return EINVAL;
+    case ADBC_STATUS_INVALID_DATA:
+    case ADBC_STATUS_INTEGRITY:
+    case ADBC_STATUS_INTERNAL:
+    case ADBC_STATUS_IO:
+      return EIO;
+    case ADBC_STATUS_CANCELLED:
+      return ECANCELED;
+    case ADBC_STATUS_TIMEOUT:
+      return ETIMEDOUT;
+    case ADBC_STATUS_UNAUTHENTICATED:
+      // FreeBSD/macOS have EAUTH, but not other platforms
+    case ADBC_STATUS_UNAUTHORIZED:
+      return EACCES;
+    default:
+      return EIO;
+  }
+}
 
 /// For ADBC 1.1.0, the structure held in private_data.
 struct AdbcErrorDetails {
@@ -165,7 +198,7 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
   details->count++;
 }
 
-int CommonErrorGetDetailCount(struct AdbcError* error) {
+int CommonErrorGetDetailCount(const struct AdbcError* error) {
   if (error->release != ReleaseErrorWithDetails) {
     return 0;
   }
@@ -173,7 +206,7 @@ int CommonErrorGetDetailCount(struct AdbcError* error) {
   return details->count;
 }
 
-struct AdbcErrorDetail CommonErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int index) {
   if (error->release != ReleaseErrorWithDetails) {
     return (struct AdbcErrorDetail){NULL, NULL, 0};
   }

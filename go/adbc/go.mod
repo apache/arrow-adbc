@@ -17,7 +17,7 @@
 
 module github.com/apache/arrow-adbc/go/adbc
 
-go 1.18
+go 1.20
 
 require (
 	github.com/apache/arrow/go/v13 v13.0.0-20230713180941-b97597765355

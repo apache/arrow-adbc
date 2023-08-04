@@ -22,11 +22,17 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
 func adbcFromFlightStatus(err error, context string, args ...any) error {
+	var header, trailer metadata.MD
+	return adbcFromFlightStatusWithDetails(err, header, trailer, context, args...)
+}
+
+func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, context string, args ...any) error {
 	if _, ok := err.(adbc.Error); ok {
 		return err
 	}
@@ -73,7 +79,6 @@ func adbcFromFlightStatus(err error, context string, args ...any) error {
 		adbcCode = adbc.StatusUnknown
 	}
 
-	// People don't read error messages, so backload the context and frontload the server error
 	details := []adbc.ErrorDetail{}
 	// slice of proto.Message or error
 	for _, detail := range grpcStatus.Details() {
@@ -81,12 +86,38 @@ func adbcFromFlightStatus(err error, context string, args ...any) error {
 			details = append(details, &adbc.TextErrorDetail{Name: "grpc-status-details-bin", Detail: err.Error()})
 		} else if msg, ok := detail.(proto.Message); ok {
 			details = append(details, &adbc.ProtobufErrorDetail{Name: "grpc-status-details-bin", Message: msg})
-		} else {
-			panic(fmt.Sprintf("gRPC returned non-Protobuf detail in violation of method contract: %#v", detail))
+		}
+		// else, gRPC returned non-Protobuf detail in violation of their method contract
+	}
+
+	// XXX(https://github.com/grpc/grpc-go/issues/5485): don't count on
+	// grpc-status-details-bin since Google hardcodes it to only work with
+	// Google Cloud
+	// XXX: must check both headers and trailers because some implementations
+	// (like gRPC-Java) will consolidate trailers into headers for failed RPCs
+	for key, values := range header {
+		switch key {
+		case "content-type", "grpc-status-details-bin":
+			continue
+		default:
+			for _, value := range values {
+				details = append(details, &adbc.TextErrorDetail{Name: key, Detail: value})
+			}
+		}
+	}
+	for key, values := range trailer {
+		switch key {
+		case "content-type", "grpc-status-details-bin":
+			continue
+		default:
+			for _, value := range values {
+				details = append(details, &adbc.TextErrorDetail{Name: key, Detail: value})
+			}
 		}
 	}
 
 	return adbc.Error{
+		// People don't read error messages, so backload the context and frontload the server error
 		Msg:     fmt.Sprintf("[FlightSQL] %s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
 		Code:    adbcCode,
 		Details: details,

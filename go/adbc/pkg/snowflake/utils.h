@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include "../../drivermgr/adbc.h"
 
+struct AdbcError* SnowflakeErrorFromArrayStream(struct ArrowArrayStream*,
+                                                AdbcStatusCode*);
 AdbcStatusCode SnowflakeDatabaseGetOption(struct AdbcDatabase*, const char*, char*,
                                           size_t*, struct AdbcError*);
 AdbcStatusCode SnowflakeDatabaseGetOptionBytes(struct AdbcDatabase*, const char*,
@@ -164,5 +166,10 @@ struct SnowflakeError {
 
 void SnowflakeReleaseErrWithDetails(struct AdbcError* error);
 
-int SnowflakeErrorGetDetailCount(struct AdbcError* error);
-struct AdbcErrorDetail SnowflakeErrorGetDetail(struct AdbcError* error, int index);
+int SnowflakeErrorGetDetailCount(const struct AdbcError* error);
+struct AdbcErrorDetail SnowflakeErrorGetDetail(const struct AdbcError* error, int index);
+
+int SnowflakeArrayStreamGetSchemaTrampoline(struct ArrowArrayStream* stream,
+                                            struct ArrowSchema* out);
+int SnowflakeArrayStreamGetNextTrampoline(struct ArrowArrayStream* stream,
+                                          struct ArrowArray* out);

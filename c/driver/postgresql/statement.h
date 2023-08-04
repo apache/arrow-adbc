@@ -41,28 +41,26 @@ class PostgresStatement;
 class TupleReader final {
  public:
   TupleReader(PGconn* conn)
-      : conn_(conn),
+      : status_(ADBC_STATUS_OK),
+        error_(ADBC_ERROR_INIT),
+        conn_(conn),
         result_(nullptr),
         pgbuf_(nullptr),
         copy_reader_(nullptr),
         row_id_(-1),
         batch_size_hint_bytes_(16777216) {
-    StringBuilderInit(&error_builder_, 0);
     data_.data.as_char = nullptr;
     data_.size_bytes = 0;
   }
 
   int GetSchema(struct ArrowSchema* out);
   int GetNext(struct ArrowArray* out);
-  const char* last_error() const {
-    if (error_builder_.size > 0) {
-      return error_builder_.buffer;
-    } else {
-      return nullptr;
-    }
-  }
+  const char* last_error() const { return error_.message; }
   void Release();
   void ExportTo(struct ArrowArrayStream* stream);
+
+  static const struct AdbcError* ErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                      AdbcStatusCode* status);
 
  private:
   friend class PostgresStatement;
@@ -77,11 +75,12 @@ class TupleReader final {
   static const char* GetLastErrorTrampoline(struct ArrowArrayStream* self);
   static void ReleaseTrampoline(struct ArrowArrayStream* self);
 
+  AdbcStatusCode status_;
+  struct AdbcError error_;
   PGconn* conn_;
   PGresult* result_;
   char* pgbuf_;
   struct ArrowBufferView data_;
-  struct StringBuilder error_builder_;
   std::unique_ptr<PostgresCopyStreamReader> copy_reader_;
   int64_t row_id_;
   int64_t batch_size_hint_bytes_;

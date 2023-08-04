@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include "../../drivermgr/adbc.h"
 
+struct AdbcError* FlightSQLErrorFromArrayStream(struct ArrowArrayStream*,
+                                                AdbcStatusCode*);
 AdbcStatusCode FlightSQLDatabaseGetOption(struct AdbcDatabase*, const char*, char*,
                                           size_t*, struct AdbcError*);
 AdbcStatusCode FlightSQLDatabaseGetOptionBytes(struct AdbcDatabase*, const char*,
@@ -164,5 +166,10 @@ struct FlightSQLError {
 
 void FlightSQLReleaseErrWithDetails(struct AdbcError* error);
 
-int FlightSQLErrorGetDetailCount(struct AdbcError* error);
-struct AdbcErrorDetail FlightSQLErrorGetDetail(struct AdbcError* error, int index);
+int FlightSQLErrorGetDetailCount(const struct AdbcError* error);
+struct AdbcErrorDetail FlightSQLErrorGetDetail(const struct AdbcError* error, int index);
+
+int FlightSQLArrayStreamGetSchemaTrampoline(struct ArrowArrayStream* stream,
+                                            struct ArrowSchema* out);
+int FlightSQLArrayStreamGetNextTrampoline(struct ArrowArrayStream* stream,
+                                          struct ArrowArray* out);
