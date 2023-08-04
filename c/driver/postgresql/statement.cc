@@ -518,6 +518,12 @@ struct BindStream {
 }  // namespace
 
 int TupleReader::GetSchema(struct ArrowSchema* out) {
+  if (copy_reader_ == nullptr) {
+    StringBuilderAppend(&error_builder_,
+                        "[libpq] Copy reader not initialized before calling GetSchema");
+    return EINVAL;
+  }
+
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
     StringBuilderAppend(&error_builder_,
