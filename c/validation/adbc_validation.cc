@@ -33,6 +33,7 @@
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow_ipc.h>
 
 #include "adbc_validation_util.h"
 
@@ -1100,7 +1101,92 @@ void StatementTest::TestSqlIngestBinary() {
 }
 
 void StatementTest::TestSqlIngestDate32() {
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<int32_t>(NANOARROW_TYPE_DATE32));
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ArrowType type = NANOARROW_TYPE_DATE32;
+  std::vector<std::optional<int32_t>> values = {std::nullopt, 20000, -20000};
+
+  ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<int32_t>(&schema.value, &array.value, &na_error, values),
+              IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected,
+              ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error),
+              IsOkStatus(&error));
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+    int64_t in_size = 0;
+    uint8_t data[8096];
+
+    FILE* fd = fopen(
+        "c/validation/driver/postgresql/teststatement-testsqlingestdate32.arrow", "rb");
+    ASSERT_NE(nullptr, fd);
+    in_size = fread(data, 1, 8096, fd);
+    ASSERT_NE(in_size, 8096) << "test cannot read files more than 8096 bytes";
+
+    struct ArrowBufferView buffer_view;
+    buffer_view.data.data = data;
+    buffer_view.size_bytes = in_size;
+
+    struct ArrowIpcDecoder decoder;
+    ArrowIpcDecoderInit(&decoder);
+
+    ASSERT_EQ(0, ArrowIpcDecoderVerifyHeader(&decoder, buffer_view, &na_error));
+    ASSERT_EQ(0, ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, &na_error));
+
+    struct ArrowSchema read_schema;
+    ASSERT_EQ(0, ArrowIpcDecoderDecodeSchema(&decoder, &read_schema, &na_error));
+    // TODO: compare schemas
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(values.size(), reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    struct ArrowArray read_array;
+    ASSERT_EQ(0, ArrowIpcDecoderDecodeArray(
+                     &decoder, buffer_view, 0, &read_array,
+                     ArrowValidationLevel::NANOARROW_VALIDATION_LEVEL_FULL, &na_error));
+    // TODO: compare arrays
+
+    read_array.release(&read_array);
+    read_schema.release(&read_schema);
+    ArrowIpcDecoderReset(&decoder);
+    fclose(fd);
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
 }
 
 template <enum ArrowTimeUnit TU>
