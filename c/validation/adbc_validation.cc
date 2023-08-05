@@ -1148,8 +1148,9 @@ void StatementTest::TestSqlIngestDate32() {
     int64_t in_size = 0;
     uint8_t data[8096];
 
-    FILE* fd = fopen(
-        "c/validation/driver/postgresql/teststatement-testsqlingestdate32.arrow", "rb");
+    FILE* fd =
+        fopen("../c/validation/driver/postgresql/statementtest-testsqlingestdate32.arrow",
+              "rb");
     ASSERT_NE(nullptr, fd);
     in_size = fread(data, 1, 8096, fd);
     ASSERT_NE(in_size, 8096) << "test cannot read files more than 8096 bytes";
