@@ -518,11 +518,7 @@ struct BindStream {
 }  // namespace
 
 int TupleReader::GetSchema(struct ArrowSchema* out) {
-  if (copy_reader_ == nullptr) {
-    StringBuilderAppend(&error_builder_,
-                        "[libpq] Copy reader not initialized before calling GetSchema");
-    return EINVAL;
-  }
+  assert(copy_reader_ != nullptr);
 
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
@@ -667,6 +663,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   // occur in an overflow scenario).
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
+  is_finished_ = true;
 
   // Check the server-side response
   result_ = PQgetResult(conn_);
@@ -703,7 +700,6 @@ void TupleReader::Release() {
   // Clear the copy reader to mark this reader as finished
   if (copy_reader_) {
     copy_reader_.reset();
-    is_finished_ = true;
   }
 }
 
