@@ -1145,29 +1145,22 @@ void StatementTest::TestSqlIngestDate32() {
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
 
-    int64_t in_size = 0;
-    uint8_t data[8096];
-
-    FILE* fd =
-        fopen("../c/validation/driver/postgresql/statementtest-testsqlingestdate32.arrow",
-              "rb");
+    // TODO: maybe should use a quirk to resolve to test path?
+    FILE* fd = fopen(
+        "../c/validation/driver/sqlite/statementtest-testsqlingestdate32.arrow", "rb");
     ASSERT_NE(nullptr, fd);
-    in_size = fread(data, 1, 8096, fd);
-    ASSERT_NE(in_size, 8096) << "test cannot read files more than 8096 bytes";
 
-    struct ArrowBufferView buffer_view;
-    buffer_view.data.data = data;
-    buffer_view.size_bytes = in_size;
+    struct ArrowIpcInputStream input;
+    ASSERT_EQ(ArrowIpcInputStreamInitFile(&input, fd, 1), NANOARROW_OK);
 
-    struct ArrowIpcDecoder decoder;
-    ArrowIpcDecoderInit(&decoder);
-
-    ASSERT_EQ(0, ArrowIpcDecoderVerifyHeader(&decoder, buffer_view, &na_error));
-    ASSERT_EQ(0, ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, &na_error));
-
+    struct ArrowArrayStream stream;
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
     struct ArrowSchema read_schema;
-    ASSERT_EQ(0, ArrowIpcDecoderDecodeSchema(&decoder, &read_schema, &na_error));
-    // TODO: compare schemas
+
+    ASSERT_EQ(stream.get_schema(&stream, &read_schema), NANOARROW_OK);
+    // TODO: look up this schema.format code
+    // EXPECT_STREQ(schema.format, "+s");
+    read_schema.release(&read_schema);
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_NE(nullptr, reader.array->release);
@@ -1175,14 +1168,10 @@ void StatementTest::TestSqlIngestDate32() {
     ASSERT_EQ(1, reader.array->n_children);
 
     struct ArrowArray read_array;
-    ASSERT_EQ(0, ArrowIpcDecoderDecodeArray(
-                     &decoder, buffer_view, 0, &read_array,
-                     ArrowValidationLevel::NANOARROW_VALIDATION_LEVEL_FULL, &na_error));
+    ASSERT_EQ(stream.get_next(&stream, &read_array), NANOARROW_OK);
     // TODO: compare arrays
-
     read_array.release(&read_array);
-    read_schema.release(&read_schema);
-    ArrowIpcDecoderReset(&decoder);
+
     fclose(fd);
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
