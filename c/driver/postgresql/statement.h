@@ -50,6 +50,7 @@ class TupleReader final {
     StringBuilderInit(&error_builder_, 0);
     data_.data.as_char = nullptr;
     data_.size_bytes = 0;
+    is_finished_ = false;
   }
 
   int GetSchema(struct ArrowSchema* out);
@@ -85,6 +86,7 @@ class TupleReader final {
   std::unique_ptr<PostgresCopyStreamReader> copy_reader_;
   int64_t row_id_;
   int64_t batch_size_hint_bytes_;
+  bool is_finished_;
 };
 
 class PostgresStatement {
