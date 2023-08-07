@@ -698,7 +698,6 @@ void TupleReader::Release() {
     pgbuf_ = nullptr;
   }
 
-  // Clear the copy reader to mark this reader as finished
   if (copy_reader_) {
     copy_reader_.reset();
   }

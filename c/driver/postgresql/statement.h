@@ -46,11 +46,11 @@ class TupleReader final {
         pgbuf_(nullptr),
         copy_reader_(nullptr),
         row_id_(-1),
-        batch_size_hint_bytes_(16777216) {
+        batch_size_hint_bytes_(16777216),
+        is_finished_(false) {
     StringBuilderInit(&error_builder_, 0);
     data_.data.as_char = nullptr;
     data_.size_bytes = 0;
-    is_finished_ = false;
   }
 
   int GetSchema(struct ArrowSchema* out);
