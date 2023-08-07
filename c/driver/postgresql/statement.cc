@@ -18,6 +18,7 @@
 #include "statement.h"
 
 #include <array>
+#include <cassert>
 #include <cerrno>
 #include <cinttypes>
 #include <cstring>
