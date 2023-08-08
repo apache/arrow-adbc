@@ -1162,10 +1162,8 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 				}
 			}
 
-			if rdr.Err() != nil {
-				return nil, adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
-			} else if ctx.Err() != nil {
-				return nil, adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
+			if err := checkContext(rdr.Err(), ctx); err != nil {
+				return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
 			}
 		}
 	} else if grpcstatus.Code(err) != grpccodes.Unimplemented {
@@ -1303,12 +1301,9 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 		g.AppendCatalog("")
 	}
 
-	if err = rdr.Err(); err != nil {
+	if err := checkContext(rdr.Err(), ctx); err != nil {
 		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
-	} else if ctx.Err() != nil {
-		return nil, adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "GetObjects(GetCatalogs)")
 	}
-
 	return g.Finish()
 }
 
@@ -1366,11 +1361,8 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 		}
 	}
 
-	if rdr.Err() != nil {
-		result = nil
-		err = adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "GetObjects(GetDBSchemas)")
-	} else if ctx.Err() != nil {
-		return nil, adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "GetObjects(GetCatalogs)")
+	if err := checkContext(rdr.Err(), ctx); err != nil {
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
 	}
 	return
 }
@@ -1449,12 +1441,8 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		}
 	}
 
-	if rdr.Err() != nil {
-		result = nil
-		err = adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "GetObjects(GetTables)")
-	} else if ctx.Err() != nil {
-		result = nil
-		err = adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "GetObjects(GetTables)")
+	if err := checkContext(rdr.Err(), ctx); err != nil {
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetTables)")
 	}
 	return
 }

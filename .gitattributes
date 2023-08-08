@@ -18,6 +18,9 @@
 c/vendor/* linguist-vendored
 go/adbc/drivermgr/adbc.h linguist-vendored
 go/adbc/drivermgr/adbc_driver_manager.cc linguist-vendored
+go/adbc/pkg/flightsql/* linguist-generated
+go/adbc/pkg/panicdummy/* linguist-generated
+go/adbc/pkg/snowflake/* linguist-generated
 python/adbc_driver_flightsql/adbc_driver_flightsql/_static_version.py export-subst
 python/adbc_driver_manager/adbc_driver_manager/_static_version.py export-subst
 python/adbc_driver_postgresql/adbc_driver_postgresql/_static_version.py export-subst

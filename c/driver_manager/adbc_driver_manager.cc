@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstring>
 #include <string>
 #include <unordered_map>
@@ -600,7 +601,7 @@ std::string AdbcDriverManagerDefaultEntrypoint(const std::string& driver) {
     // if pos == npos this is the entire filename
     std::string token = filename.substr(prev, pos - prev);
     // capitalize first letter
-    token[0] = std::toupper(token[0]);
+    token[0] = std::toupper(static_cast<unsigned char>(token[0]));
 
     entrypoint += token;
 

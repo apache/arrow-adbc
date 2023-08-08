@@ -18,6 +18,7 @@
 package flightsql
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -122,4 +123,15 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 		Code:    adbcCode,
 		Details: details,
 	}
+}
+
+func checkContext(maybeErr error, ctx context.Context) error {
+	if maybeErr != nil {
+		return maybeErr
+	} else if ctx.Err() == context.Canceled {
+		return adbc.Error{Msg: "Cancelled by request", Code: adbc.StatusCancelled}
+	} else if ctx.Err() == context.DeadlineExceeded {
+		return adbc.Error{Msg: "Deadline exceeded", Code: adbc.StatusTimeout}
+	}
+	return ctx.Err()
 }

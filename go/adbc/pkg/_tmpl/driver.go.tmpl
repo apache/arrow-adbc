@@ -201,18 +201,18 @@ func exportBytesOption(val []byte, out *C.uint8_t, length *C.size_t) C.AdbcStatu
 
 type cancellableContext struct {
 	ctx context.Context
-	cancel context.CancelCauseFunc
+	cancel context.CancelFunc
 }
 
 func (c *cancellableContext) newContext() context.Context {
 	c.cancelContext()
-	c.ctx, c.cancel = context.WithCancelCause(context.Background())
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 	return c.ctx
 }
 
 func (c *cancellableContext) cancelContext() {
 	if c.cancel != nil {
-		c.cancel(adbc.Error{Msg: "Cancelled by request", Code: adbc.StatusCancelled})
+		c.cancel()
 	}
 	c.ctx = nil
 	c.cancel = nil

@@ -108,10 +108,8 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				rec.Retain()
 				ch <- rec
 			}
-			if rdr.Err() != nil {
-				return adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
-			} else if ctx.Err() != nil {
-				return adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
+			if err := checkContext(rdr.Err(), ctx); err != nil {
+				return adbcFromFlightStatusWithDetails(err, header, trailer, "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
 			}
 			return nil
 		})
@@ -159,10 +157,8 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				chs[endpointIndex] <- rec
 			}
 
-			if rdr.Err() != nil {
-				return adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
-			} else if ctx.Err() != nil {
-				return adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
+			if err := checkContext(rdr.Err(), ctx); err != nil {
+				return adbcFromFlightStatusWithDetails(err, header, trailer, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
 			}
 			return nil
 		})
