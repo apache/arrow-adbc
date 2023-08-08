@@ -1105,6 +1105,10 @@ void StatementTest::TestSqlIngestDate32() {
     GTEST_SKIP();
   }
 
+  if (quirks()->test_data_path() == "") {
+    GTEST_SKIP();
+  }
+
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
 
@@ -1145,9 +1149,10 @@ void StatementTest::TestSqlIngestDate32() {
 
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
 
-    // TODO: maybe should use a quirk to resolve to test path?
     FILE* fd = fopen(
-        "../c/validation/driver/sqlite/statementtest-testsqlingestdate32.arrow", "rb");
+        (quirks()->test_data_path() + "/statementtest-testsqlingestdate32.arrow").c_str(),
+        "rb");
+
     ASSERT_NE(nullptr, fd);
 
     struct ArrowIpcInputStream input;

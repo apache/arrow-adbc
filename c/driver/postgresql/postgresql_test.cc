@@ -17,6 +17,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <limits>
 #include <optional>
 #include <variant>
@@ -103,6 +104,13 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
 
   std::string catalog() const override { return "postgres"; }
   std::string db_schema() const override { return "public"; }
+
+  std::string test_data_path() const override {
+    std::filesystem::path module_path = __FILE__;
+    auto result = module_path.parent_path().parent_path().parent_path() / "validation" /
+                  "driver" / "postgresql";
+    return result.string();
+  }
 };
 
 class PostgresDatabaseTest : public ::testing::Test,

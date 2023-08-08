@@ -16,6 +16,7 @@
 // under the License.
 
 #include <cstring>
+#include <filesystem>
 #include <limits>
 #include <optional>
 #include <string>
@@ -96,6 +97,13 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
 
   std::string catalog() const override { return "main"; }
   std::string db_schema() const override { return ""; }
+
+  std::string test_data_path() const override {
+    std::filesystem::path module_path = __FILE__;
+    auto result = module_path.parent_path().parent_path().parent_path() / "validation" /
+                  "driver" / "sqlite";
+    return result.string();
+  }
 };
 
 class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::DatabaseTest {
