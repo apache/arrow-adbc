@@ -361,6 +361,10 @@ func isCorrectParamType(typ arrow.Type, val driver.Value) bool {
 		return checkType[arrow.Time64](val)
 	case arrow.TIMESTAMP:
 		return checkType[arrow.Timestamp](val)
+	case arrow.DECIMAL128:
+		return checkType[decimal128.Num](val)
+	case arrow.DECIMAL256:
+		return checkType[decimal256.Num](val)
 	}
 	// TODO: add more types here
 	return true
@@ -639,6 +643,10 @@ func (r *rows) Next(dest []driver.Value) error {
 			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.Time64Type).Unit)
 		case *array.Timestamp:
 			dest[i] = col.Value(int(r.curRow)).ToTime(col.DataType().(*arrow.TimestampType).Unit)
+		case *array.Decimal128:
+			dest[i] = col.Value(int(r.curRow))
+		case *array.Decimal256:
+			dest[i] = col.Value(int(r.curRow))
 		default:
 			return &adbc.Error{
 				Code: adbc.StatusNotImplemented,
