@@ -641,10 +641,10 @@ jobs:
           PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
 
-      - name: Set PATH on Windows
-        if: runner.os == 'Windows'
+      - name: Set PATH for Go
+        shell: bash
         run:
-          echo %RUNNER_TOOL_CACHE%\go\1.20.7\x64\bin >> $GITHUB_PATH
+          echo "$RUNNER_TOOL_CACHE/go/1.20.7/x64/bin" >> $GITHUB_PATH
 
       - name: Check Go version
         if: matrix.config.pkg == 'adbcflightsql' || matrix.config.pkg == 'adbcsnowflake'
