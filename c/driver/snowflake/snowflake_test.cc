@@ -158,6 +158,10 @@ class SnowflakeConnectionTest : public ::testing::Test,
     }
   }
 
+  // Supported, but we don't validate the values
+  void TestMetadataCurrentCatalog() { GTEST_SKIP(); }
+  void TestMetadataCurrentDbSchema() { GTEST_SKIP(); }
+
  protected:
   SnowflakeQuirks quirks_;
 };
