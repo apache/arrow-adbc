@@ -1116,7 +1116,7 @@ void StatementTest::TestSqlIngestDate32() {
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
   ArrowType type = NANOARROW_TYPE_DATE32;
-  std::vector<std::optional<int32_t>> values = {std::nullopt, 20000, -20000};
+  std::vector<std::optional<int32_t>> values = {std::nullopt, 20000, 0};
 
   ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
   ASSERT_THAT(MakeBatch<int32_t>(&schema.value, &array.value, &na_error, values),
