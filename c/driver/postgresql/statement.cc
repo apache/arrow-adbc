@@ -664,7 +664,6 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   // occur in an overflow scenario).
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
-  is_finished_ = true;
 
   // Check the server-side response
   result_ = PQgetResult(conn_);
@@ -680,6 +679,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     return EIO;
   }
 
+  is_finished_ = true;
   ResetQuery();
   ArrowArrayMove(&tmp, out);
   return NANOARROW_OK;
