@@ -33,15 +33,6 @@ from libcpp.vector cimport vector as c_vector
 if typing.TYPE_CHECKING:
     from typing import Self
 
-try:
-    import pyarrow
-except ImportError as e:
-    pyarrow = None
-
-
-cdef extern from "adbc_driver_manager.h":
-    const char* CAdbcStatusCodeMessage"AdbcStatusCodeMessage"(CAdbcStatusCode code)
-
 
 class AdbcStatusCode(enum.IntEnum):
     """

@@ -91,15 +91,139 @@ void SetError(struct AdbcError* error, const std::string& message) {
 
 // Driver state
 
+/// A driver DLL.
+struct ManagedLibrary {
+  ManagedLibrary() : handle(nullptr) {}
+  ManagedLibrary(ManagedLibrary&& other) : handle(other.handle) {
+    other.handle = nullptr;
+  }
+  ManagedLibrary(const ManagedLibrary&) = delete;
+  ManagedLibrary& operator=(const ManagedLibrary&) = delete;
+  ManagedLibrary& operator=(ManagedLibrary&& other) noexcept {
+    this->handle = other.handle;
+    other.handle = nullptr;
+    return *this;
+  }
+
+  ~ManagedLibrary() { Release(); }
+
+  void Release() {
+    // TODO(apache/arrow-adbc#204): causes tests to segfault
+    // Need to refcount the driver DLL; also, errors may retain a reference to
+    // release() from the DLL - how to handle this?
+  }
+
+  AdbcStatusCode Load(const char* library, struct AdbcError* error) {
+    std::string error_message;
+#if defined(_WIN32)
+    HMODULE handle = LoadLibraryExA(library, NULL, 0);
+    if (!handle) {
+      error_message += library;
+      error_message += ": LoadLibraryExA() failed: ";
+      GetWinError(&error_message);
+
+      std::string full_driver_name = library;
+      full_driver_name += ".dll";
+      handle = LoadLibraryExA(full_driver_name.c_str(), NULL, 0);
+      if (!handle) {
+        error_message += '\n';
+        error_message += full_driver_name;
+        error_message += ": LoadLibraryExA() failed: ";
+        GetWinError(&error_message);
+      }
+    }
+    if (!handle) {
+      SetError(error, error_message);
+      return ADBC_STATUS_INTERNAL;
+    } else {
+      this->handle = handle;
+    }
+#else
+    static const std::string kPlatformLibraryPrefix = "lib";
+#if defined(__APPLE__)
+    static const std::string kPlatformLibrarySuffix = ".dylib";
+#else
+    static const std::string kPlatformLibrarySuffix = ".so";
+#endif  // defined(__APPLE__)
+
+    void* handle = dlopen(library, RTLD_NOW | RTLD_LOCAL);
+    if (!handle) {
+      error_message = "dlopen() failed: ";
+      error_message += dlerror();
+
+      // If applicable, append the shared library prefix/extension and
+      // try again (this way you don't have to hardcode driver names by
+      // platform in the application)
+      const std::string driver_str = library;
+
+      std::string full_driver_name;
+      if (driver_str.size() < kPlatformLibraryPrefix.size() ||
+          driver_str.compare(0, kPlatformLibraryPrefix.size(), kPlatformLibraryPrefix) !=
+              0) {
+        full_driver_name += kPlatformLibraryPrefix;
+      }
+      full_driver_name += library;
+      if (driver_str.size() < kPlatformLibrarySuffix.size() ||
+          driver_str.compare(full_driver_name.size() - kPlatformLibrarySuffix.size(),
+                             kPlatformLibrarySuffix.size(),
+                             kPlatformLibrarySuffix) != 0) {
+        full_driver_name += kPlatformLibrarySuffix;
+      }
+      handle = dlopen(full_driver_name.c_str(), RTLD_NOW | RTLD_LOCAL);
+      if (!handle) {
+        error_message += "\ndlopen() failed: ";
+        error_message += dlerror();
+      }
+    }
+    if (handle) {
+      this->handle = handle;
+    } else {
+      return ADBC_STATUS_INTERNAL;
+    }
+#endif  // defined(_WIN32)
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode Lookup(const char* name, void** func, struct AdbcError* error) {
+#if defined(_WIN32)
+    void* load_handle = reinterpret_cast<void*>(GetProcAddress(handle, name));
+    if (!load_handle) {
+      std::string message = "GetProcAddress(";
+      message += name;
+      message += ") failed: ";
+      GetWinError(&message);
+      SetError(error, message);
+      return ADBC_STATUS_INTERNAL;
+    }
+#else
+    void* load_handle = dlsym(handle, name);
+    if (!load_handle) {
+      std::string message = "dlsym(";
+      message += name;
+      message += ") failed: ";
+      message += dlerror();
+      SetError(error, message);
+      return ADBC_STATUS_INTERNAL;
+    }
+#endif  // defined(_WIN32)
+    *func = load_handle;
+    return ADBC_STATUS_OK;
+  }
+
+#if defined(_WIN32)
+  // The loaded DLL
+  HMODULE handle;
+#else
+  void* handle;
+#endif  // defined(_WIN32)
+};
+
 /// Hold the driver DLL and the driver release callback in the driver struct.
 struct ManagerDriverState {
   // The original release callback
   AdbcStatusCode (*driver_release)(struct AdbcDriver* driver, struct AdbcError* error);
 
-#if defined(_WIN32)
-  // The loaded DLL
-  HMODULE handle;
-#endif  // defined(_WIN32)
+  ManagedLibrary handle;
 };
 
 /// Unload the driver DLL.
@@ -113,15 +237,7 @@ static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError*
   if (state->driver_release) {
     status = state->driver_release(driver, error);
   }
-
-#if defined(_WIN32)
-  // TODO(apache/arrow-adbc#204): causes tests to segfault
-  // if (!FreeLibrary(state->handle)) {
-  //   std::string message = "FreeLibrary() failed: ";
-  //   GetWinError(&message);
-  //   SetError(error, message);
-  // }
-#endif  // defined(_WIN32)
+  state->handle.Release();
 
   driver->private_manager = nullptr;
   delete state;
@@ -424,8 +540,7 @@ struct TempDatabase {
   std::unordered_map<std::string, int64_t> int_options;
   std::unordered_map<std::string, double> double_options;
   std::string driver;
-  // Default name (see adbc.h)
-  std::string entrypoint = "AdbcDriverInit";
+  std::string entrypoint;
   AdbcDriverInitFunc init_func = nullptr;
 };
 
@@ -436,7 +551,71 @@ struct TempConnection {
   std::unordered_map<std::string, int64_t> int_options;
   std::unordered_map<std::string, double> double_options;
 };
+
+static const char kDefaultEntrypoint[] = "AdbcDriverInit";
 }  // namespace
+
+// Other helpers (intentionally not in an anonymous namespace so they can be tested)
+
+ADBC_EXPORT
+std::string AdbcDriverManagerDefaultEntrypoint(const std::string& driver) {
+  /// - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
+  /// - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
+  /// - proprietary_driver.dll -> AdbcProprietaryDriverInit
+
+  // Potential path -> filename
+  // Treat both \ and / as directory separators on all platforms for simplicity
+  std::string filename;
+  {
+    size_t pos = driver.find_last_of("/\\");
+    if (pos != std::string::npos) {
+      filename = driver.substr(pos + 1);
+    } else {
+      filename = driver;
+    }
+  }
+
+  // Remove all extensions
+  {
+    size_t pos = filename.find('.');
+    if (pos != std::string::npos) {
+      filename = filename.substr(0, pos);
+    }
+  }
+
+  // Remove lib prefix
+  // https://stackoverflow.com/q/1878001/262727
+  if (filename.rfind("lib", 0) == 0) {
+    filename = filename.substr(3);
+  }
+
+  // Split on underscores, hyphens
+  // Capitalize and join
+  std::string entrypoint;
+  entrypoint.reserve(filename.size());
+  size_t pos = 0;
+  while (pos < filename.size()) {
+    size_t prev = pos;
+    pos = filename.find_first_of("-_", pos);
+    // if pos == npos this is the entire filename
+    std::string token = filename.substr(prev, pos - prev);
+    // capitalize first letter
+    token[0] = std::toupper(token[0]);
+
+    entrypoint += token;
+
+    if (pos != std::string::npos) {
+      pos++;
+    }
+  }
+
+  if (entrypoint.rfind("Adbc", 0) != 0) {
+    entrypoint = "Adbc" + entrypoint;
+  }
+  entrypoint += "Init";
+
+  return entrypoint;
+}
 
 // Direct implementations of API methods
 
@@ -659,9 +838,12 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   if (args->init_func) {
     status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_1_1_0,
                                         database->private_driver, error);
-  } else {
+  } else if (!args->entrypoint.empty()) {
     status = AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(),
                             ADBC_VERSION_1_1_0, database->private_driver, error);
+  } else {
+    status = AdbcLoadDriver(args->driver.c_str(), nullptr, ADBC_VERSION_1_1_0,
+                            database->private_driver, error);
   }
   if (status != ADBC_STATUS_OK) {
     // Restore private_data so it will be released by AdbcDatabaseRelease
@@ -1370,124 +1552,40 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
   }
   auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
 
-  if (!entrypoint) {
-    // Default entrypoint (see adbc.h)
-    entrypoint = "AdbcDriverInit";
-  }
-
-#if defined(_WIN32)
-
-  HMODULE handle = LoadLibraryExA(driver_name, NULL, 0);
-  if (!handle) {
-    error_message += driver_name;
-    error_message += ": LoadLibraryExA() failed: ";
-    GetWinError(&error_message);
-
-    std::string full_driver_name = driver_name;
-    full_driver_name += ".lib";
-    handle = LoadLibraryExA(full_driver_name.c_str(), NULL, 0);
-    if (!handle) {
-      error_message += '\n';
-      error_message += full_driver_name;
-      error_message += ": LoadLibraryExA() failed: ";
-      GetWinError(&error_message);
-    }
-  }
-  if (!handle) {
-    SetError(error, error_message);
-    return ADBC_STATUS_INTERNAL;
-  }
-
-  void* load_handle = reinterpret_cast<void*>(GetProcAddress(handle, entrypoint));
-  init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
-  if (!init_func) {
-    std::string message = "GetProcAddress(";
-    message += entrypoint;
-    message += ") failed: ";
-    GetWinError(&message);
-    if (!FreeLibrary(handle)) {
-      message += "\nFreeLibrary() failed: ";
-      GetWinError(&message);
-    }
-    SetError(error, message);
-    return ADBC_STATUS_INTERNAL;
-  }
-
-#else
-
-#if defined(__APPLE__)
-  static const std::string kPlatformLibraryPrefix = "lib";
-  static const std::string kPlatformLibrarySuffix = ".dylib";
-#else
-  static const std::string kPlatformLibraryPrefix = "lib";
-  static const std::string kPlatformLibrarySuffix = ".so";
-#endif  // defined(__APPLE__)
-
-  void* handle = dlopen(driver_name, RTLD_NOW | RTLD_LOCAL);
-  if (!handle) {
-    error_message = "dlopen() failed: ";
-    error_message += dlerror();
-
-    // If applicable, append the shared library prefix/extension and
-    // try again (this way you don't have to hardcode driver names by
-    // platform in the application)
-    const std::string driver_str = driver_name;
-
-    std::string full_driver_name;
-    if (driver_str.size() < kPlatformLibraryPrefix.size() ||
-        driver_str.compare(0, kPlatformLibraryPrefix.size(), kPlatformLibraryPrefix) !=
-            0) {
-      full_driver_name += kPlatformLibraryPrefix;
-    }
-    full_driver_name += driver_name;
-    if (driver_str.size() < kPlatformLibrarySuffix.size() ||
-        driver_str.compare(full_driver_name.size() - kPlatformLibrarySuffix.size(),
-                           kPlatformLibrarySuffix.size(), kPlatformLibrarySuffix) != 0) {
-      full_driver_name += kPlatformLibrarySuffix;
-    }
-    handle = dlopen(full_driver_name.c_str(), RTLD_NOW | RTLD_LOCAL);
-    if (!handle) {
-      error_message += "\ndlopen() failed: ";
-      error_message += dlerror();
-    }
-  }
-  if (!handle) {
-    SetError(error, error_message);
+  ManagedLibrary library;
+  AdbcStatusCode status = library.Load(driver_name, error);
+  if (status != ADBC_STATUS_OK) {
     // AdbcDatabaseInit tries to call this if set
     driver->release = nullptr;
-    return ADBC_STATUS_INTERNAL;
+    return status;
   }
 
-  void* load_handle = dlsym(handle, entrypoint);
-  if (!load_handle) {
-    std::string message = "dlsym(";
-    message += entrypoint;
-    message += ") failed: ";
-    message += dlerror();
-    SetError(error, message);
-    return ADBC_STATUS_INTERNAL;
+  void* load_handle = nullptr;
+  if (entrypoint) {
+    status = library.Lookup(entrypoint, &load_handle, error);
+  } else {
+    auto name = AdbcDriverManagerDefaultEntrypoint(driver_name);
+    status = library.Lookup(name.c_str(), &load_handle, error);
+    if (status != ADBC_STATUS_OK) {
+      status = library.Lookup(kDefaultEntrypoint, &load_handle, error);
+    }
+  }
+
+  if (status != ADBC_STATUS_OK) {
+    library.Release();
+    return status;
   }
   init_func = reinterpret_cast<AdbcDriverInitFunc>(load_handle);
 
-#endif  // defined(_WIN32)
-
-  AdbcStatusCode status = AdbcLoadDriverFromInitFunc(init_func, version, driver, error);
+  status = AdbcLoadDriverFromInitFunc(init_func, version, driver, error);
   if (status == ADBC_STATUS_OK) {
     ManagerDriverState* state = new ManagerDriverState;
     state->driver_release = driver->release;
-#if defined(_WIN32)
-    state->handle = handle;
-#endif  // defined(_WIN32)
+    state->handle = std::move(library);
     driver->release = &ReleaseDriver;
     driver->private_manager = state;
   } else {
-#if defined(_WIN32)
-    if (!FreeLibrary(handle)) {
-      std::string message = "FreeLibrary() failed: ";
-      GetWinError(&message);
-      SetError(error, message);
-    }
-#endif  // defined(_WIN32)
+    library.Release();
   }
   return status;
 }

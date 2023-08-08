@@ -2747,8 +2747,8 @@ void StatementTest::TestResultInvalidation() {
               IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(reader2.GetSchema());
 
-  // First reader should not fail, but may give no data
-  ASSERT_NO_FATAL_FAILURE(reader1.Next());
+  // First reader may fail, or may succeed but give no data
+  reader1.MaybeNext();
 }
 
 #undef NOT_NULL

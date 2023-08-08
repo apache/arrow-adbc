@@ -282,3 +282,6 @@ cdef const CAdbcError* PyAdbcErrorFromArrayStream(
     CArrowArrayStream* stream, CAdbcStatusCode* status)
 
 cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *
+
+cdef extern from "adbc_driver_manager.h":
+    const char* CAdbcStatusCodeMessage"AdbcStatusCodeMessage"(CAdbcStatusCode code)
