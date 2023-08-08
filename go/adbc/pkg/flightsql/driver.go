@@ -28,11 +28,21 @@ package main
 // #cgo CXXFLAGS: -std=c++11 -DADBC_EXPORTING
 // #include "../../drivermgr/adbc.h"
 // #include "utils.h"
+// #include <errno.h>
 // #include <stdint.h>
 // #include <string.h>
 //
 // typedef const char cchar_t;
 // typedef const uint8_t cuint8_t;
+// typedef const struct AdbcError ConstAdbcError;
+//
+// int FlightSQLArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
+// int FlightSQLArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);
+// const char* FlightSQLArrayStreamGetLastError(struct ArrowArrayStream*);
+// void FlightSQLArrayStreamRelease(struct ArrowArrayStream*);
+//
+// int FlightSQLArrayStreamGetSchemaTrampoline(struct ArrowArrayStream*, struct ArrowSchema*);
+// int FlightSQLArrayStreamGetNextTrampoline(struct ArrowArrayStream*, struct ArrowArray*);
 //
 // void releasePartitions(struct AdbcPartitions* partitions);
 //
@@ -195,18 +205,18 @@ func exportBytesOption(val []byte, out *C.uint8_t, length *C.size_t) C.AdbcStatu
 
 type cancellableContext struct {
 	ctx    context.Context
-	cancel context.CancelFunc
+	cancel context.CancelCauseFunc
 }
 
 func (c *cancellableContext) newContext() context.Context {
 	c.cancelContext()
-	c.ctx, c.cancel = context.WithCancel(context.Background())
+	c.ctx, c.cancel = context.WithCancelCause(context.Background())
 	return c.ctx
 }
 
 func (c *cancellableContext) cancelContext() {
 	if c.cancel != nil {
-		c.cancel()
+		c.cancel(adbc.Error{Msg: "Cancelled by request", Code: adbc.StatusCancelled})
 	}
 	c.ctx = nil
 	c.cancel = nil
@@ -239,6 +249,144 @@ func checkDBInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError, fname strin
 	}
 
 	return cdb
+}
+
+// Custom ArrowArrayStream export to support ADBC error data in ArrowArrayStream
+
+type cArrayStream struct {
+	rdr array.RecordReader
+	// Must be C-allocated
+	adbcErr *C.struct_AdbcError
+	status  C.AdbcStatusCode
+}
+
+func (cStream *cArrayStream) maybeError() C.int {
+	err := cStream.rdr.Err()
+	if err != nil {
+		if cStream.adbcErr != nil {
+			C.FlightSQLerrRelease(cStream.adbcErr)
+		} else {
+			cStream.adbcErr = (*C.struct_AdbcError)(C.malloc(C.ADBC_ERROR_1_1_0_SIZE))
+		}
+		cStream.adbcErr.vendor_code = C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
+		cStream.status = C.AdbcStatusCode(errToAdbcErr(cStream.adbcErr, err))
+		switch adbc.Status(cStream.status) {
+		case adbc.StatusUnknown:
+			return C.EIO
+		case adbc.StatusNotImplemented:
+			return C.ENOTSUP
+		case adbc.StatusNotFound:
+			return C.ENOENT
+		case adbc.StatusAlreadyExists:
+			return C.EEXIST
+		case adbc.StatusInvalidArgument:
+			return C.EINVAL
+		case adbc.StatusInvalidState:
+			return C.EINVAL
+		case adbc.StatusInvalidData:
+			return C.EIO
+		case adbc.StatusIntegrity:
+			return C.EIO
+		case adbc.StatusInternal:
+			return C.EIO
+		case adbc.StatusIO:
+			return C.EIO
+		case adbc.StatusCancelled:
+			return C.ECANCELED
+		case adbc.StatusTimeout:
+			return C.ETIMEDOUT
+		case adbc.StatusUnauthenticated:
+			return C.EACCES
+		case adbc.StatusUnauthorized:
+			return C.EACCES
+		default:
+			return C.EIO
+		}
+	}
+	return 0
+}
+
+//export FlightSQLArrayStreamGetLastError
+func FlightSQLArrayStreamGetLastError(stream *C.struct_ArrowArrayStream) *C.cchar_t {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+		return nil
+	}
+	cStream := getFromHandle[cArrayStream](stream.private_data)
+	if cStream.adbcErr != nil {
+		return cStream.adbcErr.message
+	}
+	return nil
+}
+
+//export FlightSQLArrayStreamGetNext
+func FlightSQLArrayStreamGetNext(stream *C.struct_ArrowArrayStream, array *C.struct_ArrowArray) C.int {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+		return C.EINVAL
+	}
+	cStream := getFromHandle[cArrayStream](stream.private_data)
+	if cStream.rdr.Next() {
+		cdata.ExportArrowRecordBatch(cStream.rdr.Record(), toCdataArray(array), nil)
+		return 0
+	}
+	array.release = nil
+	array.private_data = nil
+	return cStream.maybeError()
+}
+
+//export FlightSQLArrayStreamGetSchema
+func FlightSQLArrayStreamGetSchema(stream *C.struct_ArrowArrayStream, schema *C.struct_ArrowSchema) C.int {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+		return C.EINVAL
+	}
+	cStream := getFromHandle[cArrayStream](stream.private_data)
+	s := cStream.rdr.Schema()
+	if s == nil {
+		return cStream.maybeError()
+	}
+	cdata.ExportArrowSchema(s, toCdataSchema(schema))
+	return 0
+}
+
+//export FlightSQLArrayStreamRelease
+func FlightSQLArrayStreamRelease(stream *C.struct_ArrowArrayStream) {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+		return
+	}
+	h := (*(*cgo.Handle)(stream.private_data))
+
+	cStream := h.Value().(*cArrayStream)
+	cStream.rdr.Release()
+	if cStream.adbcErr != nil {
+		C.FlightSQLerrRelease(cStream.adbcErr)
+		C.free(unsafe.Pointer(cStream.adbcErr))
+	}
+	C.free(unsafe.Pointer(stream.private_data))
+	stream.private_data = nil
+	h.Delete()
+	runtime.GC()
+}
+
+//export FlightSQLErrorFromArrayStream
+func FlightSQLErrorFromArrayStream(stream *C.struct_ArrowArrayStream, status *C.AdbcStatusCode) *C.struct_AdbcError {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+		return nil
+	}
+	cStream := getFromHandle[cArrayStream](stream.private_data)
+	if status != nil {
+		*status = cStream.status
+	}
+	return cStream.adbcErr
+}
+
+func exportRecordReader(rdr array.RecordReader, stream *C.struct_ArrowArrayStream) {
+	cStream := &cArrayStream{rdr: rdr, status: C.ADBC_STATUS_OK}
+	stream.get_last_error = (*[0]byte)(C.FlightSQLArrayStreamGetLastError)
+	stream.get_next = (*[0]byte)(C.FlightSQLArrayStreamGetNextTrampoline)
+	stream.get_schema = (*[0]byte)(C.FlightSQLArrayStreamGetSchemaTrampoline)
+	stream.release = (*[0]byte)(C.FlightSQLArrayStreamRelease)
+	hndl := cgo.NewHandle(cStream)
+	stream.private_data = createHandle(hndl)
+	rdr.Retain()
 }
 
 type cDatabase struct {
@@ -911,7 +1059,7 @@ func FlightSQLConnectionGetInfo(cnxn *C.struct_AdbcConnection, codes *C.uint32_t
 	}
 
 	defer rdr.Release()
-	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	exportRecordReader(rdr, out)
 	return C.ADBC_STATUS_OK
 }
 
@@ -933,7 +1081,7 @@ func FlightSQLConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, c
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
 	defer rdr.Release()
-	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	exportRecordReader(rdr, out)
 	return C.ADBC_STATUS_OK
 }
 
@@ -961,7 +1109,7 @@ func FlightSQLConnectionGetStatistics(cnxn *C.struct_AdbcConnection, catalog, db
 	}
 
 	defer rdr.Release()
-	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	exportRecordReader(rdr, out)
 	return C.ADBC_STATUS_OK
 }
 
@@ -988,7 +1136,7 @@ func FlightSQLConnectionGetStatisticNames(cnxn *C.struct_AdbcConnection, out *C.
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
 	defer rdr.Release()
-	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	exportRecordReader(rdr, out)
 	return C.ADBC_STATUS_OK
 }
 
@@ -1029,7 +1177,7 @@ func FlightSQLConnectionGetTableTypes(cnxn *C.struct_AdbcConnection, out *C.stru
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
 	defer rdr.Release()
-	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	exportRecordReader(rdr, out)
 	return C.ADBC_STATUS_OK
 }
 
@@ -1050,7 +1198,7 @@ func FlightSQLConnectionReadPartition(cnxn *C.struct_AdbcConnection, serialized 
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}
 	defer rdr.Release()
-	cdata.ExportRecordReader(rdr, toCdataStream(out))
+	exportRecordReader(rdr, out)
 	return C.ADBC_STATUS_OK
 }
 
@@ -1286,10 +1434,10 @@ func FlightSQLStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 func FlightSQLStatementCancel(stmt *C.struct_AdbcStatement, err *C.struct_AdbcError) (code C.AdbcStatusCode) {
 	defer func() {
 		if e := recover(); e != nil {
-			code = poison(err, "AdbcStatementPrepare", e)
+			code = poison(err, "AdbcStatementCancel", e)
 		}
 	}()
-	st := checkStmtInit(stmt, err, "AdbcStatementPrepare")
+	st := checkStmtInit(stmt, err, "AdbcStatementCancel")
 	if st == nil {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
@@ -1345,8 +1493,7 @@ func FlightSQLStatementExecuteQuery(stmt *C.struct_AdbcStatement, out *C.struct_
 		}
 
 		defer rdr.Release()
-		// TODO: proxy the reader and record error details (and do this elsewhere, too)
-		cdata.ExportRecordReader(rdr, toCdataStream(out))
+		exportRecordReader(rdr, out)
 	}
 	return C.ADBC_STATUS_OK
 }
@@ -1666,6 +1813,7 @@ func FlightSQLDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcErr
 	if version == C.ADBC_VERSION_1_1_0 {
 		driver.ErrorGetDetailCount = (*[0]byte)(C.FlightSQLErrorGetDetailCount)
 		driver.ErrorGetDetail = (*[0]byte)(C.FlightSQLErrorGetDetail)
+		driver.ErrorFromArrayStream = (*[0]byte)(C.FlightSQLErrorFromArrayStream)
 
 		driver.DatabaseGetOption = (*[0]byte)(C.FlightSQLDatabaseGetOption)
 		driver.DatabaseGetOptionBytes = (*[0]byte)(C.FlightSQLDatabaseGetOptionBytes)

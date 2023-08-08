@@ -526,12 +526,13 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
 
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
-    StringBuilderAppend(&error_builder_,
-                        "[libpq] Result set was already consumed or freed");
-    return EINVAL;
+    SetError(&error_, "[libpq] Result set was already consumed or freed");
+    status_ = ADBC_STATUS_INVALID_STATE;
+    return AdbcStatusCodeToErrno(status_);
   } else if (na_res != NANOARROW_OK) {
     // e.g., Can't allocate memory
-    StringBuilderAppend(&error_builder_, "[libpq] Error copying schema");
+    SetError(&error_, "[libpq] Error copying schema");
+    status_ = ADBC_STATUS_INTERNAL;
   }
 
   return na_res;
@@ -544,15 +545,16 @@ int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
   data_.data.as_char = pgbuf_;
 
   if (get_copy_res == -2) {
-    StringBuilderAppend(&error_builder_, "[libpq] Fetch header failed: %s",
-                        PQerrorMessage(conn_));
-    return EIO;
+    SetError(&error_, "[libpq] Fetch header failed: %s", PQerrorMessage(conn_));
+    status_ = ADBC_STATUS_IO;
+    return AdbcStatusCodeToErrno(status_);
   }
 
   int na_res = copy_reader_->ReadHeader(&data_, error);
   if (na_res != NANOARROW_OK) {
-    StringBuilderAppend(&error_builder_, "[libpq] ReadHeader failed: %s", error->message);
-    return EIO;
+    SetError(&error_, "[libpq] ReadHeader failed: %s", error->message);
+    status_ = ADBC_STATUS_IO;
+    return AdbcStatusCodeToErrno(status_);
   }
 
   return NANOARROW_OK;
@@ -563,9 +565,9 @@ int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
   // call to PQgetCopyData())
   int na_res = copy_reader_->ReadRecord(&data_, error);
   if (na_res != NANOARROW_OK && na_res != ENODATA) {
-    StringBuilderAppend(&error_builder_,
-                        "[libpq] ReadRecord failed at row %" PRId64 ": %s", row_id_,
-                        error->message);
+    SetError(&error_, "[libpq] ReadRecord failed at row %" PRId64 ": %s", row_id_,
+             error->message);
+    status_ = ADBC_STATUS_IO;
     return na_res;
   }
 
@@ -579,10 +581,10 @@ int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
   data_.data.as_char = pgbuf_;
 
   if (get_copy_res == -2) {
-    StringBuilderAppend(&error_builder_,
-                        "[libpq] PQgetCopyData failed at row %" PRId64 ": %s", row_id_,
-                        PQerrorMessage(conn_));
-    return EIO;
+    SetError(&error_, "[libpq] PQgetCopyData failed at row %" PRId64 ": %s", row_id_,
+             PQerrorMessage(conn_));
+    status_ = ADBC_STATUS_IO;
+    return AdbcStatusCodeToErrno(status_);
   } else if (get_copy_res == -1) {
     // Returned when COPY has finished successfully
     return ENODATA;
@@ -604,8 +606,8 @@ int TupleReader::BuildOutput(struct ArrowArray* out, struct ArrowError* error) {
 
   int na_res = copy_reader_->GetArray(out, error);
   if (na_res != NANOARROW_OK) {
-    StringBuilderAppend(&error_builder_, "[libpq] Failed to build result array: %s",
-                        error->message);
+    SetError(&error_, "[libpq] Failed to build result array: %s", error->message);
+    status_ = ADBC_STATUS_INTERNAL;
     return na_res;
   }
 
@@ -654,17 +656,19 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   const ExecStatusType pq_status = PQresultStatus(result_);
   if (pq_status != PGRES_COMMAND_OK) {
     const char* sqlstate = PQresultErrorField(result_, PG_DIAG_SQLSTATE);
-    StringBuilderAppend(&error_builder_, "[libpq] Query failed [%s]: %s",
-                        PQresStatus(pq_status), PQresultErrorMessage(result_));
+    SetError(&error_, result_, "[libpq] Query failed [%s]: %s", PQresStatus(pq_status),
+             PQresultErrorMessage(result_));
 
     if (tmp.release != nullptr) {
       tmp.release(&tmp);
     }
 
     if (sqlstate != nullptr && std::strcmp(sqlstate, "57014") == 0) {
-      return ECANCELED;
+      status_ = ADBC_STATUS_CANCELLED;
+    } else {
+      status_ = ADBC_STATUS_IO;
     }
-    return EIO;
+    return AdbcStatusCodeToErrno(status_);
   }
 
   ArrowArrayMove(&tmp, out);
@@ -672,7 +676,11 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 }
 
 void TupleReader::Release() {
-  StringBuilderReset(&error_builder_);
+  if (error_.release) {
+    error_.release(&error_);
+  }
+  error_ = ADBC_ERROR_INIT;
+  status_ = ADBC_STATUS_OK;
 
   if (result_) {
     PQclear(result_);
@@ -698,6 +706,19 @@ void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
   stream->get_last_error = &GetLastErrorTrampoline;
   stream->release = &ReleaseTrampoline;
   stream->private_data = this;
+}
+
+const struct AdbcError* TupleReader::ErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                          AdbcStatusCode* status) {
+  if (!stream->private_data || stream->release != &ReleaseTrampoline) {
+    return nullptr;
+  }
+
+  TupleReader* reader = static_cast<TupleReader*>(stream->private_data);
+  if (status) {
+    *status = reader->status_;
+  }
+  return &reader->error_;
 }
 
 int TupleReader::GetSchemaTrampoline(struct ArrowArrayStream* self,

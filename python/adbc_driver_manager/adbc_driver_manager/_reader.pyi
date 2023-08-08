@@ -15,26 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# All of the following environment variables are required to set default values
-# for the parameters in docker-compose.yml.
+import typing
 
-# Default repository to pull and push images from
-REPO=apache/arrow-dev
+import pandas
+import pyarrow
 
-# different architecture notations
-ARCH=amd64
-ARCH_ALIAS=x86_64
-ARCH_SHORT=amd64
-ARCH_CONDA_FORGE=linux_64_
-
-# Default versions for various dependencies
-JDK=8
-MANYLINUX=2014
-MAVEN=3.5.4
-PYTHON=3.10
-GO=1.19.5
-ARROW_MAJOR_VERSION=13
-
-# Used through docker-compose.yml and serves as the default version for the
-# ci/scripts/install_vcpkg.sh script.
-VCPKG="2871ddd918cecb9cb642bcb9c56897f397283192"
+class AdbcRecordBatchReader(pyarrow.RecordBatchReader):
+    def close(self) -> None: ...
+    def read_all(self) -> pyarrow.Table: ...
+    def read_next_batch(self) -> pyarrow.RecordBatch: ...
+    def read_pandas(self, **kwargs) -> pandas.DataFrame: ...
+    @property
+    def schema(self) -> pyarrow.Schema: ...
+    @classmethod
+    def _import_from_c(cls, address: int) -> AdbcRecordBatchReader: ...
+    def __enter__(self) -> AdbcRecordBatchReader: ...
+    def __exit__(self, type, value, traceback) -> None: ...
+    def __iter__(self) -> typing.Iterator[pyarrow.RecordBatch]: ...

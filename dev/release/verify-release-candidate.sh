@@ -23,7 +23,7 @@
 # - Maven >= 3.3.9
 # - JDK >=7
 # - gcc >= 4.8
-# - Go >= 1.18
+# - Go >= 1.20
 # - Docker
 #
 # To reuse build artifacts between runs set ARROW_TMPDIR environment variable to
@@ -254,7 +254,7 @@ install_go() {
     return 0
   fi
 
-  local version=1.18.8
+  local version=1.20.7
   show_info "Installing go version ${version}..."
 
   local arch="$(uname -m)"
@@ -411,7 +411,7 @@ test_cpp() {
   maybe_setup_conda \
     --file ci/conda_env_cpp.txt \
     compilers \
-    go=1.18 || exit 1
+    go=1.20 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
@@ -561,7 +561,7 @@ test_go() {
   # apache/arrow-adbc#517: `go build` calls git. Don't assume system
   # has git; even if it's there, go_build.sh sets DYLD_LIBRARY_PATH
   # which can interfere with system git.
-  maybe_setup_conda compilers git go=1.18 || exit 1
+  maybe_setup_conda compilers git go=1.20 || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     # The CMake setup forces RPATH to be the Conda prefix

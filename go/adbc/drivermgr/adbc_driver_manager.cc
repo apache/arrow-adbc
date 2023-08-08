@@ -128,12 +128,69 @@ static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError*
   return status;
 }
 
+// ArrowArrayStream wrapper to support AdbcErrorFromArrayStream
+
+struct ErrorArrayStream {
+  struct ArrowArrayStream stream;
+  struct AdbcDriver* private_driver;
+};
+
+void ErrorArrayStreamRelease(struct ArrowArrayStream* stream) {
+  if (stream->release != ErrorArrayStreamRelease || !stream->private_data) return;
+
+  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
+  private_data->stream.release(&private_data->stream);
+  delete private_data;
+  std::memset(stream, 0, sizeof(*stream));
+}
+
+const char* ErrorArrayStreamGetLastError(struct ArrowArrayStream* stream) {
+  if (stream->release != ErrorArrayStreamRelease || !stream->private_data) return nullptr;
+  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
+  return private_data->stream.get_last_error(&private_data->stream);
+}
+
+int ErrorArrayStreamGetNext(struct ArrowArrayStream* stream, struct ArrowArray* array) {
+  if (stream->release != ErrorArrayStreamRelease || !stream->private_data) return EINVAL;
+  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
+  return private_data->stream.get_next(&private_data->stream, array);
+}
+
+int ErrorArrayStreamGetSchema(struct ArrowArrayStream* stream,
+                              struct ArrowSchema* schema) {
+  if (stream->release != ErrorArrayStreamRelease || !stream->private_data) return EINVAL;
+  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
+  return private_data->stream.get_schema(&private_data->stream, schema);
+}
+
 // Default stubs
 
-int ErrorGetDetailCount(struct AdbcError* error) { return 0; }
+int ErrorGetDetailCount(const struct AdbcError* error) { return 0; }
 
-struct AdbcErrorDetail ErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail ErrorGetDetail(const struct AdbcError* error, int index) {
   return {nullptr, nullptr, 0};
+}
+
+const struct AdbcError* ErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                             AdbcStatusCode* status) {
+  return nullptr;
+}
+
+void ErrorArrayStreamInit(struct ArrowArrayStream* out,
+                          struct AdbcDriver* private_driver) {
+  if (!out || !out->release ||
+      // Don't bother wrapping if driver didn't claim support
+      private_driver->ErrorFromArrayStream == ErrorFromArrayStream) {
+    return;
+  }
+  struct ErrorArrayStream* private_data = new ErrorArrayStream;
+  private_data->stream = *out;
+  private_data->private_driver = private_driver;
+  out->get_last_error = ErrorArrayStreamGetLastError;
+  out->get_next = ErrorArrayStreamGetNext;
+  out->get_schema = ErrorArrayStreamGetSchema;
+  out->release = ErrorArrayStreamRelease;
+  out->private_data = private_data;
 }
 
 AdbcStatusCode DatabaseGetOption(struct AdbcDatabase* database, const char* key,
@@ -383,7 +440,7 @@ struct TempConnection {
 
 // Direct implementations of API methods
 
-int AdbcErrorGetDetailCount(struct AdbcError* error) {
+int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA && error->private_data &&
       error->private_driver) {
     return error->private_driver->ErrorGetDetailCount(error);
@@ -391,7 +448,7 @@ int AdbcErrorGetDetailCount(struct AdbcError* error) {
   return 0;
 }
 
-struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
   if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA && error->private_data &&
       error->private_driver) {
     return error->private_driver->ErrorGetDetail(error, index);
@@ -399,10 +456,29 @@ struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
   return {nullptr, nullptr, 0};
 }
 
+const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                 AdbcStatusCode* status) {
+  if (!stream->private_data || stream->release != ErrorArrayStreamRelease) {
+    return nullptr;
+  }
+  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
+  return private_data->private_driver->ErrorFromArrayStream(&private_data->stream,
+                                                            status);
+}
+
 #define INIT_ERROR(ERROR, SOURCE)                                    \
   if ((ERROR)->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) { \
     (ERROR)->private_driver = (SOURCE)->private_driver;              \
   }
+
+#define WRAP_STREAM(EXPR, OUT, SOURCE)                   \
+  if (!(OUT)) {                                          \
+    /* Happens for ExecuteQuery where out is optional */ \
+    return EXPR;                                         \
+  }                                                      \
+  AdbcStatusCode status_code = EXPR;                     \
+  ErrorArrayStreamInit(OUT, (SOURCE)->private_driver);   \
+  return status_code;
 
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
   // Allocate a temporary structure to store options pre-Init
@@ -700,8 +776,9 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetInfo(connection, info_codes,
-                                                       info_codes_length, out, error);
+  WRAP_STREAM(connection->private_driver->ConnectionGetInfo(
+                  connection, info_codes, info_codes_length, out, error),
+              out, connection);
 }
 
 AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
@@ -714,9 +791,10 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetObjects(
-      connection, depth, catalog, db_schema, table_name, table_types, column_name, stream,
-      error);
+  WRAP_STREAM(connection->private_driver->ConnectionGetObjects(
+                  connection, depth, catalog, db_schema, table_name, table_types,
+                  column_name, stream, error),
+              stream, connection);
 }
 
 AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
@@ -822,8 +900,10 @@ AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetStatistics(
-      connection, catalog, db_schema, table_name, approximate == 1, out, error);
+  WRAP_STREAM(
+      connection->private_driver->ConnectionGetStatistics(
+          connection, catalog, db_schema, table_name, approximate == 1, out, error),
+      out, connection);
 }
 
 AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
@@ -833,7 +913,9 @@ AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetStatisticNames(connection, out, error);
+  WRAP_STREAM(
+      connection->private_driver->ConnectionGetStatisticNames(connection, out, error),
+      out, connection);
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -856,7 +938,9 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetTableTypes(connection, stream, error);
+  WRAP_STREAM(
+      connection->private_driver->ConnectionGetTableTypes(connection, stream, error),
+      stream, connection);
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
@@ -928,8 +1012,9 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionReadPartition(
-      connection, serialized_partition, serialized_length, out, error);
+  WRAP_STREAM(connection->private_driver->ConnectionReadPartition(
+                  connection, serialized_partition, serialized_length, out, error),
+              out, connection);
 }
 
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
@@ -1079,8 +1164,9 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
     return ADBC_STATUS_INVALID_STATE;
   }
   INIT_ERROR(error, statement);
-  return statement->private_driver->StatementExecuteQuery(statement, out, rows_affected,
-                                                          error);
+  WRAP_STREAM(statement->private_driver->StatementExecuteQuery(statement, out,
+                                                               rows_affected, error),
+              out, statement);
 }
 
 AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
@@ -1484,6 +1570,7 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
     FILL_DEFAULT(driver, ErrorGetDetailCount);
     FILL_DEFAULT(driver, ErrorGetDetail);
+    FILL_DEFAULT(driver, ErrorFromArrayStream);
 
     FILL_DEFAULT(driver, DatabaseGetOption);
     FILL_DEFAULT(driver, DatabaseGetOptionBytes);

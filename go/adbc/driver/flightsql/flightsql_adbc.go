@@ -727,12 +727,10 @@ func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.C
 
 	cl.Alloc = d.alloc
 	if d.user != "" || d.pass != "" {
-		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass)
+		var header, trailer metadata.MD
+		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
 		if err != nil {
-			return nil, adbc.Error{
-				Msg:  err.Error(),
-				Code: adbc.StatusUnauthenticated,
-			}
+			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
 		}
 
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
@@ -1129,12 +1127,14 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	info, err := c.cl.GetSqlInfo(ctx, translated, c.timeouts)
+	var header, trailer metadata.MD
+	info, err := c.cl.GetSqlInfo(ctx, translated, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err == nil {
 		for i, endpoint := range info.Endpoint {
-			rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache, c.timeouts)
+			var header, trailer metadata.MD
+			rdr, err := doGet(ctx, c.cl, endpoint, c.clientCache, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 			if err != nil {
-				return nil, adbcFromFlightStatus(err, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
+				return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
 			}
 
 			for rdr.Next() {
@@ -1163,7 +1163,9 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 			}
 
 			if rdr.Err() != nil {
-				return nil, adbcFromFlightStatus(rdr.Err(), "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
+				return nil, adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
+			} else if ctx.Err() != nil {
+				return nil, adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
 			}
 		}
 	} else if grpcstatus.Code(err) != grpccodes.Unimplemented {
@@ -1270,15 +1272,18 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 	}
 	defer g.Release()
 
+	var header, trailer metadata.MD
 	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
-	info, err := c.cl.GetCatalogs(ctx)
+	info, err := c.cl.GetCatalogs(ctx, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetObjects(GetCatalogs)")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
 	}
 
-	rdr, err := c.readInfo(ctx, schema_ref.Catalogs, info)
+	header = metadata.MD{}
+	trailer = metadata.MD{}
+	rdr, err := c.readInfo(ctx, schema_ref.Catalogs, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetObjects(GetCatalogs)")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
 	}
 	defer rdr.Release()
 
@@ -1299,16 +1304,18 @@ func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *
 	}
 
 	if err = rdr.Err(); err != nil {
-		return nil, adbcFromFlightStatus(err, "GetObjects(GetCatalogs)")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
+	} else if ctx.Err() != nil {
+		return nil, adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "GetObjects(GetCatalogs)")
 	}
 
 	return g.Finish()
 }
 
 // Helper function to read and validate a metadata stream
-func (c *cnxn) readInfo(ctx context.Context, expectedSchema *arrow.Schema, info *flight.FlightInfo) (array.RecordReader, error) {
+func (c *cnxn) readInfo(ctx context.Context, expectedSchema *arrow.Schema, info *flight.FlightInfo, opts ...grpc.CallOption) (array.RecordReader, error) {
 	// use a default queueSize for the reader
-	rdr, err := newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache, 5)
+	rdr, err := newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache, 5, opts...)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err, "DoGet")
 	}
@@ -1329,15 +1336,18 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 		return
 	}
 	result = make(map[string][]string)
+	var header, trailer metadata.MD
 	// Pre-populate the map of which schemas are in which catalogs
-	info, err := c.cl.GetDBSchemas(ctx, &flightsql.GetDBSchemasOpts{DbSchemaFilterPattern: dbSchema})
+	info, err := c.cl.GetDBSchemas(ctx, &flightsql.GetDBSchemasOpts{DbSchemaFilterPattern: dbSchema}, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetObjects(GetDBSchemas)")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetDBSchemas)")
 	}
 
-	rdr, err := c.readInfo(ctx, schema_ref.DBSchemas, info)
+	header = metadata.MD{}
+	trailer = metadata.MD{}
+	rdr, err := c.readInfo(ctx, schema_ref.DBSchemas, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetObjects(GetDBSchemas)")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetDBSchemas)")
 	}
 	defer rdr.Release()
 
@@ -1358,7 +1368,9 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 	if rdr.Err() != nil {
 		result = nil
-		err = adbcFromFlightStatus(rdr.Err(), "GetObjects(GetDBSchemas)")
+		err = adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "GetObjects(GetDBSchemas)")
+	} else if ctx.Err() != nil {
+		return nil, adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "GetObjects(GetCatalogs)")
 	}
 	return
 }
@@ -1371,21 +1383,24 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 
 	// Pre-populate the map of which schemas are in which catalogs
 	includeSchema := depth == adbc.ObjectDepthAll || depth == adbc.ObjectDepthColumns
+	var header, trailer metadata.MD
 	info, err := c.cl.GetTables(ctx, &flightsql.GetTablesOpts{
 		DbSchemaFilterPattern:  dbSchema,
 		TableNameFilterPattern: tableName,
 		TableTypes:             tableType,
 		IncludeSchema:          includeSchema,
-	})
+	}, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetObjects(GetTables)")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetTables)")
 	}
 
 	expectedSchema := schema_ref.Tables
 	if includeSchema {
 		expectedSchema = schema_ref.TablesWithIncludedSchema
 	}
-	rdr, err := c.readInfo(ctx, expectedSchema, info)
+	header = metadata.MD{}
+	trailer = metadata.MD{}
+	rdr, err := c.readInfo(ctx, expectedSchema, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
 		return nil, adbcFromFlightStatus(err, "GetObjects(GetTables)")
 	}
@@ -1436,7 +1451,10 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 
 	if rdr.Err() != nil {
 		result = nil
-		err = adbcFromFlightStatus(rdr.Err(), "GetObjects(GetTables)")
+		err = adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "GetObjects(GetTables)")
+	} else if ctx.Err() != nil {
+		result = nil
+		err = adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "GetObjects(GetTables)")
 	}
 	return
 }
@@ -1450,14 +1468,17 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	info, err := c.cl.GetTables(ctx, opts, c.timeouts)
+	var header, trailer metadata.MD
+	info, err := c.cl.GetTables(ctx, opts, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetTableSchema(GetTables)")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetTableSchema(GetTables)")
 	}
 
-	rdr, err := doGet(ctx, c.cl, info.Endpoint[0], c.clientCache, c.timeouts)
+	header = metadata.MD{}
+	trailer = metadata.MD{}
+	rdr, err := doGet(ctx, c.cl, info.Endpoint[0], c.clientCache, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetTableSchema(DoGet)")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetTableSchema(DoGet)")
 	}
 	defer rdr.Release()
 
@@ -1469,7 +1490,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 				Code: adbc.StatusNotFound,
 			}
 		}
-		return nil, adbcFromFlightStatus(err, "GetTableSchema(DoGet)")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetTableSchema(DoGet)")
 	}
 
 	numRows := rec.NumRows()
@@ -1519,9 +1540,10 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //	table_type			| utf8 not null
 func (c *cnxn) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	info, err := c.cl.GetTableTypes(ctx, c.timeouts)
+	var header, trailer metadata.MD
+	info, err := c.cl.GetTableTypes(ctx, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetTableTypes")
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetTableTypes")
 	}
 
 	return newRecordReader(ctx, c.db.alloc, c.cl, info, c.clientCache, 5)
@@ -1546,14 +1568,17 @@ func (c *cnxn) Commit(ctx context.Context) error {
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	err := c.txn.Commit(ctx, c.timeouts)
+	var header, trailer metadata.MD
+	err := c.txn.Commit(ctx, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		return adbcFromFlightStatus(err, "Commit")
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "Commit")
 	}
 
-	c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts)
+	header = metadata.MD{}
+	trailer = metadata.MD{}
+	c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		return adbcFromFlightStatus(err, "BeginTransaction")
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "BeginTransaction")
 	}
 	return nil
 }
@@ -1577,14 +1602,17 @@ func (c *cnxn) Rollback(ctx context.Context) error {
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	err := c.txn.Rollback(ctx, c.timeouts)
+	var header, trailer metadata.MD
+	err := c.txn.Rollback(ctx, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		return adbcFromFlightStatus(err, "Rollback")
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "Rollback")
 	}
 
-	c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts)
+	header = metadata.MD{}
+	trailer = metadata.MD{}
+	c.txn, err = c.cl.BeginTransaction(ctx, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		return adbcFromFlightStatus(err, "BeginTransaction")
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "BeginTransaction")
 	}
 	return nil
 }
@@ -1676,7 +1704,7 @@ func (c *cnxn) Close() error {
 
 	err := c.cl.Close()
 	c.cl = nil
-	return err
+	return adbcFromFlightStatus(err, "Close")
 }
 
 // ReadPartition constructs a statement for a partition of a query. The

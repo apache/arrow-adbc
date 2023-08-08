@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include "../../drivermgr/adbc.h"
 
+struct AdbcError* PanicDummyErrorFromArrayStream(struct ArrowArrayStream*,
+                                                 AdbcStatusCode*);
 AdbcStatusCode PanicDummyDatabaseGetOption(struct AdbcDatabase*, const char*, char*,
                                            size_t*, struct AdbcError*);
 AdbcStatusCode PanicDummyDatabaseGetOptionBytes(struct AdbcDatabase*, const char*,
@@ -168,5 +170,10 @@ struct PanicDummyError {
 
 void PanicDummyReleaseErrWithDetails(struct AdbcError* error);
 
-int PanicDummyErrorGetDetailCount(struct AdbcError* error);
-struct AdbcErrorDetail PanicDummyErrorGetDetail(struct AdbcError* error, int index);
+int PanicDummyErrorGetDetailCount(const struct AdbcError* error);
+struct AdbcErrorDetail PanicDummyErrorGetDetail(const struct AdbcError* error, int index);
+
+int PanicDummyArrayStreamGetSchemaTrampoline(struct ArrowArrayStream* stream,
+                                             struct ArrowSchema* out);
+int PanicDummyArrayStreamGetNextTrampoline(struct ArrowArrayStream* stream,
+                                           struct ArrowArray* out);

@@ -97,7 +97,16 @@ setup(
                 "adbc_driver_manager/_lib.pyx",
                 "adbc_driver_manager/adbc_driver_manager.cc",
             ],
-        )
+        ),
+        Extension(
+            name="adbc_driver_manager._reader",
+            extra_compile_args=extra_compile_args,
+            include_dirs=[str(source_root.joinpath("adbc_driver_manager").resolve())],
+            language="c++",
+            sources=[
+                "adbc_driver_manager/_reader.pyx",
+            ],
+        ),
     ],
     version=version,
 )

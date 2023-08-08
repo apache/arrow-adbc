@@ -50,12 +50,25 @@ using adbcpq::PostgresStatement;
 // ---------------------------------------------------------------------
 // AdbcError
 
-int AdbcErrorGetDetailCount(struct AdbcError* error) {
+namespace {
+const struct AdbcError* PostgresErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                     AdbcStatusCode* status) {
+  // Currently only valid for TupleReader
+  return adbcpq::TupleReader::ErrorFromArrayStream(stream, status);
+}
+}  // namespace
+
+int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return CommonErrorGetDetailCount(error);
 }
 
-struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
   return CommonErrorGetDetail(error, index);
+}
+
+const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                 AdbcStatusCode* status) {
+  return PostgresErrorFromArrayStream(stream, status);
 }
 
 // ---------------------------------------------------------------------
@@ -848,6 +861,7 @@ AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
 
     driver->ErrorGetDetailCount = CommonErrorGetDetailCount;
     driver->ErrorGetDetail = CommonErrorGetDetail;
+    driver->ErrorFromArrayStream = PostgresErrorFromArrayStream;
 
     driver->DatabaseGetOption = PostgresDatabaseGetOption;
     driver->DatabaseGetOptionBytes = PostgresDatabaseGetOptionBytes;

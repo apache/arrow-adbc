@@ -45,6 +45,8 @@ void {{.Prefix}}ReleaseErrWithDetails(struct AdbcError* error) {
     free(details->keys[i]);
     free(details->values[i]);
   }
+  free(details->keys);
+  free(details->values);
   free(details->lengths);
   free(details);
 
@@ -54,7 +56,7 @@ void {{.Prefix}}ReleaseErrWithDetails(struct AdbcError* error) {
   error->private_data = NULL;
 }
 
-int {{.Prefix}}ErrorGetDetailCount(struct AdbcError* error) {
+int {{.Prefix}}ErrorGetDetailCount(const struct AdbcError* error) {
   if (!error || error->release != {{.Prefix}}ReleaseErrWithDetails ||
       !error->private_data) {
     return 0;
@@ -63,7 +65,8 @@ int {{.Prefix}}ErrorGetDetailCount(struct AdbcError* error) {
   return ((struct {{.Prefix}}Error*) error->private_data)->count;
 }
 
-struct AdbcErrorDetail {{.Prefix}}ErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail {{.Prefix}}ErrorGetDetail(const struct AdbcError* error,
+                                                 int index) {
   if (!error || error->release != {{.Prefix}}ReleaseErrWithDetails ||
       !error->private_data) {
     return (struct AdbcErrorDetail){NULL, NULL, 0};
@@ -80,12 +83,17 @@ struct AdbcErrorDetail {{.Prefix}}ErrorGetDetail(struct AdbcError* error, int in
   };
 }
 
-int AdbcErrorGetDetailCount(struct AdbcError* error) {
+int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return {{.Prefix}}ErrorGetDetailCount(error);
 }
 
-struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
   return {{.Prefix}}ErrorGetDetail(error, index);
+}
+
+const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                 AdbcStatusCode* status) {
+  return {{.Prefix}}ErrorFromArrayStream(stream, status);
 }
 
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
@@ -411,6 +419,23 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
   return {{.Prefix}}DriverInit(version, driver, error);
+}
+
+int {{.Prefix}}ArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
+int {{.Prefix}}ArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);
+
+int {{.Prefix}}ArrayStreamGetSchemaTrampoline(struct ArrowArrayStream* stream,
+                                              struct ArrowSchema* out) {
+  // XXX(https://github.com/apache/arrow-adbc/issues/729)
+  memset(out, 0, sizeof(*out));
+  return {{.Prefix}}ArrayStreamGetSchema(stream, out);
+}
+
+int {{.Prefix}}ArrayStreamGetNextTrampoline(struct ArrowArrayStream* stream,
+                                            struct ArrowArray* out) {
+  // XXX(https://github.com/apache/arrow-adbc/issues/729)
+  memset(out, 0, sizeof(*out));
+  return {{.Prefix}}ArrayStreamGetNext(stream, out);
 }
 
 #ifdef __cplusplus

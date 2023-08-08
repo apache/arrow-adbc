@@ -295,3 +295,120 @@ TEST_F(SqliteFlightSqlStatementTest, NonexistentTable) {
     error.release(&error);
   }
 }
+
+TEST_F(SqliteFlightSqlStatementTest, CancelError) {
+  // Ensure cancellation propagates properly through the Go FFI boundary
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, "SELECT 1", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementCancel(&statement.value, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  int retcode = 0;
+  while (true) {
+    retcode = reader.MaybeNext();
+    if (retcode != 0 || !reader.array->release) break;
+  }
+
+  ASSERT_EQ(ECANCELED, retcode);
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  const struct AdbcError* adbc_error =
+      AdbcErrorFromArrayStream(&reader.stream.value, &status);
+  ASSERT_NE(nullptr, adbc_error);
+  ASSERT_EQ(ADBC_STATUS_CANCELLED, status);
+}
+
+TEST_F(SqliteFlightSqlStatementTest, RpcError) {
+  // Ensure errors that happen at the start of the stream propagate properly
+  // through the Go FFI boundary
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, "SELECT", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  error.vendor_code = ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+
+  int count = AdbcErrorGetDetailCount(&error);
+  ASSERT_NE(0, count);
+  for (int i = 0; i < count; i++) {
+    struct AdbcErrorDetail detail = AdbcErrorGetDetail(&error, i);
+    ASSERT_NE(nullptr, detail.key);
+    ASSERT_NE(nullptr, detail.value);
+    ASSERT_NE(0, detail.value_length);
+    EXPECT_STREQ("afsql-sqlite-query", detail.key);
+    EXPECT_EQ("SELECT", std::string_view(reinterpret_cast<const char*>(detail.value),
+                                         detail.value_length));
+  }
+}
+
+TEST_F(SqliteFlightSqlStatementTest, StreamError) {
+  // Ensure errors that happen during the stream propagate properly through
+  // the Go FFI boundary
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value,
+                                       R"(
+DROP TABLE IF EXISTS foo;
+CREATE TABLE foo (a INT);
+WITH RECURSIVE sequence(x) AS
+    (SELECT 1 UNION ALL SELECT x+1 FROM sequence LIMIT 1024)
+INSERT INTO foo(a)
+SELECT x FROM sequence;
+INSERT INTO foo(a) VALUES ('foo');)",
+                                       &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM foo", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  int retcode = 0;
+  while (true) {
+    retcode = reader.MaybeNext();
+    if (retcode != 0 || !reader.array->release) break;
+  }
+
+  ASSERT_NE(0, retcode);
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  const struct AdbcError* adbc_error =
+      AdbcErrorFromArrayStream(&reader.stream.value, &status);
+  ASSERT_NE(nullptr, adbc_error);
+  ASSERT_EQ(ADBC_STATUS_UNKNOWN, status);
+
+  int count = AdbcErrorGetDetailCount(adbc_error);
+  ASSERT_NE(0, count);
+  for (int i = 0; i < count; i++) {
+    struct AdbcErrorDetail detail = AdbcErrorGetDetail(adbc_error, i);
+    ASSERT_NE(nullptr, detail.key);
+    ASSERT_NE(nullptr, detail.value);
+    ASSERT_NE(0, detail.value_length);
+    EXPECT_STREQ("grpc-status-details-bin", detail.key);
+  }
+}

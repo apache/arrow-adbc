@@ -130,7 +130,7 @@ jobs:
             --file ci/conda_env_python.txt
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.18.10
+          go-version: 1.20.7
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -291,7 +291,7 @@ jobs:
             --file ci/conda_env_python.txt
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.18.10
+          go-version: 1.20.7
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum

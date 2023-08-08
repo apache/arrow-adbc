@@ -45,7 +45,7 @@ except ImportError as e:
 
 import adbc_driver_manager
 
-from . import _lib
+from . import _lib, _reader
 
 if typing.TYPE_CHECKING:
     import pandas
@@ -668,7 +668,8 @@ class Cursor(_Closeable):
         self._prepare_execute(operation, parameters)
         handle, self._rowcount = self._stmt.execute_query()
         self._results = _RowIterator(
-            pyarrow.RecordBatchReader._import_from_c(handle.address)
+            # pyarrow.RecordBatchReader._import_from_c(handle.address)
+            _reader.AdbcRecordBatchReader._import_from_c(handle.address)
         )
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:

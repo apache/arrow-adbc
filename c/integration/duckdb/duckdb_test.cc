@@ -98,6 +98,10 @@ class DuckDbStatementTest : public ::testing::Test,
 
   void TestSqlQueryErrors() { GTEST_SKIP() << "DuckDB does not set AdbcError.release"; }
 
+  void TestErrorCompatibility() {
+    GTEST_SKIP() << "DuckDB does not set AdbcError.release";
+  }
+
  protected:
   DuckDbQuirks quirks_;
 };

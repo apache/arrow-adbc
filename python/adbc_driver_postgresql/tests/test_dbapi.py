@@ -106,30 +106,35 @@ def test_query_cancel(postgres: dbapi.Connection) -> None:
             """
             INSERT INTO test_batch_size (ints)
             SELECT generated :: INT
-            FROM GENERATE_SERIES(1, 65536) temp(generated)
+            FROM GENERATE_SERIES(1, 1048576) temp(generated)
         """
         )
+        postgres.commit()
 
+    # Ensure different ways of reading all raise the desired error
+    with postgres.cursor() as cur:
         cur.execute("SELECT * FROM test_batch_size")
         cur.adbc_cancel()
-        # XXX(https://github.com/apache/arrow-adbc/issues/940):
-        # PyArrow swallows the errno and doesn't set it into the
-        # OSError, so we have no clue what happened here. (Though the
-        # driver does properly return ECANCELED.)
-        with pytest.raises(OSError, match="canceling statement"):
+        with pytest.raises(postgres.OperationalError, match="canceling statement"):
             cur.fetchone()
+
+    with postgres.cursor() as cur:
+        cur.execute("SELECT * FROM test_batch_size")
+        cur.adbc_cancel()
+        with pytest.raises(postgres.OperationalError, match="canceling statement"):
+            cur.fetch_arrow_table()
+
+    with postgres.cursor() as cur:
+        cur.execute("SELECT * FROM test_batch_size")
+        cur.adbc_cancel()
+        with pytest.raises(postgres.OperationalError, match="canceling statement"):
+            cur.fetch_df()
 
 
 def test_query_execute_schema(postgres: dbapi.Connection) -> None:
     with postgres.cursor() as cur:
         schema = cur.adbc_execute_schema("SELECT 1 AS foo")
         assert schema == pyarrow.schema([("foo", "int32")])
-
-
-def test_query_trivial(postgres: dbapi.Connection):
-    with postgres.cursor() as cur:
-        cur.execute("SELECT 1")
-        assert cur.fetchone() == (1,)
 
 
 def test_query_invalid(postgres: dbapi.Connection) -> None:
@@ -141,6 +146,12 @@ def test_query_invalid(postgres: dbapi.Connection) -> None:
 
         assert excinfo.value.sqlstate == "42P01"
         assert len(excinfo.value.details) > 0
+
+
+def test_query_trivial(postgres: dbapi.Connection):
+    with postgres.cursor() as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchone() == (1,)
 
 
 def test_stmt_ingest(postgres: dbapi.Connection) -> None:
