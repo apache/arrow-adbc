@@ -60,6 +60,7 @@ if(ADBC_BUILD_TESTS)
                 EXTRA_LINK_LIBS
                 adbc_driver_common
                 nanoarrow
+                nanoarrow_ipc
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-manager-test SYSTEM
