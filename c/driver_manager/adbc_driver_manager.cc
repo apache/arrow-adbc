@@ -173,9 +173,12 @@ struct ManagedLibrary {
       if (!handle) {
         error_message += "\ndlopen() failed: ";
         error_message += dlerror();
-      } else {
-        this->handle = handle;
       }
+    }
+    if (handle) {
+      this->handle = handle;
+    } else {
+      return ADBC_STATUS_INTERNAL;
     }
 #endif  // defined(_WIN32)
     return ADBC_STATUS_OK;
