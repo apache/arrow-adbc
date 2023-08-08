@@ -1178,7 +1178,7 @@ void StatementTest::TestSqlIngestDate32() {
     // TODO: we need to compare array values - maybe from <arrow/compare.h>?
     // EXPECT_TRUE(ArrayEquals(reader.array, ipc_array));
     ipc_array.release(&ipc_array);
-    input.release(&input);
+    stream.release(&stream);
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
