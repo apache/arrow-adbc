@@ -1153,31 +1153,31 @@ void StatementTest::TestSqlIngestDate32() {
         (quirks()->test_data_path() + "/statementtest-testsqlingestdate32.arrow").c_str(),
         "rb");
 
-    ASSERT_NE(nullptr, fd);
+    EXPECT_NE(nullptr, fd);
 
     struct ArrowIpcInputStream input;
-    ASSERT_EQ(ArrowIpcInputStreamInitFile(&input, fd, 1), NANOARROW_OK);
+    EXPECT_EQ(ArrowIpcInputStreamInitFile(&input, fd, 1), NANOARROW_OK);
 
     struct ArrowArrayStream stream;
-    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
-    struct ArrowSchema read_schema;
+    EXPECT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+    struct ArrowSchema ipc_schema;
 
-    ASSERT_EQ(stream.get_schema(&stream, &read_schema), NANOARROW_OK);
-    // TODO: look up this schema.format code
-    // EXPECT_STREQ(schema.format, "+s");
-    read_schema.release(&read_schema);
+    EXPECT_EQ(stream.get_schema(&stream, &ipc_schema), NANOARROW_OK);
+    // TODO: for now this assumes we only have one field, but we should make this generic
+    // when we fully replace CompareSchema with this approach
+    EXPECT_STREQ(reader.schema.value.children[0]->format, ipc_schema.children[0]->format);
+    ipc_schema.release(&ipc_schema);
 
-    ASSERT_NO_FATAL_FAILURE(reader.Next());
-    ASSERT_NE(nullptr, reader.array->release);
-    ASSERT_EQ(values.size(), reader.array->length);
-    ASSERT_EQ(1, reader.array->n_children);
+    EXPECT_NO_FATAL_FAILURE(reader.Next());
+    EXPECT_NE(nullptr, reader.array->release);
+    EXPECT_EQ(values.size(), reader.array->length);
+    EXPECT_EQ(1, reader.array->n_children);
 
-    struct ArrowArray read_array;
-    ASSERT_EQ(stream.get_next(&stream, &read_array), NANOARROW_OK);
+    struct ArrowArray ipc_array;
+    EXPECT_EQ(stream.get_next(&stream, &ipc_array), NANOARROW_OK);
     // TODO: compare arrays
-    read_array.release(&read_array);
-
-    fclose(fd);
+    ipc_array.release(&ipc_array);
+    input.release(&input);
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
