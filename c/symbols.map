@@ -26,8 +26,9 @@
     SnowflakeDriverInit;
     SqliteDriverInit;
 
-    # Export Postgres API for testing
     extern "C++" {
+        Adbc*;
+        # Export Postgres API for testing
         *adbcpq::*;
     };
 

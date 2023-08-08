@@ -27,6 +27,8 @@
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
+std::string AdbcDriverManagerDefaultEntrypoint(const std::string& filename);
+
 // Tests of the SQLite example driver, except using the driver manager
 
 namespace adbc {
@@ -261,5 +263,42 @@ class SqliteStatementTest : public ::testing::Test,
   SqliteQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
+
+TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
+  for (const auto& driver : {
+           "adbc_driver_sqlite",
+           "adbc_driver_sqlite.dll",
+           "driver_sqlite",
+           "libadbc_driver_sqlite",
+           "libadbc_driver_sqlite.so",
+           "libadbc_driver_sqlite.so.6.0.0",
+           "/usr/lib/libadbc_driver_sqlite.so",
+           "/usr/lib/libadbc_driver_sqlite.so.6.0.0",
+           "C:\\System32\\adbc_driver_sqlite.dll",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcDriverSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+  }
+
+  for (const auto& driver : {
+           "adbc_sqlite",
+           "sqlite",
+           "/usr/lib/sqlite.so",
+           "C:\\System32\\sqlite.dll",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+  }
+
+  for (const auto& driver : {
+           "proprietary_engine",
+           "libproprietary_engine.so.6.0.0",
+           "/usr/lib/proprietary_engine.so",
+           "C:\\System32\\proprietary_engine.dll",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcProprietaryEngineInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+  }
+}
 
 }  // namespace adbc
