@@ -288,10 +288,10 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
    *
    * <table border="1">
    *   <tr><th>Field Name</th>              <th>Field Type</th>             </tr>
-   *   <tr><td>int64</td>                   <td>int64</td>                  </td></tr>
-   *   <tr><td>uint64</td>                  <td>uint64</td>                 </td></tr>
-   *   <tr><td>float64</td>                 <td>float64</td>                </td></tr>
-   *   <tr><td>binary</td>                  <td>binary</td>                 </td></tr>
+   *   <tr><td>int64</td>                   <td>int64</td>                  </tr>
+   *   <tr><td>uint64</td>                  <td>uint64</td>                 </tr>
+   *   <tr><td>float64</td>                 <td>float64</td>                </tr>
+   *   <tr><td>binary</td>                  <td>binary</td>                 </tr>
    *   <caption>The definition of VALUE_SCHEMA.</caption>
    * </table>
    *
