@@ -1175,7 +1175,8 @@ void StatementTest::TestSqlIngestDate32() {
 
     struct ArrowArray ipc_array;
     EXPECT_EQ(stream.get_next(&stream, &ipc_array), NANOARROW_OK);
-    // TODO: compare arrays
+    // TODO: we need to compare array values - maybe from <arrow/compare.h>?
+    // EXPECT_TRUE(ArrayEquals(reader.array, ipc_array));
     ipc_array.release(&ipc_array);
     input.release(&input);
 
