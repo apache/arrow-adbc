@@ -47,6 +47,8 @@ void PanicDummyReleaseErrWithDetails(struct AdbcError* error) {
     free(details->keys[i]);
     free(details->values[i]);
   }
+  free(details->keys);
+  free(details->values);
   free(details->lengths);
   free(details);
 
@@ -56,7 +58,7 @@ void PanicDummyReleaseErrWithDetails(struct AdbcError* error) {
   error->private_data = NULL;
 }
 
-int PanicDummyErrorGetDetailCount(struct AdbcError* error) {
+int PanicDummyErrorGetDetailCount(const struct AdbcError* error) {
   if (!error || error->release != PanicDummyReleaseErrWithDetails ||
       !error->private_data) {
     return 0;
@@ -65,7 +67,8 @@ int PanicDummyErrorGetDetailCount(struct AdbcError* error) {
   return ((struct PanicDummyError*) error->private_data)->count;
 }
 
-struct AdbcErrorDetail PanicDummyErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail PanicDummyErrorGetDetail(const struct AdbcError* error,
+                                                 int index) {
   if (!error || error->release != PanicDummyReleaseErrWithDetails ||
       !error->private_data) {
     return (struct AdbcErrorDetail){NULL, NULL, 0};
@@ -82,12 +85,17 @@ struct AdbcErrorDetail PanicDummyErrorGetDetail(struct AdbcError* error, int ind
   };
 }
 
-int AdbcErrorGetDetailCount(struct AdbcError* error) {
+int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return PanicDummyErrorGetDetailCount(error);
 }
 
-struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
   return PanicDummyErrorGetDetail(error, index);
+}
+
+const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                 AdbcStatusCode* status) {
+  return PanicDummyErrorFromArrayStream(stream, status);
 }
 
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
@@ -413,6 +421,23 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
   return PanicDummyDriverInit(version, driver, error);
+}
+
+int PanicDummyArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
+int PanicDummyArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);
+
+int PanicDummyArrayStreamGetSchemaTrampoline(struct ArrowArrayStream* stream,
+                                              struct ArrowSchema* out) {
+  // XXX(https://github.com/apache/arrow-adbc/issues/729)
+  memset(out, 0, sizeof(*out));
+  return PanicDummyArrayStreamGetSchema(stream, out);
+}
+
+int PanicDummyArrayStreamGetNextTrampoline(struct ArrowArrayStream* stream,
+                                            struct ArrowArray* out) {
+  // XXX(https://github.com/apache/arrow-adbc/issues/729)
+  memset(out, 0, sizeof(*out));
+  return PanicDummyArrayStreamGetNext(stream, out);
 }
 
 #ifdef __cplusplus

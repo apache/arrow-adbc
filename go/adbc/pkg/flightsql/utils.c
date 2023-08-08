@@ -47,6 +47,8 @@ void FlightSQLReleaseErrWithDetails(struct AdbcError* error) {
     free(details->keys[i]);
     free(details->values[i]);
   }
+  free(details->keys);
+  free(details->values);
   free(details->lengths);
   free(details);
 
@@ -56,7 +58,7 @@ void FlightSQLReleaseErrWithDetails(struct AdbcError* error) {
   error->private_data = NULL;
 }
 
-int FlightSQLErrorGetDetailCount(struct AdbcError* error) {
+int FlightSQLErrorGetDetailCount(const struct AdbcError* error) {
   if (!error || error->release != FlightSQLReleaseErrWithDetails ||
       !error->private_data) {
     return 0;
@@ -65,7 +67,8 @@ int FlightSQLErrorGetDetailCount(struct AdbcError* error) {
   return ((struct FlightSQLError*) error->private_data)->count;
 }
 
-struct AdbcErrorDetail FlightSQLErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail FlightSQLErrorGetDetail(const struct AdbcError* error,
+                                                 int index) {
   if (!error || error->release != FlightSQLReleaseErrWithDetails ||
       !error->private_data) {
     return (struct AdbcErrorDetail){NULL, NULL, 0};
@@ -82,12 +85,17 @@ struct AdbcErrorDetail FlightSQLErrorGetDetail(struct AdbcError* error, int inde
   };
 }
 
-int AdbcErrorGetDetailCount(struct AdbcError* error) {
+int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return FlightSQLErrorGetDetailCount(error);
 }
 
-struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index) {
+struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
   return FlightSQLErrorGetDetail(error, index);
+}
+
+const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                 AdbcStatusCode* status) {
+  return FlightSQLErrorFromArrayStream(stream, status);
 }
 
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
@@ -413,6 +421,23 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
   return FlightSQLDriverInit(version, driver, error);
+}
+
+int FlightSQLArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
+int FlightSQLArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);
+
+int FlightSQLArrayStreamGetSchemaTrampoline(struct ArrowArrayStream* stream,
+                                              struct ArrowSchema* out) {
+  // XXX(https://github.com/apache/arrow-adbc/issues/729)
+  memset(out, 0, sizeof(*out));
+  return FlightSQLArrayStreamGetSchema(stream, out);
+}
+
+int FlightSQLArrayStreamGetNextTrampoline(struct ArrowArrayStream* stream,
+                                            struct ArrowArray* out) {
+  // XXX(https://github.com/apache/arrow-adbc/issues/729)
+  memset(out, 0, sizeof(*out));
+  return FlightSQLArrayStreamGetNext(stream, out);
 }
 
 #ifdef __cplusplus

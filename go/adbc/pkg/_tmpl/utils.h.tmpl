@@ -24,6 +24,7 @@
 #include "../../drivermgr/adbc.h"
 #include <stdlib.h>
 
+struct AdbcError* {{.Prefix}}ErrorFromArrayStream(struct ArrowArrayStream*, AdbcStatusCode*);
 AdbcStatusCode {{.Prefix}}DatabaseGetOption(struct AdbcDatabase*, const char*, char*, size_t*, struct AdbcError*);
 AdbcStatusCode {{.Prefix}}DatabaseGetOptionBytes(struct AdbcDatabase*, const char*, uint8_t*, size_t*, struct AdbcError*);
 AdbcStatusCode {{.Prefix}}DatabaseGetOptionDouble(struct AdbcDatabase*, const char*, double*, struct AdbcError*);
@@ -97,5 +98,8 @@ struct {{.Prefix}}Error {
 
 void {{.Prefix}}ReleaseErrWithDetails(struct AdbcError* error);
 
-int {{.Prefix}}ErrorGetDetailCount(struct AdbcError* error);
-struct AdbcErrorDetail {{.Prefix}}ErrorGetDetail(struct AdbcError* error, int index);
+int {{.Prefix}}ErrorGetDetailCount(const struct AdbcError* error);
+struct AdbcErrorDetail {{.Prefix}}ErrorGetDetail(const struct AdbcError* error, int index);
+
+int {{.Prefix}}ArrayStreamGetSchemaTrampoline(struct ArrowArrayStream* stream, struct ArrowSchema* out);
+int {{.Prefix}}ArrayStreamGetNextTrampoline(struct ArrowArrayStream* stream, struct ArrowArray* out);

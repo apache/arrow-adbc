@@ -28,6 +28,8 @@
 extern "C" {
 #endif
 
+int AdbcStatusCodeToErrno(AdbcStatusCode code);
+
 // The printf checking attribute doesn't work properly on gcc 4.8
 // and results in spurious compiler warnings
 #if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5)
@@ -47,8 +49,8 @@ void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args)
 void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* detail,
                        size_t detail_length);
 
-int CommonErrorGetDetailCount(struct AdbcError* error);
-struct AdbcErrorDetail CommonErrorGetDetail(struct AdbcError* error, int index);
+int CommonErrorGetDetailCount(const struct AdbcError* error);
+struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int index);
 
 struct StringBuilder {
   char* buffer;

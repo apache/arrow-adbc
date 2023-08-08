@@ -32,6 +32,7 @@ import (
 	"github.com/bluele/gcache"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 type reader struct {
@@ -49,6 +50,8 @@ type reader struct {
 // gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache, bufferSize int, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
 	endpoints := info.Endpoint
+	var header, trailer metadata.MD
+	opts = append(append([]grpc.CallOption{}, opts...), grpc.Header(&header), grpc.Trailer(&trailer))
 	var schema *arrow.Schema
 	if len(endpoints) == 0 {
 		if info.Schema == nil {
@@ -91,7 +94,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		firstEndpoint := endpoints[0]
 		rdr, err := doGet(ctx, cl, firstEndpoint, clCache, opts...)
 		if err != nil {
-			return nil, adbcFromFlightStatus(err, "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
+			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
 		}
 		schema = rdr.Schema()
 		group.Go(func() error {
@@ -105,7 +108,12 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				rec.Retain()
 				ch <- rec
 			}
-			return adbcFromFlightStatus(rdr.Err(), "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
+			if rdr.Err() != nil {
+				return adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
+			} else if ctx.Err() != nil {
+				return adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
+			}
+			return nil
 		})
 
 		endpoints = endpoints[1:]
@@ -136,7 +144,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 
 			rdr, err := doGet(ctx, cl, endpoint, clCache, opts...)
 			if err != nil {
-				return adbcFromFlightStatus(err, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
+				return adbcFromFlightStatusWithDetails(err, header, trailer, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
 			}
 			defer rdr.Release()
 
@@ -151,7 +159,12 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				chs[endpointIndex] <- rec
 			}
 
-			return adbcFromFlightStatus(rdr.Err(), "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
+			if rdr.Err() != nil {
+				return adbcFromFlightStatusWithDetails(rdr.Err(), header, trailer, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
+			} else if ctx.Err() != nil {
+				return adbcFromFlightStatusWithDetails(context.Cause(ctx), header, trailer, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
+			}
+			return nil
 		})
 	}
 

@@ -360,7 +360,7 @@ struct ADBC_EXPORT AdbcErrorDetail {
 ///
 /// \since ADBC API revision 1.1.0
 ADBC_EXPORT
-int AdbcErrorGetDetailCount(struct AdbcError* error);
+int AdbcErrorGetDetailCount(const struct AdbcError* error);
 
 /// \brief Get a metadata value in an error by index.
 ///
@@ -369,7 +369,25 @@ int AdbcErrorGetDetailCount(struct AdbcError* error);
 ///
 /// \since ADBC API revision 1.1.0
 ADBC_EXPORT
-struct AdbcErrorDetail AdbcErrorGetDetail(struct AdbcError* error, int index);
+struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index);
+
+/// \brief Get an ADBC error from an ArrowArrayStream created by a driver.
+///
+/// This allows retrieving error details and other metadata that would
+/// normally be suppressed by the Arrow C Stream Interface.
+///
+/// The caller MUST NOT release the error; it is managed by the release
+/// callback in the stream itself.
+///
+/// \param[in] stream The stream to query.
+/// \param[out] status The ADBC status code, or ADBC_STATUS_OK if there is no
+///   error.  Not written to if the stream does not contain an ADBC error or
+///   if the pointer is NULL.
+/// \return NULL if not supported.
+/// \since ADBC API revision 1.1.0
+ADBC_EXPORT
+const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                 AdbcStatusCode* status);
 
 /// @}
 
@@ -950,8 +968,10 @@ struct ADBC_EXPORT AdbcDriver {
   ///
   /// @{
 
-  int (*ErrorGetDetailCount)(struct AdbcError* error);
-  struct AdbcErrorDetail (*ErrorGetDetail)(struct AdbcError* error, int index);
+  int (*ErrorGetDetailCount)(const struct AdbcError* error);
+  struct AdbcErrorDetail (*ErrorGetDetail)(const struct AdbcError* error, int index);
+  const struct AdbcError* (*ErrorFromArrayStream)(struct ArrowArrayStream* stream,
+                                                  AdbcStatusCode* status);
 
   AdbcStatusCode (*DatabaseGetOption)(struct AdbcDatabase*, const char*, char*, size_t*,
                                       struct AdbcError*);
