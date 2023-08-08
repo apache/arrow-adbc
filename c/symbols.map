@@ -28,8 +28,6 @@
 
     extern "C++" {
         Adbc*;
-        # Export Postgres API for testing
-        *adbcpq::*;
     };
 
   local:
