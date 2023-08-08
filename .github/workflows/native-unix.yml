@@ -641,16 +641,6 @@ jobs:
           PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
 
-      - name: Set PATH for Go
-        shell: bash
-        run:
-          echo "$RUNNER_TOOL_CACHE/go/1.20.7/x64/bin" >> $GITHUB_PATH
-
-      - name: Check Go version
-        if: matrix.config.pkg == 'adbcflightsql' || matrix.config.pkg == 'adbcsnowflake'
-        run:
-          go version
-
       - name: Prepare sources (driver manager)
         if: matrix.config.pkg == 'adbcdrivermanager'
         run: |
@@ -661,6 +651,8 @@ jobs:
       - name: Prepare sources
         if: matrix.config.pkg != 'adbcdrivermanager'
         run: |
+          export PATH="$RUNNER_TOOL_CACHE/go/1.20.7/x64/bin:$PATH"
+          go version
           R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
           R CMD INSTALL r/adbcdrivermanager
           R CMD INSTALL r/${{ matrix.config.pkg }}
