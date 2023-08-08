@@ -627,14 +627,6 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - uses: actions/setup-go@v3
-        if: matrix.config.pkg == 'adbcflightsql' || matrix.config.pkg == 'adbcsnowflake'
-        with:
-          go-version: 1.20.7
-          check-latest: true
-          cache: true
-          cache-dependency-path: go/adbc/go.sum
-
       - name: Set PKG_CONFIG_PATH on MacOS
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'macOS'
         run: |
@@ -651,8 +643,6 @@ jobs:
       - name: Prepare sources
         if: matrix.config.pkg != 'adbcdrivermanager'
         run: |
-          export PATH="$RUNNER_TOOL_CACHE/go/1.20.7/x64/bin:$PATH"
-          go version
           R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
           R CMD INSTALL r/adbcdrivermanager
           R CMD INSTALL r/${{ matrix.config.pkg }}
