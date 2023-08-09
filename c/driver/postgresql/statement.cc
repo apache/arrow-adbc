@@ -611,18 +611,20 @@ int TupleReader::BuildOutput(struct ArrowArray* out, struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
-void TupleReader::ResetQuery() {
-  // Clear result
+void TupleReader::FreePQ() {
   if (result_) {
     PQclear(result_);
     result_ = nullptr;
   }
 
-  // Reset result buffer
-  if (pgbuf_ != nullptr) {
+  if (pgbuf_) {
     PQfreemem(pgbuf_);
     pgbuf_ = nullptr;
   }
+}
+
+void TupleReader::ResetQuery() {
+  FreePQ();
 
   // Clear the error builder
   error_builder_.size = 0;
@@ -631,7 +633,7 @@ void TupleReader::ResetQuery() {
 }
 
 int TupleReader::GetNext(struct ArrowArray* out) {
-  if (is_finished_) {
+  if (!copy_reader_) {
     out->release = nullptr;
     return 0;
   }
@@ -679,24 +681,14 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     return EIO;
   }
 
-  is_finished_ = true;
   ResetQuery();
   ArrowArrayMove(&tmp, out);
   return NANOARROW_OK;
 }
 
 void TupleReader::Release() {
+  FreePQ();
   StringBuilderReset(&error_builder_);
-
-  if (result_) {
-    PQclear(result_);
-    result_ = nullptr;
-  }
-
-  if (pgbuf_) {
-    PQfreemem(pgbuf_);
-    pgbuf_ = nullptr;
-  }
 
   if (copy_reader_) {
     copy_reader_.reset();
