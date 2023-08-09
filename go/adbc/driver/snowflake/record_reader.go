@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/hex"
 	"math"
-	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -36,19 +35,6 @@ import (
 	"github.com/snowflakedb/gosnowflake"
 	"golang.org/x/sync/errgroup"
 )
-
-const defaultConcurrentPrefetch = 10
-
-var concurrentPrefetch int
-
-func init() {
-	concurrentPrefetch = defaultConcurrentPrefetch
-	if value := os.Getenv("ADBC_SNOWFLAKE_DEFAULT_CONCURRENT_PREFETCH"); value != "" {
-		if n, err := strconv.Atoi(value); err == nil && n > 0 {
-			concurrentPrefetch = n
-		}
-	}
-}
 
 func identCol(_ context.Context, a arrow.Array) (arrow.Array, error) {
 	a.Retain()
@@ -427,7 +413,7 @@ type reader struct {
 	cancelFn context.CancelFunc
 }
 
-func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake.ArrowStreamLoader, bufferSize int) (array.RecordReader, error) {
+func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake.ArrowStreamLoader, bufferSize, prefetchConcurrency int) (array.RecordReader, error) {
 	batches, err := ld.GetBatches()
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusInternal, err)
@@ -492,7 +478,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		}
 	}()
 
-	group.SetLimit(concurrentPrefetch)
+	group.SetLimit(prefetchConcurrency)
 	group.Go(func() error {
 		defer rr.Release()
 		defer r.Close()

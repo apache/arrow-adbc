@@ -207,10 +207,17 @@ In addition, results are potentially fetched in parallel from multiple endpoints
 A limited number of batches are queued per endpoint, though data is always
 returned to the client in the order of the endpoints.
 
-The queue size can be changed by setting an option on the :cpp:class:`AdbcStatement`:
+To manage the performance of result fetching there are two options to control
+buffering and concurrency behavior. These options are only available to be set
+on the :cpp:class:`AdbcStatement` object:
 
 ``adbc.rpc.result_queue_size``
-    The number of batches to queue per endpoint. Defaults to 5.
+    The number of batches to queue in the record reader. Defaults to 200.
+    Must be an integer > 0.
+
+``adbc.snowflake.rpc.prefetch-concurrency``
+    The number of concurrent streams being fetched from snowflake at a time.
+    Defaults to 10. Must be an integer > 0.
 
 Transactions
 ------------
