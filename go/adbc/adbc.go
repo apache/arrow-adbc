@@ -230,6 +230,7 @@ const (
 	OptionKeyIncremental = "adbc.statement.exec.incremental"
 	// Get the progress
 	OptionKeyProgress                 = "adbc.statement.exec.progress"
+	OptionKeyMaxProgress              = "adbc.statement.exec.max_progress"
 	OptionKeyIngestTargetTable        = "adbc.ingest.target_table"
 	OptionKeyIngestMode               = "adbc.ingest.mode"
 	OptionKeyIsolationLevel           = "adbc.connection.transaction.isolation_level"
@@ -253,11 +254,6 @@ const (
 	LevelSnapshot        OptionIsolationLevel = "adbc.connection.transaction.isolation.snapshot"
 	LevelSerializable    OptionIsolationLevel = "adbc.connection.transaction.isolation.serializable"
 	LevelLinearizable    OptionIsolationLevel = "adbc.connection.transaction.isolation.linearizable"
-)
-
-// Canonical property values
-const (
-	PropertyProgress = "adbc.statement.exec.progress"
 )
 
 // Standard statistic names and keys.

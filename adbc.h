@@ -604,13 +604,31 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 
 /// \brief The name of the option for getting the progress of a query.
 ///
-/// Progress is a value in [0.0, 1.0].
+/// The value is not necessarily in any particular range or have any
+/// particular units.  (For example, it might be a percentage, bytes of data,
+/// rows of data, number of workers, etc.)  The max value can be retrieved via
+/// ADBC_STATEMENT_OPTION_MAX_PROGRESS.  This represents the progress of
+/// execution, not of consumption (i.e., it is independent of how much of the
+/// result set has been read by the client via ArrowArrayStream.get_next().)
 ///
 /// The type is double.
 ///
 /// \see AdbcStatementGetOptionDouble
 /// \since ADBC API revision 1.1.0
 #define ADBC_STATEMENT_OPTION_PROGRESS "adbc.statement.exec.progress"
+
+/// \brief The name of the option for getting the maximum progress of a query.
+///
+/// This is the value of ADBC_STATEMENT_OPTION_PROGRESS for a completed query.
+/// If not supported, or if the value is nonpositive, then the maximum is not
+/// known.  (For instance, the query may be fully streaming and the driver
+/// does not know when the result set will end.)
+///
+/// The type is double.
+///
+/// \see AdbcStatementGetOptionDouble
+/// \since ADBC API revision 1.1.0
+#define ADBC_STATEMENT_OPTION_MAX_PROGRESS "adbc.statement.exec.max_progress"
 
 /// \brief The name of the canonical option for setting the isolation
 ///   level of a transaction.

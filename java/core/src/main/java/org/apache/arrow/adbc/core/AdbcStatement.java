@@ -144,6 +144,15 @@ public interface AdbcStatement extends AutoCloseable, AdbcOptions {
   }
 
   /**
+   * Get the upper bound of the progress.
+   *
+   * @since ADBC API revision 1.1.0
+   */
+  default double getMaxProgress() throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support getMaxProgress");
+  }
+
+  /**
    * Get the schema for bound parameters.
    *
    * <p>This retrieves an Arrow schema describing the number, names, and types of the parameters in
