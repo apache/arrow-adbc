@@ -633,7 +633,7 @@ void TupleReader::ResetQuery() {
 }
 
 int TupleReader::GetNext(struct ArrowArray* out) {
-  if (!copy_reader_) {
+  if (is_finished_) {
     out->release = nullptr;
     return 0;
   }
@@ -666,6 +666,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   // occur in an overflow scenario).
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
+  is_finished_ = true;
 
   // Check the server-side response
   result_ = PQgetResult(conn_);
