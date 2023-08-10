@@ -493,9 +493,15 @@ CANNOT perform CREATE STAGE. This session does not have a current schema. Call &
 <p>In addition, results are potentially fetched in parallel from multiple endpoints.
 A limited number of batches are queued per endpoint, though data is always
 returned to the client in the order of the endpoints.</p>
-<p>The queue size can be changed by setting an option on the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>:</p>
+<p>To manage the performance of result fetching there are two options to control
+buffering and concurrency behavior. These options are only available to be set
+on the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv413AdbcStatement" title="AdbcStatement"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a> object:</p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">adbc.rpc.result_queue_size</span></code></dt><dd><p>The number of batches to queue per endpoint. Defaults to 5.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.rpc.result_queue_size</span></code></dt><dd><p>The number of batches to queue in the record reader. Defaults to 200.
+Must be an integer &gt; 0.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.rpc.prefetch_concurrency</span></code></dt><dd><p>The number of concurrent streams being fetched from snowflake at a time.
+Defaults to 10. Must be an integer &gt; 0.</p>
 </dd>
 </dl>
 </section>
