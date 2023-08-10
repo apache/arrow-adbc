@@ -78,3 +78,30 @@ def test_ddl(postgres: dbapi.Connection):
 
         cur.execute("SELECT * FROM test_ddl")
         assert cur.fetchone() == (1,)
+
+
+def test_crash(postgres: dbapi.Connection) -> None:
+    with postgres.cursor() as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchone() == (1,)
+
+def test_reuse(postgres: dbapi.Connection) -> None:
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_batch_size")
+        cur.execute("CREATE TABLE test_batch_size (ints INT)")
+        cur.execute(
+            """
+            INSERT INTO test_batch_size (ints)
+            SELECT generated :: INT
+            FROM GENERATE_SERIES(1, 65536) temp(generated)
+        """
+        )
+
+        cur.execute("SELECT * FROM test_batch_size ORDER BY ints ASC")
+        assert cur.fetchone() == (1,)
+
+        cur.execute("SELECT 1")
+        assert cur.fetchone() == (1,)
+
+        cur.execute("SELECT ")
+        assert cur.fetchone() == (2,)

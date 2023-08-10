@@ -71,8 +71,6 @@ class TupleReader final {
   int InitQueryAndFetchFirst(struct ArrowError* error);
   int AppendRowAndFetchNext(struct ArrowError* error);
   int BuildOutput(struct ArrowArray* out, struct ArrowError* error);
-  void FreePQ();
-  void ResetQuery();
 
   static int GetSchemaTrampoline(struct ArrowArrayStream* self, struct ArrowSchema* out);
   static int GetNextTrampoline(struct ArrowArrayStream* self, struct ArrowArray* out);
