@@ -18,6 +18,7 @@
 #include "statement.h"
 
 #include <array>
+#include <cassert>
 #include <cerrno>
 #include <cinttypes>
 #include <cstring>
@@ -511,6 +512,8 @@ struct BindStream {
 }  // namespace
 
 int TupleReader::GetSchema(struct ArrowSchema* out) {
+  assert(copy_reader_ != nullptr);
+
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
     StringBuilderAppend(&error_builder_,
@@ -525,8 +528,6 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
 }
 
 int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
-  ResetQuery();
-
   // Fetch + parse the header
   int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
   data_.size_bytes = get_copy_res;
@@ -601,27 +602,8 @@ int TupleReader::BuildOutput(struct ArrowArray* out, struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
-void TupleReader::ResetQuery() {
-  // Clear result
-  if (result_) {
-    PQclear(result_);
-    result_ = nullptr;
-  }
-
-  // Reset result buffer
-  if (pgbuf_ != nullptr) {
-    PQfreemem(pgbuf_);
-    pgbuf_ = nullptr;
-  }
-
-  // Clear the error builder
-  error_builder_.size = 0;
-
-  row_id_ = -1;
-}
-
 int TupleReader::GetNext(struct ArrowArray* out) {
-  if (!copy_reader_) {
+  if (is_finished_) {
     out->release = nullptr;
     return 0;
   }
@@ -649,14 +631,13 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     return na_res;
   }
 
+  is_finished_ = true;
+
   // Finish the result properly and return the last result. Note that BuildOutput() may
   // set tmp.release = nullptr if there were zero rows in the copy reader (can
   // occur in an overflow scenario).
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
-
-  // Clear the copy reader to mark this reader as finished
-  copy_reader_.reset();
 
   // Check the server-side response
   result_ = PQgetResult(conn_);
@@ -672,7 +653,6 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     return EIO;
   }
 
-  ResetQuery();
   ArrowArrayMove(&tmp, out);
   return NANOARROW_OK;
 }
@@ -689,6 +669,13 @@ void TupleReader::Release() {
     PQfreemem(pgbuf_);
     pgbuf_ = nullptr;
   }
+
+  if (copy_reader_) {
+    copy_reader_.reset();
+  }
+
+  is_finished_ = false;
+  row_id_ = -1;
 }
 
 void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
