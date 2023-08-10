@@ -85,6 +85,7 @@ def test_crash(postgres: dbapi.Connection) -> None:
         cur.execute("SELECT 1")
         assert cur.fetchone() == (1,)
 
+
 def test_reuse(postgres: dbapi.Connection) -> None:
     with postgres.cursor() as cur:
         cur.execute("DROP TABLE IF EXISTS test_batch_size")

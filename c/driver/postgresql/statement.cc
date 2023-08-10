@@ -672,7 +672,7 @@ void TupleReader::Release() {
   }
 
   is_finished_ = false;
-  row_id_= -1;
+  row_id_ = -1;
 }
 
 void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
