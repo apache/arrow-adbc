@@ -33,6 +33,11 @@ import (
 	"github.com/snowflakedb/gosnowflake"
 )
 
+const (
+	defaultStatementQueueSize  = 200
+	defaultPrefetchConcurrency = 10
+)
+
 type snowflakeConn interface {
 	driver.Conn
 	driver.ConnBeginTx
@@ -777,8 +782,10 @@ func (c *cnxn) Rollback(_ context.Context) error {
 // NewStatement initializes a new statement object tied to this connection
 func (c *cnxn) NewStatement() (adbc.Statement, error) {
 	return &statement{
-		alloc: c.db.alloc,
-		cnxn:  c,
+		alloc:               c.db.alloc,
+		cnxn:                c,
+		queueSize:           defaultStatementQueueSize,
+		prefetchConcurrency: defaultPrefetchConcurrency,
 	}, nil
 }
 

@@ -33,13 +33,15 @@ import (
 )
 
 const (
-	OptionStatementQueueSize = "adbc.rpc.result_queue_size"
+	OptionStatementQueueSize           = "adbc.rpc.result_queue_size"
+	OptionStatementPrefetchConcurrency = "adbc.snowflake.rpc.prefetch_concurrency"
 )
 
 type statement struct {
-	cnxn      *cnxn
-	alloc     memory.Allocator
-	queueSize int
+	cnxn                *cnxn
+	alloc               memory.Allocator
+	queueSize           int
+	prefetchConcurrency int
 
 	query       string
 	targetTable string
@@ -97,7 +99,28 @@ func (st *statement) SetOption(key string, val string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
+		if sz <= 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be > 0", sz, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
 		st.queueSize = sz
+	case OptionStatementPrefetchConcurrency:
+		concurrency, err := strconv.Atoi(val)
+		if err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("could not parse '%s' as int for option '%s'", val, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		if concurrency <= 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be > 0", concurrency, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		st.prefetchConcurrency = concurrency
 	default:
 		return adbc.Error{
 			Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),
@@ -436,7 +459,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return nil, -1, errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	rdr, err := newRecordReader(ctx, st.alloc, loader, st.queueSize)
+	rdr, err := newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency)
 	nrec := loader.TotalRows()
 	return rdr, nrec, err
 }
