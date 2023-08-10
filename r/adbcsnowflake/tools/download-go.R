@@ -17,7 +17,7 @@
 
 tmp_dir <- "src/go/tmp"
 
-go_version <- Sys.getenv("R_ADBC_GO_VERSION_DOWNLOAD", "1.20.7")
+go_version <- Sys.getenv("R_ADBC_GO_VERSION_DOWNLOAD", "1.18.10")
 
 go_platform <- tolower(Sys.info()[["sysname"]])
 if (!(go_platform %in% c("darwin", "linux", "windows"))) {

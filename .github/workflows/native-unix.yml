@@ -98,7 +98,7 @@ jobs:
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.20.7
+          go-version: 1.18.10
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -112,14 +112,14 @@ jobs:
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
-          export PATH=$RUNNER_TOOL_CACHE/go/1.20.7/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/1.18.10/x64/bin:$PATH
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Go Build
         shell: bash -l {0}
         env:
           CGO_ENABLED: "1"
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.20.7/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/1.18.10/x64/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
       - uses: actions/upload-artifact@v3
@@ -302,7 +302,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.20.7
+          go-version: 1.18.10
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -361,7 +361,7 @@ jobs:
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.20.7
+          go-version: 1.18.10
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -378,7 +378,7 @@ jobs:
       - name: Go Build
         shell: bash -l {0}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.20.7/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/1.18.10/x64/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Run Staticcheck
         if: ${{ !contains('macos-latest', matrix.os) }}
@@ -392,7 +392,7 @@ jobs:
         env:
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
-          export PATH=$RUNNER_TOOL_CACHE/go/1.20.7/x64/bin:$PATH
+          export PATH=$RUNNER_TOOL_CACHE/go/1.18.10/x64/bin:$PATH
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
   # ------------------------------------------------------------
@@ -441,7 +441,7 @@ jobs:
             --file ci/conda_env_python.txt
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.20.7
+          go-version: 1.18.10
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum

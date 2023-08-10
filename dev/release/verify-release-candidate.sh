@@ -254,7 +254,7 @@ install_go() {
     return 0
   fi
 
-  local version=1.20.7
+  local version=1.18.10
   show_info "Installing go version ${version}..."
 
   local arch="$(uname -m)"
