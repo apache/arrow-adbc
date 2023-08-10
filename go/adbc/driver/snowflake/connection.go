@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	defaultStatementQueueSize = 200
-	defaultPrefectConcurrency = 10
+	defaultStatementQueueSize  = 200
+	defaultPrefetchConcurrency = 10
 )
 
 type snowflakeConn interface {
@@ -785,7 +785,7 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 		alloc:               c.db.alloc,
 		cnxn:                c,
 		queueSize:           defaultStatementQueueSize,
-		prefetchConcurrency: defaultPrefectConcurrency,
+		prefetchConcurrency: defaultPrefetchConcurrency,
 	}, nil
 }
 

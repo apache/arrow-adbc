@@ -215,7 +215,7 @@ on the :cpp:class:`AdbcStatement` object:
     The number of batches to queue in the record reader. Defaults to 200.
     Must be an integer > 0.
 
-``adbc.snowflake.rpc.prefetch-concurrency``
+``adbc.snowflake.rpc.prefetch_concurrency``
     The number of concurrent streams being fetched from snowflake at a time.
     Defaults to 10. Must be an integer > 0.
 

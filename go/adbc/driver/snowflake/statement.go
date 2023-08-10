@@ -34,7 +34,7 @@ import (
 
 const (
 	OptionStatementQueueSize           = "adbc.rpc.result_queue_size"
-	OptionStatementPrefetchConcurrency = "adbc.snowflake.rpc.prefetch-concurrency"
+	OptionStatementPrefetchConcurrency = "adbc.snowflake.rpc.prefetch_concurrency"
 )
 
 type statement struct {
