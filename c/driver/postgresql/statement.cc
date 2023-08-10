@@ -667,6 +667,16 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 void TupleReader::Release() {
   StringBuilderReset(&error_builder_);
 
+  if (result_) {
+    PQclear(result_);
+    result_ = nullptr;
+  }
+
+  if (pgbuf_) {
+    PQfreemem(pgbuf_);
+    pgbuf_ = nullptr;
+  }
+
   if (copy_reader_) {
     copy_reader_.reset();
   }
