@@ -103,5 +103,5 @@ def test_reuse(postgres: dbapi.Connection) -> None:
         cur.execute("SELECT 1")
         assert cur.fetchone() == (1,)
 
-        cur.execute("SELECT ")
+        cur.execute("SELECT 2")
         assert cur.fetchone() == (2,)
