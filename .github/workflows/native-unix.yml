@@ -302,12 +302,12 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.18.10
+          go-version-file: 'go/adbc/go.mod'
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@v0.4.3
+        run: go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
       - name: Go Build
         run: |
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
@@ -368,7 +368,7 @@ jobs:
       - name: Install staticcheck
         shell: bash -l {0}
         if: ${{ !contains('macos-latest', matrix.os) }}
-        run: go install honnef.co/go/tools/cmd/staticcheck@v0.4.3
+        run: go install honnef.co/go/tools/cmd/staticcheck@v0.3.3
 
       - uses: actions/download-artifact@v3
         with:
