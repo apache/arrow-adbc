@@ -622,6 +622,7 @@ serialize accesses to a connection.</p>
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.set_options">
 <span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.set_options" title="Permalink to this definition">#</a></dt>
 <dd><p>Set arbitrary key-value options.</p>
+<p>Pass options as kwargs: <code class="docutils literal notranslate"><span class="pre">set_options(**{&quot;some.option&quot;:</span> <span class="pre">&quot;value&quot;})</span></code>.</p>
 <p>Note, not all drivers support setting options after creation.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
@@ -672,6 +673,7 @@ database driver to load.</p>
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcDatabase.set_options">
 <span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcDatabase.set_options" title="Permalink to this definition">#</a></dt>
 <dd><p>Set arbitrary key-value options.</p>
+<p>Pass options as kwargs: <code class="docutils literal notranslate"><span class="pre">set_options(**{&quot;some.option&quot;:</span> <span class="pre">&quot;value&quot;})</span></code>.</p>
 <p>Note, not all drivers support setting options after creation.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
@@ -725,7 +727,7 @@ serialize accesses to a connection.</p>
 <td><p>Turn this statement into a prepared statement.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_options" title="adbc_driver_manager.AdbcStatement.set_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_options</span></code></a>(**kwargs)</p></td>
-<td><p>Set arbitrary key-value options.</p></td>
+<td><p>Set arbitrary key-value options for this statement only.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcStatement.set_sql_query" title="adbc_driver_manager.AdbcStatement.set_sql_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_sql_query</span></code></a>(query)</p></td>
 <td><p>Set a SQL query to be executed.</p></td>
@@ -854,7 +856,8 @@ the type of the corresponding field will be NA (NullType).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcStatement.set_options">
 <span class="sig-name descname"><span class="pre">set_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcStatement.set_options" title="Permalink to this definition">#</a></dt>
-<dd><p>Set arbitrary key-value options.</p>
+<dd><p>Set arbitrary key-value options for this statement only.</p>
+<p>Pass options as kwargs: <code class="docutils literal notranslate"><span class="pre">set_options(**{&quot;some.option&quot;:</span> <span class="pre">&quot;value&quot;})</span></code>.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <dl class="simple">
