@@ -570,7 +570,7 @@ cdef class AdbcDatabase(_AdbcHandle):
     def set_options(self, **kwargs) -> None:
         """Set arbitrary key-value options.
 
-        Pass options as kwargs: set_options(**{"some.option": "value"})
+        Pass options as kwargs: ``set_options(**{"some.option": "value"})``.
 
         Note, not all drivers support setting options after creation.
 
@@ -827,7 +827,7 @@ cdef class AdbcConnection(_AdbcHandle):
     def set_options(self, **kwargs) -> None:
         """Set arbitrary key-value options.
 
-        Pass options as kwargs: set_options(**{"some.option": "value"})
+        Pass options as kwargs: ``set_options(**{"some.option": "value"})``.
 
         Note, not all drivers support setting options after creation.
 
@@ -1096,7 +1096,7 @@ cdef class AdbcStatement(_AdbcHandle):
     def set_options(self, **kwargs) -> None:
         """Set arbitrary key-value options for this statement only.
 
-        Pass options as kwargs: set_options(**{"some.option": "value"})
+        Pass options as kwargs: ``set_options(**{"some.option": "value"})``.
 
         See Also
         --------
