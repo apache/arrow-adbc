@@ -28,6 +28,14 @@ main() {
     pushd "$source_dir/docs"
     make html
     make doctest
+    popd
+
+    for desc_file in $(find "${source_dir}/r" -name DESCRIPTION); do
+      local -r pkg=$(dirname "$desc_file")
+      local -r pkg_name=$(basename $pkg)
+      R -e "pkgdown::build_site_github_pages(pkg = '$pkg', dest_dir = '$source_dir/docs/r/$pkg_name')"
+    done
+
 }
 
 main "$@"
