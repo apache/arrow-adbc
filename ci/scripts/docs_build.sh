@@ -31,9 +31,9 @@ main() {
     popd
 
     for desc_file in $(find "${source_dir}/r" -name DESCRIPTION); do
-      local -r pkg=$(dirname "$desc_file")
-      local -r pkg_name=$(basename $pkg)
-      R -e "pkgdown::build_site_github_pages(pkg = '$pkg', dest_dir = '$source_dir/docs/r/$pkg_name')"
+      local pkg=$(dirname "$desc_file")
+      local pkg_name=$(basename $pkg)
+      R -e "pkgdown::build_site_github_pages(pkg = '$pkg', dest_dir = '$source_dir/docs/build/html/r/$pkg_name')"
     done
 
 }
