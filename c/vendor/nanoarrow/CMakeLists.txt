@@ -24,3 +24,32 @@ add_library(
 set_target_properties(
   nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON
 )
+
+add_library(flatccrt STATIC
+  "${REPOSITORY_ROOT}/c/vendor/flatcc/src/runtime/builder.c"
+  "${REPOSITORY_ROOT}/c/vendor/flatcc/src/runtime/emitter.c"
+  "${REPOSITORY_ROOT}/c/vendor/flatcc/src/runtime/verifier.c"
+  "${REPOSITORY_ROOT}/c/vendor/flatcc/src/runtime/refmap.c"
+)
+
+# TODO: nanoarrow lets you specify this from command line
+set(NANOARROW_IPC_FLATCC_INCLUDE_DIR
+  ${REPOSITORY_ROOT}/c/vendor/flatcc/include)
+
+target_include_directories(
+  flatccrt PUBLIC $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
+  $<INSTALL_INTERFACE:include>)
+
+add_library(
+  nanoarrow_ipc
+  STATIC
+  nanoarrow_ipc.c
+)
+
+target_include_directories(nanoarrow_ipc PUBLIC $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>)
+
+target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
+
+set_target_properties(
+  nanoarrow_ipc PROPERTIES POSITION_INDEPENDENT_CODE ON
+)

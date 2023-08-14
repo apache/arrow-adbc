@@ -33,6 +33,7 @@
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow_ipc.h>
 
 #include "adbc_validation_util.h"
 
@@ -1100,7 +1101,88 @@ void StatementTest::TestSqlIngestBinary() {
 }
 
 void StatementTest::TestSqlIngestDate32() {
-  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<int32_t>(NANOARROW_TYPE_DATE32));
+  if (!quirks()->supports_bulk_ingest()) {
+    GTEST_SKIP();
+  }
+
+  if (quirks()->test_data_path() == "") {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ArrowType type = NANOARROW_TYPE_DATE32;
+  std::vector<std::optional<int32_t>> values = {std::nullopt, 20000, 0};
+
+  ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<int32_t>(&schema.value, &array.value, &na_error, values),
+              IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected,
+              ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error),
+              IsOkStatus(&error));
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+    FILE* fd = fopen(
+        (quirks()->test_data_path() + "/statementtest-testsqlingestdate32.arrow").c_str(),
+        "rb");
+
+    EXPECT_NE(nullptr, fd);
+
+    struct ArrowIpcInputStream input;
+    EXPECT_EQ(ArrowIpcInputStreamInitFile(&input, fd, 1), NANOARROW_OK);
+
+    struct ArrowArrayStream stream;
+    EXPECT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+    struct ArrowSchema ipc_schema;
+
+    EXPECT_EQ(stream.get_schema(&stream, &ipc_schema), NANOARROW_OK);
+    // TODO: for now this assumes we only have one field, but we should make this generic
+    // when we fully replace CompareSchema with this approach
+    EXPECT_STREQ(reader.schema.value.children[0]->format, ipc_schema.children[0]->format);
+    ipc_schema.release(&ipc_schema);
+
+    EXPECT_NO_FATAL_FAILURE(reader.Next());
+    EXPECT_NE(nullptr, reader.array->release);
+    EXPECT_EQ(values.size(), reader.array->length);
+    EXPECT_EQ(1, reader.array->n_children);
+
+    struct ArrowArray ipc_array;
+    EXPECT_EQ(stream.get_next(&stream, &ipc_array), NANOARROW_OK);
+    // TODO: we need to compare array values - maybe from <arrow/compare.h>?
+    // EXPECT_TRUE(ArrayEquals(reader.array, ipc_array));
+    ipc_array.release(&ipc_array);
+    stream.release(&stream);
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
 }
 
 template <enum ArrowTimeUnit TU>

@@ -118,6 +118,9 @@ class DriverQuirks {
 
   /// \brief Default Schema to use for tests
   virtual std::string db_schema() const { return ""; }
+
+  /// \brief Location of test data files in source tree
+  virtual std::string test_data_path() const { return ""; }
 };
 
 class DatabaseTest {
