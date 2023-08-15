@@ -19,9 +19,39 @@
 R
 ===
 
--------------
-API Reference
--------------
+ADBC in R is implemented as a suite of R packages: most users will
+interact with ADBC via the adbcdrivermanager package and use drivers
+that are also distributed as R packages. In addition to the low-level
+interface provided by adbcdrivermanager, you can use ``read_adbc()``,
+``write_adbc()`` and ``execute_adbc()`` to quickly interact with an
+ADBC connection or database.
+
+.. code-block:: r
+
+   library(adbcdrivermanager)
+
+   # Use the driver manager to connect to a database
+   db <- adbc_database_init(adbcsqlite::adbcsqlite(), uri = ":memory:")
+   con <- adbc_connection_init(db)
+
+   # Write a table
+   mtcars |>
+     write_adbc(con, "mtcars")
+
+   # Query it
+   con |>
+     read_adbc("SELECT * from mtcars") |>
+     tibble::as_tibble()
+
+   # Clean up
+   con |>
+     execute_adbc("DROP TABLE mtcars")
+   adbc_connection_release(con)
+   adbc_database_release(db)
+
+---------------------
+Package documentation
+---------------------
 
 - `adbcdrivermanager <adbcdrivermanager/index.html>`_
 - `adbcflightsql <adbcflightsql/index.html>`_
