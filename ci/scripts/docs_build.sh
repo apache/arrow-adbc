@@ -33,7 +33,12 @@ main() {
     for desc_file in $(find "${source_dir}/r" -name DESCRIPTION); do
       local pkg=$(dirname "$desc_file")
       local pkg_name=$(basename $pkg)
-      R -e "pkgdown::build_site_github_pages(pkg = '$pkg', dest_dir = '$source_dir/docs/build/html/r/$pkg_name')"
+      # Only build R documentation for installed packages (e.g., so that
+      # Python's documentation build can run without installing the R
+      # packages). Packages are installed in ci/scripts/r_build.sh
+      if Rscript -e "requireNamespace('$pkg')"; then
+        R -e "pkgdown::build_site_github_pages(pkg = '$pkg', dest_dir = '$source_dir/docs/build/html/r/$pkg_name')"
+      fi
     done
 
 }
