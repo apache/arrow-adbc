@@ -60,21 +60,20 @@ main() {
     # Copy the version script and regenerate the version list
     # The versions get embedded into the JavaScript file to save a roundtrip
     rm -f "${site}/version.js"
-    cp "${repo}/docs/source/_static/version.js" "${site}/version.js"
-    echo >> "${site}/version.js"
     echo 'const versions = `' >> "${site}/version.js"
 
     pushd "${site}"
+    rm -f "${site}/versions.txt"
     for inv in */objects.inv; do
+        if [[ "$(dirname $inv)" = "current" ]]; then
+            continue
+        fi
         echo "$(dirname $inv);$(sphobjinv convert json $inv - | jq -r .version)"
     done | sort -t ";" --version-sort | tee --append "${site}/version.js" "${site}/versions.txt"
     popd
 
-    echo '`;' >> "${site}/version.js"
-    git -C "${site}" add -f "version.js"
-
     # Determine the latest stable version
-    local -r latest_docs=$(grep -E ';[0-9]+\.[0-9]+\.[0-9]+$' "${site}/versions.txt" | sort -t ';' --version-sort | tail -n1)
+    local -r latest_docs=$(grep -E ';[0-9]+\.[0-9]+\.[0-9]+$' "${site}/versions.txt" | grep -v -E '^current;' | sort -t ';' --version-sort | tail -n1)
     if [[ -z "${latest_docs}" ]]; then
         echo "No stable versions found"
         local -r latest_dir="main"
@@ -85,10 +84,21 @@ main() {
     fi
     echo "Latest version: ${latest_version} in directory ${latest_dir}"
 
+    # Make a copy of the latest release under a stable URL
+    rm -rf "${site}/current/"
+    cp -r "${site}/${latest_dir}" "${site}/current/"
+    git -C "${site}" add --force "current"
+
+    echo "current;${latest_version} (current)" >> "${site}/version.js"
+
+    echo '`;' >> "${site}/version.js"
+    cat "${repo}/docs/source/_static/version.js" >> "${site}/version.js"
+    git -C "${site}" add -f "version.js"
+
     # Generate index.html
     cat > "${site}/index.html" << EOF
 <!DOCTYPE html>
-<meta http-equiv="Refresh" content="0; url=$latest_dir/index.html">
+<meta http-equiv="Refresh" content="0; url=current/index.html">
 EOF
     git -C "${site}" add -f "index.html"
 
@@ -96,7 +106,7 @@ EOF
     mkdir -p "${site}/latest"
     cat > "${site}/latest/index.html" << EOF
 <!DOCTYPE html>
-<meta http-equiv="Refresh" content="0; url=../$latest_dir/index.html">
+<meta http-equiv="Refresh" content="0; url=../current/index.html">
 EOF
     git -C "${site}" add -f "latest/index.html"
 }
