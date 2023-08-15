@@ -33,7 +33,7 @@ if [ -z "$GO_BIN" ]; then
   GO_BIN=`which go`
 fi
 
-if [ -z "$GO_BIN"]; then
+if [ -z "$GO_BIN" ]; then
   if [ ! -f src/go/tmp/go/bin/go ]; then
     echo ""
     echo "Downloading and extracting Go into the package source directory:"
