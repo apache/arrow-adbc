@@ -18,3 +18,13 @@
 url: ~
 template:
   bootstrap: 5
+  # Link back to ADBC R documentation
+  includes:
+    before_title: |
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="../index.html">
+            <span class="fa fa-arrow-left"></span>
+          </a>
+        </li>
+      </ul>
