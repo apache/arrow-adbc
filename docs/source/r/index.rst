@@ -19,12 +19,12 @@
 R
 ===
 
-ADBC in R is implemented as a suite of R packages: most users will
-interact with ADBC via the adbcdrivermanager package and use drivers
-that are also distributed as R packages. In addition to the low-level
-interface provided by adbcdrivermanager, you can use ``read_adbc()``,
-``write_adbc()`` and ``execute_adbc()`` to quickly interact with an
-ADBC connection or database.
+ADBC in R is implemented as a suite of R packages. Most users will
+interact with ADBC via the `adbcdrivermanager <adbcdrivermanager/index.html>`_
+package and use drivers that are also distributed as R packages. In
+addition to the low-level interface provided by adbcdrivermanager,
+you can use ``read_adbc()``, ``write_adbc()`` and ``execute_adbc()``
+to quickly interact with an ADBC connection or database.
 
 .. code-block:: r
 
@@ -48,6 +48,9 @@ ADBC connection or database.
      execute_adbc("DROP TABLE mtcars")
    adbc_connection_release(con)
    adbc_database_release(db)
+
+See individual package documentation for installation and usage
+details specific to each driver.
 
 ---------------------
 Package documentation
