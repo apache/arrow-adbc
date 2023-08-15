@@ -51,7 +51,7 @@ function adbcInjectVersionSwitcher() {
             el.addEventListener("click", (e) => {
                 e.preventDefault();
                 try {
-                    let relativePart = window.location.pathname.replace(/^/\/, "");
+                    let relativePart = window.location.pathname.replace(/^\//, "");
                     // Remove the adbc/ prefix
                     relativePart = relativePart.replace(/^adbc[^\/]+\//, "");
                     // Remove the version number
