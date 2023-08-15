@@ -87,7 +87,7 @@ main() {
     # Make a copy of the latest release under a stable URL
     rm -rf "${site}/current/"
     cp -r "${site}/${latest_dir}" "${site}/current/"
-    git -C "${site}" add --force "current"
+    git -C "${site}" add -f "current"
 
     echo "current;${latest_version} (current)" >> "${site}/version.js"
 

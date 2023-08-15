@@ -51,9 +51,9 @@ function adbcInjectVersionSwitcher() {
             el.addEventListener("click", (e) => {
                 e.preventDefault();
                 try {
-                    let relativePart = window.location.pathname;
+                    let relativePart = window.location.pathname.replace(/^/\/, "");
                     // Remove the adbc/ prefix
-                    relativePart = relativePart.replace(/^\/adbc[^\/]+\//, "");
+                    relativePart = relativePart.replace(/^adbc[^\/]+\//, "");
                     // Remove the version number
                     relativePart = relativePart.replace(/^[^\/]+\//, "");
                     const newUrl = `${el.getAttribute("href")}/${relativePart}`;
@@ -77,5 +77,5 @@ function adbcInjectVersionSwitcher() {
 if (document.readyState !== "loading") {
     adbcInjectVersionSwitcher();
 } else {
-    window.addEventListener("DOMContentLoaded", () => adbcInjectVersionSwitcher());
+    window.addEventListener("DOMContentLoaded", adbcInjectVersionSwitcher);
 }
