@@ -10,3 +10,6 @@
 ^configure\.win$
 ^windows$
 ^\.vscode$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

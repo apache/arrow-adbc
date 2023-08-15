@@ -15,15 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-breathe
-doxygen
-furo
-make
-numpydoc
-pytest
-sphinx>=5.0
-sphinx-autobuild
-sphinx-copybutton
-sphinx-design
-sphinxcontrib-mermaid
-r-pkgdown
+url: ~
+template:
+  bootstrap: 5
+  # Link back to ADBC R documentation
+  includes:
+    before_title: |
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="../index.html">
+            <span class="fa fa-arrow-left"></span>
+          </a>
+        </li>
+      </ul>
