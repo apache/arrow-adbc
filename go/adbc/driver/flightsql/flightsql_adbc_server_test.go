@@ -107,6 +107,10 @@ func TestDataType(t *testing.T) {
 	suite.Run(t, &DataTypeTests{})
 }
 
+func TestMultiTable(t *testing.T) {
+	suite.Run(t, &MultiTableTests{})
+}
+
 // ---- AuthN Tests --------------------
 
 type AuthnTestServer struct {
@@ -626,4 +630,74 @@ func (suite *DataTypeTests) TestListInt() {
 
 func (suite *DataTypeTests) TestMapIntInt() {
 	suite.DoTestCase("map[int]int", SchemaMapIntInt)
+}
+
+// ---- Multi Table Tests --------------------
+
+type MultiTableTestServer struct {
+	flightsql.BaseServer
+}
+
+func (server *MultiTableTestServer) GetFlightInfoTables(ctx context.Context, cmd flightsql.GetTables, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	tkt, _ := flightsql.CreateStatementQueryTicket([]byte{})
+	info := &flight.FlightInfo{
+		FlightDescriptor: desc,
+		Endpoint: []*flight.FlightEndpoint{
+			{Ticket: &flight.Ticket{Ticket: tkt}},
+		},
+		TotalRecords: -1,
+		TotalBytes:   -1,
+	}
+
+	return info, nil
+}
+
+func (server *MultiTableTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, adbc.GetTableSchemaSchema)
+
+	bldr.Field(0).(*array.StringBuilder).AppendValues([]string{"", ""}, nil)
+	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"", ""}, nil)
+	bldr.Field(2).(*array.StringBuilder).AppendValues([]string{"tbl1", "tbl2"}, nil)
+	bldr.Field(3).(*array.StringBuilder).AppendValues([]string{"", ""}, nil)
+
+	sc1 := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+	sc2 := arrow.NewSchema([]arrow.Field{{Name: "b", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+	buf1 := flight.SerializeSchema(sc1, memory.DefaultAllocator)
+	buf2 := flight.SerializeSchema(sc2, memory.DefaultAllocator)
+
+	bldr.Field(4).(*array.BinaryBuilder).AppendValues([][]byte{buf1, buf2}, nil)
+	defer bldr.Release()
+
+	rec := bldr.NewRecord()
+	defer rec.Release()
+
+	ch := make(chan flight.StreamChunk)
+	go func() {
+		defer close(ch)
+		ch <- flight.StreamChunk{
+			Data: rec,
+			Desc: nil,
+			Err:  nil,
+		}
+	}()
+	return adbc.GetTableSchemaSchema, ch, nil
+}
+
+type MultiTableTests struct {
+	ServerBasedTests
+}
+
+func (suite *MultiTableTests) SetupSuite() {
+	suite.DoSetupSuite(&MultiTableTestServer{}, nil, map[string]string{})
+}
+
+func (suite *MultiTableTests) TestGetTableSchema() {
+	catalog := ""
+	schema := ""
+	table := "tbl2"
+	actualSchema, err := suite.cnxn.GetTableSchema(context.Background(), &catalog, &schema, table)
+	suite.NoError(err)
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{{Name: "b", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+	suite.True(expectedSchema.Equal(actualSchema))
 }
