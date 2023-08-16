@@ -21,7 +21,7 @@
 // update the script globally.  It depends on certain variables being
 // injected into the Sphinx template.
 
-window.addEventListener("DOMContentLoaded", () => {
+function adbcInjectVersionSwitcher() {
     // The template should contain this list, we just populate it
     const root = document.querySelector("#version-switcher ul");
 
@@ -29,10 +29,13 @@ window.addEventListener("DOMContentLoaded", () => {
     // Format:
     // path;version\npath2;version2;\n...
     // Versions are sorted at generation time
+
     versions
         .trim()
         .split(/\n/g)
         .map((version) => version.split(/;/))
+        // Most recent on top
+        .reverse()
         .forEach((version) => {
             const el = document.createElement("a");
             // Variable injected by template
@@ -48,7 +51,11 @@ window.addEventListener("DOMContentLoaded", () => {
             el.addEventListener("click", (e) => {
                 e.preventDefault();
                 try {
-                    const relativePart = window.location.pathname.replace(/^\/[^\/]+\//, "");
+                    let relativePart = window.location.pathname.replace(/^\//, "");
+                    // Remove the adbc/ prefix
+                    relativePart = relativePart.replace(/^adbc[^\/]+\//, "");
+                    // Remove the version number
+                    relativePart = relativePart.replace(/^[^\/]+\//, "");
                     const newUrl = `${el.getAttribute("href")}/${relativePart}`;
                     window.fetch(newUrl).then((resp) => {
                         if (resp.status === 200) {
@@ -65,4 +72,10 @@ window.addEventListener("DOMContentLoaded", () => {
                 return false;
             });
         });
-});
+};
+
+if (document.readyState !== "loading") {
+    adbcInjectVersionSwitcher();
+} else {
+    window.addEventListener("DOMContentLoaded", adbcInjectVersionSwitcher);
+}
