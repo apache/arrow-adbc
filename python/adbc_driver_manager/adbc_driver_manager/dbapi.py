@@ -926,6 +926,21 @@ class Cursor(_Closeable):
             )
         return self._results.fetch_df()
 
+    def fetch_query_schema(
+        self, operation: Union[bytes, str], parameters=None
+    ) -> Optional[pyarrow.Schema]:
+        """
+        Fetch the output schema for the given query.
+
+        Notes
+        ----
+        This is an extension and not part of the DBAPI standard.
+        """
+        self.execute(operation, parameters)
+        if self._results is not None:
+            return self._results.schema
+        return None
+
 
 # ----------------------------------------------------------
 # Utilities
@@ -945,6 +960,10 @@ class _RowIterator(_Closeable):
         if hasattr(self._reader, "close"):
             # Only in recent PyArrow
             self._reader.close()
+
+    @property
+    def schema(self) -> pyarrow.Schema:
+        return self._reader.schema
 
     @property
     def description(self) -> List[tuple]:
