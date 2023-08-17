@@ -18,5 +18,6 @@
 test_that("adbc_simulate_dbi() default method works", {
   db <- adbc_database_init(adbc_driver_void())
   con <- adbc_connection_init(db)
+  expect_s3_class(adbc_simulate_dbi(con), "AdbcSimulatedConnection")
   expect_s3_class(adbc_simulate_dbi(con), "DBIConnection")
 })

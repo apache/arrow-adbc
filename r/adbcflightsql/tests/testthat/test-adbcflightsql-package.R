@@ -88,3 +88,20 @@ test_that("default options can open a database and execute a query", {
 
   adbcdrivermanager::adbc_statement_release(stmt)
 })
+
+test_that("adbd_simulate_dbi() generates a suitable proxy", {
+  test_db_uri <- Sys.getenv("ADBC_FLIGHTSQL_TEST_URI", "")
+  skip_if(identical(test_db_uri, ""))
+
+  db <- adbcdrivermanager::adbc_database_init(
+    adbcflightsql(),
+    uri = test_db_uri
+  )
+
+  con <- local_adbc(adbcdrivermanager::adbc_connection_init(db))
+
+  expect_s3_class(
+    adbcdrivermanager::adbc_simulate_dbi(con),
+    "SQLiteConnection"
+  )
+})

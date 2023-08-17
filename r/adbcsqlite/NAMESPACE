@@ -2,11 +2,9 @@
 
 S3method(adbc_connection_init,adbcsqlite_database)
 S3method(adbc_database_init,adbcsqlite_driver_sqlite)
-S3method(adbc_simulate_dbi,adbcsqlite_connection)
 S3method(adbc_statement_init,adbcsqlite_connection)
 export(adbcsqlite)
 importFrom(adbcdrivermanager,adbc_connection_init)
 importFrom(adbcdrivermanager,adbc_database_init)
-importFrom(adbcdrivermanager,adbc_simulate_dbi)
 importFrom(adbcdrivermanager,adbc_statement_init)
 useDynLib(adbcsqlite, .registration = TRUE)

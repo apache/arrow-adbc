@@ -131,5 +131,8 @@ test_that("adbd_simulate_dbi() generates a suitable proxy", {
   db <- adbc_database_init(adbcsqlite())
   con <- adbc_connection_init(db)
 
-  expect_s3_class(adbc_simulate_dbi(con), "SQLiteConnection")
+  expect_s3_class(
+    adbcdrivermanager::adbc_simulate_dbi(con),
+    "SQLiteConnection"
+  )
 })

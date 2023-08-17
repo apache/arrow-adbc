@@ -77,8 +77,8 @@ adbc_connection_init.adbcpostgresql_database <- function(database, ...,
 #' @importFrom adbcdrivermanager adbc_statement_init
 #' @export
 adbc_statement_init.adbcpostgresql_connection <- function(connection, ...,
-                                                      adbc.ingest.target_table = NULL,
-                                                      adbc.ingest.mode = NULL) {
+                                                          adbc.ingest.target_table = NULL,
+                                                          adbc.ingest.mode = NULL) {
   options <- list(
     ...,
     adbc.ingest.target_table = adbc.ingest.target_table,

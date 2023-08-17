@@ -7,7 +7,7 @@
 \usage{
 adbc_simulate_dbi(connection, method = NULL, ...)
 
-adbc_simulate_dbi_default(class = character())
+adbc_simulate_dbi_default(connection, class = character())
 }
 \arguments{
 \item{connection}{An \link[=adbc_connection_init]{adbc_connection}}

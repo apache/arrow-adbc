@@ -38,11 +38,39 @@ adbc_simulate_dbi <- function(connection, method = NULL, ...) {
 
 #' @export
 adbc_simulate_dbi.default <- function(connection, method = NULL, ...) {
-  adbc_simulate_dbi_default()
+  vendor_name <- tryCatch({
+    # 0L == ADBC_INFO_VENDOR_NAME
+    with_adbc(info <- adbc_connection_get_info(connection, 0L), {
+      info_array <- info$get_next()
+      string_value <- info_array$children$info_value$children$string_value
+      as.vector(string_value)
+    })
+  }, adbc_status_not_implemented = function(...) "unknown")
+
+  # A crude heuristic (driver packages should implement adbc_simulate_dbi()
+  # if they need a more accurate class)
+  class <- switch(
+    vendor_name,
+    "unknown" = character(),
+    "PostgreSQL" = "PqConnection",
+    paste0(vendor_name, "Connection")
+  )
+
+  adbc_simulate_dbi_default(connection, class)
 }
 
 #' @rdname adbc_simulate_dbi
 #' @export
-adbc_simulate_dbi_default <- function(class = character()) {
-  structure(list(), class = c(class, "TestConnection", "DBIConnection"))
+adbc_simulate_dbi_default <- function(connection, class = character()) {
+  structure(
+    list(
+      adbc_connection = con
+    ),
+    class = c(
+      class,
+      "AdbcSimulatedConnection",
+      "TestConnection",
+      "DBIConnection"
+    )
+  )
 }
