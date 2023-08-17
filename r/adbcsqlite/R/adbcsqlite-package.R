@@ -93,3 +93,9 @@ adbc_statement_init.adbcsqlite_connection <- function(connection, ...,
     subclass = "adbcsqlite_statement"
   )
 }
+
+#' @importFrom adbcdrivermanager adbc_simulate_dbi
+#' @export
+adbc_simulate_dbi.adbcsqlite_connection <- function(connection, method = NULL, ...) {
+  adbcdrivermanager::adbc_simulate_dbi_default("SQLiteConnection")
+}
