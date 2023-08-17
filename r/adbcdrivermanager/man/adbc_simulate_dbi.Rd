@@ -16,9 +16,12 @@ adbc_simulate_dbi_default(class = character())
 requires a simulation of a DBI object.}
 
 \item{...}{Passed to S3 methods}
+
+\item{class}{The DBIConnection subclass for the simulated
+connection.}
 }
 \value{
-An S3 object like that returned by \code{\link[dbplyr:simulate_dbi]{dbplyr::simulate_dbi()}}
+An S3 object like that returned by \code{dbplyr::simulate_dbi()}
 }
 \description{
 Simulate an equivalent DBI connection

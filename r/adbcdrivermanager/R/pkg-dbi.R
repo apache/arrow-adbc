@@ -20,9 +20,11 @@
 #' @inheritParams adbc_connection_init
 #' @param method The package-qualified name of the method that
 #'   requires a simulation of a DBI object.
+#' @param class The DBIConnection subclass for the simulated
+#'   connection.
 #' @param ... Passed to S3 methods
 #'
-#' @return An S3 object like that returned by [dbplyr::simulate_dbi()]
+#' @return An S3 object like that returned by `dbplyr::simulate_dbi()`
 #' @export
 #'
 #' @examples
