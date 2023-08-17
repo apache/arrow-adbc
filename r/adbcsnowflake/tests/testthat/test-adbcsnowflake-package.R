@@ -78,6 +78,6 @@ test_that("adbd_simulate_dbi() generates a suitable proxy", {
 
   expect_s3_class(
     adbcdrivermanager::adbc_simulate_dbi(con),
-    "SnowflakeConnection"
+    "Snowflake"
   )
 })

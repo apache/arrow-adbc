@@ -53,6 +53,8 @@ adbc_simulate_dbi.default <- function(connection, method = NULL, ...) {
     vendor_name,
     "unknown" = character(),
     "PostgreSQL" = "PqConnection",
+    "SQLite" = "SQLiteConnection",
+    "Snowflake" = "Snowflake",
     paste0(vendor_name, "Connection")
   )
 
