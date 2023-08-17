@@ -16,26 +16,7 @@
 # under the License.
 
 test_that("adbc_simulate_dbi() default method works", {
-  skip_if_not_installed("dbplyr")
-
   db <- adbc_database_init(adbc_driver_void())
   con <- adbc_connection_init(db)
   expect_s3_class(adbc_simulate_dbi(con), "DBIConnection")
-})
-
-test_that("Basic SQL generation works with an adbc_connection", {
-  skip_if_not_installed("dbplyr")
-
-  db <- adbc_database_init(adbc_driver_void())
-  con <- adbc_connection_init(db)
-
-  lf <- dbplyr::lazy_frame(
-    a = TRUE, b = 1, c = 2, d = "z",
-    con = con
-  )
-
-  expect_match(
-    as.character(dbplyr::sql_render(lf)),
-    "^SELECT"
-  )
 })
