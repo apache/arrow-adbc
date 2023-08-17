@@ -64,7 +64,7 @@ adbc_simulate_dbi.default <- function(connection, method = NULL, ...) {
 adbc_simulate_dbi_default <- function(connection, class = character()) {
   structure(
     list(
-      adbc_connection = con
+      adbc_connection = connection
     ),
     class = c(
       class,

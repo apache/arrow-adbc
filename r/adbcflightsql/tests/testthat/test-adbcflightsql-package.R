@@ -98,10 +98,12 @@ test_that("adbd_simulate_dbi() generates a suitable proxy", {
     uri = test_db_uri
   )
 
-  con <- local_adbc(adbcdrivermanager::adbc_connection_init(db))
+  con <- adbcdrivermanager::adbc_connection_init(db)
 
+  # Because the test image currently returns db_name for the vendor code
+  # even though it is backed by SQLite
   expect_s3_class(
     adbcdrivermanager::adbc_simulate_dbi(con),
-    "SQLiteConnection"
+    "db_nameConnection"
   )
 })
