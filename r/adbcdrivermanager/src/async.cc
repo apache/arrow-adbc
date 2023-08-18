@@ -60,13 +60,14 @@ class Task {
   }
 };
 
-// A thread-safe queue of callbacks to execute
+// A thread-safe queue of callbacks to execute.
 class CallbackQueue {
  public:
-  // Because it is used in C++ frames where a longjmp may occur,
+  // Because the RCallback is used in C++ frames where a longjmp may occur,
   // the members of this struct must be trivially destructible:
   // Any destruction that needs to occur must occur via an SEXP
-  // finalizer set on the return_value_xptr.
+  // finalizer set on the return_value_xptr. This struct is intentionally
+  // copyable and is passed by value.
   struct RCallback {
     // An environment containing a function named "callback". This callback
     // is executed as callback(return_code, error_xptr, return_value_xptr). The
