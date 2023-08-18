@@ -78,18 +78,14 @@ class CallbackQueue {
     // The external pointer address of error_xptr
     AdbcError* return_error;
 
-    // An integer return value. This is needed for execute query, which returns both
-    // rows affected and (potentially) an array stream.
-    int64_t return_value_int;
-
     // The external pointer address of return_value_xptr
     void* return_value_ptr;
   };
 
   RCallback InitCallback(SEXP callback_env, SEXP return_value_xptr = R_NilValue,
                          SEXP error_xptr = R_NilValue) {
-    RCallback out{callback_env, error_xptr, return_value_xptr, NA_INTEGER, nullptr, 0,
-                  nullptr};
+    RCallback out{callback_env, error_xptr, return_value_xptr,
+                  NA_INTEGER,   nullptr,    nullptr};
     if (error_xptr != R_NilValue) {
       out.return_error = reinterpret_cast<AdbcError*>(R_ExternalPtrAddr(error_xptr));
     }
@@ -148,12 +144,21 @@ class CallbackQueue {
     R_ReleaseObject(error_xptr);
     R_ReleaseObject(return_value_xptr);
 
+    // Release the dependence of the task on this callback queue
+    SEXP task_sym = PROTECT(Rf_install("task"));
+    SEXP task_xptr = PROTECT(Rf_findVarInFrame(env_sexp, task_sym));
+    R_SetExternalPtrProtected(task_xptr, R_NilValue);
+    UNPROTECT(2);
+
+    // Set up the call to run the callback
     SEXP callback_sym = PROTECT(Rf_install("callback"));
     SEXP return_code_sexp = PROTECT(Rf_ScalarInteger(callback.return_code));
     SEXP callback_call =
-        PROTECT(Rf_lang3(callback_sym, return_code_sexp, return_value_xptr));
+        PROTECT(Rf_lang4(callback_sym, return_code_sexp, error_xptr, return_value_xptr));
 
+    // Run the callback
     Rf_eval(callback_call, env_sexp);
+
     UNPROTECT(6);
   }
 
@@ -182,34 +187,34 @@ class CallbackQueue {
 
 extern "C" SEXP RAdbcNewCallbackQueue(void) { return CallbackQueue::MakeXptr(); }
 
-extern "C" SEXP RAdbcCallbackQueueRunCallbacks(SEXP callback_queue_xptr) {
+extern "C" SEXP RAdbcCallbackQueueRunPending(SEXP callback_queue_xptr) {
   // TODO: Check callback_queue_xptr class
-  auto queue = reinterpret_cast<CallbackQueue*>(callback_queue_xptr);
+  auto queue = reinterpret_cast<CallbackQueue*>(R_ExternalPtrAddr(callback_queue_xptr));
   return Rf_ScalarReal(queue->RunPending());
 }
 
-extern "C" SEXP RAdbcArrayStreamGetNextAsync(SEXP callback_queue_xptr, SEXP array_stream_xptr,
-                                  SEXP array_xptr, SEXP callback_env) {
+extern "C" SEXP RAdbcArrayStreamGetNextAsync(SEXP callback_queue_xptr,
+                                             SEXP array_stream_xptr, SEXP array_xptr,
+                                             SEXP callback_env) {
   // TODO: check array_stream/array/callback queue classes using utils in radbc.h
-
-  auto queue = reinterpret_cast<CallbackQueue*>(callback_queue_xptr);
+  auto queue = reinterpret_cast<CallbackQueue*>(R_ExternalPtrAddr(callback_queue_xptr));
   auto array_stream =
       reinterpret_cast<struct ArrowArrayStream*>(R_ExternalPtrAddr(array_stream_xptr));
   auto array = reinterpret_cast<struct ArrowArray*>(R_ExternalPtrAddr(array_xptr));
 
   // Task handle to ensure the thread pointer is cleaned up
-  SEXP task_xptr = PROTECT(Task::MakeXptr());
+  SEXP task_xptr = PROTECT(Task::MakeXptr(callback_queue_xptr));
   SEXP task_symbol = PROTECT(Rf_install("task"));
   Rf_setVar(task_symbol, task_xptr, callback_env);
   UNPROTECT(1);
 
   auto task = reinterpret_cast<Task*>(R_ExternalPtrAddr(task_xptr));
-  CallbackQueue::RCallback callback = queue->InitCallback(callback_env);
+  CallbackQueue::RCallback callback = queue->InitCallback(callback_env, array_xptr);
   task->worker = new std::thread([array_stream, array, callback, queue] {
-      CallbackQueue::RCallback callback_out = callback;
-      callback_out.return_code = array_stream->get_next(array_stream, array);
-      queue->AddCallback(callback_out);
-    });
+    CallbackQueue::RCallback callback_out = callback;
+    callback_out.return_code = array_stream->get_next(array_stream, array);
+    queue->AddCallback(callback_out);
+  });
 
   UNPROTECT(1);
   return R_NilValue;
