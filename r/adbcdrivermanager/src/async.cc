@@ -30,6 +30,11 @@
 
 #include "radbc.h"
 
+// A thin wrapper around a std::thread() that ensures that the thread
+// does not leak. This could also maybe just be an external pointer to
+// a std::thread*. The external pointer to the Task holds a strong
+// reference to the external pointer to the CallbackQueue that is
+// released just before the callback is run.
 class Task {
  public:
   Task() : worker(nullptr) {}
@@ -39,6 +44,8 @@ class Task {
   static void FinalizeXptr(SEXP xptr) {
     Task* task = reinterpret_cast<Task*>(R_ExternalPtrAddr(xptr));
     if (task->worker != nullptr) {
+      // TODO: check task->worker->joinable()?
+      task->worker->join();
       delete task->worker;
     }
 
@@ -53,6 +60,7 @@ class Task {
   }
 };
 
+// A thread-safe queue of callbacks to execute
 class CallbackQueue {
  public:
   // Because it is used in C++ frames where a longjmp may occur,
@@ -61,9 +69,9 @@ class CallbackQueue {
   // finalizer set on the return_value_xptr.
   struct RCallback {
     // An environment containing a function named "callback". This callback
-    // is executed as callback(return_code, error_xptr, return_value_int,
-    // return_value_xptr). The environment may contain other items that need to stay valid
-    // for the lifetime of the task (e.g., inputs).
+    // is executed as callback(return_code, error_xptr, return_value_xptr). The
+    // environment may contain other items that need to stay valid for the lifetime of the
+    // task (e.g., inputs).
     SEXP env_sexp;
 
     // An external pointer to an AdbcError*
@@ -82,6 +90,8 @@ class CallbackQueue {
     void* return_value_ptr;
   };
 
+  // Initialize a callback and preserve its SEXP members. This must
+  // be called from the main R thread.
   RCallback InitCallback(SEXP callback_env, SEXP return_value_xptr = R_NilValue,
                          SEXP error_xptr = R_NilValue) {
     RCallback out{callback_env, error_xptr, return_value_xptr,

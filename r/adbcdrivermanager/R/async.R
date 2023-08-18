@@ -27,6 +27,7 @@ adbc_array_stream_get_next_async <- function(stream, callback,
                                              schema = stream$get_schema(),
                                              queue = adbc_callback_queue()) {
   callback <- as_adbc_callback(callback)
+  callback$args <- list(stream)
   array <- nanoarrow::nanoarrow_allocate_array()
   nanoarrow::nanoarrow_array_set_schema(array, schema, validate = FALSE)
   .Call(RAdbcArrayStreamGetNextAsync, queue, stream, array, callback)
