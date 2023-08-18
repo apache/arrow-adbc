@@ -21,7 +21,12 @@ adbc_allocate_error <- function(shelter = NULL) {
 
 stop_for_error <- function(status, error) {
   if (!identical(status, 0L)) {
-    error <- .Call(RAdbcErrorProxy, error)
+    if (inherits(error, "adbc_error")) {
+      error <- .Call(RAdbcErrorProxy, error)
+    } else {
+      error <- list()
+    }
+
     error$status <- status
     error$status_code_message <- .Call(RAdbcStatusCodeMessage, status)
     msg <- if (!is.null(error$message)) error$message else error$status_code_message
