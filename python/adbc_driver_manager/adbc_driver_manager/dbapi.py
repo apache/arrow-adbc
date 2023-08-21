@@ -925,6 +925,32 @@ class Cursor(_Closeable):
                 status_code=_lib.AdbcStatusCode.INVALID_STATE,
             )
         return self._results.fetch_df()
+    
+    def fetch_record_batch(self, rows_per_batch: int) -> pyarrow.RecordBatchReader:
+        """
+        Fetch the result as an Arrow RecordBatchReader.
+
+        Parameters
+        ----------
+        rows_per_batch : int
+            The number of rows per batch in the returned RecordBatchReader.
+
+        Returns
+        -------
+        pyarrow.RecordBatchReader
+            The RecordBatchReader containing the query result.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        if self._results is None:
+            raise ProgrammingError(
+                "Cannot fetch_record_batch() before execute()",
+                status_code=_lib.AdbcStatusCode.INVALID_STATE,
+            )
+        result_stream = _lib.ResultArrowArrayStreamWrapper(self._results, rows_per_batch)
+        return pyarrow.RecordBatchReader._import_from_c(result_stream.address)        
 
 
 # ----------------------------------------------------------
