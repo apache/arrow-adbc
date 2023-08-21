@@ -1254,7 +1254,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 			//    2: table_name: utf8 not null
 			//    3: table_type: utf8 not null
 			//    4: table_schema: bytes not null
-			schemaBytes := rec.Column(4).(*array.Binary).Value(0)
+			schemaBytes := rec.Column(4).(*array.Binary).Value(i)
 			s, err = flight.DeserializeSchema(schemaBytes, c.db.alloc)
 			if err != nil {
 				return nil, adbcFromFlightStatus(err, "GetTableSchema")

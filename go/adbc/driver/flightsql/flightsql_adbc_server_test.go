@@ -683,14 +683,13 @@ func (server *MultiTableTestServer) DoGetTables(ctx context.Context, cmd flights
 
 	sc1 := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
 	sc2 := arrow.NewSchema([]arrow.Field{{Name: "b", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
-	buf1 := flight.SerializeSchema(sc1, memory.DefaultAllocator)
-	buf2 := flight.SerializeSchema(sc2, memory.DefaultAllocator)
+	buf1 := flight.SerializeSchema(sc1, server.Alloc)
+	buf2 := flight.SerializeSchema(sc2, server.Alloc)
 
 	bldr.Field(4).(*array.BinaryBuilder).AppendValues([][]byte{buf1, buf2}, nil)
 	defer bldr.Release()
 
 	rec := bldr.NewRecord()
-	defer rec.Release()
 
 	ch := make(chan flight.StreamChunk)
 	go func() {
@@ -717,5 +716,5 @@ func (suite *MultiTableTests) TestGetTableSchema() {
 	suite.NoError(err)
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{{Name: "b", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
-	suite.True(expectedSchema.Equal(actualSchema))
+	suite.Equal(expectedSchema, actualSchema)
 }
