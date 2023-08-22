@@ -1231,24 +1231,42 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 		return nil, adbcFromFlightStatus(err, "GetTableSchema(DoGet)")
 	}
 
-	if rec.NumRows() == 0 {
+	numRows := rec.NumRows()
+	switch {
+	case numRows == 0:
 		return nil, adbc.Error{
 			Code: adbc.StatusNotFound,
 		}
+	case numRows > math.MaxInt32:
+		return nil, adbc.Error{
+			Msg:  "[Flight SQL] GetTableSchema cannot handle tables with number of rows > 2^31 - 1",
+			Code: adbc.StatusNotImplemented,
+		}
 	}
 
-	// returned schema should be
-	//    0: catalog_name: utf8
-	//    1: db_schema_name: utf8
-	//    2: table_name: utf8 not null
-	//    3: table_type: utf8 not null
-	//    4: table_schema: bytes not null
-	schemaBytes := rec.Column(4).(*array.Binary).Value(0)
-	s, err := flight.DeserializeSchema(schemaBytes, c.db.alloc)
-	if err != nil {
-		return nil, adbcFromFlightStatus(err, "GetTableSchema")
+	var s *arrow.Schema
+	for i := 0; i < int(numRows); i++ {
+		currentTableName := rec.Column(2).(*array.String).Value(i)
+		if currentTableName == tableName {
+			// returned schema should be
+			//    0: catalog_name: utf8
+			//    1: db_schema_name: utf8
+			//    2: table_name: utf8 not null
+			//    3: table_type: utf8 not null
+			//    4: table_schema: bytes not null
+			schemaBytes := rec.Column(4).(*array.Binary).Value(i)
+			s, err = flight.DeserializeSchema(schemaBytes, c.db.alloc)
+			if err != nil {
+				return nil, adbcFromFlightStatus(err, "GetTableSchema")
+			}
+			return s, nil
+		}
 	}
-	return s, nil
+
+	return s, adbc.Error{
+		Msg:  "[Flight SQL] GetTableSchema could not find a table with a matching schema",
+		Code: adbc.StatusNotFound,
+	}
 }
 
 // GetTableTypes returns a list of the table types in the database.

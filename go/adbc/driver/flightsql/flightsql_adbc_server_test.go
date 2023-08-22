@@ -35,6 +35,7 @@ import (
 	"github.com/apache/arrow/go/v13/arrow/array"
 	"github.com/apache/arrow/go/v13/arrow/flight"
 	"github.com/apache/arrow/go/v13/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v13/arrow/flight/flightsql/schema_ref"
 	"github.com/apache/arrow/go/v13/arrow/memory"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
@@ -105,6 +106,10 @@ func TestCookies(t *testing.T) {
 
 func TestDataType(t *testing.T) {
 	suite.Run(t, &DataTypeTests{})
+}
+
+func TestMultiTable(t *testing.T) {
+	suite.Run(t, &MultiTableTests{})
 }
 
 // ---- AuthN Tests --------------------
@@ -626,4 +631,91 @@ func (suite *DataTypeTests) TestListInt() {
 
 func (suite *DataTypeTests) TestMapIntInt() {
 	suite.DoTestCase("map[int]int", SchemaMapIntInt)
+}
+
+// ---- Multi Table Tests --------------------
+
+type MultiTableTestServer struct {
+	flightsql.BaseServer
+}
+
+func (server *MultiTableTestServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	query := cmd.GetQuery()
+	tkt, err := flightsql.CreateStatementQueryTicket([]byte(query))
+	if err != nil {
+		return nil, err
+	}
+
+	return &flight.FlightInfo{
+		Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: tkt}}},
+		FlightDescriptor: desc,
+		TotalRecords:     -1,
+		TotalBytes:       -1,
+	}, nil
+}
+
+func (server *MultiTableTestServer) GetFlightInfoTables(ctx context.Context, cmd flightsql.GetTables, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	schema := schema_ref.Tables
+	if cmd.GetIncludeSchema() {
+		schema = schema_ref.TablesWithIncludedSchema
+	}
+	server.Alloc = memory.NewCheckedAllocator(memory.DefaultAllocator)
+	info := &flight.FlightInfo{
+		Endpoint: []*flight.FlightEndpoint{
+			{Ticket: &flight.Ticket{Ticket: desc.Cmd}},
+		},
+		FlightDescriptor: desc,
+		Schema:           flight.SerializeSchema(schema, server.Alloc),
+		TotalRecords:     -1,
+		TotalBytes:       -1,
+	}
+
+	return info, nil
+}
+
+func (server *MultiTableTestServer) DoGetTables(ctx context.Context, cmd flightsql.GetTables) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	bldr := array.NewRecordBuilder(server.Alloc, adbc.GetTableSchemaSchema)
+
+	bldr.Field(0).(*array.StringBuilder).AppendValues([]string{"", ""}, nil)
+	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"", ""}, nil)
+	bldr.Field(2).(*array.StringBuilder).AppendValues([]string{"tbl1", "tbl2"}, nil)
+	bldr.Field(3).(*array.StringBuilder).AppendValues([]string{"", ""}, nil)
+
+	sc1 := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+	sc2 := arrow.NewSchema([]arrow.Field{{Name: "b", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+	buf1 := flight.SerializeSchema(sc1, server.Alloc)
+	buf2 := flight.SerializeSchema(sc2, server.Alloc)
+
+	bldr.Field(4).(*array.BinaryBuilder).AppendValues([][]byte{buf1, buf2}, nil)
+	defer bldr.Release()
+
+	rec := bldr.NewRecord()
+
+	ch := make(chan flight.StreamChunk)
+	go func() {
+		defer close(ch)
+		ch <- flight.StreamChunk{
+			Data: rec,
+			Desc: nil,
+			Err:  nil,
+		}
+	}()
+	return adbc.GetTableSchemaSchema, ch, nil
+}
+
+type MultiTableTests struct {
+	ServerBasedTests
+}
+
+func (suite *MultiTableTests) SetupSuite() {
+	suite.DoSetupSuite(&MultiTableTestServer{}, nil, map[string]string{})
+}
+
+// Regression test for https://github.com/apache/arrow-adbc/issues/934
+func (suite *MultiTableTests) TestGetTableSchema() {
+	actualSchema, err := suite.cnxn.GetTableSchema(context.Background(), nil, nil, "tbl2")
+	suite.NoError(err)
+
+	expectedSchema := arrow.NewSchema([]arrow.Field{{Name: "b", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+	suite.Equal(expectedSchema, actualSchema)
 }
