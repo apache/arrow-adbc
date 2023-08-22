@@ -927,19 +927,10 @@ class Cursor(_Closeable):
             )
         return self._results.fetch_df()
 
-    def fetch_record_batch(self, rows_per_batch: int) -> pyarrow.RecordBatchReader:
+    def fetch_record_batch(self, rows_per_batch: int) -> Optional["_BatchIterator"]:
         """
-        Fetch the result as an Arrow RecordBatchReader.
-
-        Parameters
-        ----------
-        rows_per_batch : int
-            The number of rows per batch in the returned RecordBatchReader.
-
-        Returns
-        -------
-        pyarrow.RecordBatchReader
-            The RecordBatchReader containing the query result.
+        Fetch #(rows_per_batch) batches akin to
+        https://duckdb.org/docs/guides/python/export_arrow.html#export-as-a-recordbatchreader
 
         Notes
         -----
@@ -953,7 +944,15 @@ class Cursor(_Closeable):
         self._batched_results = _BatchIterator(self._results._reader, rows_per_batch)
         return self._batched_results
 
-    def read_next_batch(self):
+    def read_next_batch(self) -> List[Optional[tuple]]:
+        """
+        Reads the next #(rows_per_batch) batches akin to
+        https://duckdb.org/docs/guides/python/export_arrow.html#export-as-a-recordbatchreader
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
         if self._results is None:
             raise ProgrammingError(
                 "Cannot read_next_batch() before execute()",
