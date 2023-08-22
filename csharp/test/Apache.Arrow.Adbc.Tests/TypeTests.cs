@@ -60,7 +60,14 @@ namespace Apache.Arrow.Adbc.Tests
                 object actualValue = actualFirstValues[i];
                 object expectedValue = expectedFirstValues[i];
 
-                Assert.IsTrue(actualValue.Equals(expectedValue), $"{actualValue} != {expectedValue} at position {i}");
+                if (actualValue == null)
+                {
+                    Assert.IsNull(expectedValue, $"position {i} should be null");
+                }
+                else
+                {
+                    Assert.IsTrue(actualValue.Equals(expectedValue), $"{actualValue} != {expectedValue} at position {i}");
+                }
             }
         }
     }
