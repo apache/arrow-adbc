@@ -711,6 +711,7 @@ func (suite *MultiTableTests) SetupSuite() {
 	suite.DoSetupSuite(&MultiTableTestServer{}, nil, map[string]string{})
 }
 
+// Regression test for https://github.com/apache/arrow-adbc/issues/934
 func (suite *MultiTableTests) TestGetTableSchema() {
 	actualSchema, err := suite.cnxn.GetTableSchema(context.Background(), nil, nil, "tbl2")
 	suite.NoError(err)

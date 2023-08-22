@@ -1200,7 +1200,6 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	return
 }
 
-// Regression test for https://github.com/apache/arrow-adbc/issues/934
 func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	opts := &flightsql.GetTablesOpts{
 		Catalog:                catalog,
