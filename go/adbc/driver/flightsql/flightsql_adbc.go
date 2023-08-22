@@ -1200,6 +1200,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	return
 }
 
+// Regression test for https://github.com/apache/arrow-adbc/issues/934
 func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	opts := &flightsql.GetTablesOpts{
 		Catalog:                catalog,
@@ -1232,12 +1233,12 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	}
 
 	numRows := rec.NumRows()
-	if numRows == 0 {
+	switch {
+	case numRows == 0:
 		return nil, adbc.Error{
 			Code: adbc.StatusNotFound,
 		}
-	}
-	if numRows > math.MaxInt32 {
+	case numRows > math.MaxInt32:
 		return nil, adbc.Error{
 			Msg:  "[Flight SQL] GetTableSchema cannot handle tables with number of rows > 2^31 - 1",
 			Code: adbc.StatusNotImplemented,
