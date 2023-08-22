@@ -320,6 +320,7 @@ def test_fetch_record_batch(sqlite):
                     assert cur_batch[chunk_idx] == dataset[dataset_idx + chunk_idx]
             dataset_idx += chunk_size
 
+
 @pytest.mark.sqlite
 def test_fetch_empty(sqlite):
     with sqlite.cursor() as cur:
