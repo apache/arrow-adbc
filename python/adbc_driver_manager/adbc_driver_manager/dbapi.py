@@ -509,7 +509,6 @@ class Cursor(_Closeable):
         self._results: Optional["_RowIterator"] = None
         self._arraysize = 1
         self._rowcount = -1
-        self._batched_results: Optional["_BatchIterator"] = None
 
     @property
     def arraysize(self) -> int:
@@ -927,9 +926,9 @@ class Cursor(_Closeable):
             )
         return self._results.fetch_df()
 
-    def fetch_record_batch(self, rows_per_batch: int) -> Optional["_BatchIterator"]:
+    def fetch_record_batch(self) -> pyarrow.RecordBatchReader:
         """
-        Fetch #(rows_per_batch) batches akin to
+        Fetch a RecordBatchReader akin to
         https://duckdb.org/docs/guides/python/export_arrow.html#export-as-a-recordbatchreader
 
         Notes
@@ -941,29 +940,7 @@ class Cursor(_Closeable):
                 "Cannot fetch_record_batch() before execute()",
                 status_code=_lib.AdbcStatusCode.INVALID_STATE,
             )
-        self._batched_results = _BatchIterator(self._results._reader, rows_per_batch)
-        return self._batched_results
-
-    def read_next_batch(self) -> List[Optional[tuple]]:
-        """
-        Reads the next #(rows_per_batch) batches akin to
-        https://duckdb.org/docs/guides/python/export_arrow.html#export-as-a-recordbatchreader
-
-        Notes
-        -----
-        This is an extension and not part of the DBAPI standard.
-        """
-        if self._results is None:
-            raise ProgrammingError(
-                "Cannot read_next_batch() before execute()",
-                status_code=_lib.AdbcStatusCode.INVALID_STATE,
-            )
-        if self._batched_results is None:
-            raise ProgrammingError(
-                "Cannot read_next_batch() before fetch_record_batch()",
-                status_code=_lib.AdbcStatusCode.INVALID_STATE,
-            )
-        return self._batched_results.read_next_batch()
+        return self._results._reader
 
 
 # ----------------------------------------------------------
@@ -1012,7 +989,7 @@ class _RowIterator(_Closeable):
         self.rownumber += 1
         return row
 
-    def fetchmany(self, size: int) -> List[Optional[tuple]]:
+    def fetchmany(self, size: int) -> List[tuple]:
         rows = []
         for _ in range(size):
             row = self.fetchone()
@@ -1021,7 +998,7 @@ class _RowIterator(_Closeable):
             rows.append(row)
         return rows
 
-    def fetchall(self) -> List[Optional[tuple]]:
+    def fetchall(self) -> List[tuple]:
         rows = []
         while True:
             row = self.fetchone()
@@ -1035,23 +1012,6 @@ class _RowIterator(_Closeable):
 
     def fetch_df(self) -> "pandas.DataFrame":
         return self._reader.read_pandas()
-
-
-class _BatchIterator(_RowIterator):
-    def __init__(self, reader: pyarrow.RecordBatchReader, batch_size: int) -> None:
-        super().__init__(reader)
-        self._batch_size = batch_size
-        self._fetch_generator = self.fetch_batch()
-
-    def fetch_batch(self) -> List[Optional[tuple]]:
-        while True:
-            batch = self.fetchmany(self._batch_size)
-            if not batch:
-                break
-            yield batch
-
-    def read_next_batch(self) -> List[Optional[tuple]]:
-        return next(self._fetch_generator)
 
 
 _PYTEST_ENV_VAR = "PYTEST_CURRENT_TEST"
