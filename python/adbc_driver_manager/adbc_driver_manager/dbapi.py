@@ -929,7 +929,7 @@ class Cursor(_Closeable):
     def fetch_record_batch(self) -> pyarrow.RecordBatchReader:
         """
         Fetch the result as a PyArrow RecordBatchReader.
-        
+
         This implements a similar API as DuckDB:
         https://duckdb.org/docs/guides/python/export_arrow.html#export-as-a-recordbatchreader
 
