@@ -1310,28 +1310,31 @@ connections.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_df" title="adbc_driver_manager.dbapi.Cursor.fetch_df"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_df</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result as a Pandas DataFrame.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchall" title="adbc_driver_manager.dbapi.Cursor.fetchall"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchall</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_record_batch" title="adbc_driver_manager.dbapi.Cursor.fetch_record_batch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_record_batch</span></code></a>()</p></td>
+<td><p>Fetch the result as a PyArrow RecordBatchReader.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchall" title="adbc_driver_manager.dbapi.Cursor.fetchall"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchall</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchallarrow" title="adbc_driver_manager.dbapi.Cursor.fetchallarrow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchallarrow</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchallarrow" title="adbc_driver_manager.dbapi.Cursor.fetchallarrow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchallarrow</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result as a PyArrow Table.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchmany" title="adbc_driver_manager.dbapi.Cursor.fetchmany"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchmany</span></code></a>([size])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchmany" title="adbc_driver_manager.dbapi.Cursor.fetchmany"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchmany</span></code></a>([size])</p></td>
 <td><p>Fetch some rows of the result.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchone" title="adbc_driver_manager.dbapi.Cursor.fetchone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchone</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchone" title="adbc_driver_manager.dbapi.Cursor.fetchone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetchone</span></code></a>()</p></td>
 <td><p>Fetch one row of the result.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.next" title="adbc_driver_manager.dbapi.Cursor.next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">next</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.next" title="adbc_driver_manager.dbapi.Cursor.next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">next</span></code></a>()</p></td>
 <td><p>Fetch the next row, or raise StopIteration.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.nextset" title="adbc_driver_manager.dbapi.Cursor.nextset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nextset</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.nextset" title="adbc_driver_manager.dbapi.Cursor.nextset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nextset</span></code></a>()</p></td>
 <td><p>Move to the next available result set (not supported).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.setinputsizes" title="adbc_driver_manager.dbapi.Cursor.setinputsizes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setinputsizes</span></code></a>(sizes)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.setinputsizes" title="adbc_driver_manager.dbapi.Cursor.setinputsizes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setinputsizes</span></code></a>(sizes)</p></td>
 <td><p>Preallocate memory for the parameters (no-op).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.setoutputsize" title="adbc_driver_manager.dbapi.Cursor.setoutputsize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setoutputsize</span></code></a>(size[, column])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.setoutputsize" title="adbc_driver_manager.dbapi.Cursor.setoutputsize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setoutputsize</span></code></a>(size[, column])</p></td>
 <td><p>Preallocate memory for the result set (no-op).</p></td>
 </tr>
 </tbody>
@@ -1516,6 +1519,16 @@ be executed once per row.</p>
 <span class="sig-name descname"><span class="pre">fetch_df</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pandas.DataFrame</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.fetch_df" title="Permalink to this definition">#</a></dt>
 <dd><p>Fetch all rows of the result as a Pandas DataFrame.</p>
 <p>This implements a similar API as DuckDB.</p>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.fetch_record_batch">
+<span class="sig-name descname"><span class="pre">fetch_record_batch</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v12.0.1)"><span class="pre">RecordBatchReader</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.fetch_record_batch" title="Permalink to this definition">#</a></dt>
+<dd><p>Fetch the result as a PyArrow RecordBatchReader.</p>
+<p>This implements a similar API as DuckDB:
+<a class="reference external" href="https://duckdb.org/docs/guides/python/export_arrow.html#export-as-a-recordbatchreader">https://duckdb.org/docs/guides/python/export_arrow.html#export-as-a-recordbatchreader</a></p>
 <p class="rubric">Notes</p>
 <p>This is an extension and not part of the DBAPI standard.</p>
 </dd></dl>
@@ -1856,6 +1869,7 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executescript"><code class="docutils literal notranslate"><span class="pre">Cursor.executescript()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_arrow_table()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_df"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_df()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_record_batch"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_record_batch()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchall"><code class="docutils literal notranslate"><span class="pre">Cursor.fetchall()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchallarrow"><code class="docutils literal notranslate"><span class="pre">Cursor.fetchallarrow()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchmany"><code class="docutils literal notranslate"><span class="pre">Cursor.fetchmany()</span></code></a></li>
