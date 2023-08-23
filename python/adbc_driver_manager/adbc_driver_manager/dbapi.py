@@ -926,6 +926,24 @@ class Cursor(_Closeable):
             )
         return self._results.fetch_df()
 
+    def fetch_record_batch(self) -> pyarrow.RecordBatchReader:
+        """
+        Fetch the result as a PyArrow RecordBatchReader.
+
+        This implements a similar API as DuckDB:
+        https://duckdb.org/docs/guides/python/export_arrow.html#export-as-a-recordbatchreader
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        if self._results is None:
+            raise ProgrammingError(
+                "Cannot fetch_record_batch() before execute()",
+                status_code=_lib.AdbcStatusCode.INVALID_STATE,
+            )
+        return self._results._reader
+
 
 # ----------------------------------------------------------
 # Utilities
@@ -973,7 +991,7 @@ class _RowIterator(_Closeable):
         self.rownumber += 1
         return row
 
-    def fetchmany(self, size: int):
+    def fetchmany(self, size: int) -> List[tuple]:
         rows = []
         for _ in range(size):
             row = self.fetchone()
@@ -982,7 +1000,7 @@ class _RowIterator(_Closeable):
             rows.append(row)
         return rows
 
-    def fetchall(self):
+    def fetchall(self) -> List[tuple]:
         rows = []
         while True:
             row = self.fetchone()
@@ -991,10 +1009,10 @@ class _RowIterator(_Closeable):
             rows.append(row)
         return rows
 
-    def fetch_arrow_table(self):
+    def fetch_arrow_table(self) -> pyarrow.Table:
         return self._reader.read_all()
 
-    def fetch_df(self):
+    def fetch_df(self) -> "pandas.DataFrame":
         return self._reader.read_pandas()
 
 
