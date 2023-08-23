@@ -17,7 +17,8 @@
 
 breathe
 doxygen
-furo
+# XXX(https://github.com/apache/arrow-adbc/issues/987)
+furo=2023.07.26
 make
 numpydoc
 pytest
