@@ -329,7 +329,61 @@ use multiple drivers simultaneously, and decouple themselves from the
 specific driver.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
-<p>TODO</p>
+<p>Install the appropriate driver package. You can use <a class="reference external" href="https://conda-forge.org/">conda-forge</a>, <code class="docutils literal notranslate"><span class="pre">apt</span></code> or <code class="docutils literal notranslate"><span class="pre">dnf</span></code>.</p>
+<p>conda-forge:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-manager</span></code></p></li>
+</ul>
+<p>You can use <code class="docutils literal notranslate"><span class="pre">apt</span></code> on the following platforms:</p>
+<ul class="simple">
+<li><p>Debian GNU/Linux bookworm</p></li>
+<li><p>Ubuntu 22.04</p></li>
+</ul>
+<p>Prepare the Apache Arrow APT repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>update
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-V<span class="w"> </span>ca-certificates<span class="w"> </span>lsb-release<span class="w"> </span>wget
+sudo<span class="w"> </span>wget<span class="w"> </span>https://apache.jfrog.io/artifactory/arrow/<span class="k">$(</span>lsb_release<span class="w"> </span>--id<span class="w"> </span>--short<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39;A-Z&#39;</span><span class="w"> </span><span class="s1">&#39;a-z&#39;</span><span class="k">)</span>/apache-arrow-apt-source-latest-<span class="k">$(</span>lsb_release<span class="w"> </span>--codename<span class="w"> </span>--short<span class="k">)</span>.deb
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>-V<span class="w"> </span>./apache-arrow-apt-source-latest-<span class="k">$(</span>lsb_release<span class="w"> </span>--codename<span class="w"> </span>--short<span class="k">)</span>.deb
+rm<span class="w"> </span>./apache-arrow-apt-source-latest-<span class="k">$(</span>lsb_release<span class="w"> </span>--codename<span class="w"> </span>--short<span class="k">)</span>.deb
+sudo<span class="w"> </span>apt<span class="w"> </span>update
+</pre></div>
+</div>
+<p>Install:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">libadbc-driver-manager-dev</span></code></p></li>
+</ul>
+<p>You can use <code class="docutils literal notranslate"><span class="pre">dnf</span></code> on the following platforms:</p>
+<ul class="simple">
+<li><p>AlmaLinux 8</p></li>
+<li><p>Oracle Linux 8</p></li>
+<li><p>Red Hat Enterprise Linux 8</p></li>
+<li><p>AlmaLinux 9</p></li>
+<li><p>Oracle Linux 9</p></li>
+<li><p>Red Hat Enterprise Linux 9</p></li>
+</ul>
+<p>Prepare the Apache Arrow Yum repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>epel-release<span class="w"> </span><span class="o">||</span><span class="w"> </span>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>oracle-epel-release-el<span class="k">$(</span>cut<span class="w"> </span>-d:<span class="w"> </span>-f5<span class="w"> </span>/etc/system-release-cpe<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d.<span class="w"> </span>-f1<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>https://dl.fedoraproject.org/pub/epel/epel-release-latest-<span class="k">$(</span>cut<span class="w"> </span>-d:<span class="w"> </span>-f5<span class="w"> </span>/etc/system-release-cpe<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d.<span class="w"> </span>-f1<span class="k">)</span>.noarch.rpm
+sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>https://apache.jfrog.io/artifactory/arrow/almalinux/<span class="k">$(</span>cut<span class="w"> </span>-d:<span class="w"> </span>-f5<span class="w"> </span>/etc/system-release-cpe<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d.<span class="w"> </span>-f1<span class="k">)</span>/apache-arrow-release-latest.rpm
+sudo<span class="w"> </span>dnf<span class="w"> </span>config-manager<span class="w"> </span>--set-enabled<span class="w"> </span>epel<span class="w"> </span><span class="o">||</span><span class="w"> </span>:
+sudo<span class="w"> </span>dnf<span class="w"> </span>config-manager<span class="w"> </span>--set-enabled<span class="w"> </span>powertools<span class="w"> </span><span class="o">||</span><span class="w"> </span>:
+sudo<span class="w"> </span>dnf<span class="w"> </span>config-manager<span class="w"> </span>--set-enabled<span class="w"> </span>crb<span class="w"> </span><span class="o">||</span><span class="w"> </span>:
+sudo<span class="w"> </span>dnf<span class="w"> </span>config-manager<span class="w"> </span>--set-enabled<span class="w"> </span>ol<span class="k">$(</span>cut<span class="w"> </span>-d:<span class="w"> </span>-f5<span class="w"> </span>/etc/system-release-cpe<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d.<span class="w"> </span>-f1<span class="k">)</span>_codeready_builder<span class="w"> </span><span class="o">||</span><span class="w"> </span>:
+sudo<span class="w"> </span>dnf<span class="w"> </span>config-manager<span class="w"> </span>--set-enabled<span class="w"> </span>codeready-builder-for-rhel-<span class="k">$(</span>cut<span class="w"> </span>-d:<span class="w"> </span>-f5<span class="w"> </span>/etc/system-release-cpe<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d.<span class="w"> </span>-f1<span class="k">)</span>-rhui-rpms<span class="w"> </span><span class="o">||</span><span class="w"> </span>:
+sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<span class="w"> </span>--enable<span class="w"> </span>codeready-builder-for-rhel-<span class="k">$(</span>cut<span class="w"> </span>-d:<span class="w"> </span>-f5<span class="w"> </span>/etc/system-release-cpe<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d.<span class="w"> </span>-f1<span class="k">)</span>-<span class="k">$(</span>arch<span class="k">)</span>-rpms<span class="w"> </span><span class="o">||</span><span class="w"> </span>:
+</pre></div>
+</div>
+<p>Install:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">dnf</span> <span class="pre">install</span> <span class="pre">adbc-driver-manager-devel</span></code></p></li>
+</ul>
+<p>Then they can be used via CMake, e.g.:</p>
+<div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="nb">find_package</span><span class="p">(</span><span class="s">AdbcDriverPostgreSQL</span><span class="p">)</span>
+
+<span class="c"># ...</span>
+
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">myapp</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">AdbcDriverPostgreSQL::adbc_driver_postgresql_shared</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">#</a></h2>
