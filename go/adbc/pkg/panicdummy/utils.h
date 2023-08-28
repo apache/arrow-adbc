@@ -156,7 +156,10 @@ AdbcStatusCode PanicDummyStatementSetSubstraitPlan(struct AdbcStatement* stmt,
 AdbcStatusCode PanicDummyDriverInit(int version, void* rawDriver, struct AdbcError* err);
 
 static inline void PanicDummyerrRelease(struct AdbcError* error) {
-  error->release(error);
+  if (error->release) {
+    error->release(error);
+    error->release = NULL;
+  }
 }
 
 void PanicDummy_release_error(struct AdbcError* error);

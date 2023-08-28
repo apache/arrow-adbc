@@ -267,7 +267,7 @@ func (cStream *cArrayStream) maybeError() C.int {
 		if cStream.adbcErr != nil {
 			C.SnowflakeerrRelease(cStream.adbcErr)
 		} else {
-			cStream.adbcErr = (*C.struct_AdbcError)(C.malloc(C.ADBC_ERROR_1_1_0_SIZE))
+			cStream.adbcErr = (*C.struct_AdbcError)(C.calloc(1, C.ADBC_ERROR_1_1_0_SIZE))
 		}
 		cStream.adbcErr.vendor_code = C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
 		cStream.status = C.AdbcStatusCode(errToAdbcErr(cStream.adbcErr, err))

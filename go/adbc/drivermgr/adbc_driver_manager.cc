@@ -642,8 +642,12 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
     return nullptr;
   }
   auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
-  return private_data->private_driver->ErrorFromArrayStream(&private_data->stream,
-                                                            status);
+  auto* error =
+      private_data->private_driver->ErrorFromArrayStream(&private_data->stream, status);
+  if (error) {
+    const_cast<struct AdbcError*>(error)->private_driver = private_data->private_driver;
+  }
+  return error;
 }
 
 #define INIT_ERROR(ERROR, SOURCE)                                    \
