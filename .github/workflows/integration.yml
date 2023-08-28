@@ -175,6 +175,7 @@ jobs:
           ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
           ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
           ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
+          ADBC_TEST_FLIGHTSQL_URI: "grpc+tcp://localhost:41414"
         run: |
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
       - name: Stop SQLite server and Dremio
