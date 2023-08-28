@@ -148,7 +148,9 @@ func main() {
 
 	server := flight.NewServerWithMiddleware(nil)
 	server.RegisterFlightService(flightsql.NewFlightServer(srv))
-	server.Init(net.JoinHostPort(*host, strconv.Itoa(*port)))
+	if err := server.Init(net.JoinHostPort(*host, strconv.Itoa(*port))); err != nil {
+		log.Fatal(err)
+	}
 	server.SetShutdownOnSignals(os.Interrupt, os.Kill)
 
 	fmt.Println("Starting testing Flight SQL Server on", server.Addr(), "...")
