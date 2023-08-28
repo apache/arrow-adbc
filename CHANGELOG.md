@@ -237,3 +237,53 @@
 ### Perf
 
 - **go/adbc/driver/flightsql**: filter by schema in getObjectsTables (#726)
+
+## ADBC Libraries 0.6.0 (2023-08-23)
+
+### Feat
+
+- **python/adbc_driver_manager**: add fetch_record_batch (#989)
+- **c/driver**: Date32 support (#948)
+- **c/driver/postgresql**: Interval support (#908)
+- **go/adbc/driver/flightsql**: add context to gRPC errors (#921)
+- **c/driver/sqlite**: SQLite timestamp write support (#897)
+- **c/driver/postgresql**: Handle NUMERIC type by converting to string (#883)
+- **python/adbc_driver_postgresql**: add PostgreSQL options enum (#886)
+- **c/driver/postgresql**: TimestampTz write (#868)
+- **c/driver/postgresql**: Implement streaming/chunked output (#870)
+- **c/driver/postgresql**: Timestamp write support (#861)
+- **c/driver_manager,go/adbc,python**: trim down error messages (#866)
+- **c/driver/postgresql**: Int8 support (#858)
+- **c/driver/postgresql**: Better type error messages (#860)
+
+### Fix
+
+- **go/adbc/driver/flightsql**: Have GetTableSchema check for table name match instead of the first schema it receives (#980)
+- **r**: Ensure that info_codes are coerced to integer (#986)
+- **go/adbc/sqldriver**: fix handling of decimal types (#970)
+- **c/driver/postgresql**: Fix segfault associated with uninitialized copy_reader_ (#964)
+- **c/driver/sqlite**: add table types by default from arrow types (#955)
+- **csharp**: include GetTableTypes and GetTableSchema call for .NET 4.7.2  (#950)
+- **csharp**: include GetInfo and GetObjects call for .NET 4.7.2 (#945)
+- **c/driver/sqlite**: Wrap bulk ingests in a single begin/commit txn (#910)
+- **csharp**: fix C api to work under .NET 4.7.2 (#931)
+- **python/adbc_driver_snowflake**: allow connecting without URI (#923)
+- **go/adbc/pkg**: export Adbc* symbols on Windows (#916)
+- **go/adbc/driver/snowflake**: handle non-arrow result sets (#909)
+- **c/driver/sqlite**: fix escaping of sqlite TABLE CREATE columns (#906)
+- **go/adbc/pkg**: follow CGO rules properly (#902)
+- **go/adbc/driver/snowflake**: Fix integration tests by fixing timestamp handling (#889)
+- **go/adbc/driver/snowflake**: fix failing integration tests (#888)
+- **c/validation**: Fix ASAN-detected leak (#879)
+- **go/adbc**: fix crash on map type (#854)
+- **go/adbc/driver/snowflake**: handle result sets without Arrow data (#864)
+
+### Perf
+
+- **go/adbc/driver/snowflake**: Implement concurrency limit (#974)
+
+### Refactor
+
+- **c**: Vendor portable-snippets for overflow checks (#951)
+- **c/driver/postgresql**: Use ArrowArrayViewGetIntervalUnsafe from nanoarrow (#957)
+- **c/driver/postgresql**: Simplify current database querying (#880)
