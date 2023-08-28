@@ -155,6 +155,7 @@ jobs:
           ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
           ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
           ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
+          ADBC_TEST_FLIGHTSQL_URI: "grpc+tcp://localhost:41414"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
