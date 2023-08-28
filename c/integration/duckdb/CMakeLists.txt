@@ -49,6 +49,7 @@ if(ADBC_BUILD_TESTS)
       CACHE INTERNAL "Disable UBSAN")
   # Force cmake to honor our options here in the subproject
   cmake_policy(SET CMP0077 NEW)
+  message(STATUS "Fetching DuckDB")
   fetchcontent_makeavailable(duckdb)
 
   include_directories(SYSTEM ${REPOSITORY_ROOT})

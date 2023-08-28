@@ -27,6 +27,8 @@
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
+std::string AdbcDriverManagerDefaultEntrypoint(const std::string& filename);
+
 // Tests of the SQLite example driver, except using the driver manager
 
 namespace adbc {
@@ -40,7 +42,7 @@ class DriverManager : public ::testing::Test {
     std::memset(&driver, 0, sizeof(driver));
     std::memset(&error, 0, sizeof(error));
 
-    ASSERT_THAT(AdbcLoadDriver("adbc_driver_sqlite", nullptr, ADBC_VERSION_1_0_0, &driver,
+    ASSERT_THAT(AdbcLoadDriver("adbc_driver_sqlite", nullptr, ADBC_VERSION_1_1_0, &driver,
                                &error),
                 IsOkStatus(&error));
   }
@@ -191,7 +193,27 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     }
   }
 
+  bool supports_bulk_ingest(const char* mode) const override {
+    return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
+           std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;
+  }
   bool supports_concurrent_statements() const override { return true; }
+  bool supports_get_option() const override { return false; }
+  std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
+      uint32_t info_code) const override {
+    switch (info_code) {
+      case ADBC_INFO_DRIVER_NAME:
+        return "ADBC SQLite Driver";
+      case ADBC_INFO_DRIVER_VERSION:
+        return "(unknown)";
+      case ADBC_INFO_VENDOR_NAME:
+        return "SQLite";
+      case ADBC_INFO_VENDOR_VERSION:
+        return "3.";
+      default:
+        return std::nullopt;
+    }
+  }
 };
 
 class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::DatabaseTest {
@@ -241,5 +263,42 @@ class SqliteStatementTest : public ::testing::Test,
   SqliteQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
+
+TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
+  for (const auto& driver : {
+           "adbc_driver_sqlite",
+           "adbc_driver_sqlite.dll",
+           "driver_sqlite",
+           "libadbc_driver_sqlite",
+           "libadbc_driver_sqlite.so",
+           "libadbc_driver_sqlite.so.6.0.0",
+           "/usr/lib/libadbc_driver_sqlite.so",
+           "/usr/lib/libadbc_driver_sqlite.so.6.0.0",
+           "C:\\System32\\adbc_driver_sqlite.dll",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcDriverSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+  }
+
+  for (const auto& driver : {
+           "adbc_sqlite",
+           "sqlite",
+           "/usr/lib/sqlite.so",
+           "C:\\System32\\sqlite.dll",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+  }
+
+  for (const auto& driver : {
+           "proprietary_engine",
+           "libproprietary_engine.so.6.0.0",
+           "/usr/lib/proprietary_engine.so",
+           "C:\\System32\\proprietary_engine.dll",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcProprietaryEngineInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+  }
+}
 
 }  // namespace adbc

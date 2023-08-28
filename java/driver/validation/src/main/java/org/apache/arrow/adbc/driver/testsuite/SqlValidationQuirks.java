@@ -35,6 +35,11 @@ public abstract class SqlValidationQuirks {
   /** Get the name of the default catalog. */
   public abstract String defaultCatalog();
 
+  /** Get the name of the default schema. */
+  public String defaultDbSchema() {
+    return "";
+  }
+
   /** Normalize a table name. */
   public String caseFoldTableName(String name) {
     return name;
@@ -109,5 +114,9 @@ public abstract class SqlValidationQuirks {
 
   public TimeUnit defaultTimestampUnit() {
     return TimeUnit.MILLISECOND;
+  }
+
+  public boolean supportsCurrentCatalog() {
+    return false;
   }
 }

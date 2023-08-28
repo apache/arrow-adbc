@@ -42,12 +42,7 @@ public class JdbcArrowReader extends ArrowReader {
   JdbcArrowReader(BufferAllocator allocator, ResultSet resultSet, Schema overrideSchema)
       throws AdbcException {
     super(allocator);
-    final JdbcToArrowConfig config =
-        new JdbcToArrowConfigBuilder()
-            .setAllocator(allocator)
-            .setCalendar(JdbcToArrowUtils.getUtcCalendar())
-            .setTargetBatchSize(1024)
-            .build();
+    final JdbcToArrowConfig config = makeJdbcConfig(allocator);
     try {
       this.delegate = JdbcToArrow.sqlToArrowVectorIterator(resultSet, config);
     } catch (SQLException e) {
@@ -73,6 +68,14 @@ public class JdbcArrowReader extends ArrowReader {
       throw new AdbcException(
           JdbcDriverUtil.prefixExceptionMessage(e.getMessage()), e, AdbcStatusCode.IO, null, 0);
     }
+  }
+
+  static JdbcToArrowConfig makeJdbcConfig(BufferAllocator allocator) {
+    return new JdbcToArrowConfigBuilder()
+        .setAllocator(allocator)
+        .setCalendar(JdbcToArrowUtils.getUtcCalendar())
+        .setTargetBatchSize(1024)
+        .build();
   }
 
   @Override

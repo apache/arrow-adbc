@@ -26,72 +26,151 @@
 #include <stdlib.h>
 #include "../../drivermgr/adbc.h"
 
+struct AdbcError* SnowflakeErrorFromArrayStream(struct ArrowArrayStream*,
+                                                AdbcStatusCode*);
+AdbcStatusCode SnowflakeDatabaseGetOption(struct AdbcDatabase*, const char*, char*,
+                                          size_t*, struct AdbcError*);
+AdbcStatusCode SnowflakeDatabaseGetOptionBytes(struct AdbcDatabase*, const char*,
+                                               uint8_t*, size_t*, struct AdbcError*);
+AdbcStatusCode SnowflakeDatabaseGetOptionDouble(struct AdbcDatabase*, const char*,
+                                                double*, struct AdbcError*);
+AdbcStatusCode SnowflakeDatabaseGetOptionInt(struct AdbcDatabase*, const char*, int64_t*,
+                                             struct AdbcError*);
+AdbcStatusCode SnowflakeDatabaseInit(struct AdbcDatabase* db, struct AdbcError* err);
 AdbcStatusCode SnowflakeDatabaseNew(struct AdbcDatabase* db, struct AdbcError* err);
+AdbcStatusCode SnowflakeDatabaseRelease(struct AdbcDatabase* db, struct AdbcError* err);
 AdbcStatusCode SnowflakeDatabaseSetOption(struct AdbcDatabase* db, const char* key,
                                           const char* value, struct AdbcError* err);
-AdbcStatusCode SnowflakeDatabaseInit(struct AdbcDatabase* db, struct AdbcError* err);
-AdbcStatusCode SnowflakeDatabaseRelease(struct AdbcDatabase* db, struct AdbcError* err);
-AdbcStatusCode SnowflakeConnectionNew(struct AdbcConnection* cnxn, struct AdbcError* err);
-AdbcStatusCode SnowflakeConnectionSetOption(struct AdbcConnection* cnxn, const char* key,
-                                            const char* val, struct AdbcError* err);
-AdbcStatusCode SnowflakeConnectionInit(struct AdbcConnection* cnxn,
-                                       struct AdbcDatabase* db, struct AdbcError* err);
-AdbcStatusCode SnowflakeConnectionRelease(struct AdbcConnection* cnxn,
-                                          struct AdbcError* err);
-AdbcStatusCode SnowflakeConnectionGetInfo(struct AdbcConnection* cnxn, uint32_t* codes,
-                                          size_t len, struct ArrowArrayStream* out,
+AdbcStatusCode SnowflakeDatabaseSetOptionBytes(struct AdbcDatabase*, const char*,
+                                               const uint8_t*, size_t, struct AdbcError*);
+AdbcStatusCode SnowflakeDatabaseSetOptionDouble(struct AdbcDatabase*, const char*, double,
+                                                struct AdbcError*);
+AdbcStatusCode SnowflakeDatabaseSetOptionInt(struct AdbcDatabase*, const char*, int64_t,
+                                             struct AdbcError*);
+
+AdbcStatusCode SnowflakeConnectionCancel(struct AdbcConnection*, struct AdbcError*);
+AdbcStatusCode SnowflakeConnectionCommit(struct AdbcConnection* cnxn,
+                                         struct AdbcError* err);
+AdbcStatusCode SnowflakeConnectionGetInfo(struct AdbcConnection* cnxn,
+                                          const uint32_t* codes, size_t len,
+                                          struct ArrowArrayStream* out,
                                           struct AdbcError* err);
 AdbcStatusCode SnowflakeConnectionGetObjects(
     struct AdbcConnection* cnxn, int depth, const char* catalog, const char* dbSchema,
     const char* tableName, const char** tableType, const char* columnName,
     struct ArrowArrayStream* out, struct AdbcError* err);
+AdbcStatusCode SnowflakeConnectionGetOption(struct AdbcConnection*, const char*, char*,
+                                            size_t*, struct AdbcError*);
+AdbcStatusCode SnowflakeConnectionGetOptionBytes(struct AdbcConnection*, const char*,
+                                                 uint8_t*, size_t*, struct AdbcError*);
+AdbcStatusCode SnowflakeConnectionGetOptionDouble(struct AdbcConnection*, const char*,
+                                                  double*, struct AdbcError*);
+AdbcStatusCode SnowflakeConnectionGetOptionInt(struct AdbcConnection*, const char*,
+                                               int64_t*, struct AdbcError*);
+AdbcStatusCode SnowflakeConnectionGetStatistics(struct AdbcConnection*, const char*,
+                                                const char*, const char*, char,
+                                                struct ArrowArrayStream*,
+                                                struct AdbcError*);
+AdbcStatusCode SnowflakeConnectionGetStatisticNames(struct AdbcConnection*,
+                                                    struct ArrowArrayStream*,
+                                                    struct AdbcError*);
 AdbcStatusCode SnowflakeConnectionGetTableSchema(
     struct AdbcConnection* cnxn, const char* catalog, const char* dbSchema,
     const char* tableName, struct ArrowSchema* schema, struct AdbcError* err);
 AdbcStatusCode SnowflakeConnectionGetTableTypes(struct AdbcConnection* cnxn,
                                                 struct ArrowArrayStream* out,
                                                 struct AdbcError* err);
+AdbcStatusCode SnowflakeConnectionInit(struct AdbcConnection* cnxn,
+                                       struct AdbcDatabase* db, struct AdbcError* err);
+AdbcStatusCode SnowflakeConnectionNew(struct AdbcConnection* cnxn, struct AdbcError* err);
 AdbcStatusCode SnowflakeConnectionReadPartition(struct AdbcConnection* cnxn,
                                                 const uint8_t* serialized,
                                                 size_t serializedLen,
                                                 struct ArrowArrayStream* out,
                                                 struct AdbcError* err);
-AdbcStatusCode SnowflakeConnectionCommit(struct AdbcConnection* cnxn,
-                                         struct AdbcError* err);
+AdbcStatusCode SnowflakeConnectionRelease(struct AdbcConnection* cnxn,
+                                          struct AdbcError* err);
 AdbcStatusCode SnowflakeConnectionRollback(struct AdbcConnection* cnxn,
                                            struct AdbcError* err);
-AdbcStatusCode SnowflakeStatementNew(struct AdbcConnection* cnxn,
-                                     struct AdbcStatement* stmt, struct AdbcError* err);
-AdbcStatusCode SnowflakeStatementRelease(struct AdbcStatement* stmt,
-                                         struct AdbcError* err);
-AdbcStatusCode SnowflakeStatementPrepare(struct AdbcStatement* stmt,
-                                         struct AdbcError* err);
-AdbcStatusCode SnowflakeStatementExecuteQuery(struct AdbcStatement* stmt,
-                                              struct ArrowArrayStream* out,
-                                              int64_t* affected, struct AdbcError* err);
-AdbcStatusCode SnowflakeStatementSetSqlQuery(struct AdbcStatement* stmt,
-                                             const char* query, struct AdbcError* err);
-AdbcStatusCode SnowflakeStatementSetSubstraitPlan(struct AdbcStatement* stmt,
-                                                  const uint8_t* plan, size_t length,
-                                                  struct AdbcError* err);
+AdbcStatusCode SnowflakeConnectionSetOption(struct AdbcConnection* cnxn, const char* key,
+                                            const char* val, struct AdbcError* err);
+AdbcStatusCode SnowflakeConnectionSetOptionBytes(struct AdbcConnection*, const char*,
+                                                 const uint8_t*, size_t,
+                                                 struct AdbcError*);
+AdbcStatusCode SnowflakeConnectionSetOptionDouble(struct AdbcConnection*, const char*,
+                                                  double, struct AdbcError*);
+AdbcStatusCode SnowflakeConnectionSetOptionInt(struct AdbcConnection*, const char*,
+                                               int64_t, struct AdbcError*);
+
 AdbcStatusCode SnowflakeStatementBind(struct AdbcStatement* stmt,
                                       struct ArrowArray* values,
                                       struct ArrowSchema* schema, struct AdbcError* err);
 AdbcStatusCode SnowflakeStatementBindStream(struct AdbcStatement* stmt,
                                             struct ArrowArrayStream* stream,
                                             struct AdbcError* err);
-AdbcStatusCode SnowflakeStatementGetParameterSchema(struct AdbcStatement* stmt,
-                                                    struct ArrowSchema* schema,
-                                                    struct AdbcError* err);
-AdbcStatusCode SnowflakeStatementSetOption(struct AdbcStatement* stmt, const char* key,
-                                           const char* value, struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementCancel(struct AdbcStatement*, struct AdbcError*);
+AdbcStatusCode SnowflakeStatementExecuteQuery(struct AdbcStatement* stmt,
+                                              struct ArrowArrayStream* out,
+                                              int64_t* affected, struct AdbcError* err);
 AdbcStatusCode SnowflakeStatementExecutePartitions(struct AdbcStatement* stmt,
                                                    struct ArrowSchema* schema,
                                                    struct AdbcPartitions* partitions,
                                                    int64_t* affected,
                                                    struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementExecuteSchema(struct AdbcStatement*, struct ArrowSchema*,
+                                               struct AdbcError*);
+AdbcStatusCode SnowflakeStatementGetOption(struct AdbcStatement*, const char*, char*,
+                                           size_t*, struct AdbcError*);
+AdbcStatusCode SnowflakeStatementGetOptionBytes(struct AdbcStatement*, const char*,
+                                                uint8_t*, size_t*, struct AdbcError*);
+AdbcStatusCode SnowflakeStatementGetOptionDouble(struct AdbcStatement*, const char*,
+                                                 double*, struct AdbcError*);
+AdbcStatusCode SnowflakeStatementGetOptionInt(struct AdbcStatement*, const char*,
+                                              int64_t*, struct AdbcError*);
+AdbcStatusCode SnowflakeStatementGetParameterSchema(struct AdbcStatement* stmt,
+                                                    struct ArrowSchema* schema,
+                                                    struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementNew(struct AdbcConnection* cnxn,
+                                     struct AdbcStatement* stmt, struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementPrepare(struct AdbcStatement* stmt,
+                                         struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementRelease(struct AdbcStatement* stmt,
+                                         struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementSetOption(struct AdbcStatement* stmt, const char* key,
+                                           const char* value, struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementSetOptionBytes(struct AdbcStatement*, const char*,
+                                                const uint8_t*, size_t,
+                                                struct AdbcError*);
+AdbcStatusCode SnowflakeStatementSetOptionDouble(struct AdbcStatement*, const char*,
+                                                 double, struct AdbcError*);
+AdbcStatusCode SnowflakeStatementSetOptionInt(struct AdbcStatement*, const char*, int64_t,
+                                              struct AdbcError*);
+AdbcStatusCode SnowflakeStatementSetSqlQuery(struct AdbcStatement* stmt,
+                                             const char* query, struct AdbcError* err);
+AdbcStatusCode SnowflakeStatementSetSubstraitPlan(struct AdbcStatement* stmt,
+                                                  const uint8_t* plan, size_t length,
+                                                  struct AdbcError* err);
+
 AdbcStatusCode SnowflakeDriverInit(int version, void* rawDriver, struct AdbcError* err);
 
 static inline void SnowflakeerrRelease(struct AdbcError* error) { error->release(error); }
 
 void Snowflake_release_error(struct AdbcError* error);
+
+struct SnowflakeError {
+  char* message;
+  char** keys;
+  uint8_t** values;
+  size_t* lengths;
+  int count;
+};
+
+void SnowflakeReleaseErrWithDetails(struct AdbcError* error);
+
+int SnowflakeErrorGetDetailCount(const struct AdbcError* error);
+struct AdbcErrorDetail SnowflakeErrorGetDetail(const struct AdbcError* error, int index);
+
+int SnowflakeArrayStreamGetSchemaTrampoline(struct ArrowArrayStream* stream,
+                                            struct ArrowSchema* out);
+int SnowflakeArrayStreamGetNextTrampoline(struct ArrowArrayStream* stream,
+                                          struct ArrowArray* out);

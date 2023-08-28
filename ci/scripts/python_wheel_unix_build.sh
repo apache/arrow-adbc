@@ -35,7 +35,7 @@ function check_visibility {
     # Filter out Arrow symbols and see if anything remains.
     # '_init' and '_fini' symbols may or not be present, we don't care.
     # (note we must ignore the grep exit status when no match is found)
-    grep ' T ' nm_arrow.log | grep -v -E '(Adbc|\b_init\b|\b_fini\b)' | cat - > visible_symbols.log
+    grep ' T ' nm_arrow.log | grep -v -E '(Adbc|DriverInit|\b_init\b|\b_fini\b)' | cat - > visible_symbols.log
 
     if [[ -f visible_symbols.log && `cat visible_symbols.log | wc -l` -eq 0 ]]; then
         return 0

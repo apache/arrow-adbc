@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import collections.abc
+
 import pyarrow
 import pytest
 
@@ -23,13 +25,15 @@ import adbc_driver_postgresql
 
 
 @pytest.fixture
-def postgres(postgres_uri: str) -> adbc_driver_manager.AdbcConnection:
+def postgres(
+    postgres_uri: str,
+) -> collections.abc.Generator[adbc_driver_manager.AdbcConnection, None, None]:
     with adbc_driver_postgresql.connect(postgres_uri) as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
             yield conn
 
 
-def test_query_trivial(postgres):
+def test_query_trivial(postgres: adbc_driver_manager.AdbcConnection) -> None:
     with adbc_driver_manager.AdbcStatement(postgres) as stmt:
         stmt.set_sql_query("SELECT 1")
         stream, _ = stmt.execute_query()
@@ -37,11 +41,11 @@ def test_query_trivial(postgres):
         assert reader.read_all()
 
 
-def test_version():
+def test_version() -> None:
     assert adbc_driver_postgresql.__version__  # type:ignore
 
 
-def test_failed_connection():
+def test_failed_connection() -> None:
     with pytest.raises(
         adbc_driver_manager.OperationalError, match=".*libpq.*Failed to connect.*"
     ):
