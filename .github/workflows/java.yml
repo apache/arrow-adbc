@@ -69,7 +69,7 @@ jobs:
       - name: Start SQLite server
         shell: bash -l {0}
         run: |
-          docker-compose up -d golang-sqlite-flightsql
+          docker-compose up -d flightsql-sqlite-test
       - name: Build/Test
         env:
           ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"

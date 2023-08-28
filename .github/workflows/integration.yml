@@ -137,7 +137,7 @@ jobs:
       - name: Start SQLite server and Dremio
         shell: bash -l {0}
         run: |
-          docker-compose up -d golang-sqlite-flightsql dremio dremio-init
+          docker-compose up -d flightsql-test flightsql-sqlite-test dremio dremio-init
 
       - name: Build FlightSQL Driver
         shell: bash -l {0}
