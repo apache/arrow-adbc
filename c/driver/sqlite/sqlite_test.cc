@@ -253,6 +253,37 @@ class SqliteStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
+TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"test-table\"", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  std::string table = "test-table";
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(
+      adbc_validation::MakeSchema(&schema.value, {{"index", NANOARROW_TYPE_INT64},
+                                                  {"create", NANOARROW_TYPE_STRING}}),
+      adbc_validation::IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, std::string>(
+                  &schema.value, &array.value, &na_error, {42, -42, std::nullopt},
+                  {"foo", std::nullopt, ""})),
+              adbc_validation::IsOkErrno(&na_error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     table.c_str(), &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_EQ(3, rows_affected);
+}
+
 // -- SQLite Specific Tests ------------------------------------------
 
 constexpr size_t kInferRows = 16;

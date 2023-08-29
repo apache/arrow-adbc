@@ -1081,26 +1081,28 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   sqlite3_str* create_query = sqlite3_str_new(NULL);
   if (sqlite3_str_errcode(create_query)) {
     SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
-    return ADBC_STATUS_INTERNAL;
-  }
-  struct StringBuilder insert_query = {0};
-
-  if (StringBuilderInit(&insert_query, /*initial_size=*/256) != 0) {
-    SetError(error, "[SQLite] Could not initiate StringBuilder");
     sqlite3_free(sqlite3_str_finish(create_query));
     return ADBC_STATUS_INTERNAL;
   }
 
-  sqlite3_str_appendf(create_query, "%s%Q%s", "CREATE TABLE ", stmt->target_table, " (");
-  if (sqlite3_str_errcode(create_query)) {
+  sqlite3_str* insert_query = sqlite3_str_new(NULL);
+  if (sqlite3_str_errcode(insert_query)) {
     SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+    sqlite3_free(sqlite3_str_finish(create_query));
+    sqlite3_free(sqlite3_str_finish(insert_query));
+    return ADBC_STATUS_INTERNAL;
+  }
+
+  sqlite3_str_appendf(create_query, "CREATE TABLE %Q (", stmt->target_table);
+  if (sqlite3_str_errcode(create_query)) {
+    SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
 
-  if (StringBuilderAppend(&insert_query, "%s%s%s", "INSERT INTO ", stmt->target_table,
-                          " VALUES (") != 0) {
-    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+  sqlite3_str_appendf(insert_query, "INSERT INTO %Q VALUES (", stmt->target_table);
+  if (sqlite3_str_errcode(insert_query)) {
+    SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
@@ -1111,7 +1113,8 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     if (i > 0) {
       sqlite3_str_appendf(create_query, "%s", ", ");
       if (sqlite3_str_errcode(create_query)) {
-        SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+        SetError(error, "[SQLite] Failed to build CREATE: %s",
+                 sqlite3_errmsg(stmt->conn));
         code = ADBC_STATUS_INTERNAL;
         goto cleanup;
       }
@@ -1119,7 +1122,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
 
     sqlite3_str_appendf(create_query, "%Q", stmt->binder.schema.children[i]->name);
     if (sqlite3_str_errcode(create_query)) {
-      SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+      SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
@@ -1127,7 +1130,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     int status =
         ArrowSchemaViewInit(&view, stmt->binder.schema.children[i], &arrow_error);
     if (status != 0) {
-      SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
+      SetError(error, "[SQLite] Failed to parse schema for column %d: %s (%d): %s", i,
                strerror(status), status, arrow_error.message);
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
@@ -1160,16 +1163,9 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
         break;
     }
 
-    if (i > 0) {
-      if (StringBuilderAppend(&insert_query, "%s", ", ") != 0) {
-        SetError(error, "[SQLite] Call to StringBuilderAppend failed");
-        code = ADBC_STATUS_INTERNAL;
-        goto cleanup;
-      }
-    }
-
-    if (StringBuilderAppend(&insert_query, "%s", "?") != 0) {
-      SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+    sqlite3_str_appendf(insert_query, "%s?", (i > 0 ? ", " : ""));
+    if (sqlite3_str_errcode(insert_query)) {
+      SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
@@ -1177,13 +1173,14 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
 
   sqlite3_str_appendchar(create_query, 1, ')');
   if (sqlite3_str_errcode(create_query)) {
-    SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+    SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
 
-  if (StringBuilderAppend(&insert_query, "%s", ")") != 0) {
-    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+  sqlite3_str_appendchar(insert_query, 1, ')');
+  if (sqlite3_str_errcode(insert_query)) {
+    SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
@@ -1207,11 +1204,13 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   }
 
   if (code == ADBC_STATUS_OK) {
-    int rc = sqlite3_prepare_v2(stmt->conn, insert_query.buffer, (int)insert_query.size,
-                                insert_statement, /*pzTail=*/NULL);
+    int rc = sqlite3_prepare_v2(stmt->conn, sqlite3_str_value(insert_query),
+                                sqlite3_str_length(insert_query), insert_statement,
+                                /*pzTail=*/NULL);
     if (rc != SQLITE_OK) {
-      SetError(error, "[SQLite] Failed to prepare statement: %s (executed '%s')",
-               sqlite3_errmsg(stmt->conn), insert_query.buffer);
+      SetError(error, "[SQLite] Failed to prepare statement: %s (executed '%.*s')",
+               sqlite3_errmsg(stmt->conn), sqlite3_str_length(insert_query),
+               sqlite3_str_value(insert_query));
       code = ADBC_STATUS_INTERNAL;
     }
   }
@@ -1220,7 +1219,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
 
 cleanup:
   sqlite3_free(sqlite3_str_finish(create_query));
-  StringBuilderReset(&insert_query);
+  sqlite3_free(sqlite3_str_finish(insert_query));
   return code;
 }
 
