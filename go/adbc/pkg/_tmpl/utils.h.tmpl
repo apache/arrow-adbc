@@ -83,7 +83,10 @@ AdbcStatusCode {{.Prefix}}StatementSetSubstraitPlan(struct AdbcStatement* stmt, 
 AdbcStatusCode {{.Prefix}}DriverInit(int version, void* rawDriver, struct AdbcError* err);
 
 static inline void {{.Prefix}}errRelease(struct AdbcError* error) {
-  error->release(error);
+  if (error->release) {
+    error->release(error);
+    error->release = NULL;
+  }
 }
 
 void {{.Prefix}}_release_error(struct AdbcError* error);

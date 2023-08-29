@@ -153,7 +153,12 @@ AdbcStatusCode SnowflakeStatementSetSubstraitPlan(struct AdbcStatement* stmt,
 
 AdbcStatusCode SnowflakeDriverInit(int version, void* rawDriver, struct AdbcError* err);
 
-static inline void SnowflakeerrRelease(struct AdbcError* error) { error->release(error); }
+static inline void SnowflakeerrRelease(struct AdbcError* error) {
+  if (error->release) {
+    error->release(error);
+    error->release = NULL;
+  }
+}
 
 void Snowflake_release_error(struct AdbcError* error);
 

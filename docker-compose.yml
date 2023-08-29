@@ -107,15 +107,6 @@ services:
 
   ###################### Test database environments ############################
 
-  postgres_test:
-      container_name: adbc_postgres_test
-      image: postgres:latest
-      environment:
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: password
-      ports:
-        - "5432:5432"
-
   dremio:
     container_name: adbc-dremio
     image: dremio/dremio-oss:latest
@@ -150,7 +141,23 @@ services:
     volumes:
       - "./ci/scripts/integration/dremio:/init"
 
-  golang-sqlite-flightsql:
+  flightsql-test:
+    image: ${REPO}:adbc-flightsql-test
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:adbc-flightsql-test
+      dockerfile: ci/docker/flightsql-test.dockerfile
+      args:
+        GO: ${GO}
+    ports:
+      - "41414:41414"
+    volumes:
+      - .:/adbc:delegated
+    command: >-
+      /bin/bash -c "cd /adbc/go/adbc && go run ./driver/flightsql/cmd/testserver -host 0.0.0.0 -port 41414"
+
+  flightsql-sqlite-test:
     image: ${REPO}:golang-${GO}-sqlite-flightsql
     build:
       context: .
@@ -162,3 +169,12 @@ services:
         ARROW_MAJOR_VERSION: ${ARROW_MAJOR_VERSION}
     ports:
       - 8080:8080
+
+  postgres-test:
+    container_name: adbc_postgres_test
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"

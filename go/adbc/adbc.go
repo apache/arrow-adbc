@@ -131,7 +131,12 @@ type Error struct {
 }
 
 func (e Error) Error() string {
-	return fmt.Sprintf("%s: SqlState: %s, msg: %s", e.Code, string(e.SqlState[:]), e.Msg)
+	// Don't include a NUL in the string since C Data Interface uses char* (and
+	// don't include the extra cruft if not needed in the first place)
+	if e.SqlState[0] != 0 {
+		return fmt.Sprintf("%s: %s (%s)", e.Code, e.Msg, string(e.SqlState[:]))
+	}
+	return fmt.Sprintf("%s: %s", e.Code, e.Msg)
 }
 
 // Status represents an error code for operations that may fail
