@@ -329,7 +329,7 @@
 <p>ADBC uses structs with free functions that operate on those structs to model objects.</p>
 <p>In general, objects allow serialized access from multiple threads, but not concurrent access. Specific implementations may permit multiple threads.</p>
 <p><dl class="simple">
-<dt><strong>Version</strong></dt><dd><p>1.0.0 </p>
+<dt><strong>Version</strong></dt><dd><p>1.1.0 </p>
 </dd>
 </dl>
 </p>
@@ -347,6 +347,8 @@
 <dd><div class="docutils container">
 <em>#include &lt;adbc.h&gt;</em></div>
 <p>A detailed error message for an operation. </p>
+<p>The caller must zero-initialize this struct (clarified in ADBC 1.1.0).</p>
+<p>The structure was extended in ADBC 1.1.0. Drivers and clients using ADBC 1.0.0 will not have the private_data or private_driver fields. Drivers should read/write these fields if and only if vendor_code is equal to ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA. Clients are required to initialize this struct to avoid the possibility of uninitialized values confusing the driver. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
 <dl class="cpp var">
@@ -372,6 +374,65 @@
 <span id="_CPPv3N9AdbcError7releaseE"></span><span id="_CPPv2N9AdbcError7releaseE"></span><span class="target" id="structAdbcError_1a4cae0d08f32a554f698f5dc949028d35"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">release</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv49AdbcError" title="AdbcError"><span class="n"><span class="pre">AdbcError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N9AdbcError7releaseE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Release the contained error. </p>
 <p>Unlike other structures, this is an embedded callback to make it easier for the driver manager and driver to cooperate. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N9AdbcError12private_dataE">
+<span id="_CPPv3N9AdbcError12private_dataE"></span><span id="_CPPv2N9AdbcError12private_dataE"></span><span id="AdbcError::private_data__voidP"></span><span class="target" id="structAdbcError_1a21ac8d1f23c32c4cb9242a5b928c988d"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">private_data</span></span></span><a class="headerlink" href="#_CPPv4N9AdbcError12private_dataE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Opaque implementation-defined state. </p>
+<p>This field may not be used unless vendor_code is ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA. If present, this field is NULLPTR iff the error is unintialized/freed.</p>
+<p><dl class="simple">
+<dt><strong>Since</strong></dt><dd><p>ADBC API revision 1.1.0 </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N9AdbcError14private_driverE">
+<span id="_CPPv3N9AdbcError14private_driverE"></span><span id="_CPPv2N9AdbcError14private_driverE"></span><span id="AdbcError::private_driver__AdbcDriverP"></span><span class="target" id="structAdbcError_1a8e2ef0de5df16c4b80e1fff8865e501b"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410AdbcDriver" title="AdbcDriver"><span class="n"><span class="pre">AdbcDriver</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">private_driver</span></span></span><a class="headerlink" href="#_CPPv4N9AdbcError14private_driverE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The associated driver (used by the driver manager to help track state). </p>
+<p>This field may not be used unless vendor_code is ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.</p>
+<p><dl class="simple">
+<dt><strong>Since</strong></dt><dd><p>ADBC API revision 1.1.0 </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv415AdbcErrorDetail">
+<span id="_CPPv315AdbcErrorDetail"></span><span id="_CPPv215AdbcErrorDetail"></span><span id="AdbcErrorDetail"></span><span class="target" id="structAdbcErrorDetail"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">AdbcErrorDetail</span></span></span><a class="headerlink" href="#_CPPv415AdbcErrorDetail" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;adbc.h&gt;</em></div>
+<p>Extra key-value metadata for an error. </p>
+<p>The fields here are owned by the driver and should not be freed. The fields here are invalidated when the release callback in <a class="reference internal" href="#structAdbcError"><span class="std std-ref">AdbcError</span></a> is called.</p>
+<p><dl class="simple">
+<dt><strong>Since</strong></dt><dd><p>ADBC API revision 1.1.0 </p>
+</dd>
+</dl>
+</p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15AdbcErrorDetail3keyE">
+<span id="_CPPv3N15AdbcErrorDetail3keyE"></span><span id="_CPPv2N15AdbcErrorDetail3keyE"></span><span id="AdbcErrorDetail::key__cCP"></span><span class="target" id="structAdbcErrorDetail_1a4284ecf3d541a476771e0d03e0148ecb"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">key</span></span></span><a class="headerlink" href="#_CPPv4N15AdbcErrorDetail3keyE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The metadata key. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15AdbcErrorDetail5valueE">
+<span id="_CPPv3N15AdbcErrorDetail5valueE"></span><span id="_CPPv2N15AdbcErrorDetail5valueE"></span><span id="AdbcErrorDetail::value__uint8_tCP"></span><span class="target" id="structAdbcErrorDetail_1ad1ded4f5cab7d5a12def5dd84c4323ca"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">value</span></span></span><a class="headerlink" href="#_CPPv4N15AdbcErrorDetail5valueE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The binary metadata value. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15AdbcErrorDetail12value_lengthE">
+<span id="_CPPv3N15AdbcErrorDetail12value_lengthE"></span><span id="_CPPv2N15AdbcErrorDetail12value_lengthE"></span><span id="AdbcErrorDetail::value_length__s"></span><span class="target" id="structAdbcErrorDetail_1ab8562b4bd85c8f0b06b045b620a39ff7"></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">value_length</span></span></span><a class="headerlink" href="#_CPPv4N15AdbcErrorDetail12value_lengthE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The length of the metadata value. </p>
 </dd></dl>
 
 </div>
@@ -550,7 +611,7 @@
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N10AdbcDriver17ConnectionGetInfoE">
-<span id="_CPPv3N10AdbcDriver17ConnectionGetInfoE"></span><span id="_CPPv2N10AdbcDriver17ConnectionGetInfoE"></span><span class="target" id="structAdbcDriver_1a1eef1c652948ec2de46d34631c6e358e"></span><span class="n"><span class="pre">AdbcStatusCode</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">ConnectionGetInfo</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414AdbcConnection" title="AdbcConnection"><span class="n"><span class="pre">AdbcConnection</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">uint32_t</span></span><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/cpp/api/c_abi.html#_CPPv416ArrowArrayStream" title="(in Apache Arrow v13.0.0)"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv49AdbcError" title="AdbcError"><span class="n"><span class="pre">AdbcError</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N10AdbcDriver17ConnectionGetInfoE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N10AdbcDriver17ConnectionGetInfoE"></span><span id="_CPPv2N10AdbcDriver17ConnectionGetInfoE"></span><span class="target" id="structAdbcDriver_1a223315265b2dc260bb927614eef5037d"></span><span class="n"><span class="pre">AdbcStatusCode</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">ConnectionGetInfo</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414AdbcConnection" title="AdbcConnection"><span class="n"><span class="pre">AdbcConnection</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">uint32_t</span></span><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">size_t</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/cpp/api/c_abi.html#_CPPv416ArrowArrayStream" title="(in Apache Arrow v13.0.0)"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv49AdbcError" title="AdbcError"><span class="n"><span class="pre">AdbcError</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N10AdbcDriver17ConnectionGetInfoE" title="Permalink to this definition">#</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp var">

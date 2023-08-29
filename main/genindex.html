@@ -321,9 +321,19 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="cpp/api/adbc.html#c.ADBC">ADBC (C macro)</a>
 </li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_cancel">adbc_cancel() (adbc_driver_manager.dbapi.Connection method)</a>
+
+        <ul>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.adbc_cancel">(adbc_driver_manager.dbapi.Cursor method)</a>
+</li>
+        </ul></li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_clone">adbc_clone() (adbc_driver_manager.dbapi.Connection method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_connection">adbc_connection (adbc_driver_manager.dbapi.Connection property)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_current_catalog">adbc_current_catalog (adbc_driver_manager.dbapi.Connection property)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_current_db_schema">adbc_current_db_schema (adbc_driver_manager.dbapi.Connection property)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_database">adbc_database (adbc_driver_manager.dbapi.Connection property)</a>
 </li>
@@ -395,6 +405,8 @@
         </ul></li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.adbc_execute_partitions">adbc_execute_partitions() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.adbc_execute_schema">adbc_execute_schema() (adbc_driver_manager.dbapi.Cursor method)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_get_info">adbc_get_info() (adbc_driver_manager.dbapi.Connection method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_get_objects">adbc_get_objects() (adbc_driver_manager.dbapi.Connection method)</a>
@@ -447,12 +459,12 @@
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv4N10AdbcDriver13ConnectionNewE">AdbcDriver::ConnectionNew (C++ member)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="cpp/api/adbc.html#_CPPv4N10AdbcDriver23ConnectionReadPartitionE">AdbcDriver::ConnectionReadPartition (C++ member)</a>
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv4N10AdbcDriver17ConnectionReleaseE">AdbcDriver::ConnectionRelease (C++ member)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="cpp/api/adbc.html#_CPPv4N10AdbcDriver18ConnectionRollbackE">AdbcDriver::ConnectionRollback (C++ member)</a>
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv4N10AdbcDriver19ConnectionSetOptionE">AdbcDriver::ConnectionSetOption (C++ member)</a>
@@ -499,11 +511,23 @@
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv4N9AdbcError7messageE">AdbcError::message (C++ member)</a>
 </li>
+        <li><a href="cpp/api/adbc.html#_CPPv4N9AdbcError12private_dataE">AdbcError::private_data (C++ member)</a>
+</li>
+        <li><a href="cpp/api/adbc.html#_CPPv4N9AdbcError14private_driverE">AdbcError::private_driver (C++ member)</a>
+</li>
         <li><a href="cpp/api/adbc.html#_CPPv4N9AdbcError7releaseE">AdbcError::release (C++ member)</a>
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv4N9AdbcError8sqlstateE">AdbcError::sqlstate (C++ member)</a>
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv4N9AdbcError11vendor_codeE">AdbcError::vendor_code (C++ member)</a>
+</li>
+        <li><a href="cpp/api/adbc.html#_CPPv415AdbcErrorDetail">AdbcErrorDetail (C++ struct)</a>
+</li>
+        <li><a href="cpp/api/adbc.html#_CPPv4N15AdbcErrorDetail3keyE">AdbcErrorDetail::key (C++ member)</a>
+</li>
+        <li><a href="cpp/api/adbc.html#_CPPv4N15AdbcErrorDetail5valueE">AdbcErrorDetail::value (C++ member)</a>
+</li>
+        <li><a href="cpp/api/adbc.html#_CPPv4N15AdbcErrorDetail12value_lengthE">AdbcErrorDetail::value_length (C++ member)</a>
 </li>
         <li><a href="cpp/api/adbc_driver_manager.html#_CPPv414AdbcLoadDriverPKcPKciPvP9AdbcError">AdbcLoadDriver (C++ function)</a>
 </li>
@@ -543,6 +567,10 @@
           <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ArrowSchemaHandle.address">(adbc_driver_manager.ArrowSchemaHandle attribute)</a>
 </li>
         </ul></li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.GetObjectsDepth.ALL">ALL (adbc_driver_manager.GetObjectsDepth attribute)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.ALREADY_EXISTS">ALREADY_EXISTS (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.apilevel">apilevel (in module adbc_driver_manager.dbapi)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.arraysize">arraysize (adbc_driver_manager.dbapi.Cursor property)</a>
@@ -585,16 +613,30 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.callproc">callproc() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.cancel">cancel() (adbc_driver_manager.AdbcConnection method)</a>
+
+        <ul>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.cancel">(adbc_driver_manager.AdbcStatement method)</a>
+</li>
+        </ul></li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.CANCELLED">CANCELLED (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.GetObjectsDepth.CATALOGS">CATALOGS (adbc_driver_manager.GetObjectsDepth attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.close">close() (adbc_driver_manager.AdbcConnection method)</a>
 
         <ul>
           <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase.close">(adbc_driver_manager.AdbcDatabase method)</a>
+</li>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.close">(adbc_driver_manager.AdbcStatement method)</a>
 </li>
           <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.close">(adbc_driver_manager.dbapi.Connection method)</a>
 </li>
           <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.close">(adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
         </ul></li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.GetObjectsDepth.COLUMNS">COLUMNS (adbc_driver_manager.GetObjectsDepth attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.commit">commit() (adbc_driver_manager.AdbcConnection method)</a>
 
         <ul>
@@ -629,6 +671,10 @@
           <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ConnectionOptions">(class in adbc_driver_manager)</a>
 </li>
         </ul></li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ConnectionOptions.CURRENT_CATALOG">CURRENT_CATALOG (adbc_driver_manager.ConnectionOptions attribute)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ConnectionOptions.CURRENT_DB_SCHEMA">CURRENT_DB_SCHEMA (adbc_driver_manager.ConnectionOptions attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor">Cursor (class in adbc_driver_manager.dbapi)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.cursor">cursor() (adbc_driver_manager.dbapi.Connection method)</a>
@@ -659,6 +705,8 @@
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.DATETIME">DATETIME (in module adbc_driver_manager.dbapi)</a>
 </li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.GetObjectsDepth.DB_SCHEMAS">DB_SCHEMAS (adbc_driver_manager.GetObjectsDepth attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.description">description (adbc_driver_manager.dbapi.Cursor property)</a>
 </li>
     </ul></td>
@@ -675,9 +723,11 @@
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_partitions">execute_partitions() (adbc_driver_manager.AdbcStatement method)</a>
 </li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_query">execute_query() (adbc_driver_manager.AdbcStatement method)</a>
+</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_query">execute_query() (adbc_driver_manager.AdbcStatement method)</a>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_schema">execute_schema() (adbc_driver_manager.AdbcStatement method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_update">execute_update() (adbc_driver_manager.AdbcStatement method)</a>
 </li>
@@ -721,10 +771,42 @@
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_objects">get_objects() (adbc_driver_manager.AdbcConnection method)</a>
 </li>
-        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.get_parameter_schema">get_parameter_schema() (adbc_driver_manager.AdbcStatement method)</a>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_option">get_option() (adbc_driver_manager.AdbcConnection method)</a>
+
+        <ul>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase.get_option">(adbc_driver_manager.AdbcDatabase method)</a>
 </li>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.get_option">(adbc_driver_manager.AdbcStatement method)</a>
+</li>
+        </ul></li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_option_bytes">get_option_bytes() (adbc_driver_manager.AdbcConnection method)</a>
+
+        <ul>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase.get_option_bytes">(adbc_driver_manager.AdbcDatabase method)</a>
+</li>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.get_option_bytes">(adbc_driver_manager.AdbcStatement method)</a>
+</li>
+        </ul></li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_option_float">get_option_float() (adbc_driver_manager.AdbcConnection method)</a>
+
+        <ul>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase.get_option_float">(adbc_driver_manager.AdbcDatabase method)</a>
+</li>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.get_option_float">(adbc_driver_manager.AdbcStatement method)</a>
+</li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_option_int">get_option_int() (adbc_driver_manager.AdbcConnection method)</a>
+
+        <ul>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase.get_option_int">(adbc_driver_manager.AdbcDatabase method)</a>
+</li>
+          <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.get_option_int">(adbc_driver_manager.AdbcStatement method)</a>
+</li>
+        </ul></li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.get_parameter_schema">get_parameter_schema() (adbc_driver_manager.AdbcStatement method)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_table_schema">get_table_schema() (adbc_driver_manager.AdbcConnection method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_table_types">get_table_types() (adbc_driver_manager.AdbcConnection method)</a>
@@ -739,17 +821,31 @@
   <h2>I</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.StatementOptions.INCREMENTAL">INCREMENTAL (adbc_driver_manager.StatementOptions attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.StatementOptions.INGEST_MODE">INGEST_MODE (adbc_driver_manager.StatementOptions attribute)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.StatementOptions.INGEST_TARGET_TABLE">INGEST_TARGET_TABLE (adbc_driver_manager.StatementOptions attribute)</a>
 </li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.INTEGRITY">INTEGRITY (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.IntegrityError">IntegrityError</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.InterfaceError">InterfaceError</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.InterfaceError">InterfaceError</a>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.INTERNAL">INTERNAL (adbc_driver_manager.AdbcStatusCode attribute)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.InternalError">InternalError</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.INVALID_ARGUMENT">INVALID_ARGUMENT (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.INVALID_DATA">INVALID_DATA (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.INVALID_STATE">INVALID_STATE (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.IO">IO (adbc_driver_manager.AdbcStatusCode attribute)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ConnectionOptions.ISOLATION_LEVEL">ISOLATION_LEVEL (adbc_driver_manager.ConnectionOptions attribute)</a>
 </li>
@@ -800,8 +896,12 @@
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.nextset">nextset() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.NOT_FOUND">NOT_FOUND (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.NOT_IMPLEMENTED">NOT_IMPLEMENTED (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.NotSupportedError">NotSupportedError</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.NUMBER">NUMBER (in module adbc_driver_manager.dbapi)</a>
@@ -813,6 +913,10 @@
 <section id="O" class="genindex-section">
   <h2>O</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.OK">OK (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
+    </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.OperationalError">OperationalError</a>
 </li>
@@ -833,6 +937,8 @@
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.prepare">prepare() (adbc_driver_manager.AdbcStatement method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ProgrammingError">ProgrammingError</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.StatementOptions.PROGRESS">PROGRESS (adbc_driver_manager.StatementOptions attribute)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -926,11 +1032,15 @@
   <h2>T</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.GetObjectsDepth.TABLES">TABLES (adbc_driver_manager.GetObjectsDepth attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.threadsafety">threadsafety (in module adbc_driver_manager.dbapi)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Time">Time (in module adbc_driver_manager.dbapi)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.TimeFromTicks">TimeFromTicks() (in module adbc_driver_manager.dbapi)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.TIMEOUT">TIMEOUT (adbc_driver_manager.AdbcStatusCode attribute)</a>
 </li>
         <li><a href="python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.TIMEOUT_FETCH">TIMEOUT_FETCH (adbc_driver_flightsql.ConnectionOptions attribute)</a>
 
@@ -976,6 +1086,16 @@
   <h2>U</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.UNAUTHENTICATED">UNAUTHENTICATED (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.UNAUTHORIZED">UNAUTHORIZED (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.UNKNOWN">UNKNOWN (adbc_driver_manager.AdbcStatusCode attribute)</a>
+</li>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.DatabaseOptions.URI">URI (adbc_driver_manager.DatabaseOptions attribute)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.DatabaseOptions.USERNAME">USERNAME (adbc_driver_manager.DatabaseOptions attribute)</a>
 </li>
     </ul></td>

@@ -360,6 +360,24 @@ implementations will support this.</p>
 <li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection#setAutoCommit(boolean)</span></code></p></li>
 </ul>
 </section>
+<section id="metadata">
+<h3>Metadata<a class="headerlink" href="#metadata" title="Permalink to this heading">#</a></h3>
+<p>ADBC exposes a variety of metadata about the database, such as what catalogs,
+schemas, and tables exist, the Arrow schema of tables, and so on.</p>
+</section>
+<section id="statistics">
+<span id="specification-statistics"></span><h3>Statistics<a class="headerlink" href="#statistics" title="Permalink to this heading">#</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since API revision 1.1.0</p>
+</div>
+<p>ADBC exposes table/column statistics, such as the (unique) row count, min/max
+values, and so on.  The goal here is to make ADBC work better in federation
+scenarios, where one query engine wants to read Arrow data from another
+database.  Having statistics available lets the “outer” query planner make
+better choices about things like join order, or even decide to skip reading
+data entirely.</p>
+</section>
 </section>
 <section id="statements">
 <h2>Statements<a class="headerlink" href="#statements" title="Permalink to this heading">#</a></h2>
@@ -385,6 +403,15 @@ options.</p></li>
 <li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection#bulkIngest(String,</span> <span class="pre">org.apache.arrow.adbc.core.BulkIngestMode)</span></code></p></li>
 </ul>
 </section>
+<section id="cancellation">
+<span id="specification-cancellation"></span><h3>Cancellation<a class="headerlink" href="#cancellation" title="Permalink to this heading">#</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since API revision 1.1.0</p>
+</div>
+<p>Queries (and operations that implicitly represent queries, like fetching
+<a class="reference internal" href="#specification-statistics"><span class="std std-ref">Statistics</span></a>) can be cancelled.</p>
+</section>
 <section id="partitioned-result-sets">
 <h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Permalink to this heading">#</a></h3>
 <p>ADBC lets a driver explicitly expose partitioned and/or distributed
@@ -397,6 +424,15 @@ machines.</p>
 <li><p>Go: <code class="docutils literal notranslate"><span class="pre">Statement.ExecutePartitions</span></code></p></li>
 <li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcStatement#executePartitioned()</span></code></p></li>
 </ul>
+<p id="specification-incremental-execution">In principle, a vendor could return the results of partitioned execution as
+they are available, instead of all at once.  Incremental execution allows
+drivers to expose this.  When enabled, each call to <code class="docutils literal notranslate"><span class="pre">ExecutePartitions</span></code> will
+return available endpoints to read instead of blocking to retrieve all
+endpoints.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since API revision 1.1.0</p>
+</div>
 </section>
 <section id="lifecycle-usage">
 <h3>Lifecycle &amp; Usage<a class="headerlink" href="#lifecycle-usage" title="Permalink to this heading">#</a></h3>
@@ -615,6 +651,64 @@ design). See <a class="reference external" href="https://arrow.apache.org/docs/f
 </section>
 </section>
 </section>
+<section id="error-handling">
+<h2>Error Handling<a class="headerlink" href="#error-handling" title="Permalink to this heading">#</a></h2>
+<p>The error handling strategy varies by language.</p>
+<p>In C, most methods take a <a class="reference internal" href="../cpp/api/adbc.html#_CPPv49AdbcError" title="AdbcError"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcError</span></code></a>.  In Go, most methods return
+an error that can be cast to an <code class="docutils literal notranslate"><span class="pre">AdbcError</span></code>.  In Java, most methods raise an
+<code class="docutils literal notranslate"><span class="pre">AdbcException</span></code>.</p>
+<p>In all cases, an error contains:</p>
+<ul class="simple">
+<li><p>A status code,</p></li>
+<li><p>An error message,</p></li>
+<li><p>An optional vendor code (a vendor-specific status code),</p></li>
+<li><p>An optional 5-character “SQLSTATE” code (a SQL-like vendor-specific code).</p></li>
+</ul>
+<section id="rich-error-metadata">
+<span id="specification-rich-error-metadata"></span><h3>Rich Error Metadata<a class="headerlink" href="#rich-error-metadata" title="Permalink to this heading">#</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since API revision 1.1.0</p>
+</div>
+<p>Drivers can expose additional rich error metadata.  This can be used to return
+structured error information.  For example, a driver could use something like
+the <a class="reference external" href="https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto">Googleapis ErrorDetails</a>.</p>
+<p>In C, Go and Java, <a class="reference internal" href="../cpp/api/adbc.html#_CPPv49AdbcError" title="AdbcError"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcError</span></code></a>, <code class="docutils literal notranslate"><span class="pre">AdbcError</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">AdbcException</span></code> respectively expose a list of additional metadata.  For C,
+see the documentation of <a class="reference internal" href="../cpp/api/adbc.html#_CPPv49AdbcError" title="AdbcError"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcError</span></code></a> to learn how the struct was
+expanded while preserving ABI.</p>
+</section>
+</section>
+<section id="changelog">
+<h2>Changelog<a class="headerlink" href="#changelog" title="Permalink to this heading">#</a></h2>
+<section id="version-1-1-0">
+<h3>Version 1.1.0<a class="headerlink" href="#version-1-1-0" title="Permalink to this heading">#</a></h3>
+<p>The info key ADBC_INFO_DRIVER_ADBC_VERSION can be used to retrieve the
+driver’s supported ADBC version.</p>
+<p>The canonical options “uri”, “username”, and “password” were added to make
+configuration consistent between drivers.</p>
+<p><a class="reference internal" href="#specification-cancellation"><span class="std std-ref">Cancellation</span></a> and the ability to both get and set options
+of different types were added.  (Previously, you could set string options but
+could not get option values or get/set values of other types.)  This can be
+used to get and set the current active catalog and/or schema through a pair of
+new canonical options.</p>
+<p><a class="reference internal" href="#specification-bulk-ingestion"><span class="std std-ref">Bulk Ingestion</span></a> supports two additional modes:</p>
+<ul class="simple">
+<li><p>“adbc.ingest.mode.replace” will drop existing data, then behave like
+“create”.</p></li>
+<li><p>“adbc.ingest.mode.create_append” will behave like “create”, except if the
+table already exists, it will not error.</p></li>
+</ul>
+<p><a class="reference internal" href="#specification-rich-error-metadata"><span class="std std-ref">Rich Error Metadata</span></a> has been added, allowing clients to
+get additional error metadata.</p>
+<p>The ability to retrive table/column <a class="reference internal" href="#specification-statistics"><span class="std std-ref">statistics</span></a> was added.  The goal here is to make ADBC work
+better in federation scenarios, where one query engine wants to read Arrow
+data from another database.</p>
+<p><a class="reference internal" href="#specification-incremental-execution"><span class="std std-ref">Incremental execution</span></a> allows
+streaming partitions of a result set as they are available instead of blocking
+and waiting for query execution to finish before reading results.</p>
+</section>
+</section>
 </section>
 
         </article>
@@ -676,10 +770,13 @@ design). See <a class="reference external" href="https://arrow.apache.org/docs/f
 <li><a class="reference internal" href="#databases">Databases</a></li>
 <li><a class="reference internal" href="#connections">Connections</a><ul>
 <li><a class="reference internal" href="#autocommit">Autocommit</a></li>
+<li><a class="reference internal" href="#metadata">Metadata</a></li>
+<li><a class="reference internal" href="#statistics">Statistics</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#statements">Statements</a><ul>
 <li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
+<li><a class="reference internal" href="#cancellation">Cancellation</a></li>
 <li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
 <li><a class="reference internal" href="#lifecycle-usage">Lifecycle &amp; Usage</a><ul>
 <li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
@@ -689,6 +786,14 @@ design). See <a class="reference external" href="https://arrow.apache.org/docs/f
 <li><a class="reference internal" href="#partitioned-execution">Partitioned Execution</a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li><a class="reference internal" href="#error-handling">Error Handling</a><ul>
+<li><a class="reference internal" href="#rich-error-metadata">Rich Error Metadata</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#changelog">Changelog</a><ul>
+<li><a class="reference internal" href="#version-1-1-0">Version 1.1.0</a></li>
 </ul>
 </li>
 </ul>

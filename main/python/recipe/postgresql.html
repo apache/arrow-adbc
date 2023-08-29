@@ -401,7 +401,7 @@ exists.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">63</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">64</span>    <span class="k">try</span><span class="p">:</span>
 <span class="linenos">65</span>        <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">)</span>
-<span class="linenos">66</span>    <span class="k">except</span> <span class="n">conn</span><span class="o">.</span><span class="n">OperationalError</span><span class="p">:</span>
+<span class="linenos">66</span>    <span class="k">except</span> <span class="n">conn</span><span class="o">.</span><span class="n">ProgrammingError</span><span class="p">:</span>
 <span class="linenos">67</span>        <span class="k">pass</span>
 <span class="linenos">68</span>    <span class="k">else</span><span class="p">:</span>
 <span class="linenos">69</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Should have failed!&quot;</span><span class="p">)</span>
