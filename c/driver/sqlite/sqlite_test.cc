@@ -77,6 +77,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE:
         return NANOARROW_TYPE_DOUBLE;
+      case NANOARROW_TYPE_DATE32:
       case NANOARROW_TYPE_TIMESTAMP:
         return NANOARROW_TYPE_STRING;
       default:
@@ -200,9 +201,9 @@ class SqliteStatementTest : public ::testing::Test,
   }
 
  protected:
-  void ValidateIngestedTemporalData(struct ArrowArrayView* values,
-                                    enum ArrowTimeUnit unit,
-                                    const char* timezone) override {
+  void ValidateIngestedTimestampData(struct ArrowArrayView* values,
+                                     enum ArrowTimeUnit unit,
+                                     const char* timezone) override {
     std::vector<std::optional<std::string>> expected;
     switch (unit) {
       case (NANOARROW_TIME_UNIT_SECOND):

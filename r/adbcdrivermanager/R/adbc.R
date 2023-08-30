@@ -212,7 +212,13 @@ adbc_connection_release <- function(connection) {
 adbc_connection_get_info <- function(connection, info_codes) {
   error <- adbc_allocate_error()
   out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
-  status <- .Call(RAdbcConnectionGetInfo, connection, info_codes, out_stream, error)
+  status <- .Call(
+    RAdbcConnectionGetInfo,
+    connection,
+    as.integer(info_codes),
+    out_stream,
+    error
+  )
   stop_for_error(status, error)
 
   out_stream

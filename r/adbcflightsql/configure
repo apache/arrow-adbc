@@ -33,7 +33,7 @@ if [ -z "$GO_BIN" ]; then
   GO_BIN=`which go`
 fi
 
-if [ -z "$GO_BIN"]; then
+if [ -z "$GO_BIN" ]; then
   if [ ! -f src/go/tmp/go/bin/go ]; then
     echo ""
     echo "Downloading and extracting Go into the package source directory:"
@@ -73,7 +73,7 @@ fi
 
 # On OSX we need -framework Security because of some dependency somewhere
 if [ `uname` = "Darwin" ]; then
-  PKG_LIBS="-framework Security -lresolv $PKG_LIBS"
+  PKG_LIBS="-framework Security $PKG_LIBS"
 fi
 
 PKG_LIBS="$PKG_LIBS $SYMBOL_ARGS"

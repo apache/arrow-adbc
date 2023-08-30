@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# pyright: reportUnboundVariable=false
+# pyright doesn't like the optional import
+
 import sys
 
 import pyarrow

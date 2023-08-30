@@ -49,7 +49,7 @@ def test_options(snowflake):
     with adbc_driver_manager.AdbcStatement(snowflake) as stmt:
         stmt.set_options(
             **{
-                adbc_driver_snowflake.StatementOptions.BATCH_ROWS.value: "1",
+                adbc_driver_snowflake.StatementOptions.RESULT_QUEUE_SIZE.value: "1",
             }
         )
         stmt.set_sql_query("SELECT 1")

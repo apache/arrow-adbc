@@ -177,10 +177,12 @@ class SnowflakeStatementTest : public ::testing::Test,
     }
   }
 
+  void TestSqlIngestInterval() { GTEST_SKIP(); }
+
  protected:
-  void ValidateIngestedTemporalData(struct ArrowArrayView* values,
-                                    enum ArrowTimeUnit unit,
-                                    const char* timezone) override {
+  void ValidateIngestedTimestampData(struct ArrowArrayView* values,
+                                     enum ArrowTimeUnit unit,
+                                     const char* timezone) override {
     std::vector<std::optional<int64_t>> expected;
     switch (unit) {
       case NANOARROW_TIME_UNIT_SECOND:

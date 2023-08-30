@@ -15,15 +15,4 @@
 # specific language governing permissions and limitations
 # under the License.
 
-breathe
-doxygen
-furo
-make
-numpydoc
-pytest
-sphinx>=5.0
-sphinx-autobuild
-sphinx-copybutton
-sphinx-design
-sphinxcontrib-mermaid
-r-pkgdown
+safe-math.h

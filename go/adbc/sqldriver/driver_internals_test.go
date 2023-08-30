@@ -27,6 +27,8 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v13/arrow"
 	"github.com/apache/arrow/go/v13/arrow/array"
+	"github.com/apache/arrow/go/v13/arrow/decimal128"
+	"github.com/apache/arrow/go/v13/arrow/decimal256"
 	"github.com/apache/arrow/go/v13/arrow/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -110,6 +112,14 @@ func TestColumnTypeDatabaseTypeName(t *testing.T) {
 		{
 			typ:      &arrow.DurationType{Unit: arrow.Nanosecond},
 			typeName: "duration[ns]",
+		},
+		{
+			typ:      &arrow.Decimal128Type{Precision: 9, Scale: 2},
+			typeName: "decimal(9, 2)",
+		},
+		{
+			typ:      &arrow.Decimal256Type{Precision: 28, Scale: 4},
+			typeName: "decimal256(28, 4)",
 		},
 	}
 
@@ -226,6 +236,22 @@ func TestNextRowTypes(t *testing.T) {
 				b.(*array.Time64Builder).Append(time64)
 			},
 			golangValue: time.Date(1970, time.January, 1, testTime.Hour(), testTime.Minute(), testTime.Second(), testTime.Nanosecond(), time.UTC),
+		},
+		{
+			arrowType: &arrow.Decimal128Type{Precision: 9, Scale: 2},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				b.(*array.Decimal128Builder).Append(decimal128.FromU64(10))
+			},
+			golangValue: decimal128.FromU64(10),
+		},
+		{
+			arrowType: &arrow.Decimal256Type{Precision: 10, Scale: 5},
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				b.(*array.Decimal256Builder).Append(decimal256.FromU64(10))
+			},
+			golangValue: decimal256.FromU64(10),
 		},
 	}
 

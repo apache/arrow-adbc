@@ -381,11 +381,13 @@ void CompareArray(struct ArrowArrayView* array,
         ASSERT_EQ(*v, str);
       } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
-        const auto buf = array->buffer_views[1].data.as_uint8;
-        const auto record = buf + i * 16;
-        ASSERT_EQ(memcmp(record, &(*v)->months, 4), 0);
-        ASSERT_EQ(memcmp(record + 4, &(*v)->days, 4), 0);
-        ASSERT_EQ(memcmp(record + 8, &(*v)->ns, 8), 0);
+        struct ArrowInterval interval;
+        ArrowIntervalInit(&interval, ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+        ArrowArrayViewGetIntervalUnsafe(array, i, &interval);
+
+        ASSERT_EQ(interval.months, (*v)->months);
+        ASSERT_EQ(interval.days, (*v)->days);
+        ASSERT_EQ(interval.ns, (*v)->ns);
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
       }

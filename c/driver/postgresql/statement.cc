@@ -18,6 +18,7 @@
 #include "statement.h"
 
 #include <array>
+#include <cassert>
 #include <cerrno>
 #include <cinttypes>
 #include <cstring>
@@ -35,6 +36,7 @@
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
+#include "vendor/portable-snippets/safe-math.h"
 
 namespace adbcpq {
 
@@ -219,6 +221,10 @@ struct BindStream {
           type_id = PostgresTypeId::kBytea;
           param_lengths[i] = 0;
           break;
+        case ArrowType::NANOARROW_TYPE_DATE32:
+          type_id = PostgresTypeId::kDate;
+          param_lengths[i] = 4;
+          break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
@@ -389,35 +395,37 @@ struct BindStream {
               param_values[col] = const_cast<char*>(view.data.as_char);
               break;
             }
+            case ArrowType::NANOARROW_TYPE_DATE32: {
+              // 2000-01-01
+              constexpr int32_t kPostgresDateEpoch = 10957;
+              const int32_t raw_value =
+                  array_view->children[col]->buffer_views[1].data.as_int32[row];
+              if (raw_value < INT32_MIN + kPostgresDateEpoch) {
+                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
+                         "('", bind_schema->children[col]->name, "') Row #", row + 1,
+                         "has value which exceeds postgres date limits");
+                return ADBC_STATUS_INVALID_ARGUMENT;
+              }
+
+              const uint32_t value = ToNetworkInt32(raw_value - kPostgresDateEpoch);
+              std::memcpy(param_values[col], &value, sizeof(int32_t));
+              break;
+            }
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
               // 2000-01-01 00:00:00.000000 in microseconds
               constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
-              constexpr int64_t kSecOverflowLimit = 9223372036854;
-              constexpr int64_t kmSecOverflowLimit = 9223372036854775;
+              psnip_safe_bool overflow_safe = true;
 
               auto unit = bind_schema_fields[col].time_unit;
+
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-                  if (abs(val) > kSecOverflowLimit) {
-                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
-                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
-                             row + 1,
-                             "has value which exceeds postgres timestamp limits");
-                    return ADBC_STATUS_INVALID_ARGUMENT;
-                  }
-                  val *= 1000000;
+                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000000);
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
-                  if (abs(val) > kmSecOverflowLimit) {
-                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
-                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
-                             row + 1,
-                             "has value which exceeds postgres timestamp limits");
-                    return ADBC_STATUS_INVALID_ARGUMENT;
-                  }
-                  val *= 1000;
+                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000);
                   break;
                 case NANOARROW_TIME_UNIT_MICRO:
                   break;
@@ -426,20 +434,26 @@ struct BindStream {
                   break;
               }
 
+              if (!overflow_safe) {
+                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
+                         " (' ", bind_schema->children[col]->name, " ') Row # ", row + 1,
+                         " has value which exceeds postgres timestamp limits");
+
+                return ADBC_STATUS_INVALID_ARGUMENT;
+              }
+
               const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
               std::memcpy(param_values[col], &value, sizeof(int64_t));
               break;
             }
             case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
-              const auto buf =
-                  array_view->children[col]->buffer_views[1].data.as_uint8 + row * 16;
-              const int32_t raw_months = *(int32_t*)buf;
-              const int32_t raw_days = *(int32_t*)(buf + 4);
-              const int64_t raw_ns = *(int64_t*)(buf + 8);
+              struct ArrowInterval interval;
+              ArrowIntervalInit(&interval, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+              ArrowArrayViewGetIntervalUnsafe(array_view->children[col], row, &interval);
 
-              const uint32_t months = ToNetworkInt32(raw_months);
-              const uint32_t days = ToNetworkInt32(raw_days);
-              const uint64_t ms = ToNetworkInt64(raw_ns / 1000);
+              const uint32_t months = ToNetworkInt32(interval.months);
+              const uint32_t days = ToNetworkInt32(interval.days);
+              const uint64_t ms = ToNetworkInt64(interval.ns / 1000);
 
               std::memcpy(param_values[col], &ms, sizeof(uint64_t));
               std::memcpy(param_values[col] + sizeof(uint64_t), &days, sizeof(uint32_t));
@@ -498,6 +512,8 @@ struct BindStream {
 }  // namespace
 
 int TupleReader::GetSchema(struct ArrowSchema* out) {
+  assert(copy_reader_ != nullptr);
+
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
     StringBuilderAppend(&error_builder_,
@@ -512,8 +528,6 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
 }
 
 int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
-  ResetQuery();
-
   // Fetch + parse the header
   int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
   data_.size_bytes = get_copy_res;
@@ -588,27 +602,8 @@ int TupleReader::BuildOutput(struct ArrowArray* out, struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
-void TupleReader::ResetQuery() {
-  // Clear result
-  if (result_) {
-    PQclear(result_);
-    result_ = nullptr;
-  }
-
-  // Reset result buffer
-  if (pgbuf_ != nullptr) {
-    PQfreemem(pgbuf_);
-    pgbuf_ = nullptr;
-  }
-
-  // Clear the error builder
-  error_builder_.size = 0;
-
-  row_id_ = -1;
-}
-
 int TupleReader::GetNext(struct ArrowArray* out) {
-  if (!copy_reader_) {
+  if (is_finished_) {
     out->release = nullptr;
     return 0;
   }
@@ -636,14 +631,13 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     return na_res;
   }
 
+  is_finished_ = true;
+
   // Finish the result properly and return the last result. Note that BuildOutput() may
   // set tmp.release = nullptr if there were zero rows in the copy reader (can
   // occur in an overflow scenario).
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
-
-  // Clear the copy reader to mark this reader as finished
-  copy_reader_.reset();
 
   // Check the server-side response
   result_ = PQgetResult(conn_);
@@ -659,7 +653,6 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     return EIO;
   }
 
-  ResetQuery();
   ArrowArrayMove(&tmp, out);
   return NANOARROW_OK;
 }
@@ -676,6 +669,13 @@ void TupleReader::Release() {
     PQfreemem(pgbuf_);
     pgbuf_ = nullptr;
   }
+
+  if (copy_reader_) {
+    copy_reader_.reset();
+  }
+
+  is_finished_ = false;
+  row_id_ = -1;
 }
 
 void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
@@ -800,6 +800,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         break;
       case ArrowType::NANOARROW_TYPE_BINARY:
         create += " BYTEA";
+        break;
+      case ArrowType::NANOARROW_TYPE_DATE32:
+        create += " DATE";
         break;
       case ArrowType::NANOARROW_TYPE_TIMESTAMP:
         if (strcmp("", source_schema_fields[i].timezone)) {
