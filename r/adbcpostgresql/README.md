@@ -27,6 +27,13 @@ interface to the Arrow Database Connectivity (ADBC) PostgreSQL driver.
 
 ## Installation
 
+You can install the released version of adbcpostgresql from
+[CRAN](https://cran.r-project.org/) with:
+
+``` r
+install.packages("adbcpostgresql")
+```
+
 You can install the development version of adbcpostgresql from
 [GitHub](https://github.com/) with:
 

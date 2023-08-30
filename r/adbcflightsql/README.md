@@ -27,6 +27,13 @@ interface to the Arrow Database Connectivity (ADBC) FlightSQL driver.
 
 ## Installation
 
+You can install the released version of adbcflightsql from
+[CRAN](https://cran.r-project.org/) with:
+
+``` r
+install.packages("adbcflightsql")
+```
+
 You can install the development version of adbcflightsql from
 [GitHub](https://github.com/) with:
 
