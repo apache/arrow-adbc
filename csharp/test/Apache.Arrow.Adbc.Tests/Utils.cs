@@ -21,6 +21,7 @@ using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Text.Json;
+using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Ipc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;

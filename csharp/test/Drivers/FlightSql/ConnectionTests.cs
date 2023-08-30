@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
 
             QueryResult queryResult = mockFlightSqlStatement.Object.ExecuteQuery();
 
-            Adbc.Tests.ConnectionTests.CanDriverConnect(queryResult, 50);
+            Adbc.Tests.ConnectionTests.CanDriverExecuteQuery(queryResult, 50);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         /// parse the results.
         /// </summary>
         [TestMethod]
-        public void CanDriverConnect()
+        public void CanDriverExecuteQuery()
         {
             FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.GetTestConfiguration<FlightSqlTestConfiguration>("flightsqlconfig.json");
 
@@ -84,7 +84,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
             statement.SqlQuery = flightSqlTestConfiguration.Query;
             QueryResult queryResult = statement.ExecuteQuery();
 
-            Adbc.Tests.ConnectionTests.CanDriverConnect(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
+            Adbc.Tests.ConnectionTests.CanDriverExecuteQuery(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
         }
 
         /// <summary>

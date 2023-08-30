@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="expectedNumberOfResults">
         /// The number of records.
         /// </param>
-        public static void CanDriverConnect(QueryResult queryResult, long expectedNumberOfResults)
+        public static void CanDriverExecuteQuery(QueryResult queryResult, long expectedNumberOfResults)
         {
             long count = 0;
 

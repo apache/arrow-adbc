@@ -1,0 +1,12 @@
+{
+    "driverPath": "",
+    "driverEntryPoint": "",
+    "account": "",
+    "user":  "",
+    "password":  "",
+    "warehouse": "",
+    "authenticationType":"",
+    "authenticationTokenPath": "",
+    "query": "",
+    "expectedResults": 0
+}

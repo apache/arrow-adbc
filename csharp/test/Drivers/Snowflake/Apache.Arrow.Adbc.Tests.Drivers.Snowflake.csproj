@@ -18,15 +18,29 @@
     <ProjectReference Include="..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
     <ProjectReference Include="..\..\..\src\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj" />
     <ProjectReference Include="..\..\..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
-    <ProjectReference Include="..\..\..\src\Drivers\FlightSql\Apache.Arrow.Adbc.Drivers.FlightSql.csproj" />
     <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Resources\flightsql.arrow">
+    <None Update="flightsql.arrow">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Resources\flightsqlconfig.json">
+    <None Update="flightsqlconfig.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\snowflake.arrow">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\snowflakeclientconfig.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\SnowflakeData.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\snowflakemetadataconfig.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\snowflakeconfig.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
