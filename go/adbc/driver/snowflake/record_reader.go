@@ -20,6 +20,7 @@ package snowflake
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -46,6 +47,9 @@ type colTransformer = func(context.Context, arrow.Array) (arrow.Array, error)
 
 func getRecTransformer(sc *arrow.Schema, tr []colTransformer) recordTransformer {
 	return func(ctx context.Context, r arrow.Record) (arrow.Record, error) {
+
+		//fmt.Println(int(r.NumCols()))
+
 		if len(tr) != int(r.NumCols()) {
 			return nil, adbc.Error{
 				Msg:  "mismatch in record cols and transformers",
@@ -58,6 +62,9 @@ func getRecTransformer(sc *arrow.Schema, tr []colTransformer) recordTransformer 
 			cols = make([]arrow.Array, r.NumCols())
 		)
 		for i, col := range r.Columns() {
+
+			//fmt.Println(col)
+
 			if cols[i], err = tr[i](ctx, col); err != nil {
 				return nil, errToAdbcErr(adbc.StatusInternal, err)
 			}
@@ -73,6 +80,9 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 
 	fields := make([]arrow.Field, len(sc.Fields()))
 	transformers := make([]func(context.Context, arrow.Array) (arrow.Array, error), len(sc.Fields()))
+
+	fmt.Println("transformers = " + strconv.Itoa(len(transformers)))
+
 	for i, f := range sc.Fields() {
 		srcMeta := types[i]
 
@@ -80,6 +90,9 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 		case "FIXED":
 			switch f.Type.ID() {
 			case arrow.DECIMAL, arrow.DECIMAL256:
+
+				fmt.Println("FIXED A=" + f.Type.Name())
+
 				if srcMeta.Scale == 0 {
 					f.Type = arrow.PrimitiveTypes.Int64
 				} else {
@@ -91,6 +104,9 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 				}
 			default:
 				if srcMeta.Scale != 0 {
+
+					fmt.Println("FIXED B=" + f.Type.Name())
+
 					f.Type = arrow.PrimitiveTypes.Float64
 					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 						result, err := compute.Divide(ctx, compute.ArithmeticOptions{NoCheckOverflow: true},
@@ -103,16 +119,14 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 						return result.(*compute.ArrayDatum).MakeArray(), nil
 					}
 				} else {
+
+					fmt.Println("FIXED C=" + f.Type.Name())
+
 					f.Type = arrow.PrimitiveTypes.Int64
 					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 						return compute.CastArray(ctx, a, compute.SafeCastOptions(arrow.PrimitiveTypes.Int64))
 					}
 				}
-			}
-		case "TIME":
-			f.Type = arrow.FixedWidthTypes.Time64ns
-			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-				return compute.CastArray(ctx, a, compute.SafeCastOptions(f.Type))
 			}
 		case "TIMESTAMP_NTZ":
 			dt := &arrow.TimestampType{Unit: arrow.TimeUnit(srcMeta.Scale / 3)}
@@ -147,6 +161,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 		case "TIMESTAMP_LTZ":
 			dt := &arrow.TimestampType{Unit: arrow.TimeUnit(srcMeta.Scale) / 3, TimeZone: loc.String()}
 			f.Type = dt
+			//fmt.Println("TIMESTAMP_LTZ=" + f.Type.Name())
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 				pool := compute.GetAllocator(ctx)
 				tb := array.NewTimestampBuilder(pool, dt)
@@ -232,6 +247,12 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 					}
 				}
 				return tb.NewArray(), nil
+			}
+		case "TIME":
+			f.Type = arrow.FixedWidthTypes.Time64ns
+			fmt.Println("TIME=" + f.Type.Name())
+			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+				return compute.CastArray(ctx, a, compute.SafeCastOptions(f.Type))
 			}
 		default:
 			transformers[i] = identCol

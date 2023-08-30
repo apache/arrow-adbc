@@ -350,8 +350,10 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 var loc = time.Now().Location()
 
-func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
+func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength sql.NullInt32, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
 	ret.Name, ret.Nullable = name, isnullable
+
+	fmt.Println("dataType=" + dataType)
 
 	switch dataType {
 	case "NUMBER":
@@ -436,11 +438,11 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 	}
 
 	if charMaxLength.Valid {
-		md["CHARACTER_MAXIMUM_LENGTH"] = strconv.Itoa(int(charMaxLength.Int16))
+		md["CHARACTER_MAXIMUM_LENGTH"] = strconv.Itoa(int(charMaxLength.Int32))
 	}
 
 	if charOctetLength.Valid {
-		md["XDBC_CHAR_OCTET_LENGTH"] = strconv.Itoa(int(charOctetLength.Int16))
+		md["XDBC_CHAR_OCTET_LENGTH"] = strconv.Itoa(int(charOctetLength.Int32))
 	}
 
 	if datetimePrec.Valid {
@@ -631,11 +633,12 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		defer rows.Close()
 
 		var (
-			colName, dataType                                                                         string
-			identGen, identIncrement, comment                                                         sql.NullString
-			ordinalPos                                                                                int
-			numericPrec, numericPrecRadix, numericScale, charMaxLength, charOctetLength, datetimePrec sql.NullInt16
-			isNullable, isIdent                                                                       bool
+			colName, dataType                                         string
+			identGen, identIncrement, comment                         sql.NullString
+			ordinalPos                                                int
+			numericPrec, numericPrecRadix, numericScale, datetimePrec sql.NullInt16
+			isNullable, isIdent                                       bool
+			charMaxLength, charOctetLength                            sql.NullInt32
 
 			prevKey      internal.CatalogAndSchema
 			curTableInfo *internal.TableInfo
