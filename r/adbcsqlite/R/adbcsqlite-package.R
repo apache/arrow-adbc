@@ -16,7 +16,7 @@
 # under the License.
 
 #' @keywords internal
-#' @aliases NULL
+#' @aliases adbcsqlite-package
 "_PACKAGE"
 
 ## usethis namespace: start

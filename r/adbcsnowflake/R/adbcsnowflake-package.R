@@ -16,7 +16,7 @@
 # under the License.
 
 #' @keywords internal
-#' @aliases NULL
+#' @aliases adbcsnowflake-package
 "_PACKAGE"
 
 ## usethis namespace: start
