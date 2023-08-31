@@ -17,10 +17,13 @@
 
 test_that("aync array_stream$get_next", {
   stream <- nanoarrow::basic_array_stream(list(1:5))
+  async_called <- FALSE
   queue <- adbc_array_stream_get_next_async(stream, function(array) {
+    async_called <<- TRUE
     expect_identical(nanoarrow::convert_array(array), 1:5)
   })
 
-  Sys.sleep(0.5)
+  expect_false(async_called)
   expect_identical(adbc_callback_queue_run_pending(queue), 1)
+  expect_true(async_called)
 })
