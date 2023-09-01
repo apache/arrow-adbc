@@ -460,7 +460,57 @@ it will attempt to use Username/Password authentication. The username and
 password can be provided in the URI or via the <code class="docutils literal notranslate"><span class="pre">username</span></code> and <code class="docutils literal notranslate"><span class="pre">password</span></code>
 options to the <a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
 <p>Alternately, other types of authentication can be specified and customized.
-See “Client Options” below.</p>
+See “Client Options” below for details on all the options.</p>
+<section id="sso-authentication">
+<h4>SSO Authentication<a class="headerlink" href="#sso-authentication" title="Permalink to this heading">#</a></h4>
+<p>Snowflake supports <a class="reference external" href="https://docs.snowflake.com/en/user-guide/admin-security-fed-auth-overview">single sign-on</a>.
+If your account has been configured with SSO, it can be used with the
+Snowflake driver by setting the following options when constructing the
+<a class="reference internal" href="../cpp/api/adbc.html#_CPPv412AdbcDatabase" title="AdbcDatabase"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.account</span></code>: your Snowflake account.  (For example, if
+you log in to <code class="docutils literal notranslate"><span class="pre">https://foobar.snowflakecomputing.com</span></code>, then your account
+identifier is <code class="docutils literal notranslate"><span class="pre">foobar</span></code>.)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.auth_type</span></code>: <code class="docutils literal notranslate"><span class="pre">auth_ext_browser</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">username</span></code>: your username.  (This should probably be your email,
+e.g. <code class="docutils literal notranslate"><span class="pre">jdoe&#64;example.com</span></code>.)</p></li>
+</ul>
+<p>A new browser tab or window should appear where you can continue the login.
+Once this is complete, you will have a complete ADBC database/connection
+object.  Some users have reported needing other configuration options, such as
+<code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.region</span></code> and <code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.uri.*</span></code> (see below for
+a listing).</p>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-8" name="sd-tab-set-2" type="radio">
+</input><label class="sd-tab-label" data-sync-id="python" for="sd-tab-item-8">
+Python</label><div class="sd-tab-content docutils">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">adbc_driver_snowflake.dbapi</span>
+<span class="c1"># This will open a new browser tab, and block until you log in.</span>
+<span class="n">adbc_driver_snowflake</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span>
+    <span class="s2">&quot;adbc.snowflake.sql.account&quot;</span><span class="p">:</span> <span class="s2">&quot;foobar&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;adbc.snowflake.sql.auth_type&quot;</span><span class="p">:</span> <span class="s2">&quot;auth_ext_browser&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;jdoe@example.com&quot;</span><span class="p">,</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-9" name="sd-tab-set-2" type="radio">
+</input><label class="sd-tab-label" data-sync-id="r" for="sd-tab-item-9">
+R</label><div class="sd-tab-content docutils">
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
+<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span>
+<span class="w">  </span><span class="n">adbcsnowflake</span><span class="o">::</span><span class="nf">adbcsnowflake</span><span class="p">(),</span>
+<span class="w">  </span><span class="n">adbc.snowflake.sql.account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&#39;foobar&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">adbc.snowflake.sql.auth_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&#39;auth_ext_browser&#39;</span>
+<span class="w">  </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&#39;jdoe@example.com&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># This will open a new browser tab, and block until you log in.</span>
+<span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_connection_init</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</section>
 </section>
 <section id="bulk-ingestion">
 <h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Permalink to this heading">#</a></h3>
@@ -487,7 +537,7 @@ to the snowflake database.</p>
 <p>In addition, the current database and schema for the session must be set. If
 these are not set, the <code class="docutils literal notranslate"><span class="pre">CREATE</span> <span class="pre">TEMPORARY</span> <span class="pre">STAGE</span></code> command executed by the driver
 can fail with the following error:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by=&#39;&quot;&#39;)
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span>CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by=&#39;&quot;&#39;)
 CANNOT perform CREATE STAGE. This session does not have a current schema. Call &#39;USE SCHEMA&#39; or use a qualified name.
 </pre></div>
 </div>
@@ -764,7 +814,10 @@ Snowflake provides.</p></td>
 </ul>
 </li>
 <li><a class="reference internal" href="#supported-features">Supported Features</a><ul>
-<li><a class="reference internal" href="#authentication">Authentication</a></li>
+<li><a class="reference internal" href="#authentication">Authentication</a><ul>
+<li><a class="reference internal" href="#sso-authentication">SSO Authentication</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
 <li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
 <li><a class="reference internal" href="#performance">Performance</a></li>
