@@ -2,6 +2,8 @@
 % Please edit documentation in R/adbcpostgresql-package.R
 \docType{package}
 \name{adbcpostgresql-package}
+\alias{adbcpostgresql-package}
+\alias{_PACKAGE}
 \title{adbcpostgresql: 'Arrow' Database Connectivity ('ADBC') 'PostgreSQL' Driver}
 \description{
 Provides a developer-facing interface to the 'Arrow' Database Connectivity ('ADBC') 'PostgreSQL' driver for the purposes of building high-level database interfaces for users. 'ADBC' \url{https://arrow.apache.org/adbc/} is an API standard for database access libraries that uses 'Arrow' for result sets and query parameters.

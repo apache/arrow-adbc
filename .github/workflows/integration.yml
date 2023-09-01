@@ -137,7 +137,7 @@ jobs:
       - name: Start SQLite server and Dremio
         shell: bash -l {0}
         run: |
-          docker-compose up -d golang-sqlite-flightsql dremio dremio-init
+          docker-compose up -d flightsql-test flightsql-sqlite-test dremio dremio-init
 
       - name: Build FlightSQL Driver
         shell: bash -l {0}
@@ -155,6 +155,7 @@ jobs:
           ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
           ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
           ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
+          ADBC_TEST_FLIGHTSQL_URI: "grpc+tcp://localhost:41414"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
@@ -174,6 +175,7 @@ jobs:
           ADBC_DREMIO_FLIGHTSQL_URI: "grpc+tcp://localhost:32010"
           ADBC_DREMIO_FLIGHTSQL_USER: "dremio"
           ADBC_DREMIO_FLIGHTSQL_PASS: "dremio123"
+          ADBC_TEST_FLIGHTSQL_URI: "grpc+tcp://localhost:41414"
         run: |
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
       - name: Stop SQLite server and Dremio

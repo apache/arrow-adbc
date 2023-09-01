@@ -19,6 +19,7 @@ CRT=-ucrt
 include Makevars.win
 
 OBJECTS = init.o \
+    error.o \
     connection.o \
     database.o \
     statement.o \

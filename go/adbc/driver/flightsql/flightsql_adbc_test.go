@@ -229,14 +229,20 @@ func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 	return err
 }
 
-func (s *FlightSQLQuirks) Alloc() memory.Allocator               { return s.mem }
-func (s *FlightSQLQuirks) BindParameter(_ int) string            { return "?" }
-func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool    { return true }
+func (s *FlightSQLQuirks) Alloc() memory.Allocator            { return s.mem }
+func (s *FlightSQLQuirks) BindParameter(_ int) string         { return "?" }
+func (s *FlightSQLQuirks) SupportsBulkIngest(string) bool     { return false }
+func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool { return true }
+func (s *FlightSQLQuirks) SupportsCurrentCatalogSchema() bool { return false }
+
+// The driver supports it, but the server we use for testing does not.
+func (s *FlightSQLQuirks) SupportsExecuteSchema() bool           { return false }
+func (s *FlightSQLQuirks) SupportsGetSetOptions() bool           { return true }
 func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
+func (s *FlightSQLQuirks) SupportsStatistics() bool              { return false }
 func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
 func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
-func (s *FlightSQLQuirks) SupportsBulkIngest() bool              { return false }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
@@ -247,12 +253,14 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 		return "(unknown or development build)"
 	case adbc.InfoDriverArrowVersion:
 		return "(unknown or development build)"
+	case adbc.InfoDriverADBCVersion:
+		return adbc.AdbcVersion1_1_0
 	case adbc.InfoVendorName:
 		return "db_name"
 	case adbc.InfoVendorVersion:
 		return "sqlite 3"
 	case adbc.InfoVendorArrowVersion:
-		return "13.0.0-SNAPSHOT"
+		return "13.0.0"
 	}
 
 	return nil
@@ -273,6 +281,7 @@ func (s *FlightSQLQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 	}
 }
 
+func (s *FlightSQLQuirks) Catalog() string  { return "" }
 func (s *FlightSQLQuirks) DBSchema() string { return "" }
 
 func TestADBCFlightSQL(t *testing.T) {

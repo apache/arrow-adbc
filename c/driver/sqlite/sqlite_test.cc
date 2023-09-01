@@ -92,7 +92,27 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  bool supports_bulk_ingest(const char* mode) const override {
+    return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
+           std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;
+  }
   bool supports_concurrent_statements() const override { return true; }
+  bool supports_get_option() const override { return false; }
+  std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
+      uint32_t info_code) const override {
+    switch (info_code) {
+      case ADBC_INFO_DRIVER_NAME:
+        return "ADBC SQLite Driver";
+      case ADBC_INFO_DRIVER_VERSION:
+        return "(unknown)";
+      case ADBC_INFO_VENDOR_NAME:
+        return "SQLite";
+      case ADBC_INFO_VENDOR_VERSION:
+        return "3.";
+      default:
+        return std::nullopt;
+    }
+  }
 
   std::string catalog() const override { return "main"; }
   std::string db_schema() const override { return ""; }
@@ -232,6 +252,37 @@ class SqliteStatementTest : public ::testing::Test,
   SqliteQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
+
+TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "\"test-table\"", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  std::string table = "test-table";
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(
+      adbc_validation::MakeSchema(&schema.value, {{"index", NANOARROW_TYPE_INT64},
+                                                  {"create", NANOARROW_TYPE_STRING}}),
+      adbc_validation::IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, std::string>(
+                  &schema.value, &array.value, &na_error, {42, -42, std::nullopt},
+                  {"foo", std::nullopt, ""})),
+              adbc_validation::IsOkErrno(&na_error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     table.c_str(), &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_EQ(3, rows_affected);
+}
 
 // -- SQLite Specific Tests ------------------------------------------
 

@@ -111,7 +111,8 @@ static AdbcStatusCode LogConnectionCommit(struct AdbcConnection* connection,
 }
 
 static AdbcStatusCode LogConnectionGetInfo(struct AdbcConnection* connection,
-                                           uint32_t* info_codes, size_t info_codes_length,
+                                           const uint32_t* info_codes,
+                                           size_t info_codes_length,
                                            struct ArrowArrayStream* stream,
                                            struct AdbcError* error) {
   Rprintf("LogConnectionGetInfo()\n");

@@ -16,7 +16,7 @@
 # under the License.
 
 #' @keywords internal
-#' @aliases NULL
+#' @aliases adbcpostgresql-package
 "_PACKAGE"
 
 ## usethis namespace: start

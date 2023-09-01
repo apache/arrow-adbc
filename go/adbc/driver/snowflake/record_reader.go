@@ -110,9 +110,15 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 				}
 			}
 		case "TIME":
-			f.Type = arrow.FixedWidthTypes.Time64ns
+			var dt arrow.DataType
+			if srcMeta.Scale < 6 {
+				dt = &arrow.Time32Type{Unit: arrow.TimeUnit(srcMeta.Scale / 3)}
+			} else {
+				dt = &arrow.Time64Type{Unit: arrow.TimeUnit(srcMeta.Scale / 3)}
+			}
+			f.Type = dt
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-				return compute.CastArray(ctx, a, compute.SafeCastOptions(f.Type))
+				return compute.CastArray(ctx, a, compute.SafeCastOptions(dt))
 			}
 		case "TIMESTAMP_NTZ":
 			dt := &arrow.TimestampType{Unit: arrow.TimeUnit(srcMeta.Scale / 3)}

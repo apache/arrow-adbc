@@ -38,10 +38,11 @@ import (
 )
 
 type SnowflakeQuirks struct {
-	dsn        string
-	mem        *memory.CheckedAllocator
-	connector  gosnowflake.Connector
-	schemaName string
+	dsn         string
+	mem         *memory.CheckedAllocator
+	connector   gosnowflake.Connector
+	catalogName string
+	schemaName  string
 }
 
 func (s *SnowflakeQuirks) SetupDriver(t *testing.T) adbc.Driver {
@@ -180,12 +181,17 @@ func (s *SnowflakeQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 
 func (s *SnowflakeQuirks) Alloc() memory.Allocator               { return s.mem }
 func (s *SnowflakeQuirks) BindParameter(_ int) string            { return "?" }
+func (s *SnowflakeQuirks) SupportsBulkIngest(string) bool        { return true }
 func (s *SnowflakeQuirks) SupportsConcurrentStatements() bool    { return true }
+func (s *SnowflakeQuirks) SupportsCurrentCatalogSchema() bool    { return true }
+func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return false }
+func (s *SnowflakeQuirks) SupportsGetSetOptions() bool           { return true }
 func (s *SnowflakeQuirks) SupportsPartitionedData() bool         { return false }
+func (s *SnowflakeQuirks) SupportsStatistics() bool              { return false }
 func (s *SnowflakeQuirks) SupportsTransactions() bool            { return true }
 func (s *SnowflakeQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *SnowflakeQuirks) SupportsDynamicParameterBinding() bool { return false }
-func (s *SnowflakeQuirks) SupportsBulkIngest() bool              { return true }
+func (s *SnowflakeQuirks) Catalog() string                       { return s.catalogName }
 func (s *SnowflakeQuirks) DBSchema() string                      { return s.schemaName }
 func (s *SnowflakeQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
@@ -197,6 +203,8 @@ func (s *SnowflakeQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 		return "(unknown or development build)"
 	case adbc.InfoDriverArrowVersion:
 		return "(unknown or development build)"
+	case adbc.InfoDriverADBCVersion:
+		return adbc.AdbcVersion1_1_0
 	case adbc.InfoVendorName:
 		return "Snowflake"
 	}
@@ -225,7 +233,7 @@ func createTempSchema(uri string) string {
 	}
 	defer db.Close()
 
-	schemaName := "ADBC_TESTING_" + strings.ReplaceAll(uuid.New().String(), "-", "_")
+	schemaName := strings.ToUpper("ADBC_TESTING_" + strings.ReplaceAll(uuid.New().String(), "-", "_"))
 	_, err = db.Exec(`CREATE SCHEMA ADBC_TESTING.` + schemaName)
 	if err != nil {
 		panic(err)
@@ -249,14 +257,17 @@ func dropTempSchema(uri, schema string) {
 
 func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 	uri := os.Getenv("SNOWFLAKE_URI")
+	database := os.Getenv("SNOWFLAKE_DATABASE")
 
 	if uri == "" {
 		t.Skip("no SNOWFLAKE_URI defined, skip snowflake driver tests")
+	} else if database == "" {
+		t.Skip("no SNOWFLAKE_DATABASE defined, skip snowflake driver tests")
 	}
 
 	// avoid multiple runs clashing by operating in a fresh schema and then
 	// dropping that schema when we're done.
-	q := &SnowflakeQuirks{dsn: uri, schemaName: createTempSchema(uri)}
+	q := &SnowflakeQuirks{dsn: uri, catalogName: database, schemaName: createTempSchema(uri)}
 	defer dropTempSchema(uri, q.schemaName)
 
 	fn(q)
@@ -322,13 +333,25 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 	sc := arrow.NewSchema([]arrow.Field{{
 		Name: "col", Type: arrow.FixedWidthTypes.Timestamp_us,
 		Nullable: true,
-	}}, nil)
+	}, {
+		Name: "col2", Type: arrow.FixedWidthTypes.Time64us,
+		Nullable: true,
+	}, {
+		Name: "col3", Type: arrow.PrimitiveTypes.Int64,
+		Nullable: true,
+	},
+	}, nil)
 
 	bldr := array.NewRecordBuilder(memory.DefaultAllocator, sc)
 	defer bldr.Release()
 
 	tbldr := bldr.Field(0).(*array.TimestampBuilder)
 	tbldr.AppendValues([]arrow.Timestamp{0, 0, 42}, []bool{false, true, true})
+	tmbldr := bldr.Field(1).(*array.Time64Builder)
+	tmbldr.AppendValues([]arrow.Time64{420000, 0, 86000}, []bool{true, false, true})
+	ibldr := bldr.Field(2).(*array.Int64Builder)
+	ibldr.AppendValues([]int64{-1, 25, 0}, []bool{true, true, false})
+
 	rec := bldr.NewRecord()
 	defer rec.Release()
 

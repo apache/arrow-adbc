@@ -105,7 +105,7 @@ static AdbcStatusCode MonkeyConnectionCommit(struct AdbcConnection* connection,
 }
 
 static AdbcStatusCode MonkeyConnectionGetInfo(struct AdbcConnection* connection,
-                                              uint32_t* info_codes,
+                                              const uint32_t* info_codes,
                                               size_t info_codes_length,
                                               struct ArrowArrayStream* stream,
                                               struct AdbcError* error) {
