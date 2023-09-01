@@ -26,5 +26,23 @@ namespace Apache.Arrow.Adbc.Tests
 
         [JsonPropertyName("expectedResults")]
         public long ExpectedResultsCount { get; set; }
+
+        [JsonPropertyName("metadata")]
+        public TestMetadata Metadata { get; set; }
+    }
+
+    public class TestMetadata
+    {
+        [JsonPropertyName("database")]
+        public string Database { get; set; }
+
+        [JsonPropertyName("schema")]
+        public string Schema { get; set; }
+
+        [JsonPropertyName("table")]
+        public string Table { get; set; }
+
+        [JsonPropertyName("expectedColumnCount")]
+        public int ExpectedColumnCount { get; set; }
     }
 }

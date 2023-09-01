@@ -21,7 +21,7 @@ using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Snowflake
+namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
     /// <summary>
     /// Class for testing the Snowflake ADBC driver connection tests.
@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Snowflake
     [TestClass]
     public class ConnectionTests
     {
-        int expectedResultsCount = 993;
+        int expectedResultsCount = 1;
 
         /// <summary>
         /// Validates if the driver behaves as it should with missing
@@ -97,7 +97,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Snowflake
             List<int> expectedResults = new List<int>() { -1,1,1 };
 
             // the last query is blank
-            for (int i=0; i<queries.Length-1;i++) 
+            for (int i=0; i<queries.Length-1;i++)
             {
                 string query = queries[i];
                 AdbcStatement statement = adbcConnection.CreateStatement();

@@ -7,6 +7,12 @@
     "warehouse": "",
     "authenticationType":"",
     "authenticationTokenPath": "",
+    "metadata": {
+        "database": "",
+        "schema": "",
+        "table": "",
+        "expectedColumnCount":  0
+    }
     "query": "",
     "expectedResults": 0
 }

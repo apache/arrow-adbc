@@ -24,6 +24,12 @@ namespace Apache.Arrow.Adbc.Client
 {
     internal class SchemaConverter
     {
+        /// <summary>
+        /// Converts an Arrow <see cref="Schema"/> to a <see cref="DataTable"/> schema.
+        /// </summary>
+        /// <param name="schema">The Arrow schema</param>
+        /// <param name="adbcStatement">The AdbcStatement to use</param>
+        /// <exception cref="ArgumentNullException"></exception>
         public static DataTable ConvertArrowSchema(Schema schema, AdbcStatement adbcStatement)
         {
             if(schema == null)
@@ -56,7 +62,11 @@ namespace Apache.Arrow.Adbc.Client
 
                 row[SchemaTableColumn.DataType] = t;
 
-                if (t == typeof(decimal))
+                if
+                (
+                    (t == typeof(decimal) || t == typeof(double) || t == typeof(float)) &&
+                    f.HasMetadata
+                )
                 {
                     row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(f.Metadata["precision"]);
                     row[SchemaTableColumn.NumericScale] = Convert.ToInt32(f.Metadata["scale"]);
@@ -70,12 +80,12 @@ namespace Apache.Arrow.Adbc.Client
                 table.Rows.Add(row);
                 columnOrdinal++;
             }
-            
+
             return table;
         }
 
         /// <summary>
-        /// Convert types for Snowflake only 
+        /// Convert types for Snowflake only
         /// </summary>
         /// <param name="f"></param>
         /// <returns></returns>
@@ -94,6 +104,8 @@ namespace Apache.Arrow.Adbc.Client
 
                 case ArrowTypeId.Time32:
                 case ArrowTypeId.Time64:
+                    return typeof(long);
+
                 case ArrowTypeId.Date32:
                 case ArrowTypeId.Date64:
                     return typeof(DateTime);

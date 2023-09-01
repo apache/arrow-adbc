@@ -32,6 +32,5 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
 
         [JsonPropertyName("authorization")]
         public string Authorization { get; set; }
-
     }
 }

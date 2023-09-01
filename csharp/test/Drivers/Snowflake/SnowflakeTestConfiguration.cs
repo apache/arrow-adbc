@@ -17,7 +17,7 @@
 
 using System.Text.Json.Serialization;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Snowflake
+namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
     /// <summary>
     /// Configuration settings for working with Snowflake.

@@ -25,7 +25,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Client", "Client", "{B61116
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Client", "src\Client\Apache.Arrow.Adbc.Client.csproj", "{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.Snowflake", "test\Drivers\Snowflake\Apache.Arrow.Adbc.Tests.Drivers.Snowflake.csproj", "{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake", "test\Drivers\Snowflake\Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.csproj", "{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Snowflake
+namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
     [TestClass]
     public class TypeTests
@@ -31,91 +31,67 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Snowflake
         [TestMethod]
         public void VerifyTypesAndValues()
         {
-            List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches("snowflake.arrow");
+            List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches("resources/snowflake.arrow");
 
             RecordBatch recordBatch = recordBatches[0];
 
             Assert.AreEqual(1, recordBatches.Count);
-            Assert.AreEqual(993, recordBatch.Length);
+            Assert.AreEqual(1, recordBatch.Length);
 
             var actualArrays = recordBatch.Arrays.ToList();
 
-            List<Type> expectedArrayTypes = new List<Type>()
-            {
-                typeof(Int64Array),
-                typeof(Int64Array),
-                typeof(Int64Array),
-                typeof(Int64Array),
-                typeof(Int64Array),
+            List<ColumnNetTypeArrowTypeValue> expectedTypesAndValues = SampleData.GetSampleData();
 
-                typeof(DoubleArray),
-                typeof(DoubleArray),
-                typeof(DoubleArray),
-
-                typeof(StringArray),
-                typeof(StringArray),
-
-                typeof(TimestampArray),
-                typeof(TimestampArray),
-                typeof(TimestampArray),
-
-                typeof(StringArray),
-                typeof(StringArray),
-                typeof(StringArray),
-                typeof(StringArray),
-            };
-
+            List<Type> expectedArrayTypes = new List<Type>();
+            List<object> expectedValues = new List<object>();
             List<object> actualValues = new List<object>()
             {
                 ((Int64Array)actualArrays[0]).GetValue(0),
-                ((Int64Array)actualArrays[1]).GetValue(0),
-                ((Int64Array)actualArrays[2]).GetValue(0),
+
+                ((DoubleArray)actualArrays[1]).GetValue(0),
+                ((DoubleArray)actualArrays[2]).GetValue(0),
+
                 ((Int64Array)actualArrays[3]).GetValue(0),
                 ((Int64Array)actualArrays[4]).GetValue(0),
+                ((Int64Array)actualArrays[5]).GetValue(0),
+                ((Int64Array)actualArrays[6]).GetValue(0),
+                ((Int64Array)actualArrays[7]).GetValue(0),
+                ((Int64Array)actualArrays[8]).GetValue(0),
 
-                ((DoubleArray)actualArrays[5]).GetValue(0),
-                ((DoubleArray)actualArrays[6]).GetValue(0),
-                ((DoubleArray)actualArrays[7]).GetValue(0),
+                ((DoubleArray)actualArrays[9]).GetValue(0),
+                ((DoubleArray)actualArrays[10]).GetValue(0),
+                ((DoubleArray)actualArrays[11]).GetValue(0),
+                ((DoubleArray)actualArrays[12]).GetValue(0),
+                ((DoubleArray)actualArrays[13]).GetValue(0),
+                ((DoubleArray)actualArrays[14]).GetValue(0),
 
-                ((StringArray)actualArrays[8]).GetString(0),
-                ((StringArray)actualArrays[9]).GetString(0),
-
-                ((TimestampArray)actualArrays[10]).GetTimestamp(0),
-                ((TimestampArray)actualArrays[11]).GetTimestamp(0),
-                ((TimestampArray)actualArrays[12]).GetTimestamp(0),
-
-                ((StringArray)actualArrays[13]).GetString(0),
-                ((StringArray)actualArrays[14]).GetString(0),
                 ((StringArray)actualArrays[15]).GetString(0),
-                ((StringArray)actualArrays[16]).GetString(0)
+                ((StringArray)actualArrays[16]).GetString(0),
+                ((StringArray)actualArrays[17]).GetString(0),
+                ((StringArray)actualArrays[18]).GetString(0),
+                ((StringArray)actualArrays[19]).GetString(0),
 
+                ((BinaryArray)actualArrays[20]).GetBytes(0).ToArray(),
+                ((BinaryArray)actualArrays[21]).GetBytes(0).ToArray(),
+
+                ((BooleanArray)actualArrays[22]).GetValue(0),
+
+                ((Date32Array)actualArrays[23]).GetDateTime(0),
+
+                ((TimestampArray)actualArrays[24]).GetTimestamp(0),
+                ((TimestampArray)actualArrays[25]).GetTimestamp(0),
+                ((TimestampArray)actualArrays[26]).GetTimestamp(0),
+                ((TimestampArray)actualArrays[27]).GetTimestamp(0),
+                ((TimestampArray)actualArrays[28]).GetTimestamp(0),
+
+                ((Time64Array)actualArrays[29]).GetValue(0)
             };
 
-            List<object> expectedValues = new List<object>()
+            foreach(ColumnNetTypeArrowTypeValue ctv in expectedTypesAndValues)
             {
-                1867361L,
-                167019L,
-                9536L,
-                6L,
-                40L,
-
-                43440.4d,
-                0d,
-                0.06d,
-
-                "A",
-                "F",
-
-                new DateTimeOffset(628845984000000000, TimeSpan.Zero),
-                new DateTimeOffset(628819200000000000, TimeSpan.Zero),
-                new DateTimeOffset(628847712000000000, TimeSpan.Zero),
-
-                "TAKE BACK RETURN",
-                "TRUCK",
-                ". furiously bold depende",
-                null
-
-            };
+                expectedArrayTypes.Add(ctv.ExpectedArrowArrayType);
+                expectedValues.Add(ctv.ExpectedValue);
+            }
 
             Adbc.Tests.TypeTests.VerifyTypesAndValues(actualArrays, expectedArrayTypes, actualValues, expectedValues);
         }

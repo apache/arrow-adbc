@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -66,7 +67,17 @@ namespace Apache.Arrow.Adbc.Tests
                 }
                 else
                 {
-                    Assert.IsTrue(actualValue.Equals(expectedValue), $"{actualValue} != {expectedValue} at position {i}");
+                    if (actualValue.GetType() == typeof(byte[]))
+                    {
+                        byte[] actualBytes = (byte[])actualValue;
+                        byte[] expectedBytes = (byte[])expectedValue;
+
+                        Assert.IsTrue(actualBytes.SequenceEqual(expectedBytes), $"{actualValue} != {expectedValue} at position {i}");
+                    }
+                    else
+                    {
+                        Assert.IsTrue(actualValue.Equals(expectedValue), $"{actualValue} != {expectedValue} at position {i}");
+                    }
                 }
             }
         }
