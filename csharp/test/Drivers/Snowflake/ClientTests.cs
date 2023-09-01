@@ -227,7 +227,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 Assert.AreEqual(ctv.ExpectedNetType, value.GetType(), $"Expected type does not match actual type for {ctv.Name}");
 
-                Assert.AreEqual(ctv.ExpectedValue, value, $"Expected value does not match actual value for {ctv.Name}");
+                if (value.GetType() == typeof(byte[]))
+                {
+                    byte[] actualBytes = (byte[])value;
+                    byte[] expectedBytes = (byte[])ctv.ExpectedValue;
+
+                    Assert.IsTrue(actualBytes.SequenceEqual(expectedBytes), $"byte[] values do not match expected values for {ctv.Name}");
+                }
+                else
+                {
+                    Assert.AreEqual(ctv.ExpectedValue, value, $"Expected value does not match actual value for {ctv.Name}");
+                }
             }
             else
             {

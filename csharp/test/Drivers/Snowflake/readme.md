@@ -26,4 +26,4 @@ This project contains a SQL script to generate Snowflake data in the `resources/
 
 The tests included assume this script has been run.
 
-Alternative, the `resources/snowflake.arrow` data has also been included. This is a sample record batch that was saved from a test Snowflake instance and matches the first row that is present in the SQL script.
+Alternatively, the `resources/snowflake.arrow` data has also been included. This is a sample record batch that was saved from a test Snowflake instance and matches the first row that is present in the SQL script.

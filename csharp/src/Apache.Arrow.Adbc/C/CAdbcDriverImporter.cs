@@ -353,7 +353,7 @@ namespace Apache.Arrow.Adbc.C
                     {
                         // the value may be <decimal.min or >decimal.max
                         // then Arrow throws an exception
-                        // no good way to check prior to 
+                        // no good way to check prior to
                         return ((Decimal128Array)arrowArray).GetValue(index);
                     }
                     catch (OverflowException oex)
@@ -441,10 +441,16 @@ namespace Apache.Arrow.Adbc.C
                 {
                     return ((UInt64Array)arrowArray).GetValue(index);
                 }
+                else if (arrowArray is BinaryArray)
+                {
+                    ReadOnlySpan<byte> bytes = ((BinaryArray)arrowArray).GetBytes(index);
+
+                    if (bytes != null)
+                        return bytes.ToArray();
+                }
 
                 // not covered:
                 // -- struct array
-                // -- binary array
                 // -- dictionary array
                 // -- fixed size binary
                 // -- list array
