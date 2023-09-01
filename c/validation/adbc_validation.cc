@@ -430,6 +430,19 @@ void ConnectionTest::TestMetadataGetTableSchema() {
                                     {"strings", NANOARROW_TYPE_STRING, NULLABLE}}));
 }
 
+void ConnectionTest::TestMetadataGetTableSchemaNotFound() {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "thistabledoesnotexist", &error),
+              IsOkStatus(&error));
+
+  Handle<ArrowSchema> schema;
+  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                           /*db_schema=*/nullptr, "thistabledoesnotexist",
+                                           &schema.value, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+}
+
 void ConnectionTest::TestMetadataGetTableTypes() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));

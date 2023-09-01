@@ -1312,7 +1312,13 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   StringBuilderReset(&query);
 
   RAISE_ADBC(result_helper.Prepare());
-  RAISE_ADBC(result_helper.Execute());
+  auto result = result_helper.Execute();
+  if (result != ADBC_STATUS_OK) {
+    if (std::string(error->sqlstate, 5) == "42P01") {
+      return ADBC_STATUS_NOT_FOUND;
+    }
+    return result;
+  }
 
   auto uschema = nanoarrow::UniqueSchema();
   ArrowSchemaInit(uschema.get());
