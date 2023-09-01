@@ -165,7 +165,60 @@ password can be provided in the URI or via the ``username`` and ``password``
 options to the :cpp:class:`AdbcDatabase`.
 
 Alternately, other types of authentication can be specified and customized.
-See "Client Options" below.
+See "Client Options" below for details on all the options.
+
+SSO Authentication
+~~~~~~~~~~~~~~~~~~
+
+Snowflake supports `single sign-on
+<https://docs.snowflake.com/en/user-guide/admin-security-fed-auth-overview>`_.
+If your account has been configured with SSO, it can be used with the
+Snowflake driver by setting the following options when constructing the
+:cpp:class:`AdbcDatabase`:
+
+- ``adbc.snowflake.sql.account``: your Snowflake account.  (For example, if
+  you log in to ``https://foobar.snowflakecomputing.com``, then your account
+  identifier is ``foobar``.)
+- ``adbc.snowflake.sql.auth_type``: ``auth_ext_browser``.
+- ``username``: your username.  (This should probably be your email,
+  e.g. ``jdoe@example.com``.)
+
+A new browser tab or window should appear where you can continue the login.
+Once this is complete, you will have a complete ADBC database/connection
+object.  Some users have reported needing other configuration options, such as
+``adbc.snowflake.sql.region`` and ``adbc.snowflake.sql.uri.*`` (see below for
+a listing).
+
+.. tab-set::
+
+   .. tab-item:: Python
+      :sync: python
+
+      .. code-block:: python
+
+         import adbc_driver_snowflake.dbapi
+         # This will open a new browser tab, and block until you log in.
+         adbc_driver_snowflake.dbapi.connect(db_kwargs={
+             "adbc.snowflake.sql.account": "foobar",
+             "adbc.snowflake.sql.auth_type": "auth_ext_browser",
+             "username": "jdoe@example.com",
+         })
+
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: r
+
+         library(adbcdrivermanager)
+         db <- adbc_database_init(
+           adbcsnowflake::adbcsnowflake(),
+           adbc.snowflake.sql.account = 'foobar',
+           adbc.snowflake.sql.auth_type = 'auth_ext_browser'
+           username = 'jdoe@example.com',
+         )
+         # This will open a new browser tab, and block until you log in.
+         con <- adbc_connection_init(db)
+
 
 Bulk Ingestion
 --------------
@@ -198,7 +251,7 @@ In addition, the current database and schema for the session must be set. If
 these are not set, the ``CREATE TEMPORARY STAGE`` command executed by the driver
 can fail with the following error:
 
-.. code-block::
+.. code-block:: sql
 
    CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by='"')
    CANNOT perform CREATE STAGE. This session does not have a current schema. Call 'USE SCHEMA' or use a qualified name.
