@@ -744,6 +744,10 @@ class PqGetObjectsHelper {
   struct ArrowArray* fk_column_name_col_;
 };
 
+// A notice processor that does nothing with notices. In the future we can log
+// these, but this suppresses the default of printing to stderr.
+void SilentNoticeProcessor(void* /*arg*/, const char* /*message*/) {}
+
 }  // namespace
 
 AdbcStatusCode PostgresConnection::Cancel(struct AdbcError* error) {
@@ -1398,12 +1402,17 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
   database_ =
       *reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
   type_resolver_ = database_->type_resolver();
+
   RAISE_ADBC(database_->Connect(&conn_, error));
+
   cancel_ = PQgetCancel(conn_);
   if (!cancel_) {
     SetError(error, "[libpq] Could not initialize PGcancel");
     return ADBC_STATUS_UNKNOWN;
   }
+
+  std::ignore = PQsetNoticeProcessor(conn_, SilentNoticeProcessor, nullptr);
+
   return ADBC_STATUS_OK;
 }
 
