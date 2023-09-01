@@ -208,7 +208,7 @@ a listing).
       :sync: r
 
       .. code-block:: r
-
+         library(adbcdrivermanager)
          db <- adbc_database_init(
            adbcsnowflake::adbcsnowflake(),
            adbc.snowflake.sql.account = 'foobar',
