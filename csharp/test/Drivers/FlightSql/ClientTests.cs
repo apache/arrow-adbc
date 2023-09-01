@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         [TestMethod]
         public void CanFlightSqlConnectUsingClient()
         {
-            FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.GetTestConfiguration<FlightSqlTestConfiguration>("flightsqlconfig.json");
+            FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.GetTestConfiguration<FlightSqlTestConfiguration>("resources/flightsqlconfig.json");
 
             Dictionary<string, string> parameters = new Dictionary<string, string>
             {

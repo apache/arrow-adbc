@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         [TestMethod]
         public void VerifyTypesAndValues()
         {
-            List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches("flightsql.arrow");
+            List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches("resources/flightsql.arrow");
 
             RecordBatch recordBatch = recordBatches[0];
 

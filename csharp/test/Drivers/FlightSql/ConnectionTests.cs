@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         public void CanMockDriverConnect()
         {
             Mock<IAdbcStatement> mockFlightSqlStatement = Utils.GetMockStatement(
-                "flightsql.arrow",
+                "resources/flightsql.arrow",
                 expectedResultsCount
             );
 
@@ -61,7 +61,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         [TestMethod]
         public void CanDriverExecuteQuery()
         {
-            FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.GetTestConfiguration<FlightSqlTestConfiguration>("flightsqlconfig.json");
+            FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.GetTestConfiguration<FlightSqlTestConfiguration>("resources/flightsqlconfig.json");
 
             Dictionary<string, string> parameters = new Dictionary<string, string>
             {
@@ -94,7 +94,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         public void VerifyBadQueryGeneratesError()
         {
             Mock<IAdbcStatement> mockFlightSqlStatement = Utils.GetMockStatement(
-                "flightsql.arrow",
+                "resources/flightsql.arrow",
                 expectedResultsCount
             );
 
