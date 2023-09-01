@@ -14,12 +14,12 @@ adbc_connection_get_info(connection, info_codes)
 
 adbc_connection_get_objects(
   connection,
-  depth,
-  catalog,
-  db_schema,
-  table_name,
-  table_type,
-  column_name
+  depth = 0L,
+  catalog = NULL,
+  db_schema = NULL,
+  table_name = NULL,
+  table_type = NULL,
+  column_name = NULL
 )
 
 adbc_connection_get_table_schema(connection, catalog, db_schema, table_name)
