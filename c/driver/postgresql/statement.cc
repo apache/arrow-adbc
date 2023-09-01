@@ -651,6 +651,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
 
+  PQclear(result_);
   // Check the server-side response
   result_ = PQgetResult(conn_);
   const ExecStatusType pq_status = PQresultStatus(result_);

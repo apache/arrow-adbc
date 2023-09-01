@@ -75,6 +75,7 @@ class DuckDbConnectionTest : public ::testing::Test,
 
   void TestAutocommitDefault() { GTEST_SKIP(); }
   void TestMetadataGetTableSchema() { GTEST_SKIP(); }
+  void TestMetadataGetTableSchemaNotFound() { GTEST_SKIP(); }
   void TestMetadataGetTableTypes() { GTEST_SKIP(); }
 
  protected:

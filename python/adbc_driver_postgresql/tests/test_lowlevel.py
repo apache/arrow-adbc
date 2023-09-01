@@ -33,6 +33,11 @@ def postgres(
             yield conn
 
 
+def test_connection_get_table_schema(postgres: adbc_driver_manager.AdbcConnection):
+    with pytest.raises(adbc_driver_manager.ProgrammingError, match="NOT_FOUND"):
+        postgres.get_table_schema(None, None, "thistabledoesnotexist")
+
+
 def test_query_trivial(postgres: adbc_driver_manager.AdbcConnection) -> None:
     with adbc_driver_manager.AdbcStatement(postgres) as stmt:
         stmt.set_sql_query("SELECT 1")

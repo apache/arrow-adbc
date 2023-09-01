@@ -877,6 +877,7 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
     return ADBC_STATUS_INTERNAL;
   }
 
+  // TODO(apache/arrow-adbc#1025): escape
   if (StringBuilderAppend(&query, "%s%s", "SELECT * FROM ", table_name) != 0) {
     StringBuilderReset(&query);
     SetError(error, "[SQLite] Call to StringBuilderAppend failed");
@@ -888,8 +889,8 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
       sqlite3_prepare_v2(conn->conn, query.buffer, query.size, &stmt, /*pzTail=*/NULL);
   StringBuilderReset(&query);
   if (rc != SQLITE_OK) {
-    SetError(error, "[SQLite] Failed to prepare query: %s", sqlite3_errmsg(conn->conn));
-    return ADBC_STATUS_INTERNAL;
+    SetError(error, "[SQLite] GetTableSchema: %s", sqlite3_errmsg(conn->conn));
+    return ADBC_STATUS_NOT_FOUND;
   }
 
   struct ArrowArrayStream stream = {0};

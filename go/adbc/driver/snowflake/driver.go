@@ -163,6 +163,10 @@ func errToAdbcErr(code adbc.Status, err error) error {
 		var sqlstate [5]byte
 		copy(sqlstate[:], []byte(sferr.SQLState))
 
+		if sferr.SQLState == "42S02" {
+			code = adbc.StatusNotFound
+		}
+
 		return adbc.Error{
 			Code:       code,
 			Msg:        sferr.Error(),
