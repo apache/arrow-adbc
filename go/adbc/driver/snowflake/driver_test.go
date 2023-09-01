@@ -333,13 +333,25 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 	sc := arrow.NewSchema([]arrow.Field{{
 		Name: "col", Type: arrow.FixedWidthTypes.Timestamp_us,
 		Nullable: true,
-	}}, nil)
+	}, {
+		Name: "col2", Type: arrow.FixedWidthTypes.Time64us,
+		Nullable: true,
+	}, {
+		Name: "col3", Type: arrow.PrimitiveTypes.Int64,
+		Nullable: true,
+	},
+	}, nil)
 
 	bldr := array.NewRecordBuilder(memory.DefaultAllocator, sc)
 	defer bldr.Release()
 
 	tbldr := bldr.Field(0).(*array.TimestampBuilder)
 	tbldr.AppendValues([]arrow.Timestamp{0, 0, 42}, []bool{false, true, true})
+	tmbldr := bldr.Field(1).(*array.Time64Builder)
+	tmbldr.AppendValues([]arrow.Time64{420000, 0, 86000}, []bool{true, false, true})
+	ibldr := bldr.Field(2).(*array.Int64Builder)
+	ibldr.AppendValues([]int64{-1, 25, 0}, []bool{true, true, false})
+
 	rec := bldr.NewRecord()
 	defer rec.Release()
 
