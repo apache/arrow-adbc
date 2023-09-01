@@ -166,11 +166,15 @@
 
 #define PSNIP_SAFE_IS_LARGER(ORIG_MAX, DEST_MAX) ((DEST_MAX / ORIG_MAX) >= ORIG_MAX)
 
+// Using __int128 intrinsics causes compilation to fail with -Wpedantic
+// which is required to pass CRAN incoming checks for R packages that use this header
+#if defined(PSNIP_USE_INTRINSIC_INT128)
 #if defined(__GNUC__) && ((__GNUC__ >= 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)) && defined(__SIZEOF_INT128__) && !defined(__ibmxl__)
 #define PSNIP_SAFE_HAVE_128
 typedef __int128  psnip_safe_int128_t;
 typedef unsigned __int128 psnip_safe_uint128_t;
 #endif /* defined(__GNUC__) */
+#endif
 
 #if !defined(PSNIP_SAFE_NO_FIXED)
 #define PSNIP_SAFE_HAVE_INT8_LARGER

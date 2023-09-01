@@ -26,6 +26,7 @@
 #include <string_view>
 #include <tuple>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include <adbc.h>
@@ -33,6 +34,7 @@
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow.hpp>
 
 #include "adbc_validation_util.h"
 
@@ -101,7 +103,7 @@ AdbcStatusCode DriverQuirks::EnsureSampleTable(struct AdbcConnection* connection
 AdbcStatusCode DriverQuirks::CreateSampleTable(struct AdbcConnection* connection,
                                                const std::string& name,
                                                struct AdbcError* error) const {
-  if (!supports_bulk_ingest()) {
+  if (!supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return DoIngestSampleTable(connection, name, error);
@@ -247,6 +249,56 @@ void ConnectionTest::TestAutocommitToggle() {
 //------------------------------------------------------------
 // Tests of metadata
 
+std::optional<std::string> ConnectionGetOption(struct AdbcConnection* connection,
+                                               std::string_view option,
+                                               struct AdbcError* error) {
+  char buffer[128];
+  size_t buffer_size = sizeof(buffer);
+  AdbcStatusCode status =
+      AdbcConnectionGetOption(connection, option.data(), buffer, &buffer_size, error);
+  EXPECT_THAT(status, IsOkStatus(error));
+  if (status != ADBC_STATUS_OK) return std::nullopt;
+  EXPECT_GT(buffer_size, 0);
+  if (buffer_size == 0) return std::nullopt;
+  return std::string(buffer, buffer_size - 1);
+}
+
+void ConnectionTest::TestMetadataCurrentCatalog() {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (quirks()->supports_metadata_current_catalog()) {
+    ASSERT_THAT(
+        ConnectionGetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_CATALOG, &error),
+        ::testing::Optional(quirks()->catalog()));
+  } else {
+    char buffer[128];
+    size_t buffer_size = sizeof(buffer);
+    ASSERT_THAT(
+        AdbcConnectionGetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_CATALOG,
+                                buffer, &buffer_size, &error),
+        IsStatus(ADBC_STATUS_NOT_FOUND));
+  }
+}
+
+void ConnectionTest::TestMetadataCurrentDbSchema() {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  if (quirks()->supports_metadata_current_db_schema()) {
+    ASSERT_THAT(ConnectionGetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA,
+                                    &error),
+                ::testing::Optional(quirks()->db_schema()));
+  } else {
+    char buffer[128];
+    size_t buffer_size = sizeof(buffer);
+    ASSERT_THAT(
+        AdbcConnectionGetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA,
+                                buffer, &buffer_size, &error),
+        IsStatus(ADBC_STATUS_NOT_FOUND));
+  }
+}
+
 void ConnectionTest::TestMetadataGetInfo() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
@@ -255,83 +307,110 @@ void ConnectionTest::TestMetadataGetInfo() {
     GTEST_SKIP();
   }
 
-  StreamReader reader;
-  std::vector<uint32_t> info = {
-      ADBC_INFO_DRIVER_NAME,
-      ADBC_INFO_DRIVER_VERSION,
-      ADBC_INFO_VENDOR_NAME,
-      ADBC_INFO_VENDOR_VERSION,
-  };
+  for (uint32_t info_code : {
+           ADBC_INFO_DRIVER_NAME,
+           ADBC_INFO_DRIVER_VERSION,
+           ADBC_INFO_DRIVER_ADBC_VERSION,
+           ADBC_INFO_VENDOR_NAME,
+           ADBC_INFO_VENDOR_VERSION,
+       }) {
+    SCOPED_TRACE("info_code = " + std::to_string(info_code));
+    std::optional<SqlInfoValue> expected = quirks()->supports_get_sql_info(info_code);
 
-  ASSERT_THAT(AdbcConnectionGetInfo(&connection, info.data(), info.size(),
-                                    &reader.stream.value, &error),
-              IsOkStatus(&error));
-  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-  ASSERT_NO_FATAL_FAILURE(CompareSchema(
-      &reader.schema.value, {
-                                {"info_name", NANOARROW_TYPE_UINT32, NOT_NULL},
-                                {"info_value", NANOARROW_TYPE_DENSE_UNION, NULLABLE},
-                            }));
-  ASSERT_NO_FATAL_FAILURE(
-      CompareSchema(reader.schema->children[1],
-                    {
-                        {"string_value", NANOARROW_TYPE_STRING, NULLABLE},
-                        {"bool_value", NANOARROW_TYPE_BOOL, NULLABLE},
-                        {"int64_value", NANOARROW_TYPE_INT64, NULLABLE},
-                        {"int32_bitmask", NANOARROW_TYPE_INT32, NULLABLE},
-                        {"string_list", NANOARROW_TYPE_LIST, NULLABLE},
-                        {"int32_to_int32_list_map", NANOARROW_TYPE_MAP, NULLABLE},
-                    }));
-  ASSERT_NO_FATAL_FAILURE(CompareSchema(reader.schema->children[1]->children[4],
-                                        {
-                                            {"item", NANOARROW_TYPE_STRING, NULLABLE},
-                                        }));
-  ASSERT_NO_FATAL_FAILURE(CompareSchema(reader.schema->children[1]->children[5],
-                                        {
-                                            {"entries", NANOARROW_TYPE_STRUCT, NOT_NULL},
-                                        }));
-  ASSERT_NO_FATAL_FAILURE(
-      CompareSchema(reader.schema->children[1]->children[5]->children[0],
-                    {
-                        {"key", NANOARROW_TYPE_INT32, NOT_NULL},
-                        {"value", NANOARROW_TYPE_LIST, NULLABLE},
-                    }));
-  ASSERT_NO_FATAL_FAILURE(
-      CompareSchema(reader.schema->children[1]->children[5]->children[0]->children[1],
-                    {
-                        {"item", NANOARROW_TYPE_INT32, NULLABLE},
-                    }));
+    if (!expected.has_value()) continue;
 
-  std::vector<uint32_t> seen;
-  while (true) {
-    ASSERT_NO_FATAL_FAILURE(reader.Next());
-    if (!reader.array->release) break;
+    uint32_t info[] = {info_code};
 
-    for (int64_t row = 0; row < reader.array->length; row++) {
-      ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], row));
-      const uint32_t code =
-          reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
-      seen.push_back(code);
+    StreamReader reader;
+    ASSERT_THAT(AdbcConnectionGetInfo(&connection, info, 1, &reader.stream.value, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
 
-      switch (code) {
-        case ADBC_INFO_DRIVER_NAME:
-        case ADBC_INFO_DRIVER_VERSION:
-        case ADBC_INFO_VENDOR_NAME:
-        case ADBC_INFO_VENDOR_VERSION:
-          // UTF8
-          ASSERT_EQ(uint8_t(0),
-                    reader.array_view->children[1]->buffer_views[0].data.as_uint8[row]);
-        default:
-          // Ignored
-          break;
+    ASSERT_NO_FATAL_FAILURE(CompareSchema(
+        &reader.schema.value, {
+                                  {"info_name", NANOARROW_TYPE_UINT32, NOT_NULL},
+                                  {"info_value", NANOARROW_TYPE_DENSE_UNION, NULLABLE},
+                              }));
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(reader.schema->children[1],
+                      {
+                          {"string_value", NANOARROW_TYPE_STRING, NULLABLE},
+                          {"bool_value", NANOARROW_TYPE_BOOL, NULLABLE},
+                          {"int64_value", NANOARROW_TYPE_INT64, NULLABLE},
+                          {"int32_bitmask", NANOARROW_TYPE_INT32, NULLABLE},
+                          {"string_list", NANOARROW_TYPE_LIST, NULLABLE},
+                          {"int32_to_int32_list_map", NANOARROW_TYPE_MAP, NULLABLE},
+                      }));
+    ASSERT_NO_FATAL_FAILURE(CompareSchema(reader.schema->children[1]->children[4],
+                                          {
+                                              {"item", NANOARROW_TYPE_STRING, NULLABLE},
+                                          }));
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(reader.schema->children[1]->children[5],
+                      {
+                          {"entries", NANOARROW_TYPE_STRUCT, NOT_NULL},
+                      }));
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(reader.schema->children[1]->children[5]->children[0],
+                      {
+                          {"key", NANOARROW_TYPE_INT32, NOT_NULL},
+                          {"value", NANOARROW_TYPE_LIST, NULLABLE},
+                      }));
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(reader.schema->children[1]->children[5]->children[0]->children[1],
+                      {
+                          {"item", NANOARROW_TYPE_INT32, NULLABLE},
+                      }));
+
+    std::vector<uint32_t> seen;
+    while (true) {
+      ASSERT_NO_FATAL_FAILURE(reader.Next());
+      if (!reader.array->release) break;
+
+      for (int64_t row = 0; row < reader.array->length; row++) {
+        ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], row));
+        const uint32_t code =
+            reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
+        seen.push_back(code);
+        if (code != info_code) {
+          continue;
+        }
+
+        ASSERT_TRUE(expected.has_value()) << "Got unexpected info code " << code;
+
+        uint8_t type_code =
+            reader.array_view->children[1]->buffer_views[0].data.as_uint8[row];
+        int32_t offset =
+            reader.array_view->children[1]->buffer_views[1].data.as_int32[row];
+        ASSERT_NO_FATAL_FAILURE(std::visit(
+            [&](auto&& expected_value) {
+              using T = std::decay_t<decltype(expected_value)>;
+              if constexpr (std::is_same_v<T, int64_t>) {
+                ASSERT_EQ(uint8_t(2), type_code);
+                EXPECT_EQ(expected_value,
+                          ArrowArrayViewGetIntUnsafe(
+                              reader.array_view->children[1]->children[2], offset));
+              } else if constexpr (std::is_same_v<T, std::string>) {
+                ASSERT_EQ(uint8_t(0), type_code);
+                struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(
+                    reader.array_view->children[1]->children[0], offset);
+                EXPECT_THAT(std::string_view(static_cast<const char*>(view.data),
+                                             view.size_bytes),
+                            ::testing::HasSubstr(expected_value));
+              } else {
+                static_assert(!sizeof(T), "not yet implemented");
+              }
+            },
+            *expected))
+            << "code: " << type_code;
       }
     }
+    EXPECT_THAT(seen, ::testing::IsSupersetOf(info));
   }
-  ASSERT_THAT(seen, ::testing::UnorderedElementsAreArray(info));
 }
 
 void ConnectionTest::TestMetadataGetTableSchema() {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
@@ -349,6 +428,19 @@ void ConnectionTest::TestMetadataGetTableSchema() {
   ASSERT_NO_FATAL_FAILURE(
       CompareSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64, NULLABLE},
                                     {"strings", NANOARROW_TYPE_STRING, NULLABLE}}));
+}
+
+void ConnectionTest::TestMetadataGetTableSchemaNotFound() {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, "thistabledoesnotexist", &error),
+              IsOkStatus(&error));
+
+  Handle<ArrowSchema> schema;
+  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                           /*db_schema=*/nullptr, "thistabledoesnotexist",
+                                           &schema.value, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
 }
 
 void ConnectionTest::TestMetadataGetTableTypes() {
@@ -911,6 +1003,58 @@ void ConnectionTest::TestMetadataGetObjectsPrimaryKey() {
   ASSERT_EQ(constraint_column_name, "id");
 }
 
+void ConnectionTest::TestMetadataGetObjectsCancel() {
+  if (!quirks()->supports_cancel() || !quirks()->supports_get_objects()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  StreamReader reader;
+  ASSERT_THAT(
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, &reader.stream.value, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  ASSERT_THAT(AdbcConnectionCancel(&connection, &error), IsOkStatus(&error));
+
+  while (true) {
+    int err = reader.MaybeNext();
+    if (err != 0) {
+      ASSERT_THAT(err, ::testing::AnyOf(0, IsErrno(ECANCELED, &reader.stream.value,
+                                                   /*ArrowError*/ nullptr)));
+    }
+    if (!reader.array->release) break;
+  }
+}
+
+void ConnectionTest::TestMetadataGetStatisticNames() {
+  if (!quirks()->supports_statistics()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  StreamReader reader;
+  ASSERT_THAT(AdbcConnectionGetStatisticNames(&connection, &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  ASSERT_NO_FATAL_FAILURE(CompareSchema(
+      &reader.schema.value, {
+                                {"statistic_name", NANOARROW_TYPE_STRING, NOT_NULL},
+                                {"statistic_key", NANOARROW_TYPE_INT16, NOT_NULL},
+                            }));
+
+  while (true) {
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    if (!reader.array->release) break;
+  }
+}
+
 //------------------------------------------------------------
 // Tests of AdbcStatement
 
@@ -965,7 +1109,7 @@ void StatementTest::TestRelease() {
 template <typename CType>
 void StatementTest::TestSqlIngestType(ArrowType type,
                                       const std::vector<std::optional<CType>>& values) {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
 
@@ -1105,7 +1249,7 @@ void StatementTest::TestSqlIngestDate32() {
 
 template <enum ArrowTimeUnit TU>
 void StatementTest::TestSqlIngestTimestampType(const char* timezone) {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
 
@@ -1203,7 +1347,7 @@ void StatementTest::TestSqlIngestTimestampTz() {
 }
 
 void StatementTest::TestSqlIngestInterval() {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
 
@@ -1311,7 +1455,8 @@ void StatementTest::TestSqlIngestTableEscaping() {
 }
 
 void StatementTest::TestSqlIngestAppend() {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE) ||
+      !quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_APPEND)) {
     GTEST_SKIP();
   }
 
@@ -1389,8 +1534,185 @@ void StatementTest::TestSqlIngestAppend() {
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
+void StatementTest::TestSqlIngestReplace() {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_REPLACE)) {
+    GTEST_SKIP();
+  }
+
+  // Ingest
+
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {42}),
+              IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_REPLACE, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+
+  // Read data back
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+              IsOkStatus(&error));
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(CompareSchema(&reader.schema.value,
+                                          {{"int64s", NANOARROW_TYPE_INT64, NULLABLE}}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(1, reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[0], {42}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
+
+  // Replace
+  // Re-initialize since Bind() should take ownership of data
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {-42, -42}),
+              IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_REPLACE, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
+
+  // Read data back
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+              IsOkStatus(&error));
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(CompareSchema(&reader.schema.value,
+                                          {{"int64s", NANOARROW_TYPE_INT64, NULLABLE}}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(2, reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    ASSERT_NO_FATAL_FAILURE(
+        CompareArray<int64_t>(reader.array_view->children[0], {-42, -42}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
+}
+
+void StatementTest::TestSqlIngestCreateAppend() {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE_APPEND)) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+
+  // Ingest
+
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {42}),
+              IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_CREATE_APPEND, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
+
+  // Append
+  // Re-initialize since Bind() should take ownership of data
+  ASSERT_THAT(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {42, 42}),
+              IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
+
+  // Read data back
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM bulk_ingest", &error),
+              IsOkStatus(&error));
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(CompareSchema(&reader.schema.value,
+                                          {{"int64s", NANOARROW_TYPE_INT64, NULLABLE}}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(3, reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    ASSERT_NO_FATAL_FAILURE(
+        CompareArray<int64_t>(reader.array_view->children[0], {42, 42, 42}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
 void StatementTest::TestSqlIngestErrors() {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
 
@@ -1470,7 +1792,7 @@ void StatementTest::TestSqlIngestErrors() {
 }
 
 void StatementTest::TestSqlIngestMultipleConnections() {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
 
@@ -1540,7 +1862,7 @@ void StatementTest::TestSqlIngestMultipleConnections() {
 }
 
 void StatementTest::TestSqlIngestSample() {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
 
@@ -1786,7 +2108,7 @@ void StatementTest::TestSqlPrepareSelectParams() {
 }
 
 void StatementTest::TestSqlPrepareUpdate() {
-  if (!quirks()->supports_bulk_ingest() ||
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE) ||
       !quirks()->supports_dynamic_parameter_binding()) {
     GTEST_SKIP();
   }
@@ -1865,7 +2187,7 @@ void StatementTest::TestSqlPrepareUpdateNoParams() {
 }
 
 void StatementTest::TestSqlPrepareUpdateStream() {
-  if (!quirks()->supports_bulk_ingest() ||
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE) ||
       !quirks()->supports_dynamic_parameter_binding()) {
     GTEST_SKIP();
   }
@@ -2140,6 +2462,36 @@ void StatementTest::TestSqlQueryStrings() {
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
+void StatementTest::TestSqlQueryCancel() {
+  if (!quirks()->supports_cancel()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 'SaShiSuSeSo'", &error),
+              IsOkStatus(&error));
+
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+    ASSERT_THAT(AdbcStatementCancel(&statement, &error), IsOkStatus(&error));
+    while (true) {
+      int err = reader.MaybeNext();
+      if (err != 0) {
+        ASSERT_THAT(err, ::testing::AnyOf(0, IsErrno(ECANCELED, &reader.stream.value,
+                                                     /*ArrowError*/ nullptr)));
+      }
+      if (!reader.array->release) break;
+    }
+  }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
 void StatementTest::TestSqlQueryErrors() {
   // Invalid query
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
@@ -2159,6 +2511,13 @@ void StatementTest::TestTransactions() {
   ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
 
+  if (quirks()->supports_get_option()) {
+    auto autocommit =
+        ConnectionGetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT, &error);
+    ASSERT_THAT(autocommit,
+                ::testing::Optional(::testing::StrEq(ADBC_OPTION_VALUE_ENABLED)));
+  }
+
   Handle<struct AdbcConnection> connection2;
   ASSERT_THAT(AdbcConnectionNew(&connection2.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection2.value, &database, &error),
@@ -2167,6 +2526,13 @@ void StatementTest::TestTransactions() {
   ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
                                       ADBC_OPTION_VALUE_DISABLED, &error),
               IsOkStatus(&error));
+
+  if (quirks()->supports_get_option()) {
+    auto autocommit =
+        ConnectionGetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT, &error);
+    ASSERT_THAT(autocommit,
+                ::testing::Optional(::testing::StrEq(ADBC_OPTION_VALUE_DISABLED)));
+  }
 
   // Uncommitted change
   ASSERT_NO_FATAL_FAILURE(IngestSampleTable(&connection, &error));
@@ -2243,6 +2609,86 @@ void StatementTest::TestTransactions() {
   }
 }
 
+void StatementTest::TestSqlSchemaInts() {
+  if (!quirks()->supports_execute_schema()) {
+    GTEST_SKIP() << "Not supported";
+  }
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error),
+              IsOkStatus(&error));
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_THAT(AdbcStatementExecuteSchema(&statement, schema.get(), &error),
+              IsOkStatus(&error));
+
+  ASSERT_EQ(1, schema->n_children);
+  ASSERT_THAT(schema->children[0]->format, ::testing::AnyOfArray({
+                                               ::testing::StrEq("i"),  // int32
+                                               ::testing::StrEq("l"),  // int64
+                                           }));
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
+void StatementTest::TestSqlSchemaFloats() {
+  if (!quirks()->supports_execute_schema()) {
+    GTEST_SKIP() << "Not supported";
+  }
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT CAST(1.5 AS FLOAT)", &error),
+              IsOkStatus(&error));
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_THAT(AdbcStatementExecuteSchema(&statement, schema.get(), &error),
+              IsOkStatus(&error));
+
+  ASSERT_EQ(1, schema->n_children);
+  ASSERT_THAT(schema->children[0]->format, ::testing::AnyOfArray({
+                                               ::testing::StrEq("f"),  // float32
+                                               ::testing::StrEq("g"),  // float64
+                                           }));
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
+void StatementTest::TestSqlSchemaStrings() {
+  if (!quirks()->supports_execute_schema()) {
+    GTEST_SKIP() << "Not supported";
+  }
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 'hi'", &error),
+              IsOkStatus(&error));
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_THAT(AdbcStatementExecuteSchema(&statement, schema.get(), &error),
+              IsOkStatus(&error));
+
+  ASSERT_EQ(1, schema->n_children);
+  ASSERT_THAT(schema->children[0]->format, ::testing::AnyOfArray({
+                                               ::testing::StrEq("u"),  // string
+                                               ::testing::StrEq("U"),  // large_string
+                                           }));
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
+void StatementTest::TestSqlSchemaErrors() {
+  if (!quirks()->supports_execute_schema()) {
+    GTEST_SKIP() << "Not supported";
+  }
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_THAT(AdbcStatementExecuteSchema(&statement, schema.get(), &error),
+              IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
 void StatementTest::TestConcurrentStatements() {
   Handle<struct AdbcStatement> statement1;
   Handle<struct AdbcStatement> statement2;
@@ -2278,6 +2724,24 @@ void StatementTest::TestConcurrentStatements() {
   ASSERT_NO_FATAL_FAILURE(reader1.GetSchema());
 }
 
+// Test that an ADBC 1.0.0-sized error still works
+void StatementTest::TestErrorCompatibility() {
+  // XXX: sketchy cast
+  auto* error = static_cast<struct AdbcError*>(malloc(ADBC_ERROR_1_0_0_SIZE));
+  std::memset(error, 0, ADBC_ERROR_1_0_0_SIZE);
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, error), IsOkStatus(error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM thistabledoesnotexist", error),
+      IsOkStatus(error));
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, error),
+              ::testing::Not(IsOkStatus(error)));
+  error->release(error);
+  free(error);
+}
+
 void StatementTest::TestResultInvalidation() {
   // Start reading from a statement, then overwrite it
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
@@ -2296,8 +2760,8 @@ void StatementTest::TestResultInvalidation() {
               IsOkStatus(&error));
   ASSERT_NO_FATAL_FAILURE(reader2.GetSchema());
 
-  // First reader should not fail, but may give no data
-  ASSERT_NO_FATAL_FAILURE(reader1.Next());
+  // First reader may fail, or may succeed but give no data
+  reader1.MaybeNext();
 }
 
 #undef NOT_NULL

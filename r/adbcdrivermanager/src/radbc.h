@@ -64,13 +64,13 @@ inline const char* adbc_xptr_class<ArrowSchema>() {
 }
 
 template <typename T>
-static inline T* adbc_from_xptr(SEXP xptr) {
+static inline T* adbc_from_xptr(SEXP xptr, bool null_ok = false) {
   if (!Rf_inherits(xptr, adbc_xptr_class<T>())) {
     Rf_error("Expected external pointer with class '%s'", adbc_xptr_class<T>());
   }
 
   T* ptr = reinterpret_cast<T*>(R_ExternalPtrAddr(xptr));
-  if (ptr == nullptr) {
+  if (!null_ok && ptr == nullptr) {
     Rf_error("Can't convert external pointer to NULL to T*");
   }
   return ptr;

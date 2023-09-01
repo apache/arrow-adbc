@@ -22,6 +22,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -100,6 +101,7 @@ type cnxn struct {
 // codes (the row will be omitted from the result).
 func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
 	const strValTypeID arrow.UnionTypeCode = 0
+	const intValTypeID arrow.UnionTypeCode = 2
 
 	if len(infoCodes) == 0 {
 		infoCodes = infoSupportedCodes
@@ -111,7 +113,8 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 
 	infoNameBldr := bldr.Field(0).(*array.Uint32Builder)
 	infoValueBldr := bldr.Field(1).(*array.DenseUnionBuilder)
-	strInfoBldr := infoValueBldr.Child(0).(*array.StringBuilder)
+	strInfoBldr := infoValueBldr.Child(int(strValTypeID)).(*array.StringBuilder)
+	intInfoBldr := infoValueBldr.Child(int(intValTypeID)).(*array.Int64Builder)
 
 	for _, code := range infoCodes {
 		switch code {
@@ -127,6 +130,10 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 			infoNameBldr.Append(uint32(code))
 			infoValueBldr.Append(strValTypeID)
 			strInfoBldr.Append(infoDriverArrowVersion)
+		case adbc.InfoDriverADBCVersion:
+			infoNameBldr.Append(uint32(code))
+			infoValueBldr.Append(intValTypeID)
+			intInfoBldr.Append(adbc.AdbcVersion1_1_0)
 		case adbc.InfoVendorName:
 			infoNameBldr.Append(uint32(code))
 			infoValueBldr.Append(strValTypeID)
@@ -679,6 +686,85 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 	return
 }
 
+func (c *cnxn) GetOption(key string) (string, error) {
+	switch key {
+	case adbc.OptionKeyAutoCommit:
+		if c.activeTransaction {
+			// No autocommit
+			return adbc.OptionValueDisabled, nil
+		} else {
+			// Autocommit
+			return adbc.OptionValueEnabled, nil
+		}
+	case adbc.OptionKeyCurrentCatalog:
+		return c.getStringQuery("SELECT CURRENT_DATABASE()")
+	case adbc.OptionKeyCurrentDbSchema:
+		return c.getStringQuery("SELECT CURRENT_SCHEMA()")
+	}
+
+	return "", adbc.Error{
+		Msg:  "[Snowflake] unknown connection option",
+		Code: adbc.StatusNotFound,
+	}
+}
+
+func (c *cnxn) getStringQuery(query string) (string, error) {
+	result, err := c.cn.QueryContext(context.Background(), query, nil)
+	if err != nil {
+		return "", errToAdbcErr(adbc.StatusInternal, err)
+	}
+	defer result.Close()
+
+	if len(result.Columns()) != 1 {
+		return "", adbc.Error{
+			Msg:  fmt.Sprintf("[Snowflake] Internal query returned wrong number of columns: %s", result.Columns()),
+			Code: adbc.StatusInternal,
+		}
+	}
+
+	dest := make([]driver.Value, 1)
+	err = result.Next(dest)
+	if err == io.EOF {
+		return "", adbc.Error{
+			Msg:  "[Snowflake] Internal query returned no rows",
+			Code: adbc.StatusInternal,
+		}
+	} else if err != nil {
+		return "", errToAdbcErr(adbc.StatusInternal, err)
+	}
+
+	value, ok := dest[0].(string)
+	if !ok {
+		return "", adbc.Error{
+			Msg:  fmt.Sprintf("[Snowflake] Internal query returned wrong type of value: %s", dest[0]),
+			Code: adbc.StatusInternal,
+		}
+	}
+
+	return value, nil
+}
+
+func (c *cnxn) GetOptionBytes(key string) ([]byte, error) {
+	return nil, adbc.Error{
+		Msg:  "[Snowflake] unknown connection option",
+		Code: adbc.StatusNotFound,
+	}
+}
+
+func (c *cnxn) GetOptionInt(key string) (int64, error) {
+	return 0, adbc.Error{
+		Msg:  "[Snowflake] unknown connection option",
+		Code: adbc.StatusNotFound,
+	}
+}
+
+func (c *cnxn) GetOptionDouble(key string) (float64, error) {
+	return 0.0, adbc.Error{
+		Msg:  "[Snowflake] unknown connection option",
+		Code: adbc.StatusNotFound,
+	}
+}
+
 func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
@@ -847,10 +933,37 @@ func (c *cnxn) SetOption(key, value string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
+	case adbc.OptionKeyCurrentCatalog:
+		_, err := c.cn.ExecContext(context.Background(), "USE DATABASE ?", []driver.NamedValue{{Value: value}})
+		return err
+	case adbc.OptionKeyCurrentDbSchema:
+		_, err := c.cn.ExecContext(context.Background(), "USE SCHEMA ?", []driver.NamedValue{{Value: value}})
+		return err
 	default:
 		return adbc.Error{
 			Msg:  "[Snowflake] unknown connection option " + key + ": " + value,
 			Code: adbc.StatusInvalidArgument,
 		}
+	}
+}
+
+func (c *cnxn) SetOptionBytes(key string, value []byte) error {
+	return adbc.Error{
+		Msg:  "[Snowflake] unknown connection option",
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (c *cnxn) SetOptionInt(key string, value int64) error {
+	return adbc.Error{
+		Msg:  "[Snowflake] unknown connection option",
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (c *cnxn) SetOptionDouble(key string, value float64) error {
+	return adbc.Error{
+		Msg:  "[Snowflake] unknown connection option",
+		Code: adbc.StatusNotImplemented,
 	}
 }

@@ -20,6 +20,16 @@
     # Only expose symbols from the ADBC API
     Adbc*;
 
+    # Expose driver-specific initialization routines
+    FlightSQLDriverInit;
+    PostgresqlDriverInit;
+    SnowflakeDriverInit;
+    SqliteDriverInit;
+
+    extern "C++" {
+        Adbc*;
+    };
+
   local:
     *;
 };

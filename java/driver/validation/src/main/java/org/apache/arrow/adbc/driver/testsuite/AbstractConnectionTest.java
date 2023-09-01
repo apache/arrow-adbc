@@ -18,6 +18,7 @@
 package org.apache.arrow.adbc.driver.testsuite;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
@@ -46,6 +47,19 @@ public abstract class AbstractConnectionTest {
   @AfterEach
   public void afterEach() throws Exception {
     AutoCloseables.close(connection, database, allocator);
+  }
+
+  @Test
+  void currentCatalog() throws Exception {
+    assumeThat(quirks.supportsCurrentCatalog()).isTrue();
+
+    assertThat(connection.getCurrentCatalog()).isEqualTo(quirks.defaultCatalog());
+    connection.setCurrentCatalog(quirks.defaultCatalog());
+    assertThat(connection.getCurrentCatalog()).isEqualTo(quirks.defaultCatalog());
+
+    assertThat(connection.getCurrentDbSchema()).isEqualTo(quirks.defaultDbSchema());
+    connection.setCurrentDbSchema(quirks.defaultDbSchema());
+    assertThat(connection.getCurrentDbSchema()).isEqualTo(quirks.defaultDbSchema());
   }
 
   @Test

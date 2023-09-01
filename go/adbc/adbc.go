@@ -42,10 +42,78 @@ import (
 
 	"github.com/apache/arrow/go/v13/arrow"
 	"github.com/apache/arrow/go/v13/arrow/array"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type Status -linecomment
 //go:generate go run golang.org/x/tools/cmd/stringer -type InfoCode -linecomment
+
+// ErrorDetail is additional driver-specific error metadata.
+//
+// This allows drivers to return custom, structured error information (for
+// example, JSON or Protocol Buffers) that can be optionally parsed by
+// clients, beyond the standard Error fields, without having to encode it in
+// the error message.
+type ErrorDetail interface {
+	// Get an identifier for the detail (e.g. if the metadata comes from an HTTP
+	// header, the key could be the header name).
+	//
+	// This allows clients and drivers to cooperate and provide some idea of what
+	// to expect in the detail.
+	Key() string
+	// Serialize the detail value to a byte array for interoperability with C/C++.
+	Serialize() ([]byte, error)
+}
+
+// ProtobufErrorDetail is an ErrorDetail backed by a Protobuf message.
+type ProtobufErrorDetail struct {
+	Name    string
+	Message proto.Message
+}
+
+func (d *ProtobufErrorDetail) Key() string {
+	return d.Name
+}
+
+// Serialize serializes the Protobuf message (wrapped in Any).
+func (d *ProtobufErrorDetail) Serialize() ([]byte, error) {
+	any, err := anypb.New(d.Message)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(any)
+}
+
+// ProtobufErrorDetail is an ErrorDetail backed by a human-readable string.
+type TextErrorDetail struct {
+	Name   string
+	Detail string
+}
+
+func (d *TextErrorDetail) Key() string {
+	return d.Name
+}
+
+// Serialize serializes the Protobuf message (wrapped in Any).
+func (d *TextErrorDetail) Serialize() ([]byte, error) {
+	return []byte(d.Detail), nil
+}
+
+// ProtobufErrorDetail is an ErrorDetail backed by a binary payload.
+type BinaryErrorDetail struct {
+	Name   string
+	Detail []byte
+}
+
+func (d *BinaryErrorDetail) Key() string {
+	return d.Name
+}
+
+// Serialize serializes the Binary message (wrapped in Any).
+func (d *BinaryErrorDetail) Serialize() ([]byte, error) {
+	return d.Detail, nil
+}
 
 // Error is the detailed error for an operation
 type Error struct {
@@ -58,10 +126,17 @@ type Error struct {
 	// SqlState is a SQLSTATE error code, if provided, as defined
 	// by the SQL:2003 standard. If not set, it will be "\0\0\0\0\0"
 	SqlState [5]byte
+	// Details is an array of additional driver-specific error details.
+	Details []ErrorDetail
 }
 
 func (e Error) Error() string {
-	return fmt.Sprintf("%s: SqlState: %s, msg: %s", e.Code, string(e.SqlState[:]), e.Msg)
+	// Don't include a NUL in the string since C Data Interface uses char* (and
+	// don't include the extra cruft if not needed in the first place)
+	if e.SqlState[0] != 0 {
+		return fmt.Sprintf("%s: %s (%s)", e.Code, e.Msg, string(e.SqlState[:]))
+	}
+	return fmt.Sprintf("%s: %s", e.Code, e.Msg)
 }
 
 // Status represents an error code for operations that may fail
@@ -142,20 +217,36 @@ const (
 	StatusUnauthorized // Unauthorized
 )
 
+const (
+	AdbcVersion1_0_0 int64 = 1_000_000
+	AdbcVersion1_1_0 int64 = 1_001_000
+)
+
 // Canonical option values
 const (
-	OptionValueEnabled          = "true"
-	OptionValueDisabled         = "false"
-	OptionKeyAutoCommit         = "adbc.connection.autocommit"
-	OptionKeyIngestTargetTable  = "adbc.ingest.target_table"
-	OptionKeyIngestMode         = "adbc.ingest.mode"
-	OptionKeyIsolationLevel     = "adbc.connection.transaction.isolation_level"
-	OptionKeyReadOnly           = "adbc.connection.readonly"
-	OptionValueIngestModeCreate = "adbc.ingest.mode.create"
-	OptionValueIngestModeAppend = "adbc.ingest.mode.append"
-	OptionKeyURI                = "uri"
-	OptionKeyUsername           = "username"
-	OptionKeyPassword           = "password"
+	OptionValueEnabled  = "true"
+	OptionValueDisabled = "false"
+	OptionKeyAutoCommit = "adbc.connection.autocommit"
+	// The current catalog.
+	OptionKeyCurrentCatalog = "adbc.connection.catalog"
+	// The current schema.
+	OptionKeyCurrentDbSchema = "adbc.connection.db_schema"
+	// Make ExecutePartitions nonblocking.
+	OptionKeyIncremental = "adbc.statement.exec.incremental"
+	// Get the progress
+	OptionKeyProgress                 = "adbc.statement.exec.progress"
+	OptionKeyMaxProgress              = "adbc.statement.exec.max_progress"
+	OptionKeyIngestTargetTable        = "adbc.ingest.target_table"
+	OptionKeyIngestMode               = "adbc.ingest.mode"
+	OptionKeyIsolationLevel           = "adbc.connection.transaction.isolation_level"
+	OptionKeyReadOnly                 = "adbc.connection.readonly"
+	OptionValueIngestModeCreate       = "adbc.ingest.mode.create"
+	OptionValueIngestModeAppend       = "adbc.ingest.mode.append"
+	OptionValueIngestModeReplace      = "adbc.ingest.mode.replace"
+	OptionValueIngestModeCreateAppend = "adbc.ingest.mode.create_append"
+	OptionKeyURI                      = "uri"
+	OptionKeyUsername                 = "username"
+	OptionKeyPassword                 = "password"
 )
 
 type OptionIsolationLevel string
@@ -168,6 +259,51 @@ const (
 	LevelSnapshot        OptionIsolationLevel = "adbc.connection.transaction.isolation.snapshot"
 	LevelSerializable    OptionIsolationLevel = "adbc.connection.transaction.isolation.serializable"
 	LevelLinearizable    OptionIsolationLevel = "adbc.connection.transaction.isolation.linearizable"
+)
+
+// Standard statistic names and keys.
+const (
+	// The dictionary-encoded name of the average byte width statistic.
+	StatisticAverageByteWidthKey = 0
+	// The average byte width statistic.  The average size in bytes of a row in
+	// the column.  Value type is float64.
+	//
+	// For example, this is roughly the average length of a string for a string
+	// column.
+	StatisticAverageByteWidthName = "adbc.statistic.byte_width"
+	// The dictionary-encoded name of the distinct value count statistic.
+	StatisticDistinctCountKey = 1
+	// The distinct value count (NDV) statistic.  The number of distinct values in
+	// the column.  Value type is int64 (when not approximate) or float64 (when
+	// approximate).
+	StatisticDistinctCountName = "adbc.statistic.distinct_count"
+	// The dictionary-encoded name of the max byte width statistic.
+	StatisticMaxByteWidthKey = 2
+	// The max byte width statistic.  The maximum size in bytes of a row in the
+	// column.  Value type is int64 (when not approximate) or float64 (when
+	// approximate).
+	//
+	// For example, this is the maximum length of a string for a string column.
+	StatisticMaxByteWidthName = "adbc.statistic.byte_width"
+	// The dictionary-encoded name of the max value statistic.
+	StatisticMaxValueKey = 3
+	// The max value statistic.  Value type is column-dependent.
+	StatisticMaxValueName = "adbc.statistic.byte_width"
+	// The dictionary-encoded name of the min value statistic.
+	StatisticMinValueKey = 4
+	// The min value statistic.  Value type is column-dependent.
+	StatisticMinValueName = "adbc.statistic.byte_width"
+	// The dictionary-encoded name of the null count statistic.
+	StatisticNullCountKey = 5
+	// The null count statistic.  The number of values that are null in the
+	// column.  Value type is int64 (when not approximate) or float64 (when
+	// approximate).
+	StatisticNullCountName = "adbc.statistic.null_count"
+	// The dictionary-encoded name of the row count statistic.
+	StatisticRowCountKey = 6
+	// The row count statistic.  The number of rows in the column or table.  Value
+	// type is int64 (when not approximate) or float64 (when approximate).
+	StatisticRowCountName = "adbc.statistic.row_count"
 )
 
 // Driver is the entry point for the interface. It is similar to
@@ -212,6 +348,8 @@ const (
 	InfoDriverVersion InfoCode = 101 // DriverVersion
 	// The driver Arrow library version (type: utf8)
 	InfoDriverArrowVersion InfoCode = 102 // DriverArrowVersion
+	// The driver ADBC API version (type: int64)
+	InfoDriverADBCVersion InfoCode = 103 // DriverADBCVersion
 )
 
 type ObjectDepth int
@@ -275,6 +413,10 @@ type Connection interface {
 	// codes are defined as constants. Codes [0, 10_000) are reserved
 	// for ADBC usage. Drivers/vendors will ignore requests for unrecognized
 	// codes (the row will be omitted from the result).
+	//
+	// Since ADBC 1.1.0: the range [500, 1_000) is reserved for "XDBC"
+	// information, which is the same metadata provided by the same info
+	// code range in the Arrow Flight SQL GetSqlInfo RPC.
 	GetInfo(ctx context.Context, infoCodes []InfoCode) (array.RecordReader, error)
 
 	// GetObjects gets a hierarchical view of all catalogs, database schemas,
@@ -470,6 +612,9 @@ type Statement interface {
 	// of rows affected if known, otherwise it will be -1.
 	//
 	// This invalidates any prior result sets on this statement.
+	//
+	// Since ADBC 1.1.0: releasing the returned RecordReader without
+	// consuming it fully is equivalent to calling AdbcStatementCancel.
 	ExecuteQuery(context.Context) (array.RecordReader, int64, error)
 
 	// ExecuteUpdate executes a statement that does not generate a result
@@ -534,5 +679,106 @@ type Statement interface {
 	//
 	// If the driver does not support partitioned results, this will return
 	// an error with a StatusNotImplemented code.
+	//
+	// When OptionKeyIncremental is set, this should be called
+	// repeatedly until receiving an empty Partitions.
 	ExecutePartitions(context.Context) (*arrow.Schema, Partitions, int64, error)
+}
+
+// ConnectionGetStatistics is a Connection that supports getting
+// statistics on data in the database.
+//
+// Since ADBC API revision 1.1.0.
+type ConnectionGetStatistics interface {
+	// GetStatistics gets statistics about the data distribution of table(s).
+	//
+	// The result is an Arrow dataset with the following schema:
+	//
+	//		Field Name               | Field Type
+	//		-------------------------|----------------------------------
+	//		catalog_name             | utf8
+	//		catalog_db_schemas       | list<DB_SCHEMA_SCHEMA> not null
+	//
+	// DB_SCHEMA_SCHEMA is a Struct with fields:
+	//
+	//		Field Name               | Field Type
+	//		-------------------------|----------------------------------
+	//		db_schema_name           | utf8
+	//		db_schema_statistics     | list<STATISTICS_SCHEMA> not null
+	//
+	// STATISTICS_SCHEMA is a Struct with fields:
+	//
+	//		Field Name               | Field Type                       | Comments
+	//		-------------------------|----------------------------------| --------
+	//		table_name               | utf8 not null                    |
+	//		column_name              | utf8                             | (1)
+	//		statistic_key            | int16 not null                   | (2)
+	//		statistic_value          | VALUE_SCHEMA not null            |
+	//		statistic_is_approximate | bool not null                    | (3)
+	//
+	// 1. If null, then the statistic applies to the entire table.
+	// 2. A dictionary-encoded statistic name (although we do not use the Arrow
+	//    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
+	//    values are for implementation-specific statistics.  For the definitions
+	//    of predefined statistic types, see the Statistic constants.  To get
+	//    driver-specific statistic names, use AdbcConnectionGetStatisticNames.
+	// 3. If true, then the value is approximate or best-effort.
+	//
+	// VALUE_SCHEMA is a dense union with members:
+	//
+	//		Field Name               | Field Type
+	//		-------------------------|----------------------------------
+	//		int64                    | int64
+	//		uint64                   | uint64
+	//		float64                  | float64
+	//		binary                   | binary
+	//
+	// For the parameters: If nil is passed, then that parameter will not
+	// be filtered by at all. If an empty string, then only objects without
+	// that property (ie: catalog or db schema) will be returned.
+	//
+	// All non-empty, non-nil strings should be a search pattern (as described
+	// earlier).
+	//
+	// approximate indicates whether to request exact values of statistics, or
+	// best-effort/cached values. Requesting exact values may be expensive or
+	// unsupported.
+	GetStatistics(ctx context.Context, catalog, dbSchema, tableName *string, approximate bool) (array.RecordReader, error)
+
+	// GetStatisticNames gets a list of custom statistic names defined by this driver.
+	//
+	// The result is an Arrow dataset with the following schema:
+	//
+	//		Field Name     | Field Type
+	//		---------------|----------------
+	//		statistic_name | utf8 not null
+	//		statistic_key  | int16 not null
+	//
+	GetStatisticNames(ctx context.Context) (array.RecordReader, error)
+}
+
+// StatementExecuteSchema is a Statement that also supports ExecuteSchema.
+//
+// Since ADBC API revision 1.1.0.
+type StatementExecuteSchema interface {
+	// ExecuteSchema gets the schema of the result set of a query without executing it.
+	ExecuteSchema(context.Context) (*arrow.Schema, error)
+}
+
+// GetSetOptions is a PostInitOptions that also supports getting and setting option values of different types.
+//
+// GetOption functions should return an error with StatusNotFound for unsupported options.
+// SetOption functions should return an error with StatusNotImplemented for unsupported options.
+//
+// Since ADBC API revision 1.1.0.
+type GetSetOptions interface {
+	PostInitOptions
+
+	SetOptionBytes(key string, value []byte) error
+	SetOptionInt(key string, value int64) error
+	SetOptionDouble(key string, value float64) error
+	GetOption(key string) (string, error)
+	GetOptionBytes(key string) ([]byte, error)
+	GetOptionInt(key string) (int64, error)
+	GetOptionDouble(key string) (float64, error)
 }

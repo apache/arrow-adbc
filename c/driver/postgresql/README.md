@@ -54,9 +54,9 @@ Alternatively use the `docker compose` provided by ADBC to manage the test
 database container.
 
 ```shell
-$ docker compose up postgres_test
+$ docker compose up postgres-test
 # When finished:
-# docker compose down postgres_test
+# docker compose down postgres-test
 ```
 
 Then, to run the tests, set the environment variable specifying the

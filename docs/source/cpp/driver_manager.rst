@@ -27,7 +27,69 @@ specific driver.
 Installation
 ============
 
-TODO
+Install the appropriate driver package. You can use conda-forge_, ``apt`` or ``dnf``.
+
+conda-forge:
+
+- ``mamba install adbc-driver-manager``
+
+You can use ``apt`` on the following platforms:
+
+- Debian GNU/Linux bookworm
+- Ubuntu 22.04
+
+Prepare the Apache Arrow APT repository:
+
+.. code-block:: bash
+
+   sudo apt update
+   sudo apt install -y -V ca-certificates lsb-release wget
+   sudo wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+   sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+   rm ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+   sudo apt update
+
+Install:
+
+- ``sudo apt install libadbc-driver-manager-dev``
+
+You can use ``dnf`` on the following platforms:
+
+- AlmaLinux 8
+- Oracle Linux 8
+- Red Hat Enterprise Linux 8
+- AlmaLinux 9
+- Oracle Linux 9
+- Red Hat Enterprise Linux 9
+
+Prepare the Apache Arrow Yum repository:
+
+.. code-block:: bash
+
+   sudo dnf install -y epel-release || sudo dnf install -y oracle-epel-release-el$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1) || sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1).noarch.rpm
+   sudo dnf install -y https://apache.jfrog.io/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm
+   sudo dnf config-manager --set-enabled epel || :
+   sudo dnf config-manager --set-enabled powertools || :
+   sudo dnf config-manager --set-enabled crb || :
+   sudo dnf config-manager --set-enabled ol$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)_codeready_builder || :
+   sudo dnf config-manager --set-enabled codeready-builder-for-rhel-$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)-rhui-rpms || :
+   sudo subscription-manager repos --enable codeready-builder-for-rhel-$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)-$(arch)-rpms || :
+
+Install:
+
+- ``sudo dnf install adbc-driver-manager-devel``
+
+Then they can be used via CMake, e.g.:
+
+.. code-block:: cmake
+
+   find_package(AdbcDriverPostgreSQL)
+
+   # ...
+
+   target_link_libraries(myapp PRIVATE AdbcDriverPostgreSQL::adbc_driver_postgresql_shared)
+
+.. _conda-forge: https://conda-forge.org/
 
 Usage
 =====

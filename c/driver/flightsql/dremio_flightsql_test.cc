@@ -42,11 +42,11 @@ class DremioFlightSqlQuirks : public adbc_validation::DriverQuirks {
   }
 
   std::string BindParameter(int index) const override { return "?"; }
+  bool supports_bulk_ingest(const char* /*mode*/) const override { return false; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_transactions() const override { return false; }
   bool supports_get_sql_info() const override { return false; }
   bool supports_get_objects() const override { return true; }
-  bool supports_bulk_ingest() const override { return false; }
   bool supports_partitioned_data() const override { return true; }
   bool supports_dynamic_parameter_binding() const override { return false; }
 };
@@ -87,6 +87,7 @@ class DremioFlightSqlStatementTest : public ::testing::Test,
   void SetUp() override { ASSERT_NO_FATAL_FAILURE(SetUpTest()); }
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
+  void TestResultInvalidation() { GTEST_SKIP() << "Dremio generates a CANCELLED"; }
   void TestSqlIngestTableEscaping() { GTEST_SKIP() << "Table escaping not implemented"; }
 
  protected:

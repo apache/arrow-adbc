@@ -36,6 +36,23 @@ PostgresDatabase::PostgresDatabase() : open_connections_(0) {
 }
 PostgresDatabase::~PostgresDatabase() = default;
 
+AdbcStatusCode PostgresDatabase::GetOption(const char* option, char* value,
+                                           size_t* length, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresDatabase::GetOptionBytes(const char* option, uint8_t* value,
+                                                size_t* length, struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresDatabase::GetOptionInt(const char* option, int64_t* value,
+                                              struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresDatabase::GetOptionDouble(const char* option, double* value,
+                                                 struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+
 AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
   // Connect to validate the parameters.
   return RebuildTypeResolver(error);
@@ -59,6 +76,24 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresDatabase::SetOptionBytes(const char* key, const uint8_t* value,
+                                                size_t length, struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresDatabase::SetOptionDouble(const char* key, double value,
+                                                 struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresDatabase::SetOptionInt(const char* key, int64_t value,
+                                              struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error) {
@@ -90,10 +125,10 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
 
 // Helpers for building the type resolver from queries
 static inline int32_t InsertPgAttributeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
 static inline int32_t InsertPgTypeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver);
 
 AdbcStatusCode PostgresDatabase::RebuildTypeResolver(struct AdbcError* error) {
   PGconn* conn = nullptr;
@@ -142,7 +177,7 @@ ORDER BY
   auto resolver = std::make_shared<PostgresTypeResolver>();
 
   // Insert record type definitions (this includes table schemas)
-  pg_result* result = PQexec(conn, kColumnsQuery.c_str());
+  PGresult* result = PQexec(conn, kColumnsQuery.c_str());
   ExecStatusType pq_status = PQresultStatus(result);
   if (pq_status == PGRES_TUPLES_OK) {
     InsertPgAttributeResult(result, resolver);
@@ -187,7 +222,7 @@ ORDER BY
 }
 
 static inline int32_t InsertPgAttributeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
   int num_rows = PQntuples(result);
   std::vector<std::pair<std::string, uint32_t>> columns;
   uint32_t current_type_oid = 0;
@@ -219,7 +254,7 @@ static inline int32_t InsertPgAttributeResult(
 }
 
 static inline int32_t InsertPgTypeResult(
-    pg_result* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
+    PGresult* result, const std::shared_ptr<PostgresTypeResolver>& resolver) {
   int num_rows = PQntuples(result);
   PostgresTypeResolver::Item item;
   int32_t n_added = 0;
