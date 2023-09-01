@@ -651,7 +651,8 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 }
 
 #define INIT_ERROR(ERROR, SOURCE)                                    \
-  if ((ERROR)->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) { \
+  if ((ERROR) != nullptr &&                                          \
+      (ERROR)->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) { \
     (ERROR)->private_driver = (SOURCE)->private_driver;              \
   }
 

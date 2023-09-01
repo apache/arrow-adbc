@@ -33,6 +33,7 @@ std::string AdbcDriverManagerDefaultEntrypoint(const std::string& filename);
 
 namespace adbc {
 
+using adbc_validation::Handle;
 using adbc_validation::IsOkStatus;
 using adbc_validation::IsStatus;
 
@@ -226,6 +227,20 @@ class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::Datab
   SqliteQuirks quirks_;
 };
 ADBCV_TEST_DATABASE(SqliteDatabaseTest)
+
+TEST_F(SqliteDatabaseTest, NullError) {
+  Handle<AdbcConnection> conn;
+
+  ASSERT_THAT(AdbcDatabaseNew(&database, nullptr), IsOkStatus());
+  ASSERT_THAT(quirks()->SetupDatabase(&database, nullptr), IsOkStatus());
+  ASSERT_THAT(AdbcDatabaseInit(&database, nullptr), IsOkStatus());
+
+  ASSERT_THAT(AdbcConnectionNew(&conn.value, nullptr), IsOkStatus());
+  ASSERT_THAT(AdbcConnectionInit(&conn.value, &database, nullptr), IsOkStatus());
+  ASSERT_THAT(AdbcConnectionRelease(&conn.value, nullptr), IsOkStatus());
+
+  ASSERT_THAT(AdbcDatabaseRelease(&database, nullptr), IsOkStatus());
+}
 
 class SqliteConnectionTest : public ::testing::Test,
                              public adbc_validation::ConnectionTest {
