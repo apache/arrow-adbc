@@ -1313,6 +1313,7 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
     if (std::string(error->sqlstate, 5) == "42P01") {
       return ADBC_STATUS_NOT_FOUND;
     }
+    return result;
   }
 
   auto uschema = nanoarrow::UniqueSchema();
