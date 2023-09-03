@@ -28,7 +28,7 @@ using System.Threading.Tasks;
 namespace Apache.Arrow.Adbc.Client
 {
     /// <summary>
-    /// Represents a DbDataReader over Arrow record batches 
+    /// Represents a DbDataReader over Arrow record batches
     /// </summary>
     public sealed class AdbcDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Client
 
             if (this.schema == null)
                 throw new ArgumentException("A Schema must be set for the AdbcQueryResult.Stream property");
-            
+
             this.isClosed = false;
         }
 
@@ -65,7 +65,7 @@ namespace Apache.Arrow.Adbc.Client
         public override int Depth => 0;
 
         public override int FieldCount => this.schema == null ? 0 : this.schema.FieldsList.Count;
-        
+
         public override bool HasRows => this.recordBatch?.Length > 0;
 
         public override bool IsClosed => this.isClosed;
@@ -212,7 +212,7 @@ namespace Apache.Arrow.Adbc.Client
             this.recordBatch = ReadNextRecordBatchAsync().Result;
 
             if (this.recordBatch != null)
-            {                
+            {
                 return true;
             }
 
@@ -236,7 +236,7 @@ namespace Apache.Arrow.Adbc.Client
 
             return this.recordBatch != null;
         }
-       
+
         public override DataTable GetSchemaTable()
         {
             if (this.schema != null)
@@ -270,7 +270,7 @@ namespace Apache.Arrow.Adbc.Client
                         f.DataType.TypeId == Types.ArrowTypeId.Double ||
                         f.DataType.TypeId == Types.ArrowTypeId.Float ||
                         f.DataType.TypeId == Types.ArrowTypeId.Decimal128 ||
-                        f.DataType.TypeId == Types.ArrowTypeId.Decimal256 
+                        f.DataType.TypeId == Types.ArrowTypeId.Decimal256
                     )
                     {
                         int precision = Convert.ToInt32(f.Metadata["precision"]);
@@ -313,7 +313,7 @@ namespace Apache.Arrow.Adbc.Client
 
             var recordBatch = this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).Result;
 
-            if( recordBatch != null ) 
+            if( recordBatch != null )
             {
                 this.TotalBatches += 1;
             }

@@ -113,7 +113,7 @@ namespace Apache.Arrow.Adbc.Client
 
             return new AdbcCommand(this.AdbcStatement, this);
         }
-        
+
         /// <summary>
         /// Ensures the connection is open.
         /// </summary>
@@ -122,7 +122,7 @@ namespace Apache.Arrow.Adbc.Client
             if (this.State == ConnectionState.Closed)
                 this.Open();
         }
-  
+
         protected override void Dispose(bool disposing)
         {
             this.adbcConnectionInternal?.Dispose();
@@ -141,7 +141,7 @@ namespace Apache.Arrow.Adbc.Client
 
                 if(this.AdbcDriver == null)
                 {
-                    throw new InvalidOperationException("The ADBC driver is not specified");   
+                    throw new InvalidOperationException("The ADBC driver is not specified");
                 }
 
                 this.adbcDatabase = this.AdbcDriver.Open(this.adbcConnectionParameters);
@@ -169,7 +169,7 @@ namespace Apache.Arrow.Adbc.Client
         private string GetConnectionString()
         {
             DbConnectionStringBuilder builder = new DbConnectionStringBuilder();
-            
+
             foreach (string key in this.adbcConnectionParameters.Keys)
             {
                 builder.Add(key, this.adbcConnectionParameters[key]);
@@ -185,9 +185,9 @@ namespace Apache.Arrow.Adbc.Client
         /// <exception cref="ArgumentNullException"></exception>
         private void SetConnectionProperties(string value)
         {
-            if (string.IsNullOrEmpty(value)) 
+            if (string.IsNullOrEmpty(value))
             {
-                throw new ArgumentNullException(nameof(value)); 
+                throw new ArgumentNullException(nameof(value));
             }
 
             DbConnectionStringBuilder builder = new DbConnectionStringBuilder();
@@ -237,7 +237,7 @@ namespace Apache.Arrow.Adbc.Client
         {
             throw new NotImplementedException();
         }
-        
+
         #endregion
     }
 }

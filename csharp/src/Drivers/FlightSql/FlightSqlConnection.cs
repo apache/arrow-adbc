@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
 
         public FlightSqlConnection() : this(null)
         {
-            
+
         }
 
         public FlightSqlConnection(IReadOnlyDictionary<string, string> metadata)

@@ -19,13 +19,13 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 {
     public class AdbcColumn
     {
-        public string name { get; set; }  
+        public string name { get; set; }
 
         public int? ordinal_position { get; set; }
 
-        public string remarks { get; set; }        
+        public string remarks { get; set; }
 
-        public short? xdbc_data_type { get; set; }        
+        public short? xdbc_data_type { get; set; }
 
         public string xdbc_type_name { get; set; }
 
@@ -38,21 +38,21 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         public short? xdbc_nullable { get; set; }
 
         public string xdbc_column_def { get; set; }
-        
+
         public short? xdbc_sql_data_type { get; set; }
-        
+
         public short? xdbc_datetime_sub { get; set; }
 
         public int? xdbc_char_octet_length { get; set; }
 
         public string xdbc_is_nullable { get; set; }
-        
+
         public string xdbc_scope_catalog { get; set; }
-        
+
         public string xdbc_scope_schema { get; set; }
-        
+
         public string xdbc_scope_table { get; set; }
-        
+
         public bool? xdbc_is_autoincrement { get; set; }
 
         public bool? xdbc_is_generatedcolumn { get; set; }

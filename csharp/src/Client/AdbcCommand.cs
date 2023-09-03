@@ -73,10 +73,10 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         public AdbcStatement AdbcStatement => this.adbcStatement;
 
-        public override string CommandText 
-        { 
-            get => this.adbcStatement.SqlQuery; 
-            set => this.adbcStatement.SqlQuery = value; 
+        public override string CommandText
+        {
+            get => this.adbcStatement.SqlQuery;
+            set => this.adbcStatement.SqlQuery = value;
         }
 
         public override CommandType CommandType
@@ -95,10 +95,10 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        public override int CommandTimeout 
-        { 
-            get => _timeout; 
-            set => _timeout = value; 
+        public override int CommandTimeout
+        {
+            get => _timeout;
+            set => _timeout = value;
         }
 
         /// <summary>
@@ -133,7 +133,7 @@ namespace Apache.Arrow.Adbc.Client
         public QueryResult ExecuteQuery()
         {
             var executed = this.adbcStatement.ExecuteQuery();
-           
+
             return executed;
         }
 
@@ -159,7 +159,7 @@ namespace Apache.Arrow.Adbc.Client
         public new AdbcDataReader ExecuteReader(CommandBehavior behavior)
         {
             switch (behavior)
-            { 
+            {
                 case CommandBehavior.SingleRow:
                     throw new InvalidOperationException("Cannot read rows in Arrow");
                 default:
@@ -190,7 +190,7 @@ namespace Apache.Arrow.Adbc.Client
         #region NOT_IMPLEMENTED
 
         public override bool DesignTimeVisible { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        
+
         public override UpdateRowSource UpdatedRowSource { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         protected override DbParameterCollection DbParameterCollection => throw new NotImplementedException();

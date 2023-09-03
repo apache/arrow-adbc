@@ -107,7 +107,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             StringArray xdbc_column_def = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_column_def")]; //		xdbc_column_def	| utf8
             Int16Array xdbc_sql_data_type = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_sql_data_type")];//		xdbc_sql_data_type	| int16
             Int16Array xdbc_datetime_sub = (Int16Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_datetime_sub")]; //		xdbc_datetime_sub   | int16
-            Int32Array xdbc_char_octet_length = (Int32Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_char_octet_length")];  //		xdbc_char_octet_length	| int32	
+            Int32Array xdbc_char_octet_length = (Int32Array)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_char_octet_length")];  //		xdbc_char_octet_length	| int32
             StringArray xdbc_is_nullable = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_is_nullable")]; //		xdbc_is_nullable | utf8
             StringArray xdbc_scope_catalog = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_scope_catalog")];//		xdbc_scope_catalog | utf8
             StringArray xdbc_scope_schema = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "xdbc_scope_schema")]; //		xdbc_scope_schema | utf8

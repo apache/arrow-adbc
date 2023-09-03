@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Tests
                 writer.WriteStart();
 
                 foreach (RecordBatch batch in recordBatches)
-                { 
+                {
                     writer.WriteRecordBatch(batch);
                 }
 
@@ -96,7 +96,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             Schema s = recordBatches.First().Schema;
             QueryResult mockQueryResult = new QueryResult(expectedResults, new MockArrayStream(s, recordBatches));
-            
+
             Mock<IAdbcStatement> mockSqlStatement = new Mock<IAdbcStatement>();
             mockSqlStatement.Setup(s => s.ExecuteQuery()).Returns(mockQueryResult);
 
