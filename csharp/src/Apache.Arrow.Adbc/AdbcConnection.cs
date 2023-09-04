@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc
         /// </returns>
         public virtual IArrowArrayStream GetInfo(List<int> codes);
         {
-           throw AdbcException.NotImplemented("Connection does not support GetInfo");
+            throw AdbcException.NotImplemented("Connection does not support GetInfo");
         }
 
         /// <summary>
@@ -179,7 +179,7 @@ namespace Apache.Arrow.Adbc
         /// </param>
         public virtual Schema GetTableSchema(string catalog, string dbSchema, string tableName)
         {
-            throw AdbcException.NotImplemented("Connection does not support GetTableSchema");
+             throw AdbcException.NotImplemented("Connection does not support GetTableSchema");
         }
 
         /// <summary>
@@ -187,7 +187,7 @@ namespace Apache.Arrow.Adbc
         /// </summary>
         public virtual IArrowArrayStream GetTableTypes();
         {
-           throw AdbcException.NotImplemented("Connection does not support GetTableTypes");
+            throw AdbcException.NotImplemented("Connection does not support GetTableTypes");
         }
 
         /// <summary>
