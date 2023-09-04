@@ -465,7 +465,6 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 }
 
 func toXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
-
 	xdbcType = XdbcDataType_XDBC_UNKNOWN_TYPE
 	switch dt.ID() {
 	case arrow.EXTENSION:
@@ -509,7 +508,6 @@ func toXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
 	default:
 		return XdbcDataType_XDBC_UNKNOWN_TYPE
 	}
-	return
 }
 
 func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (result internal.SchemaToTableInfo, err error) {
