@@ -495,17 +495,7 @@ func SnowflakeConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, c
 	}
 
 	rdr, e := conn.cnxn.GetObjects(context.Background(), adbc.ObjectDepth(depth), toStrPtr(catalog), toStrPtr(dbSchema), toStrPtr(tableName), toStrPtr(columnName), toStrSlice(tableType))
-	
-	// // force my own values to get around the extremely sporadic parsing issue
-	// var coeTableTypes []string
-	// coeTableTypes = append(coeTableTypes, "BASE TABLE")
-	// coeTableTypes = append(coeTableTypes, "TABLE")
-	// coeTableTypes = append(coeTableTypes, "VIEW")
 
-	// fmt.Println(coeTableTypes)
-
-	// rdr, e := conn.cnxn.GetObjects(context.Background(), adbc.ObjectDepth(depth), toStrPtr(catalog), toStrPtr(dbSchema), toStrPtr(tableName), toStrPtr(columnName), coeTableTypes) 
-	
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}

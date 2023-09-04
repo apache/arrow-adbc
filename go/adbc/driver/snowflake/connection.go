@@ -358,8 +358,6 @@ var loc = time.Now().Location()
 func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength sql.NullInt32, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
 	ret.Name, ret.Nullable = name, isnullable
 
-	fmt.Println("dataType=" + dataType)
-
 	switch dataType {
 	case "NUMBER":
 		if !numScale.Valid || numScale.Int16 == 0 {
@@ -569,7 +567,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 				table_catalog, table_schema, table_name, column_name,
 				ordinal_position, is_nullable::boolean, data_type, numeric_precision,
 				numeric_precision_radix, numeric_scale, is_identity::boolean,
-				identity_generation, identity_increment, 
+				identity_generation, identity_increment,
 				character_maximum_length, character_octet_length, datetime_precision, comment
 		FROM ' || rec.database_name || '.INFORMATION_SCHEMA.COLUMNS';
 
