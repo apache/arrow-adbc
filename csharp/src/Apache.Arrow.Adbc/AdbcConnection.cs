@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc
         /// <returns>
         /// A statement that can be immediately executed.
         /// </returns>
-        public virtual IArrowArrayStream GetInfo(List<int> codes);
+        public virtual IArrowArrayStream GetInfo(List<int> codes)
         {
             throw AdbcException.NotImplemented("Connection does not support GetInfo");
         }
@@ -136,7 +136,7 @@ namespace Apache.Arrow.Adbc
             string dbSchemaPattern,
             string tableNamePattern,
             List<string> tableTypes,
-            string columnNamePattern);
+            string columnNamePattern)
         {
            throw AdbcException.NotImplemented("Connection does not support GetObjects");
         }
@@ -185,7 +185,7 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get a list of table types supported by the database.
         /// </summary>
-        public virtual IArrowArrayStream GetTableTypes();
+        public virtual IArrowArrayStream GetTableTypes()
         {
             throw AdbcException.NotImplemented("Connection does not support GetTableTypes");
         }
