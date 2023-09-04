@@ -138,7 +138,7 @@ namespace Apache.Arrow.Adbc
             List<string> tableTypes,
             string columnNamePattern)
         {
-           throw AdbcException.NotImplemented("Connection does not support GetObjects");
+            throw AdbcException.NotImplemented("Connection does not support GetObjects");
         }
 
         public enum GetObjectsDepth
@@ -179,7 +179,7 @@ namespace Apache.Arrow.Adbc
         /// </param>
         public virtual Schema GetTableSchema(string catalog, string dbSchema, string tableName)
         {
-             throw AdbcException.NotImplemented("Connection does not support GetTableSchema");
+            throw AdbcException.NotImplemented("Connection does not support GetTableSchema");
         }
 
         /// <summary>
