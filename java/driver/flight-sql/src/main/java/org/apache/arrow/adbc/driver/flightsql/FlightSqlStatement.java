@@ -248,6 +248,18 @@ public class FlightSqlStatement implements AdbcStatement {
   }
 
   @Override
+  public Schema executeSchema() throws AdbcException {
+    if (bulkOperation != null) {
+      throw AdbcException.invalidState("[Flight SQL] Must executeUpdate() for bulk ingestion");
+    } else if (sqlQuery == null) {
+      throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() before execute");
+    }
+    return execute(
+        FlightSqlClient.PreparedStatement::getResultSetSchema,
+        (client) -> client.getExecuteSchema(sqlQuery).getSchema());
+  }
+
+  @Override
   public UpdateResult executeUpdate() throws AdbcException {
     if (bulkOperation != null) {
       return executeBulk();

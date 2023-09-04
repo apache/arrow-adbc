@@ -43,17 +43,22 @@ public class FlightSqlDriver implements AdbcDriver {
 
   @Override
   public AdbcDatabase open(Map<String, Object> parameters) throws AdbcException {
-    Object target = parameters.get("adbc.url");
-    if (!(target instanceof String)) {
-      throw AdbcException.invalidArgument(
-          "[Flight SQL] Must provide String " + PARAM_URL + " parameter");
+    String uri = PARAM_URI.get(parameters);
+    if (uri == null) {
+      Object target = parameters.get("adbc.url");
+      if (!(target instanceof String)) {
+        throw AdbcException.invalidArgument(
+            "[Flight SQL] Must provide String " + PARAM_URI + " parameter");
+      }
+      uri = (String) target;
     }
+
     Location location;
     try {
-      location = new Location((String) target);
+      location = new Location(uri);
     } catch (URISyntaxException e) {
       throw AdbcException.invalidArgument(
-              String.format("[Flight SQL] Location %s is invalid: %s", target, e))
+              String.format("[Flight SQL] Location %s is invalid: %s", uri, e))
           .withCause(e);
     }
     Object quirks = parameters.get(PARAM_SQL_QUIRKS);

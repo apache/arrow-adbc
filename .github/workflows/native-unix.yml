@@ -318,6 +318,7 @@ jobs:
           popd
       - name: Go Test
         env:
+          SNOWFLAKE_DATABASE: ADBC_TESTING
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
@@ -657,7 +658,7 @@ jobs:
         if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
         run: |
           cd r/adbcpostgresql
-          docker compose up --detach postgres_test
+          docker compose up --detach postgres-test
           ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
           echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
 
@@ -665,7 +666,7 @@ jobs:
         if: matrix.config.pkg == 'adbcflightsql' && runner.os == 'Linux'
         run: |
           cd r/adbcpostgresql
-          docker compose up --detach golang-sqlite-flightsql
+          docker compose up --detach flightsql-sqlite-test
           ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
           echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
 

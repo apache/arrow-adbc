@@ -80,7 +80,27 @@ test_that("pointer mover leaves behind an invalid external pointer", {
   expect_true(adbc_xptr_is_valid(stream))
   expect_true(adbc_xptr_is_valid(adbc_xptr_move(stream)))
   expect_false(adbc_xptr_is_valid(stream))
+})
 
+test_that("adbc_xptr_is_valid() returns FALSE for null pointer", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+  stmt <- adbc_statement_init(con)
+  stream <- nanoarrow::basic_array_stream(list(), nanoarrow::na_na())
+
+  # A compact way to set the external pointer to NULL
+  db <- unserialize(serialize(db, NULL))
+  con <- unserialize(serialize(con, NULL))
+  stmt <- unserialize(serialize(stmt, NULL))
+  stream <- unserialize(serialize(stream, NULL))
+
+  expect_false(adbc_xptr_is_valid(db))
+  expect_false(adbc_xptr_is_valid(con))
+  expect_false(adbc_xptr_is_valid(stmt))
+  expect_false(adbc_xptr_is_valid(stream))
+})
+
+test_that("adbc_xptr_is_valid() errors for non-ADBC objects", {
   expect_error(
     adbc_xptr_is_valid(NULL),
     "must inherit from one of"
