@@ -495,7 +495,6 @@ func SnowflakeConnectionGetObjects(cnxn *C.struct_AdbcConnection, depth C.int, c
 	}
 
 	rdr, e := conn.cnxn.GetObjects(context.Background(), adbc.ObjectDepth(depth), toStrPtr(catalog), toStrPtr(dbSchema), toStrPtr(tableName), toStrPtr(columnName), toStrSlice(tableType))
-
 	if e != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, e))
 	}

@@ -73,7 +73,6 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 
 	fields := make([]arrow.Field, len(sc.Fields()))
 	transformers := make([]func(context.Context, arrow.Array) (arrow.Array, error), len(sc.Fields()))
-
 	for i, f := range sc.Fields() {
 		srcMeta := types[i]
 

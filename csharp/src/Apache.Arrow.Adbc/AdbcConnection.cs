@@ -72,10 +72,10 @@ namespace Apache.Arrow.Adbc
         /// <returns>
         /// A statement that can be immediately executed.
         /// </returns>
-        public abstract IArrowArrayStream GetInfo(List<int> codes);
-        //{
-        //    throw AdbcException.NotImplemented("Connection does not support GetInfo");
-        //}
+        public virtual IArrowArrayStream GetInfo(List<int> codes);
+        {
+           throw AdbcException.NotImplemented("Connection does not support GetInfo");
+        }
 
         /// <summary>
         /// Get metadata about the driver/database.
@@ -130,16 +130,16 @@ namespace Apache.Arrow.Adbc
         /// Only show columns with the given name.
         /// If null, do not filter by name.May be a search pattern.
         /// </param>
-        public abstract IArrowArrayStream GetObjects(
+        public virtual IArrowArrayStream GetObjects(
             GetObjectsDepth depth,
             string catalogPattern,
             string dbSchemaPattern,
             string tableNamePattern,
             List<string> tableTypes,
             string columnNamePattern);
-        //{
-        //    throw AdbcException.NotImplemented("Connection does not support GetObjects");
-        //}
+        {
+           throw AdbcException.NotImplemented("Connection does not support GetObjects");
+        }
 
         public enum GetObjectsDepth
         {
@@ -185,10 +185,10 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Get a list of table types supported by the database.
         /// </summary>
-        public abstract IArrowArrayStream GetTableTypes();
-        //{
-        //    throw AdbcException.NotImplemented("Connection does not support GetTableTypes");
-        //}
+        public virtual IArrowArrayStream GetTableTypes();
+        {
+           throw AdbcException.NotImplemented("Connection does not support GetTableTypes");
+        }
 
         /// <summary>
         /// Create a result set from a serialized PartitionDescriptor.
