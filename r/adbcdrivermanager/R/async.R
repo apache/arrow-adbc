@@ -35,6 +35,19 @@ adbc_array_stream_get_next_async <- function(stream, callback,
   invisible(queue)
 }
 
+adbc_statement_execute_query_async <- function(statement, callback,
+                                               schema = stream$get_schema(),
+                                               queue = adbc_callback_queue()) {
+  callback <- as_adbc_callback(callback)
+  stream_out <- nanoarrow::nanoarrow_allocate_array_stream()
+  callback$args <- list(statement, stream_out)
+
+  error <- adbc_allocate_error()
+  .Call(RAdbcStatementExecuteQueryAsync, queue, statement, stream_out, error, callback)
+
+  invisible(queue)
+}
+
 adbc_array_stream_get_next_promise <- function(stream,
                                                schema = stream$get_schema(),
                                                loop = NULL, delay = 0) {
@@ -125,9 +138,9 @@ adbc_callback <- function(on_success, ..., on_error = stop_for_error) {
   force(on_error)
   callback_env$callback <- function(status, error, return_value_xptr) {
     if (!identical(status, 0L)) {
-      try(on_error(status, error))
+      on_error(status, error)
     } else {
-      try(on_success(return_value_xptr))
+      on_success(return_value_xptr)
     }
   }
 
