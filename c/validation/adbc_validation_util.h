@@ -31,6 +31,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
+
 #include "common/utils.h"
 
 namespace adbc_validation {
@@ -264,6 +265,10 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
           return errno_res;
         }
+      } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
+        if (int errno_res = ArrowArrayAppendInterval(array, *v); errno_res != 0) {
+          return errno_res;
+        }
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
         return ENOTSUP;
@@ -375,6 +380,15 @@ void CompareArray(struct ArrowArrayView* array,
         struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
         std::string str(view.data, view.size_bytes);
         ASSERT_EQ(*v, str);
+      } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        struct ArrowInterval interval;
+        ArrowIntervalInit(&interval, ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+        ArrowArrayViewGetIntervalUnsafe(array, i, &interval);
+
+        ASSERT_EQ(interval.months, (*v)->months);
+        ASSERT_EQ(interval.days, (*v)->days);
+        ASSERT_EQ(interval.ns, (*v)->ns);
       } else {
         static_assert(!sizeof(T), "Not yet implemented");
       }

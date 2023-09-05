@@ -90,8 +90,11 @@ class DatabaseOptions(enum.Enum):
 class StatementOptions(enum.Enum):
     """Statement options specific to the Snowflake driver."""
 
-    #: The number of rows per batch. Defaults to 1024.
-    BATCH_ROWS = "adbc.rpc.result_queue_size"
+    #: The number of batches queued up at a time. Defaults to 200.
+    RESULT_QUEUE_SIZE = "adbc.rpc.result_queue_size"
+    #: Number of concurrent streams being prefetched for a result set.
+    #: Defaults to 10.
+    PREFETCH_CONCURRENCY = "adbc.snowflake.rpc.prefetch_concurrency"
 
 
 def connect(
@@ -108,9 +111,10 @@ def connect(
     db_kwargs : dict, optional
         Initial database connection parameters.
     """
-    return adbc_driver_manager.AdbcDatabase(
-        driver=_driver_path(), uri=uri, **(db_kwargs or {})
-    )
+    kwargs = (db_kwargs or {}).copy()
+    if uri is not None:
+        kwargs["uri"] = uri
+    return adbc_driver_manager.AdbcDatabase(driver=_driver_path(), **kwargs)
 
 
 @functools.cache

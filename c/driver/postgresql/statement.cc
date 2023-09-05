@@ -18,6 +18,7 @@
 #include "statement.h"
 
 #include <array>
+#include <cassert>
 #include <cerrno>
 #include <cinttypes>
 #include <cstring>
@@ -32,9 +33,11 @@
 
 #include "common/utils.h"
 #include "connection.h"
+#include "error.h"
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
+#include "vendor/portable-snippets/safe-math.h"
 
 namespace adbcpq {
 
@@ -219,11 +222,16 @@ struct BindStream {
           type_id = PostgresTypeId::kBytea;
           param_lengths[i] = 0;
           break;
+        case ArrowType::NANOARROW_TYPE_DATE32:
+          type_id = PostgresTypeId::kDate;
+          param_lengths[i] = 4;
+          break;
         case ArrowType::NANOARROW_TYPE_TIMESTAMP:
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_DURATION:
+        case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
           type_id = PostgresTypeId::kInterval;
           param_lengths[i] = 16;
           break;
@@ -266,20 +274,23 @@ struct BindStream {
         if (autocommit) {
           PGresult* begin_result = PQexec(conn, "BEGIN");
           if (PQresultStatus(begin_result) != PGRES_COMMAND_OK) {
-            SetError(error, "[libpq] Failed to begin transaction for timezone data: %s",
-                     PQerrorMessage(conn));
+            AdbcStatusCode code =
+                SetError(error, begin_result,
+                         "[libpq] Failed to begin transaction for timezone data: %s",
+                         PQerrorMessage(conn));
             PQclear(begin_result);
-            return ADBC_STATUS_IO;
+            return code;
           }
           PQclear(begin_result);
         }
 
         PGresult* get_tz_result = PQexec(conn, "SELECT current_setting('TIMEZONE')");
         if (PQresultStatus(get_tz_result) != PGRES_TUPLES_OK) {
-          SetError(error, "[libpq] Could not query current timezone: %s",
-                   PQerrorMessage(conn));
+          AdbcStatusCode code = SetError(error, get_tz_result,
+                                         "[libpq] Could not query current timezone: %s",
+                                         PQerrorMessage(conn));
           PQclear(get_tz_result);
-          return ADBC_STATUS_IO;
+          return code;
         }
 
         tz_setting = std::string(PQgetvalue(get_tz_result, 0, 0));
@@ -287,10 +298,11 @@ struct BindStream {
 
         PGresult* set_utc_result = PQexec(conn, "SET TIME ZONE 'UTC'");
         if (PQresultStatus(set_utc_result) != PGRES_COMMAND_OK) {
-          SetError(error, "[libpq] Failed to set time zone to UTC: %s",
-                   PQerrorMessage(conn));
+          AdbcStatusCode code = SetError(error, set_utc_result,
+                                         "[libpq] Failed to set time zone to UTC: %s",
+                                         PQerrorMessage(conn));
           PQclear(set_utc_result);
-          return ADBC_STATUS_IO;
+          return code;
         }
         PQclear(set_utc_result);
         break;
@@ -300,10 +312,11 @@ struct BindStream {
     PGresult* result = PQprepare(conn, /*stmtName=*/"", query.c_str(),
                                  /*nParams=*/bind_schema->n_children, param_types.data());
     if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      SetError(error, "[libpq] Failed to prepare query: %s\nQuery was:%s",
-               PQerrorMessage(conn), query.c_str());
+      AdbcStatusCode code =
+          SetError(error, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
+                   PQerrorMessage(conn), query.c_str());
       PQclear(result);
-      return ADBC_STATUS_IO;
+      return code;
     }
     PQclear(result);
     return ADBC_STATUS_OK;
@@ -389,32 +402,39 @@ struct BindStream {
               param_values[col] = const_cast<char*>(view.data.as_char);
               break;
             }
+            case ArrowType::NANOARROW_TYPE_DATE32: {
+              // 2000-01-01
+              constexpr int32_t kPostgresDateEpoch = 10957;
+              const int32_t raw_value =
+                  array_view->children[col]->buffer_views[1].data.as_int32[row];
+              if (raw_value < INT32_MIN + kPostgresDateEpoch) {
+                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
+                         "('", bind_schema->children[col]->name, "') Row #", row + 1,
+                         "has value which exceeds postgres date limits");
+                return ADBC_STATUS_INVALID_ARGUMENT;
+              }
+
+              const uint32_t value = ToNetworkInt32(raw_value - kPostgresDateEpoch);
+              std::memcpy(param_values[col], &value, sizeof(int32_t));
+              break;
+            }
             case ArrowType::NANOARROW_TYPE_TIMESTAMP:
             case ArrowType::NANOARROW_TYPE_DURATION: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
-              constexpr int64_t kSecOverflowLimit = 9223372036854;
-              constexpr int64_t kmSecOverflowLimit = 9223372036854775;
+              // 2000-01-01 00:00:00.000000 in microseconds
+              constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
+              psnip_safe_bool overflow_safe = true;
 
               auto unit = bind_schema_fields[col].time_unit;
+
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-                  if (abs(val) > kSecOverflowLimit) {
-                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
-                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
-                             row + 1, "has value which exceeds postgres temporal limits");
-                    return ADBC_STATUS_INVALID_ARGUMENT;
-                  }
-                  val *= 1000000;
+
+                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000000);
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
-                  if (abs(val) > kmSecOverflowLimit) {
-                    SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s",
-                             col + 1, "('", bind_schema->children[col]->name, "') Row #",
-                             row + 1, "has value which exceeds postgres temporal limits");
-                    return ADBC_STATUS_INVALID_ARGUMENT;
-                  }
-                  val *= 1000;
+                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000);
                   break;
                 case NANOARROW_TIME_UNIT_MICRO:
                   break;
@@ -423,9 +443,15 @@ struct BindStream {
                   break;
               }
 
+              if (!overflow_safe) {
+                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
+                         " (' ", bind_schema->children[col]->name, " ') Row # ", row + 1,
+                         " has value which exceeds postgres timestamp limits");
+
+                return ADBC_STATUS_INVALID_ARGUMENT;
+              }
+
               if (bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) {
-                // 2000-01-01 00:00:00.000000 in microseconds
-                constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
                 const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
                 std::memcpy(param_values[col], &value, sizeof(int64_t));
               } else if (bind_schema_fields[col].type ==
@@ -437,6 +463,21 @@ struct BindStream {
                 std::memcpy(param_values[col], &value, sizeof(int64_t));
                 std::memset(param_values[col] + sizeof(int64_t), 0, sizeof(int64_t));
               }
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
+              struct ArrowInterval interval;
+              ArrowIntervalInit(&interval, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+              ArrowArrayViewGetIntervalUnsafe(array_view->children[col], row, &interval);
+
+              const uint32_t months = ToNetworkInt32(interval.months);
+              const uint32_t days = ToNetworkInt32(interval.days);
+              const uint64_t ms = ToNetworkInt64(interval.ns / 1000);
+
+              std::memcpy(param_values[col], &ms, sizeof(uint64_t));
+              std::memcpy(param_values[col] + sizeof(uint64_t), &days, sizeof(uint32_t));
+              std::memcpy(param_values[col] + sizeof(uint64_t) + sizeof(uint32_t),
+                          &months, sizeof(uint32_t));
               break;
             }
             default:
@@ -454,10 +495,11 @@ struct BindStream {
                                 /*resultFormat=*/0 /*text*/);
 
         if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-          SetError(error, "%s%s", "[libpq] Failed to execute prepared statement: ",
-                   PQerrorMessage(conn));
+          AdbcStatusCode code = SetError(
+              error, result, "%s%s",
+              "[libpq] Failed to execute prepared statement: ", PQerrorMessage(conn));
           PQclear(result);
-          return ADBC_STATUS_IO;
+          return code;
         }
 
         PQclear(result);
@@ -468,18 +510,21 @@ struct BindStream {
         std::string reset_query = "SET TIME ZONE '" + tz_setting + "'";
         PGresult* reset_tz_result = PQexec(conn, reset_query.c_str());
         if (PQresultStatus(reset_tz_result) != PGRES_COMMAND_OK) {
-          SetError(error, "[libpq] Failed to reset time zone: %s", PQerrorMessage(conn));
+          AdbcStatusCode code =
+              SetError(error, reset_tz_result, "[libpq] Failed to reset time zone: %s",
+                       PQerrorMessage(conn));
           PQclear(reset_tz_result);
-          return ADBC_STATUS_IO;
+          return code;
         }
         PQclear(reset_tz_result);
 
         PGresult* commit_result = PQexec(conn, "COMMIT");
         if (PQresultStatus(commit_result) != PGRES_COMMAND_OK) {
-          SetError(error, "[libpq] Failed to commit transaction: %s",
-                   PQerrorMessage(conn));
+          AdbcStatusCode code =
+              SetError(error, commit_result, "[libpq] Failed to commit transaction: %s",
+                       PQerrorMessage(conn));
           PQclear(commit_result);
-          return ADBC_STATUS_IO;
+          return code;
         }
         PQclear(commit_result);
       }
@@ -490,37 +535,39 @@ struct BindStream {
 }  // namespace
 
 int TupleReader::GetSchema(struct ArrowSchema* out) {
+  assert(copy_reader_ != nullptr);
+
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
-    StringBuilderAppend(&error_builder_,
-                        "[libpq] Result set was already consumed or freed");
-    return EINVAL;
+    SetError(&error_, "[libpq] Result set was already consumed or freed");
+    status_ = ADBC_STATUS_INVALID_STATE;
+    return AdbcStatusCodeToErrno(status_);
   } else if (na_res != NANOARROW_OK) {
     // e.g., Can't allocate memory
-    StringBuilderAppend(&error_builder_, "[libpq] Error copying schema");
+    SetError(&error_, "[libpq] Error copying schema");
+    status_ = ADBC_STATUS_INTERNAL;
   }
 
   return na_res;
 }
 
 int TupleReader::InitQueryAndFetchFirst(struct ArrowError* error) {
-  ResetQuery();
-
   // Fetch + parse the header
   int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
   data_.size_bytes = get_copy_res;
   data_.data.as_char = pgbuf_;
 
   if (get_copy_res == -2) {
-    StringBuilderAppend(&error_builder_, "[libpq] Fetch header failed: %s",
-                        PQerrorMessage(conn_));
-    return EIO;
+    SetError(&error_, "[libpq] Fetch header failed: %s", PQerrorMessage(conn_));
+    status_ = ADBC_STATUS_IO;
+    return AdbcStatusCodeToErrno(status_);
   }
 
   int na_res = copy_reader_->ReadHeader(&data_, error);
   if (na_res != NANOARROW_OK) {
-    StringBuilderAppend(&error_builder_, "[libpq] ReadHeader failed: %s", error->message);
-    return EIO;
+    SetError(&error_, "[libpq] ReadHeader failed: %s", error->message);
+    status_ = ADBC_STATUS_IO;
+    return AdbcStatusCodeToErrno(status_);
   }
 
   return NANOARROW_OK;
@@ -531,9 +578,9 @@ int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
   // call to PQgetCopyData())
   int na_res = copy_reader_->ReadRecord(&data_, error);
   if (na_res != NANOARROW_OK && na_res != ENODATA) {
-    StringBuilderAppend(&error_builder_,
-                        "[libpq] ReadRecord failed at row %" PRId64 ": %s", row_id_,
-                        error->message);
+    SetError(&error_, "[libpq] ReadRecord failed at row %" PRId64 ": %s", row_id_,
+             error->message);
+    status_ = ADBC_STATUS_IO;
     return na_res;
   }
 
@@ -547,10 +594,10 @@ int TupleReader::AppendRowAndFetchNext(struct ArrowError* error) {
   data_.data.as_char = pgbuf_;
 
   if (get_copy_res == -2) {
-    StringBuilderAppend(&error_builder_,
-                        "[libpq] PQgetCopyData failed at row %" PRId64 ": %s", row_id_,
-                        PQerrorMessage(conn_));
-    return EIO;
+    SetError(&error_, "[libpq] PQgetCopyData failed at row %" PRId64 ": %s", row_id_,
+             PQerrorMessage(conn_));
+    status_ = ADBC_STATUS_IO;
+    return AdbcStatusCodeToErrno(status_);
   } else if (get_copy_res == -1) {
     // Returned when COPY has finished successfully
     return ENODATA;
@@ -572,35 +619,16 @@ int TupleReader::BuildOutput(struct ArrowArray* out, struct ArrowError* error) {
 
   int na_res = copy_reader_->GetArray(out, error);
   if (na_res != NANOARROW_OK) {
-    StringBuilderAppend(&error_builder_, "[libpq] Failed to build result array: %s",
-                        error->message);
+    SetError(&error_, "[libpq] Failed to build result array: %s", error->message);
+    status_ = ADBC_STATUS_INTERNAL;
     return na_res;
   }
 
   return NANOARROW_OK;
 }
 
-void TupleReader::ResetQuery() {
-  // Clear result
-  if (result_) {
-    PQclear(result_);
-    result_ = nullptr;
-  }
-
-  // Reset result buffer
-  if (pgbuf_ != nullptr) {
-    PQfreemem(pgbuf_);
-    pgbuf_ = nullptr;
-  }
-
-  // Clear the error builder
-  error_builder_.size = 0;
-
-  row_id_ = -1;
-}
-
 int TupleReader::GetNext(struct ArrowArray* out) {
-  if (!copy_reader_) {
+  if (is_finished_) {
     out->release = nullptr;
     return 0;
   }
@@ -628,36 +656,45 @@ int TupleReader::GetNext(struct ArrowArray* out) {
     return na_res;
   }
 
+  is_finished_ = true;
+
   // Finish the result properly and return the last result. Note that BuildOutput() may
   // set tmp.release = nullptr if there were zero rows in the copy reader (can
   // occur in an overflow scenario).
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(BuildOutput(&tmp, &error));
 
-  // Clear the copy reader to mark this reader as finished
-  copy_reader_.reset();
-
+  PQclear(result_);
   // Check the server-side response
   result_ = PQgetResult(conn_);
-  const int pq_status = PQresultStatus(result_);
+  const ExecStatusType pq_status = PQresultStatus(result_);
   if (pq_status != PGRES_COMMAND_OK) {
-    StringBuilderAppend(&error_builder_, "[libpq] Query failed [%d]: %s", pq_status,
-                        PQresultErrorMessage(result_));
+    const char* sqlstate = PQresultErrorField(result_, PG_DIAG_SQLSTATE);
+    SetError(&error_, result_, "[libpq] Query failed [%s]: %s", PQresStatus(pq_status),
+             PQresultErrorMessage(result_));
 
     if (tmp.release != nullptr) {
       tmp.release(&tmp);
     }
 
-    return EIO;
+    if (sqlstate != nullptr && std::strcmp(sqlstate, "57014") == 0) {
+      status_ = ADBC_STATUS_CANCELLED;
+    } else {
+      status_ = ADBC_STATUS_IO;
+    }
+    return AdbcStatusCodeToErrno(status_);
   }
 
-  ResetQuery();
   ArrowArrayMove(&tmp, out);
   return NANOARROW_OK;
 }
 
 void TupleReader::Release() {
-  StringBuilderReset(&error_builder_);
+  if (error_.release) {
+    error_.release(&error_);
+  }
+  error_ = ADBC_ERROR_INIT;
+  status_ = ADBC_STATUS_OK;
 
   if (result_) {
     PQclear(result_);
@@ -668,6 +705,13 @@ void TupleReader::Release() {
     PQfreemem(pgbuf_);
     pgbuf_ = nullptr;
   }
+
+  if (copy_reader_) {
+    copy_reader_.reset();
+  }
+
+  is_finished_ = false;
+  row_id_ = -1;
 }
 
 void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
@@ -676,6 +720,19 @@ void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
   stream->get_last_error = &GetLastErrorTrampoline;
   stream->release = &ReleaseTrampoline;
   stream->private_data = this;
+}
+
+const struct AdbcError* TupleReader::ErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                          AdbcStatusCode* status) {
+  if (!stream->private_data || stream->release != &ReleaseTrampoline) {
+    return nullptr;
+  }
+
+  TupleReader* reader = static_cast<TupleReader*>(stream->private_data);
+  if (status) {
+    *status = reader->status_;
+  }
+  return &reader->error_;
 }
 
 int TupleReader::GetSchemaTrampoline(struct ArrowArrayStream* self,
@@ -759,11 +816,42 @@ AdbcStatusCode PostgresStatement::Bind(struct ArrowArrayStream* stream,
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode PostgresStatement::Cancel(struct AdbcError* error) {
+  // Ultimately the same underlying PGconn
+  return connection_->Cancel(error);
+}
+
 AdbcStatusCode PostgresStatement::CreateBulkTable(
     const struct ArrowSchema& source_schema,
     const std::vector<struct ArrowSchemaView>& source_schema_fields,
     struct AdbcError* error) {
   std::string create = "CREATE TABLE ";
+  switch (ingest_.mode) {
+    case IngestMode::kCreate:
+      // Nothing to do
+      break;
+    case IngestMode::kAppend:
+      return ADBC_STATUS_OK;
+    case IngestMode::kReplace: {
+      std::string drop = "DROP TABLE IF EXISTS " + ingest_.target;
+      PGresult* result = PQexecParams(connection_->conn(), drop.c_str(), /*nParams=*/0,
+                                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
+                                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
+                                      /*resultFormat=*/1 /*(binary)*/);
+      if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+        AdbcStatusCode code =
+            SetError(error, result, "[libpq] Failed to drop table: %s\nQuery was: %s",
+                     PQerrorMessage(connection_->conn()), drop.c_str());
+        PQclear(result);
+        return code;
+      }
+      PQclear(result);
+      break;
+    }
+    case IngestMode::kCreateAppend:
+      create += "IF NOT EXISTS ";
+      break;
+  }
   create += ingest_.target;
   create += " (";
 
@@ -793,6 +881,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       case ArrowType::NANOARROW_TYPE_BINARY:
         create += " BYTEA";
         break;
+      case ArrowType::NANOARROW_TYPE_DATE32:
+        create += " DATE";
+        break;
       case ArrowType::NANOARROW_TYPE_TIMESTAMP:
         if (strcmp("", source_schema_fields[i].timezone)) {
           create += " TIMESTAMPTZ";
@@ -801,6 +892,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         }
         break;
       case ArrowType::NANOARROW_TYPE_DURATION:
+      case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
         create += " INTERVAL";
         break;
       default:
@@ -819,10 +911,11 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
                                   /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                   /*resultFormat=*/1 /*(binary)*/);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "[libpq] Failed to create table: %s\nQuery was: %s",
-             PQerrorMessage(connection_->conn()), create.c_str());
+    AdbcStatusCode code =
+        SetError(error, result, "[libpq] Failed to create table: %s\nQuery was: %s",
+                 PQerrorMessage(connection_->conn()), create.c_str());
     PQclear(result);
-    return ADBC_STATUS_IO;
+    return code;
   }
   PQclear(result);
   return ADBC_STATUS_OK;
@@ -883,50 +976,12 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
   // 1. Prepare the query to get the schema
   {
-    // TODO: we should pipeline here and assume this will succeed
-    PGresult* result = PQprepare(connection_->conn(), /*stmtName=*/"", query_.c_str(),
-                                 /*nParams=*/0, nullptr);
-    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      SetError(error,
-               "[libpq] Failed to execute query: could not infer schema: failed to "
-               "prepare query: %s\nQuery was:%s",
-               PQerrorMessage(connection_->conn()), query_.c_str());
-      PQclear(result);
-      return ADBC_STATUS_IO;
-    }
-    PQclear(result);
-    result = PQdescribePrepared(connection_->conn(), /*stmtName=*/"");
-    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      SetError(error,
-               "[libpq] Failed to execute query: could not infer schema: failed to "
-               "describe prepared statement: %s\nQuery was:%s",
-               PQerrorMessage(connection_->conn()), query_.c_str());
-      PQclear(result);
-      return ADBC_STATUS_IO;
-    }
-
-    // Resolve the information from the PGresult into a PostgresType
-    PostgresType root_type;
-    AdbcStatusCode status =
-        ResolvePostgresType(*type_resolver_, result, &root_type, error);
-    PQclear(result);
-    if (status != ADBC_STATUS_OK) return status;
-
-    // Initialize the copy reader and infer the output schema (i.e., error for
-    // unsupported types before issuing the COPY query)
-    reader_.copy_reader_.reset(new PostgresCopyStreamReader());
-    reader_.copy_reader_->Init(root_type);
-    struct ArrowError na_error;
-    int na_res = reader_.copy_reader_->InferOutputSchema(&na_error);
-    if (na_res != NANOARROW_OK) {
-      SetError(error, "[libpq] Failed to infer output schema: %s", na_error.message);
-      return na_res;
-    }
+    RAISE_ADBC(SetupReader(error));
 
     // If the caller did not request a result set or if there are no
     // inferred output columns (e.g. a CREATE or UPDATE), then don't
     // use COPY (which would fail anyways)
-    if (!stream || root_type.n_children() == 0) {
+    if (!stream || reader_.copy_reader_->pg_type().n_children() == 0) {
       RAISE_ADBC(ExecuteUpdateQuery(rows_affected, error));
       if (stream) {
         struct ArrowSchema schema;
@@ -940,7 +995,8 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     // This resolves the reader specific to each PostgresType -> ArrowSchema
     // conversion. It is unlikely that this will fail given that we have just
     // inferred these conversions ourselves.
-    na_res = reader_.copy_reader_->InitFieldReaders(&na_error);
+    struct ArrowError na_error;
+    int na_res = reader_.copy_reader_->InitFieldReaders(&na_error);
     if (na_res != NANOARROW_OK) {
       SetError(error, "[libpq] Failed to initialize field readers: %s", na_error.message);
       return na_res;
@@ -955,17 +1011,35 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                      /*paramLengths=*/nullptr, /*paramFormats=*/nullptr, kPgBinaryFormat);
     if (PQresultStatus(reader_.result_) != PGRES_COPY_OUT) {
-      SetError(error,
-               "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
-               PQerrorMessage(connection_->conn()), copy_query.c_str());
+      AdbcStatusCode code = SetError(
+          error, reader_.result_,
+          "[libpq] Failed to execute query: could not begin COPY: %s\nQuery was: %s",
+          PQerrorMessage(connection_->conn()), copy_query.c_str());
       ClearResult();
-      return ADBC_STATUS_IO;
+      return code;
     }
     // Result is read from the connection, not the result, but we won't clear it here
   }
 
   reader_.ExportTo(stream);
   if (rows_affected) *rows_affected = -1;
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
+                                                struct AdbcError* error) {
+  ClearResult();
+  if (query_.empty()) {
+    SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
+    return ADBC_STATUS_INVALID_STATE;
+  } else if (bind_.release) {
+    // TODO: if we have parameters, bind them (since they can affect the output schema)
+    SetError(error, "[libpq] ExecuteSchema with parameters is not implemented");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  RAISE_ADBC(SetupReader(error));
+  CHECK_NA(INTERNAL, reader_.copy_reader_->GetSchema(schema), error);
   return ADBC_STATUS_OK;
 }
 
@@ -980,12 +1054,8 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
   std::memset(&bind_, 0, sizeof(bind_));
   RAISE_ADBC(bind_stream.Begin(
       [&]() -> AdbcStatusCode {
-        if (!ingest_.append) {
-          // CREATE TABLE
-          return CreateBulkTable(bind_stream.bind_schema.value,
-                                 bind_stream.bind_schema_fields, error);
-        }
-        return ADBC_STATUS_OK;
+        return CreateBulkTable(bind_stream.bind_schema.value,
+                               bind_stream.bind_schema_fields, error);
       },
       error));
   RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
@@ -1013,15 +1083,75 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateQuery(int64_t* rows_affected,
       PQexecPrepared(connection_->conn(), /*stmtName=*/"", /*nParams=*/0,
                      /*paramValues=*/nullptr, /*paramLengths=*/nullptr,
                      /*paramFormats=*/nullptr, /*resultFormat=*/kPgBinaryFormat);
-  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "[libpq] Failed to execute query: %s\nQuery was:%s",
-             PQerrorMessage(connection_->conn()), query_.c_str());
+  ExecStatusType status = PQresultStatus(result);
+  if (status != PGRES_COMMAND_OK && status != PGRES_TUPLES_OK) {
+    AdbcStatusCode code =
+        SetError(error, result, "[libpq] Failed to execute query: %s\nQuery was:%s",
+                 PQerrorMessage(connection_->conn()), query_.c_str());
     PQclear(result);
-    return ADBC_STATUS_IO;
+    return code;
   }
   if (rows_affected) *rows_affected = PQntuples(reader_.result_);
   PQclear(result);
   return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t* length,
+                                            struct AdbcError* error) {
+  std::string result;
+  if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
+    result = ingest_.target;
+  } else if (std::strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
+    switch (ingest_.mode) {
+      case IngestMode::kCreate:
+        result = ADBC_INGEST_OPTION_MODE_CREATE;
+        break;
+      case IngestMode::kAppend:
+        result = ADBC_INGEST_OPTION_MODE_APPEND;
+        break;
+      case IngestMode::kReplace:
+        result = ADBC_INGEST_OPTION_MODE_REPLACE;
+        break;
+      case IngestMode::kCreateAppend:
+        result = ADBC_INGEST_OPTION_MODE_CREATE_APPEND;
+        break;
+    }
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
+    result = std::to_string(reader_.batch_size_hint_bytes_);
+  } else {
+    SetError(error, "[libpq] Unknown statement option '%s'", key);
+    return ADBC_STATUS_NOT_FOUND;
+  }
+
+  if (result.size() + 1 <= *length) {
+    std::memcpy(value, result.data(), result.size() + 1);
+  }
+  *length = static_cast<int64_t>(result.size() + 1);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresStatement::GetOptionBytes(const char* key, uint8_t* value,
+                                                 size_t* length,
+                                                 struct AdbcError* error) {
+  SetError(error, "[libpq] Unknown statement option '%s'", key);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode PostgresStatement::GetOptionDouble(const char* key, double* value,
+                                                  struct AdbcError* error) {
+  SetError(error, "[libpq] Unknown statement option '%s'", key);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode PostgresStatement::GetOptionInt(const char* key, int64_t* value,
+                                               struct AdbcError* error) {
+  std::string result;
+  if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
+    *value = reader_.batch_size_hint_bytes_;
+    return ADBC_STATUS_OK;
+  }
+  SetError(error, "[libpq] Unknown statement option '%s'", key);
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode PostgresStatement::GetParameterSchema(struct ArrowSchema* schema,
@@ -1062,16 +1192,22 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
   if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
     query_.clear();
     ingest_.target = value;
+    prepared_ = false;
   } else if (std::strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
     if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE) == 0) {
-      ingest_.append = false;
+      ingest_.mode = IngestMode::kCreate;
     } else if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_APPEND) == 0) {
-      ingest_.append = true;
+      ingest_.mode = IngestMode::kAppend;
+    } else if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_REPLACE) == 0) {
+      ingest_.mode = IngestMode::kReplace;
+    } else if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE_APPEND) == 0) {
+      ingest_.mode = IngestMode::kCreateAppend;
     } else {
       SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
-  } else if (std::strcmp(value, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES)) {
+    prepared_ = false;
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     int64_t int_value = std::atol(value);
     if (int_value <= 0) {
       SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
@@ -1080,8 +1216,80 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
 
     this->reader_.batch_size_hint_bytes_ = int_value;
   } else {
-    SetError(error, "[libq] Unknown statement option '%s'", key);
+    SetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresStatement::SetOptionBytes(const char* key, const uint8_t* value,
+                                                 size_t length, struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown statement option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresStatement::SetOptionDouble(const char* key, double value,
+                                                  struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown statement option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
+                                               struct AdbcError* error) {
+  if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
+    if (value <= 0) {
+      SetError(error, "[libpq] Invalid value '%" PRIi64 "' for option '%s'", value, key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    this->reader_.batch_size_hint_bytes_ = value;
+    return ADBC_STATUS_OK;
+  }
+  SetError(error, "[libpq] Unknown statement option '%s'", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresStatement::SetupReader(struct AdbcError* error) {
+  // TODO: we should pipeline here and assume this will succeed
+  PGresult* result = PQprepare(connection_->conn(), /*stmtName=*/"", query_.c_str(),
+                               /*nParams=*/0, nullptr);
+  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+    AdbcStatusCode code =
+        SetError(error, result,
+                 "[libpq] Failed to execute query: could not infer schema: failed to "
+                 "prepare query: %s\nQuery was:%s",
+                 PQerrorMessage(connection_->conn()), query_.c_str());
+    PQclear(result);
+    return code;
+  }
+  PQclear(result);
+  result = PQdescribePrepared(connection_->conn(), /*stmtName=*/"");
+  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+    AdbcStatusCode code =
+        SetError(error, result,
+                 "[libpq] Failed to execute query: could not infer schema: failed to "
+                 "describe prepared statement: %s\nQuery was:%s",
+                 PQerrorMessage(connection_->conn()), query_.c_str());
+    PQclear(result);
+    return code;
+  }
+
+  // Resolve the information from the PGresult into a PostgresType
+  PostgresType root_type;
+  AdbcStatusCode status = ResolvePostgresType(*type_resolver_, result, &root_type, error);
+  PQclear(result);
+  if (status != ADBC_STATUS_OK) return status;
+
+  // Initialize the copy reader and infer the output schema (i.e., error for
+  // unsupported types before issuing the COPY query)
+  reader_.copy_reader_.reset(new PostgresCopyStreamReader());
+  reader_.copy_reader_->Init(root_type);
+  struct ArrowError na_error;
+  int na_res = reader_.copy_reader_->InferOutputSchema(&na_error);
+  if (na_res != NANOARROW_OK) {
+    SetError(error, "[libpq] Failed to infer output schema: (%d) %s: %s", na_res,
+             std::strerror(na_res), na_error.message);
+    return ADBC_STATUS_INTERNAL;
   }
   return ADBC_STATUS_OK;
 }

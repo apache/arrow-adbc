@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 
@@ -31,7 +30,6 @@ namespace Apache.Arrow.Adbc
     {
         public AdbcStatement()
         {
-
         }
 
         /// <summary>

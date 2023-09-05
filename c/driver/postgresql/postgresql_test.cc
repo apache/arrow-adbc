@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cerrno>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
@@ -25,8 +27,9 @@
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
-#include "common/utils.h"
 
+#include "common/utils.h"
+#include "database.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
@@ -103,6 +106,30 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
 
   std::string catalog() const override { return "postgres"; }
   std::string db_schema() const override { return "public"; }
+
+  bool supports_cancel() const override { return true; }
+  bool supports_execute_schema() const override { return true; }
+  std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
+      uint32_t info_code) const override {
+    switch (info_code) {
+      case ADBC_INFO_DRIVER_ADBC_VERSION:
+        return ADBC_VERSION_1_1_0;
+      case ADBC_INFO_DRIVER_NAME:
+        return "ADBC PostgreSQL Driver";
+      case ADBC_INFO_DRIVER_VERSION:
+        return "(unknown)";
+      case ADBC_INFO_VENDOR_NAME:
+        return "PostgreSQL";
+      case ADBC_INFO_VENDOR_VERSION:
+        // Strings are checked via substring match
+        return "15";
+      default:
+        return std::nullopt;
+    }
+  }
+  bool supports_metadata_current_catalog() const override { return true; }
+  bool supports_metadata_current_db_schema() const override { return true; }
+  bool supports_statistics() const override { return true; }
 };
 
 class PostgresDatabaseTest : public ::testing::Test,
@@ -116,6 +143,20 @@ class PostgresDatabaseTest : public ::testing::Test,
   PostgresQuirks quirks_;
 };
 ADBCV_TEST_DATABASE(PostgresDatabaseTest)
+
+TEST_F(PostgresDatabaseTest, AdbcDriverBackwardsCompatibility) {
+  // XXX: sketchy cast
+  auto* driver = static_cast<struct AdbcDriver*>(malloc(ADBC_DRIVER_1_0_0_SIZE));
+  std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
+
+  ASSERT_THAT(::PostgresqlDriverInit(ADBC_VERSION_1_0_0, driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(::PostgresqlDriverInit(424242, driver, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+
+  free(driver);
+}
 
 class PostgresConnectionTest : public ::testing::Test,
                                public adbc_validation::ConnectionTest {
@@ -134,10 +175,8 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
 
   adbc_validation::StreamReader reader;
   std::vector<uint32_t> info = {
-      ADBC_INFO_DRIVER_NAME,
-      ADBC_INFO_DRIVER_VERSION,
-      ADBC_INFO_VENDOR_NAME,
-      ADBC_INFO_VENDOR_VERSION,
+      ADBC_INFO_DRIVER_NAME, ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ADBC_VERSION,
+      ADBC_INFO_VENDOR_NAME, ADBC_INFO_VENDOR_VERSION,
   };
   ASSERT_THAT(AdbcConnectionGetInfo(&connection, info.data(), info.size(),
                                     &reader.stream.value, &error),
@@ -153,29 +192,30 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
       ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], row));
       const uint32_t code =
           reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
+      const uint32_t offset =
+          reader.array_view->children[1]->buffer_views[1].data.as_int32[row];
       seen.push_back(code);
 
-      int str_child_index = 0;
-      struct ArrowArrayView* str_child =
-          reader.array_view->children[1]->children[str_child_index];
+      struct ArrowArrayView* str_child = reader.array_view->children[1]->children[0];
+      struct ArrowArrayView* int_child = reader.array_view->children[1]->children[2];
       switch (code) {
         case ADBC_INFO_DRIVER_NAME: {
-          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 0);
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
           EXPECT_EQ("ADBC PostgreSQL Driver", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_DRIVER_VERSION: {
-          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 1);
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
           EXPECT_EQ("(unknown)", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_VENDOR_NAME: {
-          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 2);
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
           EXPECT_EQ("PostgreSQL", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_VENDOR_VERSION: {
-          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 3);
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
 #ifdef __WIN32
           const char* pater = "\\d\\d\\d\\d\\d\\d";
 #else
@@ -183,6 +223,10 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
 #endif
           EXPECT_THAT(std::string(val.data, val.size_bytes),
                       ::testing::MatchesRegex(pater));
+          break;
+        }
+        case ADBC_INFO_DRIVER_ADBC_VERSION: {
+          EXPECT_EQ(ADBC_VERSION_1_1_0, ArrowArrayViewGetIntUnsafe(int_child, offset));
           break;
         }
         default:
@@ -197,10 +241,6 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
 TEST_F(PostgresConnectionTest, GetObjectsGetCatalogs) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
-
-  if (!quirks()->supports_get_objects()) {
-    GTEST_SKIP();
-  }
 
   adbc_validation::StreamReader reader;
   ASSERT_THAT(
@@ -228,10 +268,6 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
-  if (!quirks()->supports_get_objects()) {
-    GTEST_SKIP();
-  }
-
   adbc_validation::StreamReader reader;
   ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_DB_SCHEMAS, nullptr,
                                        nullptr, nullptr, nullptr, nullptr,
@@ -254,10 +290,6 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
 TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
-
-  if (!quirks()->supports_get_objects()) {
-    GTEST_SKIP();
-  }
 
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_pkey_test", &error),
               IsOkStatus(&error));
@@ -328,10 +360,6 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
 TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
-
-  if (!quirks()->supports_get_objects()) {
-    GTEST_SKIP();
-  }
 
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_fkey_test", &error),
               IsOkStatus(&error));
@@ -450,10 +478,6 @@ TEST_F(PostgresConnectionTest, GetObjectsTableTypesFilter) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
-  if (!quirks()->supports_get_objects()) {
-    GTEST_SKIP();
-  }
-
   ASSERT_THAT(quirks()->DropView(&connection, "adbc_table_types_view_test", &error),
               IsOkStatus(&error));
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_table_types_table_test", &error),
@@ -516,7 +540,7 @@ TEST_F(PostgresConnectionTest, GetObjectsTableTypesFilter) {
 }
 
 TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
-  if (!quirks()->supports_bulk_ingest()) {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
@@ -531,13 +555,13 @@ TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
                                            /*db_schema=*/nullptr,
                                            "0'::int; DROP TABLE bulk_ingest;--",
                                            &schema.value, &error),
-              IsStatus(ADBC_STATUS_IO, &error));
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
 
   ASSERT_THAT(
       AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
                                    /*db_schema=*/"0'::int; DROP TABLE bulk_ingest;--",
                                    "DROP TABLE bulk_ingest;", &schema.value, &error),
-      IsStatus(ADBC_STATUS_IO, &error));
+      IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
 
   ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
                                            /*db_schema=*/nullptr, "bulk_ingest",
@@ -547,6 +571,236 @@ TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
   ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
       &schema.value, {{"int64s", NANOARROW_TYPE_INT64, true},
                       {"strings", NANOARROW_TYPE_STRING, true}}));
+}
+
+TEST_F(PostgresConnectionTest, MetadataSetCurrentDbSchema) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement.value, "CREATE SCHEMA IF NOT EXISTS testschema", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement.value,
+            "CREATE TABLE IF NOT EXISTS testschema.schematable (ints INT)", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+  }
+
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  // Table does not exist in this schema
+  error.vendor_code = ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM schematable", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  // 42P01 = table not found
+  ASSERT_EQ("42P01", std::string_view(error.sqlstate, 5));
+  ASSERT_NE(0, AdbcErrorGetDetailCount(&error));
+  bool found = false;
+  for (int i = 0; i < AdbcErrorGetDetailCount(&error); i++) {
+    struct AdbcErrorDetail detail = AdbcErrorGetDetail(&error, i);
+    if (std::strcmp(detail.key, "PG_DIAG_MESSAGE_PRIMARY") == 0) {
+      found = true;
+      std::string_view message(reinterpret_cast<const char*>(detail.value),
+                               detail.value_length);
+      ASSERT_THAT(message, ::testing::HasSubstr("schematable"));
+    }
+  }
+  error.release(&error);
+  ASSERT_TRUE(found) << "Did not find expected error detail";
+
+  ASSERT_THAT(
+      AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA,
+                              "testschema", &error),
+      IsOkStatus(&error));
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM schematable", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+}
+
+TEST_F(PostgresConnectionTest, MetadataGetStatistics) {
+  if (!quirks()->supports_statistics()) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  // Create sample table
+  {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value,
+                                         "DROP TABLE IF EXISTS statstable", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement.value,
+                                 "CREATE TABLE statstable (ints INT, strs TEXT)", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement.value,
+            "INSERT INTO statstable VALUES (1, 'a'), (NULL, 'bcd'), (-5, NULL)", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, "ANALYZE statstable", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcConnectionGetStatistics(&connection, nullptr, quirks()->db_schema().c_str(),
+                                  "statstable", 1, &reader.stream.value, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      &reader.schema.value, {
+                                {"catalog_name", NANOARROW_TYPE_STRING, true},
+                                {"catalog_db_schemas", NANOARROW_TYPE_LIST, false},
+                            }));
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      reader.schema->children[1]->children[0],
+      {
+          {"db_schema_name", NANOARROW_TYPE_STRING, true},
+          {"db_schema_statistics", NANOARROW_TYPE_LIST, false},
+      }));
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      reader.schema->children[1]->children[0]->children[1]->children[0],
+      {
+          {"table_name", NANOARROW_TYPE_STRING, false},
+          {"column_name", NANOARROW_TYPE_STRING, true},
+          {"statistic_key", NANOARROW_TYPE_INT16, false},
+          {"statistic_value", NANOARROW_TYPE_DENSE_UNION, false},
+          {"statistic_is_approximate", NANOARROW_TYPE_BOOL, false},
+      }));
+
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
+      reader.schema->children[1]->children[0]->children[1]->children[0]->children[3],
+      {
+          {"int64", NANOARROW_TYPE_INT64, true},
+          {"uint64", NANOARROW_TYPE_UINT64, true},
+          {"float64", NANOARROW_TYPE_DOUBLE, true},
+          {"binary", NANOARROW_TYPE_BINARY, true},
+      }));
+
+  std::vector<std::tuple<std::optional<std::string>, int16_t, int64_t>> seen;
+  while (true) {
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    if (!reader.array->release) break;
+
+    for (int64_t catalog_index = 0; catalog_index < reader.array->length;
+         catalog_index++) {
+      struct ArrowStringView catalog_name =
+          ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], catalog_index);
+      ASSERT_EQ(quirks()->catalog(),
+                std::string_view(catalog_name.data,
+                                 static_cast<int64_t>(catalog_name.size_bytes)));
+
+      struct ArrowArrayView* catalog_db_schemas = reader.array_view->children[1];
+      struct ArrowArrayView* schema_stats = catalog_db_schemas->children[0]->children[1];
+      struct ArrowArrayView* stats =
+          catalog_db_schemas->children[0]->children[1]->children[0];
+      for (int64_t schema_index =
+               ArrowArrayViewListChildOffset(catalog_db_schemas, catalog_index);
+           schema_index <
+           ArrowArrayViewListChildOffset(catalog_db_schemas, catalog_index + 1);
+           schema_index++) {
+        struct ArrowStringView schema_name = ArrowArrayViewGetStringUnsafe(
+            catalog_db_schemas->children[0]->children[0], schema_index);
+        ASSERT_EQ(quirks()->db_schema(),
+                  std::string_view(schema_name.data,
+                                   static_cast<int64_t>(schema_name.size_bytes)));
+
+        for (int64_t stat_index =
+                 ArrowArrayViewListChildOffset(schema_stats, schema_index);
+             stat_index < ArrowArrayViewListChildOffset(schema_stats, schema_index + 1);
+             stat_index++) {
+          struct ArrowStringView table_name =
+              ArrowArrayViewGetStringUnsafe(stats->children[0], stat_index);
+          ASSERT_EQ("statstable",
+                    std::string_view(table_name.data,
+                                     static_cast<int64_t>(table_name.size_bytes)));
+          std::optional<std::string> column_name;
+          if (!ArrowArrayViewIsNull(stats->children[1], stat_index)) {
+            struct ArrowStringView value =
+                ArrowArrayViewGetStringUnsafe(stats->children[1], stat_index);
+            column_name = std::string(value.data, value.size_bytes);
+          }
+          ASSERT_TRUE(ArrowArrayViewGetIntUnsafe(stats->children[4], stat_index));
+
+          const int16_t stat_key = static_cast<int16_t>(
+              ArrowArrayViewGetIntUnsafe(stats->children[2], stat_index));
+          const int32_t offset =
+              stats->children[3]->buffer_views[1].data.as_int32[stat_index];
+          int64_t stat_value;
+          switch (stat_key) {
+            case ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY:
+            case ADBC_STATISTIC_DISTINCT_COUNT_KEY:
+            case ADBC_STATISTIC_NULL_COUNT_KEY:
+            case ADBC_STATISTIC_ROW_COUNT_KEY:
+              stat_value = static_cast<int64_t>(
+                  std::round(100 * ArrowArrayViewGetDoubleUnsafe(
+                                       stats->children[3]->children[2], offset)));
+              break;
+            default:
+              continue;
+          }
+          seen.emplace_back(std::move(column_name), stat_key, stat_value);
+        }
+      }
+    }
+  }
+
+  ASSERT_THAT(seen,
+              ::testing::UnorderedElementsAreArray(
+                  std::vector<std::tuple<std::optional<std::string>, int16_t, int64_t>>{
+                      {"ints", ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY, 400},
+                      {"strs", ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY, 300},
+                      {"ints", ADBC_STATISTIC_NULL_COUNT_KEY, 100},
+                      {"strs", ADBC_STATISTIC_NULL_COUNT_KEY, 100},
+                      {"ints", ADBC_STATISTIC_DISTINCT_COUNT_KEY, 200},
+                      {"strs", ADBC_STATISTIC_DISTINCT_COUNT_KEY, 200},
+                      {std::nullopt, ADBC_STATISTIC_ROW_COUNT_KEY, 300},
+                  }));
 }
 
 ADBCV_TEST_CONNECTION(PostgresConnectionTest)
@@ -576,9 +830,9 @@ class PostgresStatementTest : public ::testing::Test,
   }
 
  protected:
-  void ValidateIngestedTemporalData(struct ArrowArrayView* values,
-                                    enum ArrowTimeUnit unit,
-                                    const char* timezone) override {
+  void ValidateIngestedTimestampData(struct ArrowArrayView* values,
+                                     enum ArrowTimeUnit unit,
+                                     const char* timezone) override {
     std::vector<std::optional<int64_t>> expected;
     switch (unit) {
       case (NANOARROW_TIME_UNIT_SECOND):
@@ -702,6 +956,67 @@ TEST_F(PostgresStatementTest, BatchSizeHint) {
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
+}
+
+// Test that an ADBC 1.0.0-sized error still works
+TEST_F(PostgresStatementTest, AdbcErrorBackwardsCompatibility) {
+  // XXX: sketchy cast
+  auto* error = static_cast<struct AdbcError*>(malloc(ADBC_ERROR_1_0_0_SIZE));
+  std::memset(error, 0, ADBC_ERROR_1_0_0_SIZE);
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, error), IsOkStatus(error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement, "SELECT * FROM thistabledoesnotexist", error),
+      IsOkStatus(error));
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, error));
+
+  ASSERT_EQ("42P01", std::string_view(error->sqlstate, 5));
+  ASSERT_EQ(0, AdbcErrorGetDetailCount(error));
+
+  error->release(error);
+  free(error);
+}
+
+TEST_F(PostgresStatementTest, Cancel) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  for (const char* query : {
+           "DROP TABLE IF EXISTS test_cancel",
+           "CREATE TABLE test_cancel (ints INT)",
+           R"(INSERT INTO test_cancel (ints)
+              SELECT g :: INT FROM GENERATE_SERIES(1, 65536) temp(g))",
+       }) {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM test_cancel", &error),
+              IsOkStatus(&error));
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementCancel(&statement, &error), IsOkStatus(&error));
+
+  int retcode = 0;
+  while (true) {
+    retcode = reader.MaybeNext();
+    if (retcode != 0 || !reader.array->release) break;
+  }
+
+  ASSERT_EQ(ECANCELED, retcode);
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  const struct AdbcError* detail =
+      AdbcErrorFromArrayStream(&reader.stream.value, &status);
+  ASSERT_NE(nullptr, detail);
+  ASSERT_EQ(ADBC_STATUS_CANCELLED, status);
+  ASSERT_EQ("57014", std::string_view(detail->sqlstate, 5));
+  ASSERT_NE(0, AdbcErrorGetDetailCount(detail));
 }
 
 struct TypeTestCase {

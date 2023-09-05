@@ -16,11 +16,13 @@
 # under the License.
 
 cmake_minimum_required(VERSION 3.18)
-include(FetchContent)
 
 project(adbc_cookbook_recipes
         VERSION "1.0.0"
         LANGUAGES CXX)
+
+include(CTest)
+include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -28,7 +30,7 @@ find_package(AdbcDriverManager REQUIRED)
 
 fetchcontent_declare(nanoarrow
                      GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
-                     GIT_TAG 75dc80774a2f8c2c66b50fccf5d3e5fa13fab796
+                     GIT_TAG apache-arrow-nanoarrow-0.2.0
                      GIT_SHALLOW TRUE)
 fetchcontent_makeavailable(nanoarrow)
 
@@ -36,3 +38,4 @@ add_executable(quickstart quickstart.cc)
 target_include_directories(quickstart SYSTEM PRIVATE ${nanoarrow_SOURCE_DIR}/dist)
 target_link_libraries(quickstart PRIVATE AdbcDriverManager::adbc_driver_manager_shared
                                          nanoarrow)
+add_test(NAME quickstart COMMAND quickstart)

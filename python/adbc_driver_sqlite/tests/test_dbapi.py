@@ -17,6 +17,7 @@
 
 from pathlib import Path
 
+import pyarrow as pa
 import pytest
 
 from adbc_driver_sqlite import dbapi
@@ -57,3 +58,30 @@ def test_autocommit(tmp_path: Path) -> None:
         assert not conn._autocommit
         with conn.cursor() as cur:
             cur.executescript("PRAGMA journal_mode = WAL")
+
+
+def test_create_types(tmp_path: Path) -> None:
+    db = tmp_path / "foo.sqlite"
+    with dbapi.connect(f"file:{db}") as conn:
+        tbl = pa.Table.from_pydict({"numbers": [1, 2], "letters": ["a", "b"]})
+
+        with conn.cursor() as cur:
+            cur.adbc_ingest("foo", tbl, "create")
+            cur.execute("PRAGMA table_info('foo')")
+            table_info = cur.fetchall()
+
+            assert len(table_info) == len(tbl.columns)
+            """
+            A tuple from table_info should return 6 values:
+            - cid
+            - name
+            - type
+            - notnull
+            - dflt_value
+            - pk
+            For details: https://www.sqlite.org/pragma.html
+            """
+            for col in table_info:
+                assert len(col) == 6
+            actual_types = [col[2] for col in table_info]
+            assert actual_types == ["INTEGER", "TEXT"]

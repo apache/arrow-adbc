@@ -73,6 +73,29 @@ func (s *sqlOrSubstrait) execute(ctx context.Context, cnxn *cnxn, opts ...grpc.C
 	}
 }
 
+func (s *sqlOrSubstrait) executeSchema(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (*arrow.Schema, error) {
+	var (
+		res *flight.SchemaResult
+		err error
+	)
+	if s.sqlQuery != "" {
+		res, err = cnxn.executeSchema(ctx, s.sqlQuery, opts...)
+	} else if s.substraitPlan != nil {
+		res, err = cnxn.executeSubstraitSchema(ctx, flightsql.SubstraitPlan{Plan: s.substraitPlan, Version: s.substraitVersion}, opts...)
+	} else {
+		return nil, adbc.Error{
+			Code: adbc.StatusInvalidState,
+			Msg:  "[Flight SQL Statement] cannot call ExecuteQuery without a query or prepared statement",
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return flight.DeserializeSchema(res.Schema, cnxn.cl.Alloc)
+}
+
 func (s *sqlOrSubstrait) executeUpdate(ctx context.Context, cnxn *cnxn, opts ...grpc.CallOption) (int64, error) {
 	if s.sqlQuery != "" {
 		return cnxn.executeUpdate(ctx, s.sqlQuery, opts...)
@@ -112,7 +135,9 @@ type statement struct {
 }
 
 func (s *statement) closePreparedStatement() error {
-	return s.prepared.Close(metadata.NewOutgoingContext(context.Background(), s.hdrs), s.timeouts)
+	var header, trailer metadata.MD
+	err := s.prepared.Close(metadata.NewOutgoingContext(context.Background(), s.hdrs), grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
+	return adbcFromFlightStatusWithDetails(err, header, trailer, "ClosePreparedStatement")
 }
 
 // Close releases any relevant resources associated with this statement
@@ -138,6 +163,72 @@ func (s *statement) Close() (err error) {
 	return err
 }
 
+func (s *statement) GetOption(key string) (string, error) {
+	switch key {
+	case OptionStatementSubstraitVersion:
+		return s.query.substraitVersion, nil
+	case OptionTimeoutFetch:
+		return s.timeouts.fetchTimeout.String(), nil
+	case OptionTimeoutQuery:
+		return s.timeouts.queryTimeout.String(), nil
+	case OptionTimeoutUpdate:
+		return s.timeouts.updateTimeout.String(), nil
+	}
+
+	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
+		name := strings.TrimPrefix(key, OptionRPCCallHeaderPrefix)
+		values := s.hdrs.Get(name)
+		if len(values) > 0 {
+			return values[0], nil
+		}
+	}
+
+	return "", adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (s *statement) GetOptionBytes(key string) ([]byte, error) {
+	return nil, adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (s *statement) GetOptionInt(key string) (int64, error) {
+	switch key {
+	case OptionTimeoutFetch:
+		fallthrough
+	case OptionTimeoutQuery:
+		fallthrough
+	case OptionTimeoutUpdate:
+		val, err := s.GetOptionDouble(key)
+		if err != nil {
+			return 0, err
+		}
+		return int64(val), nil
+	}
+
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (s *statement) GetOptionDouble(key string) (float64, error) {
+	switch key {
+	case OptionTimeoutFetch:
+		return s.timeouts.fetchTimeout.Seconds(), nil
+	case OptionTimeoutQuery:
+		return s.timeouts.queryTimeout.Seconds(), nil
+	case OptionTimeoutUpdate:
+		return s.timeouts.updateTimeout.Seconds(), nil
+	}
+
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+
 // SetOption sets a string option on this statement
 func (s *statement) SetOption(key string, val string) error {
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
@@ -152,35 +243,11 @@ func (s *statement) SetOption(key string, val string) error {
 
 	switch key {
 	case OptionTimeoutFetch:
-		timeout, err := getTimeoutOptionValue(val)
-		if err != nil {
-			return adbc.Error{
-				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
-					OptionTimeoutFetch, val, err.Error()),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		s.timeouts.fetchTimeout = timeout
+		fallthrough
 	case OptionTimeoutQuery:
-		timeout, err := getTimeoutOptionValue(val)
-		if err != nil {
-			return adbc.Error{
-				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
-					OptionTimeoutFetch, val, err.Error()),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		s.timeouts.queryTimeout = timeout
+		fallthrough
 	case OptionTimeoutUpdate:
-		timeout, err := getTimeoutOptionValue(val)
-		if err != nil {
-			return adbc.Error{
-				Msg: fmt.Sprintf("invalid timeout option value %s = %s : %s",
-					OptionTimeoutFetch, val, err.Error()),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		s.timeouts.updateTimeout = timeout
+		return s.timeouts.setTimeoutString(key, val)
 	case OptionStatementQueueSize:
 		var err error
 		var size int
@@ -189,13 +256,8 @@ func (s *statement) SetOption(key string, val string) error {
 				Msg:  fmt.Sprintf("Invalid value for statement option '%s': '%s' is not a positive integer", OptionStatementQueueSize, val),
 				Code: adbc.StatusInvalidArgument,
 			}
-		} else if size <= 0 {
-			return adbc.Error{
-				Msg:  fmt.Sprintf("Invalid value for statement option '%s': '%s' is not a positive integer", OptionStatementQueueSize, val),
-				Code: adbc.StatusInvalidArgument,
-			}
 		}
-		s.queueSize = size
+		return s.SetOptionInt(key, int64(size))
 	case OptionStatementSubstraitVersion:
 		s.query.substraitVersion = val
 	default:
@@ -205,6 +267,43 @@ func (s *statement) SetOption(key string, val string) error {
 		}
 	}
 	return nil
+}
+
+func (s *statement) SetOptionBytes(key string, value []byte) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (s *statement) SetOptionInt(key string, value int64) error {
+	switch key {
+	case OptionStatementQueueSize:
+		if value <= 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Invalid value for statement option '%s': '%d' is not a positive integer", OptionStatementQueueSize, value),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		s.queueSize = int(value)
+		return nil
+	}
+	return s.SetOptionDouble(key, float64(value))
+}
+
+func (s *statement) SetOptionDouble(key string, value float64) error {
+	switch key {
+	case OptionTimeoutFetch:
+		fallthrough
+	case OptionTimeoutQuery:
+		fallthrough
+	case OptionTimeoutUpdate:
+		return s.timeouts.setTimeout(key, value)
+	}
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Flight SQL] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -232,14 +331,16 @@ func (s *statement) SetSqlQuery(query string) error {
 func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var info *flight.FlightInfo
+	var header, trailer metadata.MD
+	opts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	if s.prepared != nil {
-		info, err = s.prepared.Execute(ctx, s.timeouts)
+		info, err = s.prepared.Execute(ctx, opts...)
 	} else {
-		info, err = s.query.execute(ctx, s.cnxn, s.timeouts)
+		info, err = s.query.execute(ctx, s.cnxn, opts...)
 	}
 
 	if err != nil {
-		return nil, -1, adbcFromFlightStatus(err)
+		return nil, -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
 	}
 
 	nrec = info.TotalRecords
@@ -251,15 +352,16 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 // set. It returns the number of rows affected if known, otherwise -1.
 func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
-
+	var header, trailer metadata.MD
+	opts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	if s.prepared != nil {
-		n, err = s.prepared.ExecuteUpdate(ctx, s.timeouts)
+		n, err = s.prepared.ExecuteUpdate(ctx, opts...)
 	} else {
-		n, err = s.query.executeUpdate(ctx, s.cnxn, s.timeouts)
+		n, err = s.query.executeUpdate(ctx, s.cnxn, opts...)
 	}
 
 	if err != nil {
-		err = adbcFromFlightStatus(err)
+		err = adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
 	}
 
 	return
@@ -269,9 +371,10 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) error {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
-	prep, err := s.query.prepare(ctx, s.cnxn, s.timeouts)
+	var header, trailer metadata.MD
+	prep, err := s.query.prepare(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	if err != nil {
-		return adbcFromFlightStatus(err)
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "Prepare")
 	}
 	s.prepared = prep
 	return nil
@@ -387,20 +490,21 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 		err  error
 	)
 
+	var header, trailer metadata.MD
 	if s.prepared != nil {
-		info, err = s.prepared.Execute(ctx, s.timeouts)
+		info, err = s.prepared.Execute(ctx, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	} else {
-		info, err = s.query.execute(ctx, s.cnxn, s.timeouts)
+		info, err = s.query.execute(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	}
 
 	if err != nil {
-		return nil, out, -1, adbcFromFlightStatus(err)
+		return nil, out, -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecutePartitions")
 	}
 
 	if len(info.Schema) > 0 {
 		sc, err = flight.DeserializeSchema(info.Schema, s.alloc)
 		if err != nil {
-			return nil, out, -1, adbcFromFlightStatus(err)
+			return nil, out, -1, adbcFromFlightStatus(err, "ExecutePartitions: could not deserialize FlightInfo schema:")
 		}
 	}
 
@@ -421,4 +525,27 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 	}
 
 	return sc, out, info.TotalRecords, nil
+}
+
+// ExecuteSchema gets the schema of the result set of a query without executing it.
+func (s *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
+	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
+
+	if s.prepared != nil {
+		schema = s.prepared.DatasetSchema()
+		if schema == nil {
+			err = adbc.Error{
+				Msg:  "[Flight SQL Statement] Database server did not provide schema for prepared statement",
+				Code: adbc.StatusNotImplemented,
+			}
+		}
+		return
+	}
+
+	var header, trailer metadata.MD
+	schema, err = s.query.executeSchema(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
+	if err != nil {
+		err = adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteSchema")
+	}
+	return
 }

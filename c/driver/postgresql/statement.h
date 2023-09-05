@@ -41,28 +41,27 @@ class PostgresStatement;
 class TupleReader final {
  public:
   TupleReader(PGconn* conn)
-      : conn_(conn),
+      : status_(ADBC_STATUS_OK),
+        error_(ADBC_ERROR_INIT),
+        conn_(conn),
         result_(nullptr),
         pgbuf_(nullptr),
         copy_reader_(nullptr),
         row_id_(-1),
-        batch_size_hint_bytes_(16777216) {
-    StringBuilderInit(&error_builder_, 0);
+        batch_size_hint_bytes_(16777216),
+        is_finished_(false) {
     data_.data.as_char = nullptr;
     data_.size_bytes = 0;
   }
 
   int GetSchema(struct ArrowSchema* out);
   int GetNext(struct ArrowArray* out);
-  const char* last_error() const {
-    if (error_builder_.size > 0) {
-      return error_builder_.buffer;
-    } else {
-      return nullptr;
-    }
-  }
+  const char* last_error() const { return error_.message; }
   void Release();
   void ExportTo(struct ArrowArrayStream* stream);
+
+  static const struct AdbcError* ErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                      AdbcStatusCode* status);
 
  private:
   friend class PostgresStatement;
@@ -70,21 +69,22 @@ class TupleReader final {
   int InitQueryAndFetchFirst(struct ArrowError* error);
   int AppendRowAndFetchNext(struct ArrowError* error);
   int BuildOutput(struct ArrowArray* out, struct ArrowError* error);
-  void ResetQuery();
 
   static int GetSchemaTrampoline(struct ArrowArrayStream* self, struct ArrowSchema* out);
   static int GetNextTrampoline(struct ArrowArrayStream* self, struct ArrowArray* out);
   static const char* GetLastErrorTrampoline(struct ArrowArrayStream* self);
   static void ReleaseTrampoline(struct ArrowArrayStream* self);
 
+  AdbcStatusCode status_;
+  struct AdbcError error_;
   PGconn* conn_;
   PGresult* result_;
   char* pgbuf_;
   struct ArrowBufferView data_;
-  struct StringBuilder error_builder_;
   std::unique_ptr<PostgresCopyStreamReader> copy_reader_;
   int64_t row_id_;
   int64_t batch_size_hint_bytes_;
+  bool is_finished_;
 };
 
 class PostgresStatement {
@@ -100,13 +100,25 @@ class PostgresStatement {
   AdbcStatusCode Bind(struct ArrowArray* values, struct ArrowSchema* schema,
                       struct AdbcError* error);
   AdbcStatusCode Bind(struct ArrowArrayStream* stream, struct AdbcError* error);
+  AdbcStatusCode Cancel(struct AdbcError* error);
   AdbcStatusCode ExecuteQuery(struct ArrowArrayStream* stream, int64_t* rows_affected,
                               struct AdbcError* error);
+  AdbcStatusCode ExecuteSchema(struct ArrowSchema* schema, struct AdbcError* error);
+  AdbcStatusCode GetOption(const char* key, char* value, size_t* length,
+                           struct AdbcError* error);
+  AdbcStatusCode GetOptionBytes(const char* key, uint8_t* value, size_t* length,
+                                struct AdbcError* error);
+  AdbcStatusCode GetOptionDouble(const char* key, double* value, struct AdbcError* error);
+  AdbcStatusCode GetOptionInt(const char* key, int64_t* value, struct AdbcError* error);
   AdbcStatusCode GetParameterSchema(struct ArrowSchema* schema, struct AdbcError* error);
   AdbcStatusCode New(struct AdbcConnection* connection, struct AdbcError* error);
   AdbcStatusCode Prepare(struct AdbcError* error);
   AdbcStatusCode Release(struct AdbcError* error);
   AdbcStatusCode SetOption(const char* key, const char* value, struct AdbcError* error);
+  AdbcStatusCode SetOptionBytes(const char* key, const uint8_t* value, size_t length,
+                                struct AdbcError* error);
+  AdbcStatusCode SetOptionDouble(const char* key, double value, struct AdbcError* error);
+  AdbcStatusCode SetOptionInt(const char* key, int64_t value, struct AdbcError* error);
   AdbcStatusCode SetSqlQuery(const char* query, struct AdbcError* error);
 
   // ---------------------------------------------------------------------
@@ -122,6 +134,7 @@ class PostgresStatement {
   AdbcStatusCode ExecutePreparedStatement(struct ArrowArrayStream* stream,
                                           int64_t* rows_affected,
                                           struct AdbcError* error);
+  AdbcStatusCode SetupReader(struct AdbcError* error);
 
  private:
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
@@ -133,9 +146,16 @@ class PostgresStatement {
   struct ArrowArrayStream bind_;
 
   // Bulk ingest state
+  enum class IngestMode {
+    kCreate,
+    kAppend,
+    kReplace,
+    kCreateAppend,
+  };
+
   struct {
     std::string target;
-    bool append = false;
+    IngestMode mode = IngestMode::kCreate;
   } ingest_;
 
   TupleReader reader_;

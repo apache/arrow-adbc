@@ -26,6 +26,8 @@ files_to_vendor <- c(
   "../../c/driver/postgresql/statement.cc",
   "../../c/driver/postgresql/connection.h",
   "../../c/driver/postgresql/connection.cc",
+  "../../c/driver/postgresql/error.h",
+  "../../c/driver/postgresql/error.cc",
   "../../c/driver/postgresql/database.h",
   "../../c/driver/postgresql/database.cc",
   "../../c/driver/postgresql/postgresql.cc",
@@ -33,7 +35,8 @@ files_to_vendor <- c(
   "../../c/driver/common/utils.c",
   "../../c/vendor/nanoarrow/nanoarrow.h",
   "../../c/vendor/nanoarrow/nanoarrow.hpp",
-  "../../c/vendor/nanoarrow/nanoarrow.c"
+  "../../c/vendor/nanoarrow/nanoarrow.c",
+  "../../c/vendor/portable-snippets/safe-math.h"
 )
 
 if (all(file.exists(files_to_vendor))) {
@@ -58,14 +61,16 @@ if (all(file.exists(files_to_vendor))) {
         "src/nanoarrow.h",
         "src/nanoarrow.hpp",
         "src/utils.c",
-        "src/utils.h"
+        "src/utils.h",
+        "src/safe-math.h"
       ),
       c(
         "src/nanoarrow/nanoarrow.c",
         "src/nanoarrow/nanoarrow.h",
         "src/nanoarrow/nanoarrow.hpp",
         "src/common/utils.c",
-        "src/common/utils.h"
+        "src/common/utils.h",
+        "src/vendor/portable-snippets/safe-math.h"
       )
     )
     cat("All files successfully copied to src/\n")

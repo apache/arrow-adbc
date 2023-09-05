@@ -688,6 +688,29 @@ struct ArrowArrayPrivateData {
   int8_t union_type_id_is_child_index;
 };
 
+/// \brief A representation of an interval.
+/// \ingroup nanoarrow-utils
+struct ArrowInterval {
+  /// \brief The type of interval being used
+  enum ArrowType type;
+  /// \brief The number of months represented by the interval
+  int32_t months;
+  /// \brief The number of days represented by the interval
+  int32_t days;
+  /// \brief The number of ms represented by the interval
+  int32_t ms;
+  /// \brief The number of ns represented by the interval
+  int64_t ns;
+};
+
+/// \brief Zero initialize an Interval with a given unit
+/// \ingroup nanoarrow-utils
+static inline void ArrowIntervalInit(struct ArrowInterval* interval,
+                                     enum ArrowType type) {
+  memset(interval, 0, sizeof(struct ArrowInterval));
+  interval->type = type;
+}
+
 /// \brief A representation of a fixed-precision decimal number
 /// \ingroup nanoarrow-utils
 ///
@@ -1648,6 +1671,13 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
 /// the underlying array is not a string or large string array).
 static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
                                                     struct ArrowStringView value);
+
+/// \brief Append a Interval to an array
+///
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise.
+static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
+                                                      struct ArrowInterval* value);
 
 /// \brief Append a decimal value to an array
 ///
@@ -2891,6 +2921,49 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
   }
 }
 
+static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
+                                                      struct ArrowInterval* value) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
+
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_INTERVAL_MONTHS: {
+      if (value->type != NANOARROW_TYPE_INTERVAL_MONTHS) {
+        return EINVAL;
+      }
+
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->months));
+      break;
+    }
+    case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
+      if (value->type != NANOARROW_TYPE_INTERVAL_DAY_TIME) {
+        return EINVAL;
+      }
+
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->days));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->ms));
+      break;
+    }
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
+      if (value->type != NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
+        return EINVAL;
+      }
+
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->months));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->days));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt64(data_buffer, value->ns));
+      break;
+    }
+    default:
+      return EINVAL;
+  }
+
+  array->length++;
+  return NANOARROW_OK;
+}
+
 static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
                                                      struct ArrowDecimal* value) {
   struct ArrowArrayPrivateData* private_data =
@@ -3245,6 +3318,33 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
   }
 
   return view;
+}
+
+static inline void ArrowArrayViewGetIntervalUnsafe(struct ArrowArrayView* array_view,
+                                                   int64_t i, struct ArrowInterval* out) {
+  const uint8_t* data_view = array_view->buffer_views[1].data.as_uint8;
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_INTERVAL_MONTHS: {
+      const size_t size = sizeof(int32_t);
+      memcpy(&out->months, data_view + i * size, sizeof(int32_t));
+      break;
+    }
+    case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
+      const size_t size = sizeof(int32_t) + sizeof(int32_t);
+      memcpy(&out->days, data_view + i * size, sizeof(int32_t));
+      memcpy(&out->ms, data_view + i * size + 4, sizeof(int32_t));
+      break;
+    }
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
+      const size_t size = sizeof(int32_t) + sizeof(int32_t) + sizeof(int64_t);
+      memcpy(&out->months, data_view + i * size, sizeof(int32_t));
+      memcpy(&out->days, data_view + i * size + 4, sizeof(int32_t));
+      memcpy(&out->ns, data_view + i * size + 8, sizeof(int64_t));
+      break;
+    }
+    default:
+      break;
+  }
 }
 
 static inline void ArrowArrayViewGetDecimalUnsafe(struct ArrowArrayView* array_view,

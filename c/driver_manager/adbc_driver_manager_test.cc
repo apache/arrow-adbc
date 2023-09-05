@@ -27,10 +27,13 @@
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
+std::string AdbcDriverManagerDefaultEntrypoint(const std::string& filename);
+
 // Tests of the SQLite example driver, except using the driver manager
 
 namespace adbc {
 
+using adbc_validation::Handle;
 using adbc_validation::IsOkStatus;
 using adbc_validation::IsStatus;
 
@@ -40,7 +43,7 @@ class DriverManager : public ::testing::Test {
     std::memset(&driver, 0, sizeof(driver));
     std::memset(&error, 0, sizeof(error));
 
-    ASSERT_THAT(AdbcLoadDriver("adbc_driver_sqlite", nullptr, ADBC_VERSION_1_0_0, &driver,
+    ASSERT_THAT(AdbcLoadDriver("adbc_driver_sqlite", nullptr, ADBC_VERSION_1_1_0, &driver,
                                &error),
                 IsOkStatus(&error));
   }
@@ -191,7 +194,27 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     }
   }
 
+  bool supports_bulk_ingest(const char* mode) const override {
+    return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
+           std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;
+  }
   bool supports_concurrent_statements() const override { return true; }
+  bool supports_get_option() const override { return false; }
+  std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
+      uint32_t info_code) const override {
+    switch (info_code) {
+      case ADBC_INFO_DRIVER_NAME:
+        return "ADBC SQLite Driver";
+      case ADBC_INFO_DRIVER_VERSION:
+        return "(unknown)";
+      case ADBC_INFO_VENDOR_NAME:
+        return "SQLite";
+      case ADBC_INFO_VENDOR_VERSION:
+        return "3.";
+      default:
+        return std::nullopt;
+    }
+  }
 };
 
 class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::DatabaseTest {
@@ -204,6 +227,20 @@ class SqliteDatabaseTest : public ::testing::Test, public adbc_validation::Datab
   SqliteQuirks quirks_;
 };
 ADBCV_TEST_DATABASE(SqliteDatabaseTest)
+
+TEST_F(SqliteDatabaseTest, NullError) {
+  Handle<AdbcConnection> conn;
+
+  ASSERT_THAT(AdbcDatabaseNew(&database, nullptr), IsOkStatus());
+  ASSERT_THAT(quirks()->SetupDatabase(&database, nullptr), IsOkStatus());
+  ASSERT_THAT(AdbcDatabaseInit(&database, nullptr), IsOkStatus());
+
+  ASSERT_THAT(AdbcConnectionNew(&conn.value, nullptr), IsOkStatus());
+  ASSERT_THAT(AdbcConnectionInit(&conn.value, &database, nullptr), IsOkStatus());
+  ASSERT_THAT(AdbcConnectionRelease(&conn.value, nullptr), IsOkStatus());
+
+  ASSERT_THAT(AdbcDatabaseRelease(&database, nullptr), IsOkStatus());
+}
 
 class SqliteConnectionTest : public ::testing::Test,
                              public adbc_validation::ConnectionTest {
@@ -226,6 +263,7 @@ class SqliteStatementTest : public ::testing::Test,
 
   void TestSqlIngestUInt64() { GTEST_SKIP() << "Cannot ingest UINT64 (out of range)"; }
   void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
+  void TestSqlIngestDate32() { GTEST_SKIP() << "Cannot ingest DATE (not implemented)"; }
   void TestSqlIngestTimestamp() {
     GTEST_SKIP() << "Cannot ingest TIMESTAMP (not implemented)";
   }
@@ -234,11 +272,51 @@ class SqliteStatementTest : public ::testing::Test,
   }
   void TestSqlIngestDuration() {
     GTEST_SKIP() << "Cannot ingest DURATION (not implemented)";
+    void TestSqlIngestInterval() {
+      GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
+    }
+
+   protected:
+    SqliteQuirks quirks_;
+  };
+  ADBCV_TEST_STATEMENT(SqliteStatementTest)
+
+  TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
+    for (const auto& driver : {
+             "adbc_driver_sqlite",
+             "adbc_driver_sqlite.dll",
+             "driver_sqlite",
+             "libadbc_driver_sqlite",
+             "libadbc_driver_sqlite.so",
+             "libadbc_driver_sqlite.so.6.0.0",
+             "/usr/lib/libadbc_driver_sqlite.so",
+             "/usr/lib/libadbc_driver_sqlite.so.6.0.0",
+             "C:\\System32\\adbc_driver_sqlite.dll",
+         }) {
+      SCOPED_TRACE(driver);
+      EXPECT_EQ("AdbcDriverSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+    }
+
+    for (const auto& driver : {
+             "adbc_sqlite",
+             "sqlite",
+             "/usr/lib/sqlite.so",
+             "C:\\System32\\sqlite.dll",
+         }) {
+      SCOPED_TRACE(driver);
+      EXPECT_EQ("AdbcSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+    }
+
+    for (const auto& driver : {
+             "proprietary_engine",
+             "libproprietary_engine.so.6.0.0",
+             "/usr/lib/proprietary_engine.so",
+             "C:\\System32\\proprietary_engine.dll",
+         }) {
+      SCOPED_TRACE(driver);
+      EXPECT_EQ("AdbcProprietaryEngineInit",
+                ::AdbcDriverManagerDefaultEntrypoint(driver));
+    }
   }
-
- protected:
-  SqliteQuirks quirks_;
-};
-ADBCV_TEST_STATEMENT(SqliteStatementTest)
-
+}
 }  // namespace adbc

@@ -260,8 +260,7 @@ class PostgresType {
 
       case PostgresTypeId::kInterval:
         NANOARROW_RETURN_NOT_OK(
-            ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_DURATION,
-                                       NANOARROW_TIME_UNIT_MICRO, /*timezone=*/nullptr));
+            ArrowSchemaSetType(schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
         break;
 
       // ---- Nested --------------------

@@ -17,7 +17,7 @@
 
 [package]
 name = "arrow-adbc"
-version = "0.6.0-SNAPSHOT"
+version = "0.7.0-SNAPSHOT"
 edition = "2021"
 rust-version = "1.62"
 description = "Rust implementation of Arrow Database Connectivity (ADBC)"
@@ -30,9 +30,9 @@ keywords = ["arrow", "database", "sql"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arrow-array = { version = "34.0.0", default-features = false}
-arrow-schema = { version = "34.0.0", features = ["ffi"], default-features = false}
-arrow-data = { version = "34.0.0", features = ["ffi"], default-features = false}
+arrow-array = { version = "44.0.0", default-features = false}
+arrow-schema = { version = "44.0.0", features = ["ffi"], default-features = false}
+arrow-data = { version = "44.0.0", features = ["ffi"], default-features = false}
 async-trait = "0.1"
 libloading = "0.7"
 num_enum = "0.5"

@@ -7,3 +7,7 @@
 ^configure\.win$
 ^\.vscode$
 ^src/go/tmp$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^cran-comments\.md$

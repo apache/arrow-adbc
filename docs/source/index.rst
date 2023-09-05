@@ -37,6 +37,7 @@ To learn more about ADBC, see the `introductory blog post
    Go <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
    Java <java/index>
    Python <python/index>
+   R <r/index>
 
 .. toctree::
    :maxdepth: 1
@@ -44,6 +45,7 @@ To learn more about ADBC, see the `introductory blog post
 
    driver/installation
    driver/status
+   driver/duckdb
    driver/flight_sql
    driver/jdbc
    driver/postgresql

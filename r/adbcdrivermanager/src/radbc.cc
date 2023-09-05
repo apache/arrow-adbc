@@ -150,7 +150,7 @@ extern "C" SEXP RAdbcMoveDatabase(SEXP database_xptr) {
 }
 
 extern "C" SEXP RAdbcDatabaseValid(SEXP database_xptr) {
-  AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr, true);
   return Rf_ScalarLogical(database != nullptr && database->private_data != nullptr);
 }
 
@@ -219,7 +219,7 @@ extern "C" SEXP RAdbcMoveConnection(SEXP connection_xptr) {
 }
 
 extern "C" SEXP RAdbcConnectionValid(SEXP connection_xptr) {
-  AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
+  AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr, true);
   return Rf_ScalarLogical(connection != nullptr && connection->private_data != nullptr);
 }
 
@@ -396,7 +396,7 @@ extern "C" SEXP RAdbcMoveStatement(SEXP statement_xptr) {
 }
 
 extern "C" SEXP RAdbcStatementValid(SEXP statement_xptr) {
-  AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
+  AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr, true);
   return Rf_ScalarLogical(statement != nullptr && statement->private_data != nullptr);
 }
 

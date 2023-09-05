@@ -295,6 +295,26 @@ def test_executemany(sqlite):
 
 
 @pytest.mark.sqlite
+def test_fetch_record_batch(sqlite):
+    dataset = [
+        [1, 2],
+        [3, 4],
+        [5, 6],
+        [7, 8],
+        [9, 10],
+    ]
+    with sqlite.cursor() as cur:
+        cur.execute("CREATE TABLE foo (a, b)")
+        cur.executemany(
+            "INSERT INTO foo VALUES (?, ?)",
+            dataset,
+        )
+        cur.execute("SELECT * FROM foo")
+        rbr = cur.fetch_record_batch()
+        assert rbr.read_pandas().values.tolist() == dataset
+
+
+@pytest.mark.sqlite
 def test_fetch_empty(sqlite):
     with sqlite.cursor() as cur:
         cur.execute("CREATE TABLE foo (bar)")

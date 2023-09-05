@@ -75,7 +75,12 @@ if(MSVC)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set(ADBC_C_CXX_FLAGS_CHECKIN -Wall -Werror)
+  set(ADBC_C_CXX_FLAGS_CHECKIN
+      -Wall
+      -Wextra
+      -Wpedantic
+      -Werror
+      -Wno-unused-parameter)
   set(ADBC_C_CXX_FLAGS_PRODUCTION -Wall)
 else()
   message(WARNING "Unknown compiler: ${CMAKE_CXX_COMPILER_ID}")

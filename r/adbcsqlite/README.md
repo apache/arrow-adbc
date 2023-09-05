@@ -27,6 +27,13 @@ interface to the Arrow Database Connectivity (ADBC) SQLite driver.
 
 ## Installation
 
+You can install the released version of adbcsqlite from
+[CRAN](https://cran.r-project.org/) with:
+
+``` r
+install.packages("adbcsqlite")
+```
+
 You can install the development version of adbcsqlite from
 [GitHub](https://github.com/) with:
 

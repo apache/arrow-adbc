@@ -29,6 +29,14 @@ def snowflake(snowflake_uri: str):
             yield conn
 
 
+def test_load_driver():
+    # Fails, but in environments where we don't spin up testing
+    # servers, this checks that we can at least *load* the driver
+    with pytest.raises(adbc_driver_manager.ProgrammingError, match="account is empty"):
+        with adbc_driver_snowflake.connect(""):
+            pass
+
+
 def test_query_trivial(snowflake):
     with adbc_driver_manager.AdbcStatement(snowflake) as stmt:
         stmt.set_sql_query("SELECT 1")
@@ -41,7 +49,7 @@ def test_options(snowflake):
     with adbc_driver_manager.AdbcStatement(snowflake) as stmt:
         stmt.set_options(
             **{
-                adbc_driver_snowflake.StatementOptions.BATCH_ROWS.value: "1",
+                adbc_driver_snowflake.StatementOptions.RESULT_QUEUE_SIZE.value: "1",
             }
         )
         stmt.set_sql_query("SELECT 1")

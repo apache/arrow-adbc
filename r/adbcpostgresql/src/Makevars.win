@@ -22,6 +22,7 @@ PKG_LIBS = -L$(RWINLIB)/lib${R_ARCH}${CRT} \
 	-lpq -lpgport -lpgcommon -lssl -lcrypto -lwsock32 -lsecur32 -lws2_32 -lgdi32 -lcrypt32 -lwldap32
 
 OBJECTS = init.o \
+    error.o \
     connection.o \
     database.o \
     statement.o \

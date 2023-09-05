@@ -213,6 +213,22 @@ License: http://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
+The files in c/vendor/portable-snippets/ contain code from
+
+https://github.com/nemequ/portable-snippets
+
+and have the following copyright notice:
+
+Each source file contains a preamble explaining the license situation
+for that file, which takes priority over this file.  With the
+exception of some code pulled in from other repositories (such as
+µnit, an MIT-licensed project which is used for testing), the code is
+public domain, released using the CC0 1.0 Universal dedication (*).
+
+(*) https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+--------------------------------------------------------------------------------
+
 The files python/*/*/_version.py and python/*/*/_static_version.py
 contain code from
 

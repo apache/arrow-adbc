@@ -90,6 +90,8 @@ class DatabaseOptions(enum.Enum):
 
     #: Set the password to use for username-password authentication.
     PASSWORD = "password"
+    #: The URI to connect to.
+    URI = "uri"
     #: Set the username to use for username-password authentication.
     USERNAME = "username"
 
@@ -100,6 +102,10 @@ class ConnectionOptions(enum.Enum):
     Not all drivers support all options.
     """
 
+    #: Get/set the current catalog.
+    CURRENT_CATALOG = "adbc.connection.catalog"
+    #: Get/set the current schema.
+    CURRENT_DB_SCHEMA = "adbc.connection.db_schema"
     #: Set the transaction isolation level.
     ISOLATION_LEVEL = "adbc.connection.transaction.isolation_level"
 
@@ -110,7 +116,11 @@ class StatementOptions(enum.Enum):
     Not all drivers support all options.
     """
 
+    #: Enable incremental execution on ExecutePartitions.
+    INCREMENTAL = "adbc.statement.exec.incremental"
     #: For bulk ingestion, whether to create or append to the table.
     INGEST_MODE = INGEST_OPTION_MODE
     #: For bulk ingestion, the table to ingest into.
     INGEST_TARGET_TABLE = INGEST_OPTION_TARGET_TABLE
+    #: Get progress of a query.
+    PROGRESS = "adbc.statement.exec.progress"
