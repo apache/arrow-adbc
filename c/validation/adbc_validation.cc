@@ -430,6 +430,20 @@ void ConnectionTest::TestMetadataGetTableSchema() {
                                     {"strings", NANOARROW_TYPE_STRING, NULLABLE}}));
 }
 
+void ConnectionTest::TestMetadataGetTableSchemaEscaping() {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
+    GTEST_SKIP();
+  }
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  Handle<ArrowSchema> schema;
+  ASSERT_THAT(
+      AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                   /*db_schema=*/nullptr, "table", &schema.value, &error),
+      IsOkStatus(&error));
+};
+
 void ConnectionTest::TestMetadataGetTableSchemaNotFound() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
