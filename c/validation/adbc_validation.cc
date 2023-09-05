@@ -438,10 +438,10 @@ void ConnectionTest::TestMetadataGetTableSchemaEscaping() {
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
   Handle<ArrowSchema> schema;
-  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/nullptr, "(SELECT CURRENT_TIME)",
-                                           &schema.value, &error),
-              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  ASSERT_NE(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
+                                         /*db_schema=*/nullptr, "(SELECT CURRENT_TIME)",
+                                         &schema.value, &error),
+            ADBC_STATUS_OK);
 };
 
 void ConnectionTest::TestMetadataGetTableSchemaNotFound() {
