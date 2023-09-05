@@ -58,6 +58,7 @@ stop_for_error <- function(status, error) {
       error <- list()
     }
 
+    error$status <- status
     error$status_code_message <- .Call(RAdbcStatusCodeMessage, status)
     if (!is.null(error$message)) {
       msg <- paste(error$status_code_message, error$message, sep=": ")
