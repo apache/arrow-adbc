@@ -135,3 +135,28 @@ test_that("async adbc_execute_query() promises/later integration can error", {
   later_loop_wait(loop)
   expect_true(async_called)
 })
+
+test_that("execute_query and get_next promises can be chained", {
+  skip_if_not_installed("later")
+  skip_if_not_installed("promises")
+
+  db <- adbc_database_init(adbc_driver_monkey())
+  con <- adbc_connection_init(db)
+  input <- data.frame(x = 1:5)
+  stmt <- adbc_statement_init(con, input)
+
+  loop <- later::create_loop()
+  async_called <- FALSE
+
+  later::with_loop(loop, {
+    adbc_statement_execute_query_promise(stmt)$then(function(x) {
+      adbc_array_stream_get_next_promise(x)
+    })$then(function(x) {
+      async_called <<- TRUE
+      expect_identical(nanoarrow::convert_array(x), input)
+    })
+
+    later_loop_wait()
+    expect_true(async_called)
+  })
+})
