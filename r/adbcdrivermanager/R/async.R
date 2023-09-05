@@ -36,7 +36,6 @@ adbc_array_stream_get_next_async <- function(stream, callback,
 }
 
 adbc_statement_execute_query_async <- function(statement, callback,
-                                               schema = stream$get_schema(),
                                                queue = adbc_callback_queue()) {
   callback <- as_adbc_callback(callback)
   stream_out <- nanoarrow::nanoarrow_allocate_array_stream()
@@ -73,6 +72,27 @@ adbc_array_stream_get_next_promise <- function(stream,
       schema = schema,
       queue = queue
     )
+  })
+}
+
+adbc_statement_execute_query_promise <- function(statement, loop = NULL, delay = 0) {
+  if (is.null(loop)) {
+    loop <- later::current_loop()
+  }
+
+  queue <- callback_queue_from_later_loop(loop)
+
+  later_loop_schedule_run_pending(loop, delay = delay)
+
+  promises::promise(function(resolve, reject) {
+    callback <- adbc_callback(
+      on_success = resolve,
+      on_error = function(status, error) {
+        reject(adbc_error_message(status, error))
+      }
+    )
+
+    adbc_statement_execute_query_async(statement, callback, queue = queue)
   })
 }
 
