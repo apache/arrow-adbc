@@ -27,6 +27,7 @@ stop_for_error <- function(status, error) {
       error <- list()
     }
 
+    error$status <- status
     error$status_code_message <- .Call(RAdbcStatusCodeMessage, status)
     msg <- adbc_error_message(status, error)
 
