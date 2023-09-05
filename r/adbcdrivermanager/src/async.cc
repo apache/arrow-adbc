@@ -204,6 +204,36 @@ extern "C" SEXP RAdbcCallbackQueueRunPending(SEXP callback_queue_xptr) {
   return Rf_ScalarReal(queue->RunPending());
 }
 
+extern "C" SEXP RAdbcStatementExecuteQueryAsync(SEXP callback_queue_xptr,
+                                                SEXP statement_xptr, SEXP out_stream_xptr,
+                                                SEXP error_xptr, SEXP callback_env) {
+  // TODO: check array_stream/array/callback queue classes using utils in radbc.h
+  auto queue = reinterpret_cast<CallbackQueue*>(R_ExternalPtrAddr(callback_queue_xptr));
+  auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
+  auto out_stream = adbc_from_xptr<ArrowArrayStream>(out_stream_xptr);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+
+  // Task handle to ensure the thread pointer is cleaned up
+  SEXP task_xptr = PROTECT(Task::MakeXptr(callback_queue_xptr));
+  SEXP task_symbol = PROTECT(Rf_install("task"));
+  Rf_setVar(task_symbol, task_xptr, callback_env);
+  UNPROTECT(1);
+
+  auto task = reinterpret_cast<Task*>(R_ExternalPtrAddr(task_xptr));
+  CallbackQueue::RCallback callback =
+      queue->InitCallback(callback_env, out_stream_xptr, error_xptr);
+  task->worker = new std::thread([statement, out_stream, error, callback, queue] {
+    CallbackQueue::RCallback callback_out = callback;
+    int64_t rows_affected = -1;
+    callback_out.return_code =
+        AdbcStatementExecuteQuery(statement, out_stream, &rows_affected, error);
+    queue->AddCallback(callback_out);
+  });
+
+  UNPROTECT(1);
+  return R_NilValue;
+}
+
 extern "C" SEXP RAdbcArrayStreamGetNextAsync(SEXP callback_queue_xptr,
                                              SEXP array_stream_xptr, SEXP array_xptr,
                                              SEXP callback_env) {

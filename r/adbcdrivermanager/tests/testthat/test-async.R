@@ -28,6 +28,53 @@ test_that("async array_stream$get_next() works", {
   expect_true(async_called)
 })
 
+test_that("async adbc_statement_execute_query() can return a value", {
+  db <- adbc_database_init(adbc_driver_monkey())
+  con <- adbc_connection_init(db)
+  input <- data.frame(x = 1:5)
+  stmt <- adbc_statement_init(con, input)
+
+  async_called <- FALSE
+  queue <- adbc_statement_execute_query_async(stmt, function(stream) {
+    async_called <<- TRUE
+    expect_identical(nanoarrow::convert_array_stream(stream), input)
+  })
+
+  expect_false(async_called)
+  expect_identical(adbc_callback_queue_run_pending(queue), 1)
+  expect_true(async_called)
+})
+
+test_that("async adbc_statement_execute_query() can return an error", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+  stmt <- adbc_statement_init(con)
+
+  async_called <- FALSE
+  queue <- adbc_statement_execute_query_async(
+    stmt,
+    adbc_callback(
+      on_success = function(stream) {
+        stop("This should not be called")
+      },
+      on_error = function(status, error) {
+        expect_false(status == 0)
+        expect_s3_class(error, "adbc_error")
+        async_called <<- TRUE
+        stop_for_error(status, error)
+      }
+    )
+  )
+
+  expect_false(async_called)
+  expect_error(
+    adbc_callback_queue_run_pending(queue),
+    class = "adbc_status_not_implemented"
+  )
+  expect_true(async_called)
+  expect_identical(adbc_callback_queue_run_pending(queue), 0)
+})
+
 test_that("async array_stream$get_next() promises/later integration works", {
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
