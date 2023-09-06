@@ -34,9 +34,11 @@ The following values can be setup in the configuration
 - **warehouse** - The `adbc.snowflake.sql.warehouse` value from the [Snowflake Client Options](https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html#client-options).
 - **authenticationType** - The `adbc.snowflake.sql.auth_type` value from the [Snowflake Client Options](https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html#client-options).
 - **authenticationTokenPath** - The path to the authentication token file, if using `auth_jwt` for the auth type.
-- **database** - Used by metadata tests for which database to target.
-- **schema** - Used by metadata tests for which schema to target.
-- **table** - Used by metadata tests for which table to target.
+- metadata
+  - **database** - Used by metadata tests for which database to target.
+  - **schema** - Used by metadata tests for which schema to target.
+  - **table** - Used by metadata tests for which table to target.
+  - **expectedColumnCount** - Used by metadata tests to validate the number of columns that are returned.
 - **query** - The query to use.
 - **expectedResults** - The expected number of results from the query.
 
@@ -44,5 +46,3 @@ The following values can be setup in the configuration
 This project contains a SQL script to generate Snowflake data in the `resources/SnowflakeData.sql` file. This can be used to populate a table in your Snowflake instance with data.
 
 The tests included assume this script has been run.
-
-Alternatively, the `resources/snowflake.arrow` data has also been included. This is a sample record batch that was saved from a test Snowflake instance and matches the first row that is present in the SQL script.
