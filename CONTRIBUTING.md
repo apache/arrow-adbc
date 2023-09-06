@@ -65,8 +65,19 @@ _Note:_ unlike the Arrow C++ build system, the CMake projects will
 configure CMake appropriately to find dependencies in system or
 package manager locations, if you are not using something like Conda.
 
-For example, the driver manager and postgres driver may be built
-together as follows:
+You can use CMake presets to build and test:
+
+```shell
+$ mkdir build
+$ cd build
+$ cmake ../c --preset debug
+# ctest reads presets from PWD
+$ cd ../c
+$ ctest --preset debug --test-dir ../build
+```
+
+You can also manually configure CMake.  For example, the driver manager and
+postgres driver may be built together as follows:
 
 ```shell
 $ mkdir build
