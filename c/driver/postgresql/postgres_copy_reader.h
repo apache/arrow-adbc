@@ -278,6 +278,7 @@ class PostgresIntervalReader : public PostgresCopyFieldReader {
   }
 };
 
+// // Converts COPY resulting from the Postgres NUMERIC type into a string.
 // Rewritten based on the Postgres implementation of NUMERIC cast to string in
 // src/backend/utils/adt/numeric.c : get_str_from_var() (Note that in the initial source,
 // DEC_DIGITS is always 4 and DBASE is always 10000).

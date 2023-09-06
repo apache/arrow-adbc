@@ -418,8 +418,8 @@ struct BindStream {
               std::memcpy(param_values[col], &value, sizeof(int32_t));
               break;
             }
-            case ArrowType::NANOARROW_TYPE_TIMESTAMP:
-            case ArrowType::NANOARROW_TYPE_DURATION: {
+            case ArrowType::NANOARROW_TYPE_DURATION:
+            case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
               // 2000-01-01 00:00:00.000000 in microseconds
@@ -430,7 +430,6 @@ struct BindStream {
 
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-
                   overflow_safe = psnip_safe_int64_mul(&val, val, 1000000);
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
