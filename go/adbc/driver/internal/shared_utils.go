@@ -385,3 +385,34 @@ func boolToInt16(b bool) int16 {
 	}
 	return 0
 }
+
+// The JDBC/ODBC-defined type of any object.
+// All the values here are the sames as in the JDBC and ODBC specs.
+type XdbcDataType int32
+
+const (
+	XdbcDataType_XDBC_UNKNOWN_TYPE  XdbcDataType = 0
+	XdbcDataType_XDBC_CHAR          XdbcDataType = 1
+	XdbcDataType_XDBC_NUMERIC       XdbcDataType = 2
+	XdbcDataType_XDBC_DECIMAL       XdbcDataType = 3
+	XdbcDataType_XDBC_INTEGER       XdbcDataType = 4
+	XdbcDataType_XDBC_SMALLINT      XdbcDataType = 5
+	XdbcDataType_XDBC_FLOAT         XdbcDataType = 6
+	XdbcDataType_XDBC_REAL          XdbcDataType = 7
+	XdbcDataType_XDBC_DOUBLE        XdbcDataType = 8
+	XdbcDataType_XDBC_DATETIME      XdbcDataType = 9
+	XdbcDataType_XDBC_INTERVAL      XdbcDataType = 10
+	XdbcDataType_XDBC_VARCHAR       XdbcDataType = 12
+	XdbcDataType_XDBC_DATE          XdbcDataType = 91
+	XdbcDataType_XDBC_TIME          XdbcDataType = 92
+	XdbcDataType_XDBC_TIMESTAMP     XdbcDataType = 93
+	XdbcDataType_XDBC_LONGVARCHAR   XdbcDataType = -1
+	XdbcDataType_XDBC_BINARY        XdbcDataType = -2
+	XdbcDataType_XDBC_VARBINARY     XdbcDataType = -3
+	XdbcDataType_XDBC_LONGVARBINARY XdbcDataType = -4
+	XdbcDataType_XDBC_BIGINT        XdbcDataType = -5
+	XdbcDataType_XDBC_TINYINT       XdbcDataType = -6
+	XdbcDataType_XDBC_BIT           XdbcDataType = -7
+	XdbcDataType_XDBC_WCHAR         XdbcDataType = -8
+	XdbcDataType_XDBC_WVARCHAR      XdbcDataType = -9
+)

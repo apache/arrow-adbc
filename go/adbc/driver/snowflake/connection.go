@@ -417,11 +417,10 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 	if comment.Valid {
 		md["COMMENT"] = comment.String
 	}
-	md["ORDINAL_POSITION"] = strconv.Itoa(ordinalPos)
 
+	md["ORDINAL_POSITION"] = strconv.Itoa(ordinalPos)
 	md["XDBC_DATA_TYPE"] = strconv.Itoa(int(ret.Type.ID()))
 	md["XDBC_TYPE_NAME"] = dataType
-
 	md["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(toXdbcDataType(ret.Type)))
 	md["XDBC_NULLABLE"] = strconv.FormatBool(isnullable)
 
@@ -464,8 +463,8 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 	return
 }
 
-func toXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
-	xdbcType = XdbcDataType_XDBC_UNKNOWN_TYPE
+func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
+	xdbcType = internal.XdbcDataType_XDBC_UNKNOWN_TYPE
 	switch dt.ID() {
 	case arrow.EXTENSION:
 		return toXdbcDataType(dt.(arrow.ExtensionType).StorageType())
@@ -474,39 +473,39 @@ func toXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
 	case arrow.RUN_END_ENCODED:
 		return toXdbcDataType(dt.(*arrow.RunEndEncodedType).Encoded())
 	case arrow.INT8, arrow.UINT8:
-		return XdbcDataType_XDBC_TINYINT
+		return internal.XdbcDataType_XDBC_TINYINT
 	case arrow.INT16, arrow.UINT16:
-		return XdbcDataType_XDBC_SMALLINT
+		return internal.XdbcDataType_XDBC_SMALLINT
 	case arrow.INT32, arrow.UINT32:
-		return XdbcDataType_XDBC_SMALLINT
+		return internal.XdbcDataType_XDBC_SMALLINT
 	case arrow.INT64, arrow.UINT64:
-		return XdbcDataType_XDBC_BIGINT
+		return internal.XdbcDataType_XDBC_BIGINT
 	case arrow.FLOAT32, arrow.FLOAT16, arrow.FLOAT64:
-		return XdbcDataType_XDBC_FLOAT
+		return internal.XdbcDataType_XDBC_FLOAT
 	case arrow.DECIMAL, arrow.DECIMAL256:
-		return XdbcDataType_XDBC_DECIMAL
+		return internal.XdbcDataType_XDBC_DECIMAL
 	case arrow.STRING, arrow.LARGE_STRING:
-		return XdbcDataType_XDBC_VARCHAR
+		return internal.XdbcDataType_XDBC_VARCHAR
 	case arrow.BINARY, arrow.LARGE_BINARY:
-		return XdbcDataType_XDBC_BINARY
+		return internal.XdbcDataType_XDBC_BINARY
 	case arrow.FIXED_SIZE_BINARY:
-		return XdbcDataType_XDBC_BINARY
+		return internal.XdbcDataType_XDBC_BINARY
 	case arrow.BOOL:
-		return XdbcDataType_XDBC_BIT
+		return internal.XdbcDataType_XDBC_BIT
 	case arrow.TIME32, arrow.TIME64:
-		return XdbcDataType_XDBC_TIME
+		return internal.XdbcDataType_XDBC_TIME
 	case arrow.DATE32, arrow.DATE64:
-		return XdbcDataType_XDBC_DATE
+		return internal.XdbcDataType_XDBC_DATE
 	case arrow.TIMESTAMP:
-		return XdbcDataType_XDBC_TIMESTAMP
+		return internal.XdbcDataType_XDBC_TIMESTAMP
 	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
-		return XdbcDataType_XDBC_VARBINARY
+		return internal.XdbcDataType_XDBC_VARBINARY
 	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
-		return XdbcDataType_XDBC_VARBINARY
+		return internal.XdbcDataType_XDBC_VARBINARY
 	case arrow.STRUCT, arrow.MAP:
-		return XdbcDataType_XDBC_VARBINARY
+		return internal.XdbcDataType_XDBC_VARBINARY
 	default:
-		return XdbcDataType_XDBC_UNKNOWN_TYPE
+		return internal.XdbcDataType_XDBC_UNKNOWN_TYPE
 	}
 }
 
@@ -1057,34 +1056,3 @@ func (c *cnxn) SetOptionDouble(key string, value float64) error {
 		Code: adbc.StatusNotImplemented,
 	}
 }
-
-// The JDBC/ODBC-defined type of any object.
-// All the values here are the sames as in the JDBC and ODBC specs.
-type XdbcDataType int32
-
-const (
-	XdbcDataType_XDBC_UNKNOWN_TYPE  XdbcDataType = 0
-	XdbcDataType_XDBC_CHAR          XdbcDataType = 1
-	XdbcDataType_XDBC_NUMERIC       XdbcDataType = 2
-	XdbcDataType_XDBC_DECIMAL       XdbcDataType = 3
-	XdbcDataType_XDBC_INTEGER       XdbcDataType = 4
-	XdbcDataType_XDBC_SMALLINT      XdbcDataType = 5
-	XdbcDataType_XDBC_FLOAT         XdbcDataType = 6
-	XdbcDataType_XDBC_REAL          XdbcDataType = 7
-	XdbcDataType_XDBC_DOUBLE        XdbcDataType = 8
-	XdbcDataType_XDBC_DATETIME      XdbcDataType = 9
-	XdbcDataType_XDBC_INTERVAL      XdbcDataType = 10
-	XdbcDataType_XDBC_VARCHAR       XdbcDataType = 12
-	XdbcDataType_XDBC_DATE          XdbcDataType = 91
-	XdbcDataType_XDBC_TIME          XdbcDataType = 92
-	XdbcDataType_XDBC_TIMESTAMP     XdbcDataType = 93
-	XdbcDataType_XDBC_LONGVARCHAR   XdbcDataType = -1
-	XdbcDataType_XDBC_BINARY        XdbcDataType = -2
-	XdbcDataType_XDBC_VARBINARY     XdbcDataType = -3
-	XdbcDataType_XDBC_LONGVARBINARY XdbcDataType = -4
-	XdbcDataType_XDBC_BIGINT        XdbcDataType = -5
-	XdbcDataType_XDBC_TINYINT       XdbcDataType = -6
-	XdbcDataType_XDBC_BIT           XdbcDataType = -7
-	XdbcDataType_XDBC_WCHAR         XdbcDataType = -8
-	XdbcDataType_XDBC_WVARCHAR      XdbcDataType = -9
-)
