@@ -1321,7 +1321,7 @@ void StatementTest::TestSqlIngestTimestampType(const char* timezone) {
     ASSERT_EQ(1, reader.array->n_children);
 
     // TODO: add duration round trip testing
-    if (type == NANOARROW_TYPE_DURATION) {
+    if (type != NANOARROW_TYPE_DURATION) {
       ValidateIngestedTimestampData(reader.array_view->children[0], TU, timezone);
     }
 
