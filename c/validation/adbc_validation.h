@@ -188,6 +188,7 @@ class ConnectionTest {
 
   void TestMetadataGetInfo();
   void TestMetadataGetTableSchema();
+  void TestMetadataGetTableSchemaEscaping();
   void TestMetadataGetTableSchemaNotFound();
   void TestMetadataGetTableTypes();
 
@@ -220,6 +221,9 @@ class ConnectionTest {
   TEST_F(FIXTURE, MetadataCurrentDbSchema) { TestMetadataCurrentDbSchema(); }           \
   TEST_F(FIXTURE, MetadataGetInfo) { TestMetadataGetInfo(); }                           \
   TEST_F(FIXTURE, MetadataGetTableSchema) { TestMetadataGetTableSchema(); }             \
+  TEST_F(FIXTURE, MetadataGetTableSchemaEscaping) {                                     \
+    TestMetadataGetTableSchemaEscaping();                                               \
+  }                                                                                     \
   TEST_F(FIXTURE, MetadataGetTableSchemaNotFound) {                                     \
     TestMetadataGetTableSchemaNotFound();                                               \
   }                                                                                     \

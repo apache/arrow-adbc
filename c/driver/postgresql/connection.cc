@@ -1314,7 +1314,8 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   RAISE_ADBC(result_helper.Prepare());
   auto result = result_helper.Execute();
   if (result != ADBC_STATUS_OK) {
-    if (std::string(error->sqlstate, 5) == "42P01") {
+    auto error_code = std::string(error->sqlstate, 5);
+    if ((error_code == "42P01") || (error_code == "42602")) {
       return ADBC_STATUS_NOT_FOUND;
     }
     return result;
