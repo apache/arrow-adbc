@@ -110,7 +110,9 @@ intersphinx_mapping = {
 
 # -- Options for mermaid -----------------------------------------------------
 
-mermaid_d3_zoom = True
+mermaid_d3_zoom = False
+# Prerender images to avoid page jumping on load
+mermaid_output_format = "png"
 
 # -- Options for numpydoc ----------------------------------------------------
 

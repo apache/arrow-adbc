@@ -126,6 +126,9 @@ used as follows:
 ```shell
 $ conda create -n adbc -c conda-forge --file ci/conda_env_docs.txt
 $ conda activate adbc
+# Mermaid must be installed separately
+# While "global", it will end up in your Conda environment
+$ npm install -g @mermaid-js/mermaid-cli
 ```
 
 To build the HTML documentation:
