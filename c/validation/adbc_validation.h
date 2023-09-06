@@ -336,7 +336,7 @@ class StatementTest {
   void TestSqlIngestTimestampType(const char* timezone);
 
   virtual void ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                             enum ArrowTimeUnit unit,
+                                             ArrowType type, enum ArrowTimeUnit unit,
                                              const char* timezone);
 };
 

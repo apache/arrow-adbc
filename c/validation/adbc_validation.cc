@@ -1320,10 +1320,7 @@ void StatementTest::TestSqlIngestTimestampType(const char* timezone) {
     ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    // TODO: add duration round trip testing
-    if (type != NANOARROW_TYPE_DURATION) {
-      ValidateIngestedTimestampData(reader.array_view->children[0], TU, timezone);
-    }
+    ValidateIngestedTimestampData(reader.array_view->children[0], type, TU, timezone);
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
@@ -1333,7 +1330,7 @@ void StatementTest::TestSqlIngestTimestampType(const char* timezone) {
 }
 
 void StatementTest::ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                                  enum ArrowTimeUnit unit,
+                                                  ArrowType type, enum ArrowTimeUnit unit,
                                                   const char* timezone) {
   FAIL() << "ValidateIngestedTimestampData is not implemented in the base class";
 }
