@@ -871,23 +871,23 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
-  struct StringBuilder query = {0};
-  if (StringBuilderInit(&query, /*initial_size=*/64) != 0) {
-    SetError(error, "[SQLite] Could not initiate StringBuilder");
+  sqlite3_str* query = sqlite3_str_new(NULL);
+  if (sqlite3_str_errcode(query)) {
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(conn->conn));
     return ADBC_STATUS_INTERNAL;
   }
 
-  // TODO(apache/arrow-adbc#1025): escape
-  if (StringBuilderAppend(&query, "%s%s", "SELECT * FROM ", table_name) != 0) {
-    StringBuilderReset(&query);
-    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+  sqlite3_str_appendf(query, "%s%Q", "SELECT * FROM ", table_name);
+  if (sqlite3_str_errcode(query)) {
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(conn->conn));
+    sqlite3_free(sqlite3_str_finish(query));
     return ADBC_STATUS_INTERNAL;
   }
 
   sqlite3_stmt* stmt = NULL;
-  int rc =
-      sqlite3_prepare_v2(conn->conn, query.buffer, query.size, &stmt, /*pzTail=*/NULL);
-  StringBuilderReset(&query);
+  int rc = sqlite3_prepare_v2(conn->conn, sqlite3_str_value(query),
+                              sqlite3_str_length(query), &stmt, /*pzTail=*/NULL);
+  sqlite3_free(sqlite3_str_finish(query));
   if (rc != SQLITE_OK) {
     SetError(error, "[SQLite] GetTableSchema: %s", sqlite3_errmsg(conn->conn));
     return ADBC_STATUS_NOT_FOUND;
