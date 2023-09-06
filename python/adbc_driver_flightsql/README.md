@@ -20,11 +20,12 @@
 # ADBC Apache Arrow Flight SQL Driver for Python
 
 This package contains bindings for the [Golang Apache Arrow Flight SQL
-driver](../../go/adbc/driver/flightsql), using the [driver
-manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
-249-compatible][dbapi] interface on top.
+driver][flightsql], using the [driver manager][driver-manager] to provide a
+[DBAPI 2.0/PEP 249-compatible][dbapi] interface on top.
 
 [dbapi]: https://peps.python.org/pep-0249/
+[driver-manager]: https://arrow.apache.org/adbc/current/python/driver_manager.html
+[flightsql]: https://arrow.apache.org/adbc/current/driver/flight_sql.html
 
 ## Building
 
