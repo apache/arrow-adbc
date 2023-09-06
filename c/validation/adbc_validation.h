@@ -332,7 +332,7 @@ class StatementTest {
   template <typename CType>
   void TestSqlIngestNumericType(ArrowType type);
 
-  template <enum ArrowTimeUnit TU>
+  template <ArrowType type, enum ArrowTimeUnit TU>
   void TestSqlIngestTimestampType(const char* timezone);
 
   virtual void ValidateIngestedTimestampData(struct ArrowArrayView* values,
