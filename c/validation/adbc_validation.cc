@@ -1340,10 +1340,10 @@ void StatementTest::TestSqlIngestDuration() {
       (TestSqlIngestTimestampType<NANOARROW_TYPE_DURATION, NANOARROW_TIME_UNIT_SECOND>(
           nullptr)));
   ASSERT_NO_FATAL_FAILURE(
-      (TestSqlIngestTimestampType<NANOARROW_TYPE_DURATION, NANOARROW_TIME_UNIT_MICRO>(
+      (TestSqlIngestTimestampType<NANOARROW_TYPE_DURATION, NANOARROW_TIME_UNIT_MILLI>(
           nullptr)));
   ASSERT_NO_FATAL_FAILURE(
-      (TestSqlIngestTimestampType<NANOARROW_TYPE_DURATION, NANOARROW_TIME_UNIT_MILLI>(
+      (TestSqlIngestTimestampType<NANOARROW_TYPE_DURATION, NANOARROW_TIME_UNIT_MICRO>(
           nullptr)));
   ASSERT_NO_FATAL_FAILURE(
       (TestSqlIngestTimestampType<NANOARROW_TYPE_DURATION, NANOARROW_TIME_UNIT_NANO>(
