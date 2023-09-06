@@ -17,18 +17,21 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Ipc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
     /// <summary>
-    /// Class for testing the metadata capability of the Snowflake ADBC driver.
+    /// Class for testing the Snowflake ADBC driver connection tests.
     /// </summary>
     [TestClass]
-    public class MetadataTests
+    public class DriverTests
     {
         /// <summary>
         /// Validates if the driver can call GetInfo.
@@ -176,6 +179,80 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
 
             Assert.AreEqual(known_types.Count, results);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        [TestMethod]
+        public void CanExecuteQuery()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
+
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
+
+            AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
+
+            AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
+            AdbcConnection adbcConnection = adbcDatabase.Connect(options);
+
+            Console.WriteLine(testConfiguration.Query);
+
+            AdbcStatement statement = adbcConnection.CreateStatement();
+            statement.SqlQuery = testConfiguration.Query;
+
+            QueryResult queryResult = statement.ExecuteQuery();
+
+            Adbc.Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        [TestMethod]
+        public void CanExecuteUpdate()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
+
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
+
+            AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
+
+            AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
+            AdbcConnection adbcConnection = adbcDatabase.Connect(options);
+
+            string[] sql = File.ReadAllLines("resources/SnowflakeData.sql");
+
+            // get past the license header
+            StringBuilder content = new StringBuilder(); ;
+
+            foreach(string line in sql)
+            {
+                if(!line.TrimStart().StartsWith("--"))
+                {
+                    content.Append(line);
+                }
+            }
+
+            string[] queries = content.ToString().Split(";".ToCharArray());
+
+            List<int> expectedResults = new List<int>() { -1,1,1 };
+
+            // the last query is blank
+            for (int i=0; i<queries.Length-1;i++)
+            {
+                string query = queries[i];
+                AdbcStatement statement = adbcConnection.CreateStatement();
+                statement.SqlQuery = query;
+
+                UpdateResult updateResult = statement.ExecuteUpdate();
+
+                Assert.AreEqual(expectedResults[i], updateResult.AffectedRows, $"The expected affected rows do not match the actual affected rows at position {i}.");
+            }
         }
     }
 }

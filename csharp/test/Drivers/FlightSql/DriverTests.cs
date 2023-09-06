@@ -27,33 +27,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
     /// Abstract class for the ADBC connection tests.
     /// </summary>
     [TestClass]
-    public class ConnectionTests
+    public class DriverTests
     {
-        int expectedResultsCount = 50;
-
-        /// <summary>
-        /// Validates if the driver behaves as it should with missing
-        /// values and parsing mock results.
-        /// </summary>
-        [TestMethod]
-        public void CanMockDriverConnect()
-        {
-            Mock<IAdbcStatement> mockFlightSqlStatement = Utils.GetMockStatement(
-                "resources/flightsql.arrow",
-                expectedResultsCount
-            );
-
-            FlightSqlDatabase db = new FlightSqlDatabase(new Dictionary<string, string>());
-
-            Assert.ThrowsException<ArgumentNullException>(() => db.Connect(null));
-
-            Assert.ThrowsException<ArgumentException>(() => db.Connect(new Dictionary<string, string>()));
-
-            QueryResult queryResult = mockFlightSqlStatement.Object.ExecuteQuery();
-
-            Adbc.Tests.ConnectionTests.CanDriverExecuteQuery(queryResult, 50);
-        }
-
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
@@ -84,30 +59,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
             statement.SqlQuery = flightSqlTestConfiguration.Query;
             QueryResult queryResult = statement.ExecuteQuery();
 
-            Adbc.Tests.ConnectionTests.CanDriverExecuteQuery(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
-        }
-
-        /// <summary>
-        /// Validates exceptions thrown are ADBC exceptions
-        /// </summary>
-        [TestMethod]
-        public void VerifyBadQueryGeneratesError()
-        {
-            Mock<IAdbcStatement> mockFlightSqlStatement = Utils.GetMockStatement(
-                "resources/flightsql.arrow",
-                expectedResultsCount
-            );
-
-            mockFlightSqlStatement.Setup(s => s.ExecuteQuery()).Throws(new MockAdbcException());
-
-            try
-            {
-                mockFlightSqlStatement.Object.ExecuteQuery();
-            }
-            catch (AdbcException e)
-            {
-                Adbc.Tests.ConnectionTests.VerifyBadQueryGeneratesError(e);
-            }
+            Adbc.Tests.DriverTests.CanExecuteQuery(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
         }
     }
 }
