@@ -440,8 +440,7 @@ endpoints.</p>
 <section id="basic-usage">
 <h4>Basic Usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id1">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
+%% Licensed to the Apache Software Foundation (ASF) under one
 %% or more contributor license agreements.  See the NOTICE file
 %% distributed with this work for additional information
 %% regarding copyright ownership.  The ASF licenses this file
@@ -473,8 +472,7 @@ sequenceDiagram
     end
     Note over App, Driver: SetSqlQuery and repeat (if desired)
     App -&gt;&gt; Driver: Release
-
-        </div><figcaption>
+<figcaption>
 <p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id1" title="Permalink to this image">#</a></p>
 </figcaption>
 </figure>
@@ -482,8 +480,7 @@ sequenceDiagram
 <section id="consuming-result-sets">
 <h4>Consuming Result Sets<a class="headerlink" href="#consuming-result-sets" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id2">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
+%% Licensed to the Apache Software Foundation (ASF) under one
 %% or more contributor license agreements.  See the NOTICE file
 %% distributed with this work for additional information
 %% regarding copyright ownership.  The ASF licenses this file
@@ -510,8 +507,7 @@ sequenceDiagram
         Stream -&gt;&gt; App: ArrowArray
     end
     App -&gt;&gt; Stream: release
-
-        </div><figcaption>
+<figcaption>
 <p><span class="caption-text">This is equivalent to reading from what many Arrow
 libraries call a RecordBatchReader.</span><a class="headerlink" href="#id2" title="Permalink to this image">#</a></p>
 </figcaption>
@@ -520,8 +516,7 @@ libraries call a RecordBatchReader.</span><a class="headerlink" href="#id2" titl
 <section id="bulk-data-ingestion">
 <h4>Bulk Data Ingestion<a class="headerlink" href="#bulk-data-ingestion" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id3">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
+%% Licensed to the Apache Software Foundation (ASF) under one
 %% or more contributor license agreements.  See the NOTICE file
 %% distributed with this work for additional information
 %% regarding copyright ownership.  The ASF licenses this file
@@ -547,8 +542,7 @@ sequenceDiagram
     App -&gt;&gt; Driver: Bind
     App -&gt;&gt; Driver: ExecuteUpdate
     App -&gt;&gt; Driver: Release
-
-        </div><figcaption>
+<figcaption>
 <p><span class="caption-text">There is no need to prepare the statement.</span><a class="headerlink" href="#id3" title="Permalink to this image">#</a></p>
 </figcaption>
 </figure>
@@ -556,8 +550,7 @@ sequenceDiagram
 <section id="update-only-queries-no-result-set">
 <h4>Update-only Queries (No Result Set)<a class="headerlink" href="#update-only-queries-no-result-set" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id4">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
+%% Licensed to the Apache Software Foundation (ASF) under one
 %% or more contributor license agreements.  See the NOTICE file
 %% distributed with this work for additional information
 %% regarding copyright ownership.  The ASF licenses this file
@@ -588,8 +581,7 @@ sequenceDiagram
     end
     Note over App, Driver: SetSqlQuery and repeat (if desired)
     App -&gt;&gt; Driver: Release
-
-        </div><figcaption>
+<figcaption>
 <p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id4" title="Permalink to this image">#</a></p>
 </figcaption>
 </figure>
@@ -597,8 +589,7 @@ sequenceDiagram
 <section id="partitioned-execution">
 <h4>Partitioned Execution<a class="headerlink" href="#partitioned-execution" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id5">
-<div class="mermaid">
-            %% Licensed to the Apache Software Foundation (ASF) under one
+%% Licensed to the Apache Software Foundation (ASF) under one
 %% or more contributor license agreements.  See the NOTICE file
 %% distributed with this work for additional information
 %% regarding copyright ownership.  The ASF licenses this file
@@ -642,8 +633,7 @@ sequenceDiagram
     end
     Note over App, Driver: SetSqlQuery and repeat (if desired)
     App -&gt;&gt; Driver: Release
-
-        </div><figcaption>
+<figcaption>
 <p><span class="caption-text">This is similar to fetching data in Arrow Flight RPC (by
 design). See <a class="reference external" href="https://arrow.apache.org/docs/format/Flight.html" title="(in Apache Arrow v13.0.0)"><span class="xref std std-doc">“Downloading Data”</span></a>.</span><a class="headerlink" href="#id5" title="Permalink to this image">#</a></p>
 </figcaption>
@@ -816,21 +806,6 @@ and waiting for query execution to finish before reading results.</p>
     <script src="../_static/design-tabs.js"></script>
     <script src="https://unpkg.com/mermaid@10.2.0/dist/mermaid.min.js"></script>
     <script>mermaid.initialize({startOnLoad:true});</script>
-    <script src="https://unpkg.com/d3/dist/d3.min.js"></script>
-    <script>
-            window.addEventListener("load", function () {
-              var svgs = d3.selectAll(".mermaid svg");
-              svgs.each(function() {
-                var svg = d3.select(this);
-                svg.html("<g>" + svg.html() + "</g>");
-                var inner = svg.select("g");
-                var zoom = d3.zoom().on("zoom", function(event) {
-                  inner.attr("transform", event.transform);
-                });
-                svg.call(zoom);
-              });
-            });
-            </script>
     
 <script async defer src="../../version.js"></script></body>
 </html>
