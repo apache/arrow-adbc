@@ -57,6 +57,7 @@ import (
 	"github.com/apache/arrow/go/v13/arrow/memory"
 	"github.com/bluele/gcache"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slog"
 	"google.golang.org/grpc"
 	grpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -156,6 +157,7 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	db.dialOpts.block = false
 	db.dialOpts.maxMsgSize = 16 * 1024 * 1024
 
+	db.logger = nilLogger()
 	db.options = make(map[string]string)
 
 	return db, db.SetOptions(opts)
@@ -186,9 +188,18 @@ type database struct {
 	timeout       timeoutOption
 	dialOpts      dbDialOpts
 	enableCookies bool
+	logger        *slog.Logger
 	options       map[string]string
 
 	alloc memory.Allocator
+}
+
+func (d *database) SetLogger(logger *slog.Logger) {
+	if logger != nil {
+		d.logger = logger
+	} else {
+		d.logger = nilLogger()
+	}
 }
 
 func (d *database) SetOptions(cnOptions map[string]string) error {
@@ -691,6 +702,10 @@ func (b *bearerAuthMiddleware) HeadersReceived(ctx context.Context, md metadata.
 func getFlightClient(ctx context.Context, loc string, d *database) (*flightsql.Client, error) {
 	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy()}
 	middleware := []flight.ClientMiddleware{
+		{
+			Unary:  makeUnaryLoggingInterceptor(d.logger),
+			Stream: makeStreamLoggingInterceptor(d.logger),
+		},
 		flight.CreateClientMiddleware(authMiddle),
 		{
 			Unary:  unaryTimeoutInterceptor,
