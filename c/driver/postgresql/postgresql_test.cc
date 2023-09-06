@@ -798,12 +798,11 @@ class PostgresStatementTest : public ::testing::Test,
   }
 
  protected:
-  void ValidateIngestedTimestampData(struct ArrowArrayView* values, ArrowType type,
-                                     enum ArrowTimeUnit unit,
-                                     const char* timezone) override {
+  void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
+                                    enum ArrowTimeUnit unit,
+                                    const char* timezone) override {
     switch (type) {
-      case NANOARROW_TYPE_DATE32:
-      case NANOARROW_TYPE_DATE64: {
+      case NANOARROW_TYPE_TIMESTAMP: {
         std::vector<std::optional<int64_t>> expected;
         switch (unit) {
           case (NANOARROW_TIME_UNIT_SECOND):
@@ -869,7 +868,7 @@ class PostgresStatementTest : public ::testing::Test,
         break;
       }
       default:
-        ASSERT_TRUE(false) << "ValidateIngestedTimestampData not implemented for type "
+        ASSERT_TRUE(false) << "ValidateIngestedTemporalData not implemented for type "
                            << type;
     }
   }

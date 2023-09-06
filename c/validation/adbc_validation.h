@@ -333,11 +333,11 @@ class StatementTest {
   void TestSqlIngestNumericType(ArrowType type);
 
   template <ArrowType type, enum ArrowTimeUnit TU>
-  void TestSqlIngestTimestampType(const char* timezone);
+  void TestSqlIngestTemporalType(const char* timezone);
 
-  virtual void ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                             ArrowType type, enum ArrowTimeUnit unit,
-                                             const char* timezone);
+  virtual void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
+                                            enum ArrowTimeUnit unit,
+                                            const char* timezone);
 };
 
 #define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
