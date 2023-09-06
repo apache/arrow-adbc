@@ -841,21 +841,22 @@ class PostgresStatementTest : public ::testing::Test,
 
         switch (unit) {
           case (NANOARROW_TIME_UNIT_SECOND):
+            neg_interval.ns = -42000000000;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42000000000;
+            break;
+          case (NANOARROW_TIME_UNIT_MILLI):
             neg_interval.ns = -42000000;
             zero_interval.ns = 0;
             pos_interval.ns = 42000000;
             break;
-          case (NANOARROW_TIME_UNIT_MILLI):
+          case (NANOARROW_TIME_UNIT_MICRO):
             neg_interval.ns = -42000;
             zero_interval.ns = 0;
             pos_interval.ns = 42000;
             break;
-          case (NANOARROW_TIME_UNIT_MICRO):
-            neg_interval.ns = -42;
-            zero_interval.ns = 0;
-            pos_interval.ns = 42;
-            break;
           case (NANOARROW_TIME_UNIT_NANO):
+            // lower than us precision is lost
             neg_interval.ns = 0;
             zero_interval.ns = 0;
             pos_interval.ns = 0;
