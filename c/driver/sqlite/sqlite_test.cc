@@ -227,10 +227,10 @@ class SqliteStatementTest : public ::testing::Test,
   void ValidateIngestedTimestampData(struct ArrowArrayView* values, ArrowType type,
                                      enum ArrowTimeUnit unit,
                                      const char* timezone) override {
-    std::vector<std::optional<std::string>> expected;
     switch (type) {
       case NANOARROW_TYPE_DATE32:
       case NANOARROW_TYPE_DATE64: {
+        std::vector<std::optional<std::string>> expected;
         switch (unit) {
           case (NANOARROW_TIME_UNIT_SECOND):
             expected.insert(expected.end(),

@@ -801,10 +801,10 @@ class PostgresStatementTest : public ::testing::Test,
   void ValidateIngestedTimestampData(struct ArrowArrayView* values, ArrowType type,
                                      enum ArrowTimeUnit unit,
                                      const char* timezone) override {
-    std::vector<std::optional<int64_t>> expected;
     switch (type) {
       case NANOARROW_TYPE_DATE32:
       case NANOARROW_TYPE_DATE64: {
+        std::vector<std::optional<int64_t>> expected;
         switch (unit) {
           case (NANOARROW_TIME_UNIT_SECOND):
             expected.insert(expected.end(), {std::nullopt, -42000000, 0, 42000000});
@@ -821,6 +821,50 @@ class PostgresStatementTest : public ::testing::Test,
         }
         ASSERT_NO_FATAL_FAILURE(
             adbc_validation::CompareArray<std::int64_t>(values, expected));
+        break;
+      }
+      case NANOARROW_TYPE_DURATION: {
+        struct ArrowInterval neg_interval;
+        struct ArrowInterval zero_interval;
+        struct ArrowInterval pos_interval;
+
+        ArrowIntervalInit(&neg_interval, type);
+        ArrowIntervalInit(&zero_interval, type);
+        ArrowIntervalInit(&pos_interval, type);
+
+        neg_interval.months = 0;
+        neg_interval.days = 0;
+        zero_interval.months = 0;
+        zero_interval.days = 0;
+        pos_interval.months = 0;
+        pos_interval.days = 0;
+
+        switch (unit) {
+          case (NANOARROW_TIME_UNIT_SECOND):
+            neg_interval.ns = -42000000;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42000000;
+            break;
+          case (NANOARROW_TIME_UNIT_MILLI):
+            neg_interval.ns = -42000;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42000;
+            break;
+          case (NANOARROW_TIME_UNIT_MICRO):
+            neg_interval.ns = -42;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42;
+            break;
+          case (NANOARROW_TIME_UNIT_NANO):
+            neg_interval.ns = 0;
+            zero_interval.ns = 0;
+            pos_interval.ns = 0;
+            break;
+        }
+        const std::vector<std::optional<ArrowInterval*>> expected = {
+            std::nullopt, &neg_interval, &zero_interval, &pos_interval};
+        ASSERT_NO_FATAL_FAILURE(
+            adbc_validation::CompareArray<ArrowInterval*>(values, expected));
         break;
       }
       default:
