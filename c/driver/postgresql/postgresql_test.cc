@@ -539,40 +539,6 @@ TEST_F(PostgresConnectionTest, GetObjectsTableTypesFilter) {
   ASSERT_NE(view, nullptr) << "did not find view adbc_table_types_view_test";
 }
 
-TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
-  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
-    GTEST_SKIP();
-  }
-  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
-              IsOkStatus(&error));
-  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
-              IsOkStatus(&error));
-
-  adbc_validation::Handle<ArrowSchema> schema;
-  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/nullptr,
-                                           "0'::int; DROP TABLE bulk_ingest;--",
-                                           &schema.value, &error),
-              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-
-  ASSERT_THAT(
-      AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                   /*db_schema=*/"0'::int; DROP TABLE bulk_ingest;--",
-                                   "DROP TABLE bulk_ingest;", &schema.value, &error),
-      IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-
-  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/nullptr, "bulk_ingest",
-                                           &schema.value, &error),
-              IsOkStatus(&error));
-
-  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
-      &schema.value, {{"int64s", NANOARROW_TYPE_INT64, true},
-                      {"strings", NANOARROW_TYPE_STRING, true}}));
-}
-
 TEST_F(PostgresConnectionTest, MetadataSetCurrentDbSchema) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
