@@ -272,51 +272,50 @@ class SqliteStatementTest : public ::testing::Test,
   }
   void TestSqlIngestDuration() {
     GTEST_SKIP() << "Cannot ingest DURATION (not implemented)";
-    void TestSqlIngestInterval() {
-      GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
-    }
+  }
+  void TestSqlIngestInterval() {
+    GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
+  }
 
-   protected:
-    SqliteQuirks quirks_;
-  };
-  ADBCV_TEST_STATEMENT(SqliteStatementTest)
+ protected:
+  SqliteQuirks quirks_;
+};
+ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
-  TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
-    for (const auto& driver : {
-             "adbc_driver_sqlite",
-             "adbc_driver_sqlite.dll",
-             "driver_sqlite",
-             "libadbc_driver_sqlite",
-             "libadbc_driver_sqlite.so",
-             "libadbc_driver_sqlite.so.6.0.0",
-             "/usr/lib/libadbc_driver_sqlite.so",
-             "/usr/lib/libadbc_driver_sqlite.so.6.0.0",
-             "C:\\System32\\adbc_driver_sqlite.dll",
-         }) {
-      SCOPED_TRACE(driver);
-      EXPECT_EQ("AdbcDriverSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
-    }
+TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
+  for (const auto& driver : {
+           "adbc_driver_sqlite",
+           "adbc_driver_sqlite.dll",
+           "driver_sqlite",
+           "libadbc_driver_sqlite",
+           "libadbc_driver_sqlite.so",
+           "libadbc_driver_sqlite.so.6.0.0",
+           "/usr/lib/libadbc_driver_sqlite.so",
+           "/usr/lib/libadbc_driver_sqlite.so.6.0.0",
+           "C:\\System32\\adbc_driver_sqlite.dll",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcDriverSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+  }
 
-    for (const auto& driver : {
-             "adbc_sqlite",
-             "sqlite",
-             "/usr/lib/sqlite.so",
-             "C:\\System32\\sqlite.dll",
-         }) {
-      SCOPED_TRACE(driver);
-      EXPECT_EQ("AdbcSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
-    }
+  for (const auto& driver : {
+           "adbc_sqlite",
+           "sqlite",
+           "/usr/lib/sqlite.so",
+           "C:\\System32\\sqlite.dll",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+  }
 
-    for (const auto& driver : {
-             "proprietary_engine",
-             "libproprietary_engine.so.6.0.0",
-             "/usr/lib/proprietary_engine.so",
-             "C:\\System32\\proprietary_engine.dll",
-         }) {
-      SCOPED_TRACE(driver);
-      EXPECT_EQ("AdbcProprietaryEngineInit",
-                ::AdbcDriverManagerDefaultEntrypoint(driver));
-    }
+  for (const auto& driver : {
+           "proprietary_engine",
+           "libproprietary_engine.so.6.0.0",
+           "/usr/lib/proprietary_engine.so",
+           "C:\\System32\\proprietary_engine.dll",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcProprietaryEngineInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
   }
 }
 }  // namespace adbc

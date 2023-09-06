@@ -574,8 +574,8 @@ TEST_F(SqliteReaderTest, InferOneParam) {
   ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"", NANOARROW_TYPE_INT64}}),
               IsOkErrno());
   ASSERT_THAT(
-      adbc_validation::MakeBatch<int64_t>(&schema.value, &batch.value,
-                                          /*error=*/nullptr, {std::nullopt, 2, 4, -1}),
+      adbc_validation::MakeBatch<int64_t>(&schema.value, &batch.value, /*error=*/nullptr,
+                                          {std::nullopt, 2, 4, -1}),
       IsOkErrno());
 
   ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value));
