@@ -28,7 +28,7 @@ permissions:
 jobs:
   source:
     # For cron: only run on the main repo, not forks
-    if: github.event_name != 'schedule' || github.repository == 'apache/arrow'
+    if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
