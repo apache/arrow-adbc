@@ -270,6 +270,9 @@ class SqliteStatementTest : public ::testing::Test,
   void TestSqlIngestTimestampTz() {
     GTEST_SKIP() << "Cannot ingest TIMESTAMP WITH TIMEZONE (not implemented)";
   }
+  void TestSqlIngestDuration() {
+    GTEST_SKIP() << "Cannot ingest DURATION (not implemented)";
+  }
   void TestSqlIngestInterval() {
     GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
   }
@@ -315,5 +318,4 @@ TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
     EXPECT_EQ("AdbcProprietaryEngineInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
   }
 }
-
 }  // namespace adbc

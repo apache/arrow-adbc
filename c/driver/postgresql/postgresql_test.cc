@@ -92,6 +92,8 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     switch (ingest_type) {
       case NANOARROW_TYPE_INT8:
         return NANOARROW_TYPE_INT16;
+      case NANOARROW_TYPE_DURATION:
+        return NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO;
       default:
         return ingest_type;
     }
@@ -796,26 +798,78 @@ class PostgresStatementTest : public ::testing::Test,
   }
 
  protected:
-  void ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                     enum ArrowTimeUnit unit,
-                                     const char* timezone) override {
-    std::vector<std::optional<int64_t>> expected;
-    switch (unit) {
-      case (NANOARROW_TIME_UNIT_SECOND):
-        expected.insert(expected.end(), {std::nullopt, -42000000, 0, 42000000});
+  void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
+                                    enum ArrowTimeUnit unit,
+                                    const char* timezone) override {
+    switch (type) {
+      case NANOARROW_TYPE_TIMESTAMP: {
+        std::vector<std::optional<int64_t>> expected;
+        switch (unit) {
+          case (NANOARROW_TIME_UNIT_SECOND):
+            expected.insert(expected.end(), {std::nullopt, -42000000, 0, 42000000});
+            break;
+          case (NANOARROW_TIME_UNIT_MILLI):
+            expected.insert(expected.end(), {std::nullopt, -42000, 0, 42000});
+            break;
+          case (NANOARROW_TIME_UNIT_MICRO):
+            expected.insert(expected.end(), {std::nullopt, -42, 0, 42});
+            break;
+          case (NANOARROW_TIME_UNIT_NANO):
+            expected.insert(expected.end(), {std::nullopt, 0, 0, 0});
+            break;
+        }
+        ASSERT_NO_FATAL_FAILURE(
+            adbc_validation::CompareArray<std::int64_t>(values, expected));
         break;
-      case (NANOARROW_TIME_UNIT_MILLI):
-        expected.insert(expected.end(), {std::nullopt, -42000, 0, 42000});
+      }
+      case NANOARROW_TYPE_DURATION: {
+        struct ArrowInterval neg_interval;
+        struct ArrowInterval zero_interval;
+        struct ArrowInterval pos_interval;
+
+        ArrowIntervalInit(&neg_interval, type);
+        ArrowIntervalInit(&zero_interval, type);
+        ArrowIntervalInit(&pos_interval, type);
+
+        neg_interval.months = 0;
+        neg_interval.days = 0;
+        zero_interval.months = 0;
+        zero_interval.days = 0;
+        pos_interval.months = 0;
+        pos_interval.days = 0;
+
+        switch (unit) {
+          case (NANOARROW_TIME_UNIT_SECOND):
+            neg_interval.ns = -42000000000;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42000000000;
+            break;
+          case (NANOARROW_TIME_UNIT_MILLI):
+            neg_interval.ns = -42000000;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42000000;
+            break;
+          case (NANOARROW_TIME_UNIT_MICRO):
+            neg_interval.ns = -42000;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42000;
+            break;
+          case (NANOARROW_TIME_UNIT_NANO):
+            // lower than us precision is lost
+            neg_interval.ns = 0;
+            zero_interval.ns = 0;
+            pos_interval.ns = 0;
+            break;
+        }
+        const std::vector<std::optional<ArrowInterval*>> expected = {
+            std::nullopt, &neg_interval, &zero_interval, &pos_interval};
+        ASSERT_NO_FATAL_FAILURE(
+            adbc_validation::CompareArray<ArrowInterval*>(values, expected));
         break;
-      case (NANOARROW_TIME_UNIT_MICRO):
-        expected.insert(expected.end(), {std::nullopt, -42, 0, 42});
-        break;
-      case (NANOARROW_TIME_UNIT_NANO):
-        expected.insert(expected.end(), {std::nullopt, 0, 0, 0});
-        break;
+      }
+      default:
+        FAIL() << "ValidateIngestedTemporalData not implemented for type " << type;
     }
-    ASSERT_NO_FATAL_FAILURE(
-        adbc_validation::CompareArray<std::int64_t>(values, expected));
   }
 
   PostgresQuirks quirks_;

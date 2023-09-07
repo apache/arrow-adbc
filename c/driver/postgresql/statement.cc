@@ -230,6 +230,7 @@ struct BindStream {
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
+        case ArrowType::NANOARROW_TYPE_DURATION:
         case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
           type_id = PostgresTypeId::kInterval;
           param_lengths[i] = 16;
@@ -417,6 +418,7 @@ struct BindStream {
               std::memcpy(param_values[col], &value, sizeof(int32_t));
               break;
             }
+            case ArrowType::NANOARROW_TYPE_DURATION:
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
@@ -448,8 +450,18 @@ struct BindStream {
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
-              const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
-              std::memcpy(param_values[col], &value, sizeof(int64_t));
+              if (bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) {
+                const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
+                std::memcpy(param_values[col], &value, sizeof(int64_t));
+              } else if (bind_schema_fields[col].type ==
+                         ArrowType::NANOARROW_TYPE_DURATION) {
+                // postgres stores an interval as a 64 bit offset in microsecond
+                // resolution alongside a 32 bit day and 32 bit month
+                // for now we just send 0 for the day / month values
+                const uint64_t value = ToNetworkInt64(val);
+                std::memcpy(param_values[col], &value, sizeof(int64_t));
+                std::memset(param_values[col] + sizeof(int64_t), 0, sizeof(int64_t));
+              }
               break;
             }
             case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
@@ -878,6 +890,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
           create += " TIMESTAMP";
         }
         break;
+      case ArrowType::NANOARROW_TYPE_DURATION:
       case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
         create += " INTERVAL";
         break;
