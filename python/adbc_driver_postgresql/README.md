@@ -19,12 +19,26 @@
 
 # ADBC PostgreSQL Driver for Python
 
-This package contains bindings for the [PostgreSQL
-driver](../../c/driver/postgresql/README.md), using the [driver
-manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
+This package contains bindings for the [PostgreSQL driver][postgresql], using
+the [driver manager][driver-manager] to provide a [DBAPI 2.0/PEP
 249-compatible][dbapi] interface on top.
 
 [dbapi]: https://peps.python.org/pep-0249/
+[driver-manager]: https://arrow.apache.org/adbc/current/python/driver_manager.html
+[postgresql]: https://arrow.apache.org/adbc/current/driver/postgresql.html
+
+## Example
+
+```python
+import adbc_driver_postgresql.dbapi
+
+uri = "postgresql://postgres:password@localhost:5432/postgres"
+with adbc_driver_postgresql.dbapi.connect(uri) as conn:
+    with conn.cursor() as cur:
+        cur.execute("SELECT 1")
+        print(cur.fetch_arrow_table())
+```
+
 
 ## Building
 
