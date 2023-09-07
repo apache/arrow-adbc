@@ -868,8 +868,7 @@ class PostgresStatementTest : public ::testing::Test,
         break;
       }
       default:
-        ASSERT_TRUE(false) << "ValidateIngestedTemporalData not implemented for type "
-                           << type;
+        FAIL() << "ValidateIngestedTemporalData not implemented for type " << type;
     }
   }
 
