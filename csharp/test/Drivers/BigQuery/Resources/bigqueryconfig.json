@@ -1,0 +1,15 @@
+{
+    "projectId": "",
+    "clientId": "",
+    "clientSecret": "",
+    "refreshToken": "",
+    "tokenEndpoint":  "",
+    "metadata": {
+        "database": "",
+        "schema": "",
+        "table": "",
+        "expectedColumnCount":  0
+    },
+    "query": "",
+    "expectedResults": 0
+}

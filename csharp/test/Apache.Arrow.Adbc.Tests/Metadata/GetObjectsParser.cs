@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             StringArray tableNameArray = (StringArray)tablesArray.Fields[0]; // table_name
             StringArray tableTypeArray = (StringArray)tablesArray.Fields[1]; // table_type
             ListArray columnsArray = (ListArray)tablesArray.Fields[2]; // table_columns
-            ListArray tableConstraintsArray = (ListArray)tablesArray.Fields[3]; // table_constraints
+            //ListArray tableConstraintsArray = (ListArray)tablesArray.Fields[3]; // table_constraints
 
             List<AdbcTable> tables = new List<AdbcTable>();
 

@@ -51,6 +51,7 @@ namespace Apache.Arrow.Adbc.Client
             this.adbcCommand = adbcCommand;
             this.adbcQueryResult = adbcQueryResult;
             this.schema = this.adbcQueryResult.Stream.Schema;
+            this.recordsEffected = (int)adbcQueryResult.RowCount;
 
             if (this.schema == null)
                 throw new ArgumentException("A Schema must be set for the AdbcQueryResult.Stream property");
@@ -267,10 +268,15 @@ namespace Apache.Arrow.Adbc.Client
                     Type t = SchemaConverter.ConvertArrowType(f);
 
                     if(
-                        f.DataType.TypeId == Types.ArrowTypeId.Double ||
-                        f.DataType.TypeId == Types.ArrowTypeId.Float ||
-                        f.DataType.TypeId == Types.ArrowTypeId.Decimal128 ||
-                        f.DataType.TypeId == Types.ArrowTypeId.Decimal256
+                        (
+                            f.DataType.TypeId == Types.ArrowTypeId.Double ||
+                            f.DataType.TypeId == Types.ArrowTypeId.Float ||
+                            f.DataType.TypeId == Types.ArrowTypeId.Decimal128 ||
+                            f.DataType.TypeId == Types.ArrowTypeId.Decimal256
+                        )
+                        && f.HasMetadata
+                        && f.Metadata.ContainsKey("precision")
+                        && f.Metadata.ContainsKey("scale")
                     )
                     {
                         int precision = Convert.ToInt32(f.Metadata["precision"]);
