@@ -20,7 +20,12 @@
 # BigQuery
 The BigQuery ADBC driver wraps a [BigQueryClient](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.BigQueryClient) object for working with [Google BigQuery](https://cloud.google.com/bigquery/) data.
 
-# Data Types
+# Supported Features
+
+## Authentication
+
+
+## Type Supprt
 
 There are some limitations to both C# and the C# Arrow implementation that limit how [BigQuery data types](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types) that can be represented by the ADBC driver. For example, the `BIGNUMERIC` type in BigQuery does not have a large value equivalent to C#. Also, the C# Arrow does library does not have a [Map](https://arrow.apache.org/docs/python/generated/pyarrow.map_.html#pyarrow.map_) implementation.
 
@@ -28,18 +33,18 @@ The following table depicts how the BigQuery ADBC driver converts a BigQuery typ
 
 |  BigQuery Type   |      Arrow Type   |
 |----------|:-------------:|
-| BIGNUMERIC |    StringType   |
-| BOOL |    BooleanType   |
-| BYTES |    BinaryType   |
-| DATE |    Date64Type   |
-| DATETIME |    TimestampType   |
-| FLOAT64 |    DoubleType   |
-| GEOGRAPHY |    StringType   |
-| INT64 |    Int64Type   |
-| NUMERIC |    Decimal128Type   |
-| STRING |    StringType   |
-| STRUCT |    StringType*   |
-| TIME |Time64Type   |
-| TIMESTAMP |    TimestampType   |
+| BIGNUMERIC |    String   |
+| BOOL |    Boolean   |
+| BYTES |    Binary   |
+| DATE |    Date64   |
+| DATETIME |    Timestamp   |
+| FLOAT64 |    Double   |
+| GEOGRAPHY |    String   |
+| INT64 |    Int64   |
+| NUMERIC |    Decimal128   |
+| STRING |    String   |
+| STRUCT |    String*   |
+| TIME |Time64   |
+| TIMESTAMP |    Timestamp   |
 
 *A JSON string

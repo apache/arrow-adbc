@@ -24,14 +24,10 @@ The BigQuery tests are used to validate both the driver and the ADO.NET client l
 
 The following values can be setup in the configuration
 
-- **driverPath** - The path for the Go library. Can be a relative path if using .NET 5.0 or greater, otherwise, it is an absolute path.
-- **driverEntryPoint** - The driver entry point. For Snowflake, this is `SnowflakeDriverInit`.
-- **account** - The `adbc.snowflake.sql.account` value from the [Snowflake Client Options](https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html#client-options).
-- **user** - The Snowflake user name.
-- **password** - The Snowflake password, if using `auth_snowflake` for the auth type.
-- **warehouse** - The `adbc.snowflake.sql.warehouse` value from the [Snowflake Client Options](https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html#client-options).
-- **authenticationType** - The `adbc.snowflake.sql.auth_type` value from the [Snowflake Client Options](https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html#client-options).
-- **authenticationTokenPath** - The path to the authentication token file, if using `auth_jwt` for the auth type.
+- **projectId** - The project ID of the default BigQuery project to query against.
+- **clientId** - The project ID of the default BigQuery project to query against.
+- **clientSecret** - Secret of the application used to generate the refresh token.
+- **refreshToken** - The refresh token obtained from Google used to authorize access to BigQuery.
 - metadata
   - **database** - Used by metadata tests for which database to target.
   - **schema** - Used by metadata tests for which schema to target.

@@ -22,7 +22,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// </summary>
     public class BigQueryParameters
     {
-        public const string ProjectId = "ProjectId";
-        public const string AccessToken = "AccessToken";
+        public const string ProjectId = "adbc.bigquery.project_id";
+
+        public const string ClientId = "adbc.bigquery.client_id";
+        public const string ClientSecret = "adbc.bigquery.client_secret";
+        public const string RefreshToken = "adbc.bigquery.refresh_token";
+
+        public const string AuthenticationType = "adbc.bigquery.auth_type";
+        public const string TokenEndpoint = "adbc.bigquery.auth_type";
+    }
+
+    /// <summary>
+    /// Constants used for default parameter values
+    /// </summary>
+    public class BigQueryConstants
+    {
+        public const string TokenEndpoint = "https://accounts.google.com/o/oauth2/token";
     }
 }

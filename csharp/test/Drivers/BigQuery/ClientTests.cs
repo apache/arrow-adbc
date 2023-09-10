@@ -22,7 +22,6 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
-using System.Reflection;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

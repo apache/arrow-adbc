@@ -15,15 +15,10 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
 using System.Text;
-using Apache.Arrow.Adbc.C;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
-using Google.Cloud.BigQuery.V2;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
@@ -56,36 +51,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             Dictionary<string, string> parameters = new Dictionary<string, string>
             {
                { BigQueryParameters.ProjectId, testConfiguration.ProjectId },
-               { BigQueryParameters.AccessToken, GetAccessToken(testConfiguration) },
+               { BigQueryParameters.ClientId, testConfiguration.ClientId },
+               { BigQueryParameters.ClientSecret, testConfiguration.ClientSecret},
+               { BigQueryParameters.RefreshToken, testConfiguration.RefreshToken}
             };
 
             return parameters;
         }
 
-        private static string GetAccessToken(BigQueryTestConfiguration testConfiguration)
-        {
-            string clientId = testConfiguration.ClientId;
-            string clientSecret = testConfiguration.ClientSecret;
-            string refreshToken = testConfiguration.RefreshToken;
-
-            string body = string.Format(
-                "grant_type=refresh_token&client_id={0}&client_secret={1}&refresh_token={2}",
-                clientId,
-                clientSecret,
-                Uri.EscapeDataString(refreshToken));
-
-            HttpClient httpClient = new HttpClient();
-
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, testConfiguration.TokenEndpoint);
-            request.Headers.Add("Accept", "application/json");
-            request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/x-www-form-urlencoded");
-            var response = httpClient.SendAsync(request).Result;
-            var responseBody = response.Content.ReadAsStringAsync().Result;
-            var accessToken = responseBody.Split('"')[3]; // Kids don't parse JSON like this at home
-
-            return accessToken;
-        }
-
+        /// <summary>
+        /// Parses the queries from resources/BigQueryData.sql
+        /// </summary>
+        /// <param name="testConfiguration"><see cref="BigQueryTestConfiguration"/></param>
         internal static string[] GetQueries(BigQueryTestConfiguration testConfiguration)
         {
             // get past the license header

@@ -17,13 +17,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Ipc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {

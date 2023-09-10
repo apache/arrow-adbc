@@ -22,6 +22,9 @@ using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
+    /// <summary>
+    /// Stream used for metadata calls
+    /// </summary>
     internal class BigQueryInfoArrowStream : IArrowArrayStream
     {
         private Schema schema;

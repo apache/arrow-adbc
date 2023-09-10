@@ -17,23 +17,23 @@
 
 using System.Text.Json.Serialization;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
+namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
     /// <summary>
-    /// Configuration settings for working with BigQuery.
+    /// The token response from BigQuery
     /// </summary>
-    internal class BigQueryTestConfiguration : TestConfiguration
+    internal class BigQueryTokenResponse
     {
-        [JsonPropertyName("projectId")]
-        public string ProjectId { get; set; }
+        [JsonPropertyName("access_token")]
+        public  string AccessToken { get; set; }
 
-        [JsonPropertyName("clientId")]
-        public string ClientId { get; set; }
+        [JsonPropertyName("expires_in")]
+        public int ExpiresIn { get; set; }
 
-        [JsonPropertyName("clientSecret")]
-        public string ClientSecret { get; set; }
+        [JsonPropertyName("scope")]
+        public string Scope { get; set; }
 
-        [JsonPropertyName("refreshToken")]
-        public string RefreshToken { get; set; }
+        [JsonPropertyName("token_type")]
+        public string TokenType { get; set; }
     }
 }

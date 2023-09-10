@@ -19,6 +19,9 @@ using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
+    /// <summary>
+    /// BigQuery-specific implementation of <see cref="AdbcDriver"/>
+    /// </summary>
     public class BigQueryDriver : AdbcDriver
     {
         public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)

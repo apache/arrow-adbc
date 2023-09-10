@@ -3,7 +3,6 @@
     "clientId": "",
     "clientSecret": "",
     "refreshToken": "",
-    "tokenEndpoint":  "",
     "metadata": {
         "database": "",
         "schema": "",

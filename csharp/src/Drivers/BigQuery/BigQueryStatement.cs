@@ -33,6 +33,9 @@ using TableSchema = Google.Apis.Bigquery.v2.Data.TableSchema;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
+    /// <summary>
+    /// BigQuery-specific implementation of <see cref="AdbcDriver"/>
+    /// </summary>
     public class BigQueryStatement : AdbcStatement
     {
         readonly BigQueryClient client;
@@ -48,30 +51,32 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override QueryResult ExecuteQuery()
         {
-            var queryOptions = validateOptions();
-            var job = this.client.CreateQueryJob(SqlQuery, null, queryOptions);
-            var results = job.GetQueryResults();
+            QueryOptions? queryOptions = ValidateOptions();
+            BigQueryJob job = this.client.CreateQueryJob(SqlQuery, null, queryOptions);
+            BigQueryResults results = job.GetQueryResults();
 
-            var readClientBuilder = new BigQueryReadClientBuilder();
+            BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
             readClientBuilder.Credential = this.credential;
-            var readClient = readClientBuilder.Build();
+            BigQueryReadClient readClient = readClientBuilder.Build();
 
             // TODO: translate the schema
 
-            var table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
+            string table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
 
-            var rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
-            var rrs = readClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, 1);
+            ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
+            ReadSession rrs = readClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, 1);
 
             long totalRows = results.TotalRows == null ? -1L : (long)results.TotalRows.Value;
             IArrowArrayStream stream = new MultiArrowReader(TranslateSchema(results.Schema), rrs.Streams.Select(s => ReadChunk(readClient, s.Name)));
+
             return new QueryResult(totalRows, stream);
         }
 
         public override UpdateResult ExecuteUpdate()
         {
-            var result = this.client.ExecuteQuery(SqlQuery, parameters: null);
+            BigQueryResults result = this.client.ExecuteQuery(SqlQuery, parameters: null);
             long updatedRows = result.NumDmlAffectedRows == null ? -1L : result.NumDmlAffectedRows.Value;
+
             return new UpdateResult(updatedRows);
         }
 
@@ -204,7 +209,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 //(int)field.Precision, (int)field.Scale);
 
                 // treat these values as strings
-                case "BIGNUMERIC" or "BIGDECIMAL" or "ARRAY" or "GEOGRAPHY":
+                case "BIGNUMERIC" or "BIGDECIMAL" or "GEOGRAPHY":
                     return StringType.Default;
 
                 // Google.Apis.Bigquery.v2.Data.TableFieldSchema do not include Array and Geography in types
@@ -216,17 +221,22 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
-            var readRowsStream = readClient.ReadRows(new ReadRowsRequest { ReadStream = streamName });
-            var enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
+            BigQueryReadClient.ReadRowsStream readRowsStream = readClient.ReadRows(new ReadRowsRequest { ReadStream = streamName });
+            IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
+
             ReadRowsStream stream = new ReadRowsStream(enumerator);
+
             return new ArrowStreamReader(stream);
         }
 
-        private QueryOptions? validateOptions()
+        private QueryOptions? ValidateOptions()
         {
-            if (this.Options == null || this.Options.Count == 0) return null;
-            var options = new QueryOptions();
-            foreach (var keyValuePair in this.Options)
+            if (this.Options == null || this.Options.Count == 0)
+                return null;
+
+            QueryOptions options = new QueryOptions();
+
+            foreach (KeyValuePair<string,string> keyValuePair in this.Options)
             {
                 if (keyValuePair.Key == "AllowLargeResults")
                 {
@@ -260,7 +270,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             // any decimal value, positive or negative, with or without a decimal in place
             Regex regex = new Regex(" -?\\d*\\.?\\d* ");
 
-            var matches = regex.Matches(oex.Message);
+            MatchCollection matches = regex.Matches(oex.Message);
 
             foreach (Match match in matches)
             {
@@ -306,11 +316,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         this.reader = this.readers.Current;
                     }
 
-                    var result = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                    RecordBatch result = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+
                     if (result != null)
                     {
                         return result;
                     }
+
                     this.reader = null;
                 }
             }
