@@ -173,7 +173,7 @@ jobs:
         shell: bash -l {0}
         run: |
           echo "ASAN_OPTIONS=detect_leaks=0:symbolize=1:strict_init_order=true:allocator_may_return_null=1:halt_on_error=1" >> "$GITHUB_ENV"
-          echo "LD_PRELOAD: $(gcc --print-file-name=libasan.so)" >> "$GITHUB_ENV"
+          echo "LD_PRELOAD=$(gcc --print-file-name=libasan.so)" >> "$GITHUB_ENV"
       - name: Build SQLite3 Driver
         shell: bash -l {0}
         run: |
