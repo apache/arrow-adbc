@@ -230,9 +230,9 @@ struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int i
     return (struct AdbcErrorDetail){NULL, NULL, 0};
   }
   return (struct AdbcErrorDetail){
-      .key = details->keys[index],
-      .value = details->values[index],
-      .value_length = details->lengths[index],
+      .key = details->keys == NULL ? NULL : details->keys[index],
+      .value = details->values == NULL ? NULL : details->values[index],
+      .value_length = details->lengths == NULL ? 0 : details->lengths[index],
   };
 }
 
