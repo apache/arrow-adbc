@@ -169,20 +169,20 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
     if (details->keys != NULL) {
       memcpy(new_keys, details->keys, sizeof(char*) * details->count);
       free(details->keys);
-      details->keys = new_keys;
     }
+    details->keys = new_keys;
 
     if (details->values != NULL) {
       memcpy(new_values, details->values, sizeof(uint8_t*) * details->count);
       free(details->values);
-      details->values = new_values;
     }
+    details->values = new_values;
 
     if (details->lengths != NULL) {
       memcpy(new_lengths, details->lengths, sizeof(size_t) * details->count);
       free(details->lengths);
-      details->lengths = new_lengths;
     }
+    details->lengths = new_lengths;
 
     details->capacity = new_capacity;
   }
@@ -197,18 +197,9 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
   memcpy(value_data, detail, detail_length);
 
   int index = details->count;
-
-  if (details->keys != NULL) {
-    details->keys[index] = key_data;
-  }
-
-  if (details->values != NULL) {
-    details->values[index] = value_data;
-  }
-
-  if (details->lengths != NULL) {
-    details->lengths[index] = detail_length;
-  }
+  details->keys[index] = key_data;
+  details->values[index] = value_data;
+  details->lengths[index] = detail_length;
 
   details->count++;
 }
@@ -230,9 +221,9 @@ struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int i
     return (struct AdbcErrorDetail){NULL, NULL, 0};
   }
   return (struct AdbcErrorDetail){
-      .key = details->keys == NULL ? NULL : details->keys[index],
-      .value = details->values == NULL ? NULL : details->values[index],
-      .value_length = details->lengths == NULL ? 0 : details->lengths[index],
+      .key = details->keys[index],
+      .value = details->values[index],
+      .value_length = details->lengths[index],
   };
 }
 
