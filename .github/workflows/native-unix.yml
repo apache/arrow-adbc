@@ -169,10 +169,16 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt
 
+      - name: Export ASAN/UBSAN environment variables
+        shell: bash -l {0}
+        run: |
+          echo "ASAN_OPTIONS=detect_leaks=0:symbolize=1:strict_init_order=true:allocator_may_return_null=1:halt_on_error=1" >> "$GITHUB_ENV"
+          echo "LD_PRELOAD: $(gcc --print-file-name=libasan.so)" >> "$GITHUB_ENV"
       - name: Build SQLite3 Driver
         shell: bash -l {0}
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ADBC_USE_ASAN=1 ADBC_USE_UBSAN=1 \
+            ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test SQLite3 Driver
         shell: bash -l {0}
         run: |
@@ -180,11 +186,17 @@ jobs:
       - name: Build PostgreSQL Driver
         shell: bash -l {0}
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ADBC_USE_ASAN=1 ADBC_USE_UBSAN=1 \
+            ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test PostgreSQL Driver
+        shell: bash -l {0}
+        run: |
+          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_test.sh "$(pwd)/build"
       - name: Build Driver Manager
         shell: bash -l {0}
         run: |
-          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ADBC_USE_ASAN=1 ADBC_USE_UBSAN=1 \
+            ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test Driver Manager
         shell: bash -l {0}
         run: |
