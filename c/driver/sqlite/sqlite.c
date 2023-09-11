@@ -1425,10 +1425,6 @@ AdbcStatusCode SqliteStatementGetParameterSchema(struct AdbcStatement* statement
     return ADBC_STATUS_INTERNAL;
   }
 
-  int k = 0x7fffffff;
-  k += 1;
-  printf("hopefully ubsan flags this %d\n", k);
-
   ArrowSchemaInit(schema);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT), error);
   CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(schema, num_params), error);
