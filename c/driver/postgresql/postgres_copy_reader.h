@@ -30,7 +30,6 @@
 
 #include "postgres_type.h"
 #include "postgres_util.h"
-#include "vendor/portable-snippets/safe-math.h"
 
 // R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
 #if defined(_WIN32) && !defined(MSVC) && !defined(ENODATA)
@@ -43,6 +42,30 @@ namespace adbcpq {
 static int8_t kPgCopyBinarySignature[] = {0x50, 0x47, 0x43, 0x4F,
                                           0x50, 0x59, 0x0A, static_cast<int8_t>(0xFF),
                                           0x0D, 0x0A, 0x00};
+
+// The maximum value in seconds that can be converted into microseconds
+// without overflow
+constexpr int64_t kMaxSafeSecondsToMicros = 9223372036854L;
+
+// The minimum value in seconds that can be converted into microseconds
+// without overflow
+constexpr int64_t kMinSafeSecondsToMicros = -9223372036854L;
+
+// The maximum value in milliseconds that can be converted into microseconds
+// without overflow
+constexpr int64_t kMaxSafeMillisToMicros = 9223372036854775L;
+
+// The minimum value in milliseconds that can be converted into microseconds
+// without overflow
+constexpr int64_t kMinSafeMillisToMicros = -9223372036854775L;
+
+// The maximum value in microseconds that can be converted into nanoseconds
+// without overflow
+constexpr int64_t kMaxSafeMicrosToNanos = 9223372036854775L;
+
+// The minimum value in microseconds that can be converted into nanoseconds
+// without overflow
+constexpr int64_t kMinSafeMicrosToNanos = -9223372036854775L;
 
 // Read a value from the buffer without checking the buffer size. Advances
 // the cursor of data and reduces its size by sizeof(T).
@@ -234,13 +257,15 @@ class PostgresCopyIntervalFieldReader : public PostgresCopyFieldReader {
     const int64_t time_usec = ReadUnsafe<int64_t>(data);
     int64_t time;
 
-    if (!psnip_safe_int64_mul(&time, time_usec, 1000)) {
+    if (time_usec > kMaxSafeMicrosToNanos || time_usec < kMinSafeMicrosToNanos) {
       ArrowErrorSet(error,
                     "[libpq] Interval with time value %" PRId64
                     " usec would overflow when converting to nanoseconds",
                     time_usec);
       return EINVAL;
     }
+
+    time = time_usec * 1000;
 
     const int32_t days = ReadUnsafe<int32_t>(data);
     const int32_t months = ReadUnsafe<int32_t>(data);
