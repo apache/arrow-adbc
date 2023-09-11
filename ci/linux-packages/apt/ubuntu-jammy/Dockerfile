@@ -38,6 +38,9 @@ RUN \
   apt install -y -V ${quiet} \
     ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb && \
   rm apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb && \
+  grep " $(lsb_release --codename --short) " /etc/apt/sources.list | \
+    sed -e "s/$(lsb_release --codename --short)/$(lsb_release --codename --short)-backports/g" > \
+    /etc/apt/sources.list.d/backports.list && \
   apt update && \
   apt install -y -V ${quiet} \
     build-essential \
@@ -46,7 +49,6 @@ RUN \
     debhelper \
     devscripts \
     gobject-introspection \
-    golang \
     libarrow-glib-dev \
     libgirepository1.0-dev \
     libpq-dev \
@@ -56,4 +58,6 @@ RUN \
     pkg-config \
     tzdata \
     valac && \
+  apt install -y -V -t $(lsb_release --codename --short)-backports ${quiet} \
+    golang-1.20 && \
   apt clean

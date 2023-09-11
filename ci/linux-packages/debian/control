@@ -23,7 +23,7 @@ Build-Depends:
   cmake,
   debhelper-compat (= 12),
   gobject-introspection,
-  golang,
+  golang | golang-1.20,
   libgirepository1.0-dev,
   libpq-dev,
   libsqlite3-dev,
