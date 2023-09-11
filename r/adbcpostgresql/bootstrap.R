@@ -35,8 +35,7 @@ files_to_vendor <- c(
   "../../c/driver/common/utils.c",
   "../../c/vendor/nanoarrow/nanoarrow.h",
   "../../c/vendor/nanoarrow/nanoarrow.hpp",
-  "../../c/vendor/nanoarrow/nanoarrow.c",
-  "../../c/vendor/portable-snippets/safe-math.h"
+  "../../c/vendor/nanoarrow/nanoarrow.c"
 )
 
 if (all(file.exists(files_to_vendor))) {
@@ -61,16 +60,14 @@ if (all(file.exists(files_to_vendor))) {
         "src/nanoarrow.h",
         "src/nanoarrow.hpp",
         "src/utils.c",
-        "src/utils.h",
-        "src/safe-math.h"
+        "src/utils.h"
       ),
       c(
         "src/nanoarrow/nanoarrow.c",
         "src/nanoarrow/nanoarrow.h",
         "src/nanoarrow/nanoarrow.hpp",
         "src/common/utils.c",
-        "src/common/utils.h",
-        "src/vendor/portable-snippets/safe-math.h"
+        "src/common/utils.h"
       )
     )
     cat("All files successfully copied to src/\n")
