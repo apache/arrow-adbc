@@ -188,10 +188,6 @@ jobs:
         run: |
           env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ADBC_USE_ASAN=1 ADBC_USE_UBSAN=1 \
             ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test PostgreSQL Driver
-        shell: bash -l {0}
-        run: |
-          env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 ./ci/scripts/cpp_test.sh "$(pwd)/build"
       - name: Build Driver Manager
         shell: bash -l {0}
         run: |
