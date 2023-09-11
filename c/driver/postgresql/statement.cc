@@ -37,7 +37,6 @@
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
-#include "vendor/portable-snippets/safe-math.h"
 
 namespace adbcpq {
 
@@ -426,16 +425,20 @@ struct BindStream {
 
               // 2000-01-01 00:00:00.000000 in microseconds
               constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
-              psnip_safe_bool overflow_safe = true;
+              bool overflow_safe = true;
 
               auto unit = bind_schema_fields[col].time_unit;
 
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000000);
+                  overflow_safe =
+                      val <= kMaxSafeSecondsToMicros && val >= kMinSafeSecondsToMicros;
+                  val *= 1000000;
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
-                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000);
+                  overflow_safe =
+                      val <= kMaxSafeMillisToMicros && val >= kMinSafeMillisToMicros;
+                  val *= 1000;
                   break;
                 case NANOARROW_TIME_UNIT_MICRO:
                   break;
@@ -445,10 +448,12 @@ struct BindStream {
               }
 
               if (!overflow_safe) {
-                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
-                         " (' ", bind_schema->children[col]->name, " ') Row # ", row + 1,
-                         " has value which exceeds postgres timestamp limits");
-
+                SetError(error,
+                         "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
+                         " has value '%" PRIi64
+                         "' which exceeds PostgreSQL timestamp limits",
+                         col + 1, bind_schema->children[col]->name, row + 1,
+                         array_view->children[col]->buffer_views[1].data.as_int64[row]);
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
