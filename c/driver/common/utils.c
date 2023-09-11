@@ -197,9 +197,18 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
   memcpy(value_data, detail, detail_length);
 
   int index = details->count;
-  details->keys[index] = key_data;
-  details->values[index] = value_data;
-  details->lengths[index] = detail_length;
+
+  if (details->keys != NULL) {
+    details->keys[index] = key_data;
+  }
+
+  if (details->values != NULL) {
+    details->values[index] = value_data;
+  }
+
+  if (details->lengths != NULL) {
+    details->lengths[index] = detail_length;
+  }
 
   details->count++;
 }
