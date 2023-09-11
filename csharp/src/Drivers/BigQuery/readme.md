@@ -24,8 +24,10 @@ The BigQuery ADBC driver wraps a [BigQueryClient](https://cloud.google.com/dotne
 
 ## Authentication
 
+## Parameters
 
-## Type Supprt
+
+## Type Support
 
 There are some limitations to both C# and the C# Arrow implementation that limit how [BigQuery data types](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types) that can be represented by the ADBC driver. For example, the `BIGNUMERIC` type in BigQuery does not have a large value equivalent to C#. Also, the C# Arrow does library does not have a [Map](https://arrow.apache.org/docs/python/generated/pyarrow.map_.html#pyarrow.map_) implementation.
 
@@ -48,3 +50,5 @@ The following table depicts how the BigQuery ADBC driver converts a BigQuery typ
 | TIMESTAMP |    Timestamp   |
 
 *A JSON string
+
+See [Arrow Schema Details](https://cloud.google.com/bigquery/docs/reference/storage/#arrow_schema_details) for how BigQuery handles Arrow types.

@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -71,21 +72,46 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             string tokenEndpoint = BigQueryConstants.TokenEndpoint;
 
+            string authenticationType = BigQueryConstants.UserAuthenticationType;
+
             // TODO: handle token expiration
 
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
                 throw new ArgumentException($"The {BigQueryParameters.ProjectId} parameter is not present");
 
-            if (!this.properties.TryGetValue(BigQueryParameters.ClientId, out clientId))
-                throw new ArgumentException($"The {BigQueryParameters.ClientId} parameter is not present");
+            if (this.properties.ContainsKey(BigQueryParameters.AuthenticationType))
+            {
+                this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType);
 
-            if (!this.properties.TryGetValue(BigQueryParameters.ClientSecret, out clientSecret))
-                throw new ArgumentException($"The {BigQueryParameters.ClientSecret} parameter is not present");
+                if(!authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase) &&
+                    !authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter can only be `{BigQueryConstants.UserAuthenticationType}` or `{BigQueryConstants.ServiceAccountAuthenticationType}`");
+                }
+            }
 
-            if (!this.properties.TryGetValue(BigQueryParameters.RefreshToken, out refreshToken))
-                throw new ArgumentException($"The {BigQueryParameters.RefreshToken} parameter is not present");
+            if (authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!this.properties.TryGetValue(BigQueryParameters.ClientId, out clientId))
+                    throw new ArgumentException($"The {BigQueryParameters.ClientId} parameter is not present");
 
-            this.credential = GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint));
+                if (!this.properties.TryGetValue(BigQueryParameters.ClientSecret, out clientSecret))
+                    throw new ArgumentException($"The {BigQueryParameters.ClientSecret} parameter is not present");
+
+                if (!this.properties.TryGetValue(BigQueryParameters.RefreshToken, out refreshToken))
+                    throw new ArgumentException($"The {BigQueryParameters.RefreshToken} parameter is not present");
+
+                this.credential = GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint));
+            }
+            else
+            {
+                string json = string.Empty;
+
+                if (!this.properties.TryGetValue(BigQueryParameters.JsonCredential, out json))
+                    throw new ArgumentException($"The {BigQueryParameters.JsonCredential} parameter is not present");
+
+                this.credential = GoogleCredential.FromJson(json);
+            }
 
             this.client = BigQueryClient.Create(projectId, this.credential);
         }
