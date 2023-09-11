@@ -215,6 +215,7 @@ struct BindStream {
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_STRING:
+        case ArrowType::NANOARROW_TYPE_LARGE_STRING:
           type_id = PostgresTypeId::kText;
           param_lengths[i] = 0;
           break;
@@ -394,6 +395,7 @@ struct BindStream {
               break;
             }
             case ArrowType::NANOARROW_TYPE_STRING:
+            case ArrowType::NANOARROW_TYPE_LARGE_STRING:
             case ArrowType::NANOARROW_TYPE_BINARY: {
               const ArrowBufferView view =
                   ArrowArrayViewGetBytesUnsafe(array_view->children[col], row);
@@ -875,6 +877,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         create += " DOUBLE PRECISION";
         break;
       case ArrowType::NANOARROW_TYPE_STRING:
+      case ArrowType::NANOARROW_TYPE_LARGE_STRING:
         create += " TEXT";
         break;
       case ArrowType::NANOARROW_TYPE_BINARY:

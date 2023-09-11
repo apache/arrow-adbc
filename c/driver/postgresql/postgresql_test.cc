@@ -94,6 +94,8 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
         return NANOARROW_TYPE_INT16;
       case NANOARROW_TYPE_DURATION:
         return NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO;
+      case NANOARROW_TYPE_LARGE_STRING:
+        return NANOARROW_TYPE_STRING;
       default:
         return ingest_type;
     }

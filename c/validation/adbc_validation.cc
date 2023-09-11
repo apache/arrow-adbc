@@ -1252,6 +1252,11 @@ void StatementTest::TestSqlIngestString() {
       NANOARROW_TYPE_STRING, {std::nullopt, "", "", "1234", "例"}));
 }
 
+void StatementTest::TestSqlIngestLargeString() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
+      NANOARROW_TYPE_LARGE_STRING, {std::nullopt, "", "", "1234", "例"}));
+}
+
 void StatementTest::TestSqlIngestBinary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
       NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x00\x01\x02\x04", "\xFE\xFF"}));
