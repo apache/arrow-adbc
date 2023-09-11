@@ -594,7 +594,8 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
           reader->done = 1;
           status = EIO;
           if (error.release) {
-            strncpy(reader->error.message, error.message, sizeof(reader->error.message));
+            strncpy(reader->error.message, error.message,
+                    sizeof(reader->error.message) - 1);
             reader->error.message[sizeof(reader->error.message) - 1] = '\0';
             error.release(&error);
           }
