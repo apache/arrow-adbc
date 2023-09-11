@@ -166,8 +166,10 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
       return;
     }
 
-    memcpy(new_keys, details->keys, sizeof(char*) * details->count);
-    free(details->keys);
+    if (details->keys != NULL) {
+      memcpy(new_keys, details->keys, sizeof(char*) * details->count);
+      free(details->keys);
+    }
     details->keys = new_keys;
 
     if (details->values != NULL) {
