@@ -68,7 +68,6 @@ jobs:
         os: ["macos-latest", "ubuntu-latest"]
     env:
       # Sanitizer support
-      ASAN_OPTIONS: "symbolize=1:strict_init_order=true:allocator_may_return_null=1:halt_on_error=1"
       LD_PRELOAD: "$(gcc --print-file-name=libasan.so)"
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
