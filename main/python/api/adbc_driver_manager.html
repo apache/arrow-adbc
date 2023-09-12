@@ -593,6 +593,20 @@ definitions in Python.  For a higher-level interface, use
 </dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.StatementOptions.INGEST_TARGET_CATALOG">
+<span class="sig-name descname"><span class="pre">INGEST_TARGET_CATALOG</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.ingest.target_catalog'</span></em><a class="headerlink" href="#adbc_driver_manager.StatementOptions.INGEST_TARGET_CATALOG" title="Permalink to this definition">#</a></dt>
+<dd><p>For bulk ingestion, the catalog to create/locate the table in.
+<strong>This API is EXPERIMENTAL.</strong></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.StatementOptions.INGEST_TARGET_DB_SCHEMA">
+<span class="sig-name descname"><span class="pre">INGEST_TARGET_DB_SCHEMA</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.ingest.target_db_schema'</span></em><a class="headerlink" href="#adbc_driver_manager.StatementOptions.INGEST_TARGET_DB_SCHEMA" title="Permalink to this definition">#</a></dt>
+<dd><p>For bulk ingestion, the schema to create/locate the table in.
+<strong>This API is EXPERIMENTAL.</strong></p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="adbc_driver_manager.StatementOptions.INGEST_TARGET_TABLE">
 <span class="sig-name descname"><span class="pre">INGEST_TARGET_TABLE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.ingest.target_table'</span></em><a class="headerlink" href="#adbc_driver_manager.StatementOptions.INGEST_TARGET_TABLE" title="Permalink to this definition">#</a></dt>
 <dd><p>For bulk ingestion, the table to ingest into.</p>
@@ -1633,7 +1647,7 @@ connections.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_execute_schema" title="adbc_driver_manager.dbapi.Cursor.adbc_execute_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_execute_schema</span></code></a>(operation[, parameters])</p></td>
 <td><p>Get the schema of the result set of a query without executing it.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest" title="adbc_driver_manager.dbapi.Cursor.adbc_ingest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_ingest</span></code></a>(table_name, data[, mode])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest" title="adbc_driver_manager.dbapi.Cursor.adbc_ingest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_ingest</span></code></a>(table_name, data[, mode, ...])</p></td>
 <td><p>Ingest Arrow data into a database table.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.adbc_prepare" title="adbc_driver_manager.dbapi.Cursor.adbc_prepare"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_prepare</span></code></a>(operation)</p></td>
@@ -1738,7 +1752,7 @@ read_partition.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.adbc_ingest">
-<span class="sig-name descname"><span class="pre">adbc_ingest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html#pyarrow.RecordBatch" title="(in Apache Arrow v13.0.0)"><span class="pre">RecordBatch</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table" title="(in Apache Arrow v13.0.0)"><span class="pre">Table</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v13.0.0)"><span class="pre">RecordBatchReader</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'append'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'create'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'replace'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'create_append'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'create'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">adbc_ingest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html#pyarrow.RecordBatch" title="(in Apache Arrow v13.0.0)"><span class="pre">RecordBatch</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table" title="(in Apache Arrow v13.0.0)"><span class="pre">Table</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v13.0.0)"><span class="pre">RecordBatchReader</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'append'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'create'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'replace'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'create_append'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'create'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalog_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_schema_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest" title="Permalink to this definition">#</a></dt>
 <dd><p>Ingest Arrow data into a database table.</p>
 <p>Depending on the driver, this can avoid per-row overhead that
 would result from a typical prepare-bind-insert loop.</p>
@@ -1756,6 +1770,12 @@ would result from a typical prepare-bind-insert loop.</p>
 <li><p>‘create_append’: create a table (if not exists) and insert</p></li>
 <li><p>‘replace’: drop existing table (if any), then same as ‘create’</p></li>
 </ul>
+</dd>
+<dt><strong>catalog_name</strong></dt><dd><p>If given, the catalog to create/locate the table in.
+<strong>This API is EXPERIMENTAL.</strong></p>
+</dd>
+<dt><strong>db_schema_name</strong></dt><dd><p>If given, the schema to create/locate the table in.
+<strong>This API is EXPERIMENTAL.</strong></p>
 </dd>
 </dl>
 </dd>
@@ -2171,6 +2191,8 @@ be executed once per row.</p>
 <li><a class="reference internal" href="#adbc_driver_manager.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INCREMENTAL"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INCREMENTAL</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INGEST_MODE"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INGEST_MODE</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INGEST_TARGET_CATALOG"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INGEST_TARGET_CATALOG</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INGEST_TARGET_DB_SCHEMA"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INGEST_TARGET_DB_SCHEMA</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INGEST_TARGET_TABLE"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INGEST_TARGET_TABLE</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.PROGRESS"><code class="docutils literal notranslate"><span class="pre">StatementOptions.PROGRESS</span></code></a></li>
 </ul>
