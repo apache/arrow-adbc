@@ -793,8 +793,8 @@ class Cursor(_Closeable):
         data: Union[pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader],
         mode: Literal["append", "create", "replace", "create_append"] = "create",
         *,
-        catalog_name: str | None = None,
-        db_schema_name: str | None = None,
+        catalog_name: Optional[str] = None,
+        db_schema_name: Optional[str] = None,
     ) -> int:
         """
         Ingest Arrow data into a database table.
