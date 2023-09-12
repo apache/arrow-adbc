@@ -792,6 +792,9 @@ class Cursor(_Closeable):
         table_name: str,
         data: Union[pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader],
         mode: Literal["append", "create", "replace", "create_append"] = "create",
+        *,
+        catalog_name: Optional[str] = None,
+        db_schema_name: Optional[str] = None,
     ) -> int:
         """
         Ingest Arrow data into a database table.
@@ -812,6 +815,12 @@ class Cursor(_Closeable):
             - 'create': create a table and insert (error if table exists)
             - 'create_append': create a table (if not exists) and insert
             - 'replace': drop existing table (if any), then same as 'create'
+        catalog_name
+            If given, the catalog to create/locate the table in.
+            **This API is EXPERIMENTAL.**
+        db_schema_name
+            If given, the schema to create/locate the table in.
+            **This API is EXPERIMENTAL.**
 
         Returns
         -------
@@ -833,12 +842,20 @@ class Cursor(_Closeable):
             c_mode = _lib.INGEST_OPTION_MODE_REPLACE
         else:
             raise ValueError(f"Invalid value for 'mode': {mode}")
-        self._stmt.set_options(
-            **{
-                _lib.INGEST_OPTION_TARGET_TABLE: table_name,
-                _lib.INGEST_OPTION_MODE: c_mode,
-            }
-        )
+
+        options = {
+            _lib.INGEST_OPTION_TARGET_TABLE: table_name,
+            _lib.INGEST_OPTION_MODE: c_mode,
+        }
+        if catalog_name is not None:
+            options[
+                adbc_driver_manager.StatementOptions.INGEST_TARGET_CATALOG.value
+            ] = catalog_name
+        if db_schema_name is not None:
+            options[
+                adbc_driver_manager.StatementOptions.INGEST_TARGET_DB_SCHEMA.value
+            ] = db_schema_name
+        self._stmt.set_options(**options)
 
         if isinstance(data, pyarrow.RecordBatch):
             array = _lib.ArrowArrayHandle()

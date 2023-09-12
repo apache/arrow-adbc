@@ -96,6 +96,9 @@ class DuckDbStatementTest : public ::testing::Test,
   void TestSqlPrepareErrorNoQuery() { GTEST_SKIP(); }
 
   void TestSqlIngestTableEscaping() { GTEST_SKIP() << "Table escaping not implemented"; }
+  void TestSqlIngestColumnEscaping() {
+    GTEST_SKIP() << "Column escaping not implemented";
+  }
 
   void TestSqlQueryErrors() { GTEST_SKIP() << "DuckDB does not set AdbcError.release"; }
 

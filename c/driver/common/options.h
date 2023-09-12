@@ -15,45 +15,25 @@
 // specific language governing permissions and limitations
 // under the License.
 
+/// Common options that haven't yet been formally standardized.
+/// https://github.com/apache/arrow-adbc/issues/1055
+
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include <adbc.h>
-#include <sqlite3.h>
+/// \brief The catalog of the table for bulk insert.
+///
+/// The type is char*.
+#define ADBC_INGEST_OPTION_TARGET_CATALOG "adbc.ingest.target_catalog"
 
-#include "statement_reader.h"
+/// \brief The schema of the table for bulk insert.
+///
+/// The type is char*.
+#define ADBC_INGEST_OPTION_TARGET_DB_SCHEMA "adbc.ingest.target_db_schema"
 
-struct SqliteDatabase {
-  sqlite3* db;
-  char* uri;
-  size_t connection_count;
-};
-
-struct SqliteConnection {
-  sqlite3* conn;
-  char active_transaction;
-};
-
-struct SqliteStatement {
-  sqlite3* conn;
-
-  // -- Query state -----------------------------------------
-
-  sqlite3_stmt* stmt;
-  char prepared;
-  char* query;
-  size_t query_len;
-
-  // -- Bind state ------------------------------------------
-  struct AdbcSqliteBinder binder;
-
-  // -- Ingest state ----------------------------------------
-  char* target_catalog;
-  char* target_table;
-  char append;
-
-  // -- Query options ---------------------------------------
-  int batch_size;
-};
+#ifdef __cplusplus
+}
+#endif

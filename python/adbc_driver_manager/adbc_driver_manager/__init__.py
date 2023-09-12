@@ -122,5 +122,11 @@ class StatementOptions(enum.Enum):
     INGEST_MODE = INGEST_OPTION_MODE
     #: For bulk ingestion, the table to ingest into.
     INGEST_TARGET_TABLE = INGEST_OPTION_TARGET_TABLE
+    #: For bulk ingestion, the catalog to create/locate the table in.
+    #: **This API is EXPERIMENTAL.**
+    INGEST_TARGET_CATALOG = "adbc.ingest.target_catalog"
+    #: For bulk ingestion, the schema to create/locate the table in.
+    #: **This API is EXPERIMENTAL.**
+    INGEST_TARGET_DB_SCHEMA = "adbc.ingest.target_db_schema"
     #: Get progress of a query.
     PROGRESS = "adbc.statement.exec.progress"

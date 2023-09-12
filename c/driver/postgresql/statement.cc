@@ -31,6 +31,7 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.hpp>
 
+#include "common/options.h"
 #include "common/utils.h"
 #include "connection.h"
 #include "error.h"
@@ -831,7 +832,36 @@ AdbcStatusCode PostgresStatement::Cancel(struct AdbcError* error) {
 AdbcStatusCode PostgresStatement::CreateBulkTable(
     const struct ArrowSchema& source_schema,
     const std::vector<struct ArrowSchemaView>& source_schema_fields,
-    struct AdbcError* error) {
+    std::string* escaped_table, struct AdbcError* error) {
+  PGconn* conn = connection_->conn();
+
+  {
+    if (!ingest_.db_schema.empty()) {
+      char* escaped =
+          PQescapeIdentifier(conn, ingest_.db_schema.c_str(), ingest_.db_schema.size());
+      if (escaped == nullptr) {
+        SetError(error, "[libpq] Failed to escape target schema %s for ingestion: %s",
+                 ingest_.db_schema.c_str(), PQerrorMessage(conn));
+        return ADBC_STATUS_INTERNAL;
+      }
+      *escaped_table += escaped;
+      *escaped_table += " . ";
+      PQfreemem(escaped);
+    }
+
+    if (!ingest_.target.empty()) {
+      char* escaped =
+          PQescapeIdentifier(conn, ingest_.target.c_str(), ingest_.target.size());
+      if (escaped == nullptr) {
+        SetError(error, "[libpq] Failed to escape target table %s for ingestion: %s",
+                 ingest_.target.c_str(), PQerrorMessage(conn));
+        return ADBC_STATUS_INTERNAL;
+      }
+      *escaped_table += escaped;
+      PQfreemem(escaped);
+    }
+  }
+
   std::string create = "CREATE TABLE ";
   switch (ingest_.mode) {
     case IngestMode::kCreate:
@@ -840,15 +870,15 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
     case IngestMode::kAppend:
       return ADBC_STATUS_OK;
     case IngestMode::kReplace: {
-      std::string drop = "DROP TABLE IF EXISTS " + ingest_.target;
-      PGresult* result = PQexecParams(connection_->conn(), drop.c_str(), /*nParams=*/0,
+      std::string drop = "DROP TABLE IF EXISTS " + *escaped_table;
+      PGresult* result = PQexecParams(conn, drop.c_str(), /*nParams=*/0,
                                       /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                                       /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                       /*resultFormat=*/1 /*(binary)*/);
       if (PQresultStatus(result) != PGRES_COMMAND_OK) {
         AdbcStatusCode code =
             SetError(error, result, "[libpq] Failed to drop table: %s\nQuery was: %s",
-                     PQerrorMessage(connection_->conn()), drop.c_str());
+                     PQerrorMessage(conn), drop.c_str());
         PQclear(result);
         return code;
       }
@@ -859,12 +889,22 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       create += "IF NOT EXISTS ";
       break;
   }
-  create += ingest_.target;
+  create += *escaped_table;
   create += " (";
 
   for (size_t i = 0; i < source_schema_fields.size(); i++) {
     if (i > 0) create += ", ";
-    create += source_schema.children[i]->name;
+
+    const char* unescaped = source_schema.children[i]->name;
+    char* escaped = PQescapeIdentifier(conn, unescaped, std::strlen(unescaped));
+    if (escaped == nullptr) {
+      SetError(error, "[libpq] Failed to escape column %s for ingestion: %s", unescaped,
+               PQerrorMessage(conn));
+      return ADBC_STATUS_INTERNAL;
+    }
+    create += escaped;
+    PQfreemem(escaped);
+
     switch (source_schema_fields[i].type) {
       case ArrowType::NANOARROW_TYPE_INT8:
       case ArrowType::NANOARROW_TYPE_INT16:
@@ -914,14 +954,14 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
 
   create += ")";
   SetError(error, "%s%s", "[libpq] ", create.c_str());
-  PGresult* result = PQexecParams(connection_->conn(), create.c_str(), /*nParams=*/0,
+  PGresult* result = PQexecParams(conn, create.c_str(), /*nParams=*/0,
                                   /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                                   /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                   /*resultFormat=*/1 /*(binary)*/);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
         SetError(error, result, "[libpq] Failed to create table: %s\nQuery was: %s",
-                 PQerrorMessage(connection_->conn()), create.c_str());
+                 PQerrorMessage(conn), create.c_str());
     PQclear(result);
     return code;
   }
@@ -1060,16 +1100,17 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
 
   BindStream bind_stream(std::move(bind_));
   std::memset(&bind_, 0, sizeof(bind_));
+  std::string escaped_table;
   RAISE_ADBC(bind_stream.Begin(
       [&]() -> AdbcStatusCode {
         return CreateBulkTable(bind_stream.bind_schema.value,
-                               bind_stream.bind_schema_fields, error);
+                               bind_stream.bind_schema_fields, &escaped_table, error);
       },
       error));
   RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
 
   std::string insert = "INSERT INTO ";
-  insert += ingest_.target;
+  insert += escaped_table;
   insert += " VALUES (";
   for (size_t i = 0; i < bind_stream.bind_schema_fields.size(); i++) {
     if (i > 0) insert += ", ";
@@ -1109,6 +1150,8 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
   std::string result;
   if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
     result = ingest_.target;
+  } else if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA) == 0) {
+    result = ingest_.db_schema;
   } else if (std::strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
     switch (ingest_.mode) {
       case IngestMode::kCreate:
@@ -1190,6 +1233,7 @@ AdbcStatusCode PostgresStatement::Release(struct AdbcError* error) {
 AdbcStatusCode PostgresStatement::SetSqlQuery(const char* query,
                                               struct AdbcError* error) {
   ingest_.target.clear();
+  ingest_.db_schema.clear();
   query_ = query;
   prepared_ = false;
   return ADBC_STATUS_OK;
@@ -1200,6 +1244,10 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
   if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
     query_.clear();
     ingest_.target = value;
+    prepared_ = false;
+  } else if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA) == 0) {
+    query_.clear();
+    ingest_.db_schema = value;
     prepared_ = false;
   } else if (std::strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
     if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE) == 0) {

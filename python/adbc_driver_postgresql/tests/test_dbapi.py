@@ -250,3 +250,16 @@ def test_reuse(postgres: dbapi.Connection) -> None:
 
         cur.execute("SELECT 2")
         assert cur.fetchone() == (2,)
+
+
+def test_ingest(postgres: dbapi.Connection) -> None:
+    table = pyarrow.Table.from_pydict({"numbers": [1, 2], "letters": ["a", "b"]})
+
+    with postgres.cursor() as cur:
+        cur.adbc_ingest("foo", table, mode="replace", db_schema_name="public")
+
+        cur.execute("SELECT * FROM public.foo")
+        assert cur.fetch_arrow_table() == table
+
+        with pytest.raises(dbapi.NotSupportedError):
+            cur.adbc_ingest("foo", table, catalog_name="main")
