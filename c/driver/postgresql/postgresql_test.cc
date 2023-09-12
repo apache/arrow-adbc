@@ -55,7 +55,7 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     AdbcStatusCode status = AdbcStatementNew(connection, &statement, error);
     if (status != ADBC_STATUS_OK) return status;
 
-    std::string query = "DROP TABLE IF EXISTS " + name;
+    std::string query = "DROP TABLE IF EXISTS \"" + name + "\"";
     status = AdbcStatementSetSqlQuery(&statement, query.c_str(), error);
     if (status != ADBC_STATUS_OK) {
       std::ignore = AdbcStatementRelease(&statement, error);
@@ -111,6 +111,8 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
   std::string catalog() const override { return "postgres"; }
   std::string db_schema() const override { return "public"; }
 
+  bool supports_bulk_ingest_catalog() const override { return false; }
+  bool supports_bulk_ingest_db_schema() const override { return true; }
   bool supports_cancel() const override { return true; }
   bool supports_execute_schema() const override { return true; }
   std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(

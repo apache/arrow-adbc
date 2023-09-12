@@ -91,6 +91,12 @@ class DriverQuirks {
   /// \brief Whether bulk ingest is supported
   virtual bool supports_bulk_ingest(const char* mode) const { return true; }
 
+  /// \brief Whether bulk ingest to a specific catalog is supported
+  virtual bool supports_bulk_ingest_catalog() const { return false; }
+
+  /// \brief Whether bulk ingest to a specific schema is supported
+  virtual bool supports_bulk_ingest_db_schema() const { return false; }
+
   /// \brief Whether we can cancel queries.
   virtual bool supports_cancel() const { return false; }
 
@@ -284,12 +290,16 @@ class StatementTest {
   // ---- End Type-specific tests ----------------
 
   void TestSqlIngestTableEscaping();
+  void TestSqlIngestColumnEscaping();
   void TestSqlIngestAppend();
   void TestSqlIngestReplace();
   void TestSqlIngestCreateAppend();
   void TestSqlIngestErrors();
   void TestSqlIngestMultipleConnections();
   void TestSqlIngestSample();
+  void TestSqlIngestTargetCatalog();
+  void TestSqlIngestTargetSchema();
+  void TestSqlIngestTargetCatalogSchema();
 
   void TestSqlPartitionedInts();
 
@@ -365,12 +375,16 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
+  TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }           \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestReplace) { TestSqlIngestReplace(); }                         \
   TEST_F(FIXTURE, SqlIngestCreateAppend) { TestSqlIngestCreateAppend(); }               \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
   TEST_F(FIXTURE, SqlIngestSample) { TestSqlIngestSample(); }                           \
+  TEST_F(FIXTURE, SqlIngestTargetCatalog) { TestSqlIngestTargetCatalog(); }             \
+  TEST_F(FIXTURE, SqlIngestTargetSchema) { TestSqlIngestTargetSchema(); }               \
+  TEST_F(FIXTURE, SqlIngestTargetCatalogSchema) { TestSqlIngestTargetCatalogSchema(); } \
   TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                     \
   TEST_F(FIXTURE, SqlPrepareGetParameterSchema) { TestSqlPrepareGetParameterSchema(); } \
   TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \
