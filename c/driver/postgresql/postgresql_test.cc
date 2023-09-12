@@ -878,6 +878,50 @@ class PostgresStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(PostgresStatementTest)
 
+TEST_F(PostgresStatementTest, SqlIngestTemporaryTable) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "temptable", &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "CREATE TEMPORARY TABLE temptable (ints BIGINT)", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  {
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> batch;
+
+    ArrowSchemaInit(&schema.value);
+    ASSERT_THAT(ArrowSchemaSetTypeStruct(&schema.value, 1), adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT64),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetName(schema->children[0], "ints"),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT((adbc_validation::MakeBatch<int64_t>(
+                    &schema.value, &batch.value, static_cast<struct ArrowError*>(nullptr),
+                    {-1, 0, 1, std::nullopt})),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       "temptable", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                       ADBC_INGEST_OPTION_MODE_APPEND, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+}
+
 TEST_F(PostgresStatementTest, SqlIngestTimestampOverflow) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 

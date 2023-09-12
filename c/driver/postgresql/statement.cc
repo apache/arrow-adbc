@@ -500,10 +500,11 @@ struct BindStream {
                                 param_lengths.data(), param_formats.data(),
                                 /*resultFormat=*/0 /*text*/);
 
-        if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+        ExecStatusType pg_status = PQresultStatus(result);
+        if (pg_status != PGRES_COMMAND_OK) {
           AdbcStatusCode code = SetError(
-              error, result, "%s%s",
-              "[libpq] Failed to execute prepared statement: ", PQerrorMessage(conn));
+              error, result, "[libpq] Failed to execute prepared statement: %s %s",
+              PQresStatus(pg_status), PQerrorMessage(conn));
           PQclear(result);
           return code;
         }
