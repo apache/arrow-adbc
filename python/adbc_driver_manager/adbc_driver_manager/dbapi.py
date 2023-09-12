@@ -795,9 +795,9 @@ class Cursor(_Closeable):
         *,
         catalog_name: Optional[str] = None,
         db_schema_name: Optional[str] = None,
+        temporary: bool = False,
     ) -> int:
-        """
-        Ingest Arrow data into a database table.
+        """Ingest Arrow data into a database table.
 
         Depending on the driver, this can avoid per-row overhead that
         would result from a typical prepare-bind-insert loop.
@@ -821,6 +821,11 @@ class Cursor(_Closeable):
         db_schema_name
             If given, the schema to create/locate the table in.
             **This API is EXPERIMENTAL.**
+        temporary
+            Whether to ingest to a temporary table or not.  Most drivers will
+            not support setting this along with catalog_name and/or
+            db_schema_name.
+            **This API is EXPERIMENTAL.**
 
         Returns
         -------
@@ -831,6 +836,7 @@ class Cursor(_Closeable):
         Notes
         -----
         This is an extension and not part of the DBAPI standard.
+
         """
         if mode == "append":
             c_mode = _lib.INGEST_OPTION_MODE_APPEND
@@ -856,6 +862,22 @@ class Cursor(_Closeable):
                 adbc_driver_manager.StatementOptions.INGEST_TARGET_DB_SCHEMA.value
             ] = db_schema_name
         self._stmt.set_options(**options)
+
+        if temporary:
+            self._stmt.set_options(
+                **{
+                    adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: "true",
+                }
+            )
+        else:
+            # Need to explicitly clear it, but not all drivers support this
+            options = {
+                adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: "false",
+            }
+            try:
+                self._stmt.set_options(**options)
+            except NotSupportedError:
+                pass
 
         if isinstance(data, pyarrow.RecordBatch):
             array = _lib.ArrowArrayHandle()

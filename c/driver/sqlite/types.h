@@ -53,6 +53,7 @@ struct SqliteStatement {
   char* target_catalog;
   char* target_table;
   char append;
+  char temporary;
 
   // -- Query options ---------------------------------------
   int batch_size;

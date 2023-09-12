@@ -34,6 +34,17 @@ extern "C" {
 /// The type is char*.
 #define ADBC_INGEST_OPTION_TARGET_DB_SCHEMA "adbc.ingest.target_db_schema"
 
+/// \brief Use a temporary table for ingestion.
+///
+/// The value should be ADBC_OPTION_VALUE_ENABLED or
+/// ADBC_OPTION_VALUE_DISABLED (the default).
+///
+/// This is not supported with ADBC_INGEST_OPTION_TARGET_CATALOG and
+/// ADBC_INGEST_OPTION_TARGET_DB_SCHEMA.
+///
+/// The type is char*.
+#define ADBC_INGEST_OPTION_TEMPORARY "adbc.ingest.temporary"
+
 #ifdef __cplusplus
 }
 #endif
