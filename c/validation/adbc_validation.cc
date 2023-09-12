@@ -2087,6 +2087,430 @@ void StatementTest::TestSqlIngestTargetCatalogSchema() {
   ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
 }
 
+void StatementTest::TestSqlIngestTemporary() {
+  if (!quirks()->supports_bulk_ingest_temporary() ||
+      !quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
+    GTEST_SKIP();
+  }
+
+  Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  std::string name = "bulk_ingest";
+
+  ASSERT_THAT(quirks()->DropTable(&connection, name, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTempTable(&connection, name, &error), IsOkStatus(&error));
+
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints", NANOARROW_TYPE_INT64}}), IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                    {42, -42, std::nullopt})),
+                IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_ENABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints", NANOARROW_TYPE_INT64}}), IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                    {42, -42, std::nullopt})),
+                IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_DISABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+}
+
+void StatementTest::TestSqlIngestTemporaryAppend() {
+  // Append to temp table shouldn't affect actual table and vice versa
+  if (!quirks()->supports_bulk_ingest_temporary() ||
+      !quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE) ||
+      !quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_APPEND)) {
+    GTEST_SKIP();
+  }
+
+  Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  std::string name = "bulk_ingest";
+
+  ASSERT_THAT(quirks()->DropTable(&connection, name, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTempTable(&connection, name, &error), IsOkStatus(&error));
+
+  // Create both tables with different schemas
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints", NANOARROW_TYPE_INT64}}), IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                    {42, -42, std::nullopt})),
+                IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_ENABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"strs", NANOARROW_TYPE_STRING}}),
+                IsOkErrno());
+    ASSERT_THAT((MakeBatch<std::string>(&schema.value, &array.value, &na_error,
+                                        {"foo", "bar", std::nullopt})),
+                IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_DISABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  // Append to the temporary table
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints", NANOARROW_TYPE_INT64}}), IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {0, 1, 2})),
+                IsOkErrno());
+
+    Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_ENABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_MODE,
+                                       ADBC_INGEST_OPTION_MODE_APPEND, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  // Append to the normal table
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"strs", NANOARROW_TYPE_STRING}}),
+                IsOkErrno());
+    ASSERT_THAT(
+        (MakeBatch<std::string>(&schema.value, &array.value, &na_error, {"", "a", "b"})),
+        IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_DISABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_MODE,
+                                       ADBC_INGEST_OPTION_MODE_APPEND, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+}
+
+void StatementTest::TestSqlIngestTemporaryReplace() {
+  // Replace temp table shouldn't affect actual table and vice versa
+  if (!quirks()->supports_bulk_ingest_temporary() ||
+      !quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE) ||
+      !quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_APPEND) ||
+      !quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_REPLACE)) {
+    GTEST_SKIP();
+  }
+
+  Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  std::string name = "bulk_ingest";
+
+  ASSERT_THAT(quirks()->DropTable(&connection, name, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTempTable(&connection, name, &error), IsOkStatus(&error));
+
+  // Create both tables with different schemas
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints", NANOARROW_TYPE_INT64}}), IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                    {42, -42, std::nullopt})),
+                IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_ENABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"strs", NANOARROW_TYPE_STRING}}),
+                IsOkErrno());
+    ASSERT_THAT((MakeBatch<std::string>(&schema.value, &array.value, &na_error,
+                                        {"foo", "bar", std::nullopt})),
+                IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_DISABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  // Replace both tables with different schemas
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints2", NANOARROW_TYPE_INT64},
+                                           {"strs2", NANOARROW_TYPE_STRING}}),
+                IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t, std::string>(&schema.value, &array.value, &na_error,
+                                                 {0, 1, std::nullopt},
+                                                 {"foo", "bar", std::nullopt})),
+                IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_ENABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_MODE,
+                                       ADBC_INGEST_OPTION_MODE_REPLACE, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints3", NANOARROW_TYPE_INT64}}),
+                IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {1, 2, 3})),
+                IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_DISABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_MODE,
+                                       ADBC_INGEST_OPTION_MODE_REPLACE, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  // Now append to the replaced tables to check that the schemas are as expected
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints2", NANOARROW_TYPE_INT64},
+                                           {"strs2", NANOARROW_TYPE_STRING}}),
+                IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t, std::string>(&schema.value, &array.value, &na_error,
+                                                 {0, 1, std::nullopt},
+                                                 {"foo", "bar", std::nullopt})),
+                IsOkErrno());
+
+    Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_ENABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_MODE,
+                                       ADBC_INGEST_OPTION_MODE_APPEND, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints3", NANOARROW_TYPE_INT64}}),
+                IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {4, 5, 6})),
+                IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_DISABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_MODE,
+                                       ADBC_INGEST_OPTION_MODE_APPEND, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+}
+
+void StatementTest::TestSqlIngestTemporaryExclusive() {
+  // Can't set target schema/catalog with temp table
+  if (!quirks()->supports_bulk_ingest_temporary() ||
+      !quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
+    GTEST_SKIP();
+  }
+
+  std::string name = "bulk_ingest";
+  ASSERT_THAT(quirks()->DropTempTable(&connection, name, &error), IsOkStatus(&error));
+
+  if (quirks()->supports_bulk_ingest_catalog()) {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints", NANOARROW_TYPE_INT64}}), IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                    {42, -42, std::nullopt})),
+                IsOkErrno());
+
+    std::string catalog = quirks()->catalog();
+
+    Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_ENABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_CATALOG,
+                               catalog.c_str(), &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+    ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+  }
+
+  if (quirks()->supports_bulk_ingest_db_schema()) {
+    Handle<struct ArrowSchema> schema;
+    Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+    ASSERT_THAT(MakeSchema(&schema.value, {{"ints", NANOARROW_TYPE_INT64}}), IsOkErrno());
+    ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                    {42, -42, std::nullopt})),
+                IsOkErrno());
+
+    std::string db_schema = quirks()->db_schema();
+
+    Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_ENABLED, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                               db_schema.c_str(), &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+    ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+  }
+}
+
 void StatementTest::TestSqlPartitionedInts() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error),

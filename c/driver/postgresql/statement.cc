@@ -38,6 +38,7 @@
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
+#include "result_helper.h"
 
 namespace adbcpq {
 
@@ -830,10 +831,16 @@ AdbcStatusCode PostgresStatement::Cancel(struct AdbcError* error) {
 }
 
 AdbcStatusCode PostgresStatement::CreateBulkTable(
-    const struct ArrowSchema& source_schema,
+    const std::string& current_schema, const struct ArrowSchema& source_schema,
     const std::vector<struct ArrowSchemaView>& source_schema_fields,
     std::string* escaped_table, struct AdbcError* error) {
   PGconn* conn = connection_->conn();
+
+  if (!ingest_.db_schema.empty() && ingest_.temporary) {
+    SetError(error, "[libpq] Cannot set both %s and %s",
+             ADBC_INGEST_OPTION_TARGET_DB_SCHEMA, ADBC_INGEST_OPTION_TEMPORARY);
+    return ADBC_STATUS_INVALID_STATE;
+  }
 
   {
     if (!ingest_.db_schema.empty()) {
@@ -844,6 +851,17 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
                  ingest_.db_schema.c_str(), PQerrorMessage(conn));
         return ADBC_STATUS_INTERNAL;
       }
+      *escaped_table += escaped;
+      *escaped_table += " . ";
+      PQfreemem(escaped);
+    } else if (ingest_.temporary) {
+      // OK to be redundant (CREATE TEMPORARY TABLE pg_temp.foo)
+      *escaped_table += "pg_temp . ";
+    } else {
+      // Explicitly specify the current schema to avoid any temporary tables
+      // shadowing this table
+      char* escaped =
+          PQescapeIdentifier(conn, current_schema.c_str(), current_schema.size());
       *escaped_table += escaped;
       *escaped_table += " . ";
       PQfreemem(escaped);
@@ -862,7 +880,14 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
     }
   }
 
-  std::string create = "CREATE TABLE ";
+  std::string create;
+
+  if (ingest_.temporary) {
+    create = "CREATE TEMPORARY TABLE ";
+  } else {
+    create = "CREATE TABLE ";
+  }
+
   switch (ingest_.mode) {
     case IngestMode::kCreate:
       // Nothing to do
@@ -1098,12 +1123,27 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
     return ADBC_STATUS_INVALID_STATE;
   }
 
+  // Need the current schema to avoid being shadowed by temp tables
+  // This is a little unfortunate; we need another DB roundtrip
+  std::string current_schema;
+  {
+    PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA", {}, error};
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+    auto it = result_helper.begin();
+    if (it == result_helper.end()) {
+      SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+      return ADBC_STATUS_INTERNAL;
+    }
+    current_schema = (*it)[0].data;
+  }
+
   BindStream bind_stream(std::move(bind_));
   std::memset(&bind_, 0, sizeof(bind_));
   std::string escaped_table;
   RAISE_ADBC(bind_stream.Begin(
       [&]() -> AdbcStatusCode {
-        return CreateBulkTable(bind_stream.bind_schema.value,
+        return CreateBulkTable(current_schema, bind_stream.bind_schema.value,
                                bind_stream.bind_schema_fields, &escaped_table, error);
       },
       error));
@@ -1247,7 +1287,11 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
     prepared_ = false;
   } else if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA) == 0) {
     query_.clear();
-    ingest_.db_schema = value;
+    if (value == nullptr) {
+      ingest_.db_schema.clear();
+    } else {
+      ingest_.db_schema = value;
+    }
     prepared_ = false;
   } else if (std::strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
     if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE) == 0) {
@@ -1262,6 +1306,17 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
       SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
+    prepared_ = false;
+  } else if (std::strcmp(key, ADBC_INGEST_OPTION_TEMPORARY) == 0) {
+    if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      ingest_.temporary = true;
+    } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      ingest_.temporary = false;
+    } else {
+      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    ingest_.db_schema.clear();
     prepared_ = false;
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     int64_t int_value = std::atol(value);

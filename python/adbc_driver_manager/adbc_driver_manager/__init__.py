@@ -128,5 +128,8 @@ class StatementOptions(enum.Enum):
     #: For bulk ingestion, the schema to create/locate the table in.
     #: **This API is EXPERIMENTAL.**
     INGEST_TARGET_DB_SCHEMA = "adbc.ingest.target_db_schema"
+    #: For bulk ingestion, use a temporary table.
+    #: **This API is EXPERIMENTAL.**
+    INGEST_TEMPORARY = "adbc.ingest.temporary"
     #: Get progress of a query.
     PROGRESS = "adbc.statement.exec.progress"
