@@ -181,7 +181,7 @@ services:
 
   postgres-test:
     container_name: adbc_postgres_test
-    image: postgres:${POSTGRES_VERSION}
+    image: postgres:${POSTGRES_VERSION:-latest}
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
