@@ -222,6 +222,16 @@ jobs:
           ADBC_USE_UBSAN: "OFF"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Test PostgreSQL Driver - postgres 11
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          env POSTGRES_VERSION=11 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          docker compose down
       - name: Test PostgreSQL Driver - postgres 12
         shell: bash -l {0}
         env:
