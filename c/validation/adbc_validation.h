@@ -188,6 +188,7 @@ class ConnectionTest {
 
   void TestMetadataGetInfo();
   void TestMetadataGetTableSchema();
+  void TestMetadataGetTableSchemaEscaping();
   void TestMetadataGetTableSchemaNotFound();
   void TestMetadataGetTableTypes();
 
@@ -220,6 +221,9 @@ class ConnectionTest {
   TEST_F(FIXTURE, MetadataCurrentDbSchema) { TestMetadataCurrentDbSchema(); }           \
   TEST_F(FIXTURE, MetadataGetInfo) { TestMetadataGetInfo(); }                           \
   TEST_F(FIXTURE, MetadataGetTableSchema) { TestMetadataGetTableSchema(); }             \
+  TEST_F(FIXTURE, MetadataGetTableSchemaEscaping) {                                     \
+    TestMetadataGetTableSchemaEscaping();                                               \
+  }                                                                                     \
   TEST_F(FIXTURE, MetadataGetTableSchemaNotFound) {                                     \
     TestMetadataGetTableSchemaNotFound();                                               \
   }                                                                                     \
@@ -267,9 +271,11 @@ class StatementTest {
 
   // Strings
   void TestSqlIngestString();
+  void TestSqlIngestLargeString();
   void TestSqlIngestBinary();
 
   // Temporal
+  void TestSqlIngestDuration();
   void TestSqlIngestDate32();
   void TestSqlIngestTimestamp();
   void TestSqlIngestTimestampTz();
@@ -327,12 +333,12 @@ class StatementTest {
   template <typename CType>
   void TestSqlIngestNumericType(ArrowType type);
 
-  template <enum ArrowTimeUnit TU>
-  void TestSqlIngestTimestampType(const char* timezone);
+  template <ArrowType type, enum ArrowTimeUnit TU>
+  void TestSqlIngestTemporalType(const char* timezone);
 
-  virtual void ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                             enum ArrowTimeUnit unit,
-                                             const char* timezone);
+  virtual void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
+                                            enum ArrowTimeUnit unit,
+                                            const char* timezone);
 };
 
 #define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
@@ -351,7 +357,9 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestFloat32) { TestSqlIngestFloat32(); }                         \
   TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                         \
   TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
+  TEST_F(FIXTURE, SqlIngestLargeString) { TestSqlIngestLargeString(); }                 \
   TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
+  TEST_F(FIXTURE, SqlIngestDuration) { TestSqlIngestDuration(); }                       \
   TEST_F(FIXTURE, SqlIngestDate32) { TestSqlIngestDate32(); }                           \
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \

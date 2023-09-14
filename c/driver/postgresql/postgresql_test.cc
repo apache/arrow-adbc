@@ -92,6 +92,10 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     switch (ingest_type) {
       case NANOARROW_TYPE_INT8:
         return NANOARROW_TYPE_INT16;
+      case NANOARROW_TYPE_DURATION:
+        return NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO;
+      case NANOARROW_TYPE_LARGE_STRING:
+        return NANOARROW_TYPE_STRING;
       default:
         return ingest_type;
     }
@@ -539,40 +543,6 @@ TEST_F(PostgresConnectionTest, GetObjectsTableTypesFilter) {
   ASSERT_NE(view, nullptr) << "did not find view adbc_table_types_view_test";
 }
 
-TEST_F(PostgresConnectionTest, MetadataGetTableSchemaInjection) {
-  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
-    GTEST_SKIP();
-  }
-  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
-              IsOkStatus(&error));
-  ASSERT_THAT(quirks()->EnsureSampleTable(&connection, "bulk_ingest", &error),
-              IsOkStatus(&error));
-
-  adbc_validation::Handle<ArrowSchema> schema;
-  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/nullptr,
-                                           "0'::int; DROP TABLE bulk_ingest;--",
-                                           &schema.value, &error),
-              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-
-  ASSERT_THAT(
-      AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                   /*db_schema=*/"0'::int; DROP TABLE bulk_ingest;--",
-                                   "DROP TABLE bulk_ingest;", &schema.value, &error),
-      IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-
-  ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/nullptr, "bulk_ingest",
-                                           &schema.value, &error),
-              IsOkStatus(&error));
-
-  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareSchema(
-      &schema.value, {{"int64s", NANOARROW_TYPE_INT64, true},
-                      {"strings", NANOARROW_TYPE_STRING, true}}));
-}
-
 TEST_F(PostgresConnectionTest, MetadataSetCurrentDbSchema) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
@@ -830,31 +800,189 @@ class PostgresStatementTest : public ::testing::Test,
   }
 
  protected:
-  void ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                     enum ArrowTimeUnit unit,
-                                     const char* timezone) override {
-    std::vector<std::optional<int64_t>> expected;
-    switch (unit) {
-      case (NANOARROW_TIME_UNIT_SECOND):
-        expected.insert(expected.end(), {std::nullopt, -42000000, 0, 42000000});
+  void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
+                                    enum ArrowTimeUnit unit,
+                                    const char* timezone) override {
+    switch (type) {
+      case NANOARROW_TYPE_TIMESTAMP: {
+        std::vector<std::optional<int64_t>> expected;
+        switch (unit) {
+          case (NANOARROW_TIME_UNIT_SECOND):
+            expected.insert(expected.end(), {std::nullopt, -42000000, 0, 42000000});
+            break;
+          case (NANOARROW_TIME_UNIT_MILLI):
+            expected.insert(expected.end(), {std::nullopt, -42000, 0, 42000});
+            break;
+          case (NANOARROW_TIME_UNIT_MICRO):
+            expected.insert(expected.end(), {std::nullopt, -42, 0, 42});
+            break;
+          case (NANOARROW_TIME_UNIT_NANO):
+            expected.insert(expected.end(), {std::nullopt, 0, 0, 0});
+            break;
+        }
+        ASSERT_NO_FATAL_FAILURE(
+            adbc_validation::CompareArray<std::int64_t>(values, expected));
         break;
-      case (NANOARROW_TIME_UNIT_MILLI):
-        expected.insert(expected.end(), {std::nullopt, -42000, 0, 42000});
+      }
+      case NANOARROW_TYPE_DURATION: {
+        struct ArrowInterval neg_interval;
+        struct ArrowInterval zero_interval;
+        struct ArrowInterval pos_interval;
+
+        ArrowIntervalInit(&neg_interval, type);
+        ArrowIntervalInit(&zero_interval, type);
+        ArrowIntervalInit(&pos_interval, type);
+
+        neg_interval.months = 0;
+        neg_interval.days = 0;
+        zero_interval.months = 0;
+        zero_interval.days = 0;
+        pos_interval.months = 0;
+        pos_interval.days = 0;
+
+        switch (unit) {
+          case (NANOARROW_TIME_UNIT_SECOND):
+            neg_interval.ns = -42000000000;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42000000000;
+            break;
+          case (NANOARROW_TIME_UNIT_MILLI):
+            neg_interval.ns = -42000000;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42000000;
+            break;
+          case (NANOARROW_TIME_UNIT_MICRO):
+            neg_interval.ns = -42000;
+            zero_interval.ns = 0;
+            pos_interval.ns = 42000;
+            break;
+          case (NANOARROW_TIME_UNIT_NANO):
+            // lower than us precision is lost
+            neg_interval.ns = 0;
+            zero_interval.ns = 0;
+            pos_interval.ns = 0;
+            break;
+        }
+        const std::vector<std::optional<ArrowInterval*>> expected = {
+            std::nullopt, &neg_interval, &zero_interval, &pos_interval};
+        ASSERT_NO_FATAL_FAILURE(
+            adbc_validation::CompareArray<ArrowInterval*>(values, expected));
         break;
-      case (NANOARROW_TIME_UNIT_MICRO):
-        expected.insert(expected.end(), {std::nullopt, -42, 0, 42});
-        break;
-      case (NANOARROW_TIME_UNIT_NANO):
-        expected.insert(expected.end(), {std::nullopt, 0, 0, 0});
-        break;
+      }
+      default:
+        FAIL() << "ValidateIngestedTemporalData not implemented for type " << type;
     }
-    ASSERT_NO_FATAL_FAILURE(
-        adbc_validation::CompareArray<std::int64_t>(values, expected));
   }
 
   PostgresQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(PostgresStatementTest)
+
+TEST_F(PostgresStatementTest, SqlIngestTimestampOverflow) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  {
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> batch;
+
+    ArrowSchemaInit(&schema.value);
+    ASSERT_THAT(ArrowSchemaSetTypeStruct(&schema.value, 1), adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetName(schema->children[0], "$1"),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetTypeDateTime(schema->children[0], NANOARROW_TYPE_TIMESTAMP,
+                                           NANOARROW_TIME_UNIT_SECOND, nullptr),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT((adbc_validation::MakeBatch<int64_t>(
+                    &schema.value, &batch.value, static_cast<struct ArrowError*>(nullptr),
+                    {std::numeric_limits<int64_t>::max()})),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement, "SELECT CAST($1 AS TIMESTAMP)", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+    ASSERT_THAT(error.message,
+                ::testing::HasSubstr("Row #1 has value '9223372036854775807' which "
+                                     "exceeds PostgreSQL timestamp limits"));
+  }
+
+  {
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> batch;
+
+    ArrowSchemaInit(&schema.value);
+    ASSERT_THAT(ArrowSchemaSetTypeStruct(&schema.value, 1), adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetName(schema->children[0], "$1"),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetTypeDateTime(schema->children[0], NANOARROW_TYPE_TIMESTAMP,
+                                           NANOARROW_TIME_UNIT_SECOND, nullptr),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT((adbc_validation::MakeBatch<int64_t>(
+                    &schema.value, &batch.value, static_cast<struct ArrowError*>(nullptr),
+                    {std::numeric_limits<int64_t>::min()})),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement, "SELECT CAST($1 AS TIMESTAMP)", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+    ASSERT_THAT(error.message,
+                ::testing::HasSubstr("Row #1 has value '-9223372036854775808' which "
+                                     "exceeds PostgreSQL timestamp limits"));
+  }
+}
+
+TEST_F(PostgresStatementTest, SqlReadIntervalOverflow) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  {
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement, "SELECT CAST('P0Y0M0DT2562048H0M0S' AS INTERVAL)", &error),
+        IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(reader.rows_affected, -1);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_THAT(reader.MaybeNext(),
+                adbc_validation::IsErrno(EINVAL, &reader.stream.value, nullptr));
+    ASSERT_THAT(reader.stream->get_last_error(&reader.stream.value),
+                ::testing::HasSubstr("Interval with time value 9223372800000000 usec "
+                                     "would overflow when converting to nanoseconds"));
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
+  {
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement, "SELECT CAST('P0Y0M0DT-2562048H0M0S' AS INTERVAL)", &error),
+        IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(reader.rows_affected, -1);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_THAT(reader.MaybeNext(),
+                adbc_validation::IsErrno(EINVAL, &reader.stream.value, nullptr));
+    ASSERT_THAT(reader.stream->get_last_error(&reader.stream.value),
+                ::testing::HasSubstr("Interval with time value -9223372800000000 usec "
+                                     "would overflow when converting to nanoseconds"));
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+}
 
 TEST_F(PostgresStatementTest, UpdateInExecuteQuery) {
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));

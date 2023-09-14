@@ -37,7 +37,6 @@
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
-#include "vendor/portable-snippets/safe-math.h"
 
 namespace adbcpq {
 
@@ -215,6 +214,7 @@ struct BindStream {
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_STRING:
+        case ArrowType::NANOARROW_TYPE_LARGE_STRING:
           type_id = PostgresTypeId::kText;
           param_lengths[i] = 0;
           break;
@@ -230,6 +230,7 @@ struct BindStream {
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
+        case ArrowType::NANOARROW_TYPE_DURATION:
         case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
           type_id = PostgresTypeId::kInterval;
           param_lengths[i] = 16;
@@ -393,6 +394,7 @@ struct BindStream {
               break;
             }
             case ArrowType::NANOARROW_TYPE_STRING:
+            case ArrowType::NANOARROW_TYPE_LARGE_STRING:
             case ArrowType::NANOARROW_TYPE_BINARY: {
               const ArrowBufferView view =
                   ArrowArrayViewGetBytesUnsafe(array_view->children[col], row);
@@ -417,21 +419,26 @@ struct BindStream {
               std::memcpy(param_values[col], &value, sizeof(int32_t));
               break;
             }
+            case ArrowType::NANOARROW_TYPE_DURATION:
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
               // 2000-01-01 00:00:00.000000 in microseconds
               constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
-              psnip_safe_bool overflow_safe = true;
+              bool overflow_safe = true;
 
               auto unit = bind_schema_fields[col].time_unit;
 
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000000);
+                  overflow_safe =
+                      val <= kMaxSafeSecondsToMicros && val >= kMinSafeSecondsToMicros;
+                  val *= 1000000;
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
-                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000);
+                  overflow_safe =
+                      val <= kMaxSafeMillisToMicros && val >= kMinSafeMillisToMicros;
+                  val *= 1000;
                   break;
                 case NANOARROW_TIME_UNIT_MICRO:
                   break;
@@ -441,15 +448,27 @@ struct BindStream {
               }
 
               if (!overflow_safe) {
-                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
-                         " (' ", bind_schema->children[col]->name, " ') Row # ", row + 1,
-                         " has value which exceeds postgres timestamp limits");
-
+                SetError(error,
+                         "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
+                         " has value '%" PRIi64
+                         "' which exceeds PostgreSQL timestamp limits",
+                         col + 1, bind_schema->children[col]->name, row + 1,
+                         array_view->children[col]->buffer_views[1].data.as_int64[row]);
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
-              const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
-              std::memcpy(param_values[col], &value, sizeof(int64_t));
+              if (bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) {
+                const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
+                std::memcpy(param_values[col], &value, sizeof(int64_t));
+              } else if (bind_schema_fields[col].type ==
+                         ArrowType::NANOARROW_TYPE_DURATION) {
+                // postgres stores an interval as a 64 bit offset in microsecond
+                // resolution alongside a 32 bit day and 32 bit month
+                // for now we just send 0 for the day / month values
+                const uint64_t value = ToNetworkInt64(val);
+                std::memcpy(param_values[col], &value, sizeof(int64_t));
+                std::memset(param_values[col] + sizeof(int64_t), 0, sizeof(int64_t));
+              }
               break;
             }
             case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
@@ -863,6 +882,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         create += " DOUBLE PRECISION";
         break;
       case ArrowType::NANOARROW_TYPE_STRING:
+      case ArrowType::NANOARROW_TYPE_LARGE_STRING:
         create += " TEXT";
         break;
       case ArrowType::NANOARROW_TYPE_BINARY:
@@ -878,6 +898,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
           create += " TIMESTAMP";
         }
         break;
+      case ArrowType::NANOARROW_TYPE_DURATION:
       case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
         create += " INTERVAL";
         break;

@@ -184,28 +184,36 @@ class SnowflakeStatementTest : public ::testing::Test,
   }
 
   void TestSqlIngestInterval() { GTEST_SKIP(); }
+  void TestSqlIngestDuration() { GTEST_SKIP(); }
 
  protected:
-  void ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                     enum ArrowTimeUnit unit,
-                                     const char* timezone) override {
-    std::vector<std::optional<int64_t>> expected;
-    switch (unit) {
-      case NANOARROW_TIME_UNIT_SECOND:
-        expected = {std::nullopt, -42, 0, 42};
+  void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
+                                    enum ArrowTimeUnit unit,
+                                    const char* timezone) override {
+    switch (type) {
+      case NANOARROW_TYPE_TIMESTAMP: {
+        std::vector<std::optional<int64_t>> expected;
+        switch (unit) {
+          case NANOARROW_TIME_UNIT_SECOND:
+            expected = {std::nullopt, -42, 0, 42};
+            break;
+          case NANOARROW_TIME_UNIT_MILLI:
+            expected = {std::nullopt, -42000, 0, 42000};
+            break;
+          case NANOARROW_TIME_UNIT_MICRO:
+            expected = {std::nullopt, -42, 0, 42};
+            break;
+          case NANOARROW_TIME_UNIT_NANO:
+            expected = {std::nullopt, -42, 0, 42};
+            break;
+        }
+        ASSERT_NO_FATAL_FAILURE(
+            adbc_validation::CompareArray<std::int64_t>(values, expected));
         break;
-      case NANOARROW_TIME_UNIT_MILLI:
-        expected = {std::nullopt, -42000, 0, 42000};
-        break;
-      case NANOARROW_TIME_UNIT_MICRO:
-        expected = {std::nullopt, -42, 0, 42};
-        break;
-      case NANOARROW_TIME_UNIT_NANO:
-        expected = {std::nullopt, -42, 0, 42};
-        break;
+      }
+      default:
+        FAIL() << "ValidateIngestedTemporalData not implemented for type " << type;
     }
-    ASSERT_NO_FATAL_FAILURE(
-        adbc_validation::CompareArray<std::int64_t>(values, expected));
   }
 
   SnowflakeQuirks quirks_;
