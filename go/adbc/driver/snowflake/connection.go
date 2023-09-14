@@ -362,8 +362,9 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 var loc = time.Now().Location()
 
-func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
+func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadix, numScale sql.NullInt16, isIdent bool, identGen, identInc sql.NullString, charMaxLength, charOctetLength sql.NullInt32, datetimePrec sql.NullInt16, comment sql.NullString, ordinalPos int) (ret arrow.Field) {
 	ret.Name, ret.Nullable = name, isnullable
+
 	switch dataType {
 	case "NUMBER":
 		if !numScale.Valid || numScale.Int16 == 0 {
@@ -416,10 +417,96 @@ func toField(name string, isnullable bool, dataType string, numPrec, numPrecRadi
 	if comment.Valid {
 		md["COMMENT"] = comment.String
 	}
+
 	md["ORDINAL_POSITION"] = strconv.Itoa(ordinalPos)
+	md["XDBC_DATA_TYPE"] = strconv.Itoa(int(ret.Type.ID()))
+	md["XDBC_TYPE_NAME"] = dataType
+	md["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(toXdbcDataType(ret.Type)))
+	md["XDBC_NULLABLE"] = strconv.FormatBool(isnullable)
+
+	if isnullable {
+		md["XDBC_IS_NULLABLE"] = "YES"
+	} else {
+		md["XDBC_IS_NULLABLE"] = "NO"
+	}
+
+	if numPrec.Valid {
+		md["XDBC_PRECISION"] = strconv.Itoa(int(numPrec.Int16))
+	}
+
+	if numScale.Valid {
+		md["XDBC_SCALE"] = strconv.Itoa(int(numScale.Int16))
+	}
+
+	if numPrec.Valid {
+		md["XDBC_PRECISION"] = strconv.Itoa(int(numPrec.Int16))
+	}
+
+	if numPrecRadix.Valid {
+		md["XDBC_NUM_PREC_RADIX"] = strconv.Itoa(int(numPrecRadix.Int16))
+	}
+
+	if charMaxLength.Valid {
+		md["CHARACTER_MAXIMUM_LENGTH"] = strconv.Itoa(int(charMaxLength.Int32))
+	}
+
+	if charOctetLength.Valid {
+		md["XDBC_CHAR_OCTET_LENGTH"] = strconv.Itoa(int(charOctetLength.Int32))
+	}
+
+	if datetimePrec.Valid {
+		md["XDBC_DATETIME_SUB"] = strconv.Itoa(int(datetimePrec.Int16))
+	}
 
 	ret.Metadata = arrow.MetadataFrom(md)
+
 	return
+}
+
+func toXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
+	xdbcType = internal.XdbcDataType_XDBC_UNKNOWN_TYPE
+	switch dt.ID() {
+	case arrow.EXTENSION:
+		return toXdbcDataType(dt.(arrow.ExtensionType).StorageType())
+	case arrow.DICTIONARY:
+		return toXdbcDataType(dt.(*arrow.DictionaryType).ValueType)
+	case arrow.RUN_END_ENCODED:
+		return toXdbcDataType(dt.(*arrow.RunEndEncodedType).Encoded())
+	case arrow.INT8, arrow.UINT8:
+		return internal.XdbcDataType_XDBC_TINYINT
+	case arrow.INT16, arrow.UINT16:
+		return internal.XdbcDataType_XDBC_SMALLINT
+	case arrow.INT32, arrow.UINT32:
+		return internal.XdbcDataType_XDBC_SMALLINT
+	case arrow.INT64, arrow.UINT64:
+		return internal.XdbcDataType_XDBC_BIGINT
+	case arrow.FLOAT32, arrow.FLOAT16, arrow.FLOAT64:
+		return internal.XdbcDataType_XDBC_FLOAT
+	case arrow.DECIMAL, arrow.DECIMAL256:
+		return internal.XdbcDataType_XDBC_DECIMAL
+	case arrow.STRING, arrow.LARGE_STRING:
+		return internal.XdbcDataType_XDBC_VARCHAR
+	case arrow.BINARY, arrow.LARGE_BINARY:
+		return internal.XdbcDataType_XDBC_BINARY
+	case arrow.FIXED_SIZE_BINARY:
+		return internal.XdbcDataType_XDBC_BINARY
+	case arrow.BOOL:
+		return internal.XdbcDataType_XDBC_BIT
+	case arrow.TIME32, arrow.TIME64:
+		return internal.XdbcDataType_XDBC_TIME
+	case arrow.DATE32, arrow.DATE64:
+		return internal.XdbcDataType_XDBC_DATE
+	case arrow.TIMESTAMP:
+		return internal.XdbcDataType_XDBC_TIMESTAMP
+	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
+		return internal.XdbcDataType_XDBC_VARBINARY
+	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
+		return internal.XdbcDataType_XDBC_VARBINARY
+	case arrow.STRUCT, arrow.MAP:
+		return internal.XdbcDataType_XDBC_VARBINARY
+	default:
+		return internal.XdbcDataType_XDBC_UNKNOWN_TYPE
+	}
 }
 
 func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (result internal.SchemaToTableInfo, err error) {
@@ -484,7 +571,8 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 				table_catalog, table_schema, table_name, column_name,
 				ordinal_position, is_nullable::boolean, data_type, numeric_precision,
 				numeric_precision_radix, numeric_scale, is_identity::boolean,
-				identity_generation, identity_increment, comment
+				identity_generation, identity_increment,
+				character_maximum_length, character_octet_length, datetime_precision, comment
 		FROM ' || rec.database_name || '.INFORMATION_SCHEMA.COLUMNS';
 
 		  counter := counter + 1;
@@ -552,11 +640,12 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		defer rows.Close()
 
 		var (
-			colName, dataType                           string
-			identGen, identIncrement, comment           sql.NullString
-			ordinalPos                                  int
-			numericPrec, numericPrecRadix, numericScale sql.NullInt16
-			isNullable, isIdent                         bool
+			colName, dataType                                         string
+			identGen, identIncrement, comment                         sql.NullString
+			ordinalPos                                                int
+			numericPrec, numericPrecRadix, numericScale, datetimePrec sql.NullInt16
+			isNullable, isIdent                                       bool
+			charMaxLength, charOctetLength                            sql.NullInt32
 
 			prevKey      internal.CatalogAndSchema
 			curTableInfo *internal.TableInfo
@@ -568,7 +657,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			err = rows.Scan(&tblCat, &tblSchema, &tblName, &colName,
 				&ordinalPos, &isNullable, &dataType, &numericPrec,
 				&numericPrecRadix, &numericScale, &isIdent, &identGen,
-				&identIncrement, &comment)
+				&identIncrement, &charMaxLength, &charOctetLength, &datetimePrec, &comment)
 			if err != nil {
 				err = errToAdbcErr(adbc.StatusIO, err)
 				return
@@ -591,7 +680,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			}
 
 			prevKey = key
-			fieldList = append(fieldList, toField(colName, isNullable, dataType, numericPrec, numericPrecRadix, numericScale, isIdent, identGen, identIncrement, comment, ordinalPos))
+			fieldList = append(fieldList, toField(colName, isNullable, dataType, numericPrec, numericPrecRadix, numericScale, isIdent, identGen, identIncrement, charMaxLength, charOctetLength, datetimePrec, comment, ordinalPos))
 		}
 
 		if len(fieldList) > 0 && curTableInfo != nil {
