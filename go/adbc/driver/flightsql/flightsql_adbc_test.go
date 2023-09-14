@@ -440,6 +440,14 @@ func (suite *OptionTests) TestOverrideHostname() {
 	suite.Require().NoError(err)
 }
 
+func (suite *OptionTests) TestAuthority() {
+	// Just checks that the option is accepted
+	options := suite.Quirks.DatabaseOptions()
+	options["adbc.flight.sql.client_option.authority"] = "hostname"
+	_, err := suite.Driver.NewDatabase(options)
+	suite.Require().NoError(err)
+}
+
 func (suite *OptionTests) TestRootCerts() {
 	// Just checks that the option is accepted - doesn't actually configure TLS
 	options := suite.Quirks.DatabaseOptions()
