@@ -55,11 +55,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 new ColumnNetTypeArrowTypeValue("BOOLEANTYPE", typeof(bool), typeof(BooleanArray), true),
                 new ColumnNetTypeArrowTypeValue("DATETYPE", typeof(DateTime), typeof(Date32Array), new DateTime(2023, 7, 28)),
                 new ColumnNetTypeArrowTypeValue("DATETIMETYPE", typeof(DateTimeOffset), typeof(TimestampArray), new DateTimeOffset(new DateTime(2023,7,28, 12,34,56), TimeSpan.Zero)),
+                new ColumnNetTypeArrowTypeValue("TIMETYPE", typeof(long), typeof(Time64Array), 45296000000000L),
                 new ColumnNetTypeArrowTypeValue("TIMESTAMPTYPE", typeof(DateTimeOffset), typeof(TimestampArray), new DateTimeOffset(new DateTime(2023,7,28,12,34,56), TimeSpan.Zero)),
                 new ColumnNetTypeArrowTypeValue("TIMESTAMPLTZTYPE", typeof(DateTimeOffset), typeof(TimestampArray), new DateTimeOffset(new DateTime(2023,7,28,19,34,56), TimeSpan.Zero)),
                 new ColumnNetTypeArrowTypeValue("TIMESTAMPNTZTYPE", typeof(DateTimeOffset), typeof(TimestampArray), new DateTimeOffset(new DateTime(2023,7,28, 12,34,56), TimeSpan.Zero)),
                 new ColumnNetTypeArrowTypeValue("TIMESTAMPTZTYPE", typeof(DateTimeOffset), typeof(TimestampArray), new DateTimeOffset(new DateTime(2023,7,28, 19,34,56), TimeSpan.Zero)),
-                new ColumnNetTypeArrowTypeValue("TIMETYPE", typeof(long), typeof(Time64Array), 45296000000000L)
             };
 
             return expectedValues;

@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Apache.Arrow.Adbc.Tests
