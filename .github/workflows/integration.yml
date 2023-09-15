@@ -187,8 +187,6 @@ jobs:
     name: "PostgreSQL Integration Tests"
     runs-on: ubuntu-latest
     env:
-      # Sanitizer support
-      LD_PRELOAD: "$(gcc --print-file-name=libasan.so)"
     services:
       postgres:
         image: postgres
