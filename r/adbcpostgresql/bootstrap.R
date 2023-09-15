@@ -31,6 +31,9 @@ files_to_vendor <- c(
   "../../c/driver/postgresql/database.h",
   "../../c/driver/postgresql/database.cc",
   "../../c/driver/postgresql/postgresql.cc",
+  "../../c/driver/postgresql/result_helper.h",
+  "../../c/driver/postgresql/result_helper.cc",
+  "../../c/driver/common/options.h",
   "../../c/driver/common/utils.h",
   "../../c/driver/common/utils.c",
   "../../c/vendor/nanoarrow/nanoarrow.h",
@@ -59,6 +62,7 @@ if (all(file.exists(files_to_vendor))) {
         "src/nanoarrow.c",
         "src/nanoarrow.h",
         "src/nanoarrow.hpp",
+        "src/options.h",
         "src/utils.c",
         "src/utils.h"
       ),
@@ -66,6 +70,7 @@ if (all(file.exists(files_to_vendor))) {
         "src/nanoarrow/nanoarrow.c",
         "src/nanoarrow/nanoarrow.h",
         "src/nanoarrow/nanoarrow.hpp",
+        "src/common/options.h",
         "src/common/utils.c",
         "src/common/utils.h"
       )

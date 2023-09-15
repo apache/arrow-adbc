@@ -28,11 +28,13 @@
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
 
+#include "common/options.h"
 #include "common/utils.h"
 #include "database.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
+using adbc_validation::Handle;
 using adbc_validation::IsOkStatus;
 using adbc_validation::IsStatus;
 
@@ -50,38 +52,35 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
 
   AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
                            struct AdbcError* error) const override {
-    struct AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    AdbcStatusCode status = AdbcStatementNew(connection, &statement, error);
-    if (status != ADBC_STATUS_OK) return status;
+    Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP TABLE IF EXISTS " + name;
-    status = AdbcStatementSetSqlQuery(&statement, query.c_str(), error);
-    if (status != ADBC_STATUS_OK) {
-      std::ignore = AdbcStatementRelease(&statement, error);
-      return status;
-    }
-    status = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, error);
-    std::ignore = AdbcStatementRelease(&statement, error);
-    return status;
+    std::string query = "DROP TABLE IF EXISTS \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
+  }
+
+  AdbcStatusCode DropTempTable(struct AdbcConnection* connection, const std::string& name,
+                               struct AdbcError* error) const override {
+    Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string query = "DROP TABLE IF EXISTS pg_temp . \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
   }
 
   AdbcStatusCode DropView(struct AdbcConnection* connection, const std::string& name,
                           struct AdbcError* error) const override {
-    struct AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    AdbcStatusCode status = AdbcStatementNew(connection, &statement, error);
-    if (status != ADBC_STATUS_OK) return status;
+    Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP VIEW IF EXISTS " + name;
-    status = AdbcStatementSetSqlQuery(&statement, query.c_str(), error);
-    if (status != ADBC_STATUS_OK) {
-      std::ignore = AdbcStatementRelease(&statement, error);
-      return status;
-    }
-    status = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, error);
-    std::ignore = AdbcStatementRelease(&statement, error);
-    return status;
+    std::string query = "DROP VIEW IF EXISTS \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
   }
 
   std::string BindParameter(int index) const override {
@@ -111,6 +110,9 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
   std::string catalog() const override { return "postgres"; }
   std::string db_schema() const override { return "public"; }
 
+  bool supports_bulk_ingest_catalog() const override { return false; }
+  bool supports_bulk_ingest_db_schema() const override { return true; }
+  bool supports_bulk_ingest_temporary() const override { return true; }
   bool supports_cancel() const override { return true; }
   bool supports_execute_schema() const override { return true; }
   std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
@@ -579,7 +581,7 @@ TEST_F(PostgresConnectionTest, MetadataSetCurrentDbSchema) {
       AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM schematable", &error),
       IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
-              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
   // 42P01 = table not found
   ASSERT_EQ("42P01", std::string_view(error.sqlstate, 5));
   ASSERT_NE(0, AdbcErrorGetDetailCount(&error));
@@ -879,7 +881,8 @@ class PostgresStatementTest : public ::testing::Test,
 ADBCV_TEST_STATEMENT(PostgresStatementTest)
 
 TEST_F(PostgresStatementTest, SqlIngestTemporaryTable) {
-  ASSERT_THAT(quirks()->DropTable(&connection, "temptable", &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTempTable(&connection, "temptable", &error),
+              IsOkStatus(&error));
 
   ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
                                       ADBC_OPTION_VALUE_DISABLED, &error),
@@ -892,6 +895,8 @@ TEST_F(PostgresStatementTest, SqlIngestTemporaryTable) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionCommit(&connection, &error), IsOkStatus(&error));
 
   {
     adbc_validation::Handle<struct ArrowSchema> schema;
@@ -916,6 +921,40 @@ TEST_F(PostgresStatementTest, SqlIngestTemporaryTable) {
                                        ADBC_INGEST_OPTION_MODE_APPEND, &error),
                 IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+                IsOkStatus(&error));
+    // because temporary table
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  }
+
+  ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
+
+  {
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> batch;
+
+    ArrowSchemaInit(&schema.value);
+    ASSERT_THAT(ArrowSchemaSetTypeStruct(&schema.value, 1), adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT64),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetName(schema->children[0], "ints"),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT((adbc_validation::MakeBatch<int64_t>(
+                    &schema.value, &batch.value, static_cast<struct ArrowError*>(nullptr),
+                    {-1, 0, 1, std::nullopt})),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       "temptable", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                       ADBC_INGEST_OPTION_MODE_APPEND, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TEMPORARY,
+                                       ADBC_OPTION_VALUE_ENABLED, &error),
                 IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
                 IsOkStatus(&error));
@@ -1143,7 +1182,7 @@ TEST_F(PostgresStatementTest, AdbcErrorBackwardsCompatibility) {
   adbc_validation::StreamReader reader;
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                         &reader.rows_affected, error),
-              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, error));
+              IsStatus(ADBC_STATUS_NOT_FOUND, error));
 
   ASSERT_EQ("42P01", std::string_view(error->sqlstate, 5));
   ASSERT_EQ(0, AdbcErrorGetDetailCount(error));

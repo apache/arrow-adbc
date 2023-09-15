@@ -792,9 +792,12 @@ class Cursor(_Closeable):
         table_name: str,
         data: Union[pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader],
         mode: Literal["append", "create", "replace", "create_append"] = "create",
+        *,
+        catalog_name: Optional[str] = None,
+        db_schema_name: Optional[str] = None,
+        temporary: bool = False,
     ) -> int:
-        """
-        Ingest Arrow data into a database table.
+        """Ingest Arrow data into a database table.
 
         Depending on the driver, this can avoid per-row overhead that
         would result from a typical prepare-bind-insert loop.
@@ -812,6 +815,17 @@ class Cursor(_Closeable):
             - 'create': create a table and insert (error if table exists)
             - 'create_append': create a table (if not exists) and insert
             - 'replace': drop existing table (if any), then same as 'create'
+        catalog_name
+            If given, the catalog to create/locate the table in.
+            **This API is EXPERIMENTAL.**
+        db_schema_name
+            If given, the schema to create/locate the table in.
+            **This API is EXPERIMENTAL.**
+        temporary
+            Whether to ingest to a temporary table or not.  Most drivers will
+            not support setting this along with catalog_name and/or
+            db_schema_name.
+            **This API is EXPERIMENTAL.**
 
         Returns
         -------
@@ -822,6 +836,7 @@ class Cursor(_Closeable):
         Notes
         -----
         This is an extension and not part of the DBAPI standard.
+
         """
         if mode == "append":
             c_mode = _lib.INGEST_OPTION_MODE_APPEND
@@ -833,12 +848,36 @@ class Cursor(_Closeable):
             c_mode = _lib.INGEST_OPTION_MODE_REPLACE
         else:
             raise ValueError(f"Invalid value for 'mode': {mode}")
-        self._stmt.set_options(
-            **{
-                _lib.INGEST_OPTION_TARGET_TABLE: table_name,
-                _lib.INGEST_OPTION_MODE: c_mode,
+
+        options = {
+            _lib.INGEST_OPTION_TARGET_TABLE: table_name,
+            _lib.INGEST_OPTION_MODE: c_mode,
+        }
+        if catalog_name is not None:
+            options[
+                adbc_driver_manager.StatementOptions.INGEST_TARGET_CATALOG.value
+            ] = catalog_name
+        if db_schema_name is not None:
+            options[
+                adbc_driver_manager.StatementOptions.INGEST_TARGET_DB_SCHEMA.value
+            ] = db_schema_name
+        self._stmt.set_options(**options)
+
+        if temporary:
+            self._stmt.set_options(
+                **{
+                    adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: "true",
+                }
+            )
+        else:
+            # Need to explicitly clear it, but not all drivers support this
+            options = {
+                adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: "false",
             }
-        )
+            try:
+                self._stmt.set_options(**options)
+            except NotSupportedError:
+                pass
 
         if isinstance(data, pyarrow.RecordBatch):
             array = _lib.ArrowArrayHandle()

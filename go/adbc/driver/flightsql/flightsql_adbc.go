@@ -68,6 +68,7 @@ import (
 )
 
 const (
+	OptionAuthority           = "adbc.flight.sql.client_option.authority"
 	OptionMTLSCertChain       = "adbc.flight.sql.client_option.mtls_cert_chain"
 	OptionMTLSPrivateKey      = "adbc.flight.sql.client_option.mtls_private_key"
 	OptionSSLOverrideHostname = "adbc.flight.sql.client_option.tls_override_hostname"
@@ -167,6 +168,7 @@ type dbDialOpts struct {
 	opts       []grpc.DialOption
 	block      bool
 	maxMsgSize int
+	authority  string
 }
 
 func (d *dbDialOpts) rebuild() {
@@ -177,6 +179,9 @@ func (d *dbDialOpts) rebuild() {
 	}
 	if d.block {
 		d.opts = append(d.opts, grpc.WithBlock())
+	}
+	if d.authority != "" {
+		d.opts = append(d.opts, grpc.WithAuthority(d.authority))
 	}
 }
 
@@ -207,6 +212,11 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 
 	for k, v := range cnOptions {
 		d.options[k] = v
+	}
+
+	if authority, ok := cnOptions[OptionAuthority]; ok {
+		d.dialOpts.authority = authority
+		delete(cnOptions, OptionAuthority)
 	}
 
 	mtlsCert := cnOptions[OptionMTLSCertChain]

@@ -45,20 +45,24 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
 
   AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
                            struct AdbcError* error) const override {
-    struct AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    AdbcStatusCode status = AdbcStatementNew(connection, &statement, error);
-    if (status != ADBC_STATUS_OK) return status;
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP TABLE IF EXISTS " + name;
-    status = AdbcStatementSetSqlQuery(&statement, query.c_str(), error);
-    if (status != ADBC_STATUS_OK) {
-      std::ignore = AdbcStatementRelease(&statement, error);
-      return status;
-    }
-    status = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, error);
-    std::ignore = AdbcStatementRelease(&statement, error);
-    return status;
+    std::string query = "DROP TABLE IF EXISTS \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
+  }
+
+  AdbcStatusCode DropTempTable(struct AdbcConnection* connection, const std::string& name,
+                               struct AdbcError* error) const override {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string query = "DROP TABLE IF EXISTS temp . \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
   }
 
   std::string BindParameter(int index) const override { return "?"; }
@@ -97,6 +101,8 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
            std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;
   }
+  bool supports_bulk_ingest_catalog() const override { return true; }
+  bool supports_bulk_ingest_temporary() const override { return true; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_get_option() const override { return false; }
   std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
@@ -268,7 +274,7 @@ class SqliteStatementTest : public ::testing::Test,
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
 TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
-  ASSERT_THAT(quirks()->DropTable(&connection, "\"test-table\"", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "test-table", &error),
               adbc_validation::IsOkStatus(&error));
 
   std::string table = "test-table";

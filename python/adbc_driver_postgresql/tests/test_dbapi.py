@@ -174,7 +174,7 @@ def test_stmt_ingest(postgres: dbapi.Connection) -> None:
         cur.execute("DROP TABLE IF EXISTS test_ingest")
 
         with pytest.raises(
-            postgres.ProgrammingError, match='"test_ingest" does not exist'
+            postgres.ProgrammingError, match='"public.test_ingest" does not exist'
         ):
             cur.adbc_ingest("test_ingest", table, mode="append")
         postgres.rollback()
@@ -250,3 +250,88 @@ def test_reuse(postgres: dbapi.Connection) -> None:
 
         cur.execute("SELECT 2")
         assert cur.fetchone() == (2,)
+
+
+def test_ingest(postgres: dbapi.Connection) -> None:
+    table = pyarrow.Table.from_pydict({"numbers": [1, 2], "letters": ["a", "b"]})
+
+    with postgres.cursor() as cur:
+        cur.adbc_ingest("foo", table, mode="replace", db_schema_name="public")
+
+        cur.execute("SELECT * FROM public.foo")
+        assert cur.fetch_arrow_table() == table
+
+        with pytest.raises(dbapi.NotSupportedError):
+            cur.adbc_ingest("foo", table, catalog_name="main")
+
+
+def test_ingest_temporary(postgres: dbapi.Connection) -> None:
+    table = pyarrow.Table.from_pydict(
+        {
+            "numbers": [1, 2],
+            "letters": ["a", "b"],
+        }
+    )
+    temp = pyarrow.Table.from_pydict(
+        {
+            "ints": [3, 4],
+            "strs": ["c", "d"],
+        }
+    )
+
+    table2 = pyarrow.Table.from_pydict(
+        {
+            "numbers": [1, 2, 1, 2],
+            "letters": ["a", "b", "a", "b"],
+        }
+    )
+    temp2 = pyarrow.Table.from_pydict(
+        {
+            "ints": [3, 4, 3, 4],
+            "strs": ["c", "d", "c", "d"],
+        }
+    )
+
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS public.temporary")
+        cur.execute("DROP TABLE IF EXISTS pg_temp.temporary")
+
+        cur.adbc_ingest("temporary", table, mode="create")
+        cur.adbc_ingest("temporary", temp, mode="create", temporary=True)
+
+        cur.execute("SELECT * FROM public.temporary")
+        assert cur.fetch_arrow_table() == table
+        cur.execute("SELECT * FROM pg_temp.temporary")
+        assert cur.fetch_arrow_table() == temp
+        cur.execute("SELECT * FROM temporary")
+        assert cur.fetch_arrow_table() == temp
+
+        cur.adbc_ingest("temporary", table, mode="append")
+        cur.adbc_ingest("temporary", temp, mode="append", temporary=True)
+
+        cur.execute("SELECT * FROM public.temporary")
+        assert cur.fetch_arrow_table() == table2
+        cur.execute("SELECT * FROM pg_temp.temporary")
+        assert cur.fetch_arrow_table() == temp2
+        cur.execute("SELECT * FROM temporary")
+        assert cur.fetch_arrow_table() == temp2
+
+        cur.adbc_ingest("temporary", table, mode="replace")
+        cur.adbc_ingest("temporary", temp, mode="replace", temporary=True)
+
+        cur.execute("SELECT * FROM public.temporary")
+        assert cur.fetch_arrow_table() == table
+        cur.execute("SELECT * FROM pg_temp.temporary")
+        assert cur.fetch_arrow_table() == temp
+        cur.execute("SELECT * FROM temporary")
+        assert cur.fetch_arrow_table() == temp
+
+        cur.adbc_ingest("temporary", table, mode="create_append")
+        cur.adbc_ingest("temporary", temp, mode="create_append", temporary=True)
+
+        cur.execute("SELECT * FROM public.temporary")
+        assert cur.fetch_arrow_table() == table2
+        cur.execute("SELECT * FROM pg_temp.temporary")
+        assert cur.fetch_arrow_table() == temp2
+        cur.execute("SELECT * FROM temporary")
+        assert cur.fetch_arrow_table() == temp2
