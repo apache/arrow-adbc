@@ -433,14 +433,17 @@ struct BindStream {
 
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-                  overflow_safe =
-                      val <= kMaxSafeSecondsToMicros && val >= kMinSafeSecondsToMicros;
-                  val *= 1000000;
+                  if ((overflow_safe = val <= kMaxSafeSecondsToMicros &&
+                                       val >= kMinSafeSecondsToMicros)) {
+                    val *= 1000000;
+                  }
+
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
-                  overflow_safe =
-                      val <= kMaxSafeMillisToMicros && val >= kMinSafeMillisToMicros;
-                  val *= 1000;
+                  if ((overflow_safe = val <= kMaxSafeMillisToMicros &&
+                                       val >= kMinSafeMillisToMicros)) {
+                    val *= 1000;
+                  }
                   break;
                 case NANOARROW_TIME_UNIT_MICRO:
                   break;
