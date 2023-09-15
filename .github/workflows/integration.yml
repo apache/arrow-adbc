@@ -274,6 +274,7 @@ jobs:
       - name: Build Python PostgreSQL Driver
         shell: bash -l {0}
         env:
+          LD_PRELOAD: "$(gcc --print-file-name=libasan.so)"  # for sanitizer
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_POSTGRESQL: "1"
