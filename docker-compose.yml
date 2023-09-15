@@ -181,9 +181,14 @@ services:
 
   postgres-test:
     container_name: adbc_postgres_test
-    image: postgres:latest
+    image: postgres:${POSTGRES_VERSION:-latest}
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
