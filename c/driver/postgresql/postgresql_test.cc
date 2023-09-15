@@ -1283,6 +1283,23 @@ class PostgresTypeTest : public ::testing::TestWithParam<TypeTestCase> {
 };
 
 TEST_P(PostgresTypeTest, SelectValue) {
+  std::string value = GetParam().sql_literal;
+  if ((value == "'-inf'") || (value == "'inf'")) {
+    const uint32_t info_code = ADBC_INFO_VENDOR_VERSION;
+    const uint32_t info[] = {info_code};
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(
+        AdbcConnectionGetInfo(&connection_, info, 1, &reader.stream.value, &error_),
+        IsOkStatus(&error_));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    const ArrowStringView pg_version =
+        ArrowArrayViewGetStringUnsafe(reader.array_view->children[1]->children[0], 0);
+    const std::string version(pg_version.data, pg_version.size_bytes);
+    if (version < "140000") {
+      GTEST_SKIP() << "-inf and inf not implemented until postgres 14";
+    }
+  }
   // create table
   std::string query = "CREATE TABLE foo (col ";
   query += GetParam().sql_type;
