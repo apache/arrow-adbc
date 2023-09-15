@@ -250,7 +250,8 @@ std::string GetDriverVendorVersion(struct AdbcConnection* connection) {
   struct AdbcError error = ADBC_ERROR_INIT;
   AdbcConnectionGetInfo(connection, info, 1, &reader.stream.value, &error),
       reader.GetSchema();
-  if (error.private_data != nullptr) {
+  if (error.release) {
+    error.release(&error);
     throw std::runtime_error("error occured calling AdbcConnectionGetInfo!");
   }
 
