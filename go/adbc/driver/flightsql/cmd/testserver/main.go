@@ -39,10 +39,26 @@ import (
 	"github.com/apache/arrow/go/v13/arrow/memory"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type ExampleServer struct {
 	flightsql.BaseServer
+}
+
+func StatusWithDetail(code codes.Code, message string, details ...proto.Message) error {
+	p := status.New(code, message).Proto()
+	// Have to do this by hand because gRPC uses deprecated proto import
+	for _, detail := range details {
+		any, err := anypb.New(detail)
+		if err != nil {
+			panic(err)
+		}
+		p.Details = append(p.Details, any)
+	}
+	return status.FromProto(p).Err()
 }
 
 func (srv *ExampleServer) ClosePreparedStatement(ctx context.Context, request flightsql.ActionClosePreparedStatementRequest) error {
@@ -50,12 +66,22 @@ func (srv *ExampleServer) ClosePreparedStatement(ctx context.Context, request fl
 }
 
 func (srv *ExampleServer) CreatePreparedStatement(ctx context.Context, req flightsql.ActionCreatePreparedStatementRequest) (result flightsql.ActionCreatePreparedStatementResult, err error) {
+	if req.GetQuery() == "error_create_prepared_statement" {
+		err = status.Error(codes.InvalidArgument, "expected error (DoAction)")
+		return
+	}
+	if req.GetQuery() == "error_create_prepared_statement_detail" {
+		detail1 := wrapperspb.String("detail1")
+		detail2 := wrapperspb.String("detail2")
+		err = StatusWithDetail(codes.InvalidArgument, "expected error (DoAction)", detail1, detail2)
+		return
+	}
 	result.Handle = []byte(req.GetQuery())
 	return
 }
 
 func (srv *ExampleServer) GetFlightInfoPreparedStatement(_ context.Context, cmd flightsql.PreparedStatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
-	if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_get")) || bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_get_stream")) {
+	if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_get")) || bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_get_stream")) || bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_get_detail")) || bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_get_stream_detail")) || bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("forever")) {
 		schema := arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
 		return &flight.FlightInfo{
 			Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: desc.Cmd}}},
@@ -64,6 +90,12 @@ func (srv *ExampleServer) GetFlightInfoPreparedStatement(_ context.Context, cmd 
 			TotalBytes:       -1,
 			Schema:           flight.SerializeSchema(schema, srv.Alloc),
 		}, nil
+	} else if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_get_flight_info")) {
+		return nil, status.Error(codes.InvalidArgument, "expected error (GetFlightInfo)")
+	} else if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_get_flight_info_detail")) {
+		detail1 := wrapperspb.String("detail1")
+		detail2 := wrapperspb.String("detail2")
+		return nil, StatusWithDetail(codes.InvalidArgument, "expected error (GetFlightInfo)", detail1, detail2)
 	}
 
 	return &flight.FlightInfo{
@@ -91,7 +123,31 @@ func (srv *ExampleServer) GetFlightInfoStatement(ctx context.Context, cmd flight
 func (srv *ExampleServer) DoGetPreparedStatement(ctx context.Context, cmd flightsql.PreparedStatementQuery) (schema *arrow.Schema, out <-chan flight.StreamChunk, err error) {
 	log.Printf("DoGetPreparedStatement: %v", cmd.GetPreparedStatementHandle())
 	if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_get")) {
-		err = status.Error(codes.InvalidArgument, "expected error")
+		err = status.Error(codes.InvalidArgument, "expected error (DoGet)")
+		return
+	} else if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_get_detail")) {
+		detail1 := wrapperspb.String("detail1")
+		detail2 := wrapperspb.String("detail2")
+		err = StatusWithDetail(codes.InvalidArgument, "expected error (DoGet)", detail1, detail2)
+		return
+	} else if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("forever")) {
+		ch := make(chan flight.StreamChunk)
+		schema = arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+		var rec arrow.Record
+		rec, _, err = array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"a": 5}]`))
+		go func() {
+			// wait for client cancel
+			<-ctx.Done()
+			defer close(ch)
+
+			// arrow-go crashes if we don't give this
+			ch <- flight.StreamChunk{
+				Data: rec,
+				Desc: nil,
+				Err:  nil,
+			}
+		}()
+		out = ch
 		return
 	}
 
@@ -110,7 +166,15 @@ func (srv *ExampleServer) DoGetPreparedStatement(ctx context.Context, cmd flight
 			ch <- flight.StreamChunk{
 				Data: nil,
 				Desc: nil,
-				Err:  status.Error(codes.InvalidArgument, "expected error"),
+				Err:  status.Error(codes.InvalidArgument, "expected stream error (DoGet)"),
+			}
+		} else if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_get_stream_detail")) {
+			detail1 := wrapperspb.String("detail1")
+			detail2 := wrapperspb.String("detail2")
+			ch <- flight.StreamChunk{
+				Data: nil,
+				Desc: nil,
+				Err:  StatusWithDetail(codes.InvalidArgument, "expected stream error (DoGet)", detail1, detail2),
 			}
 		}
 	}()
@@ -133,6 +197,22 @@ func (srv *ExampleServer) DoGetStatement(ctx context.Context, cmd flightsql.Stat
 	}()
 	out = ch
 	return
+}
+
+func (srv *ExampleServer) DoPutPreparedStatementQuery(ctx context.Context, cmd flightsql.PreparedStatementQuery, reader flight.MessageReader, writer flight.MetadataWriter) error {
+	if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_put")) {
+		return status.Error(codes.Unknown, "expected error (DoPut)")
+	} else if bytes.Equal(cmd.GetPreparedStatementHandle(), []byte("error_do_put_detail")) {
+		detail1 := wrapperspb.String("detail1")
+		detail2 := wrapperspb.String("detail2")
+		return StatusWithDetail(codes.Unknown, "expected error (DoPut)", detail1, detail2)
+	}
+
+	return status.Error(codes.Unimplemented, "DoPutPreparedStatementQuery not implemented")
+}
+
+func (srv *ExampleServer) DoPutPreparedStatementUpdate(context.Context, flightsql.PreparedStatementUpdate, flight.MessageReader) (int64, error) {
+	return 0, status.Error(codes.Unimplemented, "DoPutPreparedStatementUpdate not implemented")
 }
 
 func main() {
