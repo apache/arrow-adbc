@@ -282,13 +282,13 @@ jobs:
       - name: Test Python PostgreSQL Driver
         shell: bash -l {0}
         env:
-          LD_PRELOAD: "$(gcc --print-file-name=libasan.so)"  # for sanitizer
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
           ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
         run: |
           docker compose up --wait --detach postgres-test
-          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          LD_PRELOAD="$(gcc --print-file-name=libasan.so)" \
+            ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
           docker compose down
 
   snowflake:
