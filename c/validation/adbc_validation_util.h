@@ -407,7 +407,6 @@ void CompareSchema(
 
 /// \brief Helper method to get the vendor version of a driver
 /// Sets error on failure
-std::string GetDriverVendorVersion(struct AdbcConnection* connection,
-                                   struct AdbcError* error);
+std::string GetDriverVendorVersion(struct AdbcConnection* connection);
 
 }  // namespace adbc_validation

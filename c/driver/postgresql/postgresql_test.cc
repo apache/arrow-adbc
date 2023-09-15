@@ -429,8 +429,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
       << "expected 1 constraint on adbc_fkey_test table, found: "
       << table->n_table_constraints;
 
-  const std::string version =
-      adbc_validation::GetDriverVendorVersion(&connection, &error);
+  const std::string version = adbc_validation::GetDriverVendorVersion(&connection);
   // ASSERT_EQ(ADBC_STATUS_OK, &error);
   const std::string search_name =
       version < "120000" ? "adbc_fkey_test_fid1_fkey" : "adbc_fkey_test_fid1_fid2_fkey";
@@ -1285,8 +1284,7 @@ class PostgresTypeTest : public ::testing::TestWithParam<TypeTestCase> {
 TEST_P(PostgresTypeTest, SelectValue) {
   std::string value = GetParam().sql_literal;
   if ((value == "'-inf'") || (value == "'inf'")) {
-    const std::string version =
-        adbc_validation::GetDriverVendorVersion(&connection_, &error_);
+    const std::string version = adbc_validation::GetDriverVendorVersion(&connection_);
     // ASSERT_EQ(ADBC_STATUS_OK, &error_);
     if (version < "140000") {
       GTEST_SKIP() << "-inf and inf not implemented until postgres 14";
