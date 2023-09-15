@@ -15,13 +15,10 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.IO;
-using System.Linq;
 using Apache.Arrow.Adbc.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
