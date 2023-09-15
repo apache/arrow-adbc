@@ -640,11 +640,9 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PostgresConnectionGetInfoImpl(const uint32_t* info_codes,
-                                             size_t info_codes_length,
-                                             struct ArrowSchema* schema,
-                                             struct ArrowArray* array,
-                                             struct AdbcError* error) {
+AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
+    const uint32_t* info_codes, size_t info_codes_length, struct ArrowSchema* schema,
+    struct ArrowArray* array, struct AdbcError* error) {
   RAISE_ADBC(AdbcInitConnectionGetInfoSchema(info_codes, info_codes_length, schema, array,
                                              error));
 
@@ -654,10 +652,23 @@ AdbcStatusCode PostgresConnectionGetInfoImpl(const uint32_t* info_codes,
         RAISE_ADBC(
             AdbcConnectionGetInfoAppendString(array, info_codes[i], "PostgreSQL", error));
         break;
-      case ADBC_INFO_VENDOR_VERSION:
-        RAISE_ADBC(AdbcConnectionGetInfoAppendString(
-            array, info_codes[i], std::to_string(PQlibVersion()).c_str(), error));
+      case ADBC_INFO_VENDOR_VERSION: {
+        const char* stmt = "SHOW server_version_num";
+        auto result_helper = PqResultHelper{conn_, std::string(stmt), error};
+        RAISE_ADBC(result_helper.Prepare());
+        RAISE_ADBC(result_helper.Execute());
+        auto it = result_helper.begin();
+        if (it == result_helper.end()) {
+          SetError(error,
+                   "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+          return ADBC_STATUS_INTERNAL;
+        }
+        const char* server_version_num = (*it)[0].data;
+
+        RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                     server_version_num, error));
         break;
+      }
       case ADBC_INFO_DRIVER_NAME:
         RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
                                                      "ADBC PostgreSQL Driver", error));
