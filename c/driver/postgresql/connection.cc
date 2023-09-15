@@ -659,8 +659,7 @@ AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
         RAISE_ADBC(result_helper.Execute());
         auto it = result_helper.begin();
         if (it == result_helper.end()) {
-          SetError(error,
-                   "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+          SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
           return ADBC_STATUS_INTERNAL;
         }
         const char* server_version_num = (*it)[0].data;

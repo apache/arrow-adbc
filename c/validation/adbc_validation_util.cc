@@ -248,8 +248,8 @@ std::string GetDriverVendorVersion(struct AdbcConnection* connection) {
 
   adbc_validation::StreamReader reader;
   struct AdbcError error = ADBC_ERROR_INIT;
-  AdbcConnectionGetInfo(connection, info, 1, &reader.stream.value, &error),
-      reader.GetSchema();
+  AdbcConnectionGetInfo(connection, info, 1, &reader.stream.value, &error);
+  reader.GetSchema();
   if (error.release) {
     error.release(&error);
     throw std::runtime_error("error occured calling AdbcConnectionGetInfo!");
