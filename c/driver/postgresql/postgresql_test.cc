@@ -429,11 +429,14 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
       << "expected 1 constraint on adbc_fkey_test table, found: "
       << table->n_table_constraints;
 
+  const std::string version =
+      adbc_validation::GetDriverVendorVersion(&connection, &error);
+  // ASSERT_EQ(ADBC_STATUS_OK, &error);
+  const std::string search_name =
+      version < "120000" ? "adbc_fkey_test_fid1_fkey" : "adbc_fkey_test_fid1_fid2_fkey";
   struct AdbcGetObjectsConstraint* constraint = AdbcGetObjectsDataGetConstraintByName(
-      *get_objects_data, "postgres", "public", "adbc_fkey_test",
-      "adbc_fkey_test_fid1_fid2_fkey");
-  ASSERT_NE(constraint, nullptr)
-      << "could not find adbc_fkey_test_fid1_fid2_fkey constraint";
+      *get_objects_data, "postgres", "public", "adbc_fkey_test", search_name.c_str());
+  ASSERT_NE(constraint, nullptr) << "could not find " << search_name << " constraint";
 
   auto constraint_type = std::string(constraint->constraint_type.data,
                                      constraint->constraint_type.size_bytes);
@@ -1282,17 +1285,9 @@ class PostgresTypeTest : public ::testing::TestWithParam<TypeTestCase> {
 TEST_P(PostgresTypeTest, SelectValue) {
   std::string value = GetParam().sql_literal;
   if ((value == "'-inf'") || (value == "'inf'")) {
-    const uint32_t info_code = ADBC_INFO_VENDOR_VERSION;
-    const uint32_t info[] = {info_code};
-    adbc_validation::StreamReader reader;
-    ASSERT_THAT(
-        AdbcConnectionGetInfo(&connection_, info, 1, &reader.stream.value, &error_),
-        IsOkStatus(&error_));
-    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-    ASSERT_NO_FATAL_FAILURE(reader.Next());
-    const ArrowStringView pg_version =
-        ArrowArrayViewGetStringUnsafe(reader.array_view->children[1]->children[0], 0);
-    const std::string version(pg_version.data, pg_version.size_bytes);
+    const std::string version =
+        adbc_validation::GetDriverVendorVersion(&connection_, &error_);
+    // ASSERT_EQ(ADBC_STATUS_OK, &error_);
     if (version < "140000") {
       GTEST_SKIP() << "-inf and inf not implemented until postgres 14";
     }

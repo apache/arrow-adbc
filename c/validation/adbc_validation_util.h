@@ -405,4 +405,9 @@ void CompareSchema(
     struct ArrowSchema* schema,
     const std::vector<std::tuple<std::optional<std::string>, ArrowType, bool>>& fields);
 
+/// \brief Helper method to get the vendor version of a driver
+/// Sets error on failure
+std::string GetDriverVendorVersion(struct AdbcConnection* connection,
+                                   struct AdbcError* error);
+
 }  // namespace adbc_validation
