@@ -1283,6 +1283,10 @@ class PostgresTypeTest : public ::testing::TestWithParam<TypeTestCase> {
 };
 
 TEST_P(PostgresTypeTest, SelectValue) {
+  int k = 0x7fffffff;
+  k += 1;
+  std::cout << "the number is " << k;
+
   // create table
   std::string query = "CREATE TABLE foo (col ";
   query += GetParam().sql_type;
