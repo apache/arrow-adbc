@@ -167,6 +167,7 @@ cdef object convert_error(CAdbcStatusCode status, CAdbcError* error) except *:
     message = CAdbcStatusCodeMessage(status).decode("utf-8")
     vendor_code = None
     sqlstate = None
+    details = []
 
     if error != NULL:
         if error.message != NULL:
@@ -181,7 +182,6 @@ cdef object convert_error(CAdbcStatusCode status, CAdbcError* error) except *:
             message += f". SQLSTATE: {sqlstate}"
 
         num_details = AdbcErrorGetDetailCount(error)
-        details = []
         for index in range(num_details):
             c_detail = AdbcErrorGetDetail(error, index)
             if c_detail.key == NULL or c_detail.value == NULL:

@@ -30,9 +30,8 @@ cdef class _AdbcErrorHelper:
 
     def check_error(self, exception):
         cdef:
-            CAdbcStatusCode c_status
+            CAdbcStatusCode c_status = ADBC_STATUS_OK
             const CAdbcError* error = PyAdbcErrorFromArrayStream(&self.c_stream, &c_status)
-            CAdbcErrorDetail detail
 
         exc = convert_error(c_status, <CAdbcError*> error)
         if exc is not None:
