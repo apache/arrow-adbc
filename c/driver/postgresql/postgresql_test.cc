@@ -126,9 +126,6 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
         return "(unknown)";
       case ADBC_INFO_VENDOR_NAME:
         return "PostgreSQL";
-      case ADBC_INFO_VENDOR_VERSION:
-        // Strings are checked via substring match
-        return "15";
       default:
         return std::nullopt;
     }
@@ -432,11 +429,12 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
       << "expected 1 constraint on adbc_fkey_test table, found: "
       << table->n_table_constraints;
 
+  const std::string version = adbc_validation::GetDriverVendorVersion(&connection);
+  const std::string search_name =
+      version < "120000" ? "adbc_fkey_test_fid1_fkey" : "adbc_fkey_test_fid1_fid2_fkey";
   struct AdbcGetObjectsConstraint* constraint = AdbcGetObjectsDataGetConstraintByName(
-      *get_objects_data, "postgres", "public", "adbc_fkey_test",
-      "adbc_fkey_test_fid1_fid2_fkey");
-  ASSERT_NE(constraint, nullptr)
-      << "could not find adbc_fkey_test_fid1_fid2_fkey constraint";
+      *get_objects_data, "postgres", "public", "adbc_fkey_test", search_name.c_str());
+  ASSERT_NE(constraint, nullptr) << "could not find " << search_name << " constraint";
 
   auto constraint_type = std::string(constraint->constraint_type.data,
                                      constraint->constraint_type.size_bytes);
@@ -1283,10 +1281,13 @@ class PostgresTypeTest : public ::testing::TestWithParam<TypeTestCase> {
 };
 
 TEST_P(PostgresTypeTest, SelectValue) {
-  int k = 0x7fffffff;
-  k += 1;
-  std::cout << "the number is " << k;
-
+  std::string value = GetParam().sql_literal;
+  if ((value == "'-inf'") || (value == "'inf'")) {
+    const std::string version = adbc_validation::GetDriverVendorVersion(&connection_);
+    if (version < "140000") {
+      GTEST_SKIP() << "-inf and inf not implemented until postgres 14";
+    }
+  }
   // create table
   std::string query = "CREATE TABLE foo (col ";
   query += GetParam().sql_type;

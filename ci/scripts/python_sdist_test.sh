@@ -47,7 +47,7 @@ echo "=== Installing sdists ==="
 for component in ${COMPONENTS}; do
     pip install --no-deps --force-reinstall ${source_dir}/python/${component}/dist/*.tar.gz
 done
-pip install pytest pyarrow pandas
+pip install pytest pyarrow pandas protobuf
 
 echo "=== (${PYTHON_VERSION}) Testing sdists ==="
 test_packages

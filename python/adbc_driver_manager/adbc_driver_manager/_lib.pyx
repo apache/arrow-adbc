@@ -158,15 +158,16 @@ INGEST_OPTION_MODE_CREATE_APPEND = ADBC_INGEST_OPTION_MODE_CREATE_APPEND.decode(
 INGEST_OPTION_TARGET_TABLE = ADBC_INGEST_OPTION_TARGET_TABLE.decode("utf-8")
 
 
-cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
+cdef object convert_error(CAdbcStatusCode status, CAdbcError* error) except *:
     cdef CAdbcErrorDetail c_detail
 
     if status == ADBC_STATUS_OK:
-        return
+        return None
 
     message = CAdbcStatusCodeMessage(status).decode("utf-8")
     vendor_code = None
     sqlstate = None
+    details = []
 
     if error != NULL:
         if error.message != NULL:
@@ -181,7 +182,6 @@ cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
             message += f". SQLSTATE: {sqlstate}"
 
         num_details = AdbcErrorGetDetailCount(error)
-        details = []
         for index in range(num_details):
             c_detail = AdbcErrorGetDetail(error, index)
             if c_detail.key == NULL or c_detail.value == NULL:
@@ -216,8 +216,15 @@ cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
                     ADBC_STATUS_UNAUTHORIZED):
         klass = ProgrammingError
     elif status == ADBC_STATUS_NOT_IMPLEMENTED:
-        raise NotSupportedError(message, vendor_code=vendor_code, sqlstate=sqlstate, details=details)
-    raise klass(message, status_code=status, vendor_code=vendor_code, sqlstate=sqlstate, details=details)
+        return NotSupportedError(message, vendor_code=vendor_code, sqlstate=sqlstate, details=details)
+    return klass(message, status_code=status, vendor_code=vendor_code, sqlstate=sqlstate, details=details)
+
+
+cdef void check_error(CAdbcStatusCode status, CAdbcError* error) except *:
+    if status == ADBC_STATUS_OK:
+        return
+
+    raise convert_error(status, error)
 
 
 cdef CAdbcError empty_error():

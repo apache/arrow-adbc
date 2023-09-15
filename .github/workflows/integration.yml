@@ -186,19 +186,6 @@ jobs:
   postgresql:
     name: "PostgreSQL Integration Tests"
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DB: tempdb
-          POSTGRES_PASSWORD: password
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
     steps:
       - uses: actions/checkout@v3
         with:
@@ -233,14 +220,56 @@ jobs:
           BUILD_DRIVER_POSTGRESQL: "1"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test PostgreSQL Driver
+      - name: Test PostgreSQL Driver - postgres 11
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
           ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
         run: |
+          env POSTGRES_VERSION=11 docker compose up --wait --detach postgres-test
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 12
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          env POSTGRES_VERSION=12 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 13
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          env POSTGRES_VERSION=13 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 14
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          env POSTGRES_VERSION=14 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 15
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          env POSTGRES_VERSION=15 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          docker compose down
 
       - name: Build Python PostgreSQL Driver
         shell: bash -l {0}
@@ -257,7 +286,9 @@ jobs:
           BUILD_DRIVER_POSTGRESQL: "1"
           ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
         run: |
+          docker compose up --wait --detach postgres-test
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
 
   snowflake:
     name: "Snowflake Integration Tests"
