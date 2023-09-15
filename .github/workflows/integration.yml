@@ -186,7 +186,6 @@ jobs:
   postgresql:
     name: "PostgreSQL Integration Tests"
     runs-on: ubuntu-latest
-    env:
     services:
       postgres:
         image: postgres
