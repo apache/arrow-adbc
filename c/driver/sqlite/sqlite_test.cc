@@ -455,6 +455,9 @@ TEST_F(SqliteReaderTest, IntExtremesStrs) {
 }
 
 TEST_F(SqliteReaderTest, FloatExtremes) {
+  int k = 0x7fffffff;
+  k += 1;
+  printf("the number is %d", k);
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
       ExecSelect(R"((NULL), (9e999), (NULL), (-9e999))", kInferRows, &reader));

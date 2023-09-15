@@ -186,6 +186,9 @@ jobs:
   postgresql:
     name: "PostgreSQL Integration Tests"
     runs-on: ubuntu-latest
+    env:
+      # Sanitizer support
+      LD_PRELOAD: "$(gcc --print-file-name=libasan.so)"
     services:
       postgres:
         image: postgres
@@ -231,8 +234,6 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_USE_ASAN: "OFF"
-          ADBC_USE_UBSAN: "OFF"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test PostgreSQL Driver
