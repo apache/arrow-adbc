@@ -117,7 +117,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
             else if (arrowArray is BooleanArray)
             {
-                return Convert.ToBoolean(((BooleanArray)arrowArray).Values[index]);
+                return ((BooleanArray)arrowArray).GetValue(index);
             }
             else if (arrowArray is StringArray)
             {
@@ -277,7 +277,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 string value = match.Value;
 
                 if (!string.IsNullOrEmpty(value))
-                    return value;
+                    return value.Trim();
             }
 
             throw oex;

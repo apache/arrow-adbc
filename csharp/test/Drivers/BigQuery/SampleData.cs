@@ -17,10 +17,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Text;
-using Apache.Arrow.Types;
-using Google.Protobuf.WellKnownTypes;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
@@ -43,7 +40,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 new ColumnNetTypeArrowTypeValue("id", typeof(long), typeof(Int64Array), 1L),
                 new ColumnNetTypeArrowTypeValue("number", typeof(double), typeof(FloatArray), 1.23d),
                 new ColumnNetTypeArrowTypeValue("decimal", typeof(decimal), typeof(Decimal256Array), decimal.Parse("4.56")),
-                new ColumnNetTypeArrowTypeValue("big_decimal", typeof(string), typeof(StringArray), " 789000000000000000000000000000000000000 "),
+                new ColumnNetTypeArrowTypeValue("big_decimal", typeof(string), typeof(StringArray), "789000000000000000000000000000000000000"),
                 new ColumnNetTypeArrowTypeValue("is_active", typeof(bool), typeof(BooleanArray), true),
                 new ColumnNetTypeArrowTypeValue("name", typeof(string), typeof(StringArray), "John Doe"),
                 new ColumnNetTypeArrowTypeValue("data", typeof(byte[]), typeof(BinaryArray), UTF8Encoding.UTF8.GetBytes("abc123")),

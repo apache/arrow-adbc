@@ -35,6 +35,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     public class ClientTests
     {
         /// <summary>
+        /// Validates if the client execute updates.
+        /// </summary>
+        [TestMethod]
+        public void CanClientExecuteUpdate()
+        {
+            BigQueryTestConfiguration testConfiguration = Utils.GetTestConfiguration<BigQueryTestConfiguration>("resources/bigqueryconfig.json");
+
+            using (Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            {
+                adbcConnection.Open();
+
+                string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
+
+                List<int> expectedResults = new List<int>() { -1, 1, 1 };
+
+                for (int i = 0; i < queries.Length; i++)
+                {
+                    string query = queries[i];
+                    AdbcCommand adbcCommand = adbcConnection.CreateCommand();
+                    adbcCommand.CommandText = query;
+
+                    int rows = adbcCommand.ExecuteNonQuery();
+
+                    Assert.AreEqual(expectedResults[i], rows, $"The expected affected rows do not match the actual affected rows at position {i}.");
+                }
+            }
+        }
+
+        /// <summary>
         /// Validates if the client can connect to a live server and
         /// parse the results.
         /// </summary>
@@ -66,37 +95,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             Assert.AreEqual(testConfiguration.ExpectedResultsCount, count);
         }
 
-
-        /// <summary>
-        /// Validates if the client execute updates.
-        /// </summary>
-        [TestMethod]
-        public void CanClientExecuteUpdate()
-        {
-            BigQueryTestConfiguration testConfiguration = Utils.GetTestConfiguration<BigQueryTestConfiguration>("resources/bigqueryconfig.json");
-
-            using (Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
-            {
-                adbcConnection.Open();
-
-                string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
-
-                List<int> expectedResults = new List<int>() { -1, 1, 1 };
-
-                // the last query is blank
-                for (int i = 0; i < queries.Length - 1; i++)
-                {
-                    string query = queries[i];
-                    AdbcCommand adbcCommand = adbcConnection.CreateCommand();
-                    adbcCommand.CommandText = query;
-
-                    int rows = adbcCommand.ExecuteNonQuery();
-
-                    Assert.AreEqual(expectedResults[i], rows, $"The expected affected rows do not match the actual affected rows at position {i}.");
-                }
-            }
-        }
-
         /// <summary>
         /// Validates if the client is retrieving and converting values
         /// to the expected types.
@@ -126,122 +124,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     object value = reader.GetValue(i);
                     ColumnNetTypeArrowTypeValue ctv = expectedValues[i];
 
-                    AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
+                    Adbc.Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
                 }
             }
         }
-
-        private void AssertTypeAndValue(ColumnNetTypeArrowTypeValue ctv, object value, DbDataReader reader, ReadOnlyCollection<DbColumn> column_schema, DataTable dataTable)
-        {
-            string name = ctv.Name;
-            Type arrowType = column_schema.Where(x => x.ColumnName == name).FirstOrDefault()?.DataType;
-            Type dataTableType = null;
-
-            foreach (DataRow row in dataTable.Rows)
-            {
-                if (row.ItemArray[0].ToString() == name)
-                {
-                    dataTableType = row.ItemArray[2] as Type;
-                }
-            }
-
-            Type netType = reader[name]?.GetType();
-
-            Assert.IsTrue(arrowType == ctv.ExpectedNetType, $"{name} is {arrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema");
-
-            Assert.IsTrue(dataTableType == ctv.ExpectedNetType, $"{name} is {dataTableType.Name} and not {ctv.ExpectedNetType.Name} in the data table");
-
-            if (netType != null)
-            {
-                if(netType.BaseType.Name.Contains("PrimitiveArray") && value != null)
-                {
-                    object internalValue = value.GetType().GetMethod("GetValue").Invoke(value, new object[] { 0 });
-
-                    Assert.IsTrue(internalValue.GetType() == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
-                }
-                else
-                {
-                    Assert.IsTrue(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
-                }
-            }
-
-            if (value != null)
-            {
-                if (!value.GetType().BaseType.Name.Contains("PrimitiveArray"))
-                {
-                    Assert.AreEqual(ctv.ExpectedNetType, value.GetType(), $"Expected type does not match actual type for {ctv.Name}");
-
-                    if (value.GetType() == typeof(byte[]))
-                    {
-                        byte[] actualBytes = (byte[])value;
-                        byte[] expectedBytes = (byte[])ctv.ExpectedValue;
-
-                        Assert.IsTrue(actualBytes.SequenceEqual(expectedBytes), $"byte[] values do not match expected values for {ctv.Name}");
-                    }
-                    else
-                    {
-                        Assert.AreEqual(ctv.ExpectedValue, value, $"Expected value does not match actual value for {ctv.Name}");
-                    }
-                }
-                else
-                {
-                    IEnumerable list = value.GetType().GetMethod("ToList").Invoke(value, new object[] { false }) as IEnumerable;
-
-                    IEnumerable expectedList = ctv.ExpectedValue.GetType().GetMethod("ToList").Invoke(ctv.ExpectedValue, new object[] { false }) as IEnumerable;
-
-                    int i = -1;
-
-                    foreach(var actual in list)
-                    {
-                        i++;
-                        int j = -1;
-
-                        foreach(var expected in expectedList)
-                        {
-                            j++;
-
-                            if(i == j)
-                            {
-                                Assert.AreEqual(expected, actual, $"Expected value does not match actual value for {ctv.Name} at {i}");
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                Console.WriteLine($"The value for {ctv.Name} is null and cannot be verified");
-            }
-        }
-
-        //private Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(BigQueryTestConfiguration testConfiguration)
-        //{
-        //    // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html
-
-        //    DbConnectionStringBuilder builder = new DbConnectionStringBuilder(true);
-
-        //    builder["adbc.snowflake.sql.account"] = testConfiguration.Account;
-        //    builder["adbc.snowflake.sql.warehouse"] = testConfiguration.Warehouse;
-        //    builder["username"] = testConfiguration.User;
-
-        //    if (!string.IsNullOrEmpty(testConfiguration.AuthenticationTokenPath))
-        //    {
-        //        string privateKey = File.ReadAllText(testConfiguration.AuthenticationTokenPath);
-        //        builder["adbc.snowflake.sql.auth_type"] = testConfiguration.AuthenticationType;
-        //        builder["adbc.snowflake.sql.client_option.auth_token"] = privateKey;
-        //    }
-        //    else
-        //    {
-        //        builder["password"] = testConfiguration.Password;
-        //    }
-
-        //    AdbcDriver snowflakeDriver = BigQueryTestingUtils.GetBigQueryAdbcDriver(testConfiguration);
-
-        //    return new Client.AdbcConnection(builder.ConnectionString)
-        //    {
-        //        AdbcDriver = snowflakeDriver
-        //    };
-        //}
 
         private Client.AdbcConnection GetAdbcConnection(BigQueryTestConfiguration testConfiguration)
         {
