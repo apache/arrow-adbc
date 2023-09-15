@@ -126,9 +126,6 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
         return "(unknown)";
       case ADBC_INFO_VENDOR_NAME:
         return "PostgreSQL";
-      case ADBC_INFO_VENDOR_VERSION:
-        // Strings are checked via substring match
-        return "15";
       default:
         return std::nullopt;
     }
