@@ -30,12 +30,14 @@ cdef class _AdbcErrorHelper:
 
     def check_error(self, exception):
         cdef:
-            CAdbcStatusCode c_status
+            CAdbcStatusCode c_status = ADBC_STATUS_OK
             const CAdbcError* error = PyAdbcErrorFromArrayStream(&self.c_stream, &c_status)
-            CAdbcErrorDetail detail
 
-        if error != NULL:
-            check_error(c_status, <CAdbcError*> error)
+        exc = convert_error(c_status, <CAdbcError*> error)
+        if exc is not None:
+            # Suppress "During handling of the above exception, another
+            # exception occurred"
+            raise exc from None
 
         raise exception
 
