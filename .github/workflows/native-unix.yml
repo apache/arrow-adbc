@@ -67,8 +67,6 @@ jobs:
       matrix:
         os: ["macos-latest", "ubuntu-latest"]
     env:
-      # Sanitizer support
-      LD_PRELOAD: "$(gcc --print-file-name=libasan.so)"
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
