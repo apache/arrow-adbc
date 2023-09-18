@@ -287,9 +287,7 @@ jobs:
           ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
         run: |
           docker compose up --wait --detach postgres-test
-          ASAN_OPTIONS=detect_leaks=0 \
-            LD_PRELOAD="$(gcc --print-file-name=libasan.so)" \
-            ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
           docker compose down
 
   snowflake:
