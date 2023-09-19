@@ -100,7 +100,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 		_ = s.s.Serve()
 	}()
 
-	return driver.Driver{Alloc: s.mem}
+	return driver.NewDriver(s.mem)
 }
 
 func (s *FlightSQLQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
@@ -902,7 +902,7 @@ func (suite *ConnectionTests) SetupSuite() {
 
 	var err error
 	suite.ctx = context.Background()
-	suite.Driver = driver.Driver{Alloc: suite.alloc}
+	suite.Driver = driver.NewDriver(suite.alloc)
 	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+tcp://" + suite.server.Addr().String(),
 	})
@@ -995,7 +995,7 @@ func (suite *DomainSocketTests) SetupSuite() {
 	}()
 
 	suite.ctx = context.Background()
-	suite.Driver = driver.Driver{Alloc: suite.alloc}
+	suite.Driver = driver.NewDriver(suite.alloc)
 	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+unix://" + listenSocket,
 	})
