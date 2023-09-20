@@ -15,7 +15,8 @@ write_adbc(
   db_or_con,
   target_table,
   ...,
-  mode = c("default", "create", "append")
+  mode = c("default", "create", "append"),
+  temporary = FALSE
 )
 }
 \arguments{
@@ -37,6 +38,8 @@ or  \link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow_array_stream}.}
 
 \item{mode}{One of "create", "append", or "default" (error if the schema
 is not compatible or append otherwise).}
+
+\item{temporary}{Use TRUE to create a table as a temporary table.}
 }
 \value{
 \itemize{
