@@ -1208,6 +1208,10 @@ void StatementTest::TestSqlIngestNumericType(ArrowType type) {
   return TestSqlIngestType(type, values);
 }
 
+void StatementTest::TestSqlIngestBool() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<bool>(NANOARROW_TYPE_BOOL));
+}
+
 void StatementTest::TestSqlIngestUInt8() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<uint8_t>(NANOARROW_TYPE_UINT8));
 }
