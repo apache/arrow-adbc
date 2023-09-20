@@ -192,6 +192,7 @@ adbc_connection_release <- function(connection) {
 #' @param column_name Only show columns with the given name. If NULL, do not
 #'   filter by name. May be a search pattern.
 #' @param serialized_partition The partition descriptor.
+#' @param value A string or identifier.
 #'
 #' @return
 #'   - `adbc_connection_get_info()`, `adbc_connection_get_objects()`,
@@ -300,6 +301,30 @@ adbc_connection_commit <- function(connection) {
   error <- adbc_allocate_error()
   .Call(RAdbcConnectionCommit, connection, error)
   invisible(connection)
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_quote_identifier <- function(connection, value, ...) {
+  UseMethod("adbc_connection_quote_identifier")
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_quote_string <- function(connection, value, ...) {
+  UseMethod("adbc_connection_quote_string")
+}
+
+#' @export
+adbc_connection_quote_identifier.default <- function(connection, value, ...) {
+  out <- gsub('"', '""', enc2utf8(value))
+  paste0('"', out, '"')
+}
+
+#' @export
+adbc_connection_quote_string.default <- function(connection, value, ...) {
+  out <- gsub("'", "''", enc2utf8(value))
+  paste0("'", out, "'")
 }
 
 #' @rdname adbc_connection_get_info
