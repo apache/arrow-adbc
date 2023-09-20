@@ -56,7 +56,7 @@ The ADO.NET Client is designed so that properties in the connection string map t
 AdbcDriver.Open(adbcConnectionParameters);
 ```
 
-The connection string is parsed using the `DbConnectionStringBuilder` object and the key/value pairs are then added to the properties for the ADBC driver.
+The connection string is parsed using the `DbConnectionStringBuilder` class and the key/value pairs are then added to the properties for the ADBC driver.
 
 For example, when using the [Snowflake ADBC Go Driver](https://arrow.apache.org/adbc/main/driver/snowflake.html#client-options), the connection string will look similar to:
 
