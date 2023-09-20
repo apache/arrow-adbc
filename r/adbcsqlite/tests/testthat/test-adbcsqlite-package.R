@@ -110,4 +110,12 @@ test_that("write_adbc() with temporary = TRUE works with sqlite databases", {
 
   stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
   expect_identical(as.data.frame(stream), df)
+
+  # Check that it was actually a temporary table
+  adbcdrivermanager::adbc_connection_release(con)
+  con <- adbc_connection_init(db)
+  expect_error(
+    adbcdrivermanager::read_adbc(con, "SELECT * from df"),
+    class = "adbc_status_invalid_argument"
+  )
 })
