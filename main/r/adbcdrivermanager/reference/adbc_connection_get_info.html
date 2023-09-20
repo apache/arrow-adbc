@@ -75,6 +75,10 @@
 <span></span>
 <span><span class="fu">adbc_connection_commit</span><span class="op">(</span><span class="va">connection</span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu">adbc_connection_quote_identifier</span><span class="op">(</span><span class="va">connection</span>, <span class="va">value</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">adbc_connection_quote_string</span><span class="op">(</span><span class="va">connection</span>, <span class="va">value</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu">adbc_connection_rollback</span><span class="op">(</span><span class="va">connection</span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -125,6 +129,15 @@ filter by name. May be a search pattern.</p></dd>
 
 <dt>serialized_partition</dt>
 <dd><p>The partition descriptor.</p></dd>
+
+
+<dt>value</dt>
+<dd><p>A string or identifier.</p></dd>
+
+
+<dt>...</dt>
+<dd><p>Driver-specific options. For the default method, these are
+named values that are converted to strings.</p></dd>
 
 </dl></div>
     <div class="section level2">
