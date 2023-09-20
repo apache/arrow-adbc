@@ -866,13 +866,13 @@ class Cursor(_Closeable):
         if temporary:
             self._stmt.set_options(
                 **{
-                    adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: "true",
+                    adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: True,
                 }
             )
         else:
             # Need to explicitly clear it, but not all drivers support this
             options = {
-                adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: "false",
+                adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: False,
             }
             try:
                 self._stmt.set_options(**options)
