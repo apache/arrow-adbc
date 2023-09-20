@@ -17,6 +17,7 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 
@@ -89,7 +90,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 }
             }
 
-            string[] queries = content.ToString().Split(";".ToCharArray());
+            string[] queries = content.ToString().Split(";".ToCharArray()).Where(x => x.Trim().Length > 0).ToArray();
 
             return queries;
         }

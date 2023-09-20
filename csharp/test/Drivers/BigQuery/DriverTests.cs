@@ -31,6 +31,33 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     public class DriverTests
     {
         /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        [TestMethod]
+        public void CanExecuteUpdate()
+        {
+            BigQueryTestConfiguration testConfiguration = Utils.GetTestConfiguration<BigQueryTestConfiguration>("resources/bigqueryconfig.json");
+
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+
+            string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
+
+            List<int> expectedResults = new List<int>() { -1, 1, 1 };
+
+            for (int i = 0; i < queries.Length; i++)
+            {
+                string query = queries[i];
+                AdbcStatement statement = adbcConnection.CreateStatement();
+                statement.SqlQuery = query;
+
+                UpdateResult updateResult = statement.ExecuteUpdate();
+
+                Assert.AreEqual(expectedResults[i], updateResult.AffectedRows, $"The expected affected rows do not match the actual affected rows at position {i}.");
+            }
+        }
+
+        /// <summary>
         /// Validates if the driver can call GetInfo.
         /// </summary>
         [TestMethod]
@@ -125,8 +152,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [TestMethod]
         public void CanGetTableTypes()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-
             BigQueryTestConfiguration metadataTestConfiguration = Utils.GetTestConfiguration<BigQueryTestConfiguration>("resources/bigqueryconfig.json");
 
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(metadataTestConfiguration);
@@ -174,34 +199,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             QueryResult queryResult = statement.ExecuteQuery();
 
             Adbc.Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
-        }
-
-        /// <summary>
-        /// Validates if the driver can connect to a live server and
-        /// parse the results.
-        /// </summary>
-        [TestMethod]
-        public void CanExecuteUpdate()
-        {
-            BigQueryTestConfiguration testConfiguration = Utils.GetTestConfiguration<BigQueryTestConfiguration>("resources/bigqueryconfig.json");
-
-            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
-
-            string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
-
-            List<int> expectedResults = new List<int>() { -1,1,1 };
-
-            // the last query is blank
-            for (int i=0; i<queries.Length-1;i++)
-            {
-                string query = queries[i];
-                AdbcStatement statement = adbcConnection.CreateStatement();
-                statement.SqlQuery = query;
-
-                UpdateResult updateResult = statement.ExecuteUpdate();
-
-                Assert.AreEqual(expectedResults[i], updateResult.AffectedRows, $"The expected affected rows do not match the actual affected rows at position {i}.");
-            }
         }
     }
 }
