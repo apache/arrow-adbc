@@ -70,7 +70,8 @@ implementations).</p>
 <span>  <span class="va">db_or_con</span>,</span>
 <span>  <span class="va">target_table</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"default"</span>, <span class="st">"create"</span>, <span class="st">"append"</span><span class="op">)</span></span>
+<span>  mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"default"</span>, <span class="st">"create"</span>, <span class="st">"append"</span><span class="op">)</span>,</span>
+<span>  temporary <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -107,6 +108,10 @@ or  <a href="https://rdrr.io/pkg/nanoarrow/man/as_nanoarrow_array_stream.html" c
 <dt>mode</dt>
 <dd><p>One of "create", "append", or "default" (error if the schema
 is not compatible or append otherwise).</p></dd>
+
+
+<dt>temporary</dt>
+<dd><p>Use TRUE to create a table as a temporary table.</p></dd>
 
 </dl></div>
     <div class="section level2">
