@@ -48,3 +48,28 @@ Since ADO.NET is row-oriented, and ADBC is column-oriented, the row index is tra
 This can be thought of as:
 
 ![Arrow to DbDataReader](/docs/Arrow-to-DbDataReader.png "Arrow to DbDataReader")
+
+## Connection Properties
+The ADO.NET Client is designed so that properties in the connection string map to the properties that are sent to the ADBC driver in the code:
+
+```
+AdbcDriver.Open(adbcConnectionParameters);
+```
+
+The connection string is parsed using the `DbConnectionStringBuilder` object and the key/value pairs are then added to the properties for the ADBC driver.
+
+For example, when using the [Snowflake ADBC Go Driver](https://arrow.apache.org/adbc/main/driver/snowflake.html#client-options), the connection string will look similar to:
+
+```
+ adbc.snowflake.sql.account={account};adbc.snowflake.sql.warehouse={warehouse};username={user};password={password}
+```
+
+if using the default user name and password authentication, but look like
+
+```
+ adbc.snowflake.sql.account={account};adbc.snowflake.sql.warehouse={warehouse};username={user};password={password};adbc.snowflake.sql.auth_type=snowflake_jwt;adbc.snowflake.sql.client_option.auth_token={token}
+```
+
+when using JWT authentication.
+
+Other ADBC drivers will have different connection parameters, so be sure to check the documentation for each driver.
