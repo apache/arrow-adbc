@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkConnection : HiveServer2Connection
     {
-        const string userAgent = "PowerBiExperimental/0.0";
+        const string userAgent = "AdbcExperimental/0.0";
 
         internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
         {
@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public SparkConnection() : this(null)
         {
-            
+
         }
 
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
@@ -97,21 +97,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 this.transport = null;
                 this.client = null;
             }
-        }
-
-        public override IArrowArrayStream GetInfo(List<int> codes)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override IArrowArrayStream GetTableTypes()
-        {
-            throw new NotImplementedException();
         }
     }
 }
