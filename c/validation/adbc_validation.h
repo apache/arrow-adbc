@@ -271,6 +271,8 @@ class StatementTest {
 
   // ---- Type-specific tests --------------------
 
+  void TestSqlIngestBool();
+
   // Integers
   void TestSqlIngestInt8();
   void TestSqlIngestInt16();
@@ -370,6 +372,7 @@ class StatementTest {
                 ADBCV_STRINGIFY(FIXTURE) " must inherit from StatementTest");           \
   TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                           \
   TEST_F(FIXTURE, Release) { TestRelease(); }                                           \
+  TEST_F(FIXTURE, SqlIngestBool) { TestSqlIngestBool(); }                               \
   TEST_F(FIXTURE, SqlIngestInt8) { TestSqlIngestInt8(); }                               \
   TEST_F(FIXTURE, SqlIngestInt16) { TestSqlIngestInt16(); }                             \
   TEST_F(FIXTURE, SqlIngestInt32) { TestSqlIngestInt32(); }                             \

@@ -1170,6 +1170,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     }
 
     switch (view.type) {
+      case NANOARROW_TYPE_BOOL:
       case NANOARROW_TYPE_UINT8:
       case NANOARROW_TYPE_UINT16:
       case NANOARROW_TYPE_UINT32:
