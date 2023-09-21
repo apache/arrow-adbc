@@ -177,6 +177,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
 
   ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const override {
     switch (ingest_type) {
+      case NANOARROW_TYPE_BOOL:
       case NANOARROW_TYPE_INT8:
       case NANOARROW_TYPE_INT16:
       case NANOARROW_TYPE_INT32:
