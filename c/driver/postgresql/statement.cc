@@ -321,13 +321,12 @@ struct BindStream {
       }
     }
 
-    const char* temp = "COPY bulk_ingest FROM STDIN WITH (FORMAT binary);";
-    PGresult* result = PQexec(conn, temp);
-
-    if (PQresultStatus(result) != PGRES_COPY_IN) {
+    PGresult* result = PQprepare(conn, /*stmtName=*/"", query.c_str(),
+                                 /*nParams=*/bind_schema->n_children, param_types.data());
+    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
       AdbcStatusCode code =
           SetError(error, result, "[libpq] Failed to prepare query: %s\nQuery was:%s",
-                   PQerrorMessage(conn), temp);
+                   PQerrorMessage(conn), query.c_str());
       PQclear(result);
       return code;
     }
@@ -336,6 +335,282 @@ struct BindStream {
   }
 
   AdbcStatusCode Execute(PGconn* conn, int64_t* rows_affected, struct AdbcError* error) {
+    if (rows_affected) *rows_affected = 0;
+    PGresult* result = nullptr;
+
+    while (true) {
+      Handle<struct ArrowArray> array;
+      int res = bind->get_next(&bind.value, &array.value);
+      if (res != 0) {
+        SetError(error,
+                 "[libpq] Failed to read next batch from stream of bind parameters: "
+                 "(%d) %s %s",
+                 res, std::strerror(res), bind->get_last_error(&bind.value));
+        return ADBC_STATUS_IO;
+      }
+      if (!array->release) break;
+
+      Handle<struct ArrowArrayView> array_view;
+      // TODO: include error messages
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayViewInitFromSchema(&array_view.value, &bind_schema.value, nullptr),
+          error);
+      CHECK_NA(INTERNAL, ArrowArrayViewSetArray(&array_view.value, &array.value, nullptr),
+               error);
+
+      struct ArrowBuffer buf;
+      ArrowBufferInit(&buf);
+      ArrowBufferAppend(&buf, kPgCopyBinarySignature, sizeof(kPgCopyBinarySignature));
+
+      const uint32_t flag_fields = 0;
+      ArrowBufferAppend(&buf, &flag_fields, sizeof(flag_fields));
+
+      uint32_t extension_bytes = 0;
+      ArrowBufferAppend(&buf, &extension_bytes, sizeof(extension_bytes));
+
+      for (int64_t row = 0; row < array->length; row++) {
+        // char tuple_fields[2];
+        const uint16_t ncols =
+            ToNetworkInt16(static_cast<uint16_t>(array_view->n_children));
+
+        ArrowBufferAppend(&buf, &ncols, sizeof(ncols));
+        for (int64_t col = 0; col < array_view->n_children; col++) {
+          int32_t field_nbytes = 0;
+          // char tuple_field_nbytes[4];
+
+          if (ArrowArrayViewIsNull(array_view->children[col], row)) {
+            const uint32_t null_bytes = ToNetworkInt32(-1);
+            ArrowBufferAppend(&buf, &null_bytes, sizeof(null_bytes));
+            param_values[col] = 0;
+            continue;
+          } else {
+            param_values[col] = param_values_buffer.data() + param_values_offsets[col];
+          }
+          switch (bind_schema_fields[col].type) {
+            case ArrowType::NANOARROW_TYPE_BOOL: {
+              const int8_t val = ArrowBitGet(
+                  array_view->children[col]->buffer_views[1].data.as_uint8, row);
+              field_nbytes = sizeof(int8_t);
+              std::memcpy(param_values[col], &val, field_nbytes);
+              break;
+            }
+
+            case ArrowType::NANOARROW_TYPE_INT8: {
+              const int16_t val =
+                  array_view->children[col]->buffer_views[1].data.as_int8[row];
+              const uint16_t value = ToNetworkInt16(val);
+              field_nbytes = sizeof(int16_t);
+              std::memcpy(param_values[col], &value, field_nbytes);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_INT16: {
+              const uint16_t value = ToNetworkInt16(
+                  array_view->children[col]->buffer_views[1].data.as_int16[row]);
+              field_nbytes = sizeof(int16_t);
+              std::memcpy(param_values[col], &value, field_nbytes);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_INT32: {
+              const uint32_t value = ToNetworkInt32(
+                  array_view->children[col]->buffer_views[1].data.as_int32[row]);
+              field_nbytes = sizeof(int32_t);
+              std::memcpy(param_values[col], &value, field_nbytes);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_INT64: {
+              const int64_t value = ToNetworkInt64(
+                  array_view->children[col]->buffer_views[1].data.as_int64[row]);
+              field_nbytes = sizeof(int64_t);
+              std::memcpy(param_values[col], &value, field_nbytes);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_FLOAT: {
+              const uint32_t value = ToNetworkFloat4(
+                  array_view->children[col]->buffer_views[1].data.as_float[row]);
+              field_nbytes = sizeof(int32_t);
+              std::memcpy(param_values[col], &value, field_nbytes);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_DOUBLE: {
+              const uint64_t value = ToNetworkFloat8(
+                  array_view->children[col]->buffer_views[1].data.as_double[row]);
+              field_nbytes = sizeof(uint64_t);
+              std::memcpy(param_values[col], &value, field_nbytes);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_STRING:
+            case ArrowType::NANOARROW_TYPE_LARGE_STRING:
+            case ArrowType::NANOARROW_TYPE_BINARY: {
+              const ArrowBufferView view =
+                  ArrowArrayViewGetBytesUnsafe(array_view->children[col], row);
+              // TODO: overflow check?
+              param_lengths[col] = static_cast<int>(view.size_bytes);
+              param_values[col] = const_cast<char*>(view.data.as_char);
+              field_nbytes = view.size_bytes;
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_DATE32: {
+              // 2000-01-01
+              constexpr int32_t kPostgresDateEpoch = 10957;
+              const int32_t raw_value =
+                  array_view->children[col]->buffer_views[1].data.as_int32[row];
+              if (raw_value < INT32_MIN + kPostgresDateEpoch) {
+                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
+                         "('", bind_schema->children[col]->name, "') Row #", row + 1,
+                         "has value which exceeds postgres date limits");
+                ArrowBufferReset(&buf);
+                return ADBC_STATUS_INVALID_ARGUMENT;
+              }
+
+              const uint32_t value = ToNetworkInt32(raw_value - kPostgresDateEpoch);
+              field_nbytes = sizeof(uint32_t);
+              std::memcpy(param_values[col], &value, field_nbytes);
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_DURATION:
+            case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
+              int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
+
+              // 2000-01-01 00:00:00.000000 in microseconds
+              constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
+              bool overflow_safe = true;
+
+              auto unit = bind_schema_fields[col].time_unit;
+
+              switch (unit) {
+                case NANOARROW_TIME_UNIT_SECOND:
+                  if ((overflow_safe = val <= kMaxSafeSecondsToMicros &&
+                                       val >= kMinSafeSecondsToMicros)) {
+                    val *= 1000000;
+                  }
+
+                  break;
+                case NANOARROW_TIME_UNIT_MILLI:
+                  if ((overflow_safe = val <= kMaxSafeMillisToMicros &&
+                                       val >= kMinSafeMillisToMicros)) {
+                    val *= 1000;
+                  }
+                  break;
+                case NANOARROW_TIME_UNIT_MICRO:
+                  break;
+                case NANOARROW_TIME_UNIT_NANO:
+                  val /= 1000;
+                  break;
+              }
+
+              if (!overflow_safe) {
+                SetError(error,
+                         "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
+                         " has value '%" PRIi64
+                         "' which exceeds PostgreSQL timestamp limits",
+                         col + 1, bind_schema->children[col]->name, row + 1,
+                         array_view->children[col]->buffer_views[1].data.as_int64[row]);
+                ArrowBufferReset(&buf);
+                return ADBC_STATUS_INVALID_ARGUMENT;
+              }
+
+              if (bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) {
+                const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
+                field_nbytes = sizeof(int64_t);
+                std::memcpy(param_values[col], &value, field_nbytes);
+              } else if (bind_schema_fields[col].type ==
+                         ArrowType::NANOARROW_TYPE_DURATION) {
+                // postgres stores an interval as a 64 bit offset in microsecond
+                // resolution alongside a 32 bit day and 32 bit month
+                // for now we just send 0 for the day / month values
+                const uint64_t value = ToNetworkInt64(val);
+                std::memcpy(param_values[col], &value, sizeof(int64_t));
+                std::memset(param_values[col] + sizeof(int64_t), 0, sizeof(int64_t));
+                field_nbytes = 16;
+              }
+              break;
+            }
+            case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
+              struct ArrowInterval interval;
+              ArrowIntervalInit(&interval, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+              ArrowArrayViewGetIntervalUnsafe(array_view->children[col], row, &interval);
+
+              const uint32_t months = ToNetworkInt32(interval.months);
+              const uint32_t days = ToNetworkInt32(interval.days);
+              const uint64_t ms = ToNetworkInt64(interval.ns / 1000);
+
+              std::memcpy(param_values[col], &ms, sizeof(uint64_t));
+              std::memcpy(param_values[col] + sizeof(uint64_t), &days, sizeof(uint32_t));
+              std::memcpy(param_values[col] + sizeof(uint64_t) + sizeof(uint32_t),
+                          &months, sizeof(uint32_t));
+              field_nbytes = 16;
+              break;
+            }
+            default:
+              SetError(error, "%s%" PRId64 "%s%s%s%s", "[libpq] Field #", col + 1, " ('",
+                       bind_schema->children[col]->name,
+                       "') has unsupported type for ingestion ",
+                       ArrowTypeString(bind_schema_fields[col].type));
+              ArrowBufferReset(&buf);
+              return ADBC_STATUS_NOT_IMPLEMENTED;
+          }
+
+          const uint32_t net_nbytes = ToNetworkInt32(static_cast<uint32_t>(field_nbytes));
+          ArrowBufferAppend(&buf, &net_nbytes, sizeof(net_nbytes));
+          ArrowBufferAppend(&buf, param_values[col], field_nbytes);
+        }
+      }
+
+      if (PQputCopyData(conn, reinterpret_cast<char*>(buf.data), buf.size_bytes) <= 0) {
+        SetError(error, "Error writing tuple field data: %s", PQerrorMessage(conn));
+        ArrowBufferReset(&buf);
+        return ADBC_STATUS_IO;
+      }
+
+      ArrowBufferReset(&buf);
+      if (PQputCopyEnd(conn, NULL) <= 0) {
+        SetError(error, "Error message returned by PQputCopyEnd: %s",
+                 PQerrorMessage(conn));
+        return ADBC_STATUS_IO;
+      }
+
+      result = PQgetResult(conn);
+      ExecStatusType pg_status = PQresultStatus(result);
+      if (pg_status != PGRES_COMMAND_OK) {
+        AdbcStatusCode code =
+            SetError(error, result, "[libpq] Failed to execute statement: %s %s",
+                     PQresStatus(pg_status), PQerrorMessage(conn));
+        PQclear(result);
+        return code;
+      }
+
+      PQclear(result);
+      if (rows_affected) *rows_affected += array->length;
+
+      if (has_tz_field) {
+        std::string reset_query = "SET TIME ZONE '" + tz_setting + "'";
+        PGresult* reset_tz_result = PQexec(conn, reset_query.c_str());
+        if (PQresultStatus(reset_tz_result) != PGRES_COMMAND_OK) {
+          AdbcStatusCode code =
+              SetError(error, reset_tz_result, "[libpq] Failed to reset time zone: %s",
+                       PQerrorMessage(conn));
+          PQclear(reset_tz_result);
+          return code;
+        }
+        PQclear(reset_tz_result);
+
+        PGresult* commit_result = PQexec(conn, "COMMIT");
+        if (PQresultStatus(commit_result) != PGRES_COMMAND_OK) {
+          AdbcStatusCode code =
+              SetError(error, commit_result, "[libpq] Failed to commit transaction: %s",
+                       PQerrorMessage(conn));
+          PQclear(commit_result);
+          return code;
+        }
+        PQclear(commit_result);
+      }
+    }
+    return ADBC_STATUS_OK;
+  }
+
+  AdbcStatusCode ExecuteCopy(PGconn* conn, int64_t* rows_affected,
+                             struct AdbcError* error) {
     if (rows_affected) *rows_affected = 0;
     PGresult* result = nullptr;
 
@@ -1221,19 +1496,18 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
       error));
   RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
 
-  std::string insert = "INSERT INTO ";
-  insert += escaped_table;
-  insert += " VALUES (";
-  for (size_t i = 0; i < bind_stream.bind_schema_fields.size(); i++) {
-    if (i > 0) insert += ", ";
-    insert += "$";
-    insert += std::to_string(i + 1);
+  std::string query = "COPY " + escaped_table + " FROM STDIN WITH (FORMAT binary)";
+  PGresult* result = PQexec(connection_->conn(), query.c_str());
+  if (PQresultStatus(result) != PGRES_COPY_IN) {
+    AdbcStatusCode code =
+        SetError(error, result, "[libpq] COPY query failed: %s\nQuery was:%s",
+                 PQerrorMessage(connection_->conn()), query.c_str());
+    PQclear(result);
+    return code;
   }
-  insert += ")";
 
-  RAISE_ADBC(
-      bind_stream.Prepare(connection_->conn(), insert, error, connection_->autocommit()));
-  RAISE_ADBC(bind_stream.Execute(connection_->conn(), rows_affected, error));
+  PQclear(result);
+  RAISE_ADBC(bind_stream.ExecuteCopy(connection_->conn(), rows_affected, error));
   return ADBC_STATUS_OK;
 }
 
