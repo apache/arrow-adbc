@@ -102,6 +102,33 @@ func (d *DatabaseTests) TestNewDatabase() {
 	d.Implements((*adbc.Database)(nil), db)
 }
 
+func (d *DatabaseTests) TestNewDatabaseGetSetOptions() {
+	if !d.Quirks.SupportsGetSetOptions() {
+		d.T().SkipNow()
+	}
+
+	key1, val1 := "key1", "val1"
+	key2, val2 := "key2", "val2"
+
+	opts := d.Quirks.DatabaseOptions()
+	opts[key1] = val1
+	opts[key2] = val2
+
+	db, err := d.Driver.NewDatabase(opts)
+	d.NoError(err)
+	d.NotNil(db)
+
+	getSetDB, ok := db.(adbc.GetSetOptions)
+	d.True(ok)
+
+	optVal1, err := getSetDB.GetOption(key1)
+	d.NoError(err)
+	d.Equal(optVal1, val1)
+	optVal2, err := getSetDB.GetOption(key2)
+	d.NoError(err)
+	d.Equal(optVal2, val2)
+}
+
 type ConnectionTests struct {
 	suite.Suite
 
