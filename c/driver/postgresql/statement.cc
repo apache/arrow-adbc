@@ -360,66 +360,29 @@ struct BindStream {
       CHECK_NA(INTERNAL, ArrowArrayViewSetArray(&array_view.value, &array.value, nullptr),
                error);
 
-      char buf[1024];  // just a hack for now...
-      int nbytes = 0;
-
-      // char header[15];
-      std::memcpy(buf, kPgCopyBinarySignature, sizeof(kPgCopyBinarySignature));
-      nbytes += sizeof(kPgCopyBinarySignature);
+      struct ArrowBuffer buf;
+      ArrowBufferInit(&buf);
+      ArrowBufferAppend(&buf, kPgCopyBinarySignature, sizeof(kPgCopyBinarySignature));
 
       const uint32_t flag_fields = 0;
-      std::memcpy(buf + sizeof(kPgCopyBinarySignature), &flag_fields,
-                  sizeof(flag_fields));
-      nbytes += sizeof(flag_fields);
+      ArrowBufferAppend(&buf, &flag_fields, sizeof(flag_fields));
 
-      /*
-      if (PQputCopyData(conn, header, sizeof(header)) <= 0) {
-        SetError(error, "Error writing COPY Header: %s", PQerrorMessage(conn));
-        return ADBC_STATUS_IO;
-      }
-      */
-
-      // char extension_area[4];
       uint32_t extension_bytes = 0;
-      std::memcpy(buf + nbytes, &extension_bytes, sizeof(extension_bytes));
-      nbytes += sizeof(extension_bytes);
-      /*
-      if (PQputCopyData(conn, extension_area, sizeof(extension_area)) <= 0) {
-        SetError(error, "Error writing COPY Header Extension Area: %s",
-      PQerrorMessage(conn)); return ADBC_STATUS_IO;
-      }
-      */
+      ArrowBufferAppend(&buf, &extension_bytes, sizeof(extension_bytes));
 
       for (int64_t row = 0; row < array->length; row++) {
         // char tuple_fields[2];
         const uint16_t ncols =
             ToNetworkInt16(static_cast<uint16_t>(array_view->n_children));
 
-        std::memcpy(buf + nbytes, &ncols, sizeof(ncols));
-        nbytes += sizeof(ncols);
-        /*
-        if (PQputCopyData(conn, tuple_fields, sizeof(tuple_fields)) <= 0) {
-          SetError(error, "Error writing COPY tuple field count: %s",
-                   PQerrorMessage(conn));
-          return ADBC_STATUS_IO;
-        }
-        */
+        ArrowBufferAppend(&buf, &ncols, sizeof(ncols));
         for (int64_t col = 0; col < array_view->n_children; col++) {
           int32_t field_nbytes = 0;
           // char tuple_field_nbytes[4];
 
           if (ArrowArrayViewIsNull(array_view->children[col], row)) {
             const uint32_t null_bytes = ToNetworkInt32(-1);
-            std::memcpy(buf + nbytes, &null_bytes, sizeof(null_bytes));
-            nbytes += sizeof(null_bytes);
-            /*
-            if (PQputCopyData(conn, tuple_field_nbytes, sizeof(tuple_field_nbytes)) <=
-                0) {
-              SetError(error, "Error message returned by PQputCopyData: %s",
-                       PQerrorMessage(conn));
-              return ADBC_STATUS_IO;
-            }
-            */
+            ArrowBufferAppend(&buf, &null_bytes, sizeof(null_bytes));
             param_values[col] = 0;
             continue;
           } else {
@@ -497,6 +460,7 @@ struct BindStream {
                 SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
                          "('", bind_schema->children[col]->name, "') Row #", row + 1,
                          "has value which exceeds postgres date limits");
+                ArrowBufferReset(&buf);
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
@@ -543,6 +507,7 @@ struct BindStream {
                          "' which exceeds PostgreSQL timestamp limits",
                          col + 1, bind_schema->children[col]->name, row + 1,
                          array_view->children[col]->buffer_views[1].data.as_int64[row]);
+                ArrowBufferReset(&buf);
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
@@ -583,28 +548,23 @@ struct BindStream {
                        bind_schema->children[col]->name,
                        "') has unsupported type for ingestion ",
                        ArrowTypeString(bind_schema_fields[col].type));
+              ArrowBufferReset(&buf);
               return ADBC_STATUS_NOT_IMPLEMENTED;
           }
 
           const uint32_t net_nbytes = ToNetworkInt32(static_cast<uint32_t>(field_nbytes));
-          std::memcpy(buf + nbytes, &net_nbytes, sizeof(net_nbytes));
-          nbytes += sizeof(net_nbytes);
-          /*
-          if (PQputCopyData(conn, tuple_field_nbytes, sizeof(tuple_field_nbytes)) <= 0) {
-            SetError(error, "Error writing tuple field byte length: %s",
-                     PQerrorMessage(conn));
-            return ADBC_STATUS_IO;
-          }
-          */
-          std::memcpy(buf + nbytes, param_values[col], field_nbytes);
-          nbytes += field_nbytes;
+          ArrowBufferAppend(&buf, &net_nbytes, sizeof(net_nbytes));
+          ArrowBufferAppend(&buf, param_values[col], field_nbytes);
         }
       }
 
-      if (PQputCopyData(conn, buf, nbytes) <= 0) {
+      if (PQputCopyData(conn, reinterpret_cast<char*>(buf.data), buf.size_bytes) <= 0) {
         SetError(error, "Error writing tuple field data: %s", PQerrorMessage(conn));
+        ArrowBufferReset(&buf);
         return ADBC_STATUS_IO;
       }
+
+      ArrowBufferReset(&buf);
       if (PQputCopyEnd(conn, NULL) <= 0) {
         SetError(error, "Error message returned by PQputCopyEnd: %s",
                  PQerrorMessage(conn));
