@@ -584,3 +584,25 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 		})
 	}
 }
+
+func (suite *SnowflakeTests) TestNewDatabaseGetSetOptions() {
+	key1, val1 := "key1", "val1"
+	key2, val2 := "key2", "val2"
+
+	db, err := suite.driver.NewDatabase(map[string]string{
+		key1: val1,
+		key2: val2,
+	})
+	suite.NoError(err)
+	suite.NotNil(db)
+
+	getSetDB, ok := db.(adbc.GetSetOptions)
+	suite.True(ok)
+
+	optVal1, err := getSetDB.GetOption(key1)
+	suite.NoError(err)
+	suite.Equal(optVal1, val1)
+	optVal2, err := getSetDB.GetOption(key2)
+	suite.NoError(err)
+	suite.Equal(optVal2, val2)
+}
