@@ -701,12 +701,11 @@ class Cursor(_Closeable):
         ):
             arrow_parameters = seq_of_parameters
         elif seq_of_parameters:
-            arrow_parameters = pyarrow.record_batch(
-                [
-                    pyarrow.array([row[col_idx] for row in seq_of_parameters])
-                    for col_idx in range(len(seq_of_parameters[0]))
-                ],
-                names=[str(i) for i in range(len(seq_of_parameters[0]))],
+            arrow_parameters = pyarrow.RecordBatch.from_pydict(
+                {
+                    str(col_idx): pyarrow.array(x)
+                    for col_idx, x in enumerate(map(list, zip(*seq_of_parameters)))
+                },
             )
         else:
             arrow_parameters = pyarrow.record_batch([])

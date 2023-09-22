@@ -253,6 +253,7 @@ def test_execute_parameters(sqlite, parameters):
         pyarrow.record_batch([[1, 3], ["a", None]], names=["float", "str"]),
         pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]),
         pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]).to_batches()[0],
+        ((x, y) for x, y in ((1, "a"), (3, None))),
     ],
 )
 def test_executemany_parameters(sqlite, parameters):
