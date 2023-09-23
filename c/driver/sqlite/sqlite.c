@@ -573,12 +573,9 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
     const char* from_col = (const char*)sqlite3_column_text(fk_stmt, 3);
     const char* to_col = (const char*)sqlite3_column_text(fk_stmt, 4);
 
+    // New foreign key constraint or -constraint sets
     if (fk_id != prev_fk_id) {
-      CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(constraint_name_col, ArrowCharView("FOREIGN KEY")),
-               error);
-
+      // Not first constraint of the table
       if (prev_fk_id != -1) {
         CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col), error);
         CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_col), error);
@@ -586,28 +583,34 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
       }
       prev_fk_id = fk_id;
 
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
       CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   constraint_column_names_items,
-                   (struct ArrowStringView){
-                       .data = from_col, .size_bytes = sqlite3_column_bytes(pk_stmt, 3)}),
-               error);
-      CHECK_NA(INTERNAL, ArrowArrayAppendString(fk_catalog_col, ArrowCharView("main")),
-               error);
-      CHECK_NA(INTERNAL, ArrowArrayAppendNull(fk_db_schema_col, 1), error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   fk_table_col,
-                   (struct ArrowStringView){
-                       .data = to_table, .size_bytes = sqlite3_column_bytes(pk_stmt, 2)}),
-               error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   fk_column_name_col,
-                   (struct ArrowStringView){
-                       .data = to_col, .size_bytes = sqlite3_column_bytes(pk_stmt, 4)}),
+               ArrowArrayAppendString(constraint_type_col, ArrowCharView("FOREIGN KEY")),
                error);
     }
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(
+                 constraint_column_names_items,
+                 (struct ArrowStringView){
+                     .data = from_col, .size_bytes = sqlite3_column_bytes(fk_stmt, 3)}),
+             error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(fk_catalog_col, ArrowCharView("main")),
+             error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(fk_db_schema_col, 1), error);
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(
+                 fk_table_col,
+                 (struct ArrowStringView){
+                     .data = to_table, .size_bytes = sqlite3_column_bytes(fk_stmt, 2)}),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(
+                 fk_column_name_col,
+                 (struct ArrowStringView){
+                     .data = to_col, .size_bytes = sqlite3_column_bytes(fk_stmt, 4)}),
+             error);
+
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_items), error);
   }
   RAISE(INTERNAL, rc == SQLITE_DONE, sqlite3_errmsg(conn->conn), error);
   if (prev_fk_id != -1) {
