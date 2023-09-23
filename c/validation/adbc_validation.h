@@ -86,6 +86,17 @@ class DriverQuirks {
     return std::nullopt;
   }
 
+  /// \brief Get the statement to create a table with a composite primary key,
+  /// or nullopt if not supported.
+  ///
+  /// The table should have two columns:
+  /// - "id_primary_col1" of Arrow type int64 (together forming a composite primary key)
+  /// - "id_primary_col2" of Arrow type int64 (together forming a composite primary key)
+  virtual std::optional<std::string> CompositePrimaryKeyTableDdl(
+      std::string_view name) const {
+    return std::nullopt;
+  }
+
   /// \brief Return the SQL to reference the bind parameter of the given index
   virtual std::string BindParameter(int index) const { return "?"; }
 

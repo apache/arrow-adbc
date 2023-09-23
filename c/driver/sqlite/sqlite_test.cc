@@ -98,6 +98,15 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  std::optional<std::string> CompositePrimaryKeyTableDdl(
+      std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id_primary_col1 INTEGER, id_primary_col2 INTEGER,";
+    ddl += " PRIMARY KEY (id_primary_col1, id_primary_col2));";
+    return ddl;
+  }
+
   bool supports_bulk_ingest(const char* mode) const override {
     return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
            std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;
