@@ -287,3 +287,37 @@
 - **c**: Vendor portable-snippets for overflow checks (#951)
 - **c/driver/postgresql**: Use ArrowArrayViewGetIntervalUnsafe from nanoarrow (#957)
 - **c/driver/postgresql**: Simplify current database querying (#880)
+
+## ADBC Libraries 0.7.0 (2023-09-20)
+
+### Feat
+
+- **r**: Add quoting/escaping generics (#1083)
+- **r**: Implement temporary table option in R driver manager (#1084)
+- **python/adbc_driver_flightsql**: add adbc.flight.sql.client_option.authority to DatabaseOptions (#1069)
+- **go/adbc/driver/snowflake**: improve XDBC support (#1034)
+- **go/adbc/driver/flightsql**: add adbc.flight.sql.client_option.authority  (#1060)
+- **c/driver**: support ingesting into temporary tables (#1057)
+- **c/driver**: support target catalog/schema for ingestion (#1056)
+- **go**: add basic driver logging (#1048)
+- **c/driver/postgresql**: Support ingesting LARGE_STRING types (#1050)
+- **c/driver/postgresql**: Duration support (#907)
+- ADBC API revision 1.1.0 (#971)
+
+### Fix
+
+- **java/driver/flight-sql**: fix leak in InfoMetadataBuilder (#1070)
+- **c/driver/postgresql**: Fix overflow in statement.cc (#1072)
+- **r/adbcdrivermanager**: Ensure nullable arguments `adbc_connection_get_objects()` can be specified (#1032)
+- **c/driver/sqlite**: Escape table name in sqlite GetTableSchema (#1036)
+- **c/driver**: return NOT_FOUND for GetTableSchema (#1026)
+- **c/driver_manager**: fix crash when error is null (#1029)
+- **c/driver/postgresql**: suppress console spam (#1027)
+- **c/driver/sqlite**: escape table names in INSERT, too (#1003)
+- **go/adbc/driver/snowflake**: properly handle time fields (#1021)
+- **r/adbcdrivermanager**: Make `adbc_xptr_is_valid()` return `FALSE` for external pointer to NULL (#1007)
+- **go/adbc**: don't include NUL in error messages (#998)
+
+### Refactor
+
+- **c/driver/postgresql**: hardcode overflow checks (#1051)
