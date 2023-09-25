@@ -126,9 +126,9 @@ class PostgresStatement {
 
   void ClearResult();
   AdbcStatusCode CreateBulkTable(
-      const struct ArrowSchema& source_schema,
+      const std::string& current_schema, const struct ArrowSchema& source_schema,
       const std::vector<struct ArrowSchemaView>& source_schema_fields,
-      struct AdbcError* error);
+      std::string* escaped_table, struct AdbcError* error);
   AdbcStatusCode ExecuteUpdateBulk(int64_t* rows_affected, struct AdbcError* error);
   AdbcStatusCode ExecuteUpdateQuery(int64_t* rows_affected, struct AdbcError* error);
   AdbcStatusCode ExecutePreparedStatement(struct ArrowArrayStream* stream,
@@ -154,8 +154,10 @@ class PostgresStatement {
   };
 
   struct {
+    std::string db_schema;
     std::string target;
     IngestMode mode = IngestMode::kCreate;
+    bool temporary = false;
   } ingest_;
 
   TupleReader reader_;

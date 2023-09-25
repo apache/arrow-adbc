@@ -55,8 +55,9 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
     adbc_validation::Handle<struct AdbcStatement> statement;
     CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string drop = "DROP TABLE IF EXISTS ";
+    std::string drop = "DROP TABLE IF EXISTS \"";
     drop += name;
+    drop += "\"";
     CHECK_OK(AdbcStatementSetSqlQuery(&statement.value, drop.c_str(), error));
     CHECK_OK(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
 
@@ -100,6 +101,9 @@ class SnowflakeQuirks : public adbc_validation::DriverQuirks {
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE:
         return NANOARROW_TYPE_DOUBLE;
+      case NANOARROW_TYPE_STRING:
+      case NANOARROW_TYPE_LARGE_STRING:
+        return NANOARROW_TYPE_STRING;
       default:
         return ingest_type;
     }
@@ -185,6 +189,8 @@ class SnowflakeStatementTest : public ::testing::Test,
 
   void TestSqlIngestInterval() { GTEST_SKIP(); }
   void TestSqlIngestDuration() { GTEST_SKIP(); }
+
+  void TestSqlIngestColumnEscaping() { GTEST_SKIP(); }
 
  protected:
   void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,

@@ -18,26 +18,48 @@
 
 set -e
 
+: ${ADBC_USE_ASAN:=OFF}
+: ${ADBC_USE_UBSAN:=OFF}
 : ${BUILD_ALL:=1}
 : ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
+: ${CC:=gcc}
 
 test_subproject() {
     local -r source_dir=${1}
     local -r install_dir=${2}
     local -r subproject=${3}
 
-    if [[ "${subproject}" -eq "adbc_driver_manager" ]]; then
-        env \
-            DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib" \
-            LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib" \
-            python -m pytest -vv "${source_dir}/python/${subproject}/tests"
-    else
-        python -m pytest -vv "${source_dir}/python/${subproject}/tests"
+    local options=()
+    local preload=()
+
+    if [[ "${subproject}" == "adbc_driver_manager" ]]; then
+        options+=(LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib")
+        options+=(DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${install_dir}/lib")
     fi
+
+    if [[ "${ADBC_USE_ASAN}" != "OFF" ]]; then
+        preload+=($(${CC} --print-file-name=libasan.so))
+        # CPython itself seems to leak
+        options+=(ASAN_OPTIONS=detect_leaks=0)
+    fi
+
+    if [[ "${ADBC_USE_UBSAN}" != "OFF" ]]; then
+        preload+=($(${CC} --print-file-name=libubsan.so))
+    fi
+
+    if [[ "${#preload[@]}" -gt 0 ]]; then
+        local v=$(printf ":%s" "${preload[@]}")
+        options+=(LD_PRELOAD=${v:1})
+    fi
+
+    echo "=== Testing ${subproject} ==="
+    echo env ${options[@]} python -m pytest -vv "${source_dir}/python/${subproject}/tests"
+    env ${options[@]} python -m pytest -vv "${source_dir}/python/${subproject}/tests"
+    echo
 }
 
 main() {

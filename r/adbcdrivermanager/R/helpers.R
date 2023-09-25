@@ -32,6 +32,7 @@
 #' @param query An SQL query
 #' @param bind A data.frame, nanoarrow_array, or nanoarrow_array_stream of
 #'   bind parameters or NULL to skip the bind/prepare step.
+#' @param temporary Use TRUE to create a table as a temporary table.
 #' @param ... Passed to S3 methods.
 #'
 #' @return
@@ -65,7 +66,9 @@ execute_adbc <- function(db_or_con, query, ..., bind = NULL) {
 
 #' @rdname read_adbc
 #' @export
-write_adbc <- function(tbl, db_or_con, target_table, ..., mode = c("default", "create", "append")) {
+write_adbc <- function(tbl, db_or_con, target_table, ...,
+                       mode = c("default", "create", "append"),
+                       temporary = FALSE) {
   UseMethod("write_adbc", db_or_con)
 }
 
@@ -111,7 +114,9 @@ execute_adbc.default <- function(db_or_con, query, ..., bind = NULL, stream = NU
 }
 
 #' @export
-write_adbc.default <- function(tbl, db_or_con, target_table, ..., mode = c("default", "create", "append")) {
+write_adbc.default <- function(tbl, db_or_con, target_table, ...,
+                               mode = c("default", "create", "append"),
+                               temporary = FALSE) {
   assert_adbc(db_or_con, c("adbc_database", "adbc_connection"))
   mode <- match.arg(mode)
 
@@ -125,7 +130,8 @@ write_adbc.default <- function(tbl, db_or_con, target_table, ..., mode = c("defa
   stmt <- adbc_statement_init(
     con,
     adbc.ingest.target_table = target_table,
-    adbc.ingest.mode = if (!identical(mode, "default")) paste0("adbc.ingest.mode.", mode)
+    adbc.ingest.mode = if (!identical(mode, "default")) paste0("adbc.ingest.mode.", mode),
+    adbc.ingest.temporary = if (temporary) "true"
   )
   on.exit(adbc_statement_release(stmt), add = TRUE, after = FALSE)
 

@@ -330,6 +330,7 @@ func (d *database) SetOptions(cnOptions map[string]string) error {
 
 	var err error
 	for k, v := range cnOptions {
+		v := v // copy into loop scope
 		switch k {
 		case adbc.OptionKeyUsername:
 			d.cfg.User = v

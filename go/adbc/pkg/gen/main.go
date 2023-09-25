@@ -75,8 +75,9 @@ func (p *pathSpec) IsGoFile() bool { return filepath.Ext(p.out) == ".go" }
 func (p *pathSpec) IsCFile() bool  { return filepath.Ext(p.out) == ".c" || filepath.Ext(p.out) == ".h" }
 
 type tmplData struct {
-	Driver string
-	Prefix string
+	Driver      string
+	Prefix      string
+	PrefixUpper string
 }
 
 var fileList = []string{
@@ -125,7 +126,11 @@ func main() {
 			out: filepath.Join(*outDir, strings.TrimSuffix(f, Ext))}
 	}
 
-	process(tmplData{Driver: pkg[0].Name + "." + *driverType, Prefix: *prefix}, specs)
+	process(tmplData{
+		Driver:      pkg[0].Name + "." + *driverType,
+		Prefix:      *prefix,
+		PrefixUpper: strings.ToUpper(*prefix),
+	}, specs)
 }
 
 func mustReadAll(path string) []byte {

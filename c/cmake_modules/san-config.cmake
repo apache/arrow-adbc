@@ -25,6 +25,7 @@ if(${ADBC_USE_ASAN})
      OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                                   VERSION_GREATER "4.8"))
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -DADDRESS_SANITIZER")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -DADDRESS_SANITIZER")
   else()
     message(SEND_ERROR "Cannot use ASAN without clang or gcc >= 4.8")
   endif()
@@ -46,10 +47,16 @@ if(${ADBC_USE_UBSAN})
     set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -fsanitize=undefined -fno-sanitize=alignment,vptr,function,float-divide-by-zero -fno-sanitize-recover=all"
     )
+    set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS} -fsanitize=undefined -fno-sanitize=alignment,vptr,function,float-divide-by-zero -fno-sanitize-recover=all"
+    )
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
                                                   VERSION_GREATER_EQUAL "5.1")
     set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -fsanitize=undefined -fno-sanitize=alignment,vptr -fno-sanitize-recover=all"
+    )
+    set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS} -fsanitize=undefined -fno-sanitize=alignment,vptr -fno-sanitize-recover=all"
     )
   else()
     message(SEND_ERROR "Cannot use UBSAN without clang or gcc >= 5.1")

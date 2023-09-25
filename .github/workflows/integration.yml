@@ -130,7 +130,7 @@ jobs:
             --file ci/conda_env_python.txt
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.18.10
+          go-version: 1.19.13
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -186,19 +186,6 @@ jobs:
   postgresql:
     name: "PostgreSQL Integration Tests"
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DB: tempdb
-          POSTGRES_PASSWORD: password
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
     steps:
       - uses: actions/checkout@v3
         with:
@@ -231,19 +218,8 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_USE_ASAN: "OFF"
-          ADBC_USE_UBSAN: "OFF"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test PostgreSQL Driver
-        shell: bash -l {0}
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_POSTGRESQL: "1"
-          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
-        run: |
-          ./ci/scripts/cpp_test.sh "$(pwd)/build"
-
       - name: Build Python PostgreSQL Driver
         shell: bash -l {0}
         env:
@@ -252,14 +228,72 @@ jobs:
           BUILD_DRIVER_POSTGRESQL: "1"
         run: |
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
-      - name: Test Python PostgreSQL Driver
+
+      - name: Test PostgreSQL Driver - postgres 11
         shell: bash -l {0}
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
           ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
         run: |
+          env POSTGRES_VERSION=11 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 12
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          env POSTGRES_VERSION=12 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 13
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          env POSTGRES_VERSION=13 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 14
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          env POSTGRES_VERSION=14 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
+      - name: Test PostgreSQL Driver - postgres 15
+        shell: bash -l {0}
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://localhost:5432/postgres?user=postgres&password=password"
+        run: |
+          env POSTGRES_VERSION=15 docker compose up --wait --detach postgres-test
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+          docker compose down
 
   snowflake:
     name: "Snowflake Integration Tests"
@@ -293,7 +327,7 @@ jobs:
             --file ci/conda_env_python.txt
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.18.10
+          go-version: 1.19.13
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
