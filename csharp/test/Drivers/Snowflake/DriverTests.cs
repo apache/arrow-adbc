@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Ipc;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -28,16 +28,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     /// Class for testing the Snowflake ADBC driver connection tests.
     /// </summary>
     /// <remarks>
-    /// Tests will execute in Visual Studio Test Explorer in the order they are defined.
+    /// Tests are ordered to ensure data is created for the other
+    /// queries to run.
     /// </remarks>
-    [TestClass]
+    [TestFixture]
     public class DriverTests
     {
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
-        [TestMethod]
+        [Test, Order(1)]
         public void CanExecuteUpdate()
         {
             SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
@@ -69,7 +70,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if the driver can call GetInfo.
         /// </summary>
-        [TestMethod]
+        [Test, Order(2)]
         public void CanGetInfo()
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
@@ -103,7 +104,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if the driver can call GetObjects.
         /// </summary>
-        [TestMethod]
+        [Test, Order(3)]
         public void CanGetObjects()
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
@@ -150,7 +151,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if the driver can call GetTableSchema.
         /// </summary>
-        [TestMethod]
+        [Test, Order(4)]
         public void CanGetTableSchema()
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
@@ -176,7 +177,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if the driver can call GetTableTypes.
         /// </summary>
-        [TestMethod]
+        [Test, Order(5)]
         public void CanGetTableTypes()
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
@@ -218,7 +219,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
-        [TestMethod]
+        [Test, Order(6)]
         public void CanExecuteQuery()
         {
             SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
@@ -238,7 +239,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             QueryResult queryResult = statement.ExecuteQuery();
 
-            Adbc.Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
+            Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
         }
     }
 }

@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
             statement.SqlQuery = flightSqlTestConfiguration.Query;
             QueryResult queryResult = statement.ExecuteQuery();
 
-            Adbc.Tests.DriverTests.CanExecuteQuery(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
+            Tests.DriverTests.CanExecuteQuery(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
         }
     }
 }
