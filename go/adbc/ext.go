@@ -15,46 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#pragma once
+package adbc
 
-#include <stddef.h>
-#include <stdint.h>
+import (
+	"golang.org/x/exp/slog"
+)
 
-#include <adbc.h>
-#include <sqlite3.h>
-
-#include "statement_reader.h"
-
-struct SqliteDatabase {
-  sqlite3* db;
-  char* uri;
-  size_t connection_count;
-};
-
-struct SqliteConnection {
-  sqlite3* conn;
-  char active_transaction;
-};
-
-struct SqliteStatement {
-  sqlite3* conn;
-
-  // -- Query state -----------------------------------------
-
-  sqlite3_stmt* stmt;
-  char prepared;
-  char* query;
-  size_t query_len;
-
-  // -- Bind state ------------------------------------------
-  struct AdbcSqliteBinder binder;
-
-  // -- Ingest state ----------------------------------------
-  char* target_catalog;
-  char* target_table;
-  char append;
-  char temporary;
-
-  // -- Query options ---------------------------------------
-  int batch_size;
-};
+// DatabaseLogging is a Database that also supports logging information to an
+// application-supplied log sink.
+//
+// EXPERIMENTAL. Not formally part of the ADBC APIs.
+type DatabaseLogging interface {
+	SetLogger(*slog.Logger)
+}

@@ -33,21 +33,6 @@ def test_query_error(dremio_dbapi):
         assert exc.args[0].startswith("INVALID_ARGUMENT: [FlightSQL] ")
 
 
-def test_query_error_fetch(test_dbapi):
-    with test_dbapi.cursor() as cur:
-        cur.execute("error_do_get")
-        with pytest.raises(Exception, match="expected error"):
-            cur.fetch_arrow_table()
-
-
-def test_query_error_stream(test_dbapi):
-    with test_dbapi.cursor() as cur:
-        cur.execute("error_do_get_stream")
-        with pytest.raises(Exception, match="expected error"):
-            cur.fetchone()
-            cur.fetchone()
-
-
 def test_query_trivial(dremio_dbapi):
     with dremio_dbapi.cursor() as cur:
         cur.execute("SELECT 1")

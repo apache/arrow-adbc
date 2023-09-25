@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func adbcFromFlightStatus(err error, context string, args ...any) error {
@@ -81,14 +82,8 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 	}
 
 	details := []adbc.ErrorDetail{}
-	// slice of proto.Message or error
-	for _, detail := range grpcStatus.Details() {
-		if err, ok := detail.(error); ok {
-			details = append(details, &adbc.TextErrorDetail{Name: "grpc-status-details-bin", Detail: err.Error()})
-		} else if msg, ok := detail.(proto.Message); ok {
-			details = append(details, &adbc.ProtobufErrorDetail{Name: "grpc-status-details-bin", Message: msg})
-		}
-		// else, gRPC returned non-Protobuf detail in violation of their method contract
+	for _, detail := range grpcStatus.Proto().Details {
+		details = append(details, &anyErrorDetail{name: "grpc-status-details-bin", message: detail})
 	}
 
 	// XXX(https://github.com/grpc/grpc-go/issues/5485): don't count on
@@ -134,4 +129,21 @@ func checkContext(maybeErr error, ctx context.Context) error {
 		return adbc.Error{Msg: "Deadline exceeded", Code: adbc.StatusTimeout}
 	}
 	return ctx.Err()
+}
+
+// grpc's Status derps if you ask it to deserialize the error details, giving
+// you an error for each item. Instead, poke into its internals and directly
+// extract and return the protobuf Any to the client.
+type anyErrorDetail struct {
+	name    string
+	message *anypb.Any
+}
+
+func (d *anyErrorDetail) Key() string {
+	return d.name
+}
+
+// Serialize serializes the Protobuf message (wrapped in Any).
+func (d *anyErrorDetail) Serialize() ([]byte, error) {
+	return proto.Marshal(d.message)
 }

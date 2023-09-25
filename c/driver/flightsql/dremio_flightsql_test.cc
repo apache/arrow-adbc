@@ -89,6 +89,9 @@ class DremioFlightSqlStatementTest : public ::testing::Test,
 
   void TestResultInvalidation() { GTEST_SKIP() << "Dremio generates a CANCELLED"; }
   void TestSqlIngestTableEscaping() { GTEST_SKIP() << "Table escaping not implemented"; }
+  void TestSqlIngestColumnEscaping() {
+    GTEST_SKIP() << "Column escaping not implemented";
+  }
 
  protected:
   DremioFlightSqlQuirks quirks_;

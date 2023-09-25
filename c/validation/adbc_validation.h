@@ -50,6 +50,13 @@ class DriverQuirks {
     return ADBC_STATUS_OK;
   }
 
+  /// \brief Drop the given temporary table. Used by tests to reset state.
+  virtual AdbcStatusCode DropTempTable(struct AdbcConnection* connection,
+                                       const std::string& name,
+                                       struct AdbcError* error) const {
+    return ADBC_STATUS_OK;
+  }
+
   /// \brief Drop the given view. Used by tests to reset state.
   virtual AdbcStatusCode DropView(struct AdbcConnection* connection,
                                   const std::string& name,
@@ -90,6 +97,15 @@ class DriverQuirks {
 
   /// \brief Whether bulk ingest is supported
   virtual bool supports_bulk_ingest(const char* mode) const { return true; }
+
+  /// \brief Whether bulk ingest to a specific catalog is supported
+  virtual bool supports_bulk_ingest_catalog() const { return false; }
+
+  /// \brief Whether bulk ingest to a specific schema is supported
+  virtual bool supports_bulk_ingest_db_schema() const { return false; }
+
+  /// \brief Whether bulk ingest to a temporary table is supported
+  virtual bool supports_bulk_ingest_temporary() const { return false; }
 
   /// \brief Whether we can cancel queries.
   virtual bool supports_cancel() const { return false; }
@@ -255,6 +271,8 @@ class StatementTest {
 
   // ---- Type-specific tests --------------------
 
+  void TestSqlIngestBool();
+
   // Integers
   void TestSqlIngestInt8();
   void TestSqlIngestInt16();
@@ -284,12 +302,20 @@ class StatementTest {
   // ---- End Type-specific tests ----------------
 
   void TestSqlIngestTableEscaping();
+  void TestSqlIngestColumnEscaping();
   void TestSqlIngestAppend();
   void TestSqlIngestReplace();
   void TestSqlIngestCreateAppend();
   void TestSqlIngestErrors();
   void TestSqlIngestMultipleConnections();
   void TestSqlIngestSample();
+  void TestSqlIngestTargetCatalog();
+  void TestSqlIngestTargetSchema();
+  void TestSqlIngestTargetCatalogSchema();
+  void TestSqlIngestTemporary();
+  void TestSqlIngestTemporaryAppend();
+  void TestSqlIngestTemporaryReplace();
+  void TestSqlIngestTemporaryExclusive();
 
   void TestSqlPartitionedInts();
 
@@ -346,6 +372,7 @@ class StatementTest {
                 ADBCV_STRINGIFY(FIXTURE) " must inherit from StatementTest");           \
   TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                           \
   TEST_F(FIXTURE, Release) { TestRelease(); }                                           \
+  TEST_F(FIXTURE, SqlIngestBool) { TestSqlIngestBool(); }                               \
   TEST_F(FIXTURE, SqlIngestInt8) { TestSqlIngestInt8(); }                               \
   TEST_F(FIXTURE, SqlIngestInt16) { TestSqlIngestInt16(); }                             \
   TEST_F(FIXTURE, SqlIngestInt32) { TestSqlIngestInt32(); }                             \
@@ -365,12 +392,20 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
+  TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }           \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestReplace) { TestSqlIngestReplace(); }                         \
   TEST_F(FIXTURE, SqlIngestCreateAppend) { TestSqlIngestCreateAppend(); }               \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
   TEST_F(FIXTURE, SqlIngestSample) { TestSqlIngestSample(); }                           \
+  TEST_F(FIXTURE, SqlIngestTargetCatalog) { TestSqlIngestTargetCatalog(); }             \
+  TEST_F(FIXTURE, SqlIngestTargetSchema) { TestSqlIngestTargetSchema(); }               \
+  TEST_F(FIXTURE, SqlIngestTargetCatalogSchema) { TestSqlIngestTargetCatalogSchema(); } \
+  TEST_F(FIXTURE, SqlIngestTemporary) { TestSqlIngestTemporary(); }                     \
+  TEST_F(FIXTURE, SqlIngestTemporaryAppend) { TestSqlIngestTemporaryAppend(); }         \
+  TEST_F(FIXTURE, SqlIngestTemporaryReplace) { TestSqlIngestTemporaryReplace(); }       \
+  TEST_F(FIXTURE, SqlIngestTemporaryExclusive) { TestSqlIngestTemporaryExclusive(); }   \
   TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                     \
   TEST_F(FIXTURE, SqlPrepareGetParameterSchema) { TestSqlPrepareGetParameterSchema(); } \
   TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \
