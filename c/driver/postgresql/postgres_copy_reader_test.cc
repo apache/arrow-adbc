@@ -65,6 +65,7 @@ class PostgresCopyStreamWriteTester {
   }
 
   ArrowErrorCode WriteAll(struct ArrowBuffer* buffer, ArrowError* error = nullptr) {
+    uint8_t* cursor = buffer->data;
     NANOARROW_RETURN_NOT_OK(writer_.WriteHeader(buffer, error));
 
     int result;
@@ -75,7 +76,7 @@ class PostgresCopyStreamWriteTester {
     // TODO: don't think we should do this here; the reader equivalent does
     // increment the data pointer and seemingly discard at the end, but
     // we may still want to keep that buffer available?
-    buffer->data -= static_cast<size_t>(writer_.array_size_approx_bytes());
+    buffer->data -= buffer->data - cursor;
     return result;
   }
 
