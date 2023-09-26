@@ -194,9 +194,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     object value = reader.GetValue(i);
                     ColumnNetTypeArrowTypeValue ctv = expectedValues[i];
 
-                    string columnName = dataTable.Rows[i][SchemaTableColumn.ColumnName].ToString();
+                    string readerColumnName = reader.GetName(i);
+                    string dataTableColumnName = dataTable.Rows[i][SchemaTableColumn.ColumnName].ToString();
 
-                    Assert.IsTrue(columnName.Equals(ctv.Name, StringComparison.OrdinalIgnoreCase), $"`{columnName}` != `{ctv.Name}` at position {i}. Verify the test query and sample data return in the same order.");
+                    Assert.IsTrue(readerColumnName.Equals(ctv.Name, StringComparison.OrdinalIgnoreCase), $"`{readerColumnName}` != `{ctv.Name}` at position {i}. Verify the test query and sample data return in the same order in the reader.");
+
+                    Assert.IsTrue(dataTableColumnName.Equals(ctv.Name, StringComparison.OrdinalIgnoreCase), $"`{dataTableColumnName}` != `{ctv.Name}` at position {i}. Verify the test query and sample data return in the same order in the data table.");
 
                     Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
                 }

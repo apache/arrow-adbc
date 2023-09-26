@@ -25,8 +25,10 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Loads a test configuration
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="fileName">The path of the configuration file</param>
+        /// <typeparam name="T">Return type</typeparam>
+        /// <param name="fileName">
+        /// The path of the configuration file
+        /// </param>
         /// <returns>T</returns>
         public static T GetTestConfiguration<T>(string fileName)
             where T : TestConfiguration
