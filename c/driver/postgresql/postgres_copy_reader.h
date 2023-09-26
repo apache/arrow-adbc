@@ -1107,6 +1107,8 @@ class PostgresCopyStreamReader {
 
 class PostgresCopyFieldWriter {
  public:
+  virtual ~PostgresCopyFieldWriter() {}
+
   void Init(struct ArrowArrayView* array_view) { array_view_ = array_view; };
 
   virtual ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) {
