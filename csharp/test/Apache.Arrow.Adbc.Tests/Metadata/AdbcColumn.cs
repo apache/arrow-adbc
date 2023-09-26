@@ -17,45 +17,105 @@
 
 namespace Apache.Arrow.Adbc.Tests.Metadata
 {
+    /// <summary>
+    /// Represents the column in the metadata.
+    /// </summary>
     public class AdbcColumn
     {
-        public string name { get; set; }
+        /// <summary>
+        /// Column name
+        /// </summary>
+        public string Name { get; set; }
 
-        public int? ordinal_position { get; set; }
+        /// <summary>
+        /// Column ordinal position
+        /// </summary>
+        public int? OrdinalPosition { get; set; }
 
-        public string remarks { get; set; }
+        /// <summary>
+        /// Column remarks
+        /// </summary>
+        public string Remarks { get; set; }
 
-        public short? xdbc_data_type { get; set; }
+        /// <summary>
+        /// Column XDBC data type
+        /// </summary>
+        public short? XdbcDataType { get; set; }
 
-        public string xdbc_type_name { get; set; }
+        /// <summary>
+        /// Column XDBC type name
+        /// </summary>
+        public string XdbcTypeName { get; set; }
 
-        public int? xdbc_column_size { get; set; }
+        /// <summary>
+        /// Column XDBC column size
+        /// </summary>
+        public int? XdbcColumnSize { get; set; }
 
-        public short? xdbc_decimal_digits { get; set; }
+        /// <summary>
+        /// Column XDBC data type
+        /// </summary>
+        public short? XdbcDecimalDigits { get; set; }
 
-        public short? xdbc_num_prec_radix { get; set; }
+        /// <summary>
+        /// Column XDBC numeric precision radix
+        /// </summary>
+        public short? XdbcNumPrecRadix { get; set; }
 
-        public short? xdbc_nullable { get; set; }
+        /// <summary>
+        /// Column XDBC nullable
+        /// </summary>
+        public short? XdbcNullable { get; set; }
 
-        public string xdbc_column_def { get; set; }
+        /// <summary>
+        /// Column XDBC column definition
+        /// </summary>
+        public string XdbcColumnDef { get; set; }
 
-        public short? xdbc_sql_data_type { get; set; }
+        /// <summary>
+        /// Column XDBC SQL data type
+        /// </summary>
+        public short? XdbcSqlDataType { get; set; }
 
-        public short? xdbc_datetime_sub { get; set; }
+        /// <summary>
+        /// Column XDBC datetime sub
+        /// </summary>
+        public short? XdbcDatetimeSub { get; set; }
 
-        public int? xdbc_char_octet_length { get; set; }
+        /// <summary>
+        /// Column XDBC char octet length
+        /// </summary>
+        public int? XdbcCharOctetLength { get; set; }
 
-        public string xdbc_is_nullable { get; set; }
+        /// <summary>
+        /// Column XDBC is nullable (YES/NO)
+        /// </summary>
+        public string XdbcIsNullable { get; set; }
 
-        public string xdbc_scope_catalog { get; set; }
+        /// <summary>
+        /// Column XDBC scope catalog
+        /// </summary>
+        public string XdbcScopeCatalog { get; set; }
 
-        public string xdbc_scope_schema { get; set; }
+        /// <summary>
+        /// Column XDBC scope schema
+        /// </summary>
+        public string XdbcScopeSchema { get; set; }
 
-        public string xdbc_scope_table { get; set; }
+        /// <summary>
+        /// Column XDBC scope table
+        /// </summary>
+        public string XdbcScopeTable { get; set; }
 
-        public bool? xdbc_is_autoincrement { get; set; }
+        /// <summary>
+        /// Column XDBC is auto increment
+        /// </summary>
+        public bool? XdbcIsAutoIncrement { get; set; }
 
-        public bool? xdbc_is_generatedcolumn { get; set; }
+        /// <summary>
+        /// Column XDBC is generated column
+        /// </summary>
+        public bool? XdbcIsGeneratedColumn { get; set; }
 
     }
 }

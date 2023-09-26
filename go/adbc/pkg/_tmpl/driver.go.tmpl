@@ -53,6 +53,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/cgo"
+	"strings"
 	"sync/atomic"
 	"unsafe"
 
@@ -61,6 +62,7 @@ import (
 	"github.com/apache/arrow/go/v13/arrow/cdata"
 	"github.com/apache/arrow/go/v13/arrow/memory"
 	"github.com/apache/arrow/go/v13/arrow/memory/mallocator"
+	"golang.org/x/exp/slog"
 )
 
 // Must use malloc() to respect CGO rules
@@ -71,6 +73,7 @@ var drv = {{.Driver}}{Alloc: mallocator.NewMallocator()}
 var globalPoison int32 = 0
 
 const errPrefix = "[{{.Prefix}}] "
+const logLevelEnvVar = "ADBC_DRIVER_{{.PrefixUpper}}_LOG_LEVEL"
 
 func setErr(err *C.struct_AdbcError, format string, vals ...interface{}) {
 	if err == nil {
@@ -161,6 +164,45 @@ func poison(err *C.struct_AdbcError, fname string, e interface{}) C.AdbcStatusCo
 	setErr(err, "%s: Go panic in {{.Prefix}} driver (see stderr): %#v", fname, e)
 	return C.ADBC_STATUS_INTERNAL
 }
+
+// Check environment variables and enable logging if possible.
+func initLoggingFromEnv(db adbc.Database) {
+	logLevel := slog.LevelError
+	switch strings.ToLower(os.Getenv(logLevelEnvVar)) {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "info":
+		logLevel = slog.LevelInfo
+	case "warn":
+	case "warning":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	case "":
+		return
+	default:
+		printLoggingHelp()
+		return
+	}
+
+	h := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     logLevel,
+	})
+	logger := slog.New(h)
+
+	ext, ok := db.(adbc.DatabaseLogging)
+	if !ok {
+		logger.Error("{{.Prefix}} does not support logging")
+		return
+	}
+	ext.SetLogger(logger)
+}
+
+func printLoggingHelp() {
+	fmt.Fprintf(os.Stderr, "{{.Prefix}}: to enable logging, set %s to 'debug', 'info', 'warn', or 'error'", logLevelEnvVar)
+}
+
 
 // Allocate a new cgo.Handle and store its address in a heap-allocated
 // uintptr_t.  Experimentally, this was found to be necessary, else
@@ -305,7 +347,7 @@ func (cStream *cArrayStream) maybeError() C.int {
 
 //export {{.Prefix}}ArrayStreamGetLastError
 func {{.Prefix}}ArrayStreamGetLastError(stream *C.struct_ArrowArrayStream) *C.cchar_t {
-	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) || stream.private_data == nil {
 		return nil
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
@@ -317,7 +359,7 @@ func {{.Prefix}}ArrayStreamGetLastError(stream *C.struct_ArrowArrayStream) *C.cc
 
 //export {{.Prefix}}ArrayStreamGetNext
 func {{.Prefix}}ArrayStreamGetNext(stream *C.struct_ArrowArrayStream, array *C.struct_ArrowArray) C.int {
-	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) || stream.private_data == nil  {
 		return C.EINVAL
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
@@ -332,7 +374,7 @@ func {{.Prefix}}ArrayStreamGetNext(stream *C.struct_ArrowArrayStream, array *C.s
 
 //export {{.Prefix}}ArrayStreamGetSchema
 func {{.Prefix}}ArrayStreamGetSchema(stream *C.struct_ArrowArrayStream, schema *C.struct_ArrowSchema) C.int {
-	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) || stream.private_data == nil  {
 		return C.EINVAL
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
@@ -346,7 +388,7 @@ func {{.Prefix}}ArrayStreamGetSchema(stream *C.struct_ArrowArrayStream, schema *
 
 //export {{.Prefix}}ArrayStreamRelease
 func {{.Prefix}}ArrayStreamRelease(stream *C.struct_ArrowArrayStream) {
-	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) || stream.private_data == nil  {
 		return
 	}
 	h := (*(*cgo.Handle)(stream.private_data))
@@ -365,7 +407,7 @@ func {{.Prefix}}ArrayStreamRelease(stream *C.struct_ArrowArrayStream) {
 
 //export {{.Prefix}}ErrorFromArrayStream
 func {{.Prefix}}ErrorFromArrayStream(stream *C.struct_ArrowArrayStream, status *C.AdbcStatusCode) (*C.struct_AdbcError) {
-	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.{{.Prefix}}ArrayStreamRelease) || stream.private_data == nil  {
 		return nil
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
@@ -508,6 +550,8 @@ func {{.Prefix}}DatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError)
 	if aerr != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, aerr))
 	}
+
+	initLoggingFromEnv(adb)
 
 	cdb.db = adb
 	return C.ADBC_STATUS_OK

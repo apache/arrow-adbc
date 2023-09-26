@@ -21,6 +21,7 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
+using Apache.Arrow.Types;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -30,25 +31,39 @@ namespace Apache.Arrow.Adbc.Tests
     /// </summary>
     public class ClientTests
     {
+        /// <summary>
+        /// Validates a column contains the correct types and values.
+        /// </summary>
+        /// <param name="ctv"><see cref="ColumnNetTypeArrowTypeValue"/></param>
+        /// <param name="value">The object's value</param>
+        /// <param name="reader">The current reader</param>
+        /// <param name="column_schema">The column schema from the reader</param>
+        /// <param name="dataTable">The <see cref="DataTable"/></param>
         public static void AssertTypeAndValue(ColumnNetTypeArrowTypeValue ctv, object value, DbDataReader reader, ReadOnlyCollection<DbColumn> column_schema, DataTable dataTable)
         {
             string name = ctv.Name;
-            Type arrowType = column_schema.Where(x => x.ColumnName == name).FirstOrDefault()?.DataType;
+            Type clientArrowType = column_schema.Where(x => x.ColumnName == name).FirstOrDefault()?.DataType;
+
             Type dataTableType = null;
+            IArrowType arrowType = null;
 
             foreach (DataRow row in dataTable.Rows)
             {
-                if (row.ItemArray[0].ToString() == name)
+                if (row[SchemaTableColumn.ColumnName].ToString() == name)
                 {
-                    dataTableType = row.ItemArray[2] as Type;
+                    dataTableType = row[SchemaTableColumn.DataType] as Type;
+                    arrowType = row[SchemaTableColumn.ProviderType] as IArrowType;
+
                 }
             }
 
             Type netType = reader[name]?.GetType();
 
-            Assert.IsTrue(arrowType == ctv.ExpectedNetType, $"{name} is {arrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema");
+            Assert.IsTrue(clientArrowType == ctv.ExpectedNetType, $"{name} is {clientArrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema");
 
             Assert.IsTrue(dataTableType == ctv.ExpectedNetType, $"{name} is {dataTableType.Name} and not {ctv.ExpectedNetType.Name} in the data table");
+
+            Assert.IsTrue(arrowType.GetType() == ctv.ExpectedArrowArrayType, $"{name} is {arrowType.Name} and not {ctv.ExpectedArrowArrayType.Name} in the provider type");
 
             if (netType != null)
             {

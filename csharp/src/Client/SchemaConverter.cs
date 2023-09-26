@@ -95,6 +95,7 @@ namespace Apache.Arrow.Adbc.Client
             {
                 case ArrowTypeId.Binary:
                     return typeof(byte[]);
+
                 case ArrowTypeId.Boolean:
                     return typeof(bool);
 

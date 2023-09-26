@@ -19,6 +19,9 @@ using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc.Tests.Metadata
 {
+    /// <summary>
+    /// Represents the catalog in the metadata.
+    /// </summary>
     public class AdbcCatalog
     {
         public AdbcCatalog()
@@ -26,8 +29,14 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             DbSchemas = new List<AdbcDbSchema>();
         }
 
+        /// <summary>
+        /// The catalog name.
+        /// </summary>
         public string Name { get; set; }
 
+        /// <summary>
+        /// Schemas associated with the catalog.
+        /// </summary>
         public List<AdbcDbSchema> DbSchemas { get; set; }
     }
 }

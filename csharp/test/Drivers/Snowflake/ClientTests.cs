@@ -15,25 +15,30 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.IO;
 using Apache.Arrow.Adbc.Client;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
     /// <summary>
     /// Class for testing the ADBC Client using the Snowflake ADBC driver.
     /// </summary>
-    [TestClass]
+    /// <remarks>
+    /// Tests are ordered to ensure data is created
+    /// for the other queries to run.
+    /// </remarks>
     public class ClientTests
     {
         /// <summary>
         /// Validates if the client execute updates.
         /// </summary>
-        [TestMethod]
+        [Test, Order(1)]
         public void CanClientExecuteUpdate()
         {
             SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
@@ -62,7 +67,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// <summary>
         /// Validates if the client execute updates using the reader.
         /// </summary>
-        [TestMethod]
+        [Test, Order(2)]
         public void CanClientExecuteUpdateUsingExecuteReader()
         {
             SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
@@ -96,10 +101,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         /// <summary>
-        /// Validates if the client can connect to a live server and
-        /// parse the results.
+        /// Validates if the client can connect to a live server
+        /// and parse the results.
         /// </summary>
-        [TestMethod]
+        [Test, Order(3)]
         public void CanClientExecuteQuery()
         {
             SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
@@ -128,10 +133,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         /// <summary>
-        /// Validates if the client can connect to a live server using
-        /// a connection string / private key parse the results.
+        /// Validates if the client can connect to a live server
+        /// using a connection string / private key and parse the results.
         /// </summary>
-        [TestMethod]
+        [Test, Order(4)]
         public void CanClientExecuteQueryUsingPrivateKey()
         {
             SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
@@ -163,14 +168,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Validates if the client is retrieving and converting values
         /// to the expected types.
         /// </summary>
-        [TestMethod]
+        [Test, Order(5)]
         public void VerifyTypesAndValues()
         {
             SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
 
             Client.AdbcConnection dbConnection = GetSnowflakeAdbcConnection(testConfiguration);
-
             dbConnection.Open();
+
             DbCommand dbCommand = dbConnection.CreateCommand();
             dbCommand.CommandText = testConfiguration.Query;
 
@@ -178,7 +183,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             if (reader.Read())
             {
-                var column_schema = reader.GetColumnSchema();
+                ReadOnlyCollection<DbColumn> column_schema = reader.GetColumnSchema();
+
                 DataTable dataTable = reader.GetSchemaTable();
 
                 List<ColumnNetTypeArrowTypeValue> expectedValues = SampleData.GetSampleData();
@@ -188,7 +194,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     object value = reader.GetValue(i);
                     ColumnNetTypeArrowTypeValue ctv = expectedValues[i];
 
-                    Adbc.Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
+                    string columnName = dataTable.Rows[i][SchemaTableColumn.ColumnName].ToString();
+
+                    Assert.IsTrue(columnName.Equals(ctv.Name, StringComparison.OrdinalIgnoreCase), $"`{columnName}` != `{ctv.Name}` at position {i}. Verify the test query and sample data return in the same order.");
+
+                    Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
                 }
             }
         }

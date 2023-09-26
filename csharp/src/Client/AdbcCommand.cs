@@ -28,14 +28,17 @@ namespace Apache.Arrow.Adbc.Client
     public sealed class AdbcCommand : DbCommand
     {
         private AdbcStatement adbcStatement;
-        private Schema schema;
         private int _timeout = 30;
 
         /// <summary>
-        /// Overloaded. Intializes <see cref="AdbcCommand"/>.
+        /// Overloaded. Initializes <see cref="AdbcCommand"/>.
         /// </summary>
-        /// <param name="adbcStatement">The <see cref="AdbcStatement"/> to use.</param>
-        /// <param name="adbcConnection">The <see cref="AdbcConnection"/> to use.</param>
+        /// <param name="adbcStatement">
+        /// The <see cref="AdbcStatement"/> to use.
+        /// </param>
+        /// <param name="adbcConnection">
+        /// The <see cref="AdbcConnection"/> to use.
+        /// </param>
         /// <exception cref="ArgumentNullException"></exception>
         public AdbcCommand(AdbcStatement adbcStatement, AdbcConnection adbcConnection) : base()
         {
@@ -50,7 +53,7 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Overloaded. Intializes <see cref="AdbcCommand"/>.
+        /// Overloaded. Initializes <see cref="AdbcCommand"/>.
         /// </summary>
         /// <param name="query">The command text to use.</param>
         /// <param name="adbcConnection">The <see cref="AdbcConnection"/> to use.</param>
@@ -69,7 +72,8 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Gets the <see cref="AdbcStatement"/> associated with this <see cref="AdbcCommand"/>.
+        /// Gets the <see cref="AdbcStatement"/> associated with
+        /// this <see cref="AdbcCommand"/>.
         /// </summary>
         public AdbcStatement AdbcStatement => this.adbcStatement;
 
@@ -118,7 +122,8 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Similar to <see cref="ExecuteNonQuery"/> but returns Int64 instead of Int32.
+        /// Similar to <see cref="ExecuteNonQuery"/> but returns Int64
+        /// instead of Int32.
         /// </summary>
         /// <returns></returns>
         public long ExecuteUpdate()
@@ -154,7 +159,9 @@ namespace Apache.Arrow.Adbc.Client
         /// <summary>
         /// Executes the reader with the specified behavior.
         /// </summary>
-        /// <param name="behavior">The <see cref="CommandBehavior"/></param>
+        /// <param name="behavior">
+        /// The <see cref="CommandBehavior"/>
+        /// </param>
         /// <returns><see cref="AdbcDataReader"/></returns>
         public new AdbcDataReader ExecuteReader(CommandBehavior behavior)
         {

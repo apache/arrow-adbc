@@ -166,16 +166,22 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
       return;
     }
 
-    memcpy(new_keys, details->keys, sizeof(char*) * details->count);
-    free(details->keys);
+    if (details->keys != NULL) {
+      memcpy(new_keys, details->keys, sizeof(char*) * details->count);
+      free(details->keys);
+    }
     details->keys = new_keys;
 
-    memcpy(new_values, details->values, sizeof(uint8_t*) * details->count);
-    free(details->values);
+    if (details->values != NULL) {
+      memcpy(new_values, details->values, sizeof(uint8_t*) * details->count);
+      free(details->values);
+    }
     details->values = new_values;
 
-    memcpy(new_lengths, details->lengths, sizeof(size_t) * details->count);
-    free(details->lengths);
+    if (details->lengths != NULL) {
+      memcpy(new_lengths, details->lengths, sizeof(size_t) * details->count);
+      free(details->lengths);
+    }
     details->lengths = new_lengths;
 
     details->capacity = new_capacity;

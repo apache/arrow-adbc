@@ -49,7 +49,7 @@ for component in ${COMPONENTS}; do
         echo "NOTE: assuming wheels are already installed"
     fi
 done
-pip install pytest pyarrow pandas
+pip install pytest pyarrow pandas protobuf
 
 
 echo "=== (${PYTHON_VERSION}) Testing wheels ==="

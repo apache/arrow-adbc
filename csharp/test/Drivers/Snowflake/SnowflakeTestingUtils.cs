@@ -26,7 +26,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     internal class SnowflakeTestingUtils
     {
         /// <summary>
-        /// Gets a the Snowflake ADBC driver with settings from the <see cref="SnowflakeTestConfiguration"/>.
+        /// Gets a the Snowflake ADBC driver with settings from the
+        /// <see cref="SnowflakeTestConfiguration"/>.
         /// </summary>
         /// <param name="testConfiguration"></param>
         /// <param name="parameters"></param>
@@ -54,7 +55,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         /// <summary>
-        /// Gets a the Snowflake ADBC driver with settings from the <see cref="SnowflakeTestConfiguration"/>.
+        /// Gets a the Snowflake ADBC driver with settings from the
+        /// <see cref="SnowflakeTestConfiguration"/>.
         /// </summary>
         /// <param name="testConfiguration"></param>
         /// <param name="parameters"></param>

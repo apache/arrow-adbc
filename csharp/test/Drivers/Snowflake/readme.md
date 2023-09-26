@@ -20,7 +20,7 @@
 # Snowflake
 The Snowflake tests leverage the interop nature of the C# ADBC library. These require the use of the [Snowflake Go driver](https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/snowflake). You will need to compile the Go driver for your platform and place the driver in the correct path in order for the tests to execute correctly.
 
-To compile, navigate to the `go/adbc/pkg` directory of the cloned [arrow-adbc](https://github.com/apache/arrow-adbc) repository then run the `make` command.  If you encounter compilation errors, please ensure the environment is setup correctly. See the [Contributing to ADBC](https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md#environment-setup)
+To compile, navigate to the `go/adbc/pkg` directory of the cloned [arrow-adbc](https://github.com/apache/arrow-adbc) repository then run the `make` command.  If you encounter compilation errors, please ensure that Go, [GCC and C++](https://code.visualstudio.com/docs/cpp/config-mingw) tools are installed. And following [Contributing to ADBC](https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md#environment-setup).
 
 ## Configuration
 
