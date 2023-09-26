@@ -38,6 +38,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
+        /// <remarks>
+        /// Tests are ordered to ensure data is created
+        /// for the other queries to run.
+        /// </remarks>
         [Test, Order(1)]
         public void CanExecuteUpdate()
         {
@@ -114,7 +118,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
 
             // need to add the database
-            string databaseName = metadataTestConfiguration.Metadata.Database;
+            string databaseName = metadataTestConfiguration.Metadata.Catalog;
             string schemaName = metadataTestConfiguration.Metadata.Schema;
             string tableName = metadataTestConfiguration.Metadata.Table;
             string columnName = null;
@@ -163,7 +167,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             AdbcDatabase adbcDatabase = driver.Open(parameters);
             AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
 
-            string databaseName = metadataTestConfiguration.Metadata.Database;
+            string databaseName = metadataTestConfiguration.Metadata.Catalog;
             string schemaName = metadataTestConfiguration.Metadata.Schema;
             string tableName = metadataTestConfiguration.Metadata.Table;
 

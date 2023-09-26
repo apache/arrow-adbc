@@ -117,7 +117,7 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 
             for (int i = 0; i < columnsArray.Length; i++)
             {
-                var c = new AdbcColumn();
+                AdbcColumn c = new AdbcColumn();
                 c.Name = column_name.GetString(i);
                 c.OrdinalPosition = ordinal_position.GetValue(i);
                 c.Remarks = remarks.GetString(i);

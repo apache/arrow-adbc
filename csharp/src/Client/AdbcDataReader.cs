@@ -311,7 +311,7 @@ namespace Apache.Arrow.Adbc.Client
         {
             this.currentRowInRecordBatch = 0;
 
-            var recordBatch = this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).Result;
+            RecordBatch recordBatch = this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).Result;
 
             if( recordBatch != null )
             {

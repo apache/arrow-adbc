@@ -29,9 +29,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     internal class SampleData
     {
         /// <summary>
-        /// Sample data returned from the TestConfiguration.Query.
+        /// Sample data returned from TestConfiguration.Query.
         /// </summary>
-        /// <returns></returns>
         public static List<ColumnNetTypeArrowTypeValue> GetSampleData()
         {
             List<ColumnNetTypeArrowTypeValue> expectedValues = new List<ColumnNetTypeArrowTypeValue>()

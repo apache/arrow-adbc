@@ -137,7 +137,7 @@ namespace Apache.Arrow.Adbc.Client
         /// <returns><see cref="Result"></returns>
         public QueryResult ExecuteQuery()
         {
-            var executed = this.adbcStatement.ExecuteQuery();
+            QueryResult executed = this.adbcStatement.ExecuteQuery();
 
             return executed;
         }

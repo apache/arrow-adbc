@@ -89,7 +89,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 {
                     if (line.Contains(placeholder))
                     {
-                        string modifiedLine = line.Replace(placeholder, $"{testConfiguration.Metadata.Database}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}");
+                        string modifiedLine = line.Replace(placeholder, $"{testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}");
 
                         content.AppendLine(modifiedLine);
                     }
@@ -100,7 +100,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 }
             }
 
-            string[] queries = content.ToString().Split(";".ToCharArray()).Where(x=>x.Trim().Length > 0).ToArray();
+            string[] queries = content.ToString().Split(";".ToCharArray()).Where(x => x.Trim().Length > 0).ToArray();
 
             return queries;
         }

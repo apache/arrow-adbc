@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             while (true)
             {
-                var nextBatch = queryResult.Stream.ReadNextRecordBatchAsync().Result;
+                RecordBatch nextBatch = queryResult.Stream.ReadNextRecordBatchAsync().Result;
                 if (nextBatch == null) { break; }
                 count += nextBatch.Length;
             }
