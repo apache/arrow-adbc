@@ -16,6 +16,7 @@
 */
 
 using System;
+using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests
 {

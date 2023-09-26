@@ -30,7 +30,9 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         /// <param name="name">The column name.</param>
         /// <param name="dataType">The type of column.</param>
-        /// <param name="nullable">Indicates whether the column allows DbNull values.</param>
+        /// <param name="nullable">
+        /// Indicates whether the column allows DbNull values.
+        /// </param>
         public AdbcColumn(string name, Type dataType, bool nullable)
             : this(name, dataType, nullable, null, null)
         {
@@ -42,8 +44,12 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         /// <param name="name">The column name.</param>
         /// <param name="dataType">The type of column.</param>
-        /// <param name="nullable">Indicates whether the column allows DbNull values.</param>
-        /// <param name="precision">The decimal precision, if required.</param>
+        /// <param name="nullable">
+        /// Indicates whether the column allows DbNull values.
+        /// </param>
+        /// <param name="precision">
+        /// The decimal precision, if required.
+        /// </param>
         /// <param name="scale">The decimal scale, if required.</param>
         public AdbcColumn(string name, Type dataType, bool nullable, int? precision, int? scale)
         {

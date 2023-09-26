@@ -118,25 +118,25 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             for (int i = 0; i < columnsArray.Length; i++)
             {
                 var c = new AdbcColumn();
-                c.name = column_name.GetString(i);
-                c.ordinal_position = ordinal_position.GetValue(i);
-                c.remarks = remarks.GetString(i);
-                c.xdbc_data_type = xdbc_data_type.GetValue(i);
-                c.xdbc_type_name = xdbc_type_name.GetString(i);
-                c.xdbc_column_size = xdbc_column_size.GetValue(i);
-                c.xdbc_decimal_digits = xdbc_decimal_digits.GetValue(i);
-                c.xdbc_num_prec_radix = xdbc_num_prec_radix.GetValue(i);
-                c.xdbc_nullable = xdbc_nullable.GetValue(i);
-                c.xdbc_column_def = xdbc_column_def.GetString(i);
-                c.xdbc_sql_data_type = xdbc_sql_data_type.GetValue(i);
-                c.xdbc_datetime_sub = xdbc_datetime_sub.GetValue(i);
-                c.xdbc_char_octet_length = xdbc_char_octet_length.GetValue(i);
-                c.xdbc_is_nullable = xdbc_is_nullable.GetString(i);
-                c.xdbc_scope_catalog = xdbc_scope_catalog.GetString(i);
-                c.xdbc_scope_schema = xdbc_scope_schema.GetString(i);
-                c.xdbc_scope_table = xdbc_scope_table.GetString(i);
-                c.xdbc_is_autoincrement = xdbc_is_autoincrement.GetValue(i);
-                c.xdbc_is_generatedcolumn = xdbc_is_generatedcolumn.GetValue(i);
+                c.Name = column_name.GetString(i);
+                c.OrdinalPosition = ordinal_position.GetValue(i);
+                c.Remarks = remarks.GetString(i);
+                c.XdbcDataType = xdbc_data_type.GetValue(i);
+                c.XdbcTypeName = xdbc_type_name.GetString(i);
+                c.XdbcColumnSize = xdbc_column_size.GetValue(i);
+                c.XdbcDecimalDigits = xdbc_decimal_digits.GetValue(i);
+                c.XdbcNumPrecRadix = xdbc_num_prec_radix.GetValue(i);
+                c.XdbcNullable = xdbc_nullable.GetValue(i);
+                c.XdbcColumnDef = xdbc_column_def.GetString(i);
+                c.XdbcSqlDataType = xdbc_sql_data_type.GetValue(i);
+                c.XdbcDatetimeSub = xdbc_datetime_sub.GetValue(i);
+                c.XdbcCharOctetLength = xdbc_char_octet_length.GetValue(i);
+                c.XdbcIsNullable = xdbc_is_nullable.GetString(i);
+                c.XdbcScopeCatalog = xdbc_scope_catalog.GetString(i);
+                c.XdbcScopeSchema = xdbc_scope_schema.GetString(i);
+                c.XdbcScopeTable = xdbc_scope_table.GetString(i);
+                c.XdbcIsAutoIncrement = xdbc_is_autoincrement.GetValue(i);
+                c.XdbcIsGeneratedColumn = xdbc_is_generatedcolumn.GetValue(i);
 
                 columns.Add(c);
             }

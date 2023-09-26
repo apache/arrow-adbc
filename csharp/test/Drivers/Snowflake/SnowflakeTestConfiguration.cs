@@ -24,27 +24,51 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     /// </summary>
     internal class SnowflakeTestConfiguration : TestConfiguration
     {
+        /// <summary>
+        /// The file path location of the driver.
+        /// </summary>
         [JsonPropertyName("driverPath")]
         public string DriverPath { get; set; }
 
+        /// <summary>
+        /// The entrypoint of the driver.
+        /// </summary>
         [JsonPropertyName("driverEntryPoint")]
         public string DriverEntryPoint { get; set; }
 
+        /// <summary>
+        /// The Snowflake account.
+        /// </summary>
         [JsonPropertyName("account")]
         public string Account { get; set; }
 
+        /// <summary>
+        /// The Snowflake user.
+        /// </summary>
         [JsonPropertyName("user")]
         public string User { get; set; }
 
+        /// <summary>
+        /// The Snowflake password (if using).
+        /// </summary>
         [JsonPropertyName("password")]
         public string Password { get; set; }
 
+        /// <summary>
+        /// The Snowflake warehouse.
+        /// </summary>
         [JsonPropertyName("warehouse")]
         public string Warehouse { get; set; }
 
+        /// <summary>
+        /// The Snowflake authentication type.
+        /// </summary>
         [JsonPropertyName("authenticationType")]
         public string AuthenticationType { get; set; }
 
+        /// <summary>
+        /// The file location of the authentication token (if using).
+        /// </summary>
         [JsonPropertyName("authenticationTokenPath"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string AuthenticationTokenPath { get; set; }
     }

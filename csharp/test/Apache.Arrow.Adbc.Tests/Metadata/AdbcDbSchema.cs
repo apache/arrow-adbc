@@ -19,6 +19,9 @@ using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc.Tests.Metadata
 {
+    /// <summary>
+    /// Represents the schema in the metadata.
+    /// </summary>
     public class AdbcDbSchema
     {
         public AdbcDbSchema()
@@ -26,8 +29,14 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
             Tables = new List<AdbcTable>();
         }
 
+        /// <summary>
+        /// The schema name.
+        /// </summary>
         public string Name { get; set; }
 
+        /// <summary>
+        /// Tables associated with the schema.
+        /// </summary>
         public List<AdbcTable> Tables { get; set; }
     }
 }

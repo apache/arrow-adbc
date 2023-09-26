@@ -19,10 +19,24 @@ using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc.Tests.Metadata
 {
+    /// <summary>
+    /// Represents the table in the metadata.
+    /// </summary>
     public class AdbcTable
     {
+        /// <summary>
+        /// Table name
+        /// </summary>
         public string Name { get; set; }
+
+        /// <summary>
+        /// Table type
+        /// </summary>
         public string Type { get; set; }
+
+        /// <summary>
+        /// List of columns associated with the table.
+        /// </summary>
         public List<AdbcColumn> Columns { get; set; }
     }
 }
