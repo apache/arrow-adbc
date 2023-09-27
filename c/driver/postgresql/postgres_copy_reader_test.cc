@@ -76,7 +76,7 @@ class PostgresCopyStreamWriteTester {
     // TODO: don't think we should do this here; the reader equivalent does
     // increment the data pointer and seemingly discard at the end, but
     // we may still want to keep that buffer available?
-    buffer->data -= buffer->data - cursor;
+    buffer->data = cursor;
     return result;
   }
 
