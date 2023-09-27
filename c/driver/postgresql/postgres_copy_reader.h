@@ -1192,8 +1192,6 @@ class PostgresCopyStreamWriter {
     return NANOARROW_OK;
   }
 
-  int64_t array_size_approx_bytes() const { return array_size_approx_bytes_; }
-
   ArrowErrorCode WriteHeader(ArrowBuffer* buffer, ArrowError* error) {
     ArrowBufferAppend(buffer, kPgCopyBinarySignature, sizeof(kPgCopyBinarySignature));
 
@@ -1206,16 +1204,13 @@ class PostgresCopyStreamWriter {
     const int64_t header_bytes =
         sizeof(kPgCopyBinarySignature) + sizeof(flag_fields) + sizeof(extension_bytes);
     buffer->data += header_bytes;
-    array_size_approx_bytes_ += header_bytes;
 
     return NANOARROW_OK;
   }
 
   ArrowErrorCode WriteRecord(ArrowBuffer* buffer, ArrowError* error) {
-    const uint8_t* start = buffer->data;
     NANOARROW_RETURN_NOT_OK(root_writer_.Write(buffer, records_written_, error));
     records_written_++;
-    array_size_approx_bytes_ += buffer->data - start;
     return NANOARROW_OK;
   }
 
@@ -1244,7 +1239,6 @@ class PostgresCopyStreamWriter {
   struct ArrowSchema* schema_;
   std::unique_ptr<struct ArrowArrayView> array_view_{new struct ArrowArrayView};
   int64_t records_written_;
-  int64_t array_size_approx_bytes_;
 };
 
 }  // namespace adbcpq
