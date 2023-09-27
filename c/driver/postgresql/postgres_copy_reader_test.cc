@@ -65,7 +65,6 @@ class PostgresCopyStreamWriteTester {
   }
 
   ArrowErrorCode WriteAll(struct ArrowBuffer* buffer, ArrowError* error = nullptr) {
-    uint8_t* cursor = buffer->data;
     NANOARROW_RETURN_NOT_OK(writer_.WriteHeader(buffer, error));
 
     int result;
@@ -73,10 +72,6 @@ class PostgresCopyStreamWriteTester {
       result = writer_.WriteRecord(buffer, error);
     } while (result == NANOARROW_OK);
 
-    // TODO: don't think we should do this here; the reader equivalent does
-    // increment the data pointer and seemingly discard at the end, but
-    // we may still want to keep that buffer available?
-    buffer->data = cursor;
     return result;
   }
 
@@ -144,13 +139,16 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteBoolean) {
   struct ArrowBuffer buffer;
   ArrowBufferInit(&buffer);
   ArrowBufferReserve(&buffer, sizeof(kTestPgCopyBoolean));
+  uint8_t* cursor = buffer.data;
   ASSERT_EQ(tester.WriteAll(&buffer, nullptr), ENODATA);
 
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopyBoolean) - 4; i++) {
-    ASSERT_EQ(buffer.data[i], kTestPgCopyBoolean[i]);
+    ASSERT_EQ(cursor[i], kTestPgCopyBoolean[i]);
   }
+
+  buffer.data = cursor;
   ArrowBufferReset(&buffer);
 }
 
