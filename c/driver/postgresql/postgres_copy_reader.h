@@ -1238,7 +1238,7 @@ class PostgresCopyStreamWriter {
   PostgresCopyFieldTupleWriter root_writer_;
   struct ArrowSchema* schema_;
   std::unique_ptr<struct ArrowArrayView> array_view_{new struct ArrowArrayView};
-  int64_t records_written_;
+  int64_t records_written_ = 0;
 };
 
 }  // namespace adbcpq
