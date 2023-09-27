@@ -124,14 +124,14 @@ inline void WriteUnsafe(ArrowBuffer* buffer, T in) {
   const T value = SwapNetworkToHost(in);
   memcpy(buffer->data, &value, sizeof(T));
   buffer->data += sizeof(T);
-  buffer->size_bytes -= sizeof(T);
+  buffer->size_bytes += sizeof(T);
 }
 
 template <>
 inline void WriteUnsafe(ArrowBuffer* buffer, int8_t in) {
   buffer->data[0] = in;
   buffer->data += sizeof(int8_t);
-  buffer->size_bytes -= sizeof(int8_t);
+  buffer->size_bytes += sizeof(int8_t);
 }
 
 template <>
