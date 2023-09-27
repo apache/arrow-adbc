@@ -146,7 +146,9 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteBoolean) {
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopyBoolean) - 4; i++) {
-    EXPECT_EQ(cursor[i], kTestPgCopyBoolean[i]);
+    EXPECT_EQ(cursor[i], kTestPgCopyBoolean[i])
+        << "index " << i << " had value: " << kTestPgCopyBoolean[i]
+        << ", expected: " << cursor[i];
   }
 
   buffer.data = cursor;
