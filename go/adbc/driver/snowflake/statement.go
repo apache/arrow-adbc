@@ -108,6 +108,11 @@ func (st *statement) SetOption(key string, val string) error {
 	case adbc.OptionKeyIngestTargetTable:
 		st.query = ""
 		st.targetTable = val
+	case adbc.OptionKeyIngestTemporary:
+		return adbc.Error{
+			Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+			Code: adbc.StatusNotImplemented,
+		}
 	case adbc.OptionKeyIngestMode:
 		switch val {
 		case adbc.OptionValueIngestModeAppend:

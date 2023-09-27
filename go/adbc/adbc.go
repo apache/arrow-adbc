@@ -237,6 +237,7 @@ const (
 	OptionKeyProgress                 = "adbc.statement.exec.progress"
 	OptionKeyMaxProgress              = "adbc.statement.exec.max_progress"
 	OptionKeyIngestTargetTable        = "adbc.ingest.target_table"
+	OptionKeyIngestTemporary          = "adbc.ingest.temporary"
 	OptionKeyIngestMode               = "adbc.ingest.mode"
 	OptionKeyIsolationLevel           = "adbc.connection.transaction.isolation_level"
 	OptionKeyReadOnly                 = "adbc.connection.readonly"
