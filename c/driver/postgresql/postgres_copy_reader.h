@@ -136,16 +136,17 @@ inline void WriteUnsafe(ArrowBuffer* buffer, int8_t in) {
 
 template <>
 inline void WriteUnsafe(ArrowBuffer* buffer, int16_t in) {
-  uint16_t uval;
-  memcpy(&uval, &in, sizeof(int16_t));
-  WriteUnsafe<uint16_t>(buffer, uval);
+  WriteUnsafe<uint16_t>(buffer, in);
 }
 
 template <>
 inline void WriteUnsafe(ArrowBuffer* buffer, int32_t in) {
-  int32_t uval;
-  memcpy(&uval, &in, sizeof(int32_t));
-  WriteUnsafe<uint32_t>(buffer, uval);
+  WriteUnsafe<uint32_t>(buffer, in);
+}
+
+template <>
+inline void WriteUnsafe(ArrowBuffer* buffer, int64_t in) {
+  WriteUnsafe<uint64_t>(buffer, in);
 }
 
 template <typename T>
