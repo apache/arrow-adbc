@@ -140,12 +140,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteBoolean) {
   ArrowBufferInit(&buffer);
   ArrowBufferReserve(&buffer, sizeof(kTestPgCopyBoolean));
   uint8_t* cursor = buffer.data;
+
   ASSERT_EQ(tester.WriteAll(&buffer, nullptr), ENODATA);
 
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopyBoolean) - 4; i++) {
-    ASSERT_EQ(cursor[i], kTestPgCopyBoolean[i]);
+    EXPECT_EQ(cursor[i], kTestPgCopyBoolean[i]);
   }
 
   buffer.data = cursor;
