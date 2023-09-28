@@ -371,6 +371,21 @@ Be sure to go through on the following checklist:
 
    The announcement to announce@apache.org must be sent from your apache.org e-mail address to be accepted.
 
+.. dropdown:: Update C# packages
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   You need an account on https://www.nuget.org/. You need to join owners of Apache.Arrow.Adbc package. Existing owners can invite you to the owners at https://www.nuget.org/packages/Apache.Arrow.Adbc/Manage .
+
+   You need to create an API key at https://www.nuget.org/account/apikeys to upload from command line.
+
+   Install the latest .NET Core SDK from https://dotnet.microsoft.com/download .
+
+   .. code-block:: Bash
+
+      # NUGET_API_KEY=YOUR_NUGET_API_KEY dev/release/post-10-csharp.sh 0.5.0
+      NUGET_API_KEY=<your NuGet API key> dev/release/post-10-csharp.sh X.Y.Z
+
 .. dropdown:: Remove old artifacts
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
