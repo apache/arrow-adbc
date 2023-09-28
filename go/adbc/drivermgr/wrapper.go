@@ -21,7 +21,9 @@ package drivermgr
 // #cgo windows CFLAGS: -DADBC_EXPORTING
 // #cgo windows CPPFLAGS: -DADBC_EXPORTING
 // #cgo CXXFLAGS: -std=c++11
+// #if !defined(ADBC_EXPORTING)
 // #define ADBC_EXPORTING
+// #endif
 // #include "adbc.h"
 // #include <stdlib.h>
 //
