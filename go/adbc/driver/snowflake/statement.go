@@ -144,8 +144,8 @@ func (st *statement) SetOption(key string, val string) error {
 		return st.SetOptionInt(key, int64(concurrency))
 	default:
 		return adbc.Error{
-			Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),
-			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+			Code: adbc.StatusNotImplemented,
 		}
 	}
 	return nil
