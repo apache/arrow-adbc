@@ -25,6 +25,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
     internal class SnowflakeTestingUtils
     {
+        internal const string SNOWFLAKE_TEST_CONFIG_VARIABLE = "SNOWFLAKE_TEST_CONFIG";
+
         /// <summary>
         /// Gets a the Snowflake ADBC driver with settings from the
         /// <see cref="SnowflakeTestConfiguration"/>.

@@ -139,6 +139,7 @@ namespace Apache.Arrow.Adbc.Client
         protected override void Dispose(bool disposing)
         {
             this.adbcConnectionInternal?.Dispose();
+            this.adbcConnectionInternal = null;
 
             base.Dispose(disposing);
         }
@@ -164,7 +165,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override void Close()
         {
-            this.adbcConnectionInternal = null;
+           this.Dispose();
         }
 
         public override ConnectionState State

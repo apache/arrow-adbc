@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [Test, Order(1)]
         public void CanClientExecuteUpdate()
         {
-            SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
@@ -70,7 +70,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [Test, Order(2)]
         public void CanClientExecuteUpdateUsingExecuteReader()
         {
-            SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
@@ -107,7 +107,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [Test, Order(3)]
         public void CanClientExecuteQuery()
         {
-            SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             long count = 0;
 
@@ -139,7 +139,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [Test, Order(4)]
         public void CanClientExecuteQueryUsingPrivateKey()
         {
-            SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             long count = 0;
 
@@ -171,7 +171,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [Test, Order(5)]
         public void VerifyTypesAndValues()
         {
-            SnowflakeTestConfiguration testConfiguration = Utils.GetTestConfiguration<SnowflakeTestConfiguration>("resources/snowflakeconfig.json");
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             Client.AdbcConnection dbConnection = GetSnowflakeAdbcConnection(testConfiguration);
             dbConnection.Open();

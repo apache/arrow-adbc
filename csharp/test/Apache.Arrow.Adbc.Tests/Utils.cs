@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.IO;
 using System.Text.Json;
 
@@ -26,6 +27,28 @@ namespace Apache.Arrow.Adbc.Tests
         /// Loads a test configuration
         /// </summary>
         /// <typeparam name="T">Return type</typeparam>
+        /// <param name="environmentVariable">
+        /// The name of the environment variable.
+        /// </param>
+        /// <returns>T</returns>
+        public static T LoadTestConfiguration<T>(string environmentVariable)
+            where T : TestConfiguration
+        {
+            if (string.IsNullOrWhiteSpace(environmentVariable))
+                throw new ArgumentException("`environmentVariable` is invalid");
+
+            string environmentValue = Environment.GetEnvironmentVariable(environmentVariable);
+
+            if (string.IsNullOrWhiteSpace(environmentValue))
+                throw new InvalidOperationException($"cannot load file from the environment variable {environmentVariable}");
+
+            return GetTestConfiguration<T>(environmentValue);
+        }
+
+        /// <summary>
+        /// Loads a test configuration
+        /// </summary>
+        /// <typeparam name="T">Return type</typeparam>
         /// <param name="fileName">
         /// The path of the configuration file
         /// </param>
@@ -33,7 +56,10 @@ namespace Apache.Arrow.Adbc.Tests
         public static T GetTestConfiguration<T>(string fileName)
             where T : TestConfiguration
         {
-            // use a JSON file vs. setting up environment variables
+            if(!File.Exists(fileName))
+                throw new FileNotFoundException(fileName);
+
+            // use a JSON file for the various settings
             string json = File.ReadAllText(fileName);
 
             T testConfiguration = JsonSerializer.Deserialize<T>(json);

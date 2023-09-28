@@ -36,7 +36,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         [TestMethod]
         public void CanDriverExecuteQuery()
         {
-            FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.GetTestConfiguration<FlightSqlTestConfiguration>("resources/flightsqlconfig.json");
+            FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
 
             Dictionary<string, string> parameters = new Dictionary<string, string>
             {
