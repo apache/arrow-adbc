@@ -20,7 +20,7 @@ include(FetchContent)
 if(ADBC_BUILD_TESTS)
   fetchcontent_declare(duckdb
                        GIT_REPOSITORY https://github.com/duckdb/duckdb.git
-                       GIT_TAG e8e4cea5ec9d1a84c1f516d0f0674f8785a3e786 # v0.8.0
+                       GIT_TAG 0d84ccf478578278b2d1168675b8b93c60f78a5e # v0.9.0
                        GIT_PROGRESS TRUE
                        USES_TERMINAL_DOWNLOAD TRUE)
   set(BUILD_JEMALLOC_EXTENSION
