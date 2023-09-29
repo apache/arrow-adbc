@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cerrno>
 #include <cstring>
 #include <string>
 #include <unordered_map>
