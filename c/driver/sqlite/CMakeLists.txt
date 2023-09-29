@@ -46,14 +46,15 @@ add_arrow_lib(adbc_driver_sqlite
               adbc_driver_common
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
-include_directories(SYSTEM ${REPOSITORY_ROOT})
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver)
-include_directories(SYSTEM ${SQLite3_INCLUDE_DIRS})
 
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+  target_include_directories(${LIB_TARGET} SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${SQLite3_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
 endforeach()
 
 include(CheckTypeSize)
@@ -80,5 +81,11 @@ if(ADBC_BUILD_TESTS)
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-sqlite-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-sqlite-test)
 endif()

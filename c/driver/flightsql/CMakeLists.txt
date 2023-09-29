@@ -29,12 +29,16 @@ add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
            PKG_CONFIG_NAME
            adbc-driver-flightsql
            SHARED_LINK_FLAGS
-           ${LDFLAGS})
+           ${LDFLAGS}
+           OUTPUTS
+           ADBC_LIBRARIES)
 
-include_directories(SYSTEM ${REPOSITORY_ROOT})
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver)
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
+foreach(LIB_TARGET ${ADBC_LIBRARIES})
+  target_include_directories(${LIB_TARGET} SYSTEM
+                             INTERFACE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                       ${REPOSITORY_ROOT}/c/vendor
+                                       ${REPOSITORY_ROOT}/c/driver)
+endforeach()
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
   set(TEST_LINK_LIBS adbc_driver_flightsql_shared)
@@ -57,5 +61,9 @@ if(ADBC_BUILD_TESTS)
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-flightsql-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-flightsql-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-flightsql-test)
 endif()
