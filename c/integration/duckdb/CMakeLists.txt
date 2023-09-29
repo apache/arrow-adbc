@@ -52,11 +52,6 @@ if(ADBC_BUILD_TESTS)
   message(STATUS "Fetching DuckDB")
   fetchcontent_makeavailable(duckdb)
 
-  include_directories(SYSTEM ${REPOSITORY_ROOT})
-  include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
-  include_directories(PRIVATE ${REPOSITORY_ROOT}/c/driver)
-  include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
-
   add_test_case(integration_duckdb_test
                 PREFIX
                 adbc
@@ -72,5 +67,9 @@ if(ADBC_BUILD_TESTS)
                 nanoarrow)
   add_dependencies(adbc-integration-duckdb-test duckdb)
   target_compile_features(adbc-integration-duckdb-test PRIVATE cxx_std_17)
+  target_include_directories(integration_duckdb_test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-integration-duckdb-test)
 endif()
