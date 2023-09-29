@@ -1209,8 +1209,6 @@ static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type
 
 class PostgresCopyStreamWriter {
  public:
-  ~PostgresCopyStreamWriter() { ArrowArrayViewReset(&array_view_.value); }
-
   ArrowErrorCode Init(struct ArrowSchema* schema, struct ArrowArray* array) {
     schema_ = schema;
     NANOARROW_RETURN_NOT_OK(
