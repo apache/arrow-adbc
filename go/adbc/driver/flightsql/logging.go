@@ -20,7 +20,6 @@ package flightsql
 import (
 	"context"
 	"io"
-	"os"
 	"time"
 
 	"golang.org/x/exp/maps"
@@ -29,14 +28,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
-
-func nilLogger() *slog.Logger {
-	h := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		AddSource: false,
-		Level:     slog.LevelError,
-	})
-	return slog.New(h)
-}
 
 func makeUnaryLoggingInterceptor(logger *slog.Logger) grpc.UnaryClientInterceptor {
 	interceptor := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {

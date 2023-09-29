@@ -75,7 +75,7 @@ func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware 
 		"uri": uri,
 	}
 	maps.Copy(args, dbArgs)
-	suite.db, err = (driver.Driver{}).NewDatabase(args)
+	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabase(args)
 	suite.Require().NoError(err)
 }
 
