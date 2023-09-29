@@ -54,7 +54,7 @@ func (s *SnowflakeQuirks) SetupDriver(t *testing.T) adbc.Driver {
 
 	cfg.Schema = s.schemaName
 	s.connector = gosnowflake.NewConnector(gosnowflake.SnowflakeDriver{}, *cfg)
-	return driver.Driver{Alloc: s.mem}
+	return driver.NewDriver(s.mem)
 }
 
 func (s *SnowflakeQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
