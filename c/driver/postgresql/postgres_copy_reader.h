@@ -1181,14 +1181,14 @@ static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type
 
 class PostgresCopyStreamWriter {
  public:
-  ~PostgresCopyStreamWriter() { ArrowArrayViewReset(array_view_.get()); }
+  ~PostgresCopyStreamWriter() { ArrowArrayViewReset(&array_view_.value); }
 
   ArrowErrorCode Init(struct ArrowSchema* schema, struct ArrowArray* array) {
     schema_ = schema;
     NANOARROW_RETURN_NOT_OK(
-        ArrowArrayViewInitFromSchema(array_view_.get(), schema, nullptr));
-    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(array_view_.get(), array, nullptr));
-    root_writer_.Init(array_view_.get());
+        ArrowArrayViewInitFromSchema(&array_view_.value, schema, nullptr));
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&array_view_.value, array, nullptr));
+    root_writer_.Init(&array_view_.value);
     return NANOARROW_OK;
   }
 
@@ -1237,7 +1237,7 @@ class PostgresCopyStreamWriter {
  private:
   PostgresCopyFieldTupleWriter root_writer_;
   struct ArrowSchema* schema_;
-  std::unique_ptr<struct ArrowArrayView> array_view_{new struct ArrowArrayView};
+  adbcpq::Handle<struct ArrowArrayView> array_view_;
   int64_t records_written_ = 0;
 };
 
