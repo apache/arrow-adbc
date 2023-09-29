@@ -215,6 +215,33 @@ test_yum() {
   done
 }
 
+test_csharp() {
+  show_header "Build and test C# libraries"
+
+  install_csharp
+
+  pushd csharp
+
+  dotnet test
+
+  if [ "${SOURCE_KIND}" = "local" -o "${SOURCE_KIND}" = "git" ]; then
+    dotnet pack -c Release
+  else
+    mv dummy.git ../.git
+    dotnet pack -c Release
+    mv ../.git dummy.git
+  fi
+
+  if [ "${SOURCE_KIND}" = "local" ]; then
+    echo "Skipping sourelink verification on local build"
+  else
+    dotnet tool run sourcelink test artifacts/Apache.Arrow.Adbc/Release/net6.0/Apache.Arrow.Adbc.pdb
+    dotnet tool run sourcelink test artifacts/Apache.Arrow.Adbc/Release/netstandard2.0/Apache.Arrow.Adbc.pdb
+  fi
+
+  popd
+}
+
 setup_tempdir() {
   cleanup() {
     if [ "${TEST_SUCCESS}" = "yes" ]; then
@@ -239,6 +266,60 @@ setup_tempdir() {
 
   echo "Working in sandbox ${ARROW_TMPDIR}"
 }
+
+install_csharp() {
+  # Install C# if doesn't already exist
+  if [ "${CSHARP_ALREADY_INSTALLED:-0}" -gt 0 ]; then
+    show_info "C# already installed $(which csharp) (.NET $(dotnet --version))"
+    return 0
+  fi
+
+  show_info "Ensuring that C# is installed..."
+
+  if dotnet --version | grep 7\.0 > /dev/null 2>&1; then
+    local csharp_bin=$(dirname $(which dotnet))
+    show_info "Found C# at $(which csharp) (.NET $(dotnet --version))"
+  else
+    if which dotnet > /dev/null 2>&1; then
+      show_info "dotnet found but it is the wrong version and will be ignored."
+    fi
+    local csharp_bin=${ARROW_TMPDIR}/csharp/bin
+    local dotnet_version=7.0.102
+    local dotnet_platform=
+    case "$(uname)" in
+      Linux)
+        dotnet_platform=linux
+        ;;
+      Darwin)
+        dotnet_platform=macos
+        ;;
+    esac
+    local dotnet_download_thank_you_url=https://dotnet.microsoft.com/download/thank-you/dotnet-sdk-${dotnet_version}-${dotnet_platform}-x64-binaries
+    local dotnet_download_url=$( \
+      curl -sL ${dotnet_download_thank_you_url} | \
+        grep 'directLink' | \
+        grep -E -o 'https://download[^"]+' | \
+        sed -n 2p)
+    mkdir -p ${csharp_bin}
+    curl -sL ${dotnet_download_url} | \
+      tar xzf - -C ${csharp_bin}
+    PATH=${csharp_bin}:${PATH}
+    show_info "Installed C# at $(which csharp) (.NET $(dotnet --version))"
+  fi
+
+  # Ensure to have sourcelink installed
+  if ! dotnet tool list | grep sourcelink > /dev/null 2>&1; then
+    dotnet new tool-manifest
+    dotnet tool install --local sourcelink
+    PATH=${csharp_bin}:${PATH}
+    if ! dotnet tool run sourcelink --help > /dev/null 2>&1; then
+      export DOTNET_ROOT=${csharp_bin}
+    fi
+  fi
+
+  CSHARP_ALREADY_INSTALLED=1
+}
+
 
 install_go() {
   # Install go
