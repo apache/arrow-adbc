@@ -1237,7 +1237,7 @@ class PostgresCopyStreamWriter {
  private:
   PostgresCopyFieldTupleWriter root_writer_;
   struct ArrowSchema* schema_;
-  adbcpq::Handle<struct ArrowArrayView> array_view_;
+  Handle<struct ArrowArrayView> array_view_;
   int64_t records_written_ = 0;
 };
 
