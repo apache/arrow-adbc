@@ -77,37 +77,6 @@ struct OneValueStream {
   }
 };
 
-/// Helper to manage resources with RAII
-
-template <typename T>
-struct Releaser {
-  static void Release(T* value) {
-    if (value->release) {
-      value->release(value);
-    }
-  }
-};
-
-template <>
-struct Releaser<struct ArrowArrayView> {
-  static void Release(struct ArrowArrayView* value) {
-    if (value->storage_type != NANOARROW_TYPE_UNINITIALIZED) {
-      ArrowArrayViewReset(value);
-    }
-  }
-};
-
-template <typename Resource>
-struct Handle {
-  Resource value;
-
-  Handle() { std::memset(&value, 0, sizeof(value)); }
-
-  ~Handle() { Releaser<Resource>::Release(&value); }
-
-  Resource* operator->() { return &value; }
-};
-
 /// Build an PostgresType object from a PGresult*
 AdbcStatusCode ResolvePostgresType(const PostgresTypeResolver& type_resolver,
                                    PGresult* result, PostgresType* out,

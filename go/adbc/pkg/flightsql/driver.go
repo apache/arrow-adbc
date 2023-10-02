@@ -69,7 +69,7 @@ import (
 )
 
 // Must use malloc() to respect CGO rules
-var drv = flightsql.Driver{Alloc: mallocator.NewMallocator()}
+var drv = flightsql.NewDriver(mallocator.NewMallocator())
 
 // Flag set if any method panic()ed - afterwards all calls to driver will fail
 // since internal state of driver is unknown
