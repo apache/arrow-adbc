@@ -849,10 +849,10 @@ jobs:
         run: dotnet tool install --global sourcelink
       - name: Build
         shell: bash
-        run: ./ci/scripts/csharp_build.sh $(pwd)/adbc
+        run: ci/scripts/csharp_build.sh $(pwd)
       - name: Test
         shell: bash
-        run: ./ci/scripts/csharp_test.sh $(pwd)/adbc
+        run: ci/scripts/csharp_test.sh $(pwd)
 
   csharp-windows:
     name: AMD64 Windows 2019 18.04 C# ${{ matrix.dotnet }}
@@ -876,10 +876,10 @@ jobs:
         run: dotnet tool install --global sourcelink
       - name: Build
         shell: bash
-        run: ./ci/scripts/csharp_build.sh $(pwd)/adbc
+        run: ci/scripts/csharp_build.sh $(pwd)
       - name: Test
         shell: bash
-        run: ./ci/scripts/csharp_test.sh $(pwd)/adbc
+        run: ci/scripts/csharp_test.sh $(pwd)
 
   csharp-macos:
     name: AMD64 macOS 11 C# ${{ matrix.dotnet }}
@@ -904,10 +904,10 @@ jobs:
         run: dotnet tool install --global sourcelink
       - name: Build
         shell: bash
-        run: ./ci/scripts/csharp_build.sh $(pwd)/adbc
+        run: ci/scripts/csharp_build.sh $(pwd)
       - name: Test
         shell: bash
-        run: ./ci/scripts/csharp_test.sh $(pwd)/adbc
+        run: ci/scripts/csharp_test.sh $(pwd)
 
   release:
     name: "Create release"
