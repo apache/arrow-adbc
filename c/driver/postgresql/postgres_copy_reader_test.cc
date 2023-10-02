@@ -126,6 +126,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBoolean) {
 TEST(PostgresCopyUtilsTest, PostgresCopyWriteBoolean) {
   adbc_validation::Handle<struct ArrowSchema> schema;
   adbc_validation::Handle<struct ArrowArray> array;
+  adbc_validation::Handle<struct ArrowBuffer> buffer;
   struct ArrowError na_error;
   ASSERT_EQ(adbc_validation::MakeSchema(&schema.value, {{"col", NANOARROW_TYPE_BOOL}}),
             ADBC_STATUS_OK);
@@ -136,21 +137,19 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteBoolean) {
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
 
-  struct ArrowBuffer buffer;
-  ArrowBufferInit(&buffer);
-  ArrowBufferReserve(&buffer, sizeof(kTestPgCopyBoolean));
-  uint8_t* cursor = buffer.data;
+  ArrowBufferInit(&buffer.value);
+  ArrowBufferReserve(&buffer.value, sizeof(kTestPgCopyBoolean));
+  uint8_t* cursor = buffer->data;
 
-  ASSERT_EQ(tester.WriteAll(&buffer, nullptr), ENODATA);
+  AdbcStatusCode result = tester.WriteAll(&buffer.value, nullptr);
+  buffer->data = cursor;
+  ASSERT_EQ(result, ENODATA);
 
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopyBoolean) - 4; i++) {
-    EXPECT_EQ(cursor[i], kTestPgCopyBoolean[i]);
+    ASSERT_EQ(cursor[i], kTestPgCopyBoolean[i]);
   }
-
-  buffer.data = cursor;
-  ArrowBufferReset(&buffer);
 }
 
 // COPY (SELECT CAST("col" AS SMALLINT) AS "col" FROM (  VALUES (-123), (-1), (1), (123),
