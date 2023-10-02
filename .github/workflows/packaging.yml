@@ -922,6 +922,9 @@ jobs:
       - python-macos
       - python-windows
       - python-sdist
+      - csharp-ubuntu
+      - csharp-windows
+      - csharp-macos
     steps:
       - name: Get All Artifacts
         uses: actions/download-artifact@v3

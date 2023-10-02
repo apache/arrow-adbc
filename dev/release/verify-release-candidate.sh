@@ -320,7 +320,6 @@ install_csharp() {
   CSHARP_ALREADY_INSTALLED=1
 }
 
-
 install_go() {
   # Install go
   if [ "${GO_ALREADY_INSTALLED:-0}" -gt 0 ]; then
@@ -614,14 +613,6 @@ test_glib() {
   "${ADBC_DIR}/ci/scripts/glib_test.sh" "${ADBC_SOURCE_DIR}" "${ARROW_TMPDIR}/glib-build" "${install_prefix}"
 }
 
-test_csharp() {
-  show_header "Build and test C# libraries"
-
-  install_csharp
-
-  echo "C♯ is not implemented"
-}
-
 test_js() {
   show_header "Build and test JavaScript libraries"
 
@@ -728,6 +719,9 @@ test_source_distribution() {
   fi
   if [ ${TEST_R} -gt 0 ]; then
     test_r
+  fi
+  if [ ${TEST_CSHARP} -gt 0 ]; then
+    test_csharp
   fi
 
   popd
