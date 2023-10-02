@@ -150,7 +150,7 @@ struct ManagedLibrary {
 
     void* handle = dlopen(library, RTLD_NOW | RTLD_LOCAL);
     if (!handle) {
-      error_message = "dlopen() failed: ";
+      error_message = "[DriverManager] dlopen() failed: ";
       error_message += dlerror();
 
       // If applicable, append the shared library prefix/extension and
@@ -180,6 +180,7 @@ struct ManagedLibrary {
     if (handle) {
       this->handle = handle;
     } else {
+      SetError(error, error_message);
       return ADBC_STATUS_INTERNAL;
     }
 #endif  // defined(_WIN32)
