@@ -17,12 +17,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-option('adbc_build_dir',
-       type: 'string',
-       value: '',
-       description: 'Use this option to build with not installed ADBC')
+arrow_glib = dependency('arrow-glib')
 
-option('vapi',
-       type: 'boolean',
-       value: false,
-       description: 'Build Vala API')
+executable('sqlite', 'sqlite.c',
+           dependencies: [adbc_glib, arrow_glib],
+           link_language: 'c')
+
+install_data('README.md',
+             install_dir: join_paths(data_dir, meson.project_name(), 'example'))
+
+subdir('vala')
