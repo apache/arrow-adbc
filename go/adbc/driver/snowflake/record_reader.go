@@ -277,7 +277,7 @@ func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader
 			fields[i].Type = arrow.FixedWidthTypes.Timestamp_ns
 		case "timestamp_ltz":
 			if loc == nil {
-				loc = time.Now().Location()
+				loc = ld.Location()
 			}
 			fields[i].Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
 		case "binary":
@@ -335,7 +335,8 @@ func jsonDataToArrow(ctx context.Context, bldr *array.RecordBuilder, ld gosnowfl
 					if err != nil {
 						return nil, err
 					}
-					val := time.Unix(sec, nsec).In(loc)
+
+					val := time.Unix(sec, nsec).In(tz)
 					ts, err := arrow.TimestampFromTime(val, arrow.Nanosecond)
 					if err != nil {
 						return nil, err

@@ -606,3 +606,27 @@ func (suite *SnowflakeTests) TestNewDatabaseGetSetOptions() {
 	suite.NoError(err)
 	suite.Equal(optVal2, val2)
 }
+
+func (suite *SnowflakeTests) TestTimestampSnow() {
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`ALTER SESSION SET TIMEZONE = "America/New_York"`))
+	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SHOW WAREHOUSES"))
+	rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.True(rdr.Next())
+	rec := rdr.Record()
+	for _, f := range rec.Schema().Fields() {
+		st, ok := f.Metadata.GetValue("SNOWFLAKE_TYPE")
+		if !ok {
+			continue
+		}
+		if st == "timestamp_ltz" {
+			suite.Require().IsType(&arrow.TimestampType{}, f.Type)
+			suite.Equal("America/New_York", f.Type.(*arrow.TimestampType).TimeZone)
+		}
+	}
+}
