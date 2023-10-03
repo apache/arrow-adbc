@@ -238,7 +238,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.19.13\x64\bin;" + $env:PATH
+          $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.20.8\x64\bin;" + $env:PATH
           .\ci\scripts\go_build.ps1 $pwd $pwd\build
       # TODO(apache/arrow#358): enable these tests on Windows
       # - name: Go Test
@@ -246,7 +246,7 @@ jobs:
       #   env:
       #     CGO_ENABLED: "1"
       #   run: |
-      #     $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.19.13\x64\bin;" + $env:PATH
+      #     $env:PATH="$($env:RUNNER_TOOL_CACHE)\go\1.20.8\x64\bin;" + $env:PATH
       #     .\ci\scripts\go_test.ps1 $pwd $pwd\build
 
   # ------------------------------------------------------------
