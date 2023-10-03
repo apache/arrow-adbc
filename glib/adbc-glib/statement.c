@@ -268,10 +268,10 @@ gboolean gadbc_statement_prepare(GADBCStatement* statement, GError** error) {
 /**
  * gadbc_statement_bind:
  * @statement: A #GADBCStatement.
- * @c_abi_array: A `struct ArrowArray *` of a record batch to
+ * @c_abi_array: (out) (type Arrow.Array): A `struct ArrowArray *` of a record batch to
  *   bind. The driver will call the release callback itself, although
  *   it may not do this until the statement is released.
- * @c_abi_schema: A `struct ArrowSchema *` of @c_abi_array.
+ * @c_abi_schema: (out) (type Arrow.Schema): A `struct ArrowSchema *` of @c_abi_array.
  * @error: (out) (optional): Return location for a #GError or %NULL.
  *
  * Bind Arrow data. This can be used for bulk inserts or prepared
@@ -299,7 +299,7 @@ gboolean gadbc_statement_bind(GADBCStatement* statement, gpointer c_abi_array,
 /**
  * gadbc_statement_bind_stream:
  * @statement: A #GADBCStatement.
- * @c_abi_array_stream: A `struct ArrowArrayStream *` of record batches stream
+ * @c_abi_array_stream: (out) (type Arrow.InputStream): A `struct ArrowArrayStream *` of record batches stream
  *   to bind. The driver will call the release callback itself, although
  *   it may not do this until the statement is released.
  * @error: (out) (optional): Return location for a #GError or %NULL.
@@ -331,7 +331,7 @@ gboolean gadbc_statement_bind_stream(GADBCStatement* statement,
  * @statement: A #GADBCStatement.
  * @need_result: Whether the results are received by @c_abi_arrray_stream or
  *   not.
- * @c_abi_array_stream: (out) (optional): Return location for the execution as
+ * @c_abi_array_stream: (out) (optional) (type Arrow.InputStream): Return location for the execution as
  *   `struct ArrowArrayStream *`. It should be freed with the
  *   `ArrowArrayStream::release` callback then g_free() when no longer needed.
  * @n_rows_affected: (out) (optional): Return location for the number of rows

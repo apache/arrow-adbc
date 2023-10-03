@@ -17,12 +17,27 @@
 # specific language governing permissions and limitations
 # under the License.
 
-option('adbc_build_dir',
-       type: 'string',
-       value: '',
-       description: 'Use this option to build with not installed ADBC')
+if generate_vapi
+  vala_example_executable_kwargs = {
+    'c_args': [
+      '-I' + meson.build_root(),
+      '-I' + meson.source_root(),
+    ],
+    'dependencies': [
+      adbc_glib_vapi,
+      arrow_glib,
+      dependency('gobject-2.0'),
+    ],
+    'vala_args': [
+      '--pkg', 'posix',
+    ],
+  }
+  executable('sqlite', 'sqlite.vala',
+             kwargs: vala_example_executable_kwargs)
+endif
 
-option('vapi',
-       type: 'boolean',
-       value: false,
-       description: 'Build Vala API')
+install_data('README.md',
+             install_dir: join_paths(data_dir,
+                                     meson.project_name(),
+                                     'example',
+                                     'vala'))
