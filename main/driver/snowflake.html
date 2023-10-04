@@ -509,6 +509,36 @@ R</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
+<input id="sd-tab-item-10" name="sd-tab-set-2" type="radio">
+</input><label class="sd-tab-label" data-sync-id="go" for="sd-tab-item-10">
+Go</label><div class="sd-tab-content docutils">
+<div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">   </span><span class="s">&quot;context&quot;</span>
+
+<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc&quot;</span>
+<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc/driver/snowflake&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="kd">var</span><span class="w"> </span><span class="nx">drv</span><span class="w"> </span><span class="nx">snowflake</span><span class="p">.</span><span class="nx">Driver</span>
+<span class="w">   </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">       </span><span class="nx">snowflake</span><span class="p">.</span><span class="nx">OptionAccount</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;foobar&quot;</span><span class="p">,</span>
+<span class="w">       </span><span class="nx">snowflake</span><span class="p">.</span><span class="nx">OptionAuthType</span><span class="p">:</span><span class="w"> </span><span class="nx">snowflake</span><span class="p">.</span><span class="nx">OptionValueAuthExternalBrowser</span><span class="p">,</span>
+<span class="w">       </span><span class="nx">adbc</span><span class="p">.</span><span class="nx">OptionKeyUsername</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;jdoe@example.com&quot;</span><span class="p">,</span>
+<span class="w">   </span><span class="p">})</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">       </span><span class="c1">// handle error</span>
+<span class="w">   </span><span class="p">}</span>
+
+<span class="w">   </span><span class="nx">cnxn</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">())</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">       </span><span class="c1">// handle error</span>
+<span class="w">   </span><span class="p">}</span>
+<span class="w">   </span><span class="k">defer</span><span class="w"> </span><span class="nx">cnxn</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
 </div>
 </section>
 </section>
@@ -648,6 +678,13 @@ to <code class="docutils literal notranslate"><span class="pre">true</span></cod
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.store_temp_creds</span></code></dt><dd><p>When <code class="docutils literal notranslate"><span class="pre">true</span></code>, the ID token is cached in the credential manager. Defaults
 to <code class="docutils literal notranslate"><span class="pre">true</span></code> on Windows/OSX, <code class="docutils literal notranslate"><span class="pre">false</span></code> on Linux.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.use_high_precision</span></code></dt><dd><p>When <code class="docutils literal notranslate"><span class="pre">true</span></code>, fixed-point snowflake columns with the type <code class="docutils literal notranslate"><span class="pre">NUMBER</span></code>
+will be returned as <code class="docutils literal notranslate"><span class="pre">Decimal128</span></code> type Arrow columns using the precision
+and scale of the <code class="docutils literal notranslate"><span class="pre">NUMBER</span></code> type. When <code class="docutils literal notranslate"><span class="pre">false</span></code>, <code class="docutils literal notranslate"><span class="pre">NUMBER</span></code> columns
+with a scale of 0 will be returned as <code class="docutils literal notranslate"><span class="pre">Int64</span></code> typed Arrow columns and
+non-zero scaled columns will be returned as <code class="docutils literal notranslate"><span class="pre">Float64</span></code> typed Arrow columns.
+The default is <code class="docutils literal notranslate"><span class="pre">true</span></code>.</p>
 </dd>
 </dl>
 </section>
