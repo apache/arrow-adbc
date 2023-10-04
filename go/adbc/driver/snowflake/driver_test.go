@@ -65,6 +65,8 @@ func (s *SnowflakeQuirks) DatabaseOptions() map[string]string {
 	return map[string]string{
 		adbc.OptionKeyURI:   s.dsn,
 		driver.OptionSchema: s.schemaName,
+		// use int64 not decimal128 for the tests
+		driver.OptionUseHighPrecision: adbc.OptionValueDisabled,
 	}
 }
 
@@ -629,4 +631,44 @@ func (suite *SnowflakeTests) TestTimestampSnow() {
 			suite.Equal("America/New_York", f.Type.(*arrow.TimestampType).TimeZone)
 		}
 	}
+}
+
+func (suite *SnowflakeTests) TestUseHighPrecision() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "NUMBERTYPETEST"))
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`CREATE OR REPLACE TABLE NUMBERTYPETEST (
+		NUMBERDECIMAL NUMBER(38,0),
+		NUMBERFLOAT NUMBER(15,2)
+	)`))
+	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO NUMBERTYPETEST (NUMBERDECIMAL, NUMBERFLOAT)
+		VALUES (1, 1234567.894), (12345678901234567890123456789012345678, 9876543210.987)`))
+	_, err = suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM NUMBERTYPETEST"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(2, n)
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 38, Scale: 0}, rdr.Schema().Field(0).Type), "expected decimal(38, 0), got %s", rdr.Schema().Field(0).Type)
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 15, Scale: 2}, rdr.Schema().Field(1).Type), "expected decimal(15, 2), got %s", rdr.Schema().Field(1).Type)
+
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM NUMBERTYPETEST"))
+	rdr, n, err = suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(2, n)
+	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
+	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(1).Type), "expected float64, got %s", rdr.Schema().Field(1).Type)
+	suite.True(rdr.Next())
+	rec := rdr.Record()
+
+	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
+	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
 }

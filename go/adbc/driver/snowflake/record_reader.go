@@ -68,7 +68,7 @@ func getRecTransformer(sc *arrow.Schema, tr []colTransformer) recordTransformer 
 	}
 }
 
-func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.Schema, recordTransformer) {
+func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, recordTransformer) {
 	loc, types := ld.Location(), ld.RowTypes()
 
 	fields := make([]arrow.Field, len(sc.Fields()))
@@ -80,32 +80,47 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 		case "FIXED":
 			switch f.Type.ID() {
 			case arrow.DECIMAL, arrow.DECIMAL256:
-				if srcMeta.Scale == 0 {
-					f.Type = arrow.PrimitiveTypes.Int64
+				if useHighPrecision {
+					transformers[i] = identCol
 				} else {
-					f.Type = arrow.PrimitiveTypes.Float64
-				}
-
-				transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-					return compute.CastArray(ctx, a, compute.UnsafeCastOptions(f.Type))
+					if srcMeta.Scale == 0 {
+						f.Type = arrow.PrimitiveTypes.Int64
+					} else {
+						f.Type = arrow.PrimitiveTypes.Float64
+					}
+					dt := f.Type
+					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+						return compute.CastArray(ctx, a, compute.UnsafeCastOptions(dt))
+					}
 				}
 			default:
-				if srcMeta.Scale != 0 {
-					f.Type = arrow.PrimitiveTypes.Float64
+				if useHighPrecision {
+					dt := &arrow.Decimal128Type{
+						Precision: int32(srcMeta.Precision),
+						Scale:     int32(srcMeta.Scale),
+					}
+					f.Type = dt
 					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-						result, err := compute.Divide(ctx, compute.ArithmeticOptions{NoCheckOverflow: true},
-							&compute.ArrayDatum{Value: a.Data()},
-							compute.NewDatum(math.Pow10(int(srcMeta.Scale))))
-						if err != nil {
-							return nil, err
-						}
-						defer result.Release()
-						return result.(*compute.ArrayDatum).MakeArray(), nil
+						return compute.CastArray(ctx, a, compute.SafeCastOptions(dt))
 					}
 				} else {
-					f.Type = arrow.PrimitiveTypes.Int64
-					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-						return compute.CastArray(ctx, a, compute.SafeCastOptions(arrow.PrimitiveTypes.Int64))
+					if srcMeta.Scale != 0 {
+						f.Type = arrow.PrimitiveTypes.Float64
+						transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+							result, err := compute.Divide(ctx, compute.ArithmeticOptions{NoCheckOverflow: true},
+								&compute.ArrayDatum{Value: a.Data()},
+								compute.NewDatum(math.Pow10(int(srcMeta.Scale))))
+							if err != nil {
+								return nil, err
+							}
+							defer result.Release()
+							return result.(*compute.ArrayDatum).MakeArray(), nil
+						}
+					} else {
+						f.Type = arrow.PrimitiveTypes.Int64
+						transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+							return compute.CastArray(ctx, a, compute.SafeCastOptions(arrow.PrimitiveTypes.Int64))
+						}
 					}
 				}
 			}
@@ -251,7 +266,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader) (*arrow.
 	return out, getRecTransformer(out, transformers)
 }
 
-func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader) (*arrow.Schema, error) {
+func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, error) {
 	var loc *time.Location
 
 	metadata := ld.RowTypes()
@@ -266,7 +281,14 @@ func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader
 		}
 		switch srcMeta.Type {
 		case "fixed":
-			fields[i].Type = arrow.PrimitiveTypes.Int64
+			if useHighPrecision {
+				fields[i].Type = &arrow.Decimal128Type{
+					Precision: int32(srcMeta.Precision),
+					Scale:     int32(srcMeta.Scale),
+				}
+			} else {
+				fields[i].Type = arrow.PrimitiveTypes.Int64
+			}
 		case "real":
 			fields[i].Type = arrow.PrimitiveTypes.Float64
 		case "date":
@@ -420,7 +442,7 @@ type reader struct {
 	cancelFn context.CancelFunc
 }
 
-func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake.ArrowStreamLoader, bufferSize, prefetchConcurrency int) (array.RecordReader, error) {
+func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake.ArrowStreamLoader, bufferSize, prefetchConcurrency int, useHighPrecision bool) (array.RecordReader, error) {
 	batches, err := ld.GetBatches()
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusInternal, err)
@@ -429,7 +451,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	if len(batches) == 0 {
 		if ld.TotalRows() != 0 {
 			// XXX(https://github.com/apache/arrow-adbc/issues/863): Snowflake won't return Arrow data for certain queries
-			schema, err := rowTypesToArrowSchema(ctx, ld)
+			schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision)
 			if err != nil {
 				return nil, adbc.Error{
 					Msg:  err.Error(),
@@ -476,7 +498,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	group, ctx := errgroup.WithContext(compute.WithAllocator(ctx, alloc))
 	ctx, cancelFn := context.WithCancel(ctx)
 
-	schema, recTransform := getTransformer(rr.Schema(), ld)
+	schema, recTransform := getTransformer(rr.Schema(), ld, useHighPrecision)
 
 	defer func() {
 		if err != nil {
