@@ -332,6 +332,8 @@ class StatementTest {
   void TestSqlQueryFloats();
   void TestSqlQueryStrings();
 
+  void TestSqlQueryInsertRollback();
+
   void TestSqlQueryCancel();
   void TestSqlQueryErrors();
 
@@ -420,6 +422,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
   TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                           \
+  TEST_F(FIXTURE, SqlQueryInsertRollback) { TestSqlQueryInsertRollback(); }             \
   TEST_F(FIXTURE, SqlQueryCancel) { TestSqlQueryCancel(); }                             \
   TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                             \
   TEST_F(FIXTURE, SqlSchemaInts) { TestSqlSchemaInts(); }                               \
