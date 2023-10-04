@@ -405,16 +405,18 @@ exists.</p>
 <span class="linenos">67</span>        <span class="k">pass</span>
 <span class="linenos">68</span>    <span class="k">else</span><span class="p">:</span>
 <span class="linenos">69</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Should have failed!&quot;</span><span class="p">)</span>
+<span class="linenos">70</span>
+<span class="linenos">71</span><span class="n">conn</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>Instead, we can append to the table.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">72</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">73</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">)</span>
-<span class="linenos">74</span>
-<span class="linenos">75</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
-<span class="linenos">76</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">8</span><span class="p">,)</span>
-<span class="linenos">77</span>
-<span class="linenos">78</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">74</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">75</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">)</span>
+<span class="linenos">76</span>
+<span class="linenos">77</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
+<span class="linenos">78</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">8</span><span class="p">,)</span>
+<span class="linenos">79</span>
+<span class="linenos">80</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
