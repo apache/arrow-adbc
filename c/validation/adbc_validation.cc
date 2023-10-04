@@ -967,6 +967,7 @@ void ConstraintTest(const AdbcGetObjectsConstraint* constraint,
 }
 
 void ForeignKeyColumnUsagesTest(const AdbcGetObjectsConstraint* constraint,
+                                const std::string& catalog, const std::string& db_schema,
                                 const int column_usage_index,
                                 const std::string& fk_table_name,
                                 const std::string& fk_column_name) {
@@ -974,23 +975,13 @@ void ForeignKeyColumnUsagesTest(const AdbcGetObjectsConstraint* constraint,
   std::string_view constraint_column_usage_fk_catalog(
       constraint->constraint_column_usages[column_usage_index]->fk_catalog.data,
       constraint->constraint_column_usages[column_usage_index]->fk_catalog.size_bytes);
-
-  std::string_view sqlite_default_catalog = "main";
-  std::string_view postgresql_default_catalog = "postgres";
-  ASSERT_THAT(constraint_column_usage_fk_catalog,
-              ::testing::AnyOf(::testing::Eq(sqlite_default_catalog),
-                               ::testing::Eq(postgresql_default_catalog)));
+  ASSERT_THAT(constraint_column_usage_fk_catalog, catalog);
 
   // Test fk_db_schema
   std::string_view constraint_column_usage_fk_db_schema(
       constraint->constraint_column_usages[column_usage_index]->fk_db_schema.data,
       constraint->constraint_column_usages[column_usage_index]->fk_db_schema.size_bytes);
-
-  std::string_view sqlite_default_db_schema = "";
-  std::string_view postgresql_default_db_schema = "public";
-  ASSERT_THAT(constraint_column_usage_fk_db_schema,
-              ::testing::AnyOf(::testing::Eq(sqlite_default_db_schema),
-                               ::testing::Eq(postgresql_default_db_schema)));
+  ASSERT_THAT(constraint_column_usage_fk_db_schema, db_schema);
 
   // Test fk_table_name
   std::string_view constraint_column_usage_fk_table(
@@ -1243,7 +1234,9 @@ void ConnectionTest::TestMetadataGetObjectsForeignKey() {
       case 1: {
         // adbc_fkey_child_test_id_child_col3_fkey
         ConstraintTest(child_constraint, "FOREIGN KEY", {"id_child_col3"});
-        ForeignKeyColumnUsagesTest(child_constraint, 0, "adbc_fkey_parent_1_test", "id");
+        ForeignKeyColumnUsagesTest(child_constraint, quirks()->catalog(),
+                                   quirks()->db_schema(), 0, "adbc_fkey_parent_1_test",
+                                   "id");
 
         TestedConstraints.adbc_fkey_child_test_id_child_col3_fkey = true;
       } break;
@@ -1251,9 +1244,11 @@ void ConnectionTest::TestMetadataGetObjectsForeignKey() {
         // adbc_fkey_child_test_id_child_col1_id_child_col2_fkey
         ConstraintTest(child_constraint, "FOREIGN KEY",
                        {"id_child_col1", "id_child_col2"});
-        ForeignKeyColumnUsagesTest(child_constraint, 0, "adbc_fkey_parent_2_test",
+        ForeignKeyColumnUsagesTest(child_constraint, quirks()->catalog(),
+                                   quirks()->db_schema(), 0, "adbc_fkey_parent_2_test",
                                    "id_primary_col1");
-        ForeignKeyColumnUsagesTest(child_constraint, 1, "adbc_fkey_parent_2_test",
+        ForeignKeyColumnUsagesTest(child_constraint, quirks()->catalog(),
+                                   quirks()->db_schema(), 1, "adbc_fkey_parent_2_test",
                                    "id_primary_col2");
 
         TestedConstraints.adbc_fkey_child_test_id_child_col1_id_child_col2_fkey = true;
