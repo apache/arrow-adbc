@@ -25,7 +25,25 @@ import adbc_driver_manager
 
 from ._version import __version__  # noqa:F401
 
-__all__ = ["StatementOptions", "connect"]
+__all__ = ["ConnectionOptions", "StatementOptions", "connect"]
+
+
+class ConnectionOptions(enum.Enum):
+    """Connection options specific to the SQLite driver."""
+
+    #: Whether to enable ("true") or disable ("false") extension loading.
+    #: Default is disabled.
+    LOAD_EXTENSION_ENABLED = "adbc.sqlite.load_extension.enabled"
+
+    #: The path to an extension to load.
+    #: Set this option after LOAD_EXTENSION_PATH.  This will actually
+    #: load the extension.
+    LOAD_EXTENSION_ENTRYPOINT = "adbc.sqlite.load_extension.entrypoint"
+
+    #: The path to an extension to load.
+    #: First set this option, then LOAD_EXTENSION_ENTRYPOINT.  The second
+    #: call will actually load the extension.
+    LOAD_EXTENSION_PATH = "adbc.sqlite.load_extension.path"
 
 
 class StatementOptions(enum.Enum):

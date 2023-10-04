@@ -163,6 +163,87 @@ Partitioned Result Sets
 
 Partitioned result sets are not supported.
 
+Run-Time Loadable Extensions
+----------------------------
+
+ADBC allows loading SQLite extensions.  For details on extensions themselves,
+see `"Run-Time Loadable Extensions" <https://www.sqlite.org/loadext.html>`_ in
+the SQLite documentation.
+
+To load an extension, three things are necessary:
+
+1. Enable extension loading by setting
+2. Set the path
+3. Set the entrypoint
+
+These options can only be set after the connection is fully initialized with
+:cpp:func:`AdbcConnectionInit`.
+
+Options
+~~~~~~~
+
+``adbc.sqlite.load_extension.enabled``
+    Whether to enable ("true") or disable ("false") extension loading.  The
+    default is disabled.
+
+``adbc.sqlite.load_extension.path``
+    To load an extension, first set this option to the path to the extension
+    to load.  This will not load the extension yet.
+
+``adbc.sqlite.load_extension.entrypoint``
+    After setting the path, set the option to the entrypoint in the extension
+    (or NULL) to actually load the extension.
+
+Example
+~~~~~~~
+
+.. tab-set::
+
+   .. tab-item:: C/C++
+      :sync: cpp
+
+      .. code-block:: cpp
+
+         // TODO
+
+   .. tab-item:: Go
+      :sync: go
+
+      .. code-block:: go
+
+         # TODO
+
+   .. tab-item:: Python
+      :sync: python
+
+      .. code-block:: python
+
+         import adbc_driver_sqlite.dbapi as dbapi
+
+         with dbapi.connect() as conn:
+             conn.enable_load_extension(True)
+             conn.load_extension("path/to/extension.so")
+
+      The driver implements the same API as the Python standard library
+      ``sqlite3`` module, so packages built for it should also work.  For
+      example, `sqlite-zstd <https://github.com/phiresky/sqlite-zstd>`_:
+
+      .. code-block:: python
+
+        import adbc_driver_sqlite.dbapi as dbapi
+        import sqlite_zstd
+
+        with dbapi.connect() as conn:
+            conn.enable_load_extension(True)
+            sqlite_zstd.load(conn)
+
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: shell
+
+         # TODO
+
 Transactions
 ------------
 
