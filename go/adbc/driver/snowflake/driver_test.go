@@ -65,6 +65,8 @@ func (s *SnowflakeQuirks) DatabaseOptions() map[string]string {
 	return map[string]string{
 		adbc.OptionKeyURI:   s.dsn,
 		driver.OptionSchema: s.schemaName,
+		// use int64 not decimal128 for the tests
+		driver.OptionUseHighPrecision: adbc.OptionValueDisabled,
 	}
 }
 

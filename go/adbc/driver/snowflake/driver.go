@@ -192,7 +192,8 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	opts = maps.Clone(opts)
-	db := &databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase)}
+	db := &databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
+		useHighPrecision: true}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
 	}
