@@ -118,11 +118,15 @@ def test_query_cancel(postgres: dbapi.Connection) -> None:
         with pytest.raises(postgres.OperationalError, match="canceling statement"):
             cur.fetchone()
 
+    postgres.rollback()
+
     with postgres.cursor() as cur:
         cur.execute("SELECT * FROM test_batch_size")
         cur.adbc_cancel()
         with pytest.raises(postgres.OperationalError, match="canceling statement"):
             cur.fetch_arrow_table()
+
+    postgres.rollback()
 
     with postgres.cursor() as cur:
         cur.execute("SELECT * FROM test_batch_size")
