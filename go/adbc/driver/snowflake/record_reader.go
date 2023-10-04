@@ -88,9 +88,9 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 					} else {
 						f.Type = arrow.PrimitiveTypes.Float64
 					}
-
+					dt := f.Type
 					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-						return compute.CastArray(ctx, a, compute.UnsafeCastOptions(f.Type))
+						return compute.CastArray(ctx, a, compute.UnsafeCastOptions(dt))
 					}
 				}
 			default:
