@@ -98,6 +98,32 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  std::optional<std::string> CompositePrimaryKeyTableDdl(
+      std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id_primary_col1 INTEGER, id_primary_col2 INTEGER,";
+    ddl += " PRIMARY KEY (id_primary_col1, id_primary_col2));";
+    return ddl;
+  }
+
+  std::optional<std::string> ForeignKeyChildTableDdl(
+      std::string_view child_name, std::string_view parent_name_1,
+      std::string_view parent_name_2) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += child_name;
+    ddl += " (id_child_col1 INTEGER PRIMARY KEY,";
+    ddl += " id_child_col2 INTEGER,";
+    ddl += " id_child_col3 INTEGER,";
+    ddl += " FOREIGN KEY (id_child_col3) REFERENCES ";
+    ddl += parent_name_1;
+    ddl += " (id),";
+    ddl += " FOREIGN KEY (id_child_col1, id_child_col2) REFERENCES ";
+    ddl += parent_name_2;
+    ddl += " (id_primary_col1, id_primary_col2));";
+    return ddl;
+  }
+
   bool supports_bulk_ingest(const char* mode) const override {
     return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
            std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;

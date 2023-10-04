@@ -107,6 +107,32 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  std::optional<std::string> CompositePrimaryKeyTableDdl(
+      std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id_primary_col1 SERIAL, id_primary_col2 SERIAL,";
+    ddl += " PRIMARY KEY (id_primary_col1, id_primary_col2));";
+    return ddl;
+  }
+
+  std::optional<std::string> ForeignKeyChildTableDdl(
+      std::string_view child_name, std::string_view parent_name_1,
+      std::string_view parent_name_2) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += child_name;
+    ddl += " (id_child_col1 SERIAL PRIMARY KEY, ";
+    ddl += " id_child_col2 SERIAL, ";
+    ddl += " id_child_col3 SERIAL, ";
+    ddl += " FOREIGN KEY (id_child_col3) REFERENCES ";
+    ddl += parent_name_1;
+    ddl += " (id),";
+    ddl += " FOREIGN KEY (id_child_col1, id_child_col2) REFERENCES ";
+    ddl += parent_name_2;
+    ddl += " (id_primary_col1, id_primary_col2))";
+    return ddl;
+  }
+
   std::string catalog() const override { return "postgres"; }
   std::string db_schema() const override { return "public"; }
 
