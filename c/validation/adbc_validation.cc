@@ -945,8 +945,9 @@ void ConnectionTest::TestMetadataGetObjectsConstraints() {
   // TODO: can't be done portably (need to create tables with primary keys and such)
 }
 
-void ConstraintTest(AdbcGetObjectsConstraint* constraint, std::string key_type,
-                    std::vector<std::string> columns) {
+void ConstraintTest(const AdbcGetObjectsConstraint* constraint,
+                    const std::string& key_type,
+                    const std::vector<std::string>& columns) {
   std::string_view constraint_type(constraint->constraint_type.data,
                                    constraint->constraint_type.size_bytes);
   int number_of_columns = columns.size();
@@ -965,9 +966,10 @@ void ConstraintTest(AdbcGetObjectsConstraint* constraint, std::string key_type,
   }
 }
 
-void ForeignKeyColumnUsagesTest(AdbcGetObjectsConstraint* constraint,
-                                int column_usage_index, std::string fk_table_name,
-                                std::string fk_column_name) {
+void ForeignKeyColumnUsagesTest(const AdbcGetObjectsConstraint* constraint,
+                                const int column_usage_index,
+                                const std::string& fk_table_name,
+                                const std::string& fk_column_name) {
   // Test fk_catalog
   std::string_view constraint_column_usage_fk_catalog(
       constraint->constraint_column_usages[column_usage_index]->fk_catalog.data,
