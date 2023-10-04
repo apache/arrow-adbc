@@ -12,5 +12,3 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
-^configure\.win$
-^configure$
