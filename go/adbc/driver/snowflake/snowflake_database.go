@@ -372,5 +372,13 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
 
-	return &cnxn{cn: cn.(snowflakeConn), db: d, ctor: connector, sqldb: sql.OpenDB(connector)}, nil
+	return &cnxn{
+		cn: cn.(snowflakeConn),
+		db: d, ctor: connector,
+		sqldb: sql.OpenDB(connector),
+		// default enable high precision
+		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
+		// get Int64/Float64 instead
+		useHighPrecision: true,
+	}, nil
 }

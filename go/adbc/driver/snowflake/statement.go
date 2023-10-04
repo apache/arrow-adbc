@@ -42,6 +42,7 @@ type statement struct {
 	alloc               memory.Allocator
 	queueSize           int
 	prefetchConcurrency int
+	useHighPrecision    bool
 
 	query       string
 	targetTable string
@@ -120,7 +121,7 @@ func (st *statement) SetOption(key string, val string) error {
 			st.ingestMode = val
 		default:
 			return adbc.Error{
-				Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),
+				Msg:  fmt.Sprintf("[Snowflake] invalid statement option %s=%s", key, val),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -128,7 +129,7 @@ func (st *statement) SetOption(key string, val string) error {
 		sz, err := strconv.Atoi(val)
 		if err != nil {
 			return adbc.Error{
-				Msg:  fmt.Sprintf("could not parse '%s' as int for option '%s'", val, key),
+				Msg:  fmt.Sprintf("[Snowflake] could not parse '%s' as int for option '%s'", val, key),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -137,11 +138,23 @@ func (st *statement) SetOption(key string, val string) error {
 		concurrency, err := strconv.Atoi(val)
 		if err != nil {
 			return adbc.Error{
-				Msg:  fmt.Sprintf("could not parse '%s' as int for option '%s'", val, key),
+				Msg:  fmt.Sprintf("[Snowflake] could not parse '%s' as int for option '%s'", val, key),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
 		return st.SetOptionInt(key, int64(concurrency))
+	case OptionUseHighPrecision:
+		switch val {
+		case adbc.OptionValueEnabled:
+			st.useHighPrecision = true
+		case adbc.OptionValueDisabled:
+			st.useHighPrecision = false
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Snowflake] invalid statement option %s=%s", key, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
 	default:
 		return adbc.Error{
 			Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
@@ -539,7 +552,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return nil, -1, errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	rdr, err := newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency)
+	rdr, err := newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
 	nrec := loader.TotalRows()
 	return rdr, nrec, err
 }
