@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using Apache.Arrow.Flight.Client;
+using Apache.Arrow.Ipc;
 using Grpc.Core;
 using Grpc.Net.Client;
 
@@ -93,5 +94,9 @@ namespace Apache.Arrow.Adbc.Drivers.FlightSql
         {
             return new FlightSqlStatement(this);
         }
+
+        public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string catalogPattern, string dbSchemaPattern, string tableNamePattern, List<string> tableTypes, string columnNamePattern) => throw new NotImplementedException();
+        public override Schema GetTableSchema(string catalog, string dbSchema, string tableName) => throw new NotImplementedException();
+        public override IArrowArrayStream GetTableTypes() => throw new NotImplementedException();
     }
 }

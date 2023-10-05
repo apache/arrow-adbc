@@ -55,6 +55,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/cgo"
+	"strings"
 	"sync/atomic"
 	"unsafe"
 
@@ -64,10 +65,11 @@ import (
 	"github.com/apache/arrow/go/v13/arrow/cdata"
 	"github.com/apache/arrow/go/v13/arrow/memory"
 	"github.com/apache/arrow/go/v13/arrow/memory/mallocator"
+	"golang.org/x/exp/slog"
 )
 
 // Must use malloc() to respect CGO rules
-var drv = flightsql.Driver{Alloc: mallocator.NewMallocator()}
+var drv = flightsql.NewDriver(mallocator.NewMallocator())
 
 // Flag set if any method panic()ed - afterwards all calls to driver will fail
 // since internal state of driver is unknown
@@ -75,6 +77,7 @@ var drv = flightsql.Driver{Alloc: mallocator.NewMallocator()}
 var globalPoison int32 = 0
 
 const errPrefix = "[FlightSQL] "
+const logLevelEnvVar = "ADBC_DRIVER_FLIGHTSQL_LOG_LEVEL"
 
 func setErr(err *C.struct_AdbcError, format string, vals ...interface{}) {
 	if err == nil {
@@ -164,6 +167,44 @@ func poison(err *C.struct_AdbcError, fname string, e interface{}) C.AdbcStatusCo
 	}
 	setErr(err, "%s: Go panic in FlightSQL driver (see stderr): %#v", fname, e)
 	return C.ADBC_STATUS_INTERNAL
+}
+
+// Check environment variables and enable logging if possible.
+func initLoggingFromEnv(db adbc.Database) {
+	logLevel := slog.LevelError
+	switch strings.ToLower(os.Getenv(logLevelEnvVar)) {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "info":
+		logLevel = slog.LevelInfo
+	case "warn":
+	case "warning":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	case "":
+		return
+	default:
+		printLoggingHelp()
+		return
+	}
+
+	h := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     logLevel,
+	})
+	logger := slog.New(h)
+
+	ext, ok := db.(adbc.DatabaseLogging)
+	if !ok {
+		logger.Error("FlightSQL does not support logging")
+		return
+	}
+	ext.SetLogger(logger)
+}
+
+func printLoggingHelp() {
+	fmt.Fprintf(os.Stderr, "FlightSQL: to enable logging, set %s to 'debug', 'info', 'warn', or 'error'", logLevelEnvVar)
 }
 
 // Allocate a new cgo.Handle and store its address in a heap-allocated
@@ -309,7 +350,7 @@ func (cStream *cArrayStream) maybeError() C.int {
 
 //export FlightSQLArrayStreamGetLastError
 func FlightSQLArrayStreamGetLastError(stream *C.struct_ArrowArrayStream) *C.cchar_t {
-	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) || stream.private_data == nil {
 		return nil
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
@@ -321,7 +362,7 @@ func FlightSQLArrayStreamGetLastError(stream *C.struct_ArrowArrayStream) *C.ccha
 
 //export FlightSQLArrayStreamGetNext
 func FlightSQLArrayStreamGetNext(stream *C.struct_ArrowArrayStream, array *C.struct_ArrowArray) C.int {
-	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) || stream.private_data == nil {
 		return C.EINVAL
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
@@ -336,7 +377,7 @@ func FlightSQLArrayStreamGetNext(stream *C.struct_ArrowArrayStream, array *C.str
 
 //export FlightSQLArrayStreamGetSchema
 func FlightSQLArrayStreamGetSchema(stream *C.struct_ArrowArrayStream, schema *C.struct_ArrowSchema) C.int {
-	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) || stream.private_data == nil {
 		return C.EINVAL
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
@@ -350,7 +391,7 @@ func FlightSQLArrayStreamGetSchema(stream *C.struct_ArrowArrayStream, schema *C.
 
 //export FlightSQLArrayStreamRelease
 func FlightSQLArrayStreamRelease(stream *C.struct_ArrowArrayStream) {
-	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) || stream.private_data == nil {
 		return
 	}
 	h := (*(*cgo.Handle)(stream.private_data))
@@ -369,7 +410,7 @@ func FlightSQLArrayStreamRelease(stream *C.struct_ArrowArrayStream) {
 
 //export FlightSQLErrorFromArrayStream
 func FlightSQLErrorFromArrayStream(stream *C.struct_ArrowArrayStream, status *C.AdbcStatusCode) *C.struct_AdbcError {
-	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) {
+	if stream == nil || stream.release != (*[0]byte)(C.FlightSQLArrayStreamRelease) || stream.private_data == nil {
 		return nil
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
@@ -512,6 +553,8 @@ func FlightSQLDatabaseInit(db *C.struct_AdbcDatabase, err *C.struct_AdbcError) (
 	if aerr != nil {
 		return C.AdbcStatusCode(errToAdbcErr(err, aerr))
 	}
+
+	initLoggingFromEnv(adb)
 
 	cdb.db = adb
 	return C.ADBC_STATUS_OK

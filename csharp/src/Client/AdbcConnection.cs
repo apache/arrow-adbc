@@ -57,7 +57,10 @@ namespace Apache.Arrow.Adbc.Client
         /// <summary>
         /// Overloaded. Intializes an <see cref="AdbcConnection"/>.
         /// </summary>
-        /// <param name="adbcDriver">The <see cref="AdbcDriver"/> to use for connecting. This value must be set before a connection can be established.</param>
+        /// <param name="adbcDriver">
+        /// The <see cref="AdbcDriver"/> to use for connecting. This value
+        /// must be set before a connection can be established.
+        /// </param>
         public AdbcConnection(AdbcDriver adbcDriver) : this()
         {
             this.AdbcDriver = adbcDriver;
@@ -66,9 +69,17 @@ namespace Apache.Arrow.Adbc.Client
         /// <summary>
         /// Overloaded. Intializes an <see cref="AdbcConnection"/>.
         /// </summary>
-        /// <param name="adbcDriver">The <see cref="AdbcDriver"/> to use for connecting. This value must be set before a connection can be established.</param>
-        /// <param name="parameters">The connection parameters to use (similar to connection string).</param>
-        /// <param name="options">Any additional options to apply when connection to the <see cref="AdbcDatabase"/>.</param>
+        /// <param name="adbcDriver">
+        /// The <see cref="AdbcDriver"/> to use for connecting. This value
+        /// must be set before a connection can be established.
+        /// </param>
+        /// <param name="parameters">
+        /// The connection parameters to use (similar to connection string).
+        /// </param>
+        /// <param name="options">
+        /// Any additional options to apply when connection to the
+        /// <see cref="AdbcDatabase"/>.
+        /// </param>
         public AdbcConnection(AdbcDriver adbcDriver, Dictionary<string, string> parameters, Dictionary<string, string> options)
         {
             this.AdbcDriver = adbcDriver;
@@ -83,12 +94,14 @@ namespace Apache.Arrow.Adbc.Client
         public new AdbcCommand CreateCommand() => CreateDbCommand() as AdbcCommand;
 
         /// <summary>
-        /// Gets or sets the <see cref="AdbcDriver"/> associated with this connection.
+        /// Gets or sets the <see cref="AdbcDriver"/> associated with this
+        /// connection.
         /// </summary>
         public AdbcDriver AdbcDriver { get; set; }
 
         /// <summary>
-        /// Gets the <see cref="AdbcStatement"/> associated with the connection.
+        /// Gets the <see cref="AdbcStatement"/> associated with the
+        /// connection.
         /// </summary>
         internal AdbcStatement AdbcStatement
         {
@@ -126,6 +139,7 @@ namespace Apache.Arrow.Adbc.Client
         protected override void Dispose(bool disposing)
         {
             this.adbcConnectionInternal?.Dispose();
+            this.adbcConnectionInternal = null;
 
             base.Dispose(disposing);
         }
@@ -151,7 +165,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override void Close()
         {
-            this.adbcConnectionInternal = null;
+           this.Dispose();
         }
 
         public override ConnectionState State

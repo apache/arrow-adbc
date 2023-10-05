@@ -22,8 +22,10 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Client
 {
@@ -51,7 +53,6 @@ namespace Apache.Arrow.Adbc.Client
             this.adbcCommand = adbcCommand;
             this.adbcQueryResult = adbcQueryResult;
             this.schema = this.adbcQueryResult.Stream.Schema;
-            this.recordsEffected = (int)adbcQueryResult.RowCount;
 
             if (this.schema == null)
                 throw new ArgumentException("A Schema must be set for the AdbcQueryResult.Stream property");
@@ -117,7 +118,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override string GetDataTypeName(int ordinal)
         {
-            return this.GetColumnSchema()[ordinal].DataTypeName;
+            return this.GetAdbcColumnSchema()[ordinal].DataTypeName;
         }
 
         public override DateTime GetDateTime(int ordinal)
@@ -145,7 +146,12 @@ namespace Apache.Arrow.Adbc.Client
 #endif
         public override Type GetFieldType(int ordinal)
         {
-            return this.GetColumnSchema()[ordinal].DataType;
+            return this.GetAdbcColumnSchema()[ordinal].DataType;
+        }
+
+        public IArrowType GetFieldArrowType(int ordinal)
+        {
+            return this.GetAdbcColumnSchema()[ordinal].ArrowType;
         }
 
         public override float GetFloat(int ordinal)
@@ -256,36 +262,32 @@ namespace Apache.Arrow.Adbc.Client
             return Task.Run(() => GetSchemaTable(), cancellationToken);
         }
 #endif
-
         public ReadOnlyCollection<DbColumn> GetColumnSchema()
+        {
+            return GetAdbcColumnSchema().Select(x => (DbColumn)x).ToList().AsReadOnly();
+        }
+
+        public ReadOnlyCollection<AdbcColumn> GetAdbcColumnSchema()
         {
             if (this.schema != null)
             {
-                List<DbColumn> dbColumns = new List<DbColumn>();
+                List<AdbcColumn> dbColumns = new List<AdbcColumn>();
 
                 foreach (Field f in this.schema.FieldsList)
                 {
                     Type t = SchemaConverter.ConvertArrowType(f);
 
-                    if(
-                        (
-                            f.DataType.TypeId == Types.ArrowTypeId.Double ||
-                            f.DataType.TypeId == Types.ArrowTypeId.Float ||
-                            f.DataType.TypeId == Types.ArrowTypeId.Decimal128 ||
-                            f.DataType.TypeId == Types.ArrowTypeId.Decimal256
-                        )
-                        && f.HasMetadata
-                        && f.Metadata.ContainsKey("precision")
-                        && f.Metadata.ContainsKey("scale")
-                    )
+                    if(f.HasMetadata &&
+                       f.Metadata.ContainsKey("precision") &&
+                       f.Metadata.ContainsKey("scale"))
                     {
                         int precision = Convert.ToInt32(f.Metadata["precision"]);
                         int scale = Convert.ToInt32(f.Metadata["scale"]);
-                        dbColumns.Add(new AdbcColumn(f.Name, t, f.IsNullable, precision, scale));
+                        dbColumns.Add(new AdbcColumn(f.Name, t, f.DataType, f.IsNullable, precision, scale));
                     }
                     else
                     {
-                        dbColumns.Add(new AdbcColumn(f.Name, t, f.IsNullable));
+                        dbColumns.Add(new AdbcColumn(f.Name, t, f.DataType, f.IsNullable));
                     }
                 }
 
@@ -317,7 +319,7 @@ namespace Apache.Arrow.Adbc.Client
         {
             this.currentRowInRecordBatch = 0;
 
-            var recordBatch = this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).Result;
+            RecordBatch recordBatch = this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).Result;
 
             if( recordBatch != null )
             {
@@ -326,5 +328,6 @@ namespace Apache.Arrow.Adbc.Client
 
             return new ValueTask<RecordBatch>(recordBatch);
         }
+
     }
 }

@@ -44,7 +44,7 @@ ADBC versions the API standard and the implementing libraries separately.
 The API standard (version 1.0.0) is considered stable, but enhancements may be made.
 
 Libraries are under development.
-For more details, see the [documentation](https://arrow.apache.org/adbc/main/driver/status.html).
+For more details, see the [documentation](https://arrow.apache.org/adbc/main/driver/status.html), or read the [changelog](CHANGELOG.md).
 
 ## Installation
 

@@ -16,14 +16,20 @@
 */
 
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 using Apache.Arrow.Adbc.C;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
     internal class SnowflakeTestingUtils
     {
+        internal const string SNOWFLAKE_TEST_CONFIG_VARIABLE = "SNOWFLAKE_TEST_CONFIG_FILE";
+
         /// <summary>
-        /// Gets a the Snowflake ADBC driver with settings from the <see cref="SnowflakeTestConfiguration"/>.
+        /// Gets a the Snowflake ADBC driver with settings from the
+        /// <see cref="SnowflakeTestConfiguration"/>.
         /// </summary>
         /// <param name="testConfiguration"></param>
         /// <param name="parameters"></param>
@@ -51,7 +57,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         /// <summary>
-        /// Gets a the Snowflake ADBC driver with settings from the <see cref="SnowflakeTestConfiguration"/>.
+        /// Gets a the Snowflake ADBC driver with settings from the
+        /// <see cref="SnowflakeTestConfiguration"/>.
         /// </summary>
         /// <param name="testConfiguration"></param>
         /// <param name="parameters"></param>
@@ -64,6 +71,40 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             AdbcDriver snowflakeDriver = CAdbcDriverImporter.Load(testConfiguration.DriverPath, testConfiguration.DriverEntryPoint);
 
             return snowflakeDriver;
+        }
+
+        /// <summary>
+        /// Parses the queries from resources/SnowflakeData.sql
+        /// </summary>
+        /// <param name="testConfiguration"><see cref="SnowflakeTestConfiguration"/></param>
+        internal static string[] GetQueries(SnowflakeTestConfiguration testConfiguration)
+        {
+            StringBuilder content = new StringBuilder();
+
+            string[] sql = File.ReadAllLines("resources/SnowflakeData.sql");
+
+            string placeholder = "{ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}";
+
+            foreach (string line in sql)
+            {
+                if (!line.TrimStart().StartsWith("--"))
+                {
+                    if (line.Contains(placeholder))
+                    {
+                        string modifiedLine = line.Replace(placeholder, $"{testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}");
+
+                        content.AppendLine(modifiedLine);
+                    }
+                    else
+                    {
+                        content.AppendLine(line);
+                    }
+                }
+            }
+
+            string[] queries = content.ToString().Split(";".ToCharArray()).Where(x => x.Trim().Length > 0).ToArray();
+
+            return queries;
         }
     }
 }

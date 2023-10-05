@@ -17,6 +17,7 @@
 
 using System;
 using System.Data.Common;
+using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Client
 {
@@ -30,9 +31,11 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         /// <param name="name">The column name.</param>
         /// <param name="dataType">The type of column.</param>
-        /// <param name="nullable">Indicates whether the column allows DbNull values.</param>
-        public AdbcColumn(string name, Type dataType, bool nullable)
-            : this(name, dataType, nullable, null, null)
+        /// <param name="nullable">
+        /// Indicates whether the column allows DbNull values.
+        /// </param>
+        public AdbcColumn(string name, Type dataType, IArrowType arrowType, bool nullable)
+            : this(name, dataType, arrowType, nullable, null, null)
         {
 
         }
@@ -42,14 +45,19 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         /// <param name="name">The column name.</param>
         /// <param name="dataType">The type of column.</param>
-        /// <param name="nullable">Indicates whether the column allows DbNull values.</param>
-        /// <param name="precision">The decimal precision, if required.</param>
+        /// <param name="nullable">
+        /// Indicates whether the column allows DbNull values.
+        /// </param>
+        /// <param name="precision">
+        /// The decimal precision, if required.
+        /// </param>
         /// <param name="scale">The decimal scale, if required.</param>
-        public AdbcColumn(string name, Type dataType, bool nullable, int? precision, int? scale)
+        public AdbcColumn(string name, Type dataType, IArrowType arrowType, bool nullable, int? precision, int? scale)
         {
             this.ColumnName = name;
             this.AllowDBNull = nullable;
             this.DataType = dataType;
+            this.ArrowType = arrowType;
 
             if(precision.HasValue && scale.HasValue)
             {
@@ -57,5 +65,7 @@ namespace Apache.Arrow.Adbc.Client
                 this.NumericPrecision = precision.Value;
             }
         }
+
+        public IArrowType ArrowType { get; set; }
     }
 }

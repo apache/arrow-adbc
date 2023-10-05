@@ -85,3 +85,21 @@ def test_create_types(tmp_path: Path) -> None:
                 assert len(col) == 6
             actual_types = [col[2] for col in table_info]
             assert actual_types == ["INTEGER", "TEXT"]
+
+
+def test_ingest() -> None:
+    table = pa.Table.from_pydict({"numbers": [1, 2], "letters": ["a", "b"]})
+
+    with dbapi.connect() as conn:
+        with conn.cursor() as cur:
+            cur.adbc_ingest("foo", table, catalog_name="main")
+            cur.adbc_ingest("foo", table, catalog_name="temp")
+
+            cur.execute("SELECT * FROM main.foo")
+            assert cur.fetch_arrow_table() == table
+
+            cur.execute("SELECT * FROM temp.foo")
+            assert cur.fetch_arrow_table() == table
+
+            with pytest.raises(dbapi.NotSupportedError):
+                cur.adbc_ingest("foo", table, db_schema_name="main")

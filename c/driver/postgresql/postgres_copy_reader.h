@@ -30,7 +30,6 @@
 
 #include "postgres_type.h"
 #include "postgres_util.h"
-#include "vendor/portable-snippets/safe-math.h"
 
 // R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
 #if defined(_WIN32) && !defined(MSVC) && !defined(ENODATA)
@@ -43,6 +42,30 @@ namespace adbcpq {
 static int8_t kPgCopyBinarySignature[] = {0x50, 0x47, 0x43, 0x4F,
                                           0x50, 0x59, 0x0A, static_cast<int8_t>(0xFF),
                                           0x0D, 0x0A, 0x00};
+
+// The maximum value in seconds that can be converted into microseconds
+// without overflow
+constexpr int64_t kMaxSafeSecondsToMicros = 9223372036854L;
+
+// The minimum value in seconds that can be converted into microseconds
+// without overflow
+constexpr int64_t kMinSafeSecondsToMicros = -9223372036854L;
+
+// The maximum value in milliseconds that can be converted into microseconds
+// without overflow
+constexpr int64_t kMaxSafeMillisToMicros = 9223372036854775L;
+
+// The minimum value in milliseconds that can be converted into microseconds
+// without overflow
+constexpr int64_t kMinSafeMillisToMicros = -9223372036854775L;
+
+// The maximum value in microseconds that can be converted into nanoseconds
+// without overflow
+constexpr int64_t kMaxSafeMicrosToNanos = 9223372036854775L;
+
+// The minimum value in microseconds that can be converted into nanoseconds
+// without overflow
+constexpr int64_t kMinSafeMicrosToNanos = -9223372036854775L;
 
 // Read a value from the buffer without checking the buffer size. Advances
 // the cursor of data and reduces its size by sizeof(T).
@@ -91,6 +114,41 @@ ArrowErrorCode ReadChecked(ArrowBufferView* data, T* out, ArrowError* error) {
   }
 
   *out = ReadUnsafe<T>(data);
+  return NANOARROW_OK;
+}
+
+// Write a value to a buffer without checking the buffer size. Advances
+// the cursor of buffer and reduces it by sizeof(T)
+template <typename T>
+inline void WriteUnsafe(ArrowBuffer* buffer, T in) {
+  const T value = SwapNetworkToHost(in);
+  ArrowBufferAppendUnsafe(buffer, &value, sizeof(T));
+}
+
+template <>
+inline void WriteUnsafe(ArrowBuffer* buffer, int8_t in) {
+  ArrowBufferAppendUnsafe(buffer, &in, sizeof(int8_t));
+}
+
+template <>
+inline void WriteUnsafe(ArrowBuffer* buffer, int16_t in) {
+  WriteUnsafe<uint16_t>(buffer, in);
+}
+
+template <>
+inline void WriteUnsafe(ArrowBuffer* buffer, int32_t in) {
+  WriteUnsafe<uint32_t>(buffer, in);
+}
+
+template <>
+inline void WriteUnsafe(ArrowBuffer* buffer, int64_t in) {
+  WriteUnsafe<uint64_t>(buffer, in);
+}
+
+template <typename T>
+ArrowErrorCode WriteChecked(ArrowBuffer* buffer, T in, ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, sizeof(T)));
+  WriteUnsafe<T>(buffer, in);
   return NANOARROW_OK;
 }
 
@@ -234,13 +292,15 @@ class PostgresCopyIntervalFieldReader : public PostgresCopyFieldReader {
     const int64_t time_usec = ReadUnsafe<int64_t>(data);
     int64_t time;
 
-    if (!psnip_safe_int64_mul(&time, time_usec, 1000)) {
+    if (time_usec > kMaxSafeMicrosToNanos || time_usec < kMinSafeMicrosToNanos) {
       ArrowErrorSet(error,
                     "[libpq] Interval with time value %" PRId64
                     " usec would overflow when converting to nanoseconds",
                     time_usec);
       return EINVAL;
     }
+
+    time = time_usec * 1000;
 
     const int32_t days = ReadUnsafe<int32_t>(data);
     const int32_t months = ReadUnsafe<int32_t>(data);
@@ -1031,6 +1091,170 @@ class PostgresCopyStreamReader {
   nanoarrow::UniqueSchema schema_;
   nanoarrow::UniqueArray array_;
   int64_t array_size_approx_bytes_;
+};
+
+class PostgresCopyFieldWriter {
+ public:
+  virtual ~PostgresCopyFieldWriter() {}
+
+  void Init(struct ArrowArrayView* array_view) { array_view_ = array_view; };
+
+  virtual ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) {
+    return ENOTSUP;
+  }
+
+ protected:
+  struct ArrowArrayView* array_view_;
+  std::vector<std::unique_ptr<PostgresCopyFieldWriter>> children_;
+};
+
+class PostgresCopyFieldTupleWriter : public PostgresCopyFieldWriter {
+ public:
+  void AppendChild(std::unique_ptr<PostgresCopyFieldWriter> child) {
+    int64_t child_i = static_cast<int64_t>(children_.size());
+    children_.push_back(std::move(child));
+    children_[child_i]->Init(array_view_->children[child_i]);
+  }
+
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    if (index >= array_view_->length) {
+      return ENODATA;
+    }
+
+    const int16_t n_fields = children_.size();
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, n_fields, error));
+
+    for (int16_t i = 0; i < n_fields; i++) {
+      children_[i]->Write(buffer, index, error);
+    }
+
+    return NANOARROW_OK;
+  }
+
+ private:
+  std::vector<std::unique_ptr<PostgresCopyFieldWriter>> children_;
+};
+
+class PostgresCopyBooleanFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    const int8_t is_null = ArrowArrayViewIsNull(array_view_, index);
+    const int32_t field_size_bytes = is_null ? -1 : 1;
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    if (is_null) {
+      return ADBC_STATUS_OK;
+    }
+
+    const int8_t value =
+        static_cast<int8_t>(ArrowArrayViewGetIntUnsafe(array_view_, index));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int8_t>(buffer, value, error));
+
+    return ADBC_STATUS_OK;
+  }
+};
+
+template <typename T, T kOffset = 0>
+class PostgresCopyNetworkEndianFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    const int8_t is_null = ArrowArrayViewIsNull(array_view_, index);
+    const int32_t field_size_bytes = is_null ? -1 : sizeof(T);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    if (is_null) {
+      return ADBC_STATUS_OK;
+    }
+
+    const T value =
+        static_cast<T>(ArrowArrayViewGetIntUnsafe(array_view_, index)) - kOffset;
+    NANOARROW_RETURN_NOT_OK(WriteChecked<T>(buffer, value, error));
+
+    return ADBC_STATUS_OK;
+  }
+};
+
+static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type,
+                                                 PostgresCopyFieldWriter** out,
+                                                 ArrowError* error) {
+  switch (arrow_type) {
+    case NANOARROW_TYPE_BOOL:
+      *out = new PostgresCopyBooleanFieldWriter();
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_INT16:
+      *out = new PostgresCopyNetworkEndianFieldWriter<int16_t>();
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_INT32:
+      *out = new PostgresCopyNetworkEndianFieldWriter<int32_t>();
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_INT64:
+      *out = new PostgresCopyNetworkEndianFieldWriter<int64_t>();
+      return NANOARROW_OK;
+    default:
+      return EINVAL;
+  }
+  return NANOARROW_OK;
+}
+
+class PostgresCopyStreamWriter {
+ public:
+  ArrowErrorCode Init(struct ArrowSchema* schema, struct ArrowArray* array) {
+    schema_ = schema;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(&array_view_.value, schema, nullptr));
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&array_view_.value, array, nullptr));
+    root_writer_.Init(&array_view_.value);
+    ArrowBufferInit(&buffer_.value);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteHeader(ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&buffer_.value, kPgCopyBinarySignature,
+                                              sizeof(kPgCopyBinarySignature)));
+
+    const uint32_t flag_fields = 0;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(&buffer_.value, &flag_fields, sizeof(flag_fields)));
+
+    const uint32_t extension_bytes = 0;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(&buffer_.value, &extension_bytes, sizeof(extension_bytes)));
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteRecord(ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(root_writer_.Write(&buffer_.value, records_written_, error));
+    records_written_++;
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode InitFieldWriters(ArrowError* error) {
+    if (schema_->release == nullptr) {
+      return EINVAL;
+    }
+
+    for (int64_t i = 0; i < schema_->n_children; i++) {
+      struct ArrowSchemaView schema_view;
+      if (ArrowSchemaViewInit(&schema_view, schema_->children[i], error) !=
+          NANOARROW_OK) {
+        return ADBC_STATUS_INTERNAL;
+      }
+      const ArrowType arrow_type = schema_view.type;
+      PostgresCopyFieldWriter* child_writer;
+      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(arrow_type, &child_writer, error));
+      root_writer_.AppendChild(std::unique_ptr<PostgresCopyFieldWriter>(child_writer));
+    }
+
+    return NANOARROW_OK;
+  }
+
+  const struct ArrowBuffer& WriteBuffer() const { return buffer_.value; }
+
+ private:
+  PostgresCopyFieldTupleWriter root_writer_;
+  struct ArrowSchema* schema_;
+  Handle<struct ArrowArrayView> array_view_;
+  Handle<struct ArrowBuffer> buffer_;
+  int64_t records_written_ = 0;
 };
 
 }  // namespace adbcpq

@@ -31,13 +31,14 @@
 #include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.hpp>
 
+#include "common/options.h"
 #include "common/utils.h"
 #include "connection.h"
 #include "error.h"
 #include "postgres_copy_reader.h"
 #include "postgres_type.h"
 #include "postgres_util.h"
-#include "vendor/portable-snippets/safe-math.h"
+#include "result_helper.h"
 
 namespace adbcpq {
 
@@ -74,37 +75,6 @@ struct OneValueStream {
     delete stream;
     self->release = nullptr;
   }
-};
-
-/// Helper to manage resources with RAII
-
-template <typename T>
-struct Releaser {
-  static void Release(T* value) {
-    if (value->release) {
-      value->release(value);
-    }
-  }
-};
-
-template <>
-struct Releaser<struct ArrowArrayView> {
-  static void Release(struct ArrowArrayView* value) {
-    if (value->storage_type != NANOARROW_TYPE_UNINITIALIZED) {
-      ArrowArrayViewReset(value);
-    }
-  }
-};
-
-template <typename Resource>
-struct Handle {
-  Resource value;
-
-  Handle() { std::memset(&value, 0, sizeof(value)); }
-
-  ~Handle() { Releaser<Resource>::Release(&value); }
-
-  Resource* operator->() { return &value; }
 };
 
 /// Build an PostgresType object from a PGresult*
@@ -193,6 +163,10 @@ struct BindStream {
     for (size_t i = 0; i < bind_schema_fields.size(); i++) {
       PostgresTypeId type_id;
       switch (bind_schema_fields[i].type) {
+        case ArrowType::NANOARROW_TYPE_BOOL:
+          type_id = PostgresTypeId::kBool;
+          param_lengths[i] = 1;
+          break;
         case ArrowType::NANOARROW_TYPE_INT8:
         case ArrowType::NANOARROW_TYPE_INT16:
           type_id = PostgresTypeId::kInt2;
@@ -215,6 +189,7 @@ struct BindStream {
           param_lengths[i] = 8;
           break;
         case ArrowType::NANOARROW_TYPE_STRING:
+        case ArrowType::NANOARROW_TYPE_LARGE_STRING:
           type_id = PostgresTypeId::kText;
           param_lengths[i] = 0;
           break;
@@ -230,6 +205,7 @@ struct BindStream {
           type_id = PostgresTypeId::kTimestamp;
           param_lengths[i] = 8;
           break;
+        case ArrowType::NANOARROW_TYPE_DURATION:
         case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
           type_id = PostgresTypeId::kInterval;
           param_lengths[i] = 16;
@@ -355,6 +331,13 @@ struct BindStream {
             param_values[col] = param_values_buffer.data() + param_values_offsets[col];
           }
           switch (bind_schema_fields[col].type) {
+            case ArrowType::NANOARROW_TYPE_BOOL: {
+              const int8_t val = ArrowBitGet(
+                  array_view->children[col]->buffer_views[1].data.as_uint8, row);
+              std::memcpy(param_values[col], &val, sizeof(int8_t));
+              break;
+            }
+
             case ArrowType::NANOARROW_TYPE_INT8: {
               const int16_t val =
                   array_view->children[col]->buffer_views[1].data.as_int8[row];
@@ -393,6 +376,7 @@ struct BindStream {
               break;
             }
             case ArrowType::NANOARROW_TYPE_STRING:
+            case ArrowType::NANOARROW_TYPE_LARGE_STRING:
             case ArrowType::NANOARROW_TYPE_BINARY: {
               const ArrowBufferView view =
                   ArrowArrayViewGetBytesUnsafe(array_view->children[col], row);
@@ -417,21 +401,29 @@ struct BindStream {
               std::memcpy(param_values[col], &value, sizeof(int32_t));
               break;
             }
+            case ArrowType::NANOARROW_TYPE_DURATION:
             case ArrowType::NANOARROW_TYPE_TIMESTAMP: {
               int64_t val = array_view->children[col]->buffer_views[1].data.as_int64[row];
 
               // 2000-01-01 00:00:00.000000 in microseconds
               constexpr int64_t kPostgresTimestampEpoch = 946684800000000;
-              psnip_safe_bool overflow_safe = true;
+              bool overflow_safe = true;
 
               auto unit = bind_schema_fields[col].time_unit;
 
               switch (unit) {
                 case NANOARROW_TIME_UNIT_SECOND:
-                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000000);
+                  if ((overflow_safe = val <= kMaxSafeSecondsToMicros &&
+                                       val >= kMinSafeSecondsToMicros)) {
+                    val *= 1000000;
+                  }
+
                   break;
                 case NANOARROW_TIME_UNIT_MILLI:
-                  overflow_safe = psnip_safe_int64_mul(&val, val, 1000);
+                  if ((overflow_safe = val <= kMaxSafeMillisToMicros &&
+                                       val >= kMinSafeMillisToMicros)) {
+                    val *= 1000;
+                  }
                   break;
                 case NANOARROW_TIME_UNIT_MICRO:
                   break;
@@ -441,15 +433,27 @@ struct BindStream {
               }
 
               if (!overflow_safe) {
-                SetError(error, "[libpq] Field #%" PRId64 "%s%s%s%" PRId64 "%s", col + 1,
-                         " (' ", bind_schema->children[col]->name, " ') Row # ", row + 1,
-                         " has value which exceeds postgres timestamp limits");
-
+                SetError(error,
+                         "[libpq] Field #%" PRId64 " ('%s') Row #%" PRId64
+                         " has value '%" PRIi64
+                         "' which exceeds PostgreSQL timestamp limits",
+                         col + 1, bind_schema->children[col]->name, row + 1,
+                         array_view->children[col]->buffer_views[1].data.as_int64[row]);
                 return ADBC_STATUS_INVALID_ARGUMENT;
               }
 
-              const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
-              std::memcpy(param_values[col], &value, sizeof(int64_t));
+              if (bind_schema_fields[col].type == ArrowType::NANOARROW_TYPE_TIMESTAMP) {
+                const uint64_t value = ToNetworkInt64(val - kPostgresTimestampEpoch);
+                std::memcpy(param_values[col], &value, sizeof(int64_t));
+              } else if (bind_schema_fields[col].type ==
+                         ArrowType::NANOARROW_TYPE_DURATION) {
+                // postgres stores an interval as a 64 bit offset in microsecond
+                // resolution alongside a 32 bit day and 32 bit month
+                // for now we just send 0 for the day / month values
+                const uint64_t value = ToNetworkInt64(val);
+                std::memcpy(param_values[col], &value, sizeof(int64_t));
+                std::memset(param_values[col] + sizeof(int64_t), 0, sizeof(int64_t));
+              }
               break;
             }
             case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
@@ -481,10 +485,11 @@ struct BindStream {
                                 param_lengths.data(), param_formats.data(),
                                 /*resultFormat=*/0 /*text*/);
 
-        if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+        ExecStatusType pg_status = PQresultStatus(result);
+        if (pg_status != PGRES_COMMAND_OK) {
           AdbcStatusCode code = SetError(
-              error, result, "%s%s",
-              "[libpq] Failed to execute prepared statement: ", PQerrorMessage(conn));
+              error, result, "[libpq] Failed to execute prepared statement: %s %s",
+              PQresStatus(pg_status), PQerrorMessage(conn));
           PQclear(result);
           return code;
         }
@@ -809,10 +814,63 @@ AdbcStatusCode PostgresStatement::Cancel(struct AdbcError* error) {
 }
 
 AdbcStatusCode PostgresStatement::CreateBulkTable(
-    const struct ArrowSchema& source_schema,
+    const std::string& current_schema, const struct ArrowSchema& source_schema,
     const std::vector<struct ArrowSchemaView>& source_schema_fields,
-    struct AdbcError* error) {
-  std::string create = "CREATE TABLE ";
+    std::string* escaped_table, struct AdbcError* error) {
+  PGconn* conn = connection_->conn();
+
+  if (!ingest_.db_schema.empty() && ingest_.temporary) {
+    SetError(error, "[libpq] Cannot set both %s and %s",
+             ADBC_INGEST_OPTION_TARGET_DB_SCHEMA, ADBC_INGEST_OPTION_TEMPORARY);
+    return ADBC_STATUS_INVALID_STATE;
+  }
+
+  {
+    if (!ingest_.db_schema.empty()) {
+      char* escaped =
+          PQescapeIdentifier(conn, ingest_.db_schema.c_str(), ingest_.db_schema.size());
+      if (escaped == nullptr) {
+        SetError(error, "[libpq] Failed to escape target schema %s for ingestion: %s",
+                 ingest_.db_schema.c_str(), PQerrorMessage(conn));
+        return ADBC_STATUS_INTERNAL;
+      }
+      *escaped_table += escaped;
+      *escaped_table += " . ";
+      PQfreemem(escaped);
+    } else if (ingest_.temporary) {
+      // OK to be redundant (CREATE TEMPORARY TABLE pg_temp.foo)
+      *escaped_table += "pg_temp . ";
+    } else {
+      // Explicitly specify the current schema to avoid any temporary tables
+      // shadowing this table
+      char* escaped =
+          PQescapeIdentifier(conn, current_schema.c_str(), current_schema.size());
+      *escaped_table += escaped;
+      *escaped_table += " . ";
+      PQfreemem(escaped);
+    }
+
+    if (!ingest_.target.empty()) {
+      char* escaped =
+          PQescapeIdentifier(conn, ingest_.target.c_str(), ingest_.target.size());
+      if (escaped == nullptr) {
+        SetError(error, "[libpq] Failed to escape target table %s for ingestion: %s",
+                 ingest_.target.c_str(), PQerrorMessage(conn));
+        return ADBC_STATUS_INTERNAL;
+      }
+      *escaped_table += escaped;
+      PQfreemem(escaped);
+    }
+  }
+
+  std::string create;
+
+  if (ingest_.temporary) {
+    create = "CREATE TEMPORARY TABLE ";
+  } else {
+    create = "CREATE TABLE ";
+  }
+
   switch (ingest_.mode) {
     case IngestMode::kCreate:
       // Nothing to do
@@ -820,15 +878,15 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
     case IngestMode::kAppend:
       return ADBC_STATUS_OK;
     case IngestMode::kReplace: {
-      std::string drop = "DROP TABLE IF EXISTS " + ingest_.target;
-      PGresult* result = PQexecParams(connection_->conn(), drop.c_str(), /*nParams=*/0,
+      std::string drop = "DROP TABLE IF EXISTS " + *escaped_table;
+      PGresult* result = PQexecParams(conn, drop.c_str(), /*nParams=*/0,
                                       /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                                       /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                       /*resultFormat=*/1 /*(binary)*/);
       if (PQresultStatus(result) != PGRES_COMMAND_OK) {
         AdbcStatusCode code =
             SetError(error, result, "[libpq] Failed to drop table: %s\nQuery was: %s",
-                     PQerrorMessage(connection_->conn()), drop.c_str());
+                     PQerrorMessage(conn), drop.c_str());
         PQclear(result);
         return code;
       }
@@ -839,13 +897,26 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       create += "IF NOT EXISTS ";
       break;
   }
-  create += ingest_.target;
+  create += *escaped_table;
   create += " (";
 
   for (size_t i = 0; i < source_schema_fields.size(); i++) {
     if (i > 0) create += ", ";
-    create += source_schema.children[i]->name;
+
+    const char* unescaped = source_schema.children[i]->name;
+    char* escaped = PQescapeIdentifier(conn, unescaped, std::strlen(unescaped));
+    if (escaped == nullptr) {
+      SetError(error, "[libpq] Failed to escape column %s for ingestion: %s", unescaped,
+               PQerrorMessage(conn));
+      return ADBC_STATUS_INTERNAL;
+    }
+    create += escaped;
+    PQfreemem(escaped);
+
     switch (source_schema_fields[i].type) {
+      case ArrowType::NANOARROW_TYPE_BOOL:
+        create += " BOOLEAN";
+        break;
       case ArrowType::NANOARROW_TYPE_INT8:
       case ArrowType::NANOARROW_TYPE_INT16:
         create += " SMALLINT";
@@ -863,6 +934,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
         create += " DOUBLE PRECISION";
         break;
       case ArrowType::NANOARROW_TYPE_STRING:
+      case ArrowType::NANOARROW_TYPE_LARGE_STRING:
         create += " TEXT";
         break;
       case ArrowType::NANOARROW_TYPE_BINARY:
@@ -878,6 +950,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
           create += " TIMESTAMP";
         }
         break;
+      case ArrowType::NANOARROW_TYPE_DURATION:
       case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
         create += " INTERVAL";
         break;
@@ -892,14 +965,14 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
 
   create += ")";
   SetError(error, "%s%s", "[libpq] ", create.c_str());
-  PGresult* result = PQexecParams(connection_->conn(), create.c_str(), /*nParams=*/0,
+  PGresult* result = PQexecParams(conn, create.c_str(), /*nParams=*/0,
                                   /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                                   /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
                                   /*resultFormat=*/1 /*(binary)*/);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
         SetError(error, result, "[libpq] Failed to create table: %s\nQuery was: %s",
-                 PQerrorMessage(connection_->conn()), create.c_str());
+                 PQerrorMessage(conn), create.c_str());
     PQclear(result);
     return code;
   }
@@ -1036,18 +1109,34 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
     return ADBC_STATUS_INVALID_STATE;
   }
 
+  // Need the current schema to avoid being shadowed by temp tables
+  // This is a little unfortunate; we need another DB roundtrip
+  std::string current_schema;
+  {
+    PqResultHelper result_helper{connection_->conn(), "SELECT CURRENT_SCHEMA", {}, error};
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+    auto it = result_helper.begin();
+    if (it == result_helper.end()) {
+      SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+      return ADBC_STATUS_INTERNAL;
+    }
+    current_schema = (*it)[0].data;
+  }
+
   BindStream bind_stream(std::move(bind_));
   std::memset(&bind_, 0, sizeof(bind_));
+  std::string escaped_table;
   RAISE_ADBC(bind_stream.Begin(
       [&]() -> AdbcStatusCode {
-        return CreateBulkTable(bind_stream.bind_schema.value,
-                               bind_stream.bind_schema_fields, error);
+        return CreateBulkTable(current_schema, bind_stream.bind_schema.value,
+                               bind_stream.bind_schema_fields, &escaped_table, error);
       },
       error));
   RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
 
   std::string insert = "INSERT INTO ";
-  insert += ingest_.target;
+  insert += escaped_table;
   insert += " VALUES (";
   for (size_t i = 0; i < bind_stream.bind_schema_fields.size(); i++) {
     if (i > 0) insert += ", ";
@@ -1087,6 +1176,8 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
   std::string result;
   if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
     result = ingest_.target;
+  } else if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA) == 0) {
+    result = ingest_.db_schema;
   } else if (std::strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
     switch (ingest_.mode) {
       case IngestMode::kCreate:
@@ -1168,6 +1259,7 @@ AdbcStatusCode PostgresStatement::Release(struct AdbcError* error) {
 AdbcStatusCode PostgresStatement::SetSqlQuery(const char* query,
                                               struct AdbcError* error) {
   ingest_.target.clear();
+  ingest_.db_schema.clear();
   query_ = query;
   prepared_ = false;
   return ADBC_STATUS_OK;
@@ -1178,6 +1270,14 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
   if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
     query_.clear();
     ingest_.target = value;
+    prepared_ = false;
+  } else if (std::strcmp(key, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA) == 0) {
+    query_.clear();
+    if (value == nullptr) {
+      ingest_.db_schema.clear();
+    } else {
+      ingest_.db_schema = value;
+    }
     prepared_ = false;
   } else if (std::strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
     if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE) == 0) {
@@ -1192,6 +1292,17 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
       SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
+    prepared_ = false;
+  } else if (std::strcmp(key, ADBC_INGEST_OPTION_TEMPORARY) == 0) {
+    if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      ingest_.temporary = true;
+    } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      ingest_.temporary = false;
+    } else {
+      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    ingest_.db_schema.clear();
     prepared_ = false;
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     int64_t int_value = std::atol(value);

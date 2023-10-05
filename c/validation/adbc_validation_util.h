@@ -57,6 +57,11 @@ struct Releaser {
 };
 
 template <>
+struct Releaser<struct ArrowBuffer> {
+  static void Release(struct ArrowBuffer* buffer) { ArrowBufferReset(buffer); }
+};
+
+template <>
 struct Releaser<struct ArrowArrayView> {
   static void Release(struct ArrowArrayView* value) {
     if (value->storage_type != NANOARROW_TYPE_UNINITIALIZED) {
@@ -239,8 +244,9 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
               const std::vector<std::optional<T>>& values) {
   for (const auto& v : values) {
     if (v.has_value()) {
-      if constexpr (std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
-                    std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value) {
+      if constexpr (std::is_same<T, bool>::value || std::is_same<T, int8_t>::value ||
+                    std::is_same<T, int16_t>::value || std::is_same<T, int32_t>::value ||
+                    std::is_same<T, int64_t>::value) {
         if (int errno_res = ArrowArrayAppendInt(array, *v); errno_res != 0) {
           return errno_res;
         }
@@ -352,6 +358,9 @@ void CompareArray(struct ArrowArrayView* array,
       } else if constexpr (std::is_same<T, float>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
+      } else if constexpr (std::is_same<T, bool>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, ArrowBitGet(array->buffer_views[1].data.as_uint8, i));
       } else if constexpr (std::is_same<T, int8_t>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_int8[i]);
@@ -404,5 +413,8 @@ void CompareArray(struct ArrowArrayView* array,
 void CompareSchema(
     struct ArrowSchema* schema,
     const std::vector<std::tuple<std::optional<std::string>, ArrowType, bool>>& fields);
+
+/// \brief Helper method to get the vendor version of a driver
+std::string GetDriverVendorVersion(struct AdbcConnection* connection);
 
 }  // namespace adbc_validation

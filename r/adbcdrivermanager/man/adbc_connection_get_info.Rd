@@ -7,6 +7,8 @@
 \alias{adbc_connection_get_table_types}
 \alias{adbc_connection_read_partition}
 \alias{adbc_connection_commit}
+\alias{adbc_connection_quote_identifier}
+\alias{adbc_connection_quote_string}
 \alias{adbc_connection_rollback}
 \title{Connection methods}
 \usage{
@@ -14,12 +16,12 @@ adbc_connection_get_info(connection, info_codes)
 
 adbc_connection_get_objects(
   connection,
-  depth,
-  catalog,
-  db_schema,
-  table_name,
-  table_type,
-  column_name
+  depth = 0L,
+  catalog = NULL,
+  db_schema = NULL,
+  table_name = NULL,
+  table_type = NULL,
+  column_name = NULL
 )
 
 adbc_connection_get_table_schema(connection, catalog, db_schema, table_name)
@@ -29,6 +31,10 @@ adbc_connection_get_table_types(connection)
 adbc_connection_read_partition(connection, serialized_partition)
 
 adbc_connection_commit(connection)
+
+adbc_connection_quote_identifier(connection, value, ...)
+
+adbc_connection_quote_string(connection, value, ...)
 
 adbc_connection_rollback(connection)
 }
@@ -61,6 +67,11 @@ GetTableTypes. Terminate the list with a NULL entry.}
 filter by name. May be a search pattern.}
 
 \item{serialized_partition}{The partition descriptor.}
+
+\item{value}{A string or identifier.}
+
+\item{...}{Driver-specific options. For the default method, these are
+named values that are converted to strings.}
 }
 \value{
 \itemize{

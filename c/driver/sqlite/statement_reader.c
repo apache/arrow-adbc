@@ -312,6 +312,7 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
                                      SQLITE_STATIC);
           break;
         }
+        case NANOARROW_TYPE_BOOL:
         case NANOARROW_TYPE_UINT8:
         case NANOARROW_TYPE_UINT16:
         case NANOARROW_TYPE_UINT32:
@@ -451,7 +452,7 @@ void StatementReaderSetError(struct StatementReader* reader) {
   const char* msg = sqlite3_errmsg(reader->db);
   // Reset here so that we don't get an error again in StatementRelease
   (void)sqlite3_reset(reader->stmt);
-  strncpy(reader->error.message, msg, sizeof(reader->error.message));
+  strncpy(reader->error.message, msg, sizeof(reader->error.message) - 1);
   reader->error.message[sizeof(reader->error.message) - 1] = '\0';
 }
 
@@ -594,7 +595,8 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
           reader->done = 1;
           status = EIO;
           if (error.release) {
-            strncpy(reader->error.message, error.message, sizeof(reader->error.message));
+            strncpy(reader->error.message, error.message,
+                    sizeof(reader->error.message) - 1);
             reader->error.message[sizeof(reader->error.message) - 1] = '\0';
             error.release(&error);
           }

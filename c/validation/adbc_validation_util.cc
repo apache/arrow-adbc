@@ -242,4 +242,25 @@ void CompareSchema(
   }
 }
 
+std::string GetDriverVendorVersion(struct AdbcConnection* connection) {
+  const uint32_t info_code = ADBC_INFO_VENDOR_VERSION;
+  const uint32_t info[] = {info_code};
+
+  adbc_validation::StreamReader reader;
+  struct AdbcError error = ADBC_ERROR_INIT;
+  AdbcConnectionGetInfo(connection, info, 1, &reader.stream.value, &error);
+  reader.GetSchema();
+  if (error.release) {
+    error.release(&error);
+    throw std::runtime_error("error occured calling AdbcConnectionGetInfo!");
+  }
+
+  reader.Next();
+  const ArrowStringView raw_version =
+      ArrowArrayViewGetStringUnsafe(reader.array_view->children[1]->children[0], 0);
+  const std::string version(raw_version.data, raw_version.size_bytes);
+
+  return version;
+}
+
 }  // namespace adbc_validation

@@ -131,7 +131,11 @@ static inline void adbc_xptr_move_attrs(SEXP xptr_old, SEXP xptr_new) {
   UNPROTECT(5);
 }
 
-static inline const char* adbc_as_const_char(SEXP sexp) {
+static inline const char* adbc_as_const_char(SEXP sexp, bool nullable = false) {
+  if (nullable && sexp == R_NilValue) {
+    return nullptr;
+  }
+
   if (TYPEOF(sexp) != STRSXP || Rf_length(sexp) != 1) {
     Rf_error("Expected character(1) for conversion to const char*");
   }

@@ -25,7 +25,8 @@ namespace Apache.Arrow.Adbc.Client
     internal class SchemaConverter
     {
         /// <summary>
-        /// Converts an Arrow <see cref="Schema"/> to a <see cref="DataTable"/> schema.
+        /// Converts an Arrow <see cref="Schema"/> to a
+        /// <see cref="DataTable"/> schema.
         /// </summary>
         /// <param name="schema">The Arrow schema</param>
         /// <param name="adbcStatement">The AdbcStatement to use</param>
@@ -95,6 +96,7 @@ namespace Apache.Arrow.Adbc.Client
             {
                 case ArrowTypeId.Binary:
                     return typeof(byte[]);
+
                 case ArrowTypeId.Boolean:
                     return typeof(bool);
 

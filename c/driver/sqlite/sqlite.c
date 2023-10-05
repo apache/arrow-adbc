@@ -28,6 +28,7 @@
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
+#include "common/options.h"
 #include "common/utils.h"
 #include "statement_reader.h"
 #include "types.h"
@@ -572,12 +573,9 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
     const char* from_col = (const char*)sqlite3_column_text(fk_stmt, 3);
     const char* to_col = (const char*)sqlite3_column_text(fk_stmt, 4);
 
+    // New foreign key constraint or -constraint sets
     if (fk_id != prev_fk_id) {
-      CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(constraint_name_col, ArrowCharView("FOREIGN KEY")),
-               error);
-
+      // Not first constraint of the table
       if (prev_fk_id != -1) {
         CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col), error);
         CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_col), error);
@@ -585,28 +583,34 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
       }
       prev_fk_id = fk_id;
 
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
       CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   constraint_column_names_items,
-                   (struct ArrowStringView){
-                       .data = from_col, .size_bytes = sqlite3_column_bytes(pk_stmt, 3)}),
-               error);
-      CHECK_NA(INTERNAL, ArrowArrayAppendString(fk_catalog_col, ArrowCharView("main")),
-               error);
-      CHECK_NA(INTERNAL, ArrowArrayAppendNull(fk_db_schema_col, 1), error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   fk_table_col,
-                   (struct ArrowStringView){
-                       .data = to_table, .size_bytes = sqlite3_column_bytes(pk_stmt, 2)}),
-               error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   fk_column_name_col,
-                   (struct ArrowStringView){
-                       .data = to_col, .size_bytes = sqlite3_column_bytes(pk_stmt, 4)}),
+               ArrowArrayAppendString(constraint_type_col, ArrowCharView("FOREIGN KEY")),
                error);
     }
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(
+                 constraint_column_names_items,
+                 (struct ArrowStringView){
+                     .data = from_col, .size_bytes = sqlite3_column_bytes(fk_stmt, 3)}),
+             error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(fk_catalog_col, ArrowCharView("main")),
+             error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(fk_db_schema_col, 1), error);
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(
+                 fk_table_col,
+                 (struct ArrowStringView){
+                     .data = to_table, .size_bytes = sqlite3_column_bytes(fk_stmt, 2)}),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(
+                 fk_column_name_col,
+                 (struct ArrowStringView){
+                     .data = to_col, .size_bytes = sqlite3_column_bytes(fk_stmt, 4)}),
+             error);
+
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_items), error);
   }
   RAISE(INTERNAL, rc == SQLITE_DONE, sqlite3_errmsg(conn->conn), error);
   if (prev_fk_id != -1) {
@@ -871,23 +875,23 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
-  struct StringBuilder query = {0};
-  if (StringBuilderInit(&query, /*initial_size=*/64) != 0) {
-    SetError(error, "[SQLite] Could not initiate StringBuilder");
+  sqlite3_str* query = sqlite3_str_new(NULL);
+  if (sqlite3_str_errcode(query)) {
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(conn->conn));
     return ADBC_STATUS_INTERNAL;
   }
 
-  // TODO(apache/arrow-adbc#1025): escape
-  if (StringBuilderAppend(&query, "%s%s", "SELECT * FROM ", table_name) != 0) {
-    StringBuilderReset(&query);
-    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+  sqlite3_str_appendf(query, "%s%Q", "SELECT * FROM ", table_name);
+  if (sqlite3_str_errcode(query)) {
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(conn->conn));
+    sqlite3_free(sqlite3_str_finish(query));
     return ADBC_STATUS_INTERNAL;
   }
 
   sqlite3_stmt* stmt = NULL;
-  int rc =
-      sqlite3_prepare_v2(conn->conn, query.buffer, query.size, &stmt, /*pzTail=*/NULL);
-  StringBuilderReset(&query);
+  int rc = sqlite3_prepare_v2(conn->conn, sqlite3_str_value(query),
+                              sqlite3_str_length(query), &stmt, /*pzTail=*/NULL);
+  sqlite3_free(sqlite3_str_finish(query));
   if (rc != SQLITE_OK) {
     SetError(error, "[SQLite] GetTableSchema: %s", sqlite3_errmsg(conn->conn));
     return ADBC_STATUS_NOT_FOUND;
@@ -1025,6 +1029,7 @@ AdbcStatusCode SqliteStatementRelease(struct AdbcStatement* statement,
   }
   if (stmt->query) free(stmt->query);
   AdbcSqliteBinderRelease(&stmt->binder);
+  if (stmt->target_catalog) free(stmt->target_catalog);
   if (stmt->target_table) free(stmt->target_table);
   if (rc != SQLITE_OK) {
     SetError(error,
@@ -1079,29 +1084,59 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   AdbcStatusCode code = ADBC_STATUS_OK;
 
   // Create statements for CREATE TABLE / INSERT
-  sqlite3_str* create_query = sqlite3_str_new(NULL);
+  sqlite3_str* create_query = NULL;
+  sqlite3_str* insert_query = NULL;
+  char* table = NULL;
+
+  create_query = sqlite3_str_new(NULL);
   if (sqlite3_str_errcode(create_query)) {
     SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
-    sqlite3_free(sqlite3_str_finish(create_query));
-    return ADBC_STATUS_INTERNAL;
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
   }
 
-  sqlite3_str* insert_query = sqlite3_str_new(NULL);
+  insert_query = sqlite3_str_new(NULL);
   if (sqlite3_str_errcode(insert_query)) {
     SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
-    sqlite3_free(sqlite3_str_finish(create_query));
-    sqlite3_free(sqlite3_str_finish(insert_query));
-    return ADBC_STATUS_INTERNAL;
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
   }
 
-  sqlite3_str_appendf(create_query, "CREATE TABLE %Q (", stmt->target_table);
+  if (stmt->target_catalog != NULL && stmt->temporary != 0) {
+    SetError(error, "[SQLite] Cannot specify both %s and %s",
+             ADBC_INGEST_OPTION_TARGET_CATALOG, ADBC_INGEST_OPTION_TEMPORARY);
+    code = ADBC_STATUS_INVALID_STATE;
+    goto cleanup;
+  }
+
+  if (stmt->target_catalog != NULL) {
+    table = sqlite3_mprintf("\"%w\" . \"%w\"", stmt->target_catalog, stmt->target_table);
+  } else if (stmt->temporary == 0) {
+    // If not temporary, explicitly target the main database
+    table = sqlite3_mprintf("main . \"%w\"", stmt->target_table);
+  } else {
+    // OK to be redundant (CREATE TEMP TABLE temp.foo)
+    table = sqlite3_mprintf("temp . \"%w\"", stmt->target_table);
+  }
+
+  if (table == NULL) {
+    // Allocation failure
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  if (stmt->temporary != 0) {
+    sqlite3_str_appendf(create_query, "CREATE TEMPORARY TABLE %s (", table);
+  } else {
+    sqlite3_str_appendf(create_query, "CREATE TABLE %s (", table);
+  }
   if (sqlite3_str_errcode(create_query)) {
     SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
 
-  sqlite3_str_appendf(insert_query, "INSERT INTO %Q VALUES (", stmt->target_table);
+  sqlite3_str_appendf(insert_query, "INSERT INTO %s VALUES (", table);
   if (sqlite3_str_errcode(insert_query)) {
     SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
@@ -1121,7 +1156,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
       }
     }
 
-    sqlite3_str_appendf(create_query, "%Q", stmt->binder.schema.children[i]->name);
+    sqlite3_str_appendf(create_query, "\"%w\"", stmt->binder.schema.children[i]->name);
     if (sqlite3_str_errcode(create_query)) {
       SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
       code = ADBC_STATUS_INTERNAL;
@@ -1138,6 +1173,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     }
 
     switch (view.type) {
+      case NANOARROW_TYPE_BOOL:
       case NANOARROW_TYPE_UINT8:
       case NANOARROW_TYPE_UINT16:
       case NANOARROW_TYPE_UINT32:
@@ -1221,6 +1257,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
 cleanup:
   sqlite3_free(sqlite3_str_finish(create_query));
   sqlite3_free(sqlite3_str_finish(insert_query));
+  if (table != NULL) sqlite3_free(table);
   return code;
 }
 
@@ -1347,6 +1384,10 @@ AdbcStatusCode SqliteStatementSetSqlQuery(struct AdbcStatement* statement,
     free(stmt->query);
     stmt->query = NULL;
   }
+  if (stmt->target_catalog) {
+    free(stmt->target_catalog);
+    stmt->target_catalog = NULL;
+  }
   if (stmt->target_table) {
     free(stmt->target_table);
     stmt->target_table = NULL;
@@ -1462,11 +1503,35 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
     stmt->target_table = (char*)malloc(len);
     strncpy(stmt->target_table, value, len);
     return ADBC_STATUS_OK;
+  } else if (strcmp(key, ADBC_INGEST_OPTION_TARGET_CATALOG) == 0) {
+    if (stmt->query) {
+      free(stmt->query);
+      stmt->query = NULL;
+    }
+    if (stmt->target_catalog) {
+      free(stmt->target_catalog);
+      stmt->target_catalog = NULL;
+    }
+
+    size_t len = strlen(value) + 1;
+    stmt->target_catalog = (char*)malloc(len);
+    strncpy(stmt->target_catalog, value, len);
+    return ADBC_STATUS_OK;
   } else if (strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
     if (strcmp(value, ADBC_INGEST_OPTION_MODE_APPEND) == 0) {
       stmt->append = 1;
     } else if (strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE) == 0) {
       stmt->append = 0;
+    } else {
+      SetError(error, "[SQLite] Invalid statement option value %s=%s", key, value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    return ADBC_STATUS_OK;
+  } else if (strcmp(key, ADBC_INGEST_OPTION_TEMPORARY) == 0) {
+    if (strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      stmt->temporary = 1;
+    } else if (strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      stmt->temporary = 0;
     } else {
       SetError(error, "[SQLite] Invalid statement option value %s=%s", key, value);
       return ADBC_STATUS_INVALID_ARGUMENT;

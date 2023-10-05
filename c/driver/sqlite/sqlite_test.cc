@@ -45,26 +45,31 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
 
   AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
                            struct AdbcError* error) const override {
-    struct AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    AdbcStatusCode status = AdbcStatementNew(connection, &statement, error);
-    if (status != ADBC_STATUS_OK) return status;
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP TABLE IF EXISTS " + name;
-    status = AdbcStatementSetSqlQuery(&statement, query.c_str(), error);
-    if (status != ADBC_STATUS_OK) {
-      std::ignore = AdbcStatementRelease(&statement, error);
-      return status;
-    }
-    status = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, error);
-    std::ignore = AdbcStatementRelease(&statement, error);
-    return status;
+    std::string query = "DROP TABLE IF EXISTS \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
+  }
+
+  AdbcStatusCode DropTempTable(struct AdbcConnection* connection, const std::string& name,
+                               struct AdbcError* error) const override {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string query = "DROP TABLE IF EXISTS temp . \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
   }
 
   std::string BindParameter(int index) const override { return "?"; }
 
   ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const override {
     switch (ingest_type) {
+      case NANOARROW_TYPE_BOOL:
       case NANOARROW_TYPE_INT8:
       case NANOARROW_TYPE_INT16:
       case NANOARROW_TYPE_INT32:
@@ -77,6 +82,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE:
         return NANOARROW_TYPE_DOUBLE;
+      case NANOARROW_TYPE_LARGE_STRING:
       case NANOARROW_TYPE_DATE32:
       case NANOARROW_TYPE_TIMESTAMP:
         return NANOARROW_TYPE_STRING;
@@ -92,10 +98,38 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  std::optional<std::string> CompositePrimaryKeyTableDdl(
+      std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id_primary_col1 INTEGER, id_primary_col2 INTEGER,";
+    ddl += " PRIMARY KEY (id_primary_col1, id_primary_col2));";
+    return ddl;
+  }
+
+  std::optional<std::string> ForeignKeyChildTableDdl(
+      std::string_view child_name, std::string_view parent_name_1,
+      std::string_view parent_name_2) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += child_name;
+    ddl += " (id_child_col1 INTEGER PRIMARY KEY,";
+    ddl += " id_child_col2 INTEGER,";
+    ddl += " id_child_col3 INTEGER,";
+    ddl += " FOREIGN KEY (id_child_col3) REFERENCES ";
+    ddl += parent_name_1;
+    ddl += " (id),";
+    ddl += " FOREIGN KEY (id_child_col1, id_child_col2) REFERENCES ";
+    ddl += parent_name_2;
+    ddl += " (id_primary_col1, id_primary_col2));";
+    return ddl;
+  }
+
   bool supports_bulk_ingest(const char* mode) const override {
     return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
            std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;
   }
+  bool supports_bulk_ingest_catalog() const override { return true; }
+  bool supports_bulk_ingest_temporary() const override { return true; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_get_option() const override { return false; }
   std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
@@ -216,37 +250,50 @@ class SqliteStatementTest : public ::testing::Test,
   }
 
   void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
+  void TestSqlIngestDuration() {
+    GTEST_SKIP() << "Cannot ingest DURATION (not implemented)";
+  }
   void TestSqlIngestInterval() {
     GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
   }
 
  protected:
-  void ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                     enum ArrowTimeUnit unit,
-                                     const char* timezone) override {
-    std::vector<std::optional<std::string>> expected;
-    switch (unit) {
-      case (NANOARROW_TIME_UNIT_SECOND):
-        expected.insert(expected.end(), {std::nullopt, "1969-12-31T23:59:18",
-                                         "1970-01-01T00:00:00", "1970-01-01T00:00:42"});
+  void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
+                                    enum ArrowTimeUnit unit,
+                                    const char* timezone) override {
+    switch (type) {
+      case NANOARROW_TYPE_TIMESTAMP: {
+        std::vector<std::optional<std::string>> expected;
+        switch (unit) {
+          case (NANOARROW_TIME_UNIT_SECOND):
+            expected.insert(expected.end(),
+                            {std::nullopt, "1969-12-31T23:59:18", "1970-01-01T00:00:00",
+                             "1970-01-01T00:00:42"});
+            break;
+          case (NANOARROW_TIME_UNIT_MILLI):
+            expected.insert(expected.end(),
+                            {std::nullopt, "1969-12-31T23:59:59.958",
+                             "1970-01-01T00:00:00.000", "1970-01-01T00:00:00.042"});
+            break;
+          case (NANOARROW_TIME_UNIT_MICRO):
+            expected.insert(expected.end(),
+                            {std::nullopt, "1969-12-31T23:59:59.999958",
+                             "1970-01-01T00:00:00.000000", "1970-01-01T00:00:00.000042"});
+            break;
+          case (NANOARROW_TIME_UNIT_NANO):
+            expected.insert(
+                expected.end(),
+                {std::nullopt, "1969-12-31T23:59:59.999999958",
+                 "1970-01-01T00:00:00.000000000", "1970-01-01T00:00:00.000000042"});
+            break;
+        }
+        ASSERT_NO_FATAL_FAILURE(
+            adbc_validation::CompareArray<std::string>(values, expected));
         break;
-      case (NANOARROW_TIME_UNIT_MILLI):
-        expected.insert(expected.end(),
-                        {std::nullopt, "1969-12-31T23:59:59.958",
-                         "1970-01-01T00:00:00.000", "1970-01-01T00:00:00.042"});
-        break;
-      case (NANOARROW_TIME_UNIT_MICRO):
-        expected.insert(expected.end(),
-                        {std::nullopt, "1969-12-31T23:59:59.999958",
-                         "1970-01-01T00:00:00.000000", "1970-01-01T00:00:00.000042"});
-        break;
-      case (NANOARROW_TIME_UNIT_NANO):
-        expected.insert(expected.end(), {std::nullopt, "1969-12-31T23:59:59.999999958",
-                                         "1970-01-01T00:00:00.000000000",
-                                         "1970-01-01T00:00:00.000000042"});
-        break;
+      }
+      default:
+        FAIL() << "ValidateIngestedTemporalData not implemented for type " << type;
     }
-    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(values, expected));
   }
 
   SqliteQuirks quirks_;
@@ -254,7 +301,7 @@ class SqliteStatementTest : public ::testing::Test,
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
 TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
-  ASSERT_THAT(quirks()->DropTable(&connection, "\"test-table\"", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "test-table", &error),
               adbc_validation::IsOkStatus(&error));
 
   std::string table = "test-table";

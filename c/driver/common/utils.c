@@ -76,6 +76,12 @@ struct AdbcErrorDetails {
   int capacity;
 };
 
+bool StringViewEquals(struct ArrowStringView stringView, const char* str) {
+  int64_t len = (int64_t)strlen(str);
+  return len == stringView.size_bytes &&
+         !strncmp(stringView.data, str, stringView.size_bytes);
+}
+
 static void ReleaseErrorWithDetails(struct AdbcError* error) {
   struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
   free(details->message);
@@ -166,16 +172,22 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
       return;
     }
 
-    memcpy(new_keys, details->keys, sizeof(char*) * details->count);
-    free(details->keys);
+    if (details->keys != NULL) {
+      memcpy(new_keys, details->keys, sizeof(char*) * details->count);
+      free(details->keys);
+    }
     details->keys = new_keys;
 
-    memcpy(new_values, details->values, sizeof(uint8_t*) * details->count);
-    free(details->values);
+    if (details->values != NULL) {
+      memcpy(new_values, details->values, sizeof(uint8_t*) * details->count);
+      free(details->values);
+    }
     details->values = new_values;
 
-    memcpy(new_lengths, details->lengths, sizeof(size_t) * details->count);
-    free(details->lengths);
+    if (details->lengths != NULL) {
+      memcpy(new_lengths, details->lengths, sizeof(size_t) * details->count);
+      free(details->lengths);
+    }
     details->lengths = new_lengths;
 
     details->capacity = new_capacity;
@@ -1000,8 +1012,7 @@ struct AdbcGetObjectsCatalog* AdbcGetObjectsDataGetCatalogByName(
   if (catalog_name != NULL) {
     for (int64_t i = 0; i < get_objects_data->n_catalogs; i++) {
       struct AdbcGetObjectsCatalog* catalog = get_objects_data->catalogs[i];
-      struct ArrowStringView name = catalog->catalog_name;
-      if (!strncmp(name.data, catalog_name, name.size_bytes)) {
+      if (StringViewEquals(catalog->catalog_name, catalog_name)) {
         return catalog;
       }
     }
@@ -1019,8 +1030,7 @@ struct AdbcGetObjectsSchema* AdbcGetObjectsDataGetSchemaByName(
     if (catalog != NULL) {
       for (int64_t i = 0; i < catalog->n_db_schemas; i++) {
         struct AdbcGetObjectsSchema* schema = catalog->catalog_db_schemas[i];
-        struct ArrowStringView name = schema->db_schema_name;
-        if (!strncmp(name.data, schema_name, name.size_bytes)) {
+        if (StringViewEquals(schema->db_schema_name, schema_name)) {
           return schema;
         }
       }
@@ -1039,8 +1049,7 @@ struct AdbcGetObjectsTable* AdbcGetObjectsDataGetTableByName(
     if (schema != NULL) {
       for (int64_t i = 0; i < schema->n_db_schema_tables; i++) {
         struct AdbcGetObjectsTable* table = schema->db_schema_tables[i];
-        struct ArrowStringView name = table->table_name;
-        if (!strncmp(name.data, table_name, name.size_bytes)) {
+        if (StringViewEquals(table->table_name, table_name)) {
           return table;
         }
       }
@@ -1060,8 +1069,7 @@ struct AdbcGetObjectsColumn* AdbcGetObjectsDataGetColumnByName(
     if (table != NULL) {
       for (int64_t i = 0; i < table->n_table_columns; i++) {
         struct AdbcGetObjectsColumn* column = table->table_columns[i];
-        struct ArrowStringView name = column->column_name;
-        if (!strncmp(name.data, column_name, name.size_bytes)) {
+        if (StringViewEquals(column->column_name, column_name)) {
           return column;
         }
       }
@@ -1081,8 +1089,7 @@ struct AdbcGetObjectsConstraint* AdbcGetObjectsDataGetConstraintByName(
     if (table != NULL) {
       for (int64_t i = 0; i < table->n_table_constraints; i++) {
         struct AdbcGetObjectsConstraint* constraint = table->table_constraints[i];
-        struct ArrowStringView name = constraint->constraint_name;
-        if (!strncmp(name.data, constraint_name, name.size_bytes)) {
+        if (StringViewEquals(constraint->constraint_name, constraint_name)) {
           return constraint;
         }
       }

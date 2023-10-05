@@ -37,12 +37,15 @@ import (
 	"github.com/apache/arrow/go/v13/arrow/flight/flightsql"
 	"github.com/apache/arrow/go/v13/arrow/flight/flightsql/schema_ref"
 	"github.com/apache/arrow/go/v13/arrow/memory"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -72,7 +75,7 @@ func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware 
 		"uri": uri,
 	}
 	maps.Copy(args, dbArgs)
-	suite.db, err = (driver.Driver{}).NewDatabase(args)
+	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabase(args)
 	suite.Require().NoError(err)
 }
 
@@ -287,12 +290,15 @@ func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 
 	ts.Equal(1, len(adbcErr.Details))
 
-	wrapper, ok := adbcErr.Details[0].(*adbc.ProtobufErrorDetail)
-	ts.True(ok, "Got message: %#v", wrapper)
+	wrapper := adbcErr.Details[0]
 	ts.Equal("grpc-status-details-bin", wrapper.Key())
 
-	message, ok := wrapper.Message.(*wrapperspb.Int32Value)
-	ts.True(ok, "Got message: %#v", message)
+	raw, err := wrapper.Serialize()
+	ts.NoError(err)
+	any := anypb.Any{}
+	ts.NoError(proto.Unmarshal(raw, &any))
+	message := wrappers.Int32Value{}
+	ts.NoError(any.UnmarshalTo(&message))
 	ts.Equal(int32(42), message.Value)
 }
 
@@ -319,12 +325,15 @@ func (ts *ErrorDetailsTests) TestDoGet() {
 
 	ts.Equal(1, len(adbcErr.Details))
 
-	wrapper, ok := adbcErr.Details[0].(*adbc.ProtobufErrorDetail)
-	ts.True(ok, "Got message: %#v", wrapper)
+	wrapper := adbcErr.Details[0]
 	ts.Equal("grpc-status-details-bin", wrapper.Key())
 
-	message, ok := wrapper.Message.(*wrapperspb.Int32Value)
-	ts.True(ok, "Got message: %#v", message)
+	raw, err := wrapper.Serialize()
+	ts.NoError(err)
+	any := anypb.Any{}
+	ts.NoError(proto.Unmarshal(raw, &any))
+	message := wrappers.Int32Value{}
+	ts.NoError(any.UnmarshalTo(&message))
 	ts.Equal(int32(42), message.Value)
 }
 

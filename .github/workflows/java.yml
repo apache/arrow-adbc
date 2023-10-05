@@ -43,19 +43,6 @@ jobs:
     strategy:
       matrix:
         java: ['8', '11', '17', '20']
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: password
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
     steps:
       - uses: actions/checkout@v3
         with:
@@ -66,13 +53,16 @@ jobs:
           cache: "maven"
           distribution: "temurin"
           java-version: ${{ matrix.java }}
-      - name: Start SQLite server
+      - name: Start test services
         shell: bash -l {0}
         run: |
-          docker-compose up -d flightsql-sqlite-test
+          docker compose up -d --wait flightsql-sqlite-test mssql-test postgres-test
       - name: Build/Test
         env:
           ADBC_SQLITE_FLIGHTSQL_URI: "grpc+tcp://localhost:8080"
+          ADBC_JDBC_MSSQL_URL: "localhost:1433"
+          ADBC_JDBC_MSSQL_USER: "SA"
+          ADBC_JDBC_MSSQL_PASSWORD: "Password1!"
           ADBC_JDBC_POSTGRESQL_URL: "localhost:5432/postgres"
           ADBC_JDBC_POSTGRESQL_USER: "postgres"
           ADBC_JDBC_POSTGRESQL_PASSWORD: "password"

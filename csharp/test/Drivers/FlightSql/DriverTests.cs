@@ -36,9 +36,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         [TestMethod]
         public void CanDriverExecuteQuery()
         {
-            FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.GetTestConfiguration<FlightSqlTestConfiguration>("resources/flightsqlconfig.json");
+            if (Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE))
+            {
+                FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
 
-            Dictionary<string, string> parameters = new Dictionary<string, string>
+                Dictionary<string, string> parameters = new Dictionary<string, string>
             {
                 { FlightSqlParameters.ServerAddress, flightSqlTestConfiguration.ServerAddress },
                 { FlightSqlParameters.RoutingTag, flightSqlTestConfiguration.RoutingTag },
@@ -46,20 +48,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
                 { FlightSqlParameters.Authorization, flightSqlTestConfiguration.Authorization}
             };
 
-            Dictionary<string, string> options = new Dictionary<string, string>()
+                Dictionary<string, string> options = new Dictionary<string, string>()
             {
                 { FlightSqlParameters.ServerAddress, flightSqlTestConfiguration.ServerAddress },
             };
 
-            FlightSqlDriver flightSqlDriver = new FlightSqlDriver();
-            FlightSqlDatabase flightSqlDatabase = flightSqlDriver.Open(parameters) as FlightSqlDatabase;
-            FlightSqlConnection connection = flightSqlDatabase.Connect(options) as FlightSqlConnection;
-            FlightSqlStatement statement = connection.CreateStatement() as FlightSqlStatement;
+                FlightSqlDriver flightSqlDriver = new FlightSqlDriver();
+                FlightSqlDatabase flightSqlDatabase = flightSqlDriver.Open(parameters) as FlightSqlDatabase;
+                FlightSqlConnection connection = flightSqlDatabase.Connect(options) as FlightSqlConnection;
+                FlightSqlStatement statement = connection.CreateStatement() as FlightSqlStatement;
 
-            statement.SqlQuery = flightSqlTestConfiguration.Query;
-            QueryResult queryResult = statement.ExecuteQuery();
+                statement.SqlQuery = flightSqlTestConfiguration.Query;
+                QueryResult queryResult = statement.ExecuteQuery();
 
-            Adbc.Tests.DriverTests.CanExecuteQuery(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
+                Tests.DriverTests.CanExecuteQuery(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
+            }
         }
     }
 }

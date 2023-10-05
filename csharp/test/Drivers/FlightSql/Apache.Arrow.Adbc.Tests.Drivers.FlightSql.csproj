@@ -28,7 +28,7 @@
 
   <ItemGroup>
     <None Update="Resources\flightsqlconfig.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

@@ -16,7 +16,7 @@
 # under the License.
 
 module ADBC
-  VERSION = "0.7.0-SNAPSHOT"
+  VERSION = "0.8.0-SNAPSHOT"
 
   module Version
     MAJOR, MINOR, MICRO, TAG = VERSION.split(".").collect(&:to_i)

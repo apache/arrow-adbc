@@ -22,6 +22,7 @@ OBJECTS = init.o \
     error.o \
     connection.o \
     database.o \
+    result_helper.o \
     statement.o \
     common/utils.o \
     postgresql.o \

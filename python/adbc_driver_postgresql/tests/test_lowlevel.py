@@ -42,8 +42,8 @@ def test_query_trivial(postgres: adbc_driver_manager.AdbcConnection) -> None:
     with adbc_driver_manager.AdbcStatement(postgres) as stmt:
         stmt.set_sql_query("SELECT 1")
         stream, _ = stmt.execute_query()
-        reader = pyarrow.RecordBatchReader._import_from_c(stream.address)
-        assert reader.read_all()
+        with pyarrow.RecordBatchReader._import_from_c(stream.address) as reader:
+            assert reader.read_all()
 
 
 def test_version() -> None:

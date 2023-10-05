@@ -32,9 +32,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         [TestMethod]
         public void CanFlightSqlConnectUsingClient()
         {
-            FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.GetTestConfiguration<FlightSqlTestConfiguration>("resources/flightsqlconfig.json");
+            if (Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE))
+            {
+                FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
 
-            Dictionary<string, string> parameters = new Dictionary<string, string>
+                Dictionary<string, string> parameters = new Dictionary<string, string>
             {
                 { FlightSqlParameters.ServerAddress, flightSqlTestConfiguration.ServerAddress },
                 { FlightSqlParameters.RoutingTag, flightSqlTestConfiguration.RoutingTag },
@@ -42,38 +44,39 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
                 { FlightSqlParameters.Authorization, flightSqlTestConfiguration.Authorization}
             };
 
-            Dictionary<string, string> options = new Dictionary<string, string>()
+                Dictionary<string, string> options = new Dictionary<string, string>()
             {
                 { FlightSqlParameters.ServerAddress, flightSqlTestConfiguration.ServerAddress },
             };
 
-            long count = 0;
+                long count = 0;
 
-            using (Client.AdbcConnection adbcConnection = new Client.AdbcConnection(
-                new FlightSqlDriver(),
-                parameters,
-                options)
-            )
-            {
-                string query = flightSqlTestConfiguration.Query;
-
-                AdbcCommand adbcCommand = new AdbcCommand(query, adbcConnection);
-
-                adbcConnection.Open();
-
-                AdbcDataReader reader = adbcCommand.ExecuteReader();
-
-                try
+                using (Client.AdbcConnection adbcConnection = new Client.AdbcConnection(
+                    new FlightSqlDriver(),
+                    parameters,
+                    options)
+                )
                 {
-                    while (reader.Read())
-                    {
-                        count++;
-                    }
-                }
-                finally { reader.Close(); }
-            }
+                    string query = flightSqlTestConfiguration.Query;
 
-            Assert.AreEqual(flightSqlTestConfiguration.ExpectedResultsCount, count);
+                    AdbcCommand adbcCommand = new AdbcCommand(query, adbcConnection);
+
+                    adbcConnection.Open();
+
+                    AdbcDataReader reader = adbcCommand.ExecuteReader();
+
+                    try
+                    {
+                        while (reader.Read())
+                        {
+                            count++;
+                        }
+                    }
+                    finally { reader.Close(); }
+                }
+
+                Assert.AreEqual(flightSqlTestConfiguration.ExpectedResultsCount, count);
+            }
         }
     }
 }

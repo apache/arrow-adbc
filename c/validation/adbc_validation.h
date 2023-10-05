@@ -50,6 +50,13 @@ class DriverQuirks {
     return ADBC_STATUS_OK;
   }
 
+  /// \brief Drop the given temporary table. Used by tests to reset state.
+  virtual AdbcStatusCode DropTempTable(struct AdbcConnection* connection,
+                                       const std::string& name,
+                                       struct AdbcError* error) const {
+    return ADBC_STATUS_OK;
+  }
+
   /// \brief Drop the given view. Used by tests to reset state.
   virtual AdbcStatusCode DropView(struct AdbcConnection* connection,
                                   const std::string& name,
@@ -79,6 +86,32 @@ class DriverQuirks {
     return std::nullopt;
   }
 
+  /// \brief Get the statement to create a table with a composite primary key,
+  /// or nullopt if not supported.
+  ///
+  /// The table should have two columns:
+  /// - "id_primary_col1" of Arrow type int64 (together forming a composite primary key)
+  /// - "id_primary_col2" of Arrow type int64 (together forming a composite primary key)
+  virtual std::optional<std::string> CompositePrimaryKeyTableDdl(
+      std::string_view name) const {
+    return std::nullopt;
+  }
+
+  /// \brief Get the statement to create a child table with foreign keys,
+  /// or nullopt if not supported.
+  ///
+  /// The child table should have three columns:
+  /// - "id_child_col1" of Arrow type int64 (primary key, foreign key) referencing "id" in
+  /// the parent 1 primary key table
+  /// - "id_child_col2" of Arrow type int64 (composite foreign key) together with:
+  /// - "id_child_col3" of Arrow type int64 (composite foreign key) referencing
+  /// "(id_primary_col1, id_primary_col2)" in the parent 2 primary key table
+  virtual std::optional<std::string> ForeignKeyChildTableDdl(
+      std::string_view child_name, std::string_view parent_name_1,
+      std::string_view parent_name_2) const {
+    return std::nullopt;
+  }
+
   /// \brief Return the SQL to reference the bind parameter of the given index
   virtual std::string BindParameter(int index) const { return "?"; }
 
@@ -90,6 +123,15 @@ class DriverQuirks {
 
   /// \brief Whether bulk ingest is supported
   virtual bool supports_bulk_ingest(const char* mode) const { return true; }
+
+  /// \brief Whether bulk ingest to a specific catalog is supported
+  virtual bool supports_bulk_ingest_catalog() const { return false; }
+
+  /// \brief Whether bulk ingest to a specific schema is supported
+  virtual bool supports_bulk_ingest_db_schema() const { return false; }
+
+  /// \brief Whether bulk ingest to a temporary table is supported
+  virtual bool supports_bulk_ingest_temporary() const { return false; }
 
   /// \brief Whether we can cancel queries.
   virtual bool supports_cancel() const { return false; }
@@ -188,6 +230,7 @@ class ConnectionTest {
 
   void TestMetadataGetInfo();
   void TestMetadataGetTableSchema();
+  void TestMetadataGetTableSchemaEscaping();
   void TestMetadataGetTableSchemaNotFound();
   void TestMetadataGetTableTypes();
 
@@ -198,6 +241,7 @@ class ConnectionTest {
   void TestMetadataGetObjectsColumns();
   void TestMetadataGetObjectsConstraints();
   void TestMetadataGetObjectsPrimaryKey();
+  void TestMetadataGetObjectsForeignKey();
   void TestMetadataGetObjectsCancel();
 
   void TestMetadataGetStatisticNames();
@@ -220,6 +264,9 @@ class ConnectionTest {
   TEST_F(FIXTURE, MetadataCurrentDbSchema) { TestMetadataCurrentDbSchema(); }           \
   TEST_F(FIXTURE, MetadataGetInfo) { TestMetadataGetInfo(); }                           \
   TEST_F(FIXTURE, MetadataGetTableSchema) { TestMetadataGetTableSchema(); }             \
+  TEST_F(FIXTURE, MetadataGetTableSchemaEscaping) {                                     \
+    TestMetadataGetTableSchemaEscaping();                                               \
+  }                                                                                     \
   TEST_F(FIXTURE, MetadataGetTableSchemaNotFound) {                                     \
     TestMetadataGetTableSchemaNotFound();                                               \
   }                                                                                     \
@@ -235,6 +282,7 @@ class ConnectionTest {
     TestMetadataGetObjectsConstraints();                                                \
   }                                                                                     \
   TEST_F(FIXTURE, MetadataGetObjectsPrimaryKey) { TestMetadataGetObjectsPrimaryKey(); } \
+  TEST_F(FIXTURE, MetadataGetObjectsForeignKey) { TestMetadataGetObjectsForeignKey(); } \
   TEST_F(FIXTURE, MetadataGetObjectsCancel) { TestMetadataGetObjectsCancel(); }         \
   TEST_F(FIXTURE, MetadataGetStatisticNames) { TestMetadataGetStatisticNames(); }
 
@@ -250,6 +298,8 @@ class StatementTest {
   void TestRelease();
 
   // ---- Type-specific tests --------------------
+
+  void TestSqlIngestBool();
 
   // Integers
   void TestSqlIngestInt8();
@@ -267,9 +317,11 @@ class StatementTest {
 
   // Strings
   void TestSqlIngestString();
+  void TestSqlIngestLargeString();
   void TestSqlIngestBinary();
 
   // Temporal
+  void TestSqlIngestDuration();
   void TestSqlIngestDate32();
   void TestSqlIngestTimestamp();
   void TestSqlIngestTimestampTz();
@@ -278,12 +330,20 @@ class StatementTest {
   // ---- End Type-specific tests ----------------
 
   void TestSqlIngestTableEscaping();
+  void TestSqlIngestColumnEscaping();
   void TestSqlIngestAppend();
   void TestSqlIngestReplace();
   void TestSqlIngestCreateAppend();
   void TestSqlIngestErrors();
   void TestSqlIngestMultipleConnections();
   void TestSqlIngestSample();
+  void TestSqlIngestTargetCatalog();
+  void TestSqlIngestTargetSchema();
+  void TestSqlIngestTargetCatalogSchema();
+  void TestSqlIngestTemporary();
+  void TestSqlIngestTemporaryAppend();
+  void TestSqlIngestTemporaryReplace();
+  void TestSqlIngestTemporaryExclusive();
 
   void TestSqlPartitionedInts();
 
@@ -299,6 +359,8 @@ class StatementTest {
   void TestSqlQueryInts();
   void TestSqlQueryFloats();
   void TestSqlQueryStrings();
+
+  void TestSqlQueryInsertRollback();
 
   void TestSqlQueryCancel();
   void TestSqlQueryErrors();
@@ -327,12 +389,12 @@ class StatementTest {
   template <typename CType>
   void TestSqlIngestNumericType(ArrowType type);
 
-  template <enum ArrowTimeUnit TU>
-  void TestSqlIngestTimestampType(const char* timezone);
+  template <ArrowType type, enum ArrowTimeUnit TU>
+  void TestSqlIngestTemporalType(const char* timezone);
 
-  virtual void ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                             enum ArrowTimeUnit unit,
-                                             const char* timezone);
+  virtual void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
+                                            enum ArrowTimeUnit unit,
+                                            const char* timezone);
 };
 
 #define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
@@ -340,6 +402,7 @@ class StatementTest {
                 ADBCV_STRINGIFY(FIXTURE) " must inherit from StatementTest");           \
   TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                           \
   TEST_F(FIXTURE, Release) { TestRelease(); }                                           \
+  TEST_F(FIXTURE, SqlIngestBool) { TestSqlIngestBool(); }                               \
   TEST_F(FIXTURE, SqlIngestInt8) { TestSqlIngestInt8(); }                               \
   TEST_F(FIXTURE, SqlIngestInt16) { TestSqlIngestInt16(); }                             \
   TEST_F(FIXTURE, SqlIngestInt32) { TestSqlIngestInt32(); }                             \
@@ -351,18 +414,28 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestFloat32) { TestSqlIngestFloat32(); }                         \
   TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                         \
   TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
+  TEST_F(FIXTURE, SqlIngestLargeString) { TestSqlIngestLargeString(); }                 \
   TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
+  TEST_F(FIXTURE, SqlIngestDuration) { TestSqlIngestDuration(); }                       \
   TEST_F(FIXTURE, SqlIngestDate32) { TestSqlIngestDate32(); }                           \
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
+  TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }           \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
   TEST_F(FIXTURE, SqlIngestReplace) { TestSqlIngestReplace(); }                         \
   TEST_F(FIXTURE, SqlIngestCreateAppend) { TestSqlIngestCreateAppend(); }               \
   TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
   TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
   TEST_F(FIXTURE, SqlIngestSample) { TestSqlIngestSample(); }                           \
+  TEST_F(FIXTURE, SqlIngestTargetCatalog) { TestSqlIngestTargetCatalog(); }             \
+  TEST_F(FIXTURE, SqlIngestTargetSchema) { TestSqlIngestTargetSchema(); }               \
+  TEST_F(FIXTURE, SqlIngestTargetCatalogSchema) { TestSqlIngestTargetCatalogSchema(); } \
+  TEST_F(FIXTURE, SqlIngestTemporary) { TestSqlIngestTemporary(); }                     \
+  TEST_F(FIXTURE, SqlIngestTemporaryAppend) { TestSqlIngestTemporaryAppend(); }         \
+  TEST_F(FIXTURE, SqlIngestTemporaryReplace) { TestSqlIngestTemporaryReplace(); }       \
+  TEST_F(FIXTURE, SqlIngestTemporaryExclusive) { TestSqlIngestTemporaryExclusive(); }   \
   TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                     \
   TEST_F(FIXTURE, SqlPrepareGetParameterSchema) { TestSqlPrepareGetParameterSchema(); } \
   TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \
@@ -377,6 +450,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
   TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                           \
+  TEST_F(FIXTURE, SqlQueryInsertRollback) { TestSqlQueryInsertRollback(); }             \
   TEST_F(FIXTURE, SqlQueryCancel) { TestSqlQueryCancel(); }                             \
   TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                             \
   TEST_F(FIXTURE, SqlSchemaInts) { TestSqlSchemaInts(); }                               \

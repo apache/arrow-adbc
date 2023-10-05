@@ -38,6 +38,8 @@ class DatabaseOptions(enum.Enum):
 
     #: The authorization header to use for requests.
     AUTHORIZATION_HEADER = "adbc.flight.sql.authorization_header"
+    #: Server name in authentication handshake
+    AUTHORITY = "adbc.flight.sql.client_option.authority"
     #: Enable mTLS and use these PEM-encoded certificates.
     MTLS_CERT_CHAIN = "adbc.flight.sql.client_option.mtls_cert_chain"
     #: Enable mTLS and use this PEM-encoded private key.

@@ -75,6 +75,16 @@ test_that("connection methods work for the void driver", {
     adbc_connection_rollback(con),
     con
   )
+
+  expect_identical(
+    adbc_connection_quote_identifier(con, 'some"identifier'),
+    '"some""identifier"'
+  )
+
+  expect_identical(
+    adbc_connection_quote_string(con, "some'value"),
+    "'some''value'"
+  )
 })
 
 test_that("can initialize and release a statement", {
