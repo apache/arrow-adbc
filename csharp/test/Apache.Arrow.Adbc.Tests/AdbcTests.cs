@@ -110,14 +110,14 @@ namespace Apache.Arrow.Adbc.Tests
         [InlineData("GetInfo", new string[]{ "codes" }, new Type[] { typeof(List<int>) })]
         [InlineData("GetObjects",
                     new string[] { "depth", "catalogPattern", "dbSchemaPattern", "tableNamePattern", "tableTypes", "columnNamePattern" },
-                    new Type[] { typeof(AdbcConnection.GetObjectsDepth), typeof(string), typeof(string), typeof(string), typeof(List<string>), typeof(string)  })]
+                    new Type[] { typeof(AdbcConnection.GetObjectsDepth), typeof(string), typeof(string), typeof(string), typeof(List<string>), typeof(string) })]
         [InlineData("GetTableSchema",
                     new string[] { "catalog", "dbSchema", "tableName" },
                     new Type[] { typeof(string), typeof(string), typeof(string) })]
         [InlineData("GetTableTypes")]
         [InlineData("ReadPartition", new string[] { "partition" }, new Type[] { typeof(PartitionDescriptor) })]
         [InlineData("Rollback")]
-        [InlineData("SetOption", new string[] { "key", "value" }, new Type[] { typeof(string), typeof(string)})]
+        [InlineData("SetOption", new string[] { "key", "value" }, new Type[] { typeof(string), typeof(string) })]
         public void ValidateAdbcConnectionMethods(string name, string[] parameterNames = null, Type[] parameterTypes = null)
         {
             ValidateMethod(typeof(AdbcConnection), name, parameterNames, parameterTypes);
