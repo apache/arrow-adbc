@@ -213,7 +213,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt16) {
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopySmallInt) - 4; i++) {
-    EXPECT_EQ(data[i], kTestPgCopySmallInt[i]);
+    ASSERT_EQ(data[i], kTestPgCopySmallInt[i]);
   }
 }
 
@@ -282,7 +282,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt32) {
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopyInteger) - 4; i++) {
-    EXPECT_EQ(data[i], kTestPgCopyInteger[i]);
+    ASSERT_EQ(data[i], kTestPgCopyInteger[i]);
   }
 }
 
@@ -352,7 +352,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt64) {
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopyBigInt) - 4; i++) {
-    EXPECT_EQ(data[i], kTestPgCopyBigInt[i]);
+    ASSERT_EQ(data[i], kTestPgCopyBigInt[i]);
   }
 }
 
