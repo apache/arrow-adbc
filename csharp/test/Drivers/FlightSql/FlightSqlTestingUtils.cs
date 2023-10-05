@@ -19,6 +19,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
 {
     internal class FlightSqlTestingUtils
     {
-        internal const string FLIGHTSQL_TEST_CONFIG_VARIABLE = "FLIGHTSQL_TEST_CONFIG";
+        internal const string FLIGHTSQL_TEST_CONFIG_VARIABLE = "FLIGHTSQL_TEST_CONFIG_FILE";
     }
 }

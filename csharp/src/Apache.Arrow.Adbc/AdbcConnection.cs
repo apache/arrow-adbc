@@ -130,16 +130,13 @@ namespace Apache.Arrow.Adbc
         /// Only show columns with the given name.
         /// If null, do not filter by name.May be a search pattern.
         /// </param>
-        public virtual IArrowArrayStream GetObjects(
+        public abstract IArrowArrayStream GetObjects(
             GetObjectsDepth depth,
             string catalogPattern,
             string dbSchemaPattern,
             string tableNamePattern,
             List<string> tableTypes,
-            string columnNamePattern)
-        {
-            throw AdbcException.NotImplemented("Connection does not support GetObjects");
-        }
+            string columnNamePattern);
 
         public enum GetObjectsDepth
         {
@@ -177,17 +174,22 @@ namespace Apache.Arrow.Adbc
         /// <param name="tableName">
         /// The table name.
         /// </param>
-        public virtual Schema GetTableSchema(string catalog, string dbSchema, string tableName)
-        {
-            throw AdbcException.NotImplemented("Connection does not support GetTableSchema");
-        }
+        public abstract Schema GetTableSchema(string catalog, string dbSchema, string tableName);
 
         /// <summary>
         /// Get a list of table types supported by the database.
         /// </summary>
-        public virtual IArrowArrayStream GetTableTypes()
+        public abstract IArrowArrayStream GetTableTypes();
+
+        /// <summary>
+        /// Options may be set before AdbcConnectionInit.  Some drivers may
+        /// support setting options after initialization as well.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        public virtual void SetOption(string key, string value)
         {
-            throw AdbcException.NotImplemented("Connection does not support GetTableTypes");
+            throw AdbcException.NotImplemented("Connection does not setting options");
         }
 
         /// <summary>

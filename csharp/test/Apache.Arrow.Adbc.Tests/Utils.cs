@@ -24,6 +24,47 @@ namespace Apache.Arrow.Adbc.Tests
     public class Utils
     {
         /// <summary>
+        /// Indicates if a test can run.
+        /// </summary>
+        /// <param name="environmentVariable">
+        /// The environment variable that contains the location of the config file.
+        /// </param>
+        public static bool CanExecuteTestConfig(string environmentVariable)
+        {
+            return CanExecuteTest(environmentVariable, out _);
+        }
+
+        /// <summary>
+        /// Indicates if a test can run.
+        /// </summary>
+        /// <param name="environmentVariable">
+        /// The environment variable that contains the location of the config file.
+        /// </param>
+        /// <param name="environmentValue">
+        /// The value from the environment variable.
+        /// </param>
+        public static bool CanExecuteTest(string environmentVariable, out string environmentValue)
+        {
+            if (!string.IsNullOrWhiteSpace(environmentVariable))
+            {
+                environmentValue = Environment.GetEnvironmentVariable(environmentVariable);
+
+                if (!string.IsNullOrWhiteSpace(environmentValue))
+                {
+                    if (File.Exists(environmentValue))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            Console.WriteLine($"Cannot load test configuration from environment variable {environmentVariable}. The execution of this test will be skipped.");
+
+            environmentValue = string.Empty;
+            return false;
+        }
+
+        /// <summary>
         /// Loads a test configuration
         /// </summary>
         /// <typeparam name="T">Return type</typeparam>
@@ -34,15 +75,10 @@ namespace Apache.Arrow.Adbc.Tests
         public static T LoadTestConfiguration<T>(string environmentVariable)
             where T : TestConfiguration
         {
-            if (string.IsNullOrWhiteSpace(environmentVariable))
-                throw new ArgumentException("`environmentVariable` is invalid");
+            if(CanExecuteTest(environmentVariable, out string environmentValue))
+                return GetTestConfiguration<T>(environmentValue);
 
-            string environmentValue = Environment.GetEnvironmentVariable(environmentVariable);
-
-            if (string.IsNullOrWhiteSpace(environmentValue))
-                throw new InvalidOperationException($"cannot load file from the environment variable {environmentVariable}");
-
-            return GetTestConfiguration<T>(environmentValue);
+            throw new InvalidOperationException($"Cannot execute test configuration from environment variable `{environmentVariable}`");
         }
 
         /// <summary>
