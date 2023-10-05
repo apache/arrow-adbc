@@ -53,8 +53,11 @@ func getIsolationlevel(lvl sql.IsolationLevel) adbc.OptionIsolationLevel {
 		return adbc.LevelSerializable
 	case sql.LevelLinearizable:
 		return adbc.LevelLinearizable
+	default:
+		// Handle unknown isolation level here
+		// You can return a default value, log an error, or handle it in another way
+		return adbc.LevelDefault
 	}
-	return ""
 }
 
 func parseConnectStr(str string) (ret map[string]string, err error) {

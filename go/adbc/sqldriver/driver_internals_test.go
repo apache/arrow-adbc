@@ -33,6 +33,75 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+func TestInvalidInputHandling(t *testing.T) {
+    // Test a scenario where invalid input is passed to your function
+    invalidInput := "invalid_input"
+    _, err := yourFunction(invalidInput)
+
+    // Check that the error is of the expected type or contains the expected message
+    assert.Error(t, err)
+    assert.Contains(t, err.Error(), "Invalid input")
+}
+
+func TestNullValuesHandling(t *testing.T) {
+    // Test how your package handles NULL values
+    // Simulate a NULL value in the data and ensure it's handled correctly
+    nullValue := nil // Replace with the appropriate representation of NULL
+    result, err := yourFunction(nullValue)
+
+    // Check that the result is as expected (e.g., nil or a specific value)
+    assert.NoError(t, err)
+    assert.Nil(t, result) // Or assert.Equal for a specific value
+}
+
+func TestBoundaryCases(t *testing.T) {
+    // Test boundary cases for numeric data types
+    minValue := math.MinInt32
+    maxValue := math.MaxInt32
+    result, err := yourFunction(minValue)
+
+    // Check that the result is as expected for the minimum value
+    assert.NoError(t, err)
+    assert.Equal(t, expectedMinValueResult, result)
+
+    result, err = yourFunction(maxValue)
+
+    // Check that the result is as expected for the maximum value
+    assert.NoError(t, err)
+    assert.Equal(t, expectedMaxValueResult, result)
+}
+
+func TestConcurrency(t *testing.T) {
+    // Test concurrent operations if your package supports them
+    // Ensure that concurrent operations don't lead to data corruption or race conditions
+    // Use goroutines and channels to simulate concurrent requests
+    var wg sync.WaitGroup
+    numWorkers := 10
+    results := make(chan Result, numWorkers)
+
+    for i := 0; i < numWorkers; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            result, err := yourFunction(inputData)
+            if err != nil {
+                t.Errorf("Error: %v", err)
+            }
+            results <- result
+        }()
+    }
+
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    for result := range results {
+        // Check each result as needed
+        assert.NotNil(t, result)
+    }
+}
+
 
 func TestParseConnectStr(t *testing.T) {
 	const (
