@@ -1028,6 +1028,11 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     return ExecuteUpdateBulk(rows_affected, error);
   }
 
+  // Remove trailing semicolon(s) from the query before feeding it into COPY
+  while (!query_.empty() && query_.back() == ';') {
+    query_.pop_back();
+  }
+
   if (query_.empty()) {
     SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
     return ADBC_STATUS_INVALID_STATE;
@@ -1064,10 +1069,6 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
   // 2. Execute the query with COPY to get binary tuples
   {
-    // Remove trailing semicolon(s) from the query before feeding it into COPY
-    while (!query_.empty() && query_.back() == ';') {
-      query_.pop_back();
-    }
     std::string copy_query = "COPY (" + query_ + ") TO STDOUT (FORMAT binary)";
 
     reader_.result_ =
