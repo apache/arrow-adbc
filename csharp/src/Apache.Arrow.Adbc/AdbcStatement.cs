@@ -124,7 +124,7 @@ namespace Apache.Arrow.Adbc
         /// <param name="value">Option value</param>
         public virtual void SetOption(string key, string value)
         {
-            throw AdbcException.NotImplemented("Connection does not setting options");
+            throw AdbcException.NotImplemented("Statement does not support setting options");
         }
 
         public virtual void Dispose()

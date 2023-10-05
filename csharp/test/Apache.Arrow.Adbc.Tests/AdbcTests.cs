@@ -49,19 +49,7 @@ namespace Apache.Arrow.Adbc.Tests
         [InlineData(AdbcStatusCode.Unauthorized, "ADBC_STATUS_UNAUTHORIZED", 14)]
         public void ValidateStatusCodes(AdbcStatusCode code, string adbcName, int value)
         {
-            Assert.AreEqual((int)code, value);
-
-            string path = GetPathForAdbcH();
-
-            string pattern = "#define " + adbcName;
-
-            string line = File.ReadAllLines(path).Where(x => x.StartsWith(pattern)).FirstOrDefault();
-
-            Assert.IsFalse(string.IsNullOrEmpty(line));
-
-            string definedValue = line.Replace(pattern, "").Trim();
-
-            Assert.AreEqual(value, Convert.ToInt32(definedValue));
+            ValidateEnumValue((int)code, adbcName, value);
         }
 
         [Theory]
@@ -73,8 +61,20 @@ namespace Apache.Arrow.Adbc.Tests
         [InlineData(AdbcInfoCode.DriverArrowVersion, "ADBC_INFO_DRIVER_ARROW_VERSION", 102)]
         public void ValidateInfoCodes(AdbcInfoCode code, string adbcName, int value)
         {
-            Assert.AreEqual((int)code, value);
+            ValidateEnumValue((int)code, adbcName, value);
+        }
 
+        /// <summary>
+        /// Validates that a defined enum value matches the corresponding value in `adbc.h`.
+        /// </summary>
+        /// <param name="enumValue">The enum value.</param>
+        /// <param name="adbcName">The name of the ADBC value.</param>
+        /// <param name="value">The value of the ADBC value.</param>
+        private void ValidateEnumValue(int enumValue, string adbcName, int value)
+        {
+            Assert.AreEqual(enumValue, value);
+
+            // find the corresponding value in adbc.h and validate it
             string path = GetPathForAdbcH();
 
             string pattern = "#define " + adbcName;
