@@ -1207,14 +1207,16 @@ class PostgresCopyStreamWriter {
   }
 
   ArrowErrorCode WriteHeader(ArrowError* error) {
-    ArrowBufferAppend(&buffer_.value, kPgCopyBinarySignature,
-                      sizeof(kPgCopyBinarySignature));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&buffer_.value, kPgCopyBinarySignature,
+                                              sizeof(kPgCopyBinarySignature)));
 
     const uint32_t flag_fields = 0;
-    ArrowBufferAppend(&buffer_.value, &flag_fields, sizeof(flag_fields));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(&buffer_.value, &flag_fields, sizeof(flag_fields)));
 
     const uint32_t extension_bytes = 0;
-    ArrowBufferAppend(&buffer_.value, &extension_bytes, sizeof(extension_bytes));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(&buffer_.value, &extension_bytes, sizeof(extension_bytes)));
 
     return NANOARROW_OK;
   }
@@ -1245,7 +1247,7 @@ class PostgresCopyStreamWriter {
     return NANOARROW_OK;
   }
 
-  const uint8_t* BufferData() const { return buffer_.value.data; }
+  const struct ArrowBuffer& WriteBuffer() const { return buffer_.value; }
 
  private:
   PostgresCopyFieldTupleWriter root_writer_;

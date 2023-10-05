@@ -75,7 +75,7 @@ class PostgresCopyStreamWriteTester {
     return result;
   }
 
-  const uint8_t* BufferData() const { return writer_.BufferData(); }
+  const struct ArrowBuffer& WriteBuffer() const { return writer_.WriteBuffer(); }
 
  private:
   PostgresCopyStreamWriter writer_;
@@ -140,11 +140,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteBoolean) {
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
-  const uint8_t* data = tester.BufferData();
-  // The last 4 bytes of a message can be transmitted via PQputCopyData
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
-  for (size_t i = 0; i < sizeof(kTestPgCopyBoolean) - 4; i++) {
-    ASSERT_EQ(data[i], kTestPgCopyBoolean[i]);
+  constexpr size_t buf_size = sizeof(kTestPgCopyBoolean) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyBoolean[i]);
   }
 }
 
@@ -209,11 +211,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt16) {
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
-  const uint8_t* data = tester.BufferData();
-  // The last 4 bytes of a message can be transmitted via PQputCopyData
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
-  for (size_t i = 0; i < sizeof(kTestPgCopySmallInt) - 4; i++) {
-    ASSERT_EQ(data[i], kTestPgCopySmallInt[i]);
+  constexpr size_t buf_size = sizeof(kTestPgCopySmallInt) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopySmallInt[i]);
   }
 }
 
@@ -278,11 +282,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt32) {
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
-  const uint8_t* data = tester.BufferData();
-  // The last 4 bytes of a message can be transmitted via PQputCopyData
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
-  for (size_t i = 0; i < sizeof(kTestPgCopyInteger) - 4; i++) {
-    ASSERT_EQ(data[i], kTestPgCopyInteger[i]);
+  constexpr size_t buf_size = sizeof(kTestPgCopyInteger) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyInteger[i]);
   }
 }
 
@@ -348,11 +354,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt64) {
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
   ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
-  const uint8_t* data = tester.BufferData();
-  // The last 4 bytes of a message can be transmitted via PQputCopyData
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
-  for (size_t i = 0; i < sizeof(kTestPgCopyBigInt) - 4; i++) {
-    ASSERT_EQ(data[i], kTestPgCopyBigInt[i]);
+  constexpr size_t buf_size = sizeof(kTestPgCopyBigInt) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyBigInt[i]);
   }
 }
 
