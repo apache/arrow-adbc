@@ -51,11 +51,12 @@ type snowflakeConn interface {
 
 type cnxn struct {
 	cn    snowflakeConn
-	db    *database
+	db    *databaseImpl
 	ctor  gosnowflake.Connector
 	sqldb *sql.DB
 
 	activeTransaction bool
+	useHighPrecision  bool
 }
 
 // Metadata methods
@@ -107,7 +108,7 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 		infoCodes = infoSupportedCodes
 	}
 
-	bldr := array.NewRecordBuilder(c.db.alloc, adbc.GetInfoSchema)
+	bldr := array.NewRecordBuilder(c.db.Alloc, adbc.GetInfoSchema)
 	defer bldr.Release()
 	bldr.Reserve(len(infoCodes))
 
@@ -238,7 +239,7 @@ func (c *cnxn) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.Re
 // earlier).
 func (c *cnxn) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
-	if err := g.Init(c.db.alloc, c.getObjectsDbSchemas, c.getObjectsTables); err != nil {
+	if err := g.Init(c.db.Alloc, c.getObjectsDbSchemas, c.getObjectsTables); err != nil {
 		return nil, err
 	}
 	defer g.Release()
@@ -903,7 +904,7 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 //	----------------|--------------
 //	table_type			| utf8 not null
 func (c *cnxn) GetTableTypes(_ context.Context) (array.RecordReader, error) {
-	bldr := array.NewRecordBuilder(c.db.alloc, adbc.TableTypesSchema)
+	bldr := array.NewRecordBuilder(c.db.Alloc, adbc.TableTypesSchema)
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.StringBuilder).AppendValues([]string{"BASE TABLE", "TEMPORARY TABLE", "VIEW"}, nil)
@@ -957,10 +958,11 @@ func (c *cnxn) Rollback(_ context.Context) error {
 // NewStatement initializes a new statement object tied to this connection
 func (c *cnxn) NewStatement() (adbc.Statement, error) {
 	return &statement{
-		alloc:               c.db.alloc,
+		alloc:               c.db.Alloc,
 		cnxn:                c,
 		queueSize:           defaultStatementQueueSize,
 		prefetchConcurrency: defaultPrefetchConcurrency,
+		useHighPrecision:    c.useHighPrecision,
 	}, nil
 }
 
@@ -1028,6 +1030,22 @@ func (c *cnxn) SetOption(key, value string) error {
 	case adbc.OptionKeyCurrentDbSchema:
 		_, err := c.cn.ExecContext(context.Background(), "USE SCHEMA ?", []driver.NamedValue{{Value: value}})
 		return err
+	case OptionUseHighPrecision:
+		// statements will inherit the value of the OptionUseHighPrecision
+		// from the connection, but the option can be overridden at the
+		// statement level if SetOption is called on the statement.
+		switch value {
+		case adbc.OptionValueEnabled:
+			c.useHighPrecision = true
+		case adbc.OptionValueDisabled:
+			c.useHighPrecision = false
+		default:
+			return adbc.Error{
+				Msg:  "[Snowflake] invalid value for option " + key + ": " + value,
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		return nil
 	default:
 		return adbc.Error{
 			Msg:  "[Snowflake] unknown connection option " + key + ": " + value,

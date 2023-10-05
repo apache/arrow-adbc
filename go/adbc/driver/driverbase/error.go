@@ -15,18 +15,23 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package flightsql
+package driverbase
 
 import (
-	"database/sql"
+	"fmt"
 
-	"github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-	"github.com/apache/arrow-adbc/go/adbc/sqldriver"
-	"github.com/apache/arrow/go/v13/arrow/memory"
+	"github.com/apache/arrow-adbc/go/adbc"
 )
 
-func init() {
-	sql.Register("flightsql", sqldriver.Driver{
-		Driver: flightsql.NewDriver(memory.DefaultAllocator),
-	})
+// ErrorHelper helps format errors for ADBC drivers.
+type ErrorHelper struct {
+	DriverName string
+}
+
+func (helper *ErrorHelper) Errorf(code adbc.Status, message string, format ...interface{}) error {
+	msg := fmt.Sprintf(message, format...)
+	return adbc.Error{
+		Code: code,
+		Msg:  fmt.Sprintf("[%s] %s", helper.DriverName, msg),
+	}
 }

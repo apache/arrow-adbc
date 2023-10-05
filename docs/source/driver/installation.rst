@@ -23,6 +23,15 @@ Installation
 
    See individual driver pages in the sidebar for specific installation instructions.
 
+Source
+======
+
+The latest source release can be downloaded from the `Apache mirrors`_.
+Compilation instructions can be found in `CONTRIBUTING.md`_.
+
+.. _Apache mirrors: https://www.apache.org/dyn/closer.lua/arrow/
+.. _CONTRIBUTING.md: https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md
+
 C/C++
 =====
 

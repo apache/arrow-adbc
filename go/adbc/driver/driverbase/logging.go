@@ -15,18 +15,18 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package flightsql
+package driverbase
 
 import (
-	"database/sql"
+	"os"
 
-	"github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-	"github.com/apache/arrow-adbc/go/adbc/sqldriver"
-	"github.com/apache/arrow/go/v13/arrow/memory"
+	"golang.org/x/exp/slog"
 )
 
-func init() {
-	sql.Register("flightsql", sqldriver.Driver{
-		Driver: flightsql.NewDriver(memory.DefaultAllocator),
+func nilLogger() *slog.Logger {
+	h := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.LevelError,
 	})
+	return slog.New(h)
 }

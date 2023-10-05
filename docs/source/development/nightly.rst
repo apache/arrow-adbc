@@ -70,7 +70,8 @@ https://gemfury.com/arrow-adbc-nightlies
 Example::
 
   pip install \
-        --extra-index-url https://repo.fury.io/arrow-adbc-nightlies \
+        --pre \
+        --index-url https://repo.fury.io/arrow-adbc-nightlies \
         adbc-driver-manager
 
 .. list-table:: Supported platforms for nightly Python wheels
@@ -89,5 +90,5 @@ Example::
      - Yes ✅
 
    * - Windows
-     - No ✅
+     - Yes ✅
      - No ❌

@@ -88,7 +88,7 @@ func main() {
 	var (
 		prefix     = flag.String("prefix", "", "function prefix")
 		driverPkg  = flag.String("driver", "", "path to driver package")
-		driverType = flag.String("type", "Driver", "name of the driver type")
+		driverCtor = flag.String("type", "NewDriver", "name of the driver constructor")
 		outDir     = flag.String("o", "", "output directory")
 		tmplDir    = flag.String("in", "./_tmpl", "template directory [default=./_tmpl]")
 	)
@@ -127,7 +127,7 @@ func main() {
 	}
 
 	process(tmplData{
-		Driver:      pkg[0].Name + "." + *driverType,
+		Driver:      pkg[0].Name + "." + *driverCtor,
 		Prefix:      *prefix,
 		PrefixUpper: strings.ToUpper(*prefix),
 	}, specs)

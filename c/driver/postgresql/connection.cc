@@ -629,7 +629,7 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
     return ADBC_STATUS_INVALID_STATE;
   }
 
-  PGresult* result = PQexec(conn_, "COMMIT");
+  PGresult* result = PQexec(conn_, "COMMIT; BEGIN TRANSACTION");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code = SetError(error, result, "%s%s",
                                    "[libpq] Failed to commit: ", PQerrorMessage(conn_));
