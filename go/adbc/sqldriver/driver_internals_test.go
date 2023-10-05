@@ -23,9 +23,12 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/apache/arrow-adbc/go/adbc"
+	"math"
+	"sync"
+	"reflect"
+	
 	"github.com/apache/arrow/go/v13/arrow"
+	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow/go/v13/arrow/array"
 	"github.com/apache/arrow/go/v13/arrow/decimal128"
 	"github.com/apache/arrow/go/v13/arrow/decimal256"
@@ -33,6 +36,33 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+// Define your Result type
+type Result struct {
+	// Define the fields and methods for your result here
+	// For example:
+	Value interface{}
+}
+
+// You can add methods to manipulate or check the result as needed
+func (r *Result) IsEmpty() bool {
+	return r.Value == nil
+}
+
+// Define other methods and fields as per your requirements
+
+// Define your InputData type
+type InputData struct {
+	// Define the fields and methods for your input data here
+	// For example:
+	DataValue interface{}
+}
+
+// You can add methods to manipulate or validate the input data as needed
+func (d *InputData) IsValid() bool {
+	// Implement logic to validate the input data
+	// Return true if it's valid, false otherwise
+	return d.DataValue != nil
+}
 func TestInvalidInputHandling(t *testing.T) {
     // Test a scenario where invalid input is passed to your function
     invalidInput := "invalid_input"
@@ -46,22 +76,23 @@ func TestInvalidInputHandling(t *testing.T) {
 func TestNullValuesHandling(t *testing.T) {
     // Test how your package handles NULL values
     // Simulate a NULL value in the data and ensure it's handled correctly
-    nullValue := nil // Replace with the appropriate representation of NULL
+    var nullValue interface{} = nil // Replace with the appropriate representation of NULL
     result, err := yourFunction(nullValue)
 
-    // Check that the result is as expected (e.g., nil or a specific value)
+        // Check that the result is as expected (e.g., nil or a specific value)
     assert.NoError(t, err)
     assert.Nil(t, result) // Or assert.Equal for a specific value
 }
 
 func TestBoundaryCases(t *testing.T) {
     // Test boundary cases for numeric data types
-    minValue := math.MinInt32
-    maxValue := math.MaxInt32
+	minValue := int64(math.MinInt32)
+    maxValue := int64(math.MaxInt32)
     result, err := yourFunction(minValue)
 
     // Check that the result is as expected for the minimum value
     assert.NoError(t, err)
+	 expectedMinValueResult := int64(0) // Replace with the expected value
     assert.Equal(t, expectedMinValueResult, result)
 
     result, err = yourFunction(maxValue)
@@ -101,12 +132,24 @@ func TestConcurrency(t *testing.T) {
         assert.NotNil(t, result)
     }
 }
-func yourFunction(input interface{}) (interface{}, error) {
-	// Convert the input to an Arrow array
-	array, err := arrow.ArrayFromGoValue(input)
-	if err != nil {
-		return nil, err
-	}
+func yourFunction(input interface{}) (array.Interface, error) {
+    // Determine the type of the input value
+    switch val := input.(type) {
+    case []int32:
+        // Convert a Go slice of int32 to an Arrow int32 array
+        return array.NewInt32(len(val), val, nil), nil
+    case []float64:
+        // Convert a Go slice of float64 to an Arrow float64 array
+        return array.NewFloat64(len(val), val, nil), nil
+    case []string:
+        // Convert a Go slice of string to an Arrow string array
+        return array.NewString(len(val), val, nil), nil
+    default:
+        // Handle unsupported types or return an error
+        return nil, fmt.Errorf("Unsupported input type: %v", reflect.TypeOf(input))
+    }
+}
+	
 
 	// Perform the desired operation on the Arrow array
 
