@@ -122,16 +122,12 @@ ArrowErrorCode ReadChecked(ArrowBufferView* data, T* out, ArrowError* error) {
 template <typename T>
 inline void WriteUnsafe(ArrowBuffer* buffer, T in) {
   const T value = SwapNetworkToHost(in);
-  memcpy(buffer->data, &value, sizeof(T));
-  buffer->data += sizeof(T);
-  buffer->size_bytes += sizeof(T);
+  ArrowBufferAppendUnsafe(buffer, &value, sizeof(T));
 }
 
 template <>
 inline void WriteUnsafe(ArrowBuffer* buffer, int8_t in) {
-  buffer->data[0] = in;
-  buffer->data += sizeof(int8_t);
-  buffer->size_bytes += sizeof(int8_t);
+  ArrowBufferAppendUnsafe(buffer, &in, sizeof(int8_t));
 }
 
 template <>
@@ -151,16 +147,7 @@ inline void WriteUnsafe(ArrowBuffer* buffer, int64_t in) {
 
 template <typename T>
 ArrowErrorCode WriteChecked(ArrowBuffer* buffer, T in, ArrowError* error) {
-  // TODO: beware of overflow here
-  if (buffer->capacity_bytes < buffer->size_bytes + static_cast<int64_t>(sizeof(T))) {
-    ArrowErrorSet(error,
-                  "Insufficient buffer capacity (expected " PRId64
-                  " bytes but found " PRId64 ")",
-                  buffer->size_bytes + sizeof(T), buffer->capacity_bytes);
-
-    return EINVAL;
-  }
-
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, sizeof(T)));
   WriteUnsafe<T>(buffer, in);
   return NANOARROW_OK;
 }
@@ -1215,27 +1202,27 @@ class PostgresCopyStreamWriter {
         ArrowArrayViewInitFromSchema(&array_view_.value, schema, nullptr));
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&array_view_.value, array, nullptr));
     root_writer_.Init(&array_view_.value);
+    ArrowBufferInit(&buffer_.value);
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteHeader(ArrowBuffer* buffer, ArrowError* error) {
-    ArrowBufferAppend(buffer, kPgCopyBinarySignature, sizeof(kPgCopyBinarySignature));
+  ArrowErrorCode WriteHeader(ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&buffer_.value, kPgCopyBinarySignature,
+                                              sizeof(kPgCopyBinarySignature)));
 
     const uint32_t flag_fields = 0;
-    ArrowBufferAppend(buffer, &flag_fields, sizeof(flag_fields));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(&buffer_.value, &flag_fields, sizeof(flag_fields)));
 
     const uint32_t extension_bytes = 0;
-    ArrowBufferAppend(buffer, &extension_bytes, sizeof(extension_bytes));
-
-    const int64_t header_bytes =
-        sizeof(kPgCopyBinarySignature) + sizeof(flag_fields) + sizeof(extension_bytes);
-    buffer->data += header_bytes;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(&buffer_.value, &extension_bytes, sizeof(extension_bytes)));
 
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteRecord(ArrowBuffer* buffer, ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(root_writer_.Write(buffer, records_written_, error));
+  ArrowErrorCode WriteRecord(ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(root_writer_.Write(&buffer_.value, records_written_, error));
     records_written_++;
     return NANOARROW_OK;
   }
@@ -1260,10 +1247,13 @@ class PostgresCopyStreamWriter {
     return NANOARROW_OK;
   }
 
+  const struct ArrowBuffer& WriteBuffer() const { return buffer_.value; }
+
  private:
   PostgresCopyFieldTupleWriter root_writer_;
   struct ArrowSchema* schema_;
   Handle<struct ArrowArrayView> array_view_;
+  Handle<struct ArrowBuffer> buffer_;
   int64_t records_written_ = 0;
 };
 

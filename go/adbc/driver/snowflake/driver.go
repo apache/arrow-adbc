@@ -67,6 +67,13 @@ const (
 	// "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
 	// but the absolute value will be used.
 	OptionClientTimeout = "adbc.snowflake.sql.client_option.client_timeout"
+	// OptionUseHighPrecision controls the data type used for NUMBER columns
+	// using a FIXED size data type. By default, this is enabled and NUMBER
+	// columns will be returned as Decimal128 types using the indicated
+	// precision and scale of the type. If disabled, then fixed-point data
+	// with a scale of 0 will be returned as Int64 columns, and a non-zero
+	// scale will return a Float64 column.
+	OptionUseHighPrecision = "adbc.snowflake.sql.client_option.use_high_precision"
 
 	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
 	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"
@@ -185,7 +192,8 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	opts = maps.Clone(opts)
-	db := &databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase)}
+	db := &databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
+		useHighPrecision: true}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
 	}

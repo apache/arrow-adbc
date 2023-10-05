@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Apache.Arrow.Adbc.FlightSql.Tests
+namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
 {
     [TestClass]
     public class TypeTests
@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.FlightSql.Tests
         [TestMethod]
         public void VerifyTypesAndValues()
         {
-            List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches();
+            List<RecordBatch> recordBatches = Utils.LoadTestRecordBatches("resources/flightsql.arrow");
 
             RecordBatch recordBatch = recordBatches[0];
 

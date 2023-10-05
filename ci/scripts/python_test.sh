@@ -27,6 +27,7 @@ set -e
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
 : ${CC:=gcc}
+: ${PYTHONDEVMODE:=1}
 
 test_subproject() {
     local -r source_dir=${1}

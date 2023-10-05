@@ -47,6 +47,8 @@ var (
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 	cfg *gosnowflake.Config
+
+	useHighPrecision bool
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -118,6 +120,11 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return adbc.OptionValueDisabled, nil
 	case OptionLogTracing:
 		return d.cfg.Tracing, nil
+	case OptionUseHighPrecision:
+		if d.useHighPrecision {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
 	default:
 		val, ok := d.cfg.Params[key]
 		if ok {
@@ -354,6 +361,18 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			}
 		case OptionLogTracing:
 			d.cfg.Tracing = v
+		case OptionUseHighPrecision:
+			switch v {
+			case adbc.OptionValueEnabled:
+				d.useHighPrecision = true
+			case adbc.OptionValueDisabled:
+				d.useHighPrecision = false
+			default:
+				return adbc.Error{
+					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionUseHighPrecision, v),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
 		default:
 			d.cfg.Params[k] = &v
 		}
@@ -372,5 +391,13 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
 
-	return &cnxn{cn: cn.(snowflakeConn), db: d, ctor: connector, sqldb: sql.OpenDB(connector)}, nil
+	return &cnxn{
+		cn: cn.(snowflakeConn),
+		db: d, ctor: connector,
+		sqldb: sql.OpenDB(connector),
+		// default enable high precision
+		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
+		// get Int64/Float64 instead
+		useHighPrecision: d.useHighPrecision,
+	}, nil
 }

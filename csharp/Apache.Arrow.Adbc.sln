@@ -9,13 +9,23 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Arrow", "Arrow", "{9ADA26E0
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow", "src\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj", "{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.FlightSql", "src\Apache.Arrow.Adbc.FlightSql\Apache.Arrow.Adbc.FlightSql.csproj", "{93D7AD3B-D6DC-4123-9796-63DD35A4708F}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests", "test\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj", "{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.FlightSql.Tests", "test\Apache.Arrow.Adbc.FlightSql.Tests\Apache.Arrow.Adbc.FlightSql.Tests.csproj", "{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{5BD04C26-CE52-4893-8C1A-479705195CEF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Drivers", "Drivers", "{FEB257A0-4FD3-495E-9A47-9E1649755445}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Drivers.FlightSql", "src\Drivers\FlightSql\Apache.Arrow.Adbc.Drivers.FlightSql.csproj", "{19AA450A-2F87-49BD-9122-8AD07D4C6DCE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Drivers", "Drivers", "{C7290227-E925-47E7-8B6B-A8B171645D58}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.FlightSql", "test\Drivers\FlightSql\Apache.Arrow.Adbc.Tests.Drivers.FlightSql.csproj", "{5C15E79C-19C4-4FF4-BB82-28754FE3966B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Client", "Client", "{B6111602-2DC4-4B2F-9598-E3EE1972D3E4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Client", "src\Client\Apache.Arrow.Adbc.Client.csproj", "{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake", "test\Drivers\Snowflake\Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake.csproj", "{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,18 +41,26 @@ Global
 		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{93D7AD3B-D6DC-4123-9796-63DD35A4708F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{93D7AD3B-D6DC-4123-9796-63DD35A4708F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{93D7AD3B-D6DC-4123-9796-63DD35A4708F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{93D7AD3B-D6DC-4123-9796-63DD35A4708F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19AA450A-2F87-49BD-9122-8AD07D4C6DCE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19AA450A-2F87-49BD-9122-8AD07D4C6DCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19AA450A-2F87-49BD-9122-8AD07D4C6DCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19AA450A-2F87-49BD-9122-8AD07D4C6DCE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C15E79C-19C4-4FF4-BB82-28754FE3966B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C15E79C-19C4-4FF4-BB82-28754FE3966B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C15E79C-19C4-4FF4-BB82-28754FE3966B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C15E79C-19C4-4FF4-BB82-28754FE3966B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -50,7 +68,11 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{851FBF0D-21A8-4C04-A040-24B6AAE31D2C} = {9ADA26E0-F328-4466-908A-2FA506DBDF7D}
 		{00C143BA-F1CF-4117-9DE6-E73DC4D208F8} = {5BD04C26-CE52-4893-8C1A-479705195CEF}
-		{23C3952F-2AB8-40B9-AD95-E06ECEB12D7A} = {5BD04C26-CE52-4893-8C1A-479705195CEF}
+		{19AA450A-2F87-49BD-9122-8AD07D4C6DCE} = {FEB257A0-4FD3-495E-9A47-9E1649755445}
+		{C7290227-E925-47E7-8B6B-A8B171645D58} = {5BD04C26-CE52-4893-8C1A-479705195CEF}
+		{5C15E79C-19C4-4FF4-BB82-28754FE3966B} = {C7290227-E925-47E7-8B6B-A8B171645D58}
+		{A405F4A0-5938-4139-B2DF-ED9A05EC3D7C} = {B6111602-2DC4-4B2F-9598-E3EE1972D3E4}
+		{DEE943D1-A2D0-40CD-ABE0-2CB38E7CA156} = {C7290227-E925-47E7-8B6B-A8B171645D58}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4795CF16-0FDB-4BE0-9768-5CF31564DC03}

@@ -7,26 +7,28 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="TypeTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="3.1.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
     <PackageReference Include="Moq" Version="4.18.4" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.0.3" />
     <PackageReference Include="MSTest.TestFramework" Version="3.0.3" />
-    <PackageReference Include="System.Text.Json" Version="7.0.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Apache.Arrow.Adbc.FlightSql\Apache.Arrow.Adbc.FlightSql.csproj" />
-    <ProjectReference Include="..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
-    <ProjectReference Include="..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
+    <ProjectReference Include="..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+    <ProjectReference Include="..\..\..\src\arrow\csharp\src\Apache.Arrow\Apache.Arrow.csproj" />
+    <ProjectReference Include="..\..\..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
+    <ProjectReference Include="..\..\..\src\Drivers\FlightSql\Apache.Arrow.Adbc.Drivers.FlightSql.csproj" />
+    <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="flightsql.arrow">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="flightsqlconfig.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <None Update="Resources\flightsqlconfig.json">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

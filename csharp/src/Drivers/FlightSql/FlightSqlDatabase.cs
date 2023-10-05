@@ -18,7 +18,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Apache.Arrow.Adbc.FlightSql
+namespace Apache.Arrow.Adbc.Drivers.FlightSql
 {
     /// <summary>
     /// A Flight SQL implementation of <see cref="AdbcDatabase"/>.

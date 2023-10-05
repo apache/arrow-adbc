@@ -387,6 +387,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl) (*flights
 		}
 	}
 
+	d.Logger.DebugContext(ctx, "new client", "location", loc)
 	return cl, nil
 }
 

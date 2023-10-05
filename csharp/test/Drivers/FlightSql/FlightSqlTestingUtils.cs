@@ -15,13 +15,10 @@
 * limitations under the License.
 */
 
-namespace Apache.Arrow.Adbc.Tests
+namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
 {
-    /// <summary>
-    /// Represents a downstream exception that can be thrown by drivers
-    /// </summary>
-    public class MockAdbcException : AdbcException
+    internal class FlightSqlTestingUtils
     {
-
+        internal const string FLIGHTSQL_TEST_CONFIG_VARIABLE = "FLIGHTSQL_TEST_CONFIG_FILE";
     }
 }

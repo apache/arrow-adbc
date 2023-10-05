@@ -15,28 +15,29 @@
 * limitations under the License.
 */
 
-using System.Text.Json.Serialization;
+using System;
 
-namespace Apache.Arrow.Adbc.FlightSql.Tests
+namespace Apache.Arrow.Adbc.Tests
 {
-    internal class FlightSqlTestConfiguration
+    /// <summary>
+    /// Used to validate the expected .NET type, array type and value for tests
+    /// </summary>
+    public class ColumnNetTypeArrowTypeValue
     {
-        [JsonPropertyName("serverAddress")]
-        public string ServerAddress { get; set; }
+        public ColumnNetTypeArrowTypeValue(string name, Type expectedNetType, Type expectedArrowArrayType, object expectedValue)
+        {
+            this.Name = name;
+            this.ExpectedNetType = expectedNetType;
+            this.ExpectedArrowArrayType = expectedArrowArrayType;
+            this.ExpectedValue = expectedValue;
+        }
 
-        [JsonPropertyName("routing_tag"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string RoutingTag { get; set; }
+        public string Name { get; set; }
 
-        [JsonPropertyName("routing_queue"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string RoutingQueue { get; set; }
+        public Type ExpectedNetType { get; set; }
 
-        [JsonPropertyName("authorization")]
-        public string Authorization { get; set; }
+        public Type ExpectedArrowArrayType { get; set; }
 
-        [JsonPropertyName("query")]
-        public string Query { get; set; }
-
-        [JsonPropertyName("expectedResults")]
-        public long ExpectedResultsCount { get; set; }
+        public object ExpectedValue { get; set; }
     }
 }

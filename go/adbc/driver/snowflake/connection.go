@@ -56,6 +56,7 @@ type cnxn struct {
 	sqldb *sql.DB
 
 	activeTransaction bool
+	useHighPrecision  bool
 }
 
 // Metadata methods
@@ -961,6 +962,7 @@ func (c *cnxn) NewStatement() (adbc.Statement, error) {
 		cnxn:                c,
 		queueSize:           defaultStatementQueueSize,
 		prefetchConcurrency: defaultPrefetchConcurrency,
+		useHighPrecision:    c.useHighPrecision,
 	}, nil
 }
 
@@ -1028,6 +1030,22 @@ func (c *cnxn) SetOption(key, value string) error {
 	case adbc.OptionKeyCurrentDbSchema:
 		_, err := c.cn.ExecContext(context.Background(), "USE SCHEMA ?", []driver.NamedValue{{Value: value}})
 		return err
+	case OptionUseHighPrecision:
+		// statements will inherit the value of the OptionUseHighPrecision
+		// from the connection, but the option can be overridden at the
+		// statement level if SetOption is called on the statement.
+		switch value {
+		case adbc.OptionValueEnabled:
+			c.useHighPrecision = true
+		case adbc.OptionValueDisabled:
+			c.useHighPrecision = false
+		default:
+			return adbc.Error{
+				Msg:  "[Snowflake] invalid value for option " + key + ": " + value,
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		return nil
 	default:
 		return adbc.Error{
 			Msg:  "[Snowflake] unknown connection option " + key + ": " + value,
