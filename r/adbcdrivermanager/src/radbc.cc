@@ -86,11 +86,15 @@ extern "C" SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp) {
   SEXP driver_xptr = PROTECT(adbc_allocate_xptr<AdbcDriver>());
   auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
 
-  AdbcError error;
-  memset(&error, 0, sizeof(AdbcError));
   int status =
-      AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_0_0, driver, &error);
-  adbc_error_stop(status, &error, "RAdbcLoadDriver()");
+      AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_1_0, driver, nullptr);
+  if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
+    status = AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_0_0, driver, nullptr);
+  }
+
+  if (status != ADBC_STATUS_OK) {
+    Rf_error("Failed to initialize driver");
+  }
 
   UNPROTECT(1);
   return driver_xptr;
@@ -107,11 +111,16 @@ extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr) {
   R_RegisterCFinalizer(driver_xptr, &finalize_driver_xptr);
   auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
 
-  AdbcError error;
-  memset(&error, 0, sizeof(AdbcError));
   int status =
-      AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_0_0, driver, &error);
-  adbc_error_stop(status, &error, "RAdbcLoadDriverFromInitFunc()");
+      AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_1_0, driver, nullptr);
+  if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
+    status =
+        AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_0_0, driver, nullptr);
+  }
+
+  if (status != ADBC_STATUS_OK) {
+    Rf_error("Failed to initialize driver");
+  }
 
   UNPROTECT(1);
   return driver_xptr;
