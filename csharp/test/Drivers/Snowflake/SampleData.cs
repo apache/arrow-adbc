@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Apache.Arrow.Types;
-using static System.Net.WebRequestMethods;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
