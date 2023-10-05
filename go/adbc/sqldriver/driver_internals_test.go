@@ -101,6 +101,23 @@ func TestConcurrency(t *testing.T) {
         assert.NotNil(t, result)
     }
 }
+func yourFunction(input interface{}) (interface{}, error) {
+	// Convert the input to an Arrow array
+	array, err := arrow.ArrayFromGoValue(input)
+	if err != nil {
+		return nil, err
+	}
+
+	// Perform the desired operation on the Arrow array
+
+	// Convert the Arrow array back to a Go value
+	result, err := array.ToGoValue()
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
 
 
 func TestParseConnectStr(t *testing.T) {
