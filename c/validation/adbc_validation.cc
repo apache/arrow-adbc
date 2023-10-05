@@ -3410,6 +3410,21 @@ void StatementTest::TestSqlQueryErrors() {
   ASSERT_NE(ADBC_STATUS_OK, code);
 }
 
+void StatementTest::TestSqlQueryTrailingSemicolons() {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT current_date;;;", &error),
+              IsOkStatus(&error));
+
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
 void StatementTest::TestTransactions() {
   if (!quirks()->supports_transactions() || quirks()->ddl_implicit_commit_txn()) {
     GTEST_SKIP();
