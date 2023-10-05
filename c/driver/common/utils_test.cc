@@ -185,7 +185,8 @@ TEST(AdbcGetObjectsData, GetObjectsByName) {
   mock_column.column_name = {"column", (int64_t)strlen("column")};
   mock_column_suffix.column_name = {"column_suffix", (int64_t)strlen("column_suffix")};
   mock_constraint.constraint_name = {"constraint", (int64_t)strlen("constraint")};
-  mock_constraint_suffix.constraint_name = {"constraint_suffix", (int64_t)strlen("constraint_suffix")};
+  mock_constraint_suffix.constraint_name = {"constraint_suffix",
+                                            (int64_t)strlen("constraint_suffix")};
 
   struct AdbcGetObjectsCatalog* catalogs[] = {&mock_catalog};
   mock_data.catalogs = catalogs;
@@ -203,26 +204,47 @@ TEST(AdbcGetObjectsData, GetObjectsByName) {
   mock_table.table_columns = columns;
   mock_table.n_table_columns = 2;
 
-  struct AdbcGetObjectsConstraint* constraints[] = {&mock_constraint, &mock_constraint_suffix};
+  struct AdbcGetObjectsConstraint* constraints[] = {&mock_constraint,
+                                                    &mock_constraint_suffix};
   mock_table.table_constraints = constraints;
   mock_table.n_table_constraints = 2;
 
-  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema", "table"), &mock_table);
-  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema", "table_suffix"), &mock_table_suffix);
-  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema", "nonexistent"), nullptr);
+  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema",
+                                             "table"),
+            &mock_table);
+  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema",
+                                             "table_suffix"),
+            &mock_table_suffix);
+  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema",
+                                             "nonexistent"),
+            nullptr);
 
-  EXPECT_EQ(AdbcGetObjectsDataGetCatalogByName(&mock_data, "mock_catalog"), &mock_catalog);
+  EXPECT_EQ(AdbcGetObjectsDataGetCatalogByName(&mock_data, "mock_catalog"),
+            &mock_catalog);
   EXPECT_EQ(AdbcGetObjectsDataGetCatalogByName(&mock_data, "nonexistent"), nullptr);
 
-  EXPECT_EQ(AdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog", "mock_schema"), &mock_schema);
-  EXPECT_EQ(AdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog", "nonexistent"), nullptr);
+  EXPECT_EQ(AdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog", "mock_schema"),
+            &mock_schema);
+  EXPECT_EQ(AdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog", "nonexistent"),
+            nullptr);
 
-  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema", "table", "column"), &mock_column);
-  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema", "table", "column_suffix"), &mock_column_suffix);
-  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema", "table", "nonexistent"), nullptr);
+  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema",
+                                              "table", "column"),
+            &mock_column);
+  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema",
+                                              "table", "column_suffix"),
+            &mock_column_suffix);
+  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema",
+                                              "table", "nonexistent"),
+            nullptr);
 
-  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(&mock_data, "mock_catalog", "mock_schema", "table", "constraint"), &mock_constraint);
-  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(&mock_data, "mock_catalog", "mock_schema", "table", "constraint_suffix"), &mock_constraint_suffix);
-  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(&mock_data, "mock_catalog", "mock_schema", "table", "nonexistent"), nullptr);
+  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(&mock_data, "mock_catalog",
+                                                  "mock_schema", "table", "constraint"),
+            &mock_constraint);
+  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(
+                &mock_data, "mock_catalog", "mock_schema", "table", "constraint_suffix"),
+            &mock_constraint_suffix);
+  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(&mock_data, "mock_catalog",
+                                                  "mock_schema", "table", "nonexistent"),
+            nullptr);
 }
-

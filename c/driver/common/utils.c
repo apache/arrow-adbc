@@ -1007,7 +1007,8 @@ struct AdbcGetObjectsCatalog* AdbcGetObjectsDataGetCatalogByName(
     for (int64_t i = 0; i < get_objects_data->n_catalogs; i++) {
       struct AdbcGetObjectsCatalog* catalog = get_objects_data->catalogs[i];
       struct ArrowStringView name = catalog->catalog_name;
-      if ((int64_t)strlen(catalog_name) && !strncmp(name.data, catalog_name, name.size_bytes)) {
+      if ((int64_t)strlen(catalog_name) &&
+          !strncmp(name.data, catalog_name, name.size_bytes)) {
         return catalog;
       }
     }
@@ -1026,7 +1027,8 @@ struct AdbcGetObjectsSchema* AdbcGetObjectsDataGetSchemaByName(
       for (int64_t i = 0; i < catalog->n_db_schemas; i++) {
         struct AdbcGetObjectsSchema* schema = catalog->catalog_db_schemas[i];
         struct ArrowStringView name = schema->db_schema_name;
-        if ((int64_t)strlen(schema_name) == name.size_bytes && !strncmp(name.data, schema_name, name.size_bytes)) {
+        if ((int64_t)strlen(schema_name) == name.size_bytes &&
+            !strncmp(name.data, schema_name, name.size_bytes)) {
           return schema;
         }
       }
@@ -1046,7 +1048,8 @@ struct AdbcGetObjectsTable* AdbcGetObjectsDataGetTableByName(
       for (int64_t i = 0; i < schema->n_db_schema_tables; i++) {
         struct AdbcGetObjectsTable* table = schema->db_schema_tables[i];
         struct ArrowStringView name = table->table_name;
-        if ((int64_t)strlen(table_name) == name.size_bytes && !strncmp(name.data, table_name, name.size_bytes)) {
+        if ((int64_t)strlen(table_name) == name.size_bytes &&
+            !strncmp(name.data, table_name, name.size_bytes)) {
           return table;
         }
       }
@@ -1067,7 +1070,8 @@ struct AdbcGetObjectsColumn* AdbcGetObjectsDataGetColumnByName(
       for (int64_t i = 0; i < table->n_table_columns; i++) {
         struct AdbcGetObjectsColumn* column = table->table_columns[i];
         struct ArrowStringView name = column->column_name;
-        if ((int64_t)strlen(column_name) == name.size_bytes && !strncmp(name.data, column_name, name.size_bytes)) {
+        if ((int64_t)strlen(column_name) == name.size_bytes &&
+            !strncmp(name.data, column_name, name.size_bytes)) {
           return column;
         }
       }
@@ -1088,7 +1092,8 @@ struct AdbcGetObjectsConstraint* AdbcGetObjectsDataGetConstraintByName(
       for (int64_t i = 0; i < table->n_table_constraints; i++) {
         struct AdbcGetObjectsConstraint* constraint = table->table_constraints[i];
         struct ArrowStringView name = constraint->constraint_name;
-        if ((int64_t)strlen(constraint_name) == name.size_bytes && !strncmp(name.data, constraint_name, name.size_bytes)) {
+        if ((int64_t)strlen(constraint_name) == name.size_bytes &&
+            !strncmp(name.data, constraint_name, name.size_bytes)) {
           return constraint;
         }
       }
