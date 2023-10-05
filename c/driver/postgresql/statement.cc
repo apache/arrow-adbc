@@ -1070,7 +1070,6 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   // 2. Execute the query with COPY to get binary tuples
   {
     std::string copy_query = "COPY (" + query_ + ") TO STDOUT (FORMAT binary)";
-
     reader_.result_ =
         PQexecParams(connection_->conn(), copy_query.c_str(), /*nParams=*/0,
                      /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
