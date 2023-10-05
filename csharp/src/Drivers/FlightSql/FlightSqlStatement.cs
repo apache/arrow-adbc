@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Flight;
 using Grpc.Core;
 
-namespace Apache.Arrow.Adbc.FlightSql
+namespace Apache.Arrow.Adbc.Drivers.FlightSql
 {
     /// <summary>
     /// A Flight SQL implementation of <see cref="AdbcStatement"/>.

@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -23,7 +22,7 @@ namespace Apache.Arrow.Adbc.Tests
     /// <summary>
     /// Performs tests related to connecting with ADBC drivers.
     /// </summary>
-    public class ConnectionTests
+    public class DriverTests
     {
         /// <summary>
         /// Validates that a <see cref="QueryResult"/> contains a number
@@ -35,13 +34,13 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="expectedNumberOfResults">
         /// The number of records.
         /// </param>
-        public static void CanDriverConnect(QueryResult queryResult, long expectedNumberOfResults)
+        public static void CanExecuteQuery(QueryResult queryResult, long expectedNumberOfResults)
         {
             long count = 0;
 
             while (true)
             {
-                var nextBatch = queryResult.Stream.ReadNextRecordBatchAsync().Result;
+                RecordBatch nextBatch = queryResult.Stream.ReadNextRecordBatchAsync().Result;
                 if (nextBatch == null) { break; }
                 count += nextBatch.Length;
             }
@@ -55,17 +54,6 @@ namespace Apache.Arrow.Adbc.Tests
 
                 Assert.AreEqual(queryResult.RowCount, count, "The RowCount value does not match the counted records");
             }
-        }
-
-        /// <summary>
-        /// Validates if an exception is an AdbcException
-        /// </summary>
-        /// <param name="ex">
-        /// The exception
-        /// </param>
-        public static void VerifyBadQueryGeneratesError(Exception ex)
-        {
-            Assert.IsTrue(ex is AdbcException, "Can only validate AdbcException types");
         }
     }
 }

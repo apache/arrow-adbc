@@ -15,16 +15,19 @@
  * limitations under the License.
  */
 
-namespace Apache.Arrow.Adbc.FlightSql
+using System.Collections.Generic;
+
+namespace Apache.Arrow.Adbc.Drivers.FlightSql
 {
     /// <summary>
-    /// Parameters used for connecting to Flight SQL data sources.
+    /// Represents an Arrpw Flight SQL driver for connecting to
+    /// data sources that support Arrow Flight SQL.
     /// </summary>
-    public class FlightSqlParameters
+    public class FlightSqlDriver : AdbcDriver
     {
-        public const string ServerAddress = "FLIGHT_SQL_SERVER_ADDRESS";
-        public const string RoutingTag = "routing_tag";
-        public const string RoutingQueue = "routing_queue";
-        public const string Authorization = "authorization";
+        public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
+        {
+            return new FlightSqlDatabase(parameters);
+        }
     }
 }

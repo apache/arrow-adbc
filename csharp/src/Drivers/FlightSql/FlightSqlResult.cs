@@ -21,7 +21,7 @@ using Apache.Arrow.Flight;
 using Apache.Arrow.Flight.Client;
 using Apache.Arrow.Ipc;
 
-namespace Apache.Arrow.Adbc.FlightSql
+namespace Apache.Arrow.Adbc.Drivers.FlightSql
 {
     /// <summary>
     /// A Flight SQL implementation of <see cref="IArrowArrayStream"/>.
