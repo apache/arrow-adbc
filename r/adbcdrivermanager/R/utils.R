@@ -81,10 +81,18 @@ print.adbc_xptr <- function(x, ...) {
 }
 
 #' @export
+format.adbc_xptr <- function(x, ...) {
+  sprintf(
+    "<%s at %s> ",
+    class(x)[1],
+    nanoarrow::nanoarrow_pointer_addr_pretty(x)
+  )
+}
+
+#' @export
 str.adbc_xptr <- function(object, ...) {
-  cat(sprintf("<%s> %s ", class(object)[1], format(object)))
+  cat(sprintf("%s\n", format(object)))
   env_proxy <- as.list(xptr_env(object))
-  env_proxy$options <- as.list(env_proxy$options)
   str(env_proxy, ...)
   invisible(object)
 }
