@@ -61,24 +61,31 @@ test_that("external pointer embedded environment works", {
 
 test_that("pointer mover leaves behind an invalid external pointer", {
   db <- adbc_database_init(adbc_driver_void())
-  con <- adbc_connection_init(db)
-  stmt <- adbc_statement_init(con)
-
   expect_true(adbc_xptr_is_valid(db))
-  expect_true(adbc_xptr_is_valid(adbc_xptr_move(db)))
+
+  db2 <- adbc_xptr_move(db)
+  expect_true(adbc_xptr_is_valid(db2))
   expect_false(adbc_xptr_is_valid(db))
 
+  con <- adbc_connection_init(db2)
   expect_true(adbc_xptr_is_valid(con))
-  expect_true(adbc_xptr_is_valid(adbc_xptr_move(con)))
+
+  con2 <- adbc_xptr_move(con)
+  expect_true(adbc_xptr_is_valid(con2))
   expect_false(adbc_xptr_is_valid(con))
 
+  stmt <- adbc_statement_init(con2)
   expect_true(adbc_xptr_is_valid(stmt))
-  expect_true(adbc_xptr_is_valid(adbc_xptr_move(stmt)))
+
+  stmt2 <- adbc_xptr_move(stmt)
+  expect_true(adbc_xptr_is_valid(stmt2))
   expect_false(adbc_xptr_is_valid(stmt))
 
   stream <- nanoarrow::basic_array_stream(list(1:5))
   expect_true(adbc_xptr_is_valid(stream))
-  expect_true(adbc_xptr_is_valid(adbc_xptr_move(stream)))
+
+  stream2 <- adbc_xptr_move(stream)
+  expect_true(adbc_xptr_is_valid(stream2))
   expect_false(adbc_xptr_is_valid(stream))
 })
 
