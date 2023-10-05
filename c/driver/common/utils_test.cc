@@ -167,3 +167,84 @@ TEST(ErrorDetails, RoundTripValues) {
 
   error.release(&error);
 }
+
+// https://github.com/apache/arrow-adbc/issues/1100
+TEST(AdbcGetObjectsData, GetObjectsByName) {
+  // Mock objects where the names being compared share the same prefix
+  struct AdbcGetObjectsData mock_data;
+  struct AdbcGetObjectsCatalog mock_catalog;
+  struct AdbcGetObjectsSchema mock_schema;
+  struct AdbcGetObjectsTable mock_table, mock_table_suffix;
+  struct AdbcGetObjectsColumn mock_column, mock_column_suffix;
+  struct AdbcGetObjectsConstraint mock_constraint, mock_constraint_suffix;
+
+  mock_catalog.catalog_name = {"mock_catalog", (int64_t)strlen("mock_catalog")};
+  mock_schema.db_schema_name = {"mock_schema", (int64_t)strlen("mock_schema")};
+  mock_table.table_name = {"table", (int64_t)strlen("table")};
+  mock_table_suffix.table_name = {"table_suffix", (int64_t)strlen("table_suffix")};
+  mock_column.column_name = {"column", (int64_t)strlen("column")};
+  mock_column_suffix.column_name = {"column_suffix", (int64_t)strlen("column_suffix")};
+  mock_constraint.constraint_name = {"constraint", (int64_t)strlen("constraint")};
+  mock_constraint_suffix.constraint_name = {"constraint_suffix",
+                                            (int64_t)strlen("constraint_suffix")};
+
+  struct AdbcGetObjectsCatalog* catalogs[] = {&mock_catalog};
+  mock_data.catalogs = catalogs;
+  mock_data.n_catalogs = 1;
+
+  struct AdbcGetObjectsSchema* schemas[] = {&mock_schema};
+  mock_catalog.catalog_db_schemas = schemas;
+  mock_catalog.n_db_schemas = 1;
+
+  struct AdbcGetObjectsTable* tables[] = {&mock_table, &mock_table_suffix};
+  mock_schema.db_schema_tables = tables;
+  mock_schema.n_db_schema_tables = 2;
+
+  struct AdbcGetObjectsColumn* columns[] = {&mock_column, &mock_column_suffix};
+  mock_table.table_columns = columns;
+  mock_table.n_table_columns = 2;
+
+  struct AdbcGetObjectsConstraint* constraints[] = {&mock_constraint,
+                                                    &mock_constraint_suffix};
+  mock_table.table_constraints = constraints;
+  mock_table.n_table_constraints = 2;
+
+  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema",
+                                             "table"),
+            &mock_table);
+  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema",
+                                             "table_suffix"),
+            &mock_table_suffix);
+  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema",
+                                             "nonexistent"),
+            nullptr);
+
+  EXPECT_EQ(AdbcGetObjectsDataGetCatalogByName(&mock_data, "mock_catalog"),
+            &mock_catalog);
+  EXPECT_EQ(AdbcGetObjectsDataGetCatalogByName(&mock_data, "nonexistent"), nullptr);
+
+  EXPECT_EQ(AdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog", "mock_schema"),
+            &mock_schema);
+  EXPECT_EQ(AdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog", "nonexistent"),
+            nullptr);
+
+  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema",
+                                              "table", "column"),
+            &mock_column);
+  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema",
+                                              "table", "column_suffix"),
+            &mock_column_suffix);
+  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema",
+                                              "table", "nonexistent"),
+            nullptr);
+
+  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(&mock_data, "mock_catalog",
+                                                  "mock_schema", "table", "constraint"),
+            &mock_constraint);
+  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(
+                &mock_data, "mock_catalog", "mock_schema", "table", "constraint_suffix"),
+            &mock_constraint_suffix);
+  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(&mock_data, "mock_catalog",
+                                                  "mock_schema", "table", "nonexistent"),
+            nullptr);
+}
