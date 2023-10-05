@@ -64,16 +64,18 @@ class PostgresCopyStreamWriteTester {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteAll(struct ArrowBuffer* buffer, ArrowError* error = nullptr) {
-    NANOARROW_RETURN_NOT_OK(writer_.WriteHeader(buffer, error));
+  ArrowErrorCode WriteAll(ArrowError* error = nullptr) {
+    NANOARROW_RETURN_NOT_OK(writer_.WriteHeader(error));
 
     int result;
     do {
-      result = writer_.WriteRecord(buffer, error);
+      result = writer_.WriteRecord(error);
     } while (result == NANOARROW_OK);
 
     return result;
   }
+
+  const uint8_t* BufferData() const { return writer_.BufferData(); }
 
  private:
   PostgresCopyStreamWriter writer_;
@@ -136,19 +138,13 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteBoolean) {
 
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
-  ArrowBufferInit(&buffer.value);
-  ArrowBufferReserve(&buffer.value, sizeof(kTestPgCopyBoolean));
-  uint8_t* cursor = buffer->data;
-
-  AdbcStatusCode result = tester.WriteAll(&buffer.value, nullptr);
-  buffer->data = cursor;
-  ASSERT_EQ(result, ENODATA);
-
+  const uint8_t* data = tester.BufferData();
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopyBoolean) - 4; i++) {
-    ASSERT_EQ(cursor[i], kTestPgCopyBoolean[i]);
+    ASSERT_EQ(data[i], kTestPgCopyBoolean[i]);
   }
 }
 
@@ -211,22 +207,14 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt16) {
 
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
-  struct ArrowBuffer buffer;
-  ArrowBufferInit(&buffer);
-  ArrowBufferReserve(&buffer, sizeof(kTestPgCopySmallInt));
-  uint8_t* cursor = buffer.data;
-
-  ASSERT_EQ(tester.WriteAll(&buffer, nullptr), ENODATA);
-
+  const uint8_t* data = tester.BufferData();
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopySmallInt) - 4; i++) {
-    EXPECT_EQ(cursor[i], kTestPgCopySmallInt[i]);
+    EXPECT_EQ(data[i], kTestPgCopySmallInt[i]);
   }
-
-  buffer.data = cursor;
-  ArrowBufferReset(&buffer);
 }
 
 // COPY (SELECT CAST("col" AS INTEGER) AS "col" FROM (  VALUES (-123), (-1), (1), (123),
@@ -288,22 +276,14 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt32) {
 
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
-  struct ArrowBuffer buffer;
-  ArrowBufferInit(&buffer);
-  ArrowBufferReserve(&buffer, sizeof(kTestPgCopyInteger));
-  uint8_t* cursor = buffer.data;
-
-  ASSERT_EQ(tester.WriteAll(&buffer, nullptr), ENODATA);
-
+  const uint8_t* data = tester.BufferData();
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopyInteger) - 4; i++) {
-    EXPECT_EQ(cursor[i], kTestPgCopyInteger[i]);
+    EXPECT_EQ(data[i], kTestPgCopyInteger[i]);
   }
-
-  buffer.data = cursor;
-  ArrowBufferReset(&buffer);
 }
 
 // COPY (SELECT CAST("col" AS BIGINT) AS "col" FROM (  VALUES (-123), (-1), (1), (123),
@@ -366,22 +346,14 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInt64) {
 
   PostgresCopyStreamWriteTester tester;
   ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
-  struct ArrowBuffer buffer;
-  ArrowBufferInit(&buffer);
-  ArrowBufferReserve(&buffer, sizeof(kTestPgCopyBigInt));
-  uint8_t* cursor = buffer.data;
-
-  ASSERT_EQ(tester.WriteAll(&buffer, nullptr), ENODATA);
-
+  const uint8_t* data = tester.BufferData();
   // The last 4 bytes of a message can be transmitted via PQputCopyData
   // so no need to test those bytes from the Writer
   for (size_t i = 0; i < sizeof(kTestPgCopyBigInt) - 4; i++) {
-    EXPECT_EQ(cursor[i], kTestPgCopyBigInt[i]);
+    EXPECT_EQ(data[i], kTestPgCopyBigInt[i]);
   }
-
-  buffer.data = cursor;
-  ArrowBufferReset(&buffer);
 }
 
 // COPY (SELECT CAST("col" AS REAL) AS "col" FROM (  VALUES (-123.456), (-1), (1),
