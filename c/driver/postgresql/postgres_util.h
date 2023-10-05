@@ -147,6 +147,11 @@ struct Releaser {
 };
 
 template <>
+struct Releaser<struct ArrowBuffer> {
+  static void Release(struct ArrowBuffer* buffer) { ArrowBufferReset(buffer); }
+};
+
+template <>
 struct Releaser<struct ArrowArrayView> {
   static void Release(struct ArrowArrayView* value) {
     if (value->storage_type != NANOARROW_TYPE_UNINITIALIZED) {
