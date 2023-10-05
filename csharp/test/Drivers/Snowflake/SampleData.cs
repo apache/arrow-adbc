@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Apache.Arrow.Types;
+using static System.Net.WebRequestMethods;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -35,15 +36,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             List<ColumnNetTypeArrowTypeValue> expectedValues = new List<ColumnNetTypeArrowTypeValue>()
             {
-                new ColumnNetTypeArrowTypeValue("NUMBERTYPE", typeof(long), typeof(Int64Type), 1L),
-                new ColumnNetTypeArrowTypeValue("DECIMALTYPE", typeof(double), typeof(DoubleType), 123.1d),
-                new ColumnNetTypeArrowTypeValue("NUMERICTYPE", typeof(double), typeof(DoubleType), 123.1d),
-                new ColumnNetTypeArrowTypeValue("INTTYPE", typeof(long), typeof(Int64Type), 123L),
-                new ColumnNetTypeArrowTypeValue("INTEGERTYPE", typeof(long), typeof(Int64Type), 123L),
-                new ColumnNetTypeArrowTypeValue("BIGINTTYPE", typeof(long), typeof(Int64Type), 123L),
-                new ColumnNetTypeArrowTypeValue("SMALLINTTYPE", typeof(long), typeof(Int64Type), 123L),
-                new ColumnNetTypeArrowTypeValue("TINYINTTYPE", typeof(long), typeof(Int64Type), 123L),
-                new ColumnNetTypeArrowTypeValue("BYTEINTTYPE", typeof(long), typeof(Int64Type), 123L),
+                // https://github.com/apache/arrow-adbc/issues/1020 has Snowflake treat all values as decimal by default
+                new ColumnNetTypeArrowTypeValue("NUMBERTYPE", typeof(decimal), typeof(Decimal128Type), 1m),
+                new ColumnNetTypeArrowTypeValue("DECIMALTYPE", typeof(decimal), typeof(Decimal128Type), 1231m),
+                new ColumnNetTypeArrowTypeValue("NUMERICTYPE", typeof(decimal), typeof(Decimal128Type), 1231m),
+                new ColumnNetTypeArrowTypeValue("INTTYPE", typeof(decimal), typeof(Decimal128Type), 123m),
+                new ColumnNetTypeArrowTypeValue("INTEGERTYPE", typeof(decimal), typeof(Decimal128Type), 123m),
+                new ColumnNetTypeArrowTypeValue("BIGINTTYPE", typeof(decimal), typeof(Decimal128Type), 123m),
+                new ColumnNetTypeArrowTypeValue("SMALLINTTYPE", typeof(decimal), typeof(Decimal128Type), 123m),
+                new ColumnNetTypeArrowTypeValue("TINYINTTYPE", typeof(decimal), typeof(Decimal128Type), 123m),
+                new ColumnNetTypeArrowTypeValue("BYTEINTTYPE", typeof(decimal), typeof(Decimal128Type), 123m),
                 new ColumnNetTypeArrowTypeValue("FLOATTYPE", typeof(double), typeof(DoubleType), 123.45d),
                 new ColumnNetTypeArrowTypeValue("FLOAT4TYPE", typeof(double), typeof(DoubleType), 123.45d),
                 new ColumnNetTypeArrowTypeValue("FLOAT8TYPE", typeof(double), typeof(DoubleType), 123.45d),
