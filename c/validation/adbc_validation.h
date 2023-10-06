@@ -365,6 +365,8 @@ class StatementTest {
   void TestSqlQueryCancel();
   void TestSqlQueryErrors();
   void TestSqlQueryTrailingSemicolons();
+  void TestSqlQueryRowsAffectedDelete();
+  void TestSqlQueryRowsAffectedDeleteStream();
 
   void TestSqlSchemaInts();
   void TestSqlSchemaFloats();
@@ -398,70 +400,70 @@ class StatementTest {
                                             const char* timezone);
 };
 
-#define ADBCV_TEST_STATEMENT(FIXTURE)                                                   \
-  static_assert(std::is_base_of<adbc_validation::StatementTest, FIXTURE>::value,        \
-                ADBCV_STRINGIFY(FIXTURE) " must inherit from StatementTest");           \
-  TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                           \
-  TEST_F(FIXTURE, Release) { TestRelease(); }                                           \
-  TEST_F(FIXTURE, SqlIngestBool) { TestSqlIngestBool(); }                               \
-  TEST_F(FIXTURE, SqlIngestInt8) { TestSqlIngestInt8(); }                               \
-  TEST_F(FIXTURE, SqlIngestInt16) { TestSqlIngestInt16(); }                             \
-  TEST_F(FIXTURE, SqlIngestInt32) { TestSqlIngestInt32(); }                             \
-  TEST_F(FIXTURE, SqlIngestInt64) { TestSqlIngestInt64(); }                             \
-  TEST_F(FIXTURE, SqlIngestUInt8) { TestSqlIngestUInt8(); }                             \
-  TEST_F(FIXTURE, SqlIngestUInt16) { TestSqlIngestUInt16(); }                           \
-  TEST_F(FIXTURE, SqlIngestUInt32) { TestSqlIngestUInt32(); }                           \
-  TEST_F(FIXTURE, SqlIngestUInt64) { TestSqlIngestUInt64(); }                           \
-  TEST_F(FIXTURE, SqlIngestFloat32) { TestSqlIngestFloat32(); }                         \
-  TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                         \
-  TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                           \
-  TEST_F(FIXTURE, SqlIngestLargeString) { TestSqlIngestLargeString(); }                 \
-  TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                           \
-  TEST_F(FIXTURE, SqlIngestDuration) { TestSqlIngestDuration(); }                       \
-  TEST_F(FIXTURE, SqlIngestDate32) { TestSqlIngestDate32(); }                           \
-  TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
-  TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
-  TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
-  TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
-  TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }           \
-  TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
-  TEST_F(FIXTURE, SqlIngestReplace) { TestSqlIngestReplace(); }                         \
-  TEST_F(FIXTURE, SqlIngestCreateAppend) { TestSqlIngestCreateAppend(); }               \
-  TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                           \
-  TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); } \
-  TEST_F(FIXTURE, SqlIngestSample) { TestSqlIngestSample(); }                           \
-  TEST_F(FIXTURE, SqlIngestTargetCatalog) { TestSqlIngestTargetCatalog(); }             \
-  TEST_F(FIXTURE, SqlIngestTargetSchema) { TestSqlIngestTargetSchema(); }               \
-  TEST_F(FIXTURE, SqlIngestTargetCatalogSchema) { TestSqlIngestTargetCatalogSchema(); } \
-  TEST_F(FIXTURE, SqlIngestTemporary) { TestSqlIngestTemporary(); }                     \
-  TEST_F(FIXTURE, SqlIngestTemporaryAppend) { TestSqlIngestTemporaryAppend(); }         \
-  TEST_F(FIXTURE, SqlIngestTemporaryReplace) { TestSqlIngestTemporaryReplace(); }       \
-  TEST_F(FIXTURE, SqlIngestTemporaryExclusive) { TestSqlIngestTemporaryExclusive(); }   \
-  TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                     \
-  TEST_F(FIXTURE, SqlPrepareGetParameterSchema) { TestSqlPrepareGetParameterSchema(); } \
-  TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \
-  TEST_F(FIXTURE, SqlPrepareSelectParams) { TestSqlPrepareSelectParams(); }             \
-  TEST_F(FIXTURE, SqlPrepareUpdate) { TestSqlPrepareUpdate(); }                         \
-  TEST_F(FIXTURE, SqlPrepareUpdateNoParams) { TestSqlPrepareUpdateNoParams(); }         \
-  TEST_F(FIXTURE, SqlPrepareUpdateStream) { TestSqlPrepareUpdateStream(); }             \
-  TEST_F(FIXTURE, SqlPrepareErrorNoQuery) { TestSqlPrepareErrorNoQuery(); }             \
-  TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) {                                  \
-    TestSqlPrepareErrorParamCountMismatch();                                            \
-  }                                                                                     \
-  TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
-  TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
-  TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                           \
-  TEST_F(FIXTURE, SqlQueryInsertRollback) { TestSqlQueryInsertRollback(); }             \
-  TEST_F(FIXTURE, SqlQueryCancel) { TestSqlQueryCancel(); }                             \
-  TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                             \
-  TEST_F(FIXTURE, SqlQueryTrailingSemicolons) { TestSqlQueryTrailingSemicolons(); }     \
-  TEST_F(FIXTURE, SqlSchemaInts) { TestSqlSchemaInts(); }                               \
-  TEST_F(FIXTURE, SqlSchemaFloats) { TestSqlSchemaFloats(); }                           \
-  TEST_F(FIXTURE, SqlSchemaStrings) { TestSqlSchemaStrings(); }                         \
-  TEST_F(FIXTURE, SqlSchemaErrors) { TestSqlSchemaErrors(); }                           \
-  TEST_F(FIXTURE, Transactions) { TestTransactions(); }                                 \
-  TEST_F(FIXTURE, ConcurrentStatements) { TestConcurrentStatements(); }                 \
-  TEST_F(FIXTURE, ErrorCompatibility) { TestErrorCompatibility(); }                     \
+#define ADBCV_TEST_STATEMENT(FIXTURE)                                                               \
+  static_assert(std::is_base_of<adbc_validation::StatementTest, FIXTURE>::value,                    \
+                ADBCV_STRINGIFY(FIXTURE) " must inherit from StatementTest");                       \
+  TEST_F(FIXTURE, NewInit) { TestNewInit(); }                                                       \
+  TEST_F(FIXTURE, Release) { TestRelease(); }                                                       \
+  TEST_F(FIXTURE, SqlIngestBool) { TestSqlIngestBool(); }                                           \
+  TEST_F(FIXTURE, SqlIngestInt8) { TestSqlIngestInt8(); }                                           \
+  TEST_F(FIXTURE, SqlIngestInt16) { TestSqlIngestInt16(); }                                         \
+  TEST_F(FIXTURE, SqlIngestInt32) { TestSqlIngestInt32(); }                                         \
+  TEST_F(FIXTURE, SqlIngestInt64) { TestSqlIngestInt64(); }                                         \
+  TEST_F(FIXTURE, SqlIngestUInt8) { TestSqlIngestUInt8(); }                                         \
+  TEST_F(FIXTURE, SqlIngestUInt16) { TestSqlIngestUInt16(); }                                       \
+  TEST_F(FIXTURE, SqlIngestUInt32) { TestSqlIngestUInt32(); }                                       \
+  TEST_F(FIXTURE, SqlIngestUInt64) { TestSqlIngestUInt64(); }                                       \
+  TEST_F(FIXTURE, SqlIngestFloat32) { TestSqlIngestFloat32(); }                                     \
+  TEST_F(FIXTURE, SqlIngestFloat64) { TestSqlIngestFloat64(); }                                     \
+  TEST_F(FIXTURE, SqlIngestString) { TestSqlIngestString(); }                                       \
+  TEST_F(FIXTURE, SqlIngestLargeString) { TestSqlIngestLargeString(); }                             \
+  TEST_F(FIXTURE, SqlIngestBinary) { TestSqlIngestBinary(); }                                       \
+  TEST_F(FIXTURE, SqlIngestDuration) { TestSqlIngestDuration(); }                                   \
+  TEST_F(FIXTURE, SqlIngestDate32) { TestSqlIngestDate32(); }                                       \
+  TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                                 \
+  TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                             \
+  TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                                   \
+  TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }                         \
+  TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }                       \
+  TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                                       \
+  TEST_F(FIXTURE, SqlIngestReplace) { TestSqlIngestReplace(); }                                     \
+  TEST_F(FIXTURE, SqlIngestCreateAppend) { TestSqlIngestCreateAppend(); }                           \
+  TEST_F(FIXTURE, SqlIngestErrors) { TestSqlIngestErrors(); }                                       \
+  TEST_F(FIXTURE, SqlIngestMultipleConnections) { TestSqlIngestMultipleConnections(); }             \
+  TEST_F(FIXTURE, SqlIngestSample) { TestSqlIngestSample(); }                                       \
+  TEST_F(FIXTURE, SqlIngestTargetCatalog) { TestSqlIngestTargetCatalog(); }                         \
+  TEST_F(FIXTURE, SqlIngestTargetSchema) { TestSqlIngestTargetSchema(); }                           \
+  TEST_F(FIXTURE, SqlIngestTargetCatalogSchema) { TestSqlIngestTargetCatalogSchema(); }             \
+  TEST_F(FIXTURE, SqlIngestTemporary) { TestSqlIngestTemporary(); }                                 \
+  TEST_F(FIXTURE, SqlIngestTemporaryAppend) { TestSqlIngestTemporaryAppend(); }                     \
+  TEST_F(FIXTURE, SqlIngestTemporaryReplace) { TestSqlIngestTemporaryReplace(); }                   \
+  TEST_F(FIXTURE, SqlIngestTemporaryExclusive) { TestSqlIngestTemporaryExclusive(); }               \
+  TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                                 \
+  TEST_F(FIXTURE, SqlPrepareGetParameterSchema) { TestSqlPrepareGetParameterSchema(); }             \
+  TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }                     \
+  TEST_F(FIXTURE, SqlPrepareSelectParams) { TestSqlPrepareSelectParams(); }                         \
+  TEST_F(FIXTURE, SqlPrepareUpdate) { TestSqlPrepareUpdate(); }                                     \
+  TEST_F(FIXTURE, SqlPrepareUpdateNoParams) { TestSqlPrepareUpdateNoParams(); }                     \
+  TEST_F(FIXTURE, SqlPrepareUpdateStream) { TestSqlPrepareUpdateStream(); }                         \
+  TEST_F(FIXTURE, SqlPrepareErrorNoQuery) { TestSqlPrepareErrorNoQuery(); }                         \
+  TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) { TestSqlPrepareErrorParamCountMismatch(); }   \
+  TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                             \
+  TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                                         \
+  TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                                       \
+  TEST_F(FIXTURE, SqlQueryInsertRollback) { TestSqlQueryInsertRollback(); }                         \
+  TEST_F(FIXTURE, SqlQueryCancel) { TestSqlQueryCancel(); }                                         \
+  TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                                         \
+  TEST_F(FIXTURE, SqlQueryTrailingSemicolons) { TestSqlQueryTrailingSemicolons(); }                 \
+  TEST_F(FIXTURE, SqlQueryRowsAffectedDelete) { TestSqlQueryRowsAffectedDelete(); }                 \
+  TEST_F(FIXTURE, SqlQueryRowsAffectedDeleteStream) { TestSqlQueryRowsAffectedDeleteStream(); }     \
+  TEST_F(FIXTURE, SqlSchemaInts) { TestSqlSchemaInts(); }                                           \
+  TEST_F(FIXTURE, SqlSchemaFloats) { TestSqlSchemaFloats(); }                                       \
+  TEST_F(FIXTURE, SqlSchemaStrings) { TestSqlSchemaStrings(); }                                     \
+  TEST_F(FIXTURE, SqlSchemaErrors) { TestSqlSchemaErrors(); }                                       \
+  TEST_F(FIXTURE, Transactions) { TestTransactions(); }                                             \
+  TEST_F(FIXTURE, ConcurrentStatements) { TestConcurrentStatements(); }                             \
+  TEST_F(FIXTURE, ErrorCompatibility) { TestErrorCompatibility(); }                                 \
   TEST_F(FIXTURE, ResultInvalidation) { TestResultInvalidation(); }
 
 }  // namespace adbc_validation
