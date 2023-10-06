@@ -1218,6 +1218,7 @@ static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type
     case NANOARROW_TYPE_BOOL:
       *out = new PostgresCopyBooleanFieldWriter();
       return NANOARROW_OK;
+    case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_INT16:
       *out = new PostgresCopyNetworkEndianFieldWriter<int16_t>();
       return NANOARROW_OK;
