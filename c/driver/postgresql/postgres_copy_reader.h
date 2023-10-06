@@ -1234,6 +1234,7 @@ static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type
     case NANOARROW_TYPE_DOUBLE:
       *out = new PostgresCopyDoubleFieldWriter();
       return NANOARROW_OK;
+    case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
       *out = new PostgresCopyBinaryFieldWriter();

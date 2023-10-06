@@ -1507,7 +1507,7 @@ void StatementTest::TestSqlIngestLargeString() {
 
 void StatementTest::TestSqlIngestBinary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
-      NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x00\x01\x02\x04", "\xFE\xFF"}));
+      NANOARROW_TYPE_BINARY, {std::nullopt, "", "\x01\x02\x03\x04", "\xFE\xFF"}));
 }
 
 void StatementTest::TestSqlIngestDate32() {
