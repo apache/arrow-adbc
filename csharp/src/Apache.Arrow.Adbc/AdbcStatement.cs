@@ -117,6 +117,16 @@ namespace Apache.Arrow.Adbc
             throw AdbcException.NotImplemented("Statement does not support Prepare");
         }
 
+        /// <summary>
+        /// Set a string option on a statement.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        public virtual void SetOption(string key, string value)
+        {
+            throw AdbcException.NotImplemented("Statement does not support setting options");
+        }
+
         public virtual void Dispose()
         {
         }
