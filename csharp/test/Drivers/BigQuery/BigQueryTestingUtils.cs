@@ -25,6 +25,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
     internal class BigQueryTestingUtils
     {
+        internal const string BIGQUERY_TEST_CONFIG_VARIABLE = "BIGQUERY_TEST_CONFIG_FILE";
+
         /// <summary>
         /// Gets a the BigQuery ADBC driver with settings from the <see cref="BigQueryTestConfiguration"/>.
         /// </summary>
@@ -79,7 +81,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 {
                     if (line.Contains(placeholder))
                     {
-                        string modifiedLine = line.Replace(placeholder, $"{testConfiguration.Metadata.Database}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}");
+                        string modifiedLine = line.Replace(placeholder, $"{testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}");
 
                         content.AppendLine(modifiedLine);
                     }

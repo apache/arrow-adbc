@@ -33,6 +33,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     /// Tests are ordered to ensure data is created
     /// for the other queries to run.
     /// </remarks>
+    [TestFixture]
     public class ClientTests
     {
         /// <summary>
