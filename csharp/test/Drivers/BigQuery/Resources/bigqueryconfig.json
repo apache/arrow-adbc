@@ -4,7 +4,7 @@
     "clientSecret": "",
     "refreshToken": "",
     "metadata": {
-        "database": "",
+        "catalog": "",
         "schema": "",
         "table": "",
         "expectedColumnCount":  0

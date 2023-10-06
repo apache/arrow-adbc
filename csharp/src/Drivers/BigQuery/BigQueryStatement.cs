@@ -34,7 +34,7 @@ using TableSchema = Google.Apis.Bigquery.v2.Data.TableSchema;
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
     /// <summary>
-    /// BigQuery-specific implementation of <see cref="AdbcDriver"/>
+    /// BigQuery-specific implementation of <see cref="AdbcStatement"/>
     /// </summary>
     public class BigQueryStatement : AdbcStatement
     {
@@ -272,12 +272,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             MatchCollection matches = regex.Matches(oex.Message);
 
-            foreach (Match match in matches)
+            // need the second value from the message
+            if (matches.Count == 2)
             {
-                string value = match.Value;
+                string value = matches[1].Value;
 
                 if (!string.IsNullOrEmpty(value))
+                {
                     return value.Trim();
+                }
             }
 
             throw oex;

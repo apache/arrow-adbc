@@ -20,7 +20,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
-using System.Security.Cryptography;
+using System.Reflection.Emit;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -30,6 +31,7 @@ using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.V2;
+using System.Xml.Linq;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
@@ -255,7 +257,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             StringArray.Builder catalogNameBuilder = new StringArray.Builder();
             List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
-            string catalogRegexp = PatternToRegexp(catalogPattern);
+            string catalogRegexp = PatternToRegEx(catalogPattern);
             PagedEnumerable<ProjectList, CloudProject> catalogs = this.client.ListProjects();
 
             foreach (CloudProject catalog in catalogs)
@@ -299,7 +301,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ArrowBuffer.BitmapBuilder nullBitmapBuffer = new ArrowBuffer.BitmapBuilder();
             int length = 0;
 
-            string dbSchemaRegexp = PatternToRegexp(dbSchemaPattern);
+            string dbSchemaRegexp = PatternToRegEx(dbSchemaPattern);
 
             PagedEnumerable<DatasetList, BigQueryDataset> schemas = this.client.ListDatasets(catalog);
 
@@ -380,8 +382,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 nullBitmapBuffer.Append(true);
                 length++;
 
-                //tableConstraintsValues.Add(GetConstraintSchema(
-                //    depth, catalog, dbSchema, row["table_name"].ToString(), columnNamePattern));
+                tableConstraintsValues.Add(GetConstraintSchema(
+                    depth, catalog, dbSchema, row["table_name"].ToString(), columnNamePattern));
 
                 // TODO: add constraints
                 if (depth == GetObjectsDepth.Tables)
@@ -399,7 +401,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 tableNameBuilder.Build(),
                 tableTypeBuilder.Build(),
                 CreateNestedListArray(tableColumnsValues, new StructType(StandardSchemas.ColumnSchema)),
-                //CreateNestedListArray(tableConstraintsValues, new StructType(StandardSchemas.ConstraintSchema))
+                CreateNestedListArray(tableConstraintsValues, new StructType(StandardSchemas.ConstraintSchema))
             };
 
             return new StructArray(
@@ -631,14 +633,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 nullBitmapBuffer.Build());
         }
 
-        private string PatternToRegexp(string pattern)
+        private string PatternToRegEx(string pattern)
         {
             if (pattern == null)
                 return ".*";
 
             StringBuilder builder = new StringBuilder("(?i)^");
-            string covertedPattern = pattern.Replace("_", ".").Replace("%", ".*");
-            builder.Append(covertedPattern);
+            string convertedPattern = pattern.Replace("_", ".").Replace("%", ".*");
+            builder.Append(convertedPattern);
             builder.Append("$");
 
             return builder.ToString();
@@ -722,12 +724,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private Field.Builder SchemaFieldGenerator(string name, string type)
         {
+            int index = type.IndexOf("(");
+            index = index == -1 ? type.IndexOf("<") : Math.Max(index, type.IndexOf("<"));
+            string dataType = index == -1 ? type : type.Substring(0, index);
+
+            return GetFieldBuilder(name, type, dataType, index);
+        }
+
+        private Field.Builder GetFieldBuilder(string name, string type, string dataType, int index)
+        {
             Field.Builder fieldBuilder = new Field.Builder();
             fieldBuilder.Name(name);
-
-            int index = type.IndexOf("(");
-            index = index == -1 ? type.IndexOf("<") : Math.Min(index, type.IndexOf("<"));
-            string dataType = index == -1 ? type : type.Substring(0, index);
 
             switch (dataType)
             {
@@ -737,7 +744,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return fieldBuilder.DataType(DoubleType.Default);
                 case "BOOL" or "BOOLEAN":
                     return fieldBuilder.DataType(BooleanType.Default);
-                case "STRING":
+                case "STRING" or "GEOGRAPHY":
                     return fieldBuilder.DataType(StringType.Default);
                 case "BYTES":
                     return fieldBuilder.DataType(BinaryType.Default);
@@ -764,11 +771,36 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                     return fieldBuilder.DataType(new StructType(nestedFields));
                 case "NUMERIC" or "DECIMAL":
-                    return fieldBuilder.DataType(new Decimal128Type(38, 9));
+                    ParsedDecimalValues values128 = ParsePrecisionAndScale(type);
+                    return fieldBuilder.DataType(new Decimal128Type(values128.Precision, values128.Scale));
                 case "BIGNUMERIC" or "BIGDECIMAL":
-                    return fieldBuilder.DataType(new Decimal256Type(76, 38));
+                    ParsedDecimalValues values256 = ParsePrecisionAndScale(type);
+                    return fieldBuilder.DataType(new Decimal256Type(values256.Precision, values256.Scale));
+                case "ARRAY":
+                    string arrayType = type.Substring(dataType.Length).Replace("<", "").Replace(">", "");
+                    return GetFieldBuilder(name, type, arrayType, index);
+
                 default: throw new InvalidOperationException();
             }
+        }
+
+        private class ParsedDecimalValues
+        {
+            public int Precision { get; set; }
+            public int Scale { get; set; }
+        }
+
+        private ParsedDecimalValues ParsePrecisionAndScale(string type)
+        {
+            if(string.IsNullOrWhiteSpace(type)) throw new ArgumentNullException("type");
+
+            string[] values = type.Substring(type.IndexOf("(") + 1).TrimEnd(")".ToCharArray()).Split(",".ToCharArray());
+
+            return new ParsedDecimalValues()
+            {
+                Precision = Convert.ToInt32(values[0]),
+                Scale = Convert.ToInt32(values[1])
+            };
         }
 
         public override IArrowArrayStream GetTableTypes()
@@ -784,7 +816,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new BigQueryInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays, 1);
         }
 
-        public ListArray CreateNestedListArray(List<IArrowArray> arrayList, IArrowType dataType)
+        private ListArray CreateNestedListArray(List<IArrowArray> arrayList, IArrowType dataType)
         {
             ArrowBuffer.Builder<int> valueOffsetsBufferBuilder = new ArrowBuffer.Builder<int>();
             ArrowBuffer.BitmapBuilder validityBufferBuilder = new ArrowBuffer.BitmapBuilder();
@@ -887,7 +919,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             return bigQueryTokenResponse.AccessToken;
         }
-
 
         enum XdbcDataType
         {

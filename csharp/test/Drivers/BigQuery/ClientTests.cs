@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
             {
-                BigQueryTestConfiguration testConfiguration = Utils.GetTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+                BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
                 using (Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
                 {
@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
             {
-                BigQueryTestConfiguration testConfiguration = Utils.GetTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+                BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
                 long count = 0;
 
@@ -106,7 +106,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
             {
-                BigQueryTestConfiguration testConfiguration = Utils.GetTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+                BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
                 Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration);
 
@@ -128,7 +128,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         object value = reader.GetValue(i);
                         ColumnNetTypeArrowTypeValue ctv = expectedValues[i];
 
-                        Adbc.Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
+                        Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
                     }
                 }
             }

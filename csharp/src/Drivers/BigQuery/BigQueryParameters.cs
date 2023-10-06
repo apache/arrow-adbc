@@ -18,29 +18,25 @@
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
     /// <summary>
-    /// Parameters used for connecting to Flight SQL data sources.
+    /// Parameters used for connecting to BigQuery data sources.
     /// </summary>
     public class BigQueryParameters
     {
         public const string ProjectId = "adbc.bigquery.project_id";
-
         public const string ClientId = "adbc.bigquery.client_id";
         public const string ClientSecret = "adbc.bigquery.client_secret";
         public const string RefreshToken = "adbc.bigquery.refresh_token";
-
         public const string AuthenticationType = "adbc.bigquery.auth_type";
-
         public const string JsonCredential = "adbc.bigquery.auth_json_credential";
     }
 
     /// <summary>
-    /// Constants used for default parameter values
+    /// Constants used for default parameter values.
     /// </summary>
     public class BigQueryConstants
     {
         public const string UserAuthenticationType = "user";
         public const string ServiceAccountAuthenticationType = "service";
-
         public const string TokenEndpoint = "https://accounts.google.com/o/oauth2/token";
     }
 }
