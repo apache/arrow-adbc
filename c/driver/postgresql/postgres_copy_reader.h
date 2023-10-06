@@ -1153,7 +1153,7 @@ class PostgresCopyBooleanFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
-template <typename T>
+template <typename T, T kOffset = 0>
 class PostgresCopyNetworkEndianFieldWriter : public PostgresCopyFieldWriter {
  public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
@@ -1164,20 +1164,47 @@ class PostgresCopyNetworkEndianFieldWriter : public PostgresCopyFieldWriter {
       return ADBC_STATUS_OK;
     }
 
-    if constexpr (std::is_same<T, float>::value) {
-      uint32_t value;
-      std::memcpy(&value, &array_view_->buffer_views[1].data.as_float[index],
-                  sizeof(float));
-      NANOARROW_RETURN_NOT_OK(WriteChecked<uint32_t>(buffer, value, error));
-    } else if constexpr (std::is_same<T, double>::value) {
-      uint64_t value;
-      std::memcpy(&value, &array_view_->buffer_views[1].data.as_double[index],
-                  sizeof(double));
-      NANOARROW_RETURN_NOT_OK(WriteChecked<uint64_t>(buffer, value, error));
-    } else {
-      const T value = static_cast<T>(ArrowArrayViewGetIntUnsafe(array_view_, index));
-      NANOARROW_RETURN_NOT_OK(WriteChecked<T>(buffer, value, error));
+    const T value =
+        static_cast<T>(ArrowArrayViewGetIntUnsafe(array_view_, index)) - kOffset;
+    NANOARROW_RETURN_NOT_OK(WriteChecked<T>(buffer, value, error));
+
+    return ADBC_STATUS_OK;
+  }
+};
+
+class PostgresCopyFloatFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    const int8_t is_null = ArrowArrayViewIsNull(array_view_, index);
+    const int32_t field_size_bytes = is_null ? -1 : sizeof(uint32_t);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    if (is_null) {
+      return ADBC_STATUS_OK;
     }
+
+    uint32_t value;
+    float raw_value = ArrowArrayViewGetDoubleUnsafe(array_view_, index);
+    std::memcpy(&value, &raw_value, sizeof(uint32_t));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<uint32_t>(buffer, value, error));
+
+    return ADBC_STATUS_OK;
+  }
+};
+
+class PostgresCopyDoubleFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    const int8_t is_null = ArrowArrayViewIsNull(array_view_, index);
+    const int32_t field_size_bytes = is_null ? -1 : sizeof(uint64_t);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    if (is_null) {
+      return ADBC_STATUS_OK;
+    }
+
+    uint64_t value;
+    double raw_value = ArrowArrayViewGetDoubleUnsafe(array_view_, index);
+    std::memcpy(&value, &raw_value, sizeof(uint64_t));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<uint64_t>(buffer, value, error));
 
     return ADBC_STATUS_OK;
   }
@@ -1200,10 +1227,10 @@ static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type
       *out = new PostgresCopyNetworkEndianFieldWriter<int64_t>();
       return NANOARROW_OK;
     case NANOARROW_TYPE_FLOAT:
-      *out = new PostgresCopyNetworkEndianFieldWriter<float>();
+      *out = new PostgresCopyFloatFieldWriter();
       return NANOARROW_OK;
     case NANOARROW_TYPE_DOUBLE:
-      *out = new PostgresCopyNetworkEndianFieldWriter<double>();
+      *out = new PostgresCopyDoubleFieldWriter();
       return NANOARROW_OK;
     default:
       return EINVAL;
