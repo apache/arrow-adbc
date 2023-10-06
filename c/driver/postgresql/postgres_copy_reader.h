@@ -1172,6 +1172,44 @@ class PostgresCopyNetworkEndianFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
+class PostgresCopyFloatFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    const int8_t is_null = ArrowArrayViewIsNull(array_view_, index);
+    const int32_t field_size_bytes = is_null ? -1 : sizeof(uint32_t);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    if (is_null) {
+      return ADBC_STATUS_OK;
+    }
+
+    uint32_t value;
+    float raw_value = ArrowArrayViewGetDoubleUnsafe(array_view_, index);
+    std::memcpy(&value, &raw_value, sizeof(uint32_t));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<uint32_t>(buffer, value, error));
+
+    return ADBC_STATUS_OK;
+  }
+};
+
+class PostgresCopyDoubleFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    const int8_t is_null = ArrowArrayViewIsNull(array_view_, index);
+    const int32_t field_size_bytes = is_null ? -1 : sizeof(uint64_t);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    if (is_null) {
+      return ADBC_STATUS_OK;
+    }
+
+    uint64_t value;
+    double raw_value = ArrowArrayViewGetDoubleUnsafe(array_view_, index);
+    std::memcpy(&value, &raw_value, sizeof(uint64_t));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<uint64_t>(buffer, value, error));
+
+    return ADBC_STATUS_OK;
+  }
+};
+
 class PostgresCopyBinaryFieldWriter : public PostgresCopyFieldWriter {
  public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
@@ -1207,6 +1245,12 @@ static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type
       return NANOARROW_OK;
     case NANOARROW_TYPE_INT64:
       *out = new PostgresCopyNetworkEndianFieldWriter<int64_t>();
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_FLOAT:
+      *out = new PostgresCopyFloatFieldWriter();
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_DOUBLE:
+      *out = new PostgresCopyDoubleFieldWriter();
       return NANOARROW_OK;
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
