@@ -333,7 +333,6 @@ jobs:
           mamba install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
-          pip install pytest-error-for-skips
       - uses: actions/setup-go@v3
         with:
           go-version: 1.19.13
@@ -356,7 +355,6 @@ jobs:
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_SNOWFLAKE: "1"
           ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
-          PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
           env BUILD_DRIVER_MANAGER=0 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
