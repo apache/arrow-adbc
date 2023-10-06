@@ -447,8 +447,8 @@ class StatementTest {
   TEST_F(FIXTURE, SqlPrepareUpdateNoParams) { TestSqlPrepareUpdateNoParams(); }         \
   TEST_F(FIXTURE, SqlPrepareUpdateStream) { TestSqlPrepareUpdateStream(); }             \
   TEST_F(FIXTURE, SqlPrepareErrorNoQuery) { TestSqlPrepareErrorNoQuery(); }             \
-  TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) {
-    TestSqlPrepareErrorParamCountMismatch();
+  TEST_F(FIXTURE, SqlPrepareErrorParamCountMismatch) {                                  \
+    TestSqlPrepareErrorParamCountMismatch();                                            \
   }                                                                                     \
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
@@ -458,8 +458,8 @@ class StatementTest {
   TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                             \
   TEST_F(FIXTURE, SqlQueryTrailingSemicolons) { TestSqlQueryTrailingSemicolons(); }     \
   TEST_F(FIXTURE, SqlQueryRowsAffectedDelete) { TestSqlQueryRowsAffectedDelete(); }     \
-  TEST_F(FIXTURE, SqlQueryRowsAffectedDeleteStream) {
-    TestSqlQueryRowsAffectedDeleteStream();
+  TEST_F(FIXTURE, SqlQueryRowsAffectedDeleteStream) {                                   \
+    TestSqlQueryRowsAffectedDeleteStream();                                             \
   }                                                                                     \
   TEST_F(FIXTURE, SqlSchemaInts) { TestSqlSchemaInts(); }                               \
   TEST_F(FIXTURE, SqlSchemaFloats) { TestSqlSchemaFloats(); }                           \
