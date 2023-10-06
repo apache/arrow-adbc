@@ -149,21 +149,7 @@ func yourFunction(input interface{}) (array.Interface, error) {
         return nil, fmt.Errorf("Unsupported input type: %v", reflect.TypeOf(input))
     }
 }
-	
-
-	// Perform the desired operation on the Arrow array
-
-	// Convert the Arrow array back to a Go value
-	result, err := array.ToGoValue()
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-
-func TestParseConnectStr(t *testing.T) {
+	func TestParseConnectStr(t *testing.T) {
 	const (
 		scheme   = "grpc+tcp"
 		host     = "host"
