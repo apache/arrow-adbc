@@ -32,10 +32,10 @@ int AdbcStatusCodeToErrno(AdbcStatusCode code);
 
 // On mingw we have to specify a slightly different format attribute and ensure
 // that we use the version that knows how to deal with %lld
-#if defined(__MINGW32__)
+#if defined(__MINGW32__) && defined(__GNUC__)
 #define __USE_MINGW_ANSI_STDIO 1
 #define ADBC_CHECK_PRINTF_ATTRIBUTE __attribute__((format(__MINGW_PRINTF_FORMAT, 2, 3)))
-#else
+#elif defined(__GNUC__)
 #define ADBC_CHECK_PRINTF_ATTRIBUTE __attribute__((format(printf, 2, 3)))
 #endif
 
