@@ -3446,7 +3446,7 @@ void StatementTest::TestSqlQueryRowsAffectedDelete() {
               IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
-                                       "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
+              "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
@@ -3473,7 +3473,7 @@ void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
               IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
-                                       "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
+              "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
