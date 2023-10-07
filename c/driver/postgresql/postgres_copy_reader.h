@@ -1198,6 +1198,25 @@ class PostgresCopyDoubleFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
+class PostgresCopyIntervalFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    constexpr int32_t field_size_bytes = 16;
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+
+    struct ArrowInterval interval;
+    ArrowIntervalInit(&interval, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+    ArrowArrayViewGetIntervalUnsafe(array_view_, index, &interval);
+    const int64_t ms = interval.ns / 1000;
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int64_t>(buffer, ms, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, interval.days, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, interval.months, error));
+
+    return ADBC_STATUS_OK;
+  }
+};
+
+
 class PostgresCopyBinaryFieldWriter : public PostgresCopyFieldWriter {
  public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
@@ -1237,6 +1256,9 @@ static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
       *out = new PostgresCopyBinaryFieldWriter();
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+      *out = new PostgresCopyIntervalFieldWriter();
       return NANOARROW_OK;
     default:
       return EINVAL;
