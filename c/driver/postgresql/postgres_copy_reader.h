@@ -1290,7 +1290,6 @@ static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type
   return NANOARROW_OK;
 }
 
-
 class PostgresCopyStreamWriter {
  public:
   ArrowErrorCode Init(struct ArrowSchema* schema, struct ArrowArray* array) {
