@@ -52,6 +52,11 @@ else
   PKG_LIBS="$PKG_LIBS -lsqlite3"
 fi
 
+# Add mingw printf flag if on Windows
+if [ ! -z "$R_ADBC_SQLITE_ON_WINDOWS" ]; then
+  PKG_CPPFLAGS="$PKG_CPPFLAGS -D__USE_MINGW_ANSI_STDIO"
+fi
+
 rm -f tools/test.o sqlite_test sqlite_test.log || true
 
 sed \

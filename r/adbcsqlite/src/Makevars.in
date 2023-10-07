@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-PKG_CPPFLAGS=-I../src @cppflags@ -DADBC_EXPORT="" -D__USE_MINGW_ANSI_STDIO
+PKG_CPPFLAGS=-I../src @cppflags@ -DADBC_EXPORT=""
 PKG_LIBS=@libs@
 
 OBJECTS = init.o \
