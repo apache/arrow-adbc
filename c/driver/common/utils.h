@@ -37,6 +37,8 @@ int AdbcStatusCodeToErrno(AdbcStatusCode code);
 #define ADBC_CHECK_PRINTF_ATTRIBUTE __attribute__((format(__MINGW_PRINTF_FORMAT, 2, 3)))
 #elif defined(__GNUC__)
 #define ADBC_CHECK_PRINTF_ATTRIBUTE __attribute__((format(printf, 2, 3)))
+#else
+#define ADBC_CHECK_PRINTF_ATTRIBUTE
 #endif
 
 /// Set error message using a format string.
