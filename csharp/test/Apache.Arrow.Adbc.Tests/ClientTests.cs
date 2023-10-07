@@ -52,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tests
                 if (row[SchemaTableColumn.ColumnName].ToString() == name)
                 {
                     dataTableType = row[SchemaTableColumn.DataType] as Type;
-                    arrowType = row[SchemaTableColumn.ProviderType] as IArrowType;
+                    arrowType = row["ArrowType"] as IArrowType;
 
                 }
             }

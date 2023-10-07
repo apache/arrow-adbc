@@ -24,6 +24,8 @@ namespace Apache.Arrow.Adbc.Client
 {
     internal class SchemaConverter
     {
+        public const string ArrowTypeName = "ArrowType";
+
         /// <summary>
         /// Converts an Arrow <see cref="Schema"/> to a
         /// <see cref="DataTable"/> schema.
@@ -33,7 +35,7 @@ namespace Apache.Arrow.Adbc.Client
         /// <exception cref="ArgumentNullException"></exception>
         public static DataTable ConvertArrowSchema(Schema schema, AdbcStatement adbcStatement)
         {
-            if(schema == null)
+            if (schema == null)
                 throw new ArgumentNullException(nameof(schema));
 
             if (adbcStatement == null)
@@ -45,7 +47,8 @@ namespace Apache.Arrow.Adbc.Client
             table.Columns.Add(SchemaTableColumn.ColumnOrdinal, typeof(int));
             table.Columns.Add(SchemaTableColumn.DataType, typeof(Type));
             table.Columns.Add(SchemaTableColumn.AllowDBNull, typeof(bool));
-            table.Columns.Add(SchemaTableColumn.ProviderType, typeof(IArrowType));
+            table.Columns.Add(SchemaTableColumn.ProviderType, typeof(string));
+            table.Columns.Add(ArrowTypeName, typeof(IArrowType));
             table.Columns.Add(SchemaTableColumn.NumericPrecision, typeof(int));
             table.Columns.Add(SchemaTableColumn.NumericScale, typeof(int));
 
@@ -58,10 +61,15 @@ namespace Apache.Arrow.Adbc.Client
                 row[SchemaTableColumn.ColumnName] = f.Name;
                 row[SchemaTableColumn.ColumnOrdinal] = columnOrdinal;
                 row[SchemaTableColumn.AllowDBNull] = f.IsNullable;
-                row[SchemaTableColumn.ProviderType] = f.DataType;
+                row[ArrowTypeName] = f.DataType;
                 Type t = ConvertArrowType(f);
 
                 row[SchemaTableColumn.DataType] = t;
+
+                if (f.HasMetadata && f.Metadata.ContainsKey("logicalType"))
+                {
+                    row[SchemaTableColumn.ProviderType] = f.Metadata["logicalType"];
+                }
 
                 if
                 (
