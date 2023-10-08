@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc.Client
                 if
                 (
                     (t == typeof(decimal) || t == typeof(double) || t == typeof(float)) &&
-                    f.HasMetadata
+                    f.HasMetadata && f.Metadata.ContainsKey("precision") && f.Metadata.ContainsKey("scale")
                 )
                 {
                     row[SchemaTableColumn.NumericPrecision] = Convert.ToInt32(f.Metadata["precision"]);
