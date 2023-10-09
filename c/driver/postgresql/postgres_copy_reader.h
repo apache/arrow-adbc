@@ -1257,10 +1257,10 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
-static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type,
-                                                 PostgresCopyFieldWriter** out,
-                                                 ArrowError* error) {
-  switch (arrow_type) {
+static inline ArrowErrorCode MakeCopyFieldWriter(
+    const struct ArrowSchemaView& schema_view, PostgresCopyFieldWriter** out,
+    ArrowError* error) {
+  switch (schema_view.type) {
     case NANOARROW_TYPE_BOOL:
       *out = new PostgresCopyBooleanFieldWriter();
       return NANOARROW_OK;
@@ -1284,6 +1284,23 @@ static inline ArrowErrorCode MakeCopyFieldWriter(const enum ArrowType arrow_type
     case NANOARROW_TYPE_LARGE_STRING:
       *out = new PostgresCopyBinaryFieldWriter();
       return NANOARROW_OK;
+    case NANOARROW_TYPE_TIMESTAMP: {
+        switch (schema_view.time_unit) {
+          case NANOARROW_TIME_UNIT_NANO:
+            *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_NANO>();
+            break;
+          case NANOARROW_TIME_UNIT_MILLI:
+            *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MILLI>();
+            break;
+          case NANOARROW_TIME_UNIT_MICRO:
+            *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MICRO>();
+            break;
+          case NANOARROW_TIME_UNIT_SECOND:
+            *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_SECOND>();
+            break;
+        }
+        return NANOARROW_OK;
+    }
     default:
       return EINVAL;
   }
@@ -1334,30 +1351,8 @@ class PostgresCopyStreamWriter {
           NANOARROW_OK) {
         return ADBC_STATUS_INTERNAL;
       }
-      const ArrowType arrow_type = schema_view.type;
       PostgresCopyFieldWriter* child_writer;
-      if (arrow_type == NANOARROW_TYPE_TIMESTAMP) {
-        switch (schema_view.time_unit) {
-          case NANOARROW_TIME_UNIT_NANO:
-            child_writer = new PostgresCopyTimestampFieldWriter<
-              NANOARROW_TIME_UNIT_NANO>();
-            break;
-          case NANOARROW_TIME_UNIT_MILLI:
-            child_writer = new PostgresCopyTimestampFieldWriter<
-              NANOARROW_TIME_UNIT_MILLI>();
-            break;
-          case NANOARROW_TIME_UNIT_MICRO:
-            child_writer = new PostgresCopyTimestampFieldWriter<
-              NANOARROW_TIME_UNIT_MICRO>();
-            break;
-          case NANOARROW_TIME_UNIT_SECOND:
-            child_writer = new PostgresCopyTimestampFieldWriter<
-              NANOARROW_TIME_UNIT_SECOND>();
-            break;
-        }
-      } else {
-        NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(arrow_type, &child_writer, error));
-      }
+      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema_view, &child_writer, error));
       root_writer_.AppendChild(std::unique_ptr<PostgresCopyFieldWriter>(child_writer));
     }
 
