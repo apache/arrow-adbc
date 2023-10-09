@@ -16,6 +16,7 @@
 // under the License.
 
 #include <optional>
+#include <tuple>
 
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
@@ -658,8 +659,9 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadTimestamp) {
   ASSERT_EQ(data_buffer[1], 4102490096000000);
 }
 
-using TimestampTestParamType = std::pair<enum ArrowTimeUnit,
-                                         std::vector<std::optional<int64_t>>>;
+using TimestampTestParamType = std::tuple<enum ArrowTimeUnit,
+                                          const char *,
+                                          std::vector<std::optional<int64_t>>>;
 
 class PostgresCopyWriteTimestampTest : public testing::TestWithParam<
   TimestampTestParamType> {
@@ -671,16 +673,17 @@ TEST_P(PostgresCopyWriteTimestampTest, WritesProperBufferValues) {
   struct ArrowError na_error;
 
   TimestampTestParamType parameters = GetParam();
-  enum ArrowTimeUnit unit = parameters.first;
+  enum ArrowTimeUnit unit = std::get<0>(parameters);
+  const char* timezone = std::get<1>(parameters);
 
-  const std::vector<std::optional<int64_t>> values = parameters.second;
+  const std::vector<std::optional<int64_t>> values = std::get<2>(parameters);
 
   ArrowSchemaInit(&schema.value);
   ArrowSchemaSetTypeStruct(&schema.value, 1);
   ArrowSchemaSetTypeDateTime(schema->children[0],
                              NANOARROW_TYPE_TIMESTAMP,
                              unit,
-                             nullptr);
+                             timezone);
   ArrowSchemaSetName(schema->children[0], "col");
   ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(&schema.value,
                                                 &array.value,
@@ -703,10 +706,30 @@ TEST_P(PostgresCopyWriteTimestampTest, WritesProperBufferValues) {
 }
 
 static const std::vector<TimestampTestParamType> ts_values {
-    {NANOARROW_TIME_UNIT_SECOND, {-2208943504, 4102490096, std::nullopt}},
-    {NANOARROW_TIME_UNIT_MILLI, {-2208943504000, 4102490096000, std::nullopt}},
-    {NANOARROW_TIME_UNIT_MICRO, {-2208943504000000, 4102490096000000, std::nullopt}},
-    {NANOARROW_TIME_UNIT_NANO, {-2208943504000000000, 4102490096000000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_SECOND, nullptr,
+   {-2208943504, 4102490096, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MILLI, nullptr,
+   {-2208943504000, 4102490096000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MICRO, nullptr,
+   {-2208943504000000, 4102490096000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_NANO, nullptr,
+   {-2208943504000000000, 4102490096000000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_SECOND, "UTC",
+   {-2208943504, 4102490096, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MILLI, "UTC",
+   {-2208943504000, 4102490096000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MICRO, "UTC",
+   {-2208943504000000, 4102490096000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_NANO, "UTC",
+   {-2208943504000000000, 4102490096000000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_SECOND, "America/New_York",
+   {-2208943504, 4102490096, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MILLI, "America/New_York",
+   {-2208943504000, 4102490096000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MICRO, "America/New_York",
+   {-2208943504000000, 4102490096000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_NANO, "America/New_York",
+   {-2208943504000000000, 4102490096000000000, std::nullopt}},
 };
 
 INSTANTIATE_TEST_SUITE_P(PostgresCopyWriteTimestamp,
