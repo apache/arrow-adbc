@@ -24,7 +24,39 @@ The BigQuery ADBC driver wraps a [BigQueryClient](https://cloud.google.com/dotne
 
 ## Authentication
 
+The ADBC driver supports both Service and User accounts for use with [BigQuery authentication](https://cloud.google.com/bigquery/docs/authentication/).
+
+## Authorization
+
+The ADBC driver passes the configured credentials to BigQuery, but you may need to ensure the credentials have proper [authorization](https://cloud.google.com/bigquery/docs/authorization/) to perform operations such as read and write.
+
 ## Parameters
+
+**adbc.bigquery.allow_large_results**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Sets the [AllowLargeResults](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_AllowLargeResults) value of the QueryOptions to `true` if configured; otherwise, the default is `false`.
+
+**adbc.bigquery.auth_type**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Required. Must be `user` or `service`
+
+https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_AllowLargeResults
+
+**adbc.bigquery.client_id**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The OAuth client ID. Required for `user` authentication.
+
+**adbc.bigquery.client_secret**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The OAuth client secret. Required for `user` authentication.
+
+**adbc.bigquery.auth_json_credential**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Required if using `service` authentication. This value is passed to the [GoogleCredential.FromJson](https://cloud.google.com/dotnet/docs/reference/Google.Apis/latest/Google.Apis.Auth.OAuth2.GoogleCredential#Google_Apis_Auth_OAuth2_GoogleCredential_FromJson_System_String) method.
+
+**adbc.bigquery.project_id**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The [Project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects) used for accessing BigQuery.
+
+**adbc.bigquery.refresh_token**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The refresh token used for when the generated OAuth token expires. Required for `user` authentication.
+
+**adbc.bigquery.use_legacy_sql**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Sets the [UseLegacySql](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_UseLegacySql) value of the QueryOptions to `true` if configured; otherwise, the default is `false`.
 
 
 ## Type Support
@@ -33,22 +65,24 @@ There are some limitations to both C# and the C# Arrow implementation that limit
 
 The following table depicts how the BigQuery ADBC driver converts a BigQuery type to an Arrow type.
 
-|  BigQuery Type   |      Arrow Type   |
+|  BigQuery Type   |      Arrow Type   | C# Type
 |----------|:-------------:|
-| BIGNUMERIC |    String   |
-| BOOL |    Boolean   |
-| BYTES |    Binary   |
-| DATE |    Date64   |
-| DATETIME |    Timestamp   |
-| FLOAT64 |    Double   |
-| GEOGRAPHY |    String   |
-| INT64 |    Int64   |
-| NUMERIC |    Decimal128   |
-| STRING |    String   |
-| STRUCT |    String*   |
-| TIME |Time64   |
-| TIMESTAMP |    Timestamp   |
+| BIGNUMERIC |    Decimal256    | decimal / string*
+| BOOL |    Boolean   | bool
+| BYTES |    Binary   | byte[]
+| DATE |    Date64   | DateTime
+| DATETIME |    Timestamp   | DateTime
+| FLOAT64 |    Double   | double
+| GEOGRAPHY |    String   | string
+| INT64 |    Int64   | long
+| NUMERIC |    Decimal128   | decimal / string*
+| STRING |    String   | string
+| STRUCT |    String+   | string
+| TIME |Time64   | long
+| TIMESTAMP |    Timestamp   | DateTimeOffset
 
-*A JSON string
+*An attempt is made to parse the original value as a `decimal` in C#. If that fails, the driver attempts to parse the overflow exception and return the original value.
+
++A JSON string
 
 See [Arrow Schema Details](https://cloud.google.com/bigquery/docs/reference/storage/#arrow_schema_details) for how BigQuery handles Arrow types.

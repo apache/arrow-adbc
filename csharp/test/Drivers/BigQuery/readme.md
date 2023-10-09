@@ -20,6 +20,9 @@
 # BigQuery
 The BigQuery tests are used to validate both the driver and the ADO.NET client library for use with the BigQuery ADBC driver. This includes the ability to read metadata, execute queries and updates, and validate the return types of the data.
 
+## Setup
+The environment variable `BIGQUERY_TEST_CONFIG_FILE` must be set to a configuration file for the tests to execute. If it is not, the tests will show as passed with an output message that they are skipped.
+
 ## Configuration
 
 The following values can be setup in the configuration

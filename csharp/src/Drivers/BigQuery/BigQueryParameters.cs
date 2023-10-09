@@ -28,6 +28,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string RefreshToken = "adbc.bigquery.refresh_token";
         public const string AuthenticationType = "adbc.bigquery.auth_type";
         public const string JsonCredential = "adbc.bigquery.auth_json_credential";
+        public const string AllowLargeResults = "adbc.bigquery.allow_large_results";
+        public const string UseLegacySQL = "adbc.bigquery.use_legacy_sql";
     }
 
     /// <summary>

@@ -238,11 +238,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             foreach (KeyValuePair<string,string> keyValuePair in this.Options)
             {
-                if (keyValuePair.Key == "AllowLargeResults")
+                if (keyValuePair.Key == BigQueryParameters.AllowLargeResults)
                 {
                     options.AllowLargeResults = true ? keyValuePair.Value.ToLower().Equals("true") : false;
                 }
-                if (keyValuePair.Key == "UseLegacySQL")
+                if (keyValuePair.Key == BigQueryParameters.UseLegacySQL)
                 {
                     options.UseLegacySql = true ? keyValuePair.Value.ToLower().Equals("true") : false;
                 }

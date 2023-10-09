@@ -220,7 +220,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                 QueryResult queryResult = statement.ExecuteQuery();
 
-                Adbc.Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
+                Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
             }
         }
     }

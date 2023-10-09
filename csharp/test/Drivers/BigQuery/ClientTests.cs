@@ -62,11 +62,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
+        [Test, Order(2)]
+        public void CanClientGetSchema()
+        {
+            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+
+            using (Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            {
+                AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+
+                adbcConnection.Open();
+
+                AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
+
+                DataTable table = reader.GetSchemaTable();
+
+                // there is one row per field
+                Assert.AreEqual(testConfiguration.Metadata.ExpectedColumnCount, table.Rows.Count);
+            }
+        }
+
         /// <summary>
         /// Validates if the client can connect to a live server and
         /// parse the results.
         /// </summary>
-        [Test, Order(2)]
+        [Test, Order(3)]
         public void CanClientExecuteQuery()
         {
             if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
@@ -101,7 +121,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// Validates if the client is retrieving and converting values
         /// to the expected types.
         /// </summary>
-        [Test, Order(3)]
+        [Test, Order(4)]
         public void VerifyTypesAndValues()
         {
             if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))

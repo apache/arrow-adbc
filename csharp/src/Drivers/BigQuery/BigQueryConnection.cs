@@ -20,8 +20,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
-using System.Reflection.Emit;
-using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -31,7 +29,6 @@ using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.V2;
-using System.Xml.Linq;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
@@ -872,11 +869,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             foreach (KeyValuePair<string,string> keyValuePair in this.properties)
             {
-                if (keyValuePair.Key == "AllowLargeResults")
+                if (keyValuePair.Key == BigQueryParameters.AllowLargeResults)
                 {
                     options[keyValuePair.Key] = keyValuePair.Value;
                 }
-                if (keyValuePair.Key == "UseLegacySQL")
+                if (keyValuePair.Key == BigQueryParameters.UseLegacySQL)
                 {
                     options[keyValuePair.Key] = keyValuePair.Value;
                 }

@@ -167,8 +167,13 @@ namespace Apache.Arrow.Adbc.Client
         {
             switch (behavior)
             {
+                case CommandBehavior.SingleResult:
+                case CommandBehavior.KeyInfo:
+                case CommandBehavior.SequentialAccess:
+                case CommandBehavior.CloseConnection:
                 case CommandBehavior.SingleRow:
-                    throw new InvalidOperationException("Cannot read rows in Arrow");
+                    throw new InvalidOperationException($"{behavior} is not supported with this provider");
+
                 default:
                     QueryResult result = this.ExecuteQuery();
                     return new AdbcDataReader(this, result);
