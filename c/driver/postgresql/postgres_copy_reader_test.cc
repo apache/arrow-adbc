@@ -17,6 +17,7 @@
 
 #include <optional>
 
+#include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
 
@@ -657,18 +658,28 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadTimestamp) {
   ASSERT_EQ(data_buffer[1], 4102490096000000);
 }
 
-TEST(PostgresCopyUtilsTest, PostgresCopyWriteTimestampSecond) {
+using TimestampTestParamType = std::pair<enum ArrowTimeUnit,
+                                         std::vector<std::optional<int64_t>>>;
+
+class PostgresCopyWriteTimestampTest : public testing::TestWithParam<
+  TimestampTestParamType> {
+};
+
+TEST_P(PostgresCopyWriteTimestampTest, WritesProperBufferValues) {
   adbc_validation::Handle<struct ArrowSchema> schema;
   adbc_validation::Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  const std::vector<std::optional<int64_t>> values = {
-    -2208943504, 4102490096, std::nullopt};
+
+  TimestampTestParamType parameters = GetParam();
+  enum ArrowTimeUnit unit = parameters.first;
+
+  const std::vector<std::optional<int64_t>> values = parameters.second;
 
   ArrowSchemaInit(&schema.value);
   ArrowSchemaSetTypeStruct(&schema.value, 1);
   ArrowSchemaSetTypeDateTime(schema->children[0],
                              NANOARROW_TYPE_TIMESTAMP,
-                             NANOARROW_TIME_UNIT_SECOND,
+                             unit,
                              nullptr);
   ArrowSchemaSetName(schema->children[0], "col");
   ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(&schema.value,
@@ -691,108 +702,16 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteTimestampSecond) {
   }
 }
 
-TEST(PostgresCopyUtilsTest, PostgresCopyWriteTimestampMilli) {
-  adbc_validation::Handle<struct ArrowSchema> schema;
-  adbc_validation::Handle<struct ArrowArray> array;
-  struct ArrowError na_error;
-  const std::vector<std::optional<int64_t>> values = {
-    -2208943504000, 4102490096000, std::nullopt};
+static const std::vector<TimestampTestParamType> ts_values {
+    {NANOARROW_TIME_UNIT_SECOND, {-2208943504, 4102490096, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MILLI, {-2208943504000, 4102490096000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_MICRO, {-2208943504000000, 4102490096000000, std::nullopt}},
+    {NANOARROW_TIME_UNIT_NANO, {-2208943504000000000, 4102490096000000000, std::nullopt}},
+};
 
-  ArrowSchemaInit(&schema.value);
-  ArrowSchemaSetTypeStruct(&schema.value, 1);
-  ArrowSchemaSetTypeDateTime(schema->children[0],
-                             NANOARROW_TYPE_TIMESTAMP,
-                             NANOARROW_TIME_UNIT_MILLI,
-                             nullptr);
-  ArrowSchemaSetName(schema->children[0], "col");
-  ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(&schema.value,
-                                                &array.value,
-                                                &na_error,
-                                                values),
-              ADBC_STATUS_OK);
-
-  PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
-  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
-
-  const struct ArrowBuffer buf = tester.WriteBuffer();
-  // The last 2 bytes of a message can be transmitted via PQputCopyData
-  // so no need to test those bytes from the Writer
-  constexpr size_t buf_size = sizeof(kTestPgCopyTimestamp) - 2;
-  ASSERT_EQ(buf.size_bytes, buf_size);
-  for (size_t i = 0; i < buf_size; i++) {
-    ASSERT_EQ(buf.data[i], kTestPgCopyTimestamp[i]);
-  }
-}
-
-TEST(PostgresCopyUtilsTest, PostgresCopyWriteTimestampMicro) {
-  adbc_validation::Handle<struct ArrowSchema> schema;
-  adbc_validation::Handle<struct ArrowArray> array;
-  struct ArrowError na_error;
-  const std::vector<std::optional<int64_t>> values = {
-    -2208943504000000, 4102490096000000, std::nullopt};
-
-  ArrowSchemaInit(&schema.value);
-  ArrowSchemaSetTypeStruct(&schema.value, 1);
-  ArrowSchemaSetTypeDateTime(schema->children[0],
-                             NANOARROW_TYPE_TIMESTAMP,
-                             NANOARROW_TIME_UNIT_MICRO,
-                             nullptr);
-  ArrowSchemaSetName(schema->children[0], "col");
-  ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(&schema.value,
-                                                &array.value,
-                                                &na_error,
-                                                values),
-              ADBC_STATUS_OK);
-
-  PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
-  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
-
-  const struct ArrowBuffer buf = tester.WriteBuffer();
-  // The last 2 bytes of a message can be transmitted via PQputCopyData
-  // so no need to test those bytes from the Writer
-  constexpr size_t buf_size = sizeof(kTestPgCopyTimestamp) - 2;
-  ASSERT_EQ(buf.size_bytes, buf_size);
-  for (size_t i = 0; i < buf_size; i++) {
-    ASSERT_EQ(buf.data[i], kTestPgCopyTimestamp[i]);
-  }
-}
-
-TEST(PostgresCopyUtilsTest, PostgresCopyWriteTimestampNano) {
-  adbc_validation::Handle<struct ArrowSchema> schema;
-  adbc_validation::Handle<struct ArrowArray> array;
-  struct ArrowError na_error;
-  const std::vector<std::optional<int64_t>> values = {
-    -2208943504000000000, 4102490096000000000, std::nullopt};
-
-  ArrowSchemaInit(&schema.value);
-  ArrowSchemaSetTypeStruct(&schema.value, 1);
-  ArrowSchemaSetTypeDateTime(schema->children[0],
-                             NANOARROW_TYPE_TIMESTAMP,
-                             NANOARROW_TIME_UNIT_NANO,
-                             nullptr);
-  ArrowSchemaSetName(schema->children[0], "col");
-  ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(&schema.value,
-                                                &array.value,
-                                                &na_error,
-                                                values),
-              ADBC_STATUS_OK);
-
-  PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
-  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
-
-  const struct ArrowBuffer buf = tester.WriteBuffer();
-  // The last 2 bytes of a message can be transmitted via PQputCopyData
-  // so no need to test those bytes from the Writer
-  constexpr size_t buf_size = sizeof(kTestPgCopyTimestamp) - 2;
-  ASSERT_EQ(buf.size_bytes, buf_size);
-  for (size_t i = 0; i < buf_size; i++) {
-    ASSERT_EQ(buf.data[i], kTestPgCopyTimestamp[i]);
-  }
-}
-
+INSTANTIATE_TEST_SUITE_P(PostgresCopyWriteTimestamp,
+                         PostgresCopyWriteTimestampTest,
+                         testing::ValuesIn(ts_values));
 
 // COPY (SELECT CAST("col" AS TEXT) AS "col" FROM (  VALUES ('abc'), ('1234'),
 // (NULL::text)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
