@@ -86,6 +86,32 @@ class DriverQuirks {
     return std::nullopt;
   }
 
+  /// \brief Get the statement to create a table with a composite primary key,
+  /// or nullopt if not supported.
+  ///
+  /// The table should have two columns:
+  /// - "id_primary_col1" of Arrow type int64 (together forming a composite primary key)
+  /// - "id_primary_col2" of Arrow type int64 (together forming a composite primary key)
+  virtual std::optional<std::string> CompositePrimaryKeyTableDdl(
+      std::string_view name) const {
+    return std::nullopt;
+  }
+
+  /// \brief Get the statement to create a child table with foreign keys,
+  /// or nullopt if not supported.
+  ///
+  /// The child table should have three columns:
+  /// - "id_child_col1" of Arrow type int64 (primary key, foreign key) referencing "id" in
+  /// the parent 1 primary key table
+  /// - "id_child_col2" of Arrow type int64 (composite foreign key) together with:
+  /// - "id_child_col3" of Arrow type int64 (composite foreign key) referencing
+  /// "(id_primary_col1, id_primary_col2)" in the parent 2 primary key table
+  virtual std::optional<std::string> ForeignKeyChildTableDdl(
+      std::string_view child_name, std::string_view parent_name_1,
+      std::string_view parent_name_2) const {
+    return std::nullopt;
+  }
+
   /// \brief Return the SQL to reference the bind parameter of the given index
   virtual std::string BindParameter(int index) const { return "?"; }
 
@@ -215,6 +241,7 @@ class ConnectionTest {
   void TestMetadataGetObjectsColumns();
   void TestMetadataGetObjectsConstraints();
   void TestMetadataGetObjectsPrimaryKey();
+  void TestMetadataGetObjectsForeignKey();
   void TestMetadataGetObjectsCancel();
 
   void TestMetadataGetStatisticNames();
@@ -255,6 +282,7 @@ class ConnectionTest {
     TestMetadataGetObjectsConstraints();                                                \
   }                                                                                     \
   TEST_F(FIXTURE, MetadataGetObjectsPrimaryKey) { TestMetadataGetObjectsPrimaryKey(); } \
+  TEST_F(FIXTURE, MetadataGetObjectsForeignKey) { TestMetadataGetObjectsForeignKey(); } \
   TEST_F(FIXTURE, MetadataGetObjectsCancel) { TestMetadataGetObjectsCancel(); }         \
   TEST_F(FIXTURE, MetadataGetStatisticNames) { TestMetadataGetStatisticNames(); }
 
@@ -332,8 +360,11 @@ class StatementTest {
   void TestSqlQueryFloats();
   void TestSqlQueryStrings();
 
+  void TestSqlQueryInsertRollback();
+
   void TestSqlQueryCancel();
   void TestSqlQueryErrors();
+  void TestSqlQueryTrailingSemicolons();
 
   void TestSqlSchemaInts();
   void TestSqlSchemaFloats();
@@ -420,8 +451,10 @@ class StatementTest {
   TEST_F(FIXTURE, SqlQueryInts) { TestSqlQueryInts(); }                                 \
   TEST_F(FIXTURE, SqlQueryFloats) { TestSqlQueryFloats(); }                             \
   TEST_F(FIXTURE, SqlQueryStrings) { TestSqlQueryStrings(); }                           \
+  TEST_F(FIXTURE, SqlQueryInsertRollback) { TestSqlQueryInsertRollback(); }             \
   TEST_F(FIXTURE, SqlQueryCancel) { TestSqlQueryCancel(); }                             \
   TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                             \
+  TEST_F(FIXTURE, SqlQueryTrailingSemicolons) { TestSqlQueryTrailingSemicolons(); }     \
   TEST_F(FIXTURE, SqlSchemaInts) { TestSqlSchemaInts(); }                               \
   TEST_F(FIXTURE, SqlSchemaFloats) { TestSqlSchemaFloats(); }                           \
   TEST_F(FIXTURE, SqlSchemaStrings) { TestSqlSchemaStrings(); }                         \

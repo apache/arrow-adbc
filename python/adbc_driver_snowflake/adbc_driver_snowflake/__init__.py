@@ -85,6 +85,14 @@ class DatabaseOptions(enum.Enum):
     SCHEMA = "adbc.snowflake.sql.schema"
     SSL_SKIP_VERIFY = "adbc.snowflake.sql.client_option.tls_skip_verify"
     WAREHOUSE = "adbc.snowflake.sql.warehouse"
+    #: control the data type which will be used for NUMBER columns that
+    #: use a FIXED data type. By default, this is enabled and NUMBER
+    #: columns will all be returned as Decimal128 columns using the precision
+    #: and scale of the NUMBER type. If disabled, fixed-point data types
+    #: with a scale of 0 will be returned as Int64 columns, and a non-zero
+    #: scale will be returned as a Float64 column. This option must be
+    #: set using 'true' or 'false'.
+    USE_HIGH_PRECISION = "adbc.snowflake.sql.client_option.use_high_precision"
 
 
 class StatementOptions(enum.Enum):

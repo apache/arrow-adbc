@@ -107,6 +107,32 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  std::optional<std::string> CompositePrimaryKeyTableDdl(
+      std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id_primary_col1 SERIAL, id_primary_col2 SERIAL,";
+    ddl += " PRIMARY KEY (id_primary_col1, id_primary_col2));";
+    return ddl;
+  }
+
+  std::optional<std::string> ForeignKeyChildTableDdl(
+      std::string_view child_name, std::string_view parent_name_1,
+      std::string_view parent_name_2) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += child_name;
+    ddl += " (id_child_col1 SERIAL PRIMARY KEY, ";
+    ddl += " id_child_col2 SERIAL, ";
+    ddl += " id_child_col3 SERIAL, ";
+    ddl += " FOREIGN KEY (id_child_col3) REFERENCES ";
+    ddl += parent_name_1;
+    ddl += " (id),";
+    ddl += " FOREIGN KEY (id_child_col1, id_child_col2) REFERENCES ";
+    ddl += parent_name_2;
+    ddl += " (id_primary_col1, id_primary_col2))";
+    return ddl;
+  }
+
   std::string catalog() const override { return "postgres"; }
   std::string db_schema() const override { return "public"; }
 
@@ -877,6 +903,55 @@ class PostgresStatementTest : public ::testing::Test,
   PostgresQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(PostgresStatementTest)
+
+TEST_F(PostgresStatementTest, SqlIngestSchema) {
+  const std::string schema_name = "testschema";
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "CREATE SCHEMA IF NOT EXISTS testschema", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  std::string drop = "DROP TABLE IF EXISTS testschema.schematable";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, drop.c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  {
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> batch;
+
+    ArrowSchemaInit(&schema.value);
+    ASSERT_THAT(ArrowSchemaSetTypeStruct(&schema.value, 1), adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT64),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetName(schema->children[0], "ints"),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT((adbc_validation::MakeBatch<int64_t>(
+                    &schema.value, &batch.value, static_cast<struct ArrowError*>(nullptr),
+                    {-1, 0, 1, std::nullopt})),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       "schematable", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                       ADBC_INGEST_OPTION_MODE_CREATE, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                                       schema_name.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+}
 
 TEST_F(PostgresStatementTest, SqlIngestTemporaryTable) {
   ASSERT_THAT(quirks()->DropTempTable(&connection, "temptable", &error),

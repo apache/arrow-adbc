@@ -287,7 +287,7 @@ static AdbcStatusCode LogStatementSetSqlQuery(struct AdbcStatement* statement,
 
 static AdbcStatusCode LogDriverInitFunc(int version, void* raw_driver,
                                         struct AdbcError* error) {
-  if (version != ADBC_VERSION_1_0_0) return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (version != ADBC_VERSION_1_1_0) return ADBC_STATUS_NOT_IMPLEMENTED;
   struct AdbcDriver* driver = (struct AdbcDriver*)raw_driver;
   memset(driver, 0, sizeof(struct AdbcDriver));
 

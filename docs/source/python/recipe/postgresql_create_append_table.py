@@ -68,6 +68,8 @@ with conn.cursor() as cur:
     else:
         raise RuntimeError("Should have failed!")
 
+conn.rollback()
+
 #: Instead, we can append to the table.
 with conn.cursor() as cur:
     cur.adbc_ingest("example", data, mode="append")

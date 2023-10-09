@@ -19,6 +19,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <string.h>
+
 #include <adbc.h>
 #include "adbc_driver_manager.h"
 
@@ -52,6 +54,7 @@ static void finalize_driver_xptr(SEXP driver_xptr) {
 
   if (driver->release != nullptr) {
     AdbcError error;
+    memset(&error, 0, sizeof(AdbcError));
     int status = driver->release(driver, &error);
     adbc_error_warn(status, &error, "finalize_driver_xptr()");
   }
@@ -68,6 +71,7 @@ static void finalize_database_xptr(SEXP database_xptr) {
 
   if (database->private_data != nullptr) {
     AdbcError error;
+    memset(&error, 0, sizeof(AdbcError));
     int status = AdbcDatabaseRelease(database, &error);
     adbc_error_warn(status, &error, "finalize_database_xptr()");
   }
@@ -82,10 +86,15 @@ extern "C" SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp) {
   SEXP driver_xptr = PROTECT(adbc_allocate_xptr<AdbcDriver>());
   auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
 
-  AdbcError error;
   int status =
-      AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_0_0, driver, &error);
-  adbc_error_stop(status, &error, "RAdbcLoadDriver()");
+      AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_1_0, driver, nullptr);
+  if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
+    status = AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_0_0, driver, nullptr);
+  }
+
+  if (status != ADBC_STATUS_OK) {
+    Rf_error("Failed to initialize driver");
+  }
 
   UNPROTECT(1);
   return driver_xptr;
@@ -102,10 +111,16 @@ extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr) {
   R_RegisterCFinalizer(driver_xptr, &finalize_driver_xptr);
   auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
 
-  AdbcError error;
   int status =
-      AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_0_0, driver, &error);
-  adbc_error_stop(status, &error, "RAdbcLoadDriverFromInitFunc()");
+      AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_1_0, driver, nullptr);
+  if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
+    status =
+        AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_0_0, driver, nullptr);
+  }
+
+  if (status != ADBC_STATUS_OK) {
+    Rf_error("Failed to initialize driver");
+  }
 
   UNPROTECT(1);
   return driver_xptr;
@@ -118,6 +133,7 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
   AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr);
 
   AdbcError error;
+  memset(&error, 0, sizeof(AdbcError));
   int status = AdbcDatabaseNew(database, &error);
   adbc_error_stop(status, &error, "RAdbcDatabaseNew()");
 
@@ -139,6 +155,7 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
 extern "C" SEXP RAdbcMoveDatabase(SEXP database_xptr) {
   AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr);
   SEXP database_xptr_new = PROTECT(adbc_allocate_xptr<AdbcDatabase>());
+  R_RegisterCFinalizer(database_xptr_new, &finalize_database_xptr);
   AdbcDatabase* database_new = adbc_from_xptr<AdbcDatabase>(database_xptr_new);
 
   memcpy(database_new, database, sizeof(AdbcDatabase));
@@ -184,6 +201,7 @@ static void finalize_connection_xptr(SEXP connection_xptr) {
 
   if (connection->private_data != nullptr) {
     AdbcError error;
+    memset(&error, 0, sizeof(AdbcError));
     int status = AdbcConnectionRelease(connection, &error);
     adbc_error_warn(status, &error, "finalize_connection_xptr()");
   }
@@ -198,6 +216,7 @@ extern "C" SEXP RAdbcConnectionNew(void) {
   AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
 
   AdbcError error;
+  memset(&error, 0, sizeof(AdbcError));
   int status = AdbcConnectionNew(connection, &error);
   adbc_error_stop(status, &error, "RAdbcConnectionNew()");
 
@@ -208,6 +227,7 @@ extern "C" SEXP RAdbcConnectionNew(void) {
 extern "C" SEXP RAdbcMoveConnection(SEXP connection_xptr) {
   AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   SEXP connection_xptr_new = PROTECT(adbc_allocate_xptr<AdbcConnection>());
+  R_RegisterCFinalizer(connection_xptr_new, &finalize_connection_xptr);
   AdbcConnection* connection_new = adbc_from_xptr<AdbcConnection>(connection_xptr_new);
 
   memcpy(connection_new, connection, sizeof(AdbcConnection));
@@ -369,6 +389,7 @@ static void finalize_statement_xptr(SEXP statement_xptr) {
 
   if (statement->private_data != nullptr) {
     AdbcError error;
+    memset(&error, 0, sizeof(AdbcError));
     int status = AdbcStatementRelease(statement, &error);
     adbc_error_warn(status, &error, "finalize_statement_xptr()");
   }
@@ -384,6 +405,7 @@ extern "C" SEXP RAdbcStatementNew(SEXP connection_xptr) {
   AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
 
   AdbcError error;
+  memset(&error, 0, sizeof(AdbcError));
   int status = AdbcStatementNew(connection, statement, &error);
   adbc_error_stop(status, &error, "RAdbcStatementNew()");
 
@@ -396,6 +418,7 @@ extern "C" SEXP RAdbcStatementNew(SEXP connection_xptr) {
 extern "C" SEXP RAdbcMoveStatement(SEXP statement_xptr) {
   AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
   SEXP statement_xptr_new = PROTECT(adbc_allocate_xptr<AdbcStatement>());
+  R_RegisterCFinalizer(statement_xptr_new, &finalize_statement_xptr);
   AdbcStatement* statement_new = adbc_from_xptr<AdbcStatement>(statement_xptr_new);
 
   memcpy(statement_new, statement, sizeof(AdbcStatement));

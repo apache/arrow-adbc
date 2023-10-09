@@ -19,6 +19,8 @@
 
 #include <cstring>
 
+#include <nanoarrow/nanoarrow.hpp>
+
 #ifdef _WIN32
 #include <winsock2.h>
 #else
@@ -132,5 +134,41 @@ static inline uint64_t ToNetworkFloat8(double v) {
   memcpy(&vint, &v, sizeof(uint64_t));
   return SwapHostToNetwork(vint);
 }
+
+/// Helper to manage resources with RAII
+
+template <typename T>
+struct Releaser {
+  static void Release(T* value) {
+    if (value->release) {
+      value->release(value);
+    }
+  }
+};
+
+template <>
+struct Releaser<struct ArrowBuffer> {
+  static void Release(struct ArrowBuffer* buffer) { ArrowBufferReset(buffer); }
+};
+
+template <>
+struct Releaser<struct ArrowArrayView> {
+  static void Release(struct ArrowArrayView* value) {
+    if (value->storage_type != NANOARROW_TYPE_UNINITIALIZED) {
+      ArrowArrayViewReset(value);
+    }
+  }
+};
+
+template <typename Resource>
+struct Handle {
+  Resource value;
+
+  Handle() { std::memset(&value, 0, sizeof(value)); }
+
+  ~Handle() { Releaser<Resource>::Release(&value); }
+
+  Resource* operator->() { return &value; }
+};
 
 }  // namespace adbcpq

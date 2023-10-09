@@ -158,3 +158,23 @@ For a project that does try to tackle the problem of defining a
 vendor-independent query language, see Substrait_.
 
 .. _Substrait: https://substrait.io/
+
+When is the next release?
+=========================
+
+There is no fixed release cadence.  We currently target releases every 6-8
+weeks.
+
+Once a release is tagged, the project then gives at least 72 hours for the
+`Arrow PMC`_ to vote on the release.  Once the vote concludes, then packages
+are uploaded to places like PyPI, conda-forge, and so on.  So even after a
+release, it may take some time for binary packages to be available.
+
+.. _Arrow PMC: https://arrow.apache.org/committers/
+
+When/where is 1.0? Is this project ready?
+=========================================
+
+At this time, there is no formal date planned for a "1.0" release of the
+implementation.  :doc:`driver/status` has a rough overview of the status of
+individual driver implementations.

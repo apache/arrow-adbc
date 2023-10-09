@@ -219,6 +219,37 @@ a listing).
          # This will open a new browser tab, and block until you log in.
          con <- adbc_connection_init(db)
 
+   .. tab-item:: Go
+      :sync: go
+
+      .. code-block:: go
+
+         import (
+            "context"
+
+            "github.com/apache/arrow-adbc/go/adbc"
+            "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
+         )
+
+         func main() {
+            var drv snowflake.Driver
+            db, err := drv.NewDatabase(map[string]string{
+                snowflake.OptionAccount: "foobar",
+                snowflake.OptionAuthType: snowflake.OptionValueAuthExternalBrowser,
+                adbc.OptionKeyUsername: "jdoe@example.com",
+            })
+            if err != nil {
+                // handle error
+            }
+
+            cnxn, err := db.Open(context.Background())
+            if err != nil {
+                // handle error
+            }
+            defer cnxn.Close()
+         }
+
+
 
 Bulk Ingestion
 --------------
@@ -390,6 +421,14 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
 ``adbc.snowflake.sql.client_option.store_temp_creds``
     When ``true``, the ID token is cached in the credential manager. Defaults
     to ``true`` on Windows/OSX, ``false`` on Linux.
+
+``adbc.snowflake.sql.client_option.use_high_precision``
+    When ``true``, fixed-point snowflake columns with the type ``NUMBER``
+    will be returned as ``Decimal128`` type Arrow columns using the precision
+    and scale of the ``NUMBER`` type. When ``false``, ``NUMBER`` columns
+    with a scale of 0 will be returned as ``Int64`` typed Arrow columns and
+    non-zero scaled columns will be returned as ``Float64`` typed Arrow columns.
+    The default is ``true``.
 
 
 Metadata

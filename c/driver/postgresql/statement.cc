@@ -83,37 +83,6 @@ struct OneValueStream {
   }
 };
 
-/// Helper to manage resources with RAII
-
-template <typename T>
-struct Releaser {
-  static void Release(T* value) {
-    if (value->release) {
-      value->release(value);
-    }
-  }
-};
-
-template <>
-struct Releaser<struct ArrowArrayView> {
-  static void Release(struct ArrowArrayView* value) {
-    if (value->storage_type != NANOARROW_TYPE_UNINITIALIZED) {
-      ArrowArrayViewReset(value);
-    }
-  }
-};
-
-template <typename Resource>
-struct Handle {
-  Resource value;
-
-  Handle() { std::memset(&value, 0, sizeof(value)); }
-
-  ~Handle() { Releaser<Resource>::Release(&value); }
-
-  Resource* operator->() { return &value; }
-};
-
 /// Build an PostgresType object from a PGresult*
 AdbcStatusCode ResolvePostgresType(const PostgresTypeResolver& type_resolver,
                                    PGresult* result, PostgresType* out,
@@ -1341,6 +1310,11 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     return ExecuteUpdateBulk(rows_affected, error);
   }
 
+  // Remove trailing semicolon(s) from the query before feeding it into COPY
+  while (!query_.empty() && query_.back() == ';') {
+    query_.pop_back();
+  }
+
   if (query_.empty()) {
     SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
     return ADBC_STATUS_INVALID_STATE;
@@ -1607,14 +1581,16 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
     prepared_ = false;
   } else if (std::strcmp(key, ADBC_INGEST_OPTION_TEMPORARY) == 0) {
     if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      // https://github.com/apache/arrow-adbc/issues/1109: only clear the
+      // schema if enabling since Python always sets the flag explicitly
       ingest_.temporary = true;
+      ingest_.db_schema.clear();
     } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
       ingest_.temporary = false;
     } else {
       SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
-    ingest_.db_schema.clear();
     prepared_ = false;
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     int64_t int_value = std::atol(value);

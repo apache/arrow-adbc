@@ -51,7 +51,7 @@ test_that("default options can open a database and execute a query", {
 
   adbcdrivermanager::adbc_statement_set_sql_query(
     stmt,
-    "SELECT * FROM REGION ORDER BY R_REGIONKEY"
+    "SELECT R_REGIONKEY FROM REGION ORDER BY R_REGIONKEY"
   )
 
   stream <- nanoarrow::nanoarrow_allocate_array_stream()

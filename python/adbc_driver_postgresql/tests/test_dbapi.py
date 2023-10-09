@@ -118,11 +118,15 @@ def test_query_cancel(postgres: dbapi.Connection) -> None:
         with pytest.raises(postgres.OperationalError, match="canceling statement"):
             cur.fetchone()
 
+    postgres.rollback()
+
     with postgres.cursor() as cur:
         cur.execute("SELECT * FROM test_batch_size")
         cur.adbc_cancel()
         with pytest.raises(postgres.OperationalError, match="canceling statement"):
             cur.fetch_arrow_table()
+
+    postgres.rollback()
 
     with postgres.cursor() as cur:
         cur.execute("SELECT * FROM test_batch_size")
@@ -263,6 +267,21 @@ def test_ingest(postgres: dbapi.Connection) -> None:
 
         with pytest.raises(dbapi.NotSupportedError):
             cur.adbc_ingest("foo", table, catalog_name="main")
+
+
+def test_ingest_schema(postgres: dbapi.Connection) -> None:
+    table = pyarrow.Table.from_pydict({"numbers": [1, 2], "letters": ["a", "b"]})
+
+    with postgres.cursor() as cur:
+        cur.execute("CREATE SCHEMA IF NOT EXISTS testschema")
+        cur.execute("DROP TABLE IF EXISTS testschema.foo")
+
+        postgres.commit()
+
+        cur.adbc_ingest("foo", table, mode="create", db_schema_name="testschema")
+
+        cur.execute("SELECT * FROM testschema.foo ORDER BY numbers")
+        assert cur.fetch_arrow_table() == table
 
 
 def test_ingest_temporary(postgres: dbapi.Connection) -> None:

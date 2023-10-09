@@ -29,13 +29,21 @@ repos:
       exclude: ci/conda/meta.yaml
     - id: end-of-file-fixer
       exclude: "^r/.*?/_snaps/.*?.md$"
+    - id: mixed-line-ending
+      name: "Mixed line endings (LF)"
+      args: [--fix=lf]
+      exclude: '\.(bat|sln|csproj)$'
+    - id: mixed-line-ending
+      name: "Mixed line endings (CRLF)"
+      args: [--fix=crlf]
+      files: '\.(bat|sln|csproj)$'
     - id: trailing-whitespace
       exclude: "^r/.*?/_snaps/.*?.md$"
   - repo: https://github.com/pocc/pre-commit-hooks
     rev: v1.3.5
     hooks:
       - id: clang-format
-        args: [-i]
+        args: [-i, --version=14]
         types_or: [c, c++]
   - repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13

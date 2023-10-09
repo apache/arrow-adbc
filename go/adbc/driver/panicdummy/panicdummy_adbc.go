@@ -44,6 +44,11 @@ type Driver struct {
 	Alloc memory.Allocator
 }
 
+// NewDriver creates a new PanicDummy driver using the given Arrow allocator.
+func NewDriver(alloc memory.Allocator) adbc.Driver {
+	return Driver{Alloc: alloc}
+}
+
 func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	maybePanic("NewDatabase")
 	return &database{}, nil

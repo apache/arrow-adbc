@@ -675,7 +675,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.9", "3.10", "3.11"]
+        python_version: ["3.9", "3.10", "3.11", "3.12"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg
@@ -727,9 +727,11 @@ jobs:
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
 
+      # Windows needs newer Go than 1.19
+      # https://github.com/golang/go/issues/51007
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.19.13
+          go-version: 1.20.8
           check-latest: true
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
@@ -763,6 +765,8 @@ jobs:
 
       - name: Test wheel
         shell: cmd
+        # PyArrow wheels not yet available
+        if: matrix.python_version != "3.12"
         run: |
           pushd adbc
           where python.exe
@@ -958,22 +962,3 @@ jobs:
           ./ci/scripts/python_wheel_upload.sh upload-staging/adbc_*.tar.gz upload-staging/*.whl
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
-
-  clean-gemfury:
-    name: "Clean old releases"
-    runs-on: ubuntu-latest
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-    needs:
-      - upload-gemfury
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Clean old releases
-        run: |
-          gem install --user-install gemfury
-          ruby ./ci/scripts/gemfury_clean.rb
-        env:
-          GEMFURY_API_TOKEN: ${{ secrets.GEMFURY_API_TOKEN }}
