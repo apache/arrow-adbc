@@ -16,6 +16,7 @@
 // under the License.
 
 #include <optional>
+#include <tuple>
 
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
@@ -712,6 +713,65 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteInterval) {
     ASSERT_EQ(buf.data[i], kTestPgCopyInterval[i]);
   }
 }
+
+// Writing a DURATION from NANOARROW produces INTERVAL in postgres without day/month
+// COPY (SELECT CAST(col AS INTERVAL) FROM (  VALUES ('-4 seconds'),
+// ('4 seconds'), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT BINARY);
+static uint8_t kTestPgCopyDuration[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xc2, 0xf7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3d, 0x09,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff};
+using DurationTestParamType = std::tuple<enum ArrowTimeUnit,
+  std::vector<std::optional<int64_t>>>;
+
+class PostgresCopyWriteDurationTest : public testing::TestWithParam<
+  DurationTestParamType> {};
+
+TEST_P(PostgresCopyWriteDurationTest, WritesProperBufferValues) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  const enum ArrowType type = NANOARROW_TYPE_DURATION;
+
+  DurationTestParamType parameters = GetParam();
+  enum ArrowTimeUnit unit = std::get<0>(parameters);
+  const std::vector<std::optional<int64_t>> values = std::get<1>(parameters);
+
+  ArrowSchemaInit(&schema.value);
+  ArrowSchemaSetTypeStruct(&schema.value, 1);
+  ArrowSchemaSetTypeDateTime(schema->children[0], type, unit, nullptr);
+  ArrowSchemaSetName(schema->children[0], "col");
+  ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(
+              &schema.value, &array.value, &na_error, values), ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
+  // so no need to test those bytes from the Writer
+  constexpr size_t buf_size = sizeof(kTestPgCopyDuration) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyDuration[i]);
+  }
+}
+
+static const std::vector<DurationTestParamType> duration_params {
+  {NANOARROW_TIME_UNIT_SECOND, {-4, 4, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MILLI, {-4000, 4000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MICRO, {-4000000, 4000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_NANO, {-4000000000, 4000000000, std::nullopt}},
+};
+
+INSTANTIATE_TEST_SUITE_P(PostgresCopyWriteDuration,
+                         PostgresCopyWriteDurationTest,
+                         testing::ValuesIn(duration_params));
+
 
 // COPY (SELECT CAST("col" AS TEXT) AS "col" FROM (  VALUES ('abc'), ('1234'),
 // (NULL::text)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
