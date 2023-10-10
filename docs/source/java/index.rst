@@ -25,4 +25,3 @@ Java
    quickstart
    driver_manager
    api/index
-   recipe/index

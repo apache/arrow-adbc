@@ -44,6 +44,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_design",
     "sphinxcontrib.mermaid",
+    "javasphinx",
 ]
 templates_path = ["_templates"]
 
