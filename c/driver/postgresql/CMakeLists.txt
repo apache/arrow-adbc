@@ -92,3 +92,20 @@ if(ADBC_BUILD_TESTS)
                                      ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-postgresql-test)
 endif()
+
+if(ADBC_BUILD_BENCHMARKS)
+  find_package(benchmark REQUIRED)
+  # TODO: should add_benchmark be linking benchmark::benchmark for us?
+  add_benchmark(postgresql_benchmark
+                EXTRA_LINK_LIBS
+                adbc_driver_common
+                adbc_validation
+                nanoarrow
+                ${TEST_LINK_LIBS}
+                benchmark::benchmark)
+  # add_benchmark replaces _ with - when creating target
+  target_include_directories(postgresql-benchmark
+                             PRIVATE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
+endif()
