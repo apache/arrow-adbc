@@ -107,6 +107,29 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
+        [Test, Order(2)]
+        public void CanClientGetSchema()
+        {
+            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
+            {
+                SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+                using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+                {
+                    AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+
+                    adbcConnection.Open();
+
+                    AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
+
+                    DataTable table = reader.GetSchemaTable();
+
+                    // there is one row per field
+                    Assert.AreEqual(testConfiguration.Metadata.ExpectedColumnCount, table.Rows.Count);
+                }
+            }
+        }
+
         /// <summary>
         /// Validates if the client can connect to a live server
         /// and parse the results.
