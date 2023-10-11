@@ -774,14 +774,15 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteLargeString) {
   }
 }
 
-// COPY (SELECT CAST("col" AS BYTEA) AS "col" FROM (  VALUES ((""),
+// COPY (SELECT CAST("col" AS BYTEA) AS "col" FROM (  VALUES ((""), ("\x00\x01"),
 // ("\x01\x02\x03\x04"), ("\xFE\xFF"), (NULL)) AS drvd("col")) TO STDOUT
 // WITH (FORMAT binary);
 static uint8_t kTestPgCopyBinary[] = {
     0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x01, 0x02, 0x03, 0x04, 0x00, 0x01,
-    0x00, 0x00, 0x00, 0x02, 0xfe, 0xff, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04,
+    0x01, 0x02, 0x03, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0xfe, 0xff,
+    0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 TEST(PostgresCopyUtilsTest, PostgresCopyReadBinary) {
   ArrowBufferView data;
@@ -800,7 +801,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBinary) {
 
   nanoarrow::UniqueArray array;
   ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
-  ASSERT_EQ(array->length, 4);
+  ASSERT_EQ(array->length, 5);
   ASSERT_EQ(array->n_children, 1);
 
   auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
@@ -812,14 +813,17 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadBinary) {
   ASSERT_TRUE(ArrowBitGet(validity, 0));
   ASSERT_TRUE(ArrowBitGet(validity, 1));
   ASSERT_TRUE(ArrowBitGet(validity, 2));
-  ASSERT_FALSE(ArrowBitGet(validity, 3));
+  ASSERT_TRUE(ArrowBitGet(validity, 3));
+  ASSERT_FALSE(ArrowBitGet(validity, 4));
 
   ASSERT_EQ(offsets[0], 0);
   ASSERT_EQ(offsets[1], 0);
-  ASSERT_EQ(offsets[2], 4);
-  ASSERT_EQ(offsets[3], 6);
+  ASSERT_EQ(offsets[2], 0);
+  ASSERT_EQ(offsets[3], 4);
   ASSERT_EQ(offsets[4], 6);
+  ASSERT_EQ(offsets[5], 6);
 
+  ASSERT_EQ(std::string(data_buffer + 0, 0), "");
   ASSERT_EQ(std::string(data_buffer + 0, 0), "");
   ASSERT_EQ(std::string(data_buffer + 0, 4), "\x01\x02\x03\x04");
   ASSERT_EQ(std::string(data_buffer + 4, 2), "\xfe\xff");
@@ -833,7 +837,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteBinary) {
             ADBC_STATUS_OK);
   ASSERT_EQ(adbc_validation::MakeBatch<std::string>(
             &schema.value, &array.value, &na_error,
-            {"", "\x01\x02\x03\x04", "\xfe\xff", std::nullopt}),
+            {"", "\x00\x01", "\x01\x02\x03\x04", "\xfe\xff", std::nullopt}),
             ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester tester;
