@@ -1509,7 +1509,7 @@ void StatementTest::TestSqlIngestBinary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::byte>>(
       NANOARROW_TYPE_BINARY,
       {
-        std::nullopt, {},
+        std::nullopt, std::vector<std::byte>{},
         std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
         std::vector<std::byte>{
           std::byte{0x01}, std::byte{0x02}, std::byte{0x03}, std::byte{0x04}
