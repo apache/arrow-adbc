@@ -1245,6 +1245,12 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
     }
 
     if (!overflow_safe) {
+      ArrowErrorSet(
+          error,
+          "Row %" PRId64 " timestamp value %" PRId64 " with unit %d would overflow",
+          index,
+          raw_value,
+          TU);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
