@@ -233,9 +233,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             if (!string.IsNullOrEmpty(testConfiguration.AuthenticationTokenPath))
             {
-                string privateKey = File.ReadAllText(testConfiguration.AuthenticationTokenPath);
                 builder["adbc.snowflake.sql.auth_type"] = testConfiguration.AuthenticationType;
-                builder["adbc.snowflake.sql.client_option.auth_token"] = privateKey;
+
+                string privateKey = File.ReadAllText(testConfiguration.AuthenticationTokenPath);
+
+                if (testConfiguration.AuthenticationType.Equals("auth_jwt", StringComparison.OrdinalIgnoreCase))
+                {
+                    builder["adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value"] = privateKey;
+                }
             }
             else
             {

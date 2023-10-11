@@ -67,7 +67,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             SnowflakeTestConfiguration testConfiguration
            )
         {
-            Dictionary<string, string> options = new Dictionary<string, string>() { };
             AdbcDriver snowflakeDriver = CAdbcDriverImporter.Load(testConfiguration.DriverPath, testConfiguration.DriverEntryPoint);
 
             return snowflakeDriver;

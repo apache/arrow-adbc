@@ -87,8 +87,12 @@ const (
 	// specify the RSA private key to use to sign the JWT
 	// this should point to a file containing a PKCS1 private key to be
 	// loaded. Commonly encoded in PEM blocks of type "RSA PRIVATE KEY"
-	OptionJwtPrivateKey    = "adbc.snowflake.sql.client_option.jwt_private_key"
-	OptionDisableTelemetry = "adbc.snowflake.sql.client_option.disable_telemetry"
+	OptionJwtPrivateKey = "adbc.snowflake.sql.client_option.jwt_private_key"
+	// parses an unencrypted private key in PKCS #8, ASN.1 DER form. Specify the private key
+	// value without having to load it from the file system. Commonly encoded in PEM blocks
+	// of type "RSA PRIVATE KEY"
+	OptionJwtPrivateKeyPkcs8Value = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value"
+	OptionDisableTelemetry        = "adbc.snowflake.sql.client_option.disable_telemetry"
 	// snowflake driver logging level
 	OptionLogTracing = "adbc.snowflake.sql.client_option.tracing"
 	// When true, the MFA token is cached in the credential manager. True by default

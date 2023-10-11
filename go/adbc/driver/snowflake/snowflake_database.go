@@ -19,8 +19,10 @@ package snowflake
 
 import (
 	"context"
+	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
 	"fmt"
 	"net/url"
 	"os"
@@ -335,6 +337,26 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
+		case OptionJwtPrivateKeyPkcs8Value:
+			block, _ := pem.Decode([]byte(v))
+
+			fmt.Println(block.Type)
+
+			if block == nil {
+				panic("failed to parse PEM block containing the private key")
+			}
+
+			parsedKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+
+			if err != nil {
+				return adbc.Error{
+					Msg:  "failed parsing PKCS8 private key: " + err.Error(),
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+
+			d.cfg.PrivateKey = parsedKey.(*rsa.PrivateKey)
+
 		case OptionClientRequestMFAToken:
 			switch v {
 			case adbc.OptionValueEnabled:
