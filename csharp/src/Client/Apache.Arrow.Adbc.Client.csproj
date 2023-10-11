@@ -7,5 +7,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
   </ItemGroup>
-
 </Project>
