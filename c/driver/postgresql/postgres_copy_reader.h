@@ -1293,6 +1293,11 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
     case NANOARROW_TYPE_INT64:
       *out = new PostgresCopyNetworkEndianFieldWriter<int64_t>();
       return NANOARROW_OK;
+    case NANOARROW_TYPE_DATE32: {
+      constexpr int32_t kPostgresDateEpoch = 10957;
+      *out = new PostgresCopyNetworkEndianFieldWriter<int32_t, kPostgresDateEpoch>();
+      return NANOARROW_OK;
+    }
     case NANOARROW_TYPE_FLOAT:
       *out = new PostgresCopyFloatFieldWriter();
       return NANOARROW_OK;
