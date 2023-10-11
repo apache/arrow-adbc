@@ -49,8 +49,8 @@ JDBC-style API
 
 ADBC provides a high-level API in the style of the JDBC standard.
 
-Creating a Connection
----------------------
+Usage
+-----
 
 .. code-block:: java
 
@@ -60,32 +60,23 @@ Creating a Connection
        BufferAllocator allocator = new RootAllocator();
        AdbcDatabase db = new JdbcDriver(allocator).open(parameters);
        AdbcConnection adbcConnection = db.connect();
+       AdbcStatement stmt = adbcConnection.createStatement()
 
    ) {
-       // run queries, etc.
+       stmt.setSqlQuery("select * from foo");
+       AdbcStatement.QueryResult queryResult = stmt.executeQuery();
+       while (queryResult.getReader().loadNextBatch()) {
+           // process batch
+       }
    }  catch (AdbcException e) {
        // throw
    }
 
 In application code, the connection must be closed after usage or memory may leak.
-It is recommended to wrap the connection in a try-resource block for automatic
+It is recommended to wrap the connection in a try-with-resources block for automatic
 resource management.  In this example, we are connecting to a PostgreSQL database,
 specifically the default database "postgres".
 
-Creating a Statement
---------------------
-
-.. code-block:: java
-
-   AdbcStatement stmt = adbcConnection.createStatement();
-
-Executing a Query
------------------
-
-.. code-block:: java
-
-   stmt.setSqlQuery("select * from foo");
-   AdbcStatement.QueryResult queryResult = stmt.executeQuery();
-   while (queryResult.getReader().loadNextBatch()) {
-       // process batch
-   }
+Note that creating a statement is also wrapped in the try-with-resources block.
+Assuming we have a table "foo" in the database, an example for setting and executing the
+query is also provided.

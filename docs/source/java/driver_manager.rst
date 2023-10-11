@@ -19,10 +19,6 @@
 Driver Manager
 ==============
 
-The driver manager is a library that provides bindings to the ADBC Java API. It delegates to dynamically-loaded drivers. This allows applications to use multiple drivers simultaneously and decouple themselves from the specific driver.
-
-The Java driver manager provides both low-level bindings that are essentially the same as the C API and high-level bindings that implement the JDBC standard.
-
 Installation
 ============
 
@@ -35,23 +31,6 @@ To include the ADBC Driver Manager in your Maven project, add the following depe
        <artifactId>adbc-driver-manager</artifactId>
        <version>1.0.0</version>
    </dependency>
-
-Usage
-=====
-
-First, load the driver:
-
-.. code-block:: java
-
-   import org.apache.arrow.adbc.core.AdbcDatabase;
-   import org.apache.arrow.adbc.core.AdbcDriver;
-   import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
-
-Then, create a connection:
-
-.. code-block:: java
-
-   Connection conn = DriverManager.getConnection("jdbc:adbc:sqlite:sample.db");
 
 API Reference
 =============
