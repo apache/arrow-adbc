@@ -31,7 +31,7 @@ To include ADBC in your Maven project, add the following dependency:
    <dependency>
        <groupId>org.apache.arrow.adbc</groupId>
        <artifactId>adbc-driver-jdbc</artifactId>
-       <version>0.7.0</version>
+       <version>${adbc.version}</version>
    </dependency>
 
 For the examples in this section, the following imports are required:

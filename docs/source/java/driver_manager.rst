@@ -27,9 +27,9 @@ To include the ADBC Driver Manager in your Maven project, add the following depe
 .. code-block:: xml
 
    <dependency>
-       <groupId>com.adbc</groupId>
-       <artifactId>adbc-driver-manager</artifactId>
-       <version>1.0.0</version>
+      <groupId>org.apache.arrow.adbc</groupId>
+      <artifactId>adbc-driver-manager</artifactId>
+      <version>${adbc.version}</version>
    </dependency>
 
 API Reference
