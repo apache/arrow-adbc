@@ -15,13 +15,24 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-====
-Java
-====
+==============
+Driver Manager
+==============
 
-.. toctree::
-   :maxdepth: 2
+Installation
+============
 
-   quickstart
-   driver_manager
-   api/index
+To include the ADBC Driver Manager in your Maven project, add the following dependency:
+
+.. code-block:: xml
+
+   <dependency>
+      <groupId>org.apache.arrow.adbc</groupId>
+      <artifactId>adbc-driver-manager</artifactId>
+      <version>${adbc.version}</version>
+   </dependency>
+
+API Reference
+=============
+
+See the API reference: :doc:`./api/adbc_driver_manager`.
