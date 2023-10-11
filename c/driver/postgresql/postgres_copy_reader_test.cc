@@ -18,6 +18,7 @@
 #include <optional>
 #include <tuple>
 
+#include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
 
@@ -679,6 +680,125 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   EXPECT_EQ(std::string(item.data, item.size_bytes), "inf");
 }
 
+// COPY (SELECT CAST(col AS TIMESTAMP) FROM (  VALUES ('1900-01-01 12:34:56'),
+// ('2100-01-01 12:34:56'), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT BINARY);
+static uint8_t kTestPgCopyTimestamp[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
+    0x00, 0x08, 0xff, 0xf4, 0xc9, 0xf9, 0x07, 0xe5, 0x9c, 0x00, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x0b, 0x36, 0x30, 0x2d, 0xa5,
+    0xfc, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+TEST(PostgresCopyUtilsTest, PostgresCopyReadTimestamp) {
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyTimestamp;
+  data.size_bytes = sizeof(kTestPgCopyTimestamp);
+
+  auto col_type = PostgresType(PostgresTypeId::kTimestamp);
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", col_type);
+
+  PostgresCopyStreamTester tester;
+  ASSERT_EQ(tester.Init(input_type), NANOARROW_OK);
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyTimestamp, sizeof(kTestPgCopyTimestamp));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 3);
+  ASSERT_EQ(array->n_children, 1);
+
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto data_buffer = reinterpret_cast<const int64_t*>(array->children[0]->buffers[1]);
+  ASSERT_NE(validity, nullptr);
+  ASSERT_NE(data_buffer, nullptr);
+
+  ASSERT_TRUE(ArrowBitGet(validity, 0));
+  ASSERT_TRUE(ArrowBitGet(validity, 1));
+  ASSERT_FALSE(ArrowBitGet(validity, 3));
+
+  ASSERT_EQ(data_buffer[0], -2208943504000000);
+  ASSERT_EQ(data_buffer[1], 4102490096000000);
+}
+
+using TimestampTestParamType = std::tuple<enum ArrowTimeUnit,
+                                          const char *,
+                                          std::vector<std::optional<int64_t>>>;
+
+class PostgresCopyWriteTimestampTest : public testing::TestWithParam<
+  TimestampTestParamType> {
+};
+
+TEST_P(PostgresCopyWriteTimestampTest, WritesProperBufferValues) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+
+  TimestampTestParamType parameters = GetParam();
+  enum ArrowTimeUnit unit = std::get<0>(parameters);
+  const char* timezone = std::get<1>(parameters);
+
+  const std::vector<std::optional<int64_t>> values = std::get<2>(parameters);
+
+  ArrowSchemaInit(&schema.value);
+  ArrowSchemaSetTypeStruct(&schema.value, 1);
+  ArrowSchemaSetTypeDateTime(schema->children[0],
+                             NANOARROW_TYPE_TIMESTAMP,
+                             unit,
+                             timezone);
+  ArrowSchemaSetName(schema->children[0], "col");
+  ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(&schema.value,
+                                                &array.value,
+                                                &na_error,
+                                                values),
+              ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
+  // so no need to test those bytes from the Writer
+  constexpr size_t buf_size = sizeof(kTestPgCopyTimestamp) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyTimestamp[i]);
+  }
+}
+
+static const std::vector<TimestampTestParamType> ts_values {
+  {NANOARROW_TIME_UNIT_SECOND, nullptr,
+   {-2208943504, 4102490096, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MILLI, nullptr,
+   {-2208943504000, 4102490096000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MICRO, nullptr,
+   {-2208943504000000, 4102490096000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_NANO, nullptr,
+   {-2208943504000000000, 4102490096000000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_SECOND, "UTC",
+   {-2208943504, 4102490096, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MILLI, "UTC",
+   {-2208943504000, 4102490096000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MICRO, "UTC",
+   {-2208943504000000, 4102490096000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_NANO, "UTC",
+   {-2208943504000000000, 4102490096000000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_SECOND, "America/New_York",
+   {-2208943504, 4102490096, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MILLI, "America/New_York",
+   {-2208943504000, 4102490096000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_MICRO, "America/New_York",
+   {-2208943504000000, 4102490096000000, std::nullopt}},
+  {NANOARROW_TIME_UNIT_NANO, "America/New_York",
+   {-2208943504000000000, 4102490096000000000, std::nullopt}},
+};
+
+INSTANTIATE_TEST_SUITE_P(PostgresCopyWriteTimestamp,
+                         PostgresCopyWriteTimestampTest,
+                         testing::ValuesIn(ts_values));
+
 // COPY (SELECT CAST(col AS INTERVAL) FROM (  VALUES ('-1 months -2 days -4 seconds'),
 // ('1 months 2 days 4 seconds'), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT BINARY);
 static uint8_t kTestPgCopyInterval[] = {
@@ -835,7 +955,6 @@ static const std::vector<DurationTestParamType> duration_params {
 INSTANTIATE_TEST_SUITE_P(PostgresCopyWriteDuration,
                          PostgresCopyWriteDurationTest,
                          testing::ValuesIn(duration_params));
-
 
 // COPY (SELECT CAST("col" AS TEXT) AS "col" FROM (  VALUES ('abc'), ('1234'),
 // (NULL::text)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
