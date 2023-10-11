@@ -40,7 +40,7 @@ echo "Testing R CMD SHLIB with $PKG_CPPFLAGS $PKG_LIBS -lsqlite3"
 PKG_CPPFLAGS="$PKG_CPPFLAGS" PKG_LIBS="$PKG_LIBS -lsqlite3" \
   $R_HOME/bin/R CMD SHLIB tools/test.c -o sqlite_test >sqlite_test.log 2>&1
 
-if [ $? -ne 0 ] || [ ! -z "$FORCE_VENDORED_SQLITE3"]; then
+if [ $? -ne 0 ] || [ ! -z "$FORCE_VENDORED_SQLITE3" ]; then
   echo "Forcing vendored sqlite3 or #include <sqlite3.h>/-lsqlite3 failed:"
   cat sqlite_test.log
 
@@ -50,6 +50,11 @@ if [ $? -ne 0 ] || [ ! -z "$FORCE_VENDORED_SQLITE3"]; then
 else
   echo "Success!"
   PKG_LIBS="$PKG_LIBS -lsqlite3"
+fi
+
+# Add mingw printf flag if on Windows
+if [ ! -z "$R_ADBC_SQLITE_ON_WINDOWS" ]; then
+  PKG_CPPFLAGS="$PKG_CPPFLAGS -D__USE_MINGW_ANSI_STDIO"
 fi
 
 rm -f tools/test.o sqlite_test sqlite_test.log || true
