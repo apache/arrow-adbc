@@ -982,4 +982,5 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
   ASSERT_DOUBLE_EQ(data_buffer2[1], 345.678);
   ASSERT_DOUBLE_EQ(data_buffer2[2], 0);
 }
+
 }  // namespace adbcpq
