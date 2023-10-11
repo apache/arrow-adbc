@@ -841,8 +841,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ArrowBuffer validityBuffer = nullCount > 0
                 ? validityBufferBuilder.Build() : ArrowBuffer.Empty;
 
-            // ArrowArrayConcatenator.Concatenate is still internal and having concerns with struct type, replace the concatenate in the future
-            IArrowArray value = ArrowArrayFactory.BuildArray(ArrayDataConcatenator.Concatenate(arrayDataList));
+            ArrayData data = ArrayDataConcatenator.Concatenate(arrayDataList);
+
+            IArrowArray value = null;
+
+            if (data == null)
+                value = new NullArray(0);
+            else
+                value = ArrowArrayFactory.BuildArray(data);
 
             valueOffsetsBufferBuilder.Append(length);
 
