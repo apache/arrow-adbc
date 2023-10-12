@@ -21,10 +21,12 @@ import (
 	"context"
 	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
 	"fmt"
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -328,13 +330,28 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 				}
 			}
 
-			d.cfg.PrivateKey, err = x509.ParsePKCS1PrivateKey(data)
+			var block []byte
+			if strings.Contains(string(data), "PRIVATE KEY") {
+				b, _ := pem.Decode(data)
+				block = b.Bytes
+			} else {
+				block = data
+			}
+
+			var key any
+			key, err = x509.ParsePKCS1PrivateKey(block)
+			if err != nil && strings.Contains(err.Error(), "use ParsePKCS8PrivateKey instead") {
+				key, err = x509.ParsePKCS8PrivateKey(block)
+			}
+			
 			if err != nil {
 				return adbc.Error{
 					Msg:  "failed parsing private key file '" + v + "': " + err.Error(),
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
+
+			d.cfg.PrivateKey = key
 		case OptionClientRequestMFAToken:
 			switch v {
 			case adbc.OptionValueEnabled:
