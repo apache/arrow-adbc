@@ -147,17 +147,11 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
     state.SkipWithError("Could not set bulk_ingest statement option");
   }
 
-  const char* insert_query =
-    "INSERT INTO adbc_postgresql_ingest_benchmark VALUES ($1, $2, $3, $4, $5, $6)";
-
-  if (AdbcStatementSetSqlQuery(&insert_stmt.value,
-                               insert_query,
-                               &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not set INSERT SQL query");
-  }
-
-  if (AdbcStatementPrepare(&insert_stmt.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not PREPARE SQL query");
+  if (AdbcStatementSetOption(&insert_stmt.value,
+                             ADBC_INGEST_OPTION_MODE,
+                             ADBC_INGEST_OPTION_MODE_APPEND,
+                             &error) != ADBC_STATUS_OK) {
+    state.SkipWithError("Could not set bulk_ingest append option");
   }
 
   for (auto _ : state) {
