@@ -1273,11 +1273,11 @@ class PostgresCopyDurationFieldWriter : public PostgresCopyFieldWriter {
 class PostgresCopyBinaryFieldWriter : public PostgresCopyFieldWriter {
  public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
-    struct ArrowStringView string_view =
-        ArrowArrayViewGetStringUnsafe(array_view_, index);
-    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, string_view.size_bytes, error));
+    struct ArrowBufferView buffer_view =
+        ArrowArrayViewGetBytesUnsafe(array_view_, index);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, buffer_view.size_bytes, error));
     NANOARROW_RETURN_NOT_OK(
-        ArrowBufferAppend(buffer, string_view.data, string_view.size_bytes));
+        ArrowBufferAppend(buffer, buffer_view.data.as_uint8, buffer_view.size_bytes));
 
     return ADBC_STATUS_OK;
   }
@@ -1362,6 +1362,7 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
     case NANOARROW_TYPE_DOUBLE:
       *out = new PostgresCopyDoubleFieldWriter();
       return NANOARROW_OK;
+    case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
       *out = new PostgresCopyBinaryFieldWriter();

@@ -1052,6 +1052,98 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteLargeString) {
   }
 }
 
+// COPY (SELECT CAST("col" AS BYTEA) AS "col" FROM (  VALUES (''), ('\x0001'),
+// ('\x01020304'), ('\xFEFF'), (NULL)) AS drvd("col")) TO STDOUT
+// WITH (FORMAT binary);
+static uint8_t kTestPgCopyBinary[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04,
+    0x01, 0x02, 0x03, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0xfe, 0xff,
+    0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+TEST(PostgresCopyUtilsTest, PostgresCopyReadBinary) {
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyBinary;
+  data.size_bytes = sizeof(kTestPgCopyBinary);
+
+  auto col_type = PostgresType(PostgresTypeId::kBytea);
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", col_type);
+
+  PostgresCopyStreamTester tester;
+  ASSERT_EQ(tester.Init(input_type), NANOARROW_OK);
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyBinary, sizeof(kTestPgCopyBinary));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 5);
+  ASSERT_EQ(array->n_children, 1);
+
+  auto validity = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[0]);
+  auto offsets = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);
+  auto data_buffer = reinterpret_cast<const uint8_t*>(array->children[0]->buffers[2]);
+  ASSERT_NE(validity, nullptr);
+  ASSERT_NE(data_buffer, nullptr);
+
+  ASSERT_TRUE(ArrowBitGet(validity, 0));
+  ASSERT_TRUE(ArrowBitGet(validity, 1));
+  ASSERT_TRUE(ArrowBitGet(validity, 2));
+  ASSERT_TRUE(ArrowBitGet(validity, 3));
+  ASSERT_FALSE(ArrowBitGet(validity, 4));
+
+  ASSERT_EQ(offsets[0], 0);
+  ASSERT_EQ(offsets[1], 0);
+  ASSERT_EQ(offsets[2], 2);
+  ASSERT_EQ(offsets[3], 6);
+  ASSERT_EQ(offsets[4], 8);
+  ASSERT_EQ(offsets[5], 8);
+
+  ASSERT_EQ(data_buffer[0], 0x00);
+  ASSERT_EQ(data_buffer[1], 0x01);
+  ASSERT_EQ(data_buffer[2], 0x01);
+  ASSERT_EQ(data_buffer[3], 0x02);
+  ASSERT_EQ(data_buffer[4], 0x03);
+  ASSERT_EQ(data_buffer[5], 0x04);
+  ASSERT_EQ(data_buffer[6], 0xfe);
+  ASSERT_EQ(data_buffer[7], 0xff);
+}
+
+TEST(PostgresCopyUtilsTest, PostgresCopyWriteBinary) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_EQ(adbc_validation::MakeSchema(&schema.value, {{"col", NANOARROW_TYPE_BINARY}}),
+            ADBC_STATUS_OK);
+  ASSERT_EQ(adbc_validation::MakeBatch<std::vector<std::byte>>(
+            &schema.value, &array.value, &na_error,
+            {
+              std::vector<std::byte>{},
+              std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
+              std::vector<std::byte>{
+                std::byte{0x01}, std::byte{0x02}, std::byte{0x03}, std::byte{0x04}
+              },
+              std::vector<std::byte>{std::byte{0xfe}, std::byte{0xff}},
+              std::nullopt}),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
+  // so no need to test those bytes from the Writer
+  constexpr size_t buf_size = sizeof(kTestPgCopyBinary) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyBinary[i]) << "failure at index " << i;
+  }
+}
+
+
 // COPY (SELECT CAST("col" AS INTEGER ARRAY) AS "col" FROM (  VALUES ('{-123, -1}'), ('{0,
 // 1, 123}'), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT binary);
 static uint8_t kTestPgCopyIntegerArray[] = {
