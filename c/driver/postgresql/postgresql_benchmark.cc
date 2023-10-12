@@ -90,20 +90,32 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
     state.SkipWithError("Could not start appending to array");
   }
 
-  // TODO: how should we construct this?
-  for (size_t i = 0; i < array.value.n_children; i++) {
-    // assumes fixed size primitive layouts for now
-    struct ArrowBuffer* buffer = ArrowArrayBuffer(array.value.children[i], 1);
-    if (ArrowBufferAppendFill(buffer, 0, 10000) != NANOARROW_OK) {
-      state.SkipWithError("Could not append to array");
-    }
-    if (ArrowBufferAppendFill(buffer, 1, 10000) != NANOARROW_OK) {
-      state.SkipWithError("Could not append to array");
-    }
+  const size_t n_zeros = 1000;
+  const size_t n_ones = 1000;
 
-    array.value.children[i]->length = 200000;
+  for (size_t i = 0; i < n_zeros; i++) {
+    // assumes fixed size primitive layouts for now
+    ArrowBufferAppendInt8(ArrowArrayBuffer(array.value.children[0], 1), 0);
+    ArrowBufferAppendInt16(ArrowArrayBuffer(array.value.children[1], 1), 0);
+    ArrowBufferAppendInt32(ArrowArrayBuffer(array.value.children[2], 1), 0);
+    ArrowBufferAppendInt64(ArrowArrayBuffer(array.value.children[3], 1), 0);
+    ArrowBufferAppendFloat(ArrowArrayBuffer(array.value.children[4], 1), 0.0);
+    ArrowBufferAppendDouble(ArrowArrayBuffer(array.value.children[5], 1), 0.0);
   }
-  array.value.length = 200000;
+  for (size_t i = 0; i < n_ones; i++) {
+    // assumes fixed size primitive layouts for now
+    ArrowBufferAppendInt8(ArrowArrayBuffer(array.value.children[0], 1), 1);
+    ArrowBufferAppendInt16(ArrowArrayBuffer(array.value.children[1], 1), 1);
+    ArrowBufferAppendInt32(ArrowArrayBuffer(array.value.children[2], 1), 1);
+    ArrowBufferAppendInt64(ArrowArrayBuffer(array.value.children[3], 1), 1);
+    ArrowBufferAppendFloat(ArrowArrayBuffer(array.value.children[4], 1), 1.0);
+    ArrowBufferAppendDouble(ArrowArrayBuffer(array.value.children[5], 1), 1.0);
+  }
+
+  for (int64_t i = 0; i < array.value.n_children; i++) {
+    array.value.children[i]->length = n_zeros + n_ones;
+  }
+  array.value.length = n_zeros + n_ones;
 
   if (ArrowArrayFinishBuildingDefault(&array.value, &na_error) != NANOARROW_OK) {
     state.SkipWithError("Could not finish array");
@@ -148,13 +160,13 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
     state.SkipWithError("Could not PREPARE SQL query");
   }
 
-  int result;
   for (auto _ : state) {
-    result = AdbcStatementBind(&insert_stmt.value, &array.value, &schema.value, &error);
-    result = AdbcStatementExecuteQuery(&insert_stmt.value, nullptr, nullptr, &error);
+    // Bind release the array, so if this actually loops you will get errors
+    // memory leaks
+    AdbcStatementBind(&insert_stmt.value, &array.value, &schema.value, &error);
+    AdbcStatementExecuteQuery(&insert_stmt.value, nullptr, nullptr, &error);
   }
 
-  /*
   if (AdbcStatementSetSqlQuery(&statement.value, drop_query, &error)
       != ADBC_STATUS_OK) {
     state.SkipWithError("Could not set DROP TABLE SQL query");
@@ -164,7 +176,6 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
       != ADBC_STATUS_OK) {
     state.SkipWithError("Could not execute DROP TABLE SQL query");
   }
-  */
 }
 
 BENCHMARK(BM_PostgresqlExecute);
