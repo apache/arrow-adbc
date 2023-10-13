@@ -155,8 +155,6 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
   }
 
   for (auto _ : state) {
-    // Bind release the array, so if this actually loops you will get errors
-    // memory leaks
     AdbcStatementBind(&insert_stmt.value, &array.value, &schema.value, &error);
     AdbcStatementExecuteQuery(&insert_stmt.value, nullptr, nullptr, &error);
   }
@@ -172,5 +170,5 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_PostgresqlExecute);
+BENCHMARK(BM_PostgresqlExecute)->Iterations(1);
 BENCHMARK_MAIN();
