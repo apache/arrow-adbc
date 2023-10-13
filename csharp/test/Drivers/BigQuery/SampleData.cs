@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     internal class SampleData
     {
         /// <summary>
-        /// Represnts the first row of data from resources/BigQueryData.sql
+        /// Represents the first row of data from resources/BigQueryData.sql
         /// </summary>
         public static List<ColumnNetTypeArrowTypeValue> GetSampleData()
         {
