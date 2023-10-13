@@ -19,9 +19,11 @@ package snowflake
 
 import (
 	"context"
+	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -338,12 +340,17 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 				block = data
 			}
 
-			var key any
+			var key *rsa.PrivateKey
 			key, err = x509.ParsePKCS1PrivateKey(block)
 			if err != nil && strings.Contains(err.Error(), "use ParsePKCS8PrivateKey instead") {
-				key, err = x509.ParsePKCS8PrivateKey(block)
+				var pkcs8Key any
+				pkcs8Key, err = x509.ParsePKCS8PrivateKey(block)
+				key, ok = pkcs8Key.(*rsa.PrivateKey)
+				if !ok {
+					err = errors.New("file does not contain an RSA private key")
+				}
 			}
-			
+
 			if err != nil {
 				return adbc.Error{
 					Msg:  "failed parsing private key file '" + v + "': " + err.Error(),
