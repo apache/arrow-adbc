@@ -1406,9 +1406,9 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       return NANOARROW_OK;
     }
     default:
+      ArrowErrorSet(error, "COPY Writer not implemented for type %d", schema_view.type);
       return EINVAL;
   }
-  return NANOARROW_OK;
 }
 
 class PostgresCopyStreamWriter {

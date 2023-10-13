@@ -549,15 +549,15 @@ struct BindStream {
       CHECK_NA(INTERNAL, ArrowArrayViewSetArray(&array_view.value, &array.value, nullptr),
                error);
 
-      std::unique_ptr<PostgresCopyStreamWriter> writer{new PostgresCopyStreamWriter()};
-      CHECK_NA(INTERNAL, writer->Init(&bind_schema.value, &array.value), error);
-      CHECK_NA(INTERNAL, writer->InitFieldWriters(nullptr), error);
+      PostgresCopyStreamWriter writer;
+      CHECK_NA(INTERNAL, writer.Init(&bind_schema.value, &array.value), error);
+      CHECK_NA(INTERNAL, writer.InitFieldWriters(nullptr), error);
 
       // build writer buffer
-      CHECK_NA(INTERNAL, writer->WriteHeader(nullptr), error);
+      CHECK_NA(INTERNAL, writer.WriteHeader(nullptr), error);
       int write_result;
       do {
-        write_result = writer->WriteRecord(nullptr);
+        write_result = writer.WriteRecord(nullptr);
       } while (write_result == NANOARROW_OK);
 
       // check if not ENODATA at exit
@@ -566,7 +566,7 @@ struct BindStream {
         return ADBC_STATUS_IO;
       }
 
-      ArrowBuffer buffer = writer->WriteBuffer();
+      ArrowBuffer buffer = writer.WriteBuffer();
       if (PQputCopyData(conn, reinterpret_cast<char*>(buffer.data),
                         buffer.size_bytes) <= 0) {
         SetError(error, "Error writing tuple field data: %s", PQerrorMessage(conn));
