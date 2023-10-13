@@ -66,7 +66,6 @@ const (
 var (
 	infoDriverVersion      string
 	infoDriverArrowVersion string
-	infoSupportedCodes     []adbc.InfoCode
 )
 
 var errNoTransactionSupport = adbc.Error{
@@ -92,16 +91,6 @@ func init() {
 	}
 	if infoDriverArrowVersion == "" {
 		infoDriverArrowVersion = "(unknown or development build)"
-	}
-
-	infoSupportedCodes = []adbc.InfoCode{
-		adbc.InfoDriverName,
-		adbc.InfoDriverVersion,
-		adbc.InfoDriverArrowVersion,
-		adbc.InfoDriverADBCVersion,
-		adbc.InfoVendorName,
-		adbc.InfoVendorVersion,
-		adbc.InfoVendorArrowVersion,
 	}
 }
 
