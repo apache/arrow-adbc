@@ -457,7 +457,7 @@ function(ADD_BENCHMARK REL_BENCHMARK_NAME)
 
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${REL_BENCHMARK_NAME}.cc)
     # This benchmark has a corresponding .cc file, set it up as an executable.
-    set(BENCHMARK_PATH "${EXECUTABLE_OUTPUT_PATH}/${BENCHMARK_NAME}")
+    set(BENCHMARK_PATH "${CMAKE_CURRENT_BINARY_DIR}/${BENCHMARK_NAME}")
     add_executable(${BENCHMARK_NAME} ${SOURCES})
 
     if(ARG_STATIC_LINK_LIBS)
@@ -467,7 +467,6 @@ function(ADD_BENCHMARK REL_BENCHMARK_NAME)
       target_link_libraries(${BENCHMARK_NAME} PRIVATE ${ADBC_BENCHMARK_LINK_LIBS})
     endif()
     add_dependencies(benchmark ${BENCHMARK_NAME})
-    set(NO_COLOR "--color_print=false")
 
     if(ARG_EXTRA_LINK_LIBS)
       target_link_libraries(${BENCHMARK_NAME} PRIVATE ${ARG_EXTRA_LINK_LIBS})
@@ -475,7 +474,6 @@ function(ADD_BENCHMARK REL_BENCHMARK_NAME)
   else()
     # No executable, just invoke the benchmark (probably a script) directly.
     set(BENCHMARK_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${REL_BENCHMARK_NAME})
-    set(NO_COLOR "")
   endif()
 
   # With OSX and conda, we need to set the correct RPATH so that dependencies
@@ -515,8 +513,7 @@ function(ADD_BENCHMARK REL_BENCHMARK_NAME)
            ${BUILD_SUPPORT_DIR}/run-test.sh
            ${CMAKE_BINARY_DIR}
            benchmark
-           ${BENCHMARK_PATH}
-           ${NO_COLOR})
+           ${BENCHMARK_PATH})
   set_property(TEST ${BENCHMARK_NAME}
                APPEND
                PROPERTY LABELS ${ARG_LABELS})
