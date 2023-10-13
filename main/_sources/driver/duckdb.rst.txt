@@ -45,16 +45,7 @@ ADBC support in DuckDB requires the driver manager.
    .. tab-item:: C++
       :sync: cpp
 
-      .. code-block:: cpp
-
-         #include "adbc.h"
-
-         // Ignoring error handling
-         struct AdbcDatabase database;
-         AdbcDatabaseNew(&database, nullptr);
-         AdbcDatabaseSetOption(&database, "driver", "PATH/TO/libduckdb.so", nullptr);
-         AdbcDatabaseSetOption(&database, "entrypoint", "duckdb_adbc_init", nullptr);
-         AdbcDatabaseInit(&database, nullptr);
+      See the `DuckDB C++ documentation`_.
 
    .. tab-item:: Go
       :sync: go
@@ -92,8 +83,12 @@ ADBC support in DuckDB requires the driver manager.
    .. tab-item:: Python
       :sync: python
 
-      See :ref:`recipe-driver-manager-duckdb`.
+      You must have DuckDB 0.9.1 or higher.
 
+      See the `DuckDB Python documentation`_.
+
+.. _DuckDB C++ documentation: https://duckdb.org/docs/api/adbc.html#c
+.. _DuckDB Python documentation: https://duckdb.org/docs/api/adbc.html#python
 
 Supported Features
 ==================
