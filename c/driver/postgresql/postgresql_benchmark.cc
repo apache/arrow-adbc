@@ -22,49 +22,67 @@
 #include "adbc.h"
 #include "validation/adbc_validation_util.h"
 
+
 static void BM_PostgresqlExecute(benchmark::State& state) {
   const char* uri = std::getenv("ADBC_POSTGRESQL_TEST_URI");
-  if (!uri) {
+  if (!uri || !strcmp(uri, "")) {
     state.SkipWithError("ADBC_POSTGRESQL_TEST_URI not set!");
+    return;
   }
   adbc_validation::Handle<struct AdbcDatabase> database;
   struct AdbcError error;
 
   if (AdbcDatabaseNew(&database.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("AdbcDatabaseNew call failed");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (AdbcDatabaseSetOption(&database.value, "uri", uri, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not set database uri option");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (AdbcDatabaseInit(&database.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("AdbcDatabaseInit failed");
+state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   adbc_validation::Handle<struct AdbcConnection> connection;
   if (AdbcConnectionNew(&connection.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not create connection object");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (AdbcConnectionInit(&connection.value, &database.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not connect to database");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   adbc_validation::Handle<struct AdbcStatement> statement;
   if (AdbcStatementNew(&connection.value, &statement.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not create statement object");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   const char* drop_query = "DROP TABLE IF EXISTS adbc_postgresql_ingest_benchmark";
   if (AdbcStatementSetSqlQuery(&statement.value, drop_query, &error)
       != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not set DROP TABLE SQL query");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error)
       != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not execute DROP TABLE SQL query");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -79,15 +97,21 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
         {"floats", NANOARROW_TYPE_FLOAT},
         {"doubles", NANOARROW_TYPE_DOUBLE},
       }) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not create benchmark schema");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (ArrowArrayInitFromSchema(&array.value, &schema.value, &na_error) != NANOARROW_OK) {
-    state.SkipWithError("Could not init array from schema");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (ArrowArrayStartAppending(&array.value) != NANOARROW_OK) {
-    state.SkipWithError("Could not start appending to array");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   const size_t n_zeros = 1000;
@@ -118,7 +142,9 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
   array.value.length = n_zeros + n_ones;
 
   if (ArrowArrayFinishBuildingDefault(&array.value, &na_error) != NANOARROW_OK) {
-    state.SkipWithError("Could not finish array");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   const char* create_query =
@@ -127,50 +153,62 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
 
   if (AdbcStatementSetSqlQuery(&statement.value, create_query, &error)
       != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not set CREATE TABLE SQL query");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error)
       != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not execute CREATE TABLE SQL query");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   adbc_validation::Handle<struct AdbcStatement> insert_stmt;
   if (AdbcStatementNew(&connection.value, &insert_stmt.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not create INSERT statement object");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (AdbcStatementSetOption(&insert_stmt.value,
                              ADBC_INGEST_OPTION_TARGET_TABLE,
                              "adbc_postgresql_ingest_benchmark",
                              &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not set bulk_ingest statement option");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (AdbcStatementSetOption(&insert_stmt.value,
                              ADBC_INGEST_OPTION_MODE,
                              ADBC_INGEST_OPTION_MODE_APPEND,
                              &error) != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not set bulk_ingest append option");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   for (auto _ : state) {
-    // Bind release the array, so if this actually loops you will get errors
-    // memory leaks
     AdbcStatementBind(&insert_stmt.value, &array.value, &schema.value, &error);
     AdbcStatementExecuteQuery(&insert_stmt.value, nullptr, nullptr, &error);
   }
 
   if (AdbcStatementSetSqlQuery(&statement.value, drop_query, &error)
       != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not set DROP TABLE SQL query");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 
   if (AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error)
       != ADBC_STATUS_OK) {
-    state.SkipWithError("Could not execute DROP TABLE SQL query");
+    state.SkipWithError(error.message);
+    error.release(&error);
+    return;
   }
 }
 
-BENCHMARK(BM_PostgresqlExecute);
+BENCHMARK(BM_PostgresqlExecute)->Iterations(1);
 BENCHMARK_MAIN();

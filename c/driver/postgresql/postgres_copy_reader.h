@@ -1406,9 +1406,9 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       return NANOARROW_OK;
     }
     default:
+      ArrowErrorSet(error, "COPY Writer not implemented for type %d", schema_view.type);
       return EINVAL;
   }
-  return NANOARROW_OK;
 }
 
 class PostgresCopyStreamWriter {
@@ -1455,7 +1455,7 @@ class PostgresCopyStreamWriter {
           NANOARROW_OK) {
         return ADBC_STATUS_INTERNAL;
       }
-      PostgresCopyFieldWriter* child_writer;
+      PostgresCopyFieldWriter* child_writer = nullptr;
       NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema_view, &child_writer, error));
       root_writer_.AppendChild(std::unique_ptr<PostgresCopyFieldWriter>(child_writer));
     }
