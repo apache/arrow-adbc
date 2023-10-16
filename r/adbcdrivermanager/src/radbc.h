@@ -20,6 +20,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <utility>
+
 template <typename T>
 static inline const char* adbc_xptr_class();
 
@@ -159,6 +161,33 @@ static inline int adbc_as_int(SEXP sexp) {
   }
 
   Rf_error("Expected integer(1) or double(1) for conversion to int");
+}
+
+static inline std::pair<SEXP, const char**> adbc_as_const_char_list(SEXP sexp) {
+  switch (TYPEOF(sexp)) {
+    case NILSXP:
+      return {R_NilValue, nullptr};
+    case STRSXP:
+      break;
+    default:
+      Rf_error("Expected character for conversion to const char**");
+  }
+
+  int sexp_length = Rf_length(sexp);
+  SEXP result_shelter =
+      PROTECT(Rf_allocVector(RAWSXP, (sexp_length + 1) * sizeof(const char*)));
+  auto result = reinterpret_cast<const char**>(RAW(result_shelter));
+  for (int i = 0; i < sexp_length; i++) {
+    SEXP item = STRING_ELT(sexp, i);
+    if (item == NA_STRING) {
+      Rf_error("Can't convert NA_character_ element to const char*");
+    }
+
+    result[i] = Rf_translateCharUTF8(STRING_ELT(sexp, i));
+  }
+  result[sexp_length] = nullptr;
+  UNPROTECT(1);
+  return {result_shelter, result};
 }
 
 static inline SEXP adbc_wrap_status(AdbcStatusCode code) {
