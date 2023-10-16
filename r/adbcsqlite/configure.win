@@ -16,4 +16,4 @@
 # under the License.
 
 # Just call the original configure script
-./configure
+R_ADBC_SQLITE_ON_WINDOWS=1 ./configure
