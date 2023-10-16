@@ -79,13 +79,7 @@ static inline T* adbc_from_xptr(SEXP xptr, bool null_ok = false) {
 }
 
 template <typename T>
-static inline SEXP adbc_allocate_xptr(SEXP shelter_sexp = R_NilValue) {
-  void* ptr = malloc(sizeof(T));
-  if (ptr == nullptr) {
-    Rf_error("Failed to allocate T");
-  }
-
-  memset(ptr, 0, sizeof(T));
+static inline SEXP adbc_borrow_xptr(T* ptr, SEXP shelter_sexp = R_NilValue) {
   SEXP xptr = PROTECT(R_MakeExternalPtr(ptr, R_NilValue, shelter_sexp));
   SEXP xptr_class = PROTECT(Rf_allocVector(STRSXP, 2));
   SET_STRING_ELT(xptr_class, 0, Rf_mkChar(adbc_xptr_class<T>()));
@@ -103,6 +97,17 @@ static inline SEXP adbc_allocate_xptr(SEXP shelter_sexp = R_NilValue) {
 
   UNPROTECT(1);
   return xptr;
+}
+
+template <typename T>
+static inline SEXP adbc_allocate_xptr(SEXP shelter_sexp = R_NilValue) {
+  void* ptr = malloc(sizeof(T));
+  if (ptr == nullptr) {
+    Rf_error("Failed to allocate T");
+  }
+
+  memset(ptr, 0, sizeof(T));
+  return adbc_borrow_xptr<T>(reinterpret_cast<T*>(ptr), shelter_sexp);
 }
 
 template <typename T>
@@ -242,6 +247,120 @@ static inline std::pair<SEXP, int*> adbc_as_int_list(SEXP sexp) {
   }
 }
 
-static inline SEXP adbc_wrap_status(AdbcStatusCode code) {
-  return Rf_ScalarInteger(code);
+static inline int64_t adbc_as_int64(SEXP sexp) {
+  if (Rf_length(sexp) == 1) {
+    switch (TYPEOF(sexp)) {
+      case REALSXP: {
+        double value = REAL(sexp)[0];
+        if (ISNA(value) || ISNAN(value)) {
+          Rf_error("Can't convert NA_real_ to int");
+        }
+
+        return value;
+      }
+
+      case INTSXP: {
+        int value = INTEGER(sexp)[0];
+        if (value == NA_INTEGER) {
+          Rf_error("Can't convert NA_integer_ to int");
+        }
+
+        return value;
+      }
+    }
+  }
+
+  Rf_error("Expected integer(1) or double(1) for conversion to int");
 }
+
+static inline std::pair<SEXP, const char**> adbc_as_const_char_list(SEXP sexp) {
+  switch (TYPEOF(sexp)) {
+    case NILSXP:
+      return {R_NilValue, nullptr};
+    case STRSXP:
+      break;
+    default:
+      Rf_error("Expected character() for conversion to const char**");
+  }
+
+  int sexp_length = Rf_length(sexp);
+  SEXP result_shelter =
+      PROTECT(Rf_allocVector(RAWSXP, (sexp_length + 1) * sizeof(const char*)));
+  auto result = reinterpret_cast<const char**>(RAW(result_shelter));
+  for (int i = 0; i < sexp_length; i++) {
+    SEXP item = STRING_ELT(sexp, i);
+    if (item == NA_STRING) {
+      Rf_error("Can't convert NA_character_ element to const char*");
+    }
+
+    result[i] = Rf_translateCharUTF8(STRING_ELT(sexp, i));
+  }
+  result[sexp_length] = nullptr;
+  UNPROTECT(1);
+  return {result_shelter, result};
+}
+
+static inline std::pair<SEXP, int*> adbc_as_int_list(SEXP sexp) {
+  int result_length = Rf_length(sexp);
+
+  switch (TYPEOF(sexp)) {
+    case NILSXP:
+      return {R_NilValue, nullptr};
+
+    case INTSXP: {
+      int* result = INTEGER(sexp);
+      for (int i = 0; i < result_length; i++) {
+        if (result[i] == NA_INTEGER) {
+          Rf_error("Can't convert NA_integer_ element to int");
+        }
+      }
+
+      return {sexp, result};
+    }
+
+    case REALSXP: {
+      SEXP result_shelter = PROTECT(Rf_allocVector(INTSXP, result_length));
+      int* result = INTEGER(result_shelter);
+      for (int i = 0; i < result_length; i++) {
+        double item = REAL(sexp)[i];
+        if (ISNA(item) || ISNAN(item)) {
+          Rf_error("Can't convert NA_real_ or NaN element to int");
+        }
+
+        result[i] = item;
+      }
+
+      UNPROTECT(1);
+      return {result_shelter, result};
+    }
+
+    default:
+      Rf_error("Expected character for conversion to const char**");
+  }
+}
+
+static inline double adbc_as_double(SEXP sexp) {
+  if (Rf_length(sexp) == 1) {
+    switch (TYPEOF(sexp)) {
+      case REALSXP:
+        return REAL(sexp)[0];
+      case INTSXP:
+        return INTEGER(sexp)[0];
+    }
+  }
+
+  Rf_error("Expected integer(1) or double(1) for conversion to double");
+}
+
+static inline SEXP adbc_wrap(int value) { return Rf_ScalarInteger(value); }
+
+static inline SEXP adbc_wrap(int64_t value) {
+  if (value <= NA_INTEGER || value >= INT_MAX) {
+    return Rf_ScalarReal(value);
+  } else {
+    return Rf_ScalarInteger(value);
+  }
+}
+
+static inline SEXP adbc_wrap(double value) { return Rf_ScalarReal(value); }
+

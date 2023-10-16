@@ -110,14 +110,9 @@ extern "C" SEXP RAdbcErrorFromArrayStream(SEXP stream_xptr) {
   // This logic won't survive accesses to the error following an explicit stream release;
   // however will at least keep a stream from being released via the garbage collector.
   SEXP error_xptr =
-      PROTECT(R_MakeExternalPtr(const_cast<AdbcError*>(error), R_NilValue, stream_xptr));
+      PROTECT(adbc_borrow_xptr<AdbcError>(const_cast<AdbcError*>(error), stream_xptr));
 
-  // Use a normal (but empty) error for class information
-  SEXP dummy_error_xptr = PROTECT(RAdbcAllocateError(R_NilValue));
-  Rf_copyMostAttrib(dummy_error_xptr, error_xptr);
-  UNPROTECT(1);
-
-  SEXP status_sexp = PROTECT(adbc_wrap_status(status));
+  SEXP status_sexp = PROTECT(adbc_wrap(status));
 
   SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
   SET_VECTOR_ELT(result, 0, status_sexp);

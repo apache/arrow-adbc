@@ -41,10 +41,16 @@ static void adbc_error_warn(int code, AdbcError* error, const char* context) {
   }
 }
 
-static void adbc_error_stop(int code, AdbcError* error, const char* context) {
-  if (code != ADBC_STATUS_OK) {
-    Rf_error("<%s> %s", context, adbc_error_message(error));
-  }
+static void adbc_error_stop(int code, AdbcError* error) {
+  SEXP status_sexp = PROTECT(adbc_wrap(code));
+  SEXP error_xptr = PROTECT(adbc_borrow_xptr<AdbcError>(error));
+
+  SEXP fun_sym = PROTECT(Rf_install("stop_for_error"));
+  SEXP fun_call = PROTECT(Rf_lang3(fun_sym, status_sexp, error_xptr));
+  SEXP pkg_chr = PROTECT(Rf_mkString("adbcdrivermanager"));
+  SEXP pkg_ns = PROTECT(R_FindNamespace(pkg_chr));
+  Rf_eval(fun_call, pkg_ns);
+  UNPROTECT(6);
 }
 
 static void finalize_driver_xptr(SEXP driver_xptr) {
@@ -136,7 +142,7 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
   AdbcError error;
   memset(&error, 0, sizeof(AdbcError));
   int status = AdbcDatabaseNew(database, &error);
-  adbc_error_stop(status, &error, "RAdbcDatabaseNew()");
+  adbc_error_stop(status, &error);
 
   if (driver_init_func_xptr != R_NilValue) {
     auto driver_init_func =
@@ -146,7 +152,7 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
     }
 
     status = AdbcDriverManagerDatabaseSetInitFunc(database, driver_init_func, &error);
-    adbc_error_stop(status, &error, "RAdbcDatabaseNew()");
+    adbc_error_stop(status, &error);
   }
 
   UNPROTECT(1);
@@ -178,55 +184,112 @@ extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP v
   const char* key = adbc_as_const_char(key_sexp);
   const char* value = adbc_as_const_char(value_sexp);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap_status(AdbcDatabaseSetOption(database, key, value, error));
+  return adbc_wrap(AdbcDatabaseSetOption(database, key, value, error));
 }
 
 extern "C" SEXP RAdbcDatabaseSetOptionBytes(SEXP database_xptr, SEXP key_sexp,
                                             SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
+  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  const char* key = adbc_as_const_char(key_sexp);
+  const uint8_t* value = RAW(value_sexp);
+  size_t value_length = Rf_xlength(value_sexp);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+
+  int status = AdbcDatabaseSetOptionBytes(database, key, value, value_length, error);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcDatabaseSetOptionInt(SEXP database_xptr, SEXP key_sexp,
                                           SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
+  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  const char* key = adbc_as_const_char(key_sexp);
+  int64_t value = adbc_as_int64(value_sexp);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+  return adbc_wrap(AdbcDatabaseSetOptionInt(database, key, value, error));
 }
 
 extern "C" SEXP RAdbcDatabaseSetOptionDouble(SEXP database_xptr, SEXP key_sexp,
                                              SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
+  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  const char* key = adbc_as_const_char(key_sexp);
+  double value = adbc_as_double(value_sexp);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+  return adbc_wrap(AdbcDatabaseSetOptionDouble(database, key, value, error));
 }
 
 extern "C" SEXP RAdbcDatabaseGetOption(SEXP database_xptr, SEXP key_sexp,
                                        SEXP error_xptr) {
-  Rf_error("Not implemented");
+  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  const char* key = adbc_as_const_char(key_sexp);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+
+  size_t length = 0;
+  int status = AdbcDatabaseGetOption(database, key, nullptr, &length, error);
+  adbc_error_stop(status, error);
+
+  SEXP result_shelter = PROTECT(Rf_allocVector(RAWSXP, length));
+  auto result = reinterpret_cast<char*>(RAW(result_shelter));
+  status = AdbcDatabaseGetOption(database, key, result, &length, error);
+  adbc_error_stop(status, error);
+
+  SEXP result_char = PROTECT(Rf_mkCharLenCE(result, length, CE_UTF8));
+  SEXP result_string = PROTECT(Rf_ScalarString(result_char));
+  UNPROTECT(3);
+  return result_string;
 }
 
 extern "C" SEXP RAdbcDatabaseGetOptionBytes(SEXP database_xptr, SEXP key_sexp,
                                             SEXP error_xptr) {
-  Rf_error("Not implemented");
+  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  const char* key = adbc_as_const_char(key_sexp);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+
+  size_t length = 0;
+  int status = AdbcDatabaseGetOptionBytes(database, key, nullptr, &length, error);
+  adbc_error_stop(status, error);
+
+  SEXP result_sexp = PROTECT(Rf_allocVector(RAWSXP, length));
+  status = AdbcDatabaseGetOptionBytes(database, key, RAW(result_sexp), &length, error);
+  adbc_error_stop(status, error);
+  UNPROTECT(1);
+  return result_sexp;
 }
 
 extern "C" SEXP RAdbcDatabaseGetOptionInt(SEXP database_xptr, SEXP key_sexp,
                                           SEXP error_xptr) {
-  Rf_error("Not implemented");
+  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  const char* key = adbc_as_const_char(key_sexp);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+
+  int64_t value = NA_INTEGER;
+  int status = AdbcDatabaseGetOptionInt(database, key, &value, error);
+  adbc_error_stop(status, error);
+  return adbc_wrap(value);
 }
 
 extern "C" SEXP RAdbcDatabaseGetOptionDouble(SEXP database_xptr, SEXP key_sexp,
                                              SEXP error_xptr) {
-  Rf_error("Not implemented");
+  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
+  const char* key = adbc_as_const_char(key_sexp);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+
+  double value = NA_REAL;
+  int status = AdbcDatabaseGetOptionDouble(database, key, &value, error);
+  adbc_error_stop(status, error);
+  return adbc_wrap(value);
 }
 
 extern "C" SEXP RAdbcDatabaseInit(SEXP database_xptr, SEXP error_xptr) {
   auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap_status(AdbcDatabaseInit(database, error));
+  return adbc_wrap(AdbcDatabaseInit(database, error));
 }
 
 extern "C" SEXP RAdbcDatabaseRelease(SEXP database_xptr, SEXP error_xptr) {
   auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcDatabaseRelease(database, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 static void finalize_connection_xptr(SEXP connection_xptr) {
@@ -254,7 +317,7 @@ extern "C" SEXP RAdbcConnectionNew(void) {
   AdbcError error;
   memset(&error, 0, sizeof(AdbcError));
   int status = AdbcConnectionNew(connection, &error);
-  adbc_error_stop(status, &error, "RAdbcConnectionNew()");
+  adbc_error_stop(status, &error);
 
   UNPROTECT(1);
   return connection_xptr;
@@ -285,7 +348,7 @@ extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
   const char* key = adbc_as_const_char(key_sexp);
   const char* value = adbc_as_const_char(value_sexp);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap_status(AdbcConnectionSetOption(connection, key, value, error));
+  return adbc_wrap(AdbcConnectionSetOption(connection, key, value, error));
 }
 
 extern "C" SEXP RAdbcConnectionSetOptionBytes(SEXP connection_xptr, SEXP key_sexp,
@@ -336,14 +399,14 @@ extern "C" SEXP RAdbcConnectionInit(SEXP connection_xptr, SEXP database_xptr,
     R_SetExternalPtrProtected(connection_xptr, database_xptr);
   }
 
-  return adbc_wrap_status(result);
+  return adbc_wrap(result);
 }
 
 extern "C" SEXP RAdbcConnectionRelease(SEXP connection_xptr, SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcConnectionRelease(connection, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcConnectionGetInfo(SEXP connection_xptr, SEXP info_codes_sexp,
@@ -358,7 +421,7 @@ extern "C" SEXP RAdbcConnectionGetInfo(SEXP connection_xptr, SEXP info_codes_sex
       AdbcConnectionGetInfo(connection, reinterpret_cast<uint32_t*>(info_codes.second),
                             info_codes_length, out_stream, error);
   UNPROTECT(1);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcConnectionGetObjects(SEXP connection_xptr, SEXP depth_sexp,
@@ -382,7 +445,7 @@ extern "C" SEXP RAdbcConnectionGetObjects(SEXP connection_xptr, SEXP depth_sexp,
       AdbcConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
                                table_type.second, column_name, out_stream, error);
   UNPROTECT(1);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcConnectionGetTableSchema(SEXP connection_xptr, SEXP catalog_sexp,
@@ -397,7 +460,7 @@ extern "C" SEXP RAdbcConnectionGetTableSchema(SEXP connection_xptr, SEXP catalog
 
   int status = AdbcConnectionGetTableSchema(connection, catalog, db_schema, table_name,
                                             schema, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcConnectionGetTableTypes(SEXP connection_xptr, SEXP out_stream_xptr,
@@ -407,7 +470,7 @@ extern "C" SEXP RAdbcConnectionGetTableTypes(SEXP connection_xptr, SEXP out_stre
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
 
   int status = AdbcConnectionGetTableTypes(connection, out_stream, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcConnectionReadPartition(SEXP connection_xptr,
@@ -421,21 +484,21 @@ extern "C" SEXP RAdbcConnectionReadPartition(SEXP connection_xptr,
 
   int status = AdbcConnectionReadPartition(connection, serialized_partition,
                                            serialized_length, out_stream, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcConnectionCommit(SEXP connection_xptr, SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcConnectionCommit(connection, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcConnectionRollback(SEXP connection_xptr, SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcConnectionCommit(connection, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 static void finalize_statement_xptr(SEXP statement_xptr) {
@@ -464,7 +527,7 @@ extern "C" SEXP RAdbcStatementNew(SEXP connection_xptr) {
   AdbcError error;
   memset(&error, 0, sizeof(AdbcError));
   int status = AdbcStatementNew(connection, statement, &error);
-  adbc_error_stop(status, &error, "RAdbcStatementNew()");
+  adbc_error_stop(status, &error);
 
   R_SetExternalPtrProtected(statement_xptr, connection_xptr);
 
@@ -497,7 +560,7 @@ extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
   const char* key = adbc_as_const_char(key_sexp);
   const char* value = adbc_as_const_char(value_sexp);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap_status(AdbcStatementSetOption(statement, key, value, error));
+  return adbc_wrap(AdbcStatementSetOption(statement, key, value, error));
 }
 
 extern "C" SEXP RAdbcStatementSetOptionBytes(SEXP statement_xptr, SEXP key_sexp,
@@ -539,7 +602,7 @@ extern "C" SEXP RAdbcStatementRelease(SEXP statement_xptr, SEXP error_xptr) {
   auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcStatementRelease(statement, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcStatementSetSqlQuery(SEXP statement_xptr, SEXP query_sexp,
@@ -549,7 +612,7 @@ extern "C" SEXP RAdbcStatementSetSqlQuery(SEXP statement_xptr, SEXP query_sexp,
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
 
   int status = AdbcStatementSetSqlQuery(statement, query, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcStatementSetSubstraitPlan(SEXP statement_xptr, SEXP plan_sexp,
@@ -560,14 +623,14 @@ extern "C" SEXP RAdbcStatementSetSubstraitPlan(SEXP statement_xptr, SEXP plan_se
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
 
   int status = AdbcStatementSetSubstraitPlan(statement, plan, plan_length, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcStatementPrepare(SEXP statement_xptr, SEXP error_xptr) {
   auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   int status = AdbcStatementPrepare(statement, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcStatementGetParameterSchema(SEXP statement_xptr,
@@ -577,7 +640,7 @@ extern "C" SEXP RAdbcStatementGetParameterSchema(SEXP statement_xptr,
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
 
   int status = AdbcStatementGetParameterSchema(statement, out_schema, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcStatementBind(SEXP statement_xptr, SEXP values_xptr,
@@ -588,7 +651,7 @@ extern "C" SEXP RAdbcStatementBind(SEXP statement_xptr, SEXP values_xptr,
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
 
   int status = AdbcStatementBind(statement, values, schema, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcStatementBindStream(SEXP statement_xptr, SEXP stream_xptr,
@@ -598,7 +661,7 @@ extern "C" SEXP RAdbcStatementBindStream(SEXP statement_xptr, SEXP stream_xptr,
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
 
   int status = AdbcStatementBindStream(statement, stream, error);
-  return adbc_wrap_status(status);
+  return adbc_wrap(status);
 }
 
 extern "C" SEXP RAdbcStatementExecuteQuery(SEXP statement_xptr, SEXP out_stream_xptr,
@@ -619,7 +682,7 @@ extern "C" SEXP RAdbcStatementExecuteQuery(SEXP statement_xptr, SEXP out_stream_
   const char* names[] = {"status", "rows_affected", ""};
   SEXP result = PROTECT(Rf_mkNamed(VECSXP, names));
 
-  SEXP status_sexp = PROTECT(adbc_wrap_status(status));
+  SEXP status_sexp = PROTECT(adbc_wrap(status));
   SET_VECTOR_ELT(result, 0, status_sexp);
   UNPROTECT(1);
 
@@ -631,5 +694,5 @@ extern "C" SEXP RAdbcStatementExecuteQuery(SEXP statement_xptr, SEXP out_stream_
 
 extern "C" SEXP RAdbcStatementExecutePartitions(SEXP statement_xptr, SEXP out_schema_xptr,
                                                 SEXP partitions_xptr, SEXP error_xptr) {
-  return adbc_wrap_status(ADBC_STATUS_NOT_IMPLEMENTED);
+  return adbc_wrap(ADBC_STATUS_NOT_IMPLEMENTED);
 }
