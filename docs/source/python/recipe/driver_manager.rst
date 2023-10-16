@@ -18,10 +18,3 @@
 ======================
 Driver Manager Recipes
 ======================
-
-.. _recipe-driver-manager-duckdb:
-
-Load a driver from a shared library (DuckDB)
-============================================
-
-.. recipe:: driver_manager_duckdb.py
