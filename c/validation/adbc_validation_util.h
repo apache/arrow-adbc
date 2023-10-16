@@ -271,6 +271,14 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
         if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
           return errno_res;
         }
+      } else if constexpr (std::is_same<T, std::vector<std::byte>>::value) {
+        static_assert(std::is_same_v<uint8_t, unsigned char>);
+        struct ArrowBufferView view;
+        view.data.as_uint8 = reinterpret_cast<const uint8_t*>(v->data());
+        view.size_bytes = v->size();
+        if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
+          return errno_res;
+        }
       } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
         if (int errno_res = ArrowArrayAppendInterval(array, *v); errno_res != 0) {
           return errno_res;
@@ -389,6 +397,12 @@ void CompareArray(struct ArrowArrayView* array,
         struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
         std::string str(view.data, view.size_bytes);
         ASSERT_EQ(*v, str);
+      } else if constexpr (std::is_same<T, std::vector<std::byte>>::value) {
+        struct ArrowBufferView view = ArrowArrayViewGetBytesUnsafe(array, i);
+        ASSERT_EQ(v->size(), view.size_bytes);
+        for (int64_t i = 0; i < view.size_bytes; i++) {
+          ASSERT_EQ((*v)[i], std::byte{view.data.as_uint8[i]});
+        }
       } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         struct ArrowInterval interval;
