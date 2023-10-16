@@ -18,7 +18,7 @@
 
 #' Get extended error information from an array stream
 #'
-#' @param stream A [nanoarrow_array_stream][as_nanoarrow_array_stream]
+#' @param stream A [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream]
 #'
 #' @return `NULL` if stream was not created by a driver that supports
 #'   extended error information or a list whose first element is the

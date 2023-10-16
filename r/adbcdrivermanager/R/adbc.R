@@ -233,14 +233,18 @@ adbc_connection_release <- function(connection) {
 #' @param db_schema Only show tables in the given database schema. If NULL, do
 #'   not filter by database schema. If an empty string, only show tables without
 #'   a database schema. May be a search pattern.
-#' @param table_name Only show tables with the given name. If NULL, do not
-#'   filter by name. May be a search pattern.
+#' @param table_name Constrain an object or statistics query for a specific table.
+#'   If NULL, do not filter by name. May be a search pattern.
 #' @param table_type Only show tables matching one of the given table types. If
 #'   NULL, show tables of any type. Valid table types can be fetched from
 #'   GetTableTypes. Terminate the list with a NULL entry.
 #' @param column_name Only show columns with the given name. If NULL, do not
 #'   filter by name. May be a search pattern.
 #' @param serialized_partition The partition descriptor.
+#' @param approximate If `FALSE`, request exact values of statistics,
+#'   else allow for best-effort, approximate, or cached values. The database
+#'   may return approximate values regardless, as indicated in the result.
+#'   Requesting exact values may be expensive or unsupported.
 #' @param value A string or identifier.
 #'
 #' @return
@@ -382,6 +386,25 @@ adbc_connection_rollback <- function(connection) {
   error <- adbc_allocate_error()
   .Call(RAdbcConnectionRollback, connection, error)
   invisible(connection)
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_cancel <- function(connection) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_get_statistic_names <- function(connection) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_get_statistics <- function(connection, catalog, db_schema,
+                                           table_name, approximate) {
+  stop("Not implemented")
 }
 
 #' Statements
@@ -570,4 +593,10 @@ adbc_statement_execute_query <- function(statement, stream = NULL) {
   result <- .Call(RAdbcStatementExecuteQuery, statement, stream, error)
   stop_for_error(result$status, error)
   result$rows_affected
+}
+
+#' @rdname adbc_statement_set_sql_query
+#' @export
+adbc_statement_execute_schema <- function(statement) {
+  stop("Not implemented")
 }

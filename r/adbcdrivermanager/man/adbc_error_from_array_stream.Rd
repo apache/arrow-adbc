@@ -7,7 +7,7 @@
 adbc_error_from_array_stream(stream)
 }
 \arguments{
-\item{stream}{A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}}
+\item{stream}{A \link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow_array_stream}}
 }
 \value{
 \code{NULL} if stream was not created by a driver that supports
