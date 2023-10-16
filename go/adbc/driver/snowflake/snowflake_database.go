@@ -338,11 +338,10 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 				}
 			}
 		case OptionJwtPrivateKeyPkcs8Value:
+
 			block, _ := pem.Decode([]byte(v))
 
-			fmt.Println(block.Type)
-
-			if block == nil {
+			if block == nil || block.Type != "PRIVATE KEY" {
 				panic("failed to parse PEM block containing the private key")
 			}
 

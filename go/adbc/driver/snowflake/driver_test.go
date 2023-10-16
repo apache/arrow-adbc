@@ -19,9 +19,13 @@ package snowflake_test
 
 import (
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -671,4 +675,43 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 
 	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
+}
+
+func TestJwtAuthenticationUsingString(t *testing.T) {
+	drv := gosnowflake.SnowflakeDriver{}
+
+	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
+
+	if !ok {
+		panic("Cannot find the `SNOWFLAKE_URI` value")
+	}
+
+	cfg, _ := gosnowflake.ParseDSN(uri)
+	cfg.Authenticator = gosnowflake.AuthTypeJwt
+
+	keyValue, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_VALUE")
+
+	if !ok {
+		panic("Cannot find the `SNOWFLAKE_TEST_PKCS8_VALUE` value")
+	}
+
+	// Windows funkiness
+	if runtime.GOOS == "windows" {
+		keyValue = strings.ReplaceAll(keyValue, "\\r", "\r")
+		keyValue = strings.ReplaceAll(keyValue, "\\n", "\n")
+	}
+
+	block, _ := pem.Decode([]byte(keyValue))
+	privKey, _ := x509.ParsePKCS8PrivateKey(block.Bytes)
+
+	cfg.PrivateKey = privKey.(*rsa.PrivateKey)
+
+	connector := gosnowflake.NewConnector(drv, *cfg)
+	ctx := context.Background()
+
+	_, err := connector.Connect(ctx)
+
+	if err != nil {
+		panic(err)
+	}
 }
