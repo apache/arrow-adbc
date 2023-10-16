@@ -23,6 +23,19 @@ using Apache.Arrow.Adbc.C;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
+    internal class SnowflakeParameters
+    {
+        public const string DATABASE = "adbc.snowflake.sql.db";
+        public const string SCHEMA = "adbc.snowflake.sql.schema";
+        public const string ACCOUNT = "adbc.snowflake.sql.account";
+        public const string USERNAME = "username";
+        public const string PASSWORD = "password";
+        public const string WAREHOUSE = "adbc.snowflake.sql.warehouse";
+        public const string AUTH_TYPE = "adbc.snowflake.sql.auth_type";
+        public const string HOST = "adbc.snowflake.sql.uri.host";
+        public const string PKCS8_VALUE = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value";
+    }
+
     internal class SnowflakeTestingUtils
     {
         internal const string SNOWFLAKE_TEST_CONFIG_VARIABLE = "SNOWFLAKE_TEST_CONFIG_FILE";
@@ -43,11 +56,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             parameters = new Dictionary<string, string>
             {
-                { "adbc.snowflake.sql.account", testConfiguration.Account },
-                { "username", testConfiguration.User },
-                { "password", testConfiguration.Password },
-                { "adbc.snowflake.sql.warehouse", testConfiguration.Warehouse },
-                { "adbc.snowflake.sql.auth_type", testConfiguration.AuthenticationType }
+                { SnowflakeParameters.ACCOUNT, testConfiguration.Account },
+                { SnowflakeParameters.USERNAME, testConfiguration.User },
+                { SnowflakeParameters.PASSWORD, testConfiguration.Password },
+                { SnowflakeParameters.WAREHOUSE, testConfiguration.Warehouse },
+                { SnowflakeParameters.AUTH_TYPE, testConfiguration.AuthenticationType }
             };
 
             Dictionary<string, string> options = new Dictionary<string, string>() { };

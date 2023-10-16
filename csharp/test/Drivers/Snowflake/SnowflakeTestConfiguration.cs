@@ -43,6 +43,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public string Account { get; set; }
 
         /// <summary>
+        /// The Snowflake host.
+        /// </summary>
+        [JsonPropertyName("host")]
+        public string Host { get; set; }
+
+        /// <summary>
+        /// The Snowflake database.
+        /// </summary>
+        [JsonPropertyName("database")]
+        public string Database { get; set; }
+
+        /// <summary>
         /// The Snowflake user.
         /// </summary>
         [JsonPropertyName("user")]

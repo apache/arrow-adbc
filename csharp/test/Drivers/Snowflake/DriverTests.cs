@@ -132,8 +132,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 string tableName = metadataTestConfiguration.Metadata.Table;
                 string columnName = null;
 
-                parameters["adbc.snowflake.sql.db"] = databaseName;
-                parameters["adbc.snowflake.sql.schema"] = schemaName;
+                parameters[SnowflakeParameters.DATABASE] = databaseName;
+                parameters[SnowflakeParameters.SCHEMA] = schemaName;
 
                 AdbcDatabase adbcDatabase = driver.Open(parameters);
                 AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
