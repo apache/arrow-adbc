@@ -90,25 +90,29 @@ adbc_database_set_options <- function(database, options) {
 #' @rdname adbc_database_init
 #' @export
 adbc_database_get_option <- function(database, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcDatabaseGetOption, database, option, error)
 }
 
 #' @rdname adbc_database_init
 #' @export
 adbc_database_get_option_bytes <- function(database, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcDatabaseGetOptionBytes, database, option, error)
 }
 
 #' @rdname adbc_database_init
 #' @export
 adbc_database_get_option_int <- function(database, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcDatabaseGetOptionInt, database, option, error)
 }
 
 #' @rdname adbc_database_init
 #' @export
 adbc_database_get_option_double <- function(database, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcDatabaseGetOptionDouble, database, option, error)
 }
 
 #' @rdname adbc_database_init
@@ -183,25 +187,29 @@ adbc_connection_set_options <- function(connection, options) {
 #' @rdname adbc_connection_init
 #' @export
 adbc_connection_get_option <- function(connection, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcConnectionGetOption, connection, option, error)
 }
 
 #' @rdname adbc_connection_init
 #' @export
 adbc_connection_get_option_bytes <- function(connection, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcConnectionGetOptionBytes, connection, option, error)
 }
 
 #' @rdname adbc_connection_init
 #' @export
 adbc_connection_get_option_int <- function(connection, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcConnectionGetOptionInt, connection, option, error)
 }
 
 #' @rdname adbc_connection_init
 #' @export
 adbc_connection_get_option_double <- function(connection, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcConnectionGetOptionDouble, connection, option, error)
 }
 
 #' @rdname adbc_connection_init
@@ -465,25 +473,29 @@ adbc_statement_set_options <- function(statement, options) {
 #' @rdname adbc_statement_init
 #' @export
 adbc_statement_get_option <- function(statement, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcStatementGetOption, statement, option, error)
 }
 
 #' @rdname adbc_statement_init
 #' @export
 adbc_statement_get_option_bytes <- function(statement, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcStatementGetOptionBytes, statement, option, error)
 }
 
 #' @rdname adbc_statement_init
 #' @export
 adbc_statement_get_option_int <- function(statement, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcStatementGetOptionInt, statement, option, error)
 }
 
 #' @rdname adbc_statement_init
 #' @export
 adbc_statement_get_option_double <- function(statement, option) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  .Call(RAdbcStatementGetOptionDouble, statement, option, error)
 }
 
 #' @rdname adbc_statement_init

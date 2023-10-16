@@ -181,6 +181,41 @@ extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP v
   return adbc_wrap_status(AdbcDatabaseSetOption(database, key, value, error));
 }
 
+extern "C" SEXP RAdbcDatabaseSetOptionBytes(SEXP database_xptr, SEXP key_sexp,
+                                            SEXP value_sexp, SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcDatabaseSetOptionInt(SEXP database_xptr, SEXP key_sexp,
+                                          SEXP value_sexp, SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcDatabaseSetOptionDouble(SEXP database_xptr, SEXP key_sexp,
+                                             SEXP value_sexp, SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcDatabaseGetOption(SEXP database_xptr, SEXP key_sexp,
+                                       SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcDatabaseGetOptionBytes(SEXP database_xptr, SEXP key_sexp,
+                                            SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcDatabaseGetOptionInt(SEXP database_xptr, SEXP key_sexp,
+                                          SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcDatabaseGetOptionDouble(SEXP database_xptr, SEXP key_sexp,
+                                             SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
 extern "C" SEXP RAdbcDatabaseInit(SEXP database_xptr, SEXP error_xptr) {
   auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
@@ -251,6 +286,41 @@ extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
   const char* value = adbc_as_const_char(value_sexp);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   return adbc_wrap_status(AdbcConnectionSetOption(connection, key, value, error));
+}
+
+extern "C" SEXP RAdbcConnectionSetOptionBytes(SEXP connection_xptr, SEXP key_sexp,
+                                              SEXP value_sexp, SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcConnectionSetOptionInt(SEXP connection_xptr, SEXP key_sexp,
+                                            SEXP value_sexp, SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcConnectionSetOptionDouble(SEXP connection_xptr, SEXP key_sexp,
+                                               SEXP value_sexp, SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcConnectionGetOption(SEXP connection_xptr, SEXP key_sexp,
+                                         SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcConnectionGetOptionBytes(SEXP connection_xptr, SEXP key_sexp,
+                                              SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcConnectionGetOptionInt(SEXP connection_xptr, SEXP key_sexp,
+                                            SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcConnectionGetOptionDouble(SEXP connection_xptr, SEXP key_sexp,
+                                               SEXP error_xptr) {
+  Rf_error("Not implemented");
 }
 
 extern "C" SEXP RAdbcConnectionInit(SEXP connection_xptr, SEXP database_xptr,
@@ -428,6 +498,41 @@ extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
   const char* value = adbc_as_const_char(value_sexp);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   return adbc_wrap_status(AdbcStatementSetOption(statement, key, value, error));
+}
+
+extern "C" SEXP RAdbcStatementSetOptionBytes(SEXP statement_xptr, SEXP key_sexp,
+                                             SEXP value_sexp, SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcStatementSetOptionInt(SEXP statement_xptr, SEXP key_sexp,
+                                           SEXP value_sexp, SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcStatementSetOptionDouble(SEXP statement_xptr, SEXP key_sexp,
+                                              SEXP value_sexp, SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcStatementGetOption(SEXP statement_xptr, SEXP key_sexp,
+                                        SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcStatementGetOptionBytes(SEXP statement_xptr, SEXP key_sexp,
+                                             SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcStatementGetOptionInt(SEXP statement_xptr, SEXP key_sexp,
+                                           SEXP error_xptr) {
+  Rf_error("Not implemented");
+}
+
+extern "C" SEXP RAdbcStatementGetOptionDouble(SEXP statement_xptr, SEXP key_sexp,
+                                              SEXP error_xptr) {
+  Rf_error("Not implemented");
 }
 
 extern "C" SEXP RAdbcStatementRelease(SEXP statement_xptr, SEXP error_xptr) {

@@ -34,6 +34,16 @@ SEXP RAdbcMoveDatabase(SEXP database_xptr);
 SEXP RAdbcDatabaseValid(SEXP database_xptr);
 SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
                             SEXP error_xptr);
+SEXP RAdbcDatabaseSetOptionBytes(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
+                                 SEXP error_xptr);
+SEXP RAdbcDatabaseSetOptionInt(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
+                               SEXP error_xptr);
+SEXP RAdbcDatabaseSetOptionDouble(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
+                                  SEXP error_xptr);
+SEXP RAdbcDatabaseGetOption(SEXP database_xptr, SEXP key_sexp, SEXP error_xptr);
+SEXP RAdbcDatabaseGetOptionBytes(SEXP database_xptr, SEXP key_sexp, SEXP error_xptr);
+SEXP RAdbcDatabaseGetOptionInt(SEXP database_xptr, SEXP key_sexp, SEXP error_xptr);
+SEXP RAdbcDatabaseGetOptionDouble(SEXP database_xptr, SEXP key_sexp, SEXP error_xptr);
 SEXP RAdbcDatabaseInit(SEXP database_xptr, SEXP error_xptr);
 SEXP RAdbcDatabaseRelease(SEXP database_xptr, SEXP error_xptr);
 SEXP RAdbcConnectionNew(void);
@@ -41,6 +51,16 @@ SEXP RAdbcMoveConnection(SEXP connection_xptr);
 SEXP RAdbcConnectionValid(SEXP connection_xptr);
 SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp, SEXP value_sexp,
                               SEXP error_xptr);
+SEXP RAdbcConnectionSetOptionBytes(SEXP connection_xptr, SEXP key_sexp, SEXP value_sexp,
+                                   SEXP error_xptr);
+SEXP RAdbcConnectionSetOptionInt(SEXP connection_xptr, SEXP key_sexp, SEXP value_sexp,
+                                 SEXP error_xptr);
+SEXP RAdbcConnectionSetOptionDouble(SEXP connection_xptr, SEXP key_sexp, SEXP value_sexp,
+                                    SEXP error_xptr);
+SEXP RAdbcConnectionGetOption(SEXP connection_xptr, SEXP key_sexp, SEXP error_xptr);
+SEXP RAdbcConnectionGetOptionBytes(SEXP connection_xptr, SEXP key_sexp, SEXP error_xptr);
+SEXP RAdbcConnectionGetOptionInt(SEXP connection_xptr, SEXP key_sexp, SEXP error_xptr);
+SEXP RAdbcConnectionGetOptionDouble(SEXP connection_xptr, SEXP key_sexp, SEXP error_xptr);
 SEXP RAdbcConnectionInit(SEXP connection_xptr, SEXP database_xptr, SEXP error_xptr);
 SEXP RAdbcConnectionRelease(SEXP connection_xptr, SEXP error_xptr);
 SEXP RAdbcConnectionGetInfo(SEXP connection_xptr, SEXP info_codes_sexp,
@@ -63,6 +83,16 @@ SEXP RAdbcMoveStatement(SEXP statement_xptr);
 SEXP RAdbcStatementValid(SEXP statement_xptr);
 SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp, SEXP value_sexp,
                              SEXP error_xptr);
+SEXP RAdbcStatementSetOptionBytes(SEXP statement_xptr, SEXP key_sexp, SEXP value_sexp,
+                                  SEXP error_xptr);
+SEXP RAdbcStatementSetOptionInt(SEXP statement_xptr, SEXP key_sexp, SEXP value_sexp,
+                                SEXP error_xptr);
+SEXP RAdbcStatementSetOptionDouble(SEXP statement_xptr, SEXP key_sexp, SEXP value_sexp,
+                                   SEXP error_xptr);
+SEXP RAdbcStatementGetOption(SEXP statement_xptr, SEXP key_sexp, SEXP error_xptr);
+SEXP RAdbcStatementGetOptionBytes(SEXP statement_xptr, SEXP key_sexp, SEXP error_xptr);
+SEXP RAdbcStatementGetOptionInt(SEXP statement_xptr, SEXP key_sexp, SEXP error_xptr);
+SEXP RAdbcStatementGetOptionDouble(SEXP statement_xptr, SEXP key_sexp, SEXP error_xptr);
 SEXP RAdbcStatementRelease(SEXP statement_xptr, SEXP error_xptr);
 SEXP RAdbcStatementSetSqlQuery(SEXP statement_xptr, SEXP query_sexp, SEXP error_xptr);
 SEXP RAdbcStatementSetSubstraitPlan(SEXP statement_xptr, SEXP plan_sexp, SEXP error_xptr);
@@ -92,12 +122,26 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcMoveDatabase", (DL_FUNC)&RAdbcMoveDatabase, 1},
     {"RAdbcDatabaseValid", (DL_FUNC)&RAdbcDatabaseValid, 1},
     {"RAdbcDatabaseSetOption", (DL_FUNC)&RAdbcDatabaseSetOption, 4},
+    {"RAdbcDatabaseSetOptionBytes", (DL_FUNC)&RAdbcDatabaseSetOptionBytes, 4},
+    {"RAdbcDatabaseSetOptionInt", (DL_FUNC)&RAdbcDatabaseSetOptionInt, 4},
+    {"RAdbcDatabaseSetOptionDouble", (DL_FUNC)&RAdbcDatabaseSetOptionDouble, 4},
+    {"RAdbcDatabaseGetOption", (DL_FUNC)&RAdbcDatabaseGetOption, 3},
+    {"RAdbcDatabaseGetOptionBytes", (DL_FUNC)&RAdbcDatabaseGetOptionBytes, 3},
+    {"RAdbcDatabaseGetOptionInt", (DL_FUNC)&RAdbcDatabaseGetOptionInt, 3},
+    {"RAdbcDatabaseGetOptionDouble", (DL_FUNC)&RAdbcDatabaseGetOptionDouble, 3},
     {"RAdbcDatabaseInit", (DL_FUNC)&RAdbcDatabaseInit, 2},
     {"RAdbcDatabaseRelease", (DL_FUNC)&RAdbcDatabaseRelease, 2},
     {"RAdbcConnectionNew", (DL_FUNC)&RAdbcConnectionNew, 0},
     {"RAdbcMoveConnection", (DL_FUNC)&RAdbcMoveConnection, 1},
     {"RAdbcConnectionValid", (DL_FUNC)&RAdbcConnectionValid, 1},
     {"RAdbcConnectionSetOption", (DL_FUNC)&RAdbcConnectionSetOption, 4},
+    {"RAdbcConnectionSetOptionBytes", (DL_FUNC)&RAdbcConnectionSetOptionBytes, 4},
+    {"RAdbcConnectionSetOptionInt", (DL_FUNC)&RAdbcConnectionSetOptionInt, 4},
+    {"RAdbcConnectionSetOptionDouble", (DL_FUNC)&RAdbcConnectionSetOptionDouble, 4},
+    {"RAdbcConnectionGetOption", (DL_FUNC)&RAdbcConnectionGetOption, 3},
+    {"RAdbcConnectionGetOptionBytes", (DL_FUNC)&RAdbcConnectionGetOptionBytes, 3},
+    {"RAdbcConnectionGetOptionInt", (DL_FUNC)&RAdbcConnectionGetOptionInt, 3},
+    {"RAdbcConnectionGetOptionDouble", (DL_FUNC)&RAdbcConnectionGetOptionDouble, 3},
     {"RAdbcConnectionInit", (DL_FUNC)&RAdbcConnectionInit, 3},
     {"RAdbcConnectionRelease", (DL_FUNC)&RAdbcConnectionRelease, 2},
     {"RAdbcConnectionGetInfo", (DL_FUNC)&RAdbcConnectionGetInfo, 4},
@@ -111,6 +155,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcMoveStatement", (DL_FUNC)&RAdbcMoveStatement, 1},
     {"RAdbcStatementValid", (DL_FUNC)&RAdbcStatementValid, 1},
     {"RAdbcStatementSetOption", (DL_FUNC)&RAdbcStatementSetOption, 4},
+    {"RAdbcStatementSetOptionBytes", (DL_FUNC)&RAdbcStatementSetOptionBytes, 4},
+    {"RAdbcStatementSetOptionInt", (DL_FUNC)&RAdbcStatementSetOptionInt, 4},
+    {"RAdbcStatementSetOptionDouble", (DL_FUNC)&RAdbcStatementSetOptionDouble, 4},
+    {"RAdbcStatementGetOption", (DL_FUNC)&RAdbcStatementGetOption, 3},
+    {"RAdbcStatementGetOptionBytes", (DL_FUNC)&RAdbcStatementGetOptionBytes, 3},
+    {"RAdbcStatementGetOptionInt", (DL_FUNC)&RAdbcStatementGetOptionInt, 3},
+    {"RAdbcStatementGetOptionDouble", (DL_FUNC)&RAdbcStatementGetOptionDouble, 3},
     {"RAdbcStatementRelease", (DL_FUNC)&RAdbcStatementRelease, 2},
     {"RAdbcStatementSetSqlQuery", (DL_FUNC)&RAdbcStatementSetSqlQuery, 3},
     {"RAdbcStatementSetSubstraitPlan", (DL_FUNC)&RAdbcStatementSetSubstraitPlan, 3},
