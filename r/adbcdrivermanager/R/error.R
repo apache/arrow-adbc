@@ -62,12 +62,12 @@ str.adbc_error <- function(object, ...) {
 
 #' @export
 length.adbc_error <- function(x, ...) {
-  3L
+  4L
 }
 
 #' @export
 names.adbc_error <- function(x, ...) {
-  c("message", "vendor_code", "sqlstate")
+  c("message", "vendor_code", "sqlstate", "details")
 }
 
 #' @export

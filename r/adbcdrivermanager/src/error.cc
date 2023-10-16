@@ -48,9 +48,28 @@ extern "C" SEXP RAdbcAllocateError(SEXP shelter_sexp) {
   return error_xptr;
 }
 
+static SEXP wrap_error_details(AdbcError* error) {
+  int n_details = AdbcErrorGetDetailCount(error);
+  SEXP result_names = PROTECT(Rf_allocVector(STRSXP, n_details));
+  SEXP result = PROTECT(Rf_allocVector(VECSXP, n_details));
+
+  for (int i = 0; i < n_details; i++) {
+    AdbcErrorDetail item = AdbcErrorGetDetail(error, i);
+    SET_STRING_ELT(result_names, i, Rf_mkCharCE(item.key, CE_UTF8));
+    SEXP item_sexp = PROTECT(Rf_allocVector(RAWSXP, item.value_length));
+    memcpy(RAW(item_sexp), item.value, item.value_length);
+    SET_VECTOR_ELT(result, i, item_sexp);
+    UNPROTECT(1);
+  }
+
+  Rf_setAttrib(result, R_NamesSymbol, result_names);
+  UNPROTECT(2);
+  return result;
+}
+
 extern "C" SEXP RAdbcErrorProxy(SEXP error_xptr) {
   AdbcError* error = adbc_from_xptr<AdbcError>(error_xptr);
-  const char* names[] = {"message", "vendor_code", "sqlstate", ""};
+  const char* names[] = {"message", "vendor_code", "sqlstate", "details", ""};
   SEXP result = PROTECT(Rf_mkNamed(VECSXP, names));
 
   if (error->message != nullptr) {
@@ -67,8 +86,13 @@ extern "C" SEXP RAdbcErrorProxy(SEXP error_xptr) {
   SEXP sqlstate = PROTECT(Rf_allocVector(RAWSXP, sizeof(error->sqlstate)));
   memcpy(RAW(sqlstate), error->sqlstate, sizeof(error->sqlstate));
   SET_VECTOR_ELT(result, 2, sqlstate);
+  UNPROTECT(1);
 
-  UNPROTECT(2);
+  SEXP details = PROTECT(wrap_error_details(error));
+  SET_VECTOR_ELT(result, 3, details);
+  UNPROTECT(1);
+
+  UNPROTECT(1);
   return result;
 }
 
