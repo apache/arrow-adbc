@@ -40,6 +40,23 @@ test_that("connection methods work for the void driver", {
   )
 
   expect_error(
+    adbc_connection_get_info(con, double()),
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_error(
+    adbc_connection_get_info(con, NULL),
+    "NOT_IMPLEMENTED"
+  )
+
+  # With defaults of NULL/OL
+  expect_error(
+    adbc_connection_get_objects(con),
+    "NOT_IMPLEMENTED"
+  )
+
+  # With explicit args
+  expect_error(
     adbc_connection_get_objects(
       con, 0,
       "catalog", "db_schema",
@@ -155,12 +172,39 @@ test_that("invalid parameter types generate errors", {
 
   expect_error(
     adbc_connection_get_objects(
-      con, NULL,
+      con, character(),
       "catalog", "db_schema",
       "table_name", "table_type", "column_name"
     ),
     "Expected integer(1) or double(1)",
     fixed = TRUE
+  )
+
+  expect_error(
+    adbc_connection_get_objects(
+      con, NA_integer_,
+      "catalog", "db_schema",
+      "table_name", "table_type", "column_name"
+    ),
+    "Can't convert NA_integer_"
+  )
+
+  expect_error(
+    adbc_connection_get_objects(
+      con, NA_real_,
+      "catalog", "db_schema",
+      "table_name", "table_type", "column_name"
+    ),
+    "Can't convert NA_real_"
+  )
+
+  expect_error(
+    adbc_connection_get_objects(
+      con, 0L,
+      "catalog", "db_schema",
+      "table_name", c("table_type1", NA_character_), "column_name"
+    ),
+    "Can't convert NA_character_ element"
   )
 
   expect_error(
@@ -172,6 +216,21 @@ test_that("invalid parameter types generate errors", {
   expect_error(
     adbc_statement_set_sql_query(stmt, NA_character_),
     "Can't convert NA_character_"
+  )
+
+  expect_error(
+    adbc_connection_get_info(con, NA_integer_),
+    "Can't convert NA_integer_ element"
+  )
+
+  expect_error(
+    adbc_connection_get_info(con, NA_real_),
+    "Can't convert NA_real_ or NaN element"
+  )
+
+  expect_error(
+    adbc_connection_get_info(con, NaN),
+    "Can't convert NA_real_ or NaN element"
   )
 
   # (makes a NULL xptr)

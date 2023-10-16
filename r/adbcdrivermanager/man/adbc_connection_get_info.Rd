@@ -12,7 +12,7 @@
 \alias{adbc_connection_rollback}
 \title{Connection methods}
 \usage{
-adbc_connection_get_info(connection, info_codes)
+adbc_connection_get_info(connection, info_codes = NULL)
 
 adbc_connection_get_objects(
   connection,
