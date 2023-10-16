@@ -30,9 +30,10 @@ extern "C" {
 
 int AdbcStatusCodeToErrno(AdbcStatusCode code);
 
-// The printf checking attribute doesn't work properly on gcc 4.8
-// and results in spurious compiler warnings
-#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5)
+// If using mingw's c99-compliant printf, we need a different format-checking attribute
+#if defined(__USE_MINGW_ANSI_STDIO) && defined(__MINGW_PRINTF_FORMAT)
+#define ADBC_CHECK_PRINTF_ATTRIBUTE __attribute__((format(__MINGW_PRINTF_FORMAT, 2, 3)))
+#elif defined(__GNUC__)
 #define ADBC_CHECK_PRINTF_ATTRIBUTE __attribute__((format(printf, 2, 3)))
 #else
 #define ADBC_CHECK_PRINTF_ATTRIBUTE

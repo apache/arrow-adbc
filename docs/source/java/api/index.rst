@@ -15,13 +15,11 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-====
-Java
-====
+====================
+Java API Reference
+====================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   quickstart
-   driver_manager
-   api/index
+   adbc_driver_manager
