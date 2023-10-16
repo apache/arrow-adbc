@@ -25,7 +25,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     internal class BigQueryTokenResponse
     {
         [JsonPropertyName("access_token")]
-        public  string AccessToken { get; set; }
+        public string AccessToken { get; set; }
 
         [JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }

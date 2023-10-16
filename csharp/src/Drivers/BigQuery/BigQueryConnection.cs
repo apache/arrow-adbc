@@ -789,9 +789,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private ParsedDecimalValues ParsePrecisionAndScale(string type)
         {
-            if(string.IsNullOrWhiteSpace(type)) throw new ArgumentNullException("type");
+            if(string.IsNullOrWhiteSpace(type)) throw new ArgumentNullException(nameof(type));
 
-            string[] values = type.Substring(type.IndexOf("(") + 1).TrimEnd(")".ToCharArray()).Split(",".ToCharArray());
+            string[] values = type.Substring(type.IndexOf("(") + 1).TrimEnd(')').Split(",".ToCharArray());
 
             return new ParsedDecimalValues()
             {
@@ -865,11 +865,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
 
             BigQueryStatement statement = new BigQueryStatement(this.client, this.credential);
-            statement.Options = ValidateOptions();
+            statement.Options = ParseOptions();
             return statement;
         }
 
-        private IReadOnlyDictionary<string, string> ValidateOptions()
+        private IReadOnlyDictionary<string, string> ParseOptions()
         {
             Dictionary<string, string> options = new Dictionary<string, string>();
 

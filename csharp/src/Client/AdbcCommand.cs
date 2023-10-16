@@ -167,16 +167,13 @@ namespace Apache.Arrow.Adbc.Client
         {
             switch (behavior)
             {
-                case CommandBehavior.SingleResult:
-                case CommandBehavior.KeyInfo:
-                case CommandBehavior.SequentialAccess:
-                case CommandBehavior.CloseConnection:
-                case CommandBehavior.SingleRow:
-                    throw new InvalidOperationException($"{behavior} is not supported with this provider");
-
-                default:
+                case CommandBehavior.SchemaOnly:   // The schema is not known until a read happens
+                case CommandBehavior.Default:
                     QueryResult result = this.ExecuteQuery();
                     return new AdbcDataReader(this, result);
+
+                default:
+                    throw new InvalidOperationException($"{behavior} is not supported with this provider");
             }
         }
 
