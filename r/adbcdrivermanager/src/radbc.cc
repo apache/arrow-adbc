@@ -20,6 +20,7 @@
 #include <Rinternals.h>
 
 #include <string.h>
+#include <utility>
 
 #include <adbc.h>
 #include "adbc_driver_manager.h"
@@ -280,10 +281,13 @@ extern "C" SEXP RAdbcConnectionGetInfo(SEXP connection_xptr, SEXP info_codes_sex
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   auto out_stream = adbc_from_xptr<ArrowArrayStream>(out_stream_xptr);
-  auto info_codes = reinterpret_cast<uint32_t*>(INTEGER(info_codes_sexp));
+  std::pair<SEXP, int*> info_codes = adbc_as_int_list(info_codes_sexp);
+  PROTECT(info_codes.first);
   size_t info_codes_length = Rf_xlength(info_codes_sexp);
   int status =
-      AdbcConnectionGetInfo(connection, info_codes, info_codes_length, out_stream, error);
+      AdbcConnectionGetInfo(connection, reinterpret_cast<uint32_t*>(info_codes.second),
+                            info_codes_length, out_stream, error);
+  UNPROTECT(1);
   return adbc_wrap_status(status);
 }
 

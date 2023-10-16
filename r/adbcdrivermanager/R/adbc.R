@@ -216,7 +216,7 @@ adbc_connection_get_info <- function(connection, info_codes) {
   status <- .Call(
     RAdbcConnectionGetInfo,
     connection,
-    as.integer(info_codes),
+    info_codes,
     out_stream,
     error
   )
