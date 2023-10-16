@@ -19,6 +19,7 @@
 #'
 #' @param driver An [adbc_driver()].
 #' @param database An [adbc_database][adbc_database_init].
+#' @param option A specific option name
 #' @param ... Driver-specific options. For the default method, these are
 #'   named values that are converted to strings.
 #' @param options A named `character()` or `list()` whose values are converted
@@ -88,6 +89,30 @@ adbc_database_set_options <- function(database, options) {
 
 #' @rdname adbc_database_init
 #' @export
+adbc_database_get_option <- function(database, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_database_init
+#' @export
+adbc_database_get_option_bytes <- function(database, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_database_init
+#' @export
+adbc_database_get_option_int <- function(database, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_database_init
+#' @export
+adbc_database_get_option_double <- function(database, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_database_init
+#' @export
 adbc_database_release <- function(database) {
   error <- adbc_allocate_error()
   status <- .Call(RAdbcDatabaseRelease, database, error)
@@ -153,6 +178,30 @@ adbc_connection_set_options <- function(connection, options) {
     stop_for_error(status, error)
   }
   invisible(connection)
+}
+
+#' @rdname adbc_connection_init
+#' @export
+adbc_connection_get_option <- function(connection, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_connection_init
+#' @export
+adbc_connection_get_option_bytes <- function(connection, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_connection_init
+#' @export
+adbc_connection_get_option_int <- function(connection, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_connection_init
+#' @export
+adbc_connection_get_option_double <- function(connection, option) {
+  stop("Not implemented")
 }
 
 #' @rdname adbc_connection_init
@@ -388,6 +437,30 @@ adbc_statement_set_options <- function(statement, options) {
     stop_for_error(status, error)
   }
   invisible(statement)
+}
+
+#' @rdname adbc_statement_init
+#' @export
+adbc_statement_get_option <- function(statement, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_statement_init
+#' @export
+adbc_statement_get_option_bytes <- function(statement, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_statement_init
+#' @export
+adbc_statement_get_option_int <- function(statement, option) {
+  stop("Not implemented")
+}
+
+#' @rdname adbc_statement_init
+#' @export
+adbc_statement_get_option_double <- function(statement, option) {
+  stop("Not implemented")
 }
 
 #' @rdname adbc_statement_init

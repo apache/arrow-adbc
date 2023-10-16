@@ -4,6 +4,10 @@
 \alias{adbc_connection_init}
 \alias{adbc_connection_init_default}
 \alias{adbc_connection_set_options}
+\alias{adbc_connection_get_option}
+\alias{adbc_connection_get_option_bytes}
+\alias{adbc_connection_get_option_int}
+\alias{adbc_connection_get_option_double}
 \alias{adbc_connection_release}
 \title{Connections}
 \usage{
@@ -12,6 +16,14 @@ adbc_connection_init(database, ...)
 adbc_connection_init_default(database, options = NULL, subclass = character())
 
 adbc_connection_set_options(connection, options)
+
+adbc_connection_get_option(connection, option)
+
+adbc_connection_get_option_bytes(connection, option)
+
+adbc_connection_get_option_int(connection, option)
+
+adbc_connection_get_option_double(connection, option)
 
 adbc_connection_release(connection)
 }
@@ -28,6 +40,8 @@ to strings.}
 finer-grained control over behaviour at the R level.}
 
 \item{connection}{An \link[=adbc_connection_init]{adbc_connection}}
+
+\item{option}{A specific option name}
 }
 \value{
 An object of class 'adbc_connection'

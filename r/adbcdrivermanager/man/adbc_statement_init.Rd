@@ -4,6 +4,10 @@
 \alias{adbc_statement_init}
 \alias{adbc_statement_init_default}
 \alias{adbc_statement_set_options}
+\alias{adbc_statement_get_option}
+\alias{adbc_statement_get_option_bytes}
+\alias{adbc_statement_get_option_int}
+\alias{adbc_statement_get_option_double}
 \alias{adbc_statement_release}
 \title{Statements}
 \usage{
@@ -12,6 +16,14 @@ adbc_statement_init(connection, ...)
 adbc_statement_init_default(connection, options = NULL, subclass = character())
 
 adbc_statement_set_options(statement, options)
+
+adbc_statement_get_option(statement, option)
+
+adbc_statement_get_option_bytes(statement, option)
+
+adbc_statement_get_option_int(statement, option)
+
+adbc_statement_get_option_double(statement, option)
 
 adbc_statement_release(statement)
 }
@@ -28,6 +40,8 @@ to strings.}
 finer-grained control over behaviour at the R level.}
 
 \item{statement}{An \link[=adbc_statement_init]{adbc_statement}}
+
+\item{option}{A specific option name}
 }
 \value{
 An object of class 'adbc_statement'
