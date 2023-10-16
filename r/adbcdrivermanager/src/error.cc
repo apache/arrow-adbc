@@ -96,6 +96,36 @@ extern "C" SEXP RAdbcErrorProxy(SEXP error_xptr) {
   return result;
 }
 
+extern "C" SEXP RAdbcErrorFromArrayStream(SEXP stream_xptr) {
+  struct ArrowArrayStream* stream =
+      reinterpret_cast<ArrowArrayStream*>(R_ExternalPtrAddr(stream_xptr));
+
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  const AdbcError* error = AdbcErrorFromArrayStream(stream, &status);
+  if (error == nullptr) {
+    return R_NilValue;
+  }
+
+  // Not using a normal error_xptr here because the lifecycle is managed by the stream.
+  // This logic won't survive accesses to the error following an explicit stream release;
+  // however will at least keep a stream from being released via the garbage collector.
+  SEXP error_xptr =
+      PROTECT(R_MakeExternalPtr(const_cast<AdbcError*>(error), R_NilValue, stream_xptr));
+
+  // Use a normal (but empty) error for class information
+  SEXP dummy_error_xptr = PROTECT(RAdbcAllocateError(R_NilValue));
+  Rf_copyMostAttrib(dummy_error_xptr, error_xptr);
+  UNPROTECT(1);
+
+  SEXP status_sexp = PROTECT(adbc_wrap_status(status));
+
+  SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
+  SET_VECTOR_ELT(result, 0, status_sexp);
+  SET_VECTOR_ELT(result, 1, error_xptr);
+  UNPROTECT(3);
+  return result;
+}
+
 extern "C" SEXP RAdbcStatusCodeMessage(SEXP status_sexp) {
   int status = adbc_as_int(status_sexp);
   const char* msg = AdbcStatusCodeMessage(status);

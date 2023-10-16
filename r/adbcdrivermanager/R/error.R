@@ -15,6 +15,33 @@
 # specific language governing permissions and limitations
 # under the License.
 
+
+#' Get extended error information from an array stream
+#'
+#' @param stream A [nanoarrow_array_stream][as_nanoarrow_array_stream]
+#'
+#' @return `NULL` if stream was not created by a driver that supports
+#'   extended error information or a list whose first element is the
+#'   status code and second element is the `adbc_error` object. The
+#'   `acbc_error` must not be accessed if `stream` is explicitly released.
+#' @export
+#'
+#' @examples
+#' db <- adbc_database_init(adbc_driver_monkey())
+#' con <- adbc_connection_init(db)
+#' stmt <- adbc_statement_init(con, mtcars)
+#' stream <- nanoarrow::nanoarrow_allocate_array_stream()
+#' adbc_statement_execute_query(stmt, stream)
+#' adbc_error_from_array_stream(stream)
+#'
+adbc_error_from_array_stream <- function(stream) {
+  if (!inherits(stream, "nanoarrow_array_stream") || !adbc_xptr_is_valid(stream)) {
+    stop("`stream` must be a valid nanoarrow_array_stream")
+  }
+
+  .Call(RAdbcErrorFromArrayStream, stream)
+}
+
 adbc_allocate_error <- function(shelter = NULL) {
   .Call(RAdbcAllocateError, shelter)
 }

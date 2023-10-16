@@ -15,6 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("adbc_error_from_array_stream() errors for invalid streams", {
+  stream <- nanoarrow::nanoarrow_allocate_array_stream()
+  expect_error(
+    adbc_error_from_array_stream(stream),
+    "must be a valid nanoarrow_array_stream"
+  )
+})
+
+test_that("adbc_error_from_array_stream() returns NULL for unrelated streams", {
+  stream <- nanoarrow::basic_array_stream(list(1:5))
+  expect_null(adbc_error_from_array_stream(stream))
+})
+
 test_that("error allocator works", {
   err <- adbc_allocate_error()
   expect_s3_class(err, "adbc_error")
