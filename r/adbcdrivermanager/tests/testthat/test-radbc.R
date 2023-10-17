@@ -205,20 +205,11 @@ test_that("invalid parameter types generate errors", {
 
   expect_error(
     adbc_connection_get_objects(
-      con, NA_integer_,
-      "catalog", "db_schema",
-      "table_name", "table_type", "column_name"
-    ),
-    "Can't convert NA_integer_"
-  )
-
-  expect_error(
-    adbc_connection_get_objects(
       con, NA_real_,
       "catalog", "db_schema",
       "table_name", "table_type", "column_name"
     ),
-    "Can't convert NA_real_"
+    "Can't convert non-finite"
   )
 
   expect_error(
@@ -242,18 +233,8 @@ test_that("invalid parameter types generate errors", {
   )
 
   expect_error(
-    adbc_connection_get_info(con, NA_integer_),
-    "Can't convert NA_integer_ element"
-  )
-
-  expect_error(
     adbc_connection_get_info(con, NA_real_),
-    "Can't convert NA_real_ or NaN element"
-  )
-
-  expect_error(
-    adbc_connection_get_info(con, NaN),
-    "Can't convert NA_real_ or NaN element"
+    "Can't convert non-finite element"
   )
 
   # (makes a NULL xptr)
