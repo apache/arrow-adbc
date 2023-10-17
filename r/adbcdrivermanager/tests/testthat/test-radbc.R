@@ -294,3 +294,27 @@ test_that("invalid const char* inputs generate errors", {
     "Can't convert NA_character_"
   )
 })
+
+test_that("invalid bool inputs generate errors", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+
+  expect_error(
+    adbc_connection_get_statistics(con, NULL, NULL, "table name", character()),
+    "Expected integer(1) or double(1)",
+    fixed = TRUE
+  )
+
+  expect_error(
+    adbc_connection_get_statistics(con, NULL, NULL, "table name", NA),
+    "Can't convert NA to bool"
+  )
+
+  expect_error(
+    adbc_connection_get_statistics(
+      con, NULL, NULL, "table name",
+      structure(TRUE, class = "non-empty")
+    ),
+    "Can't convert classed object to bool"
+  )
+})
