@@ -293,26 +293,6 @@ extern "C" SEXP RAdbcConnectionSetOptionDouble(SEXP connection_xptr, SEXP key_se
   Rf_error("Not implemented");
 }
 
-extern "C" SEXP RAdbcConnectionGetOption(SEXP connection_xptr, SEXP key_sexp,
-                                         SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcConnectionGetOptionBytes(SEXP connection_xptr, SEXP key_sexp,
-                                              SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcConnectionGetOptionInt(SEXP connection_xptr, SEXP key_sexp,
-                                            SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcConnectionGetOptionDouble(SEXP connection_xptr, SEXP key_sexp,
-                                               SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
 extern "C" SEXP RAdbcConnectionInit(SEXP connection_xptr, SEXP database_xptr,
                                     SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
@@ -502,26 +482,6 @@ extern "C" SEXP RAdbcStatementSetOptionInt(SEXP statement_xptr, SEXP key_sexp,
 
 extern "C" SEXP RAdbcStatementSetOptionDouble(SEXP statement_xptr, SEXP key_sexp,
                                               SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcStatementGetOption(SEXP statement_xptr, SEXP key_sexp,
-                                        SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcStatementGetOptionBytes(SEXP statement_xptr, SEXP key_sexp,
-                                             SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcStatementGetOptionInt(SEXP statement_xptr, SEXP key_sexp,
-                                           SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcStatementGetOptionDouble(SEXP statement_xptr, SEXP key_sexp,
-                                              SEXP error_xptr) {
   Rf_error("Not implemented");
 }
 

@@ -19,8 +19,6 @@
 #include <R.h>
 #include <Rinternals.h>
 
-#include <utility>
-
 #include <adbc.h>
 
 #include "radbc.h"
@@ -98,4 +96,52 @@ extern "C" SEXP RAdbcDatabaseGetOptionDouble(SEXP database_xptr, SEXP key_sexp,
                                              SEXP error_xptr) {
   return adbc_get_option_numeric<AdbcDatabase, double>(
       database_xptr, key_sexp, error_xptr, &AdbcDatabaseGetOptionDouble);
+}
+
+extern "C" SEXP RAdbcConnectionGetOption(SEXP connection_xptr, SEXP key_sexp,
+                                         SEXP error_xptr) {
+  return adbc_get_option<AdbcConnection>(connection_xptr, key_sexp, error_xptr,
+                                         &AdbcConnectionGetOption);
+}
+
+extern "C" SEXP RAdbcConnectionGetOptionBytes(SEXP connection_xptr, SEXP key_sexp,
+                                              SEXP error_xptr) {
+  return adbc_get_option_bytes<AdbcConnection, uint8_t>(
+      connection_xptr, key_sexp, error_xptr, &AdbcConnectionGetOptionBytes);
+}
+
+extern "C" SEXP RAdbcConnectionGetOptionInt(SEXP connection_xptr, SEXP key_sexp,
+                                            SEXP error_xptr) {
+  return adbc_get_option_numeric<AdbcConnection, int64_t>(
+      connection_xptr, key_sexp, error_xptr, &AdbcConnectionGetOptionInt);
+}
+
+extern "C" SEXP RAdbcConnectionGetOptionDouble(SEXP connection_xptr, SEXP key_sexp,
+                                               SEXP error_xptr) {
+  return adbc_get_option_numeric<AdbcConnection, double>(
+      connection_xptr, key_sexp, error_xptr, &AdbcConnectionGetOptionDouble);
+}
+
+extern "C" SEXP RAdbcStatementGetOption(SEXP statement_xptr, SEXP key_sexp,
+                                        SEXP error_xptr) {
+  return adbc_get_option<AdbcStatement>(statement_xptr, key_sexp, error_xptr,
+                                        &AdbcStatementGetOption);
+}
+
+extern "C" SEXP RAdbcStatementGetOptionBytes(SEXP statement_xptr, SEXP key_sexp,
+                                             SEXP error_xptr) {
+  return adbc_get_option_bytes<AdbcStatement, uint8_t>(
+      statement_xptr, key_sexp, error_xptr, &AdbcStatementGetOptionBytes);
+}
+
+extern "C" SEXP RAdbcStatementGetOptionInt(SEXP statement_xptr, SEXP key_sexp,
+                                           SEXP error_xptr) {
+  return adbc_get_option_numeric<AdbcStatement, int64_t>(
+      statement_xptr, key_sexp, error_xptr, &AdbcStatementGetOptionInt);
+}
+
+extern "C" SEXP RAdbcStatementGetOptionDouble(SEXP statement_xptr, SEXP key_sexp,
+                                              SEXP error_xptr) {
+  return adbc_get_option_numeric<AdbcStatement, double>(
+      statement_xptr, key_sexp, error_xptr, &AdbcStatementGetOptionDouble);
 }
