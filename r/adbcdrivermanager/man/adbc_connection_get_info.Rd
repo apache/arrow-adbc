@@ -7,12 +7,12 @@
 \alias{adbc_connection_get_table_types}
 \alias{adbc_connection_read_partition}
 \alias{adbc_connection_commit}
-\alias{adbc_connection_quote_identifier}
-\alias{adbc_connection_quote_string}
 \alias{adbc_connection_rollback}
 \alias{adbc_connection_cancel}
 \alias{adbc_connection_get_statistic_names}
 \alias{adbc_connection_get_statistics}
+\alias{adbc_connection_quote_identifier}
+\alias{adbc_connection_quote_string}
 \title{Connection methods}
 \usage{
 adbc_connection_get_info(connection, info_codes = NULL)
@@ -35,10 +35,6 @@ adbc_connection_read_partition(connection, serialized_partition)
 
 adbc_connection_commit(connection)
 
-adbc_connection_quote_identifier(connection, value, ...)
-
-adbc_connection_quote_string(connection, value, ...)
-
 adbc_connection_rollback(connection)
 
 adbc_connection_cancel(connection)
@@ -50,8 +46,12 @@ adbc_connection_get_statistics(
   catalog,
   db_schema,
   table_name,
-  approximate
+  approximate = FALSE
 )
+
+adbc_connection_quote_identifier(connection, value, ...)
+
+adbc_connection_quote_string(connection, value, ...)
 }
 \arguments{
 \item{connection}{An \link[=adbc_connection_init]{adbc_connection}}
@@ -83,15 +83,15 @@ filter by name. May be a search pattern.}
 
 \item{serialized_partition}{The partition descriptor.}
 
-\item{value}{A string or identifier.}
-
-\item{...}{Driver-specific options. For the default method, these are
-named values that are converted to strings.}
-
 \item{approximate}{If \code{FALSE}, request exact values of statistics,
 else allow for best-effort, approximate, or cached values. The database
 may return approximate values regardless, as indicated in the result.
 Requesting exact values may be expensive or unsupported.}
+
+\item{value}{A string or identifier.}
+
+\item{...}{Driver-specific options. For the default method, these are
+named values that are converted to strings.}
 }
 \value{
 \itemize{
