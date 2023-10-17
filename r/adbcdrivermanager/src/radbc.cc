@@ -527,7 +527,12 @@ extern "C" SEXP RAdbcStatementExecuteQuery(SEXP statement_xptr, SEXP out_stream_
 
 extern "C" SEXP RAdbcStatementExecuteSchema(SEXP statement_xptr, SEXP out_schema_xptr,
                                             SEXP error_xptr) {
-  Rf_error("Not implemented");
+  auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
+  auto out_schema = adbc_from_xptr<ArrowSchema>(out_schema_xptr);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+
+  int status = AdbcStatementExecuteSchema(statement, out_schema, error);
+  return adbc_wrap_status(status);
 }
 
 extern "C" SEXP RAdbcStatementExecutePartitions(SEXP statement_xptr, SEXP out_schema_xptr,

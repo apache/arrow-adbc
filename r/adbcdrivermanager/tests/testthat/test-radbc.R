@@ -94,6 +94,21 @@ test_that("connection methods work for the void driver", {
   )
 
   expect_identical(
+    adbc_connection_cancel(con),
+    con
+  )
+
+  expect_error(
+    adbc_connection_get_statistic_names(con),
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_error(
+    adbc_connection_get_statistics(con, NULL, NULL, "table name"),
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_identical(
     adbc_connection_quote_identifier(con, 'some"identifier'),
     '"some""identifier"'
   )
@@ -151,6 +166,11 @@ test_that("statement methods work for the void driver", {
 
   expect_error(
     adbc_statement_execute_query(stmt),
+    "NOT_IMPLEMENTED"
+  )
+
+  expect_error(
+    adbc_statement_execute_schema(stmt),
     "NOT_IMPLEMENTED"
   )
 })

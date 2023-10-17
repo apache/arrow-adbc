@@ -299,7 +299,7 @@ adbc_connection_get_statistic_names <- function(connection) {
 #' @rdname adbc_connection_get_info
 #' @export
 adbc_connection_get_statistics <- function(connection, catalog, db_schema,
-                                           table_name, approximate) {
+                                           table_name, approximate = FALSE) {
   error <- adbc_allocate_error()
   out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
 
@@ -309,6 +309,7 @@ adbc_connection_get_statistics <- function(connection, catalog, db_schema,
     catalog,
     db_schema,
     table_name,
+    approximate,
     out_stream,
     error
   )
