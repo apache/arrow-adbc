@@ -310,6 +310,39 @@ static inline SEXP adbc_wrap(int64_t value) {
 
 static inline SEXP adbc_wrap(double value) { return Rf_ScalarReal(value); }
 
+template <typename T>
+static inline T adbc_as_c(SEXP sexp);
+
+template <>
+inline AdbcDatabase* adbc_as_c(SEXP sexp) {
+  return adbc_from_xptr<AdbcDatabase>(sexp);
+}
+
+template <>
+inline AdbcConnection* adbc_as_c(SEXP sexp) {
+  return adbc_from_xptr<AdbcConnection>(sexp);
+}
+
+template <>
+inline AdbcStatement* adbc_as_c(SEXP sexp) {
+  return adbc_from_xptr<AdbcStatement>(sexp);
+}
+
+template <>
+inline const char* adbc_as_c(SEXP sexp) {
+  return adbc_as_const_char(sexp);
+}
+
+template <>
+inline int64_t adbc_as_c(SEXP sexp) {
+  return adbc_as_int64(sexp);
+}
+
+template <>
+inline double adbc_as_c(SEXP sexp) {
+  return adbc_as_double(sexp);
+}
+
 static inline void adbc_error_stop(int code, AdbcError* error) {
   SEXP status_sexp = PROTECT(adbc_wrap(code));
   SEXP error_xptr = PROTECT(adbc_borrow_xptr<AdbcError>(error));

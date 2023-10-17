@@ -23,21 +23,20 @@
 
 #include "radbc.h"
 
-template <typename T>
+template <typename T, typename ValueT>
 SEXP adbc_set_option(SEXP obj_xptr, SEXP key_sexp, SEXP value_sexp, SEXP error_xptr,
-                     AdbcStatusCode (*SetOption)(T*, const char*, const char*,
-                                                 AdbcError*)) {
+                     AdbcStatusCode (*SetOption)(T*, const char*, ValueT, AdbcError*)) {
   auto obj = adbc_from_xptr<T>(obj_xptr);
   const char* key = adbc_as_const_char(key_sexp);
-  const char* value = adbc_as_const_char(value_sexp);
+  ValueT value = adbc_as_c<ValueT>(value_sexp);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   return adbc_wrap(SetOption(obj, key, value, error));
 }
 
 extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
                                        SEXP error_xptr) {
-  return adbc_set_option<AdbcDatabase>(database_xptr, key_sexp, value_sexp, error_xptr,
-                                       &AdbcDatabaseSetOption);
+  return adbc_set_option<AdbcDatabase, const char*>(database_xptr, key_sexp, value_sexp,
+                                                    error_xptr, &AdbcDatabaseSetOption);
 }
 
 extern "C" SEXP RAdbcDatabaseSetOptionBytes(SEXP database_xptr, SEXP key_sexp,
@@ -72,8 +71,8 @@ extern "C" SEXP RAdbcDatabaseSetOptionDouble(SEXP database_xptr, SEXP key_sexp,
 
 extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
                                          SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcConnection>(connection_xptr, key_sexp, value_sexp,
-                                         error_xptr, &AdbcConnectionSetOption);
+  return adbc_set_option<AdbcConnection, const char*>(
+      connection_xptr, key_sexp, value_sexp, error_xptr, &AdbcConnectionSetOption);
 }
 
 extern "C" SEXP RAdbcConnectionSetOptionBytes(SEXP connection_xptr, SEXP key_sexp,
@@ -93,8 +92,8 @@ extern "C" SEXP RAdbcConnectionSetOptionDouble(SEXP connection_xptr, SEXP key_se
 
 extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
                                         SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcStatement>(statement_xptr, key_sexp, value_sexp, error_xptr,
-                                        &AdbcStatementSetOption);
+  return adbc_set_option<AdbcStatement, const char*>(statement_xptr, key_sexp, value_sexp,
+                                                     error_xptr, &AdbcStatementSetOption);
 }
 
 extern "C" SEXP RAdbcStatementSetOptionBytes(SEXP statement_xptr, SEXP key_sexp,
