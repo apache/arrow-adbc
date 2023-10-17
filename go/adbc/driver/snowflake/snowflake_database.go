@@ -32,6 +32,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/snowflakedb/gosnowflake"
+	"github.com/youmark/pkcs8"
 )
 
 var (
@@ -338,14 +339,26 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 				}
 			}
 		case OptionJwtPrivateKeyPkcs8Value:
-
 			block, _ := pem.Decode([]byte(v))
 
-			if block == nil || block.Type != "PRIVATE KEY" {
-				panic("failed to parse PEM block containing the private key")
+			if block == nil {
+				panic("Failed to parse PEM block containing the private key")
 			}
 
-			parsedKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+			var parsedKey any
+
+			if block.Type == "ENCRYPTED PRIVATE KEY" {
+				passcode, ok := cnOptions[OptionJwtPrivateKeyPkcs8Password]
+				if ok {
+					parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(passcode))
+				} else {
+					panic(OptionJwtPrivateKeyPkcs8Password + " is not configured")
+				}
+			} else if block.Type == "PRIVATE KEY" {
+				parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes)
+			} else {
+				panic(block.Type + " is not supported")
+			}
 
 			if err != nil {
 				return adbc.Error{

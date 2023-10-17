@@ -242,6 +242,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 if (testConfiguration.AuthenticationType.Equals("auth_jwt", StringComparison.OrdinalIgnoreCase))
                 {
                     builder[SnowflakeParameters.PKCS8_VALUE] = privateKey;
+
+                    if(!string.IsNullOrEmpty(testConfiguration.Pkcs8Passcode))
+                    {
+                        builder[SnowflakeParameters.PKCS8_PASS] = testConfiguration.Pkcs8Passcode;
+                    }
                 }
             }
             else

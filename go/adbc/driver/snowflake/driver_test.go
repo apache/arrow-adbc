@@ -20,7 +20,6 @@ package snowflake_test
 import (
 	"context"
 	"crypto/rsa"
-	"crypto/x509"
 	"database/sql"
 	"encoding/pem"
 	"fmt"
@@ -41,6 +40,7 @@ import (
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/youmark/pkcs8"
 )
 
 type SnowflakeQuirks struct {
@@ -677,7 +677,7 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
 }
 
-func TestJwtAuthenticationUsingString(t *testing.T) {
+func TestUnencryptedJwtAuthenticationUsingString(t *testing.T) {
 	drv := gosnowflake.SnowflakeDriver{}
 
 	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
@@ -702,7 +702,53 @@ func TestJwtAuthenticationUsingString(t *testing.T) {
 	}
 
 	block, _ := pem.Decode([]byte(keyValue))
-	privKey, _ := x509.ParsePKCS8PrivateKey(block.Bytes)
+	privKey, _ := pkcs8.ParsePKCS8PrivateKey(block.Bytes, nil)
+
+	cfg.PrivateKey = privKey.(*rsa.PrivateKey)
+
+	connector := gosnowflake.NewConnector(drv, *cfg)
+	ctx := context.Background()
+
+	_, err := connector.Connect(ctx)
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestEncryptedJwtAuthenticationUsingString(t *testing.T) {
+	drv := gosnowflake.SnowflakeDriver{}
+
+	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
+
+	if !ok {
+		panic("Cannot find the `SNOWFLAKE_URI` value")
+	}
+
+	cfg, _ := gosnowflake.ParseDSN(uri)
+	cfg.Authenticator = gosnowflake.AuthTypeJwt
+
+	keyValue, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_EN_VALUE")
+
+	if !ok {
+		panic("Cannot find the `SNOWFLAKE_TEST_PKCS8_EN_VALUE` value")
+	}
+
+	passcode, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_PASS")
+
+	if !ok {
+		panic("Cannot find the `SNOWFLAKE_TEST_PKCS8_PASS` value")
+	}
+
+	// Windows funkiness
+	if runtime.GOOS == "windows" {
+		keyValue = strings.ReplaceAll(keyValue, "\\r", "\r")
+		keyValue = strings.ReplaceAll(keyValue, "\\n", "\n")
+	}
+
+	block, _ := pem.Decode([]byte(keyValue))
+
+	privKey, _ := pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(passcode))
 
 	cfg.PrivateKey = privKey.(*rsa.PrivateKey)
 

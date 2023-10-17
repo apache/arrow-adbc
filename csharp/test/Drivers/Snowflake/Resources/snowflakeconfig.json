@@ -4,16 +4,17 @@
     "account": "",
     "host": "",
     "database": "",
-    "user":  "",
-    "password":  "",
+    "user": "",
+    "password": "",
     "warehouse": "",
-    "authenticationType":"",
+    "authenticationType": "",
     "authenticationTokenPath": "",
+    "pkcs8Passcode": "",
     "metadata": {
         "catalog": "",
         "schema": "",
         "table": "",
-        "expectedColumnCount":  0
+        "expectedColumnCount": 0
     },
     "query": "",
     "expectedResults": 0

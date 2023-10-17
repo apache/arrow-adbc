@@ -83,5 +83,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// </summary>
         [JsonPropertyName("authenticationTokenPath"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string AuthenticationTokenPath { get; set; }
+
+        /// <summary>
+        /// The passcode to use if the JWT token is encrypted.
+        /// </summary>
+        [JsonPropertyName("pkcs8Passcode"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Pkcs8Passcode { get; set; }
     }
 }

@@ -92,7 +92,9 @@ const (
 	// value without having to load it from the file system. Commonly encoded in PEM blocks
 	// of type "RSA PRIVATE KEY"
 	OptionJwtPrivateKeyPkcs8Value = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value"
-	OptionDisableTelemetry        = "adbc.snowflake.sql.client_option.disable_telemetry"
+	// a passcode to use with JWT keys
+	OptionJwtPrivateKeyPkcs8Password = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password"
+	OptionDisableTelemetry           = "adbc.snowflake.sql.client_option.disable_telemetry"
 	// snowflake driver logging level
 	OptionLogTracing = "adbc.snowflake.sql.client_option.tracing"
 	// When true, the MFA token is cached in the credential manager. True by default
