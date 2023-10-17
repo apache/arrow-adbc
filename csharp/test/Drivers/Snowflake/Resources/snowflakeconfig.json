@@ -5,6 +5,20 @@
     "user": "",
     "password": "",
     "warehouse": "",
+    "authentication": {
+        "auth_oauth": {
+            "token": ""
+        },
+        "auth_jwt": {
+            "private_key": "",
+            "private_key_file": "",
+            "private_key_pwd": ""
+        },
+        "default": {
+            "user": "",
+            "password": ""
+        }
+    },
     "authenticationType": "",
     "authenticationTokenPath": "",
     "metadata": {

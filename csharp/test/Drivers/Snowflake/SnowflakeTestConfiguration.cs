@@ -37,6 +37,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public string DriverEntryPoint { get; set; }
 
         /// <summary>
+        /// The snowflake Authentication
+        /// </summary>
+        [JsonPropertyName("authentication")]
+        public SnowflakeAuthentication Authentication { get; set; }
+
+        /// <summary>
         /// The Snowflake account.
         /// </summary>
         [JsonPropertyName("account")]
@@ -90,4 +96,55 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [JsonPropertyName("stageCommand")]
         public string StageCommand { get; set; }
     }
+
+
+    internal class SnowflakeAuthentication
+    {
+        public const string AuthOAuth = "auth_oauth";
+        public const string AuthJwt = "auth_jwt";
+        public const string AuthDefault = "default";
+
+        [JsonPropertyName(AuthOAuth)]
+        public OAuthAuthentication OAuth { get; set; }
+
+        [JsonPropertyName(AuthJwt)]
+        public JwtAuthentication SnowflakeJwt { get; set; }
+
+        [JsonPropertyName(AuthDefault)]
+        public DefaultAuthentication Default { get; set; }
+    }
+
+    internal class OAuthAuthentication
+    {
+        [JsonPropertyName("token")]
+        public string Token { get; set; }
+
+        [JsonPropertyName("user")]
+        public string User { get; set; }
+    }
+
+    internal class JwtAuthentication
+    {
+        [JsonPropertyName("private_key")]
+        public string PrivateKey { get; set; }
+
+        [JsonPropertyName("private_key_file")]
+        public string PrivateKeyFile { get; set; }
+
+        [JsonPropertyName("private_key_pwd")]
+        public string PrivateKeyPassword { get; set; }
+
+        [JsonPropertyName("user")]
+        public string User { get; set; }
+    }
+
+    internal class DefaultAuthentication
+    {
+        [JsonPropertyName("user")]
+        public string User { get; set; }
+
+        [JsonPropertyName("password")]
+        public string Password { get; set; }
+    }
+
 }

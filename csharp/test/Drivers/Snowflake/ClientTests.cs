@@ -154,7 +154,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
                 long count = 0;
 
-                using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+                using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration, SnowflakeAuthentication.AuthJwt))
                 {
                     AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
 
@@ -314,7 +314,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
                 long count = 0;
 
-                using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+                using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration, SnowflakeAuthentication.AuthOAuth))
                 {
                     AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
 
@@ -336,7 +336,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
-        private Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration)
+        private Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration, string authType = null)
         {
             // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html
 
@@ -344,22 +344,33 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             builder["adbc.snowflake.sql.account"] = testConfiguration.Account;
             builder["adbc.snowflake.sql.warehouse"] = testConfiguration.Warehouse;
-            builder["username"] = testConfiguration.User;
 
-            if (testConfiguration.AuthenticationType == "auth_jwt")
+            if (authType == "auth_jwt")
             {
-                string privateKey = File.ReadAllText(testConfiguration.AuthenticationTokenPath);
+                var privateKeyFile = testConfiguration.Authentication.SnowflakeJwt.PrivateKeyFile;
+                string privateKey = testConfiguration.Authentication.SnowflakeJwt.PrivateKey;
+
+                if (privateKeyFile != null)
+                {
+                    privateKey = File.ReadAllText(privateKeyFile);
+                }
                 builder["adbc.snowflake.sql.auth_type"] = testConfiguration.AuthenticationType;
                 builder["adbc.snowflake.sql.client_option.auth_token"] = privateKey;
+                builder["username"] = testConfiguration.Authentication.SnowflakeJwt.User;
             }
-            else if (testConfiguration.AuthenticationType == "auth_oauth")
+            else if (authType == "auth_oauth")
             {
-                builder["adbc.snowflake.sql.auth_type"] = testConfiguration.AuthenticationType;
-                builder["adbc.snowflake.sql.client_option.auth_token"] = testConfiguration.AuthenticationToken;
+                builder["adbc.snowflake.sql.auth_type"] = testConfiguration.Authentication.OAuth;
+                builder["adbc.snowflake.sql.client_option.auth_token"] = testConfiguration.Authentication.OAuth.Token;
+                if (testConfiguration.Authentication.OAuth.User != null)
+                {
+                    builder["username"] = testConfiguration.Authentication.OAuth.User;
+                }
             }
             else
             {
-                builder["password"] = testConfiguration.Password;
+                builder["username"] = testConfiguration.Authentication.Default.User;
+                builder["password"] = testConfiguration.Authentication.Default.Password;
             }
 
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration);
