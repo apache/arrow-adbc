@@ -69,26 +69,6 @@ adbc_database_init_default <- function(driver, options = NULL, subclass = charac
 
 #' @rdname adbc_database_init
 #' @export
-adbc_database_set_options <- function(database, options) {
-  options <- key_value_options(options)
-  error <- adbc_allocate_error()
-  for (i in seq_along(options)) {
-    key <- names(options)[i]
-    value <- options[i]
-    status <- .Call(
-      RAdbcDatabaseSetOption,
-      database,
-      key,
-      value,
-      error
-    )
-    stop_for_error(status, error)
-  }
-  invisible(database)
-}
-
-#' @rdname adbc_database_init
-#' @export
 adbc_database_release <- function(database) {
   error <- adbc_allocate_error()
   status <- .Call(RAdbcDatabaseRelease, database, error)
@@ -134,26 +114,6 @@ adbc_connection_init_default <- function(database, options = NULL, subclass = ch
 
     adbc_xptr_move(connection)
   })
-}
-
-#' @rdname adbc_connection_init
-#' @export
-adbc_connection_set_options <- function(connection, options) {
-  options <- key_value_options(options)
-  error <- adbc_allocate_error()
-  for (i in seq_along(options)) {
-    key <- names(options)[i]
-    value <- options[i]
-    status <- .Call(
-      RAdbcConnectionSetOption,
-      connection,
-      key,
-      value,
-      error
-    )
-    stop_for_error(status, error)
-  }
-  invisible(connection)
 }
 
 #' @rdname adbc_connection_init
@@ -392,26 +352,6 @@ adbc_statement_init_default <- function(connection, options = NULL, subclass = c
     class(statement) <- c(subclass, class(statement))
     adbc_xptr_move(statement)
   })
-}
-
-#' @rdname adbc_statement_init
-#' @export
-adbc_statement_set_options <- function(statement, options) {
-  options <- key_value_options(options)
-  error <- adbc_allocate_error()
-  for (i in seq_along(options)) {
-    key <- names(options)[i]
-    value <- options[i]
-    status <- .Call(
-      RAdbcStatementSetOption,
-      statement,
-      key,
-      value,
-      error
-    )
-    stop_for_error(status, error)
-  }
-  invisible(statement)
 }
 
 #' @rdname adbc_statement_init

@@ -15,6 +15,65 @@
 # specific language governing permissions and limitations
 # under the License.
 
+#' @rdname adbc_database_init
+#' @export
+adbc_database_set_options <- function(database, options) {
+  options <- key_value_options(options)
+  error <- adbc_allocate_error()
+  for (i in seq_along(options)) {
+    key <- names(options)[i]
+    value <- options[i]
+    status <- .Call(
+      RAdbcDatabaseSetOption,
+      database,
+      key,
+      value,
+      error
+    )
+    stop_for_error(status, error)
+  }
+  invisible(database)
+}
+
+#' @rdname adbc_connection_init
+#' @export
+adbc_connection_set_options <- function(connection, options) {
+  options <- key_value_options(options)
+  error <- adbc_allocate_error()
+  for (i in seq_along(options)) {
+    key <- names(options)[i]
+    value <- options[i]
+    status <- .Call(
+      RAdbcConnectionSetOption,
+      connection,
+      key,
+      value,
+      error
+    )
+    stop_for_error(status, error)
+  }
+  invisible(connection)
+}
+
+#' @rdname adbc_statement_init
+#' @export
+adbc_statement_set_options <- function(statement, options) {
+  options <- key_value_options(options)
+  error <- adbc_allocate_error()
+  for (i in seq_along(options)) {
+    key <- names(options)[i]
+    value <- options[i]
+    status <- .Call(
+      RAdbcStatementSetOption,
+      statement,
+      key,
+      value,
+      error
+    )
+    stop_for_error(status, error)
+  }
+  invisible(statement)
+}
 
 #' @rdname adbc_database_init
 #' @export
