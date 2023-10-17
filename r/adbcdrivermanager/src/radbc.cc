@@ -166,46 +166,6 @@ extern "C" SEXP RAdbcDatabaseValid(SEXP database_xptr) {
   return Rf_ScalarLogical(database != nullptr && database->private_data != nullptr);
 }
 
-extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
-                                       SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  const char* value = adbc_as_const_char(value_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap(AdbcDatabaseSetOption(database, key, value, error));
-}
-
-extern "C" SEXP RAdbcDatabaseSetOptionBytes(SEXP database_xptr, SEXP key_sexp,
-                                            SEXP value_sexp, SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  const uint8_t* value = RAW(value_sexp);
-  size_t value_length = Rf_xlength(value_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-
-  int status = AdbcDatabaseSetOptionBytes(database, key, value, value_length, error);
-  return adbc_wrap(status);
-}
-
-extern "C" SEXP RAdbcDatabaseSetOptionInt(SEXP database_xptr, SEXP key_sexp,
-                                          SEXP value_sexp, SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  int64_t value = adbc_as_int64(value_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap(AdbcDatabaseSetOptionInt(database, key, value, error));
-}
-
-extern "C" SEXP RAdbcDatabaseSetOptionDouble(SEXP database_xptr, SEXP key_sexp,
-                                             SEXP value_sexp, SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  double value = adbc_as_double(value_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap(AdbcDatabaseSetOptionDouble(database, key, value, error));
-}
-
-
 extern "C" SEXP RAdbcDatabaseInit(SEXP database_xptr, SEXP error_xptr) {
   auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
@@ -267,30 +227,6 @@ extern "C" SEXP RAdbcMoveConnection(SEXP connection_xptr) {
 extern "C" SEXP RAdbcConnectionValid(SEXP connection_xptr) {
   AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr, true);
   return Rf_ScalarLogical(connection != nullptr && connection->private_data != nullptr);
-}
-
-extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
-                                         SEXP value_sexp, SEXP error_xptr) {
-  auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  const char* value = adbc_as_const_char(value_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap(AdbcConnectionSetOption(connection, key, value, error));
-}
-
-extern "C" SEXP RAdbcConnectionSetOptionBytes(SEXP connection_xptr, SEXP key_sexp,
-                                              SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcConnectionSetOptionInt(SEXP connection_xptr, SEXP key_sexp,
-                                            SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcConnectionSetOptionDouble(SEXP connection_xptr, SEXP key_sexp,
-                                               SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
 }
 
 extern "C" SEXP RAdbcConnectionInit(SEXP connection_xptr, SEXP database_xptr,
@@ -459,30 +395,6 @@ extern "C" SEXP RAdbcMoveStatement(SEXP statement_xptr) {
 extern "C" SEXP RAdbcStatementValid(SEXP statement_xptr) {
   AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr, true);
   return Rf_ScalarLogical(statement != nullptr && statement->private_data != nullptr);
-}
-
-extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
-                                        SEXP value_sexp, SEXP error_xptr) {
-  auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  const char* value = adbc_as_const_char(value_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap(AdbcStatementSetOption(statement, key, value, error));
-}
-
-extern "C" SEXP RAdbcStatementSetOptionBytes(SEXP statement_xptr, SEXP key_sexp,
-                                             SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcStatementSetOptionInt(SEXP statement_xptr, SEXP key_sexp,
-                                           SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
-}
-
-extern "C" SEXP RAdbcStatementSetOptionDouble(SEXP statement_xptr, SEXP key_sexp,
-                                              SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
 }
 
 extern "C" SEXP RAdbcStatementRelease(SEXP statement_xptr, SEXP error_xptr) {
