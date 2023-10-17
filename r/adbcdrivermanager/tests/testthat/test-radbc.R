@@ -205,9 +205,37 @@ test_that("invalid integer inputs generate errors", {
   )
 })
 
+test_that("invalid int list inputs generate errors", {
+  db <- adbc_database_init(adbc_driver_void())
+  con <- adbc_connection_init(db)
+
+  expect_error(
+    adbc_connection_get_info(con, character()),
+    "Expected integer"
+  )
+
+  expect_error(
+    adbc_connection_get_info(con, structure(integer(), class = "non-empty")),
+    "Can't convert classed object"
+  )
+
+  expect_error(
+    adbc_connection_get_info(con, NA_real_),
+    "Can't convert non-finite element"
+  )
+})
+
 test_that("invalid const char* list inputs generate errors", {
   db <- adbc_database_init(adbc_driver_void())
   con <- adbc_connection_init(db)
+
+  expect_error(
+    adbc_connection_get_objects(
+      con,
+      table_type = integer()
+    ),
+    "Expected character"
+  )
 
   expect_error(
     adbc_connection_get_objects(

@@ -325,7 +325,7 @@ static inline std::pair<SEXP, int*> adbc_as_int_list(SEXP sexp) {
     }
 
     default:
-      Rf_error("Expected character for conversion to const char**");
+      Rf_error("Expected integer() or double() for conversion to int*");
   }
 }
 
