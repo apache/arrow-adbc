@@ -33,6 +33,20 @@ SEXP adbc_set_option(SEXP obj_xptr, SEXP key_sexp, SEXP value_sexp, SEXP error_x
   return adbc_wrap(SetOption(obj, key, value, error));
 }
 
+template <typename T>
+SEXP adbc_set_option_bytes(SEXP obj_xptr, SEXP key_sexp, SEXP value_sexp, SEXP error_xptr,
+                           AdbcStatusCode (*SetOption)(T*, const char*, const uint8_t*,
+                                                       size_t, AdbcError*)) {
+  auto obj = adbc_from_xptr<T>(obj_xptr);
+  const char* key = adbc_as_const_char(key_sexp);
+  const uint8_t* value = RAW(value_sexp);
+  size_t value_length = Rf_xlength(value_sexp);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+
+  int status = SetOption(obj, key, value, value_length, error);
+  return adbc_wrap(status);
+}
+
 extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
                                        SEXP error_xptr) {
   return adbc_set_option<AdbcDatabase, const char*>(database_xptr, key_sexp, value_sexp,
@@ -41,32 +55,20 @@ extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP v
 
 extern "C" SEXP RAdbcDatabaseSetOptionBytes(SEXP database_xptr, SEXP key_sexp,
                                             SEXP value_sexp, SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  const uint8_t* value = RAW(value_sexp);
-  size_t value_length = Rf_xlength(value_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-
-  int status = AdbcDatabaseSetOptionBytes(database, key, value, value_length, error);
-  return adbc_wrap(status);
+  return adbc_set_option_bytes<AdbcDatabase>(database_xptr, key_sexp, value_sexp,
+                                             error_xptr, &AdbcDatabaseSetOptionBytes);
 }
 
 extern "C" SEXP RAdbcDatabaseSetOptionInt(SEXP database_xptr, SEXP key_sexp,
                                           SEXP value_sexp, SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  int64_t value = adbc_as_int64(value_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap(AdbcDatabaseSetOptionInt(database, key, value, error));
+  return adbc_set_option<AdbcDatabase, int64_t>(database_xptr, key_sexp, value_sexp,
+                                                error_xptr, &AdbcDatabaseSetOptionInt);
 }
 
 extern "C" SEXP RAdbcDatabaseSetOptionDouble(SEXP database_xptr, SEXP key_sexp,
                                              SEXP value_sexp, SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  double value = adbc_as_double(value_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap(AdbcDatabaseSetOptionDouble(database, key, value, error));
+  return adbc_set_option<AdbcDatabase, double>(database_xptr, key_sexp, value_sexp,
+                                               error_xptr, &AdbcDatabaseSetOptionDouble);
 }
 
 extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
@@ -77,17 +79,20 @@ extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
 
 extern "C" SEXP RAdbcConnectionSetOptionBytes(SEXP connection_xptr, SEXP key_sexp,
                                               SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
+  return adbc_set_option_bytes<AdbcConnection>(connection_xptr, key_sexp, value_sexp,
+                                               error_xptr, &AdbcConnectionSetOptionBytes);
 }
 
 extern "C" SEXP RAdbcConnectionSetOptionInt(SEXP connection_xptr, SEXP key_sexp,
                                             SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
+  return adbc_set_option<AdbcConnection, int64_t>(
+      connection_xptr, key_sexp, value_sexp, error_xptr, &AdbcConnectionSetOptionInt);
 }
 
 extern "C" SEXP RAdbcConnectionSetOptionDouble(SEXP connection_xptr, SEXP key_sexp,
                                                SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
+  return adbc_set_option<AdbcConnection, double>(
+      connection_xptr, key_sexp, value_sexp, error_xptr, &AdbcConnectionSetOptionDouble);
 }
 
 extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
@@ -98,17 +103,20 @@ extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
 
 extern "C" SEXP RAdbcStatementSetOptionBytes(SEXP statement_xptr, SEXP key_sexp,
                                              SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
+  return adbc_set_option_bytes<AdbcStatement>(statement_xptr, key_sexp, value_sexp,
+                                              error_xptr, &AdbcStatementSetOptionBytes);
 }
 
 extern "C" SEXP RAdbcStatementSetOptionInt(SEXP statement_xptr, SEXP key_sexp,
                                            SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
+  return adbc_set_option<AdbcStatement, int64_t>(statement_xptr, key_sexp, value_sexp,
+                                                 error_xptr, &AdbcStatementSetOptionInt);
 }
 
 extern "C" SEXP RAdbcStatementSetOptionDouble(SEXP statement_xptr, SEXP key_sexp,
                                               SEXP value_sexp, SEXP error_xptr) {
-  Rf_error("Not implemented");
+  return adbc_set_option<AdbcStatement, double>(
+      statement_xptr, key_sexp, value_sexp, error_xptr, &AdbcStatementSetOptionDouble);
 }
 
 template <typename T, typename CharT>
