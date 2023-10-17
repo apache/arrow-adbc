@@ -329,8 +329,8 @@ static inline std::pair<SEXP, int*> adbc_as_int_list(SEXP sexp) {
   }
 }
 
-static inline SEXP adbc_wrap_status(AdbcStatusCode value) {
-  return Rf_ScalarInteger(value);
+static inline SEXP adbc_wrap_status(AdbcStatusCode code) {
+  return Rf_ScalarInteger(code);
 }
 
 static inline void adbc_error_stop(int code, AdbcError* error) {
