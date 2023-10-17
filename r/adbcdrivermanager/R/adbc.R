@@ -268,6 +268,55 @@ adbc_connection_commit <- function(connection) {
   invisible(connection)
 }
 
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_rollback <- function(connection) {
+  error <- adbc_allocate_error()
+  .Call(RAdbcConnectionRollback, connection, error)
+  invisible(connection)
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_cancel <- function(connection) {
+  error <- adbc_allocate_error()
+  .Call(RAdbcConnectionCancel, connection, error)
+  invisible(connection)
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_get_statistic_names <- function(connection) {
+  error <- adbc_allocate_error()
+  out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
+  status <- .Call(RAdbcConnectionGetStatisticNames, connection, out_stream, error)
+  stop_for_error(status, error)
+
+  out_stream
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_get_statistics <- function(connection, catalog, db_schema,
+                                           table_name, approximate) {
+  error <- adbc_allocate_error()
+  out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
+
+  status <- .Call(
+    RAdbcConnectionGetStatistics,
+    connection,
+    catalog,
+    db_schema,
+    table_name,
+    out_stream,
+    error
+  )
+  stop_for_error(status, error)
+
+  out_stream
+}
+
 #' @rdname adbc_connection_get_info
 #' @export
 adbc_connection_quote_identifier <- function(connection, value, ...) {
@@ -290,33 +339,6 @@ adbc_connection_quote_identifier.default <- function(connection, value, ...) {
 adbc_connection_quote_string.default <- function(connection, value, ...) {
   out <- gsub("'", "''", enc2utf8(value))
   paste0("'", out, "'")
-}
-
-#' @rdname adbc_connection_get_info
-#' @export
-adbc_connection_rollback <- function(connection) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcConnectionRollback, connection, error)
-  invisible(connection)
-}
-
-#' @rdname adbc_connection_get_info
-#' @export
-adbc_connection_cancel <- function(connection) {
-  stop("Not implemented")
-}
-
-#' @rdname adbc_connection_get_info
-#' @export
-adbc_connection_get_statistic_names <- function(connection) {
-  stop("Not implemented")
-}
-
-#' @rdname adbc_connection_get_info
-#' @export
-adbc_connection_get_statistics <- function(connection, catalog, db_schema,
-                                           table_name, approximate) {
-  stop("Not implemented")
 }
 
 #' Statements
@@ -466,5 +488,11 @@ adbc_statement_execute_query <- function(statement, stream = NULL) {
 #' @rdname adbc_statement_set_sql_query
 #' @export
 adbc_statement_execute_schema <- function(statement) {
-  stop("Not implemented")
+  error <- adbc_allocate_error()
+  out_schema <- nanoarrow::nanoarrow_allocate_schema()
+
+  status <- .Call(RAdbcStatementExecuteSchema, statement, out_schema, error)
+  stop_for_error(status, error)
+
+  out_schema
 }

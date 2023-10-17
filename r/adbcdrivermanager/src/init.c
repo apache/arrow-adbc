@@ -90,6 +90,13 @@ SEXP RAdbcConnectionReadPartition(SEXP connection_xptr, SEXP serialized_partitio
                                   SEXP out_stream_xptr, SEXP error_xptr);
 SEXP RAdbcConnectionCommit(SEXP connection_xptr, SEXP error_xptr);
 SEXP RAdbcConnectionRollback(SEXP connection_xptr, SEXP error_xptr);
+SEXP RAdbcConnectionCancel(SEXP connection_xptr, SEXP error_xptr);
+SEXP RAdbcConnectionGetStatisticNames(SEXP connection_xptr, SEXP out_stream_xptr,
+                                      SEXP error_xptr);
+SEXP RAdbcConnectionGetStatistics(SEXP connection_xptr, SEXP catalog_sexp,
+                                  SEXP db_schema_sexp, SEXP table_name_sexp,
+                                  SEXP approximate_sexp, SEXP out_stream_xptr,
+                                  SEXP error_xptr);
 SEXP RAdbcStatementNew(SEXP connection_xptr);
 SEXP RAdbcMoveStatement(SEXP statement_xptr);
 SEXP RAdbcStatementValid(SEXP statement_xptr);
@@ -104,6 +111,8 @@ SEXP RAdbcStatementBind(SEXP statement_xptr, SEXP values_xptr, SEXP schema_xptr,
 SEXP RAdbcStatementBindStream(SEXP statement_xptr, SEXP stream_xptr, SEXP error_xptr);
 SEXP RAdbcStatementExecuteQuery(SEXP statement_xptr, SEXP out_stream_xptr,
                                 SEXP error_xptr);
+SEXP RAdbcStatementExecuteSchema(SEXP statement_xptr, SEXP out_schema_xptr,
+                                 SEXP error_xptr);
 SEXP RAdbcStatementExecutePartitions(SEXP statement_xptr, SEXP out_schema_xptr,
                                      SEXP partitions_xptr, SEXP error_xptr);
 SEXP RAdbcXptrEnv(SEXP xptr);
@@ -159,6 +168,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcConnectionReadPartition", (DL_FUNC)&RAdbcConnectionReadPartition, 4},
     {"RAdbcConnectionCommit", (DL_FUNC)&RAdbcConnectionCommit, 2},
     {"RAdbcConnectionRollback", (DL_FUNC)&RAdbcConnectionRollback, 2},
+    {"RAdbcConnectionCancel", (DL_FUNC)&RAdbcConnectionCancel, 2},
+    {"RAdbcConnectionGetStatisticNames", (DL_FUNC)&RAdbcConnectionGetStatisticNames, 3},
+    {"RAdbcConnectionGetStatistics", (DL_FUNC)&RAdbcConnectionGetStatistics, 7},
     {"RAdbcStatementNew", (DL_FUNC)&RAdbcStatementNew, 1},
     {"RAdbcMoveStatement", (DL_FUNC)&RAdbcMoveStatement, 1},
     {"RAdbcStatementValid", (DL_FUNC)&RAdbcStatementValid, 1},
@@ -170,6 +182,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcStatementBind", (DL_FUNC)&RAdbcStatementBind, 4},
     {"RAdbcStatementBindStream", (DL_FUNC)&RAdbcStatementBindStream, 3},
     {"RAdbcStatementExecuteQuery", (DL_FUNC)&RAdbcStatementExecuteQuery, 3},
+    {"RAdbcStatementExecuteSchema", (DL_FUNC)&RAdbcStatementExecuteSchema, 3},
     {"RAdbcStatementExecutePartitions", (DL_FUNC)&RAdbcStatementExecutePartitions, 4},
     {"RAdbcXptrEnv", (DL_FUNC)&RAdbcXptrEnv, 1},
     {NULL, NULL, 0}};

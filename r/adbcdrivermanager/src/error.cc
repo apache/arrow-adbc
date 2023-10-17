@@ -112,7 +112,7 @@ extern "C" SEXP RAdbcErrorFromArrayStream(SEXP stream_xptr) {
   SEXP error_xptr =
       PROTECT(adbc_borrow_xptr<AdbcError>(const_cast<AdbcError*>(error), stream_xptr));
 
-  SEXP status_sexp = PROTECT(adbc_wrap(status));
+  SEXP status_sexp = PROTECT(adbc_wrap_status(status));
 
   SEXP result = PROTECT(Rf_allocVector(VECSXP, 2));
   SET_VECTOR_ELT(result, 0, status_sexp);

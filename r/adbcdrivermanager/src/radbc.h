@@ -185,6 +185,37 @@ static inline int adbc_as_int(SEXP sexp) {
   Rf_error("Expected integer(1) or double(1) for conversion to int");
 }
 
+static inline bool adbc_as_bool(SEXP sexp) {
+  if (Rf_isObject(sexp)) {
+    Rf_error("Can't convert classed object to bool");
+  }
+
+  if (Rf_length(sexp) == 1) {
+    switch (TYPEOF(sexp)) {
+      case REALSXP: {
+        double value = REAL(sexp)[0];
+        if (!R_finite(value)) {
+          Rf_error("Can't convert non-finite double(1) to bool");
+        }
+
+        return value != 0;
+      }
+
+      case INTSXP:
+      case LGLSXP: {
+        int value = INTEGER(sexp)[0];
+        if (value == NA_INTEGER) {
+          Rf_error("Can't convert NA to bool");
+        }
+
+        return value != 0;
+      }
+    }
+  }
+
+  Rf_error("Expected integer(1) or double(1) for conversion to int");
+}
+
 static inline int64_t adbc_as_int64(SEXP sexp) {
   if (Rf_isObject(sexp)) {
     Rf_error("Can't convert classed object to int64");
@@ -298,53 +329,12 @@ static inline std::pair<SEXP, int*> adbc_as_int_list(SEXP sexp) {
   }
 }
 
-static inline SEXP adbc_wrap(int value) { return Rf_ScalarInteger(value); }
-
-static inline SEXP adbc_wrap(int64_t value) {
-  if (value <= NA_INTEGER || value >= INT_MAX) {
-    return Rf_ScalarReal(value);
-  } else {
-    return Rf_ScalarInteger(value);
-  }
-}
-
-static inline SEXP adbc_wrap(double value) { return Rf_ScalarReal(value); }
-
-template <typename T>
-static inline T adbc_as_c(SEXP sexp);
-
-template <>
-inline AdbcDatabase* adbc_as_c(SEXP sexp) {
-  return adbc_from_xptr<AdbcDatabase>(sexp);
-}
-
-template <>
-inline AdbcConnection* adbc_as_c(SEXP sexp) {
-  return adbc_from_xptr<AdbcConnection>(sexp);
-}
-
-template <>
-inline AdbcStatement* adbc_as_c(SEXP sexp) {
-  return adbc_from_xptr<AdbcStatement>(sexp);
-}
-
-template <>
-inline const char* adbc_as_c(SEXP sexp) {
-  return adbc_as_const_char(sexp);
-}
-
-template <>
-inline int64_t adbc_as_c(SEXP sexp) {
-  return adbc_as_int64(sexp);
-}
-
-template <>
-inline double adbc_as_c(SEXP sexp) {
-  return adbc_as_double(sexp);
+static inline SEXP adbc_wrap_status(AdbcStatusCode value) {
+  return Rf_ScalarInteger(value);
 }
 
 static inline void adbc_error_stop(int code, AdbcError* error) {
-  SEXP status_sexp = PROTECT(adbc_wrap(code));
+  SEXP status_sexp = PROTECT(adbc_wrap_status(code));
   SEXP error_xptr = PROTECT(adbc_borrow_xptr<AdbcError>(error));
 
   SEXP fun_sym = PROTECT(Rf_install("stop_for_error"));

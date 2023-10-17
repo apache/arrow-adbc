@@ -23,6 +23,24 @@
 
 #include "radbc.h"
 
+template <typename T>
+static inline T adbc_as_c(SEXP sexp);
+
+template <>
+inline const char* adbc_as_c(SEXP sexp) {
+  return adbc_as_const_char(sexp);
+}
+
+template <>
+inline int64_t adbc_as_c(SEXP sexp) {
+  return adbc_as_int64(sexp);
+}
+
+template <>
+inline double adbc_as_c(SEXP sexp) {
+  return adbc_as_double(sexp);
+}
+
 template <typename T, typename ValueT>
 SEXP adbc_set_option(SEXP obj_xptr, SEXP key_sexp, SEXP value_sexp, SEXP error_xptr,
                      AdbcStatusCode (*SetOption)(T*, const char*, ValueT, AdbcError*)) {
@@ -30,7 +48,7 @@ SEXP adbc_set_option(SEXP obj_xptr, SEXP key_sexp, SEXP value_sexp, SEXP error_x
   const char* key = adbc_as_const_char(key_sexp);
   ValueT value = adbc_as_c<ValueT>(value_sexp);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
-  return adbc_wrap(SetOption(obj, key, value, error));
+  return adbc_wrap_status(SetOption(obj, key, value, error));
 }
 
 template <typename T>
@@ -44,7 +62,7 @@ SEXP adbc_set_option_bytes(SEXP obj_xptr, SEXP key_sexp, SEXP value_sexp, SEXP e
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
 
   int status = SetOption(obj, key, value, value_length, error);
-  return adbc_wrap(status);
+  return adbc_wrap_status(status);
 }
 
 extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
@@ -154,6 +172,16 @@ static inline SEXP adbc_get_option(SEXP obj_xptr, SEXP key_sexp, SEXP error_xptr
   UNPROTECT(3);
   return result_string;
 }
+
+static inline SEXP adbc_wrap(int64_t value) {
+  if (value <= NA_INTEGER || value >= INT_MAX) {
+    return Rf_ScalarReal(value);
+  } else {
+    return Rf_ScalarInteger(value);
+  }
+}
+
+static inline SEXP adbc_wrap(double value) { return Rf_ScalarReal(value); }
 
 template <typename T, typename ResultT>
 static inline SEXP adbc_get_option_numeric(SEXP obj_xptr, SEXP key_sexp, SEXP error_xptr,
