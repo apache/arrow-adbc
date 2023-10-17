@@ -67,9 +67,9 @@ For example, when using the [Snowflake ADBC Go Driver](https://arrow.apache.org/
 if using the default user name and password authentication, but look like
 
 ```
- adbc.snowflake.sql.account={account};adbc.snowflake.sql.warehouse={warehouse};username={user};password={password};adbc.snowflake.sql.auth_type=snowflake_jwt;adbc.snowflake.sql.client_option.jwt_private_key={token}
+ adbc.snowflake.sql.account={account};adbc.snowflake.sql.warehouse={warehouse};username={user};password={password};adbc.snowflake.sql.auth_type=snowflake_jwt;adbc.snowflake.sql.client_option.jwt_private_key={private_key_file}
 ```
 
-when using JWT authentication.
+when using JWT authentication with an unencrypted key file.
 
 Other ADBC drivers will have different connection parameters, so be sure to check the documentation for each driver.
