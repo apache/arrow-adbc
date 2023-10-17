@@ -295,8 +295,8 @@ extern "C" SEXP RAdbcConnectionGetTableSchema(SEXP connection_xptr, SEXP catalog
                                               SEXP db_schema_sexp, SEXP table_name_sexp,
                                               SEXP schema_xptr, SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
-  const char* catalog = adbc_as_const_char(catalog_sexp);
-  const char* db_schema = adbc_as_const_char(db_schema_sexp);
+  const char* catalog = adbc_as_const_char(catalog_sexp, true);
+  const char* db_schema = adbc_as_const_char(db_schema_sexp, true);
   const char* table_name = adbc_as_const_char(table_name_sexp);
   auto schema = adbc_from_xptr<ArrowSchema>(schema_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
