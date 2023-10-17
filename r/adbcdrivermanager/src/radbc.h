@@ -20,6 +20,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <utility>
+
 template <typename T>
 static inline const char* adbc_xptr_class();
 
@@ -151,14 +153,93 @@ static inline const char* adbc_as_const_char(SEXP sexp, bool nullable = false) {
 static inline int adbc_as_int(SEXP sexp) {
   if (Rf_length(sexp) == 1) {
     switch (TYPEOF(sexp)) {
-      case REALSXP:
-        return REAL(sexp)[0];
-      case INTSXP:
-        return INTEGER(sexp)[0];
+      case REALSXP: {
+        double value = REAL(sexp)[0];
+        if (ISNA(value) || ISNAN(value)) {
+          Rf_error("Can't convert NA_real_ to int");
+        }
+
+        return value;
+      }
+
+      case INTSXP: {
+        int value = INTEGER(sexp)[0];
+        if (value == NA_INTEGER) {
+          Rf_error("Can't convert NA_integer_ to int");
+        }
+
+        return value;
+      }
     }
   }
 
   Rf_error("Expected integer(1) or double(1) for conversion to int");
+}
+
+static inline std::pair<SEXP, const char**> adbc_as_const_char_list(SEXP sexp) {
+  switch (TYPEOF(sexp)) {
+    case NILSXP:
+      return {R_NilValue, nullptr};
+    case STRSXP:
+      break;
+    default:
+      Rf_error("Expected character() for conversion to const char**");
+  }
+
+  int sexp_length = Rf_length(sexp);
+  SEXP result_shelter =
+      PROTECT(Rf_allocVector(RAWSXP, (sexp_length + 1) * sizeof(const char*)));
+  auto result = reinterpret_cast<const char**>(RAW(result_shelter));
+  for (int i = 0; i < sexp_length; i++) {
+    SEXP item = STRING_ELT(sexp, i);
+    if (item == NA_STRING) {
+      Rf_error("Can't convert NA_character_ element to const char*");
+    }
+
+    result[i] = Rf_translateCharUTF8(STRING_ELT(sexp, i));
+  }
+  result[sexp_length] = nullptr;
+  UNPROTECT(1);
+  return {result_shelter, result};
+}
+
+static inline std::pair<SEXP, int*> adbc_as_int_list(SEXP sexp) {
+  int result_length = Rf_length(sexp);
+
+  switch (TYPEOF(sexp)) {
+    case NILSXP:
+      return {R_NilValue, nullptr};
+
+    case INTSXP: {
+      int* result = INTEGER(sexp);
+      for (int i = 0; i < result_length; i++) {
+        if (result[i] == NA_INTEGER) {
+          Rf_error("Can't convert NA_integer_ element to int");
+        }
+      }
+
+      return {sexp, result};
+    }
+
+    case REALSXP: {
+      SEXP result_shelter = PROTECT(Rf_allocVector(INTSXP, result_length));
+      int* result = INTEGER(result_shelter);
+      for (int i = 0; i < result_length; i++) {
+        double item = REAL(sexp)[i];
+        if (ISNA(item) || ISNAN(item)) {
+          Rf_error("Can't convert NA_real_ or NaN element to int");
+        }
+
+        result[i] = item;
+      }
+
+      UNPROTECT(1);
+      return {result_shelter, result};
+    }
+
+    default:
+      Rf_error("Expected character for conversion to const char**");
+  }
 }
 
 static inline SEXP adbc_wrap_status(AdbcStatusCode code) {

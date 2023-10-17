@@ -210,13 +210,13 @@ adbc_connection_release <- function(connection) {
 #' # (not implemented by the void driver)
 #' try(adbc_connection_get_info(con, 0))
 #'
-adbc_connection_get_info <- function(connection, info_codes) {
+adbc_connection_get_info <- function(connection, info_codes = NULL) {
   error <- adbc_allocate_error()
   out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
   status <- .Call(
     RAdbcConnectionGetInfo,
     connection,
-    as.integer(info_codes),
+    info_codes,
     out_stream,
     error
   )

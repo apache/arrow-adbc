@@ -20,6 +20,7 @@
 #include <Rinternals.h>
 
 #include <string.h>
+#include <utility>
 
 #include <adbc.h>
 #include "adbc_driver_manager.h"
@@ -280,10 +281,13 @@ extern "C" SEXP RAdbcConnectionGetInfo(SEXP connection_xptr, SEXP info_codes_sex
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
   auto out_stream = adbc_from_xptr<ArrowArrayStream>(out_stream_xptr);
-  auto info_codes = reinterpret_cast<uint32_t*>(INTEGER(info_codes_sexp));
+  std::pair<SEXP, int*> info_codes = adbc_as_int_list(info_codes_sexp);
+  PROTECT(info_codes.first);
   size_t info_codes_length = Rf_xlength(info_codes_sexp);
   int status =
-      AdbcConnectionGetInfo(connection, info_codes, info_codes_length, out_stream, error);
+      AdbcConnectionGetInfo(connection, reinterpret_cast<uint32_t*>(info_codes.second),
+                            info_codes_length, out_stream, error);
+  UNPROTECT(1);
   return adbc_wrap_status(status);
 }
 
@@ -297,25 +301,8 @@ extern "C" SEXP RAdbcConnectionGetObjects(SEXP connection_xptr, SEXP depth_sexp,
   const char* catalog = adbc_as_const_char(catalog_sexp, true);
   const char* db_schema = adbc_as_const_char(db_schema_sexp, true);
   const char* table_name = adbc_as_const_char(table_name_sexp, true);
-
-  // Build the null-terminated const char** used to filter by table type
-  int table_type_length = Rf_length(table_type_sexp);
-  SEXP table_type_shelter =
-      PROTECT(Rf_allocVector(RAWSXP, (table_type_length + 1) * sizeof(const char*)));
-  auto table_type = reinterpret_cast<const char**>(RAW(table_type_shelter));
-  for (int i = 0; i < table_type_length; i++) {
-    table_type[i] = Rf_translateCharUTF8(STRING_ELT(table_type_sexp, i));
-  }
-  table_type[table_type_length] = nullptr;
-
-  // Ensure that R_NilValue maps to null and not a null-termianted const char**
-  // of length 0.
-  const char** table_type_maybe_null;
-  if (table_type_sexp == R_NilValue) {
-    table_type_maybe_null = nullptr;
-  } else {
-    table_type_maybe_null = table_type;
-  }
+  std::pair<SEXP, const char**> table_type = adbc_as_const_char_list(table_type_sexp);
+  PROTECT(table_type.first);
 
   const char* column_name = adbc_as_const_char(column_name_sexp, true);
   auto out_stream = adbc_from_xptr<ArrowArrayStream>(out_stream_xptr);
@@ -323,7 +310,7 @@ extern "C" SEXP RAdbcConnectionGetObjects(SEXP connection_xptr, SEXP depth_sexp,
 
   int status =
       AdbcConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
-                               table_type_maybe_null, column_name, out_stream, error);
+                               table_type.second, column_name, out_stream, error);
   UNPROTECT(1);
   return adbc_wrap_status(status);
 }
