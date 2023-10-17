@@ -309,3 +309,15 @@ static inline SEXP adbc_wrap(int64_t value) {
 }
 
 static inline SEXP adbc_wrap(double value) { return Rf_ScalarReal(value); }
+
+static inline void adbc_error_stop(int code, AdbcError* error) {
+  SEXP status_sexp = PROTECT(adbc_wrap(code));
+  SEXP error_xptr = PROTECT(adbc_borrow_xptr<AdbcError>(error));
+
+  SEXP fun_sym = PROTECT(Rf_install("stop_for_error"));
+  SEXP fun_call = PROTECT(Rf_lang3(fun_sym, status_sexp, error_xptr));
+  SEXP pkg_chr = PROTECT(Rf_mkString("adbcdrivermanager"));
+  SEXP pkg_ns = PROTECT(R_FindNamespace(pkg_chr));
+  Rf_eval(fun_call, pkg_ns);
+  UNPROTECT(6);
+}

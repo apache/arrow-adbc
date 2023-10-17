@@ -89,34 +89,6 @@ adbc_database_set_options <- function(database, options) {
 
 #' @rdname adbc_database_init
 #' @export
-adbc_database_get_option <- function(database, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcDatabaseGetOption, database, option, error)
-}
-
-#' @rdname adbc_database_init
-#' @export
-adbc_database_get_option_bytes <- function(database, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcDatabaseGetOptionBytes, database, option, error)
-}
-
-#' @rdname adbc_database_init
-#' @export
-adbc_database_get_option_int <- function(database, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcDatabaseGetOptionInt, database, option, error)
-}
-
-#' @rdname adbc_database_init
-#' @export
-adbc_database_get_option_double <- function(database, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcDatabaseGetOptionDouble, database, option, error)
-}
-
-#' @rdname adbc_database_init
-#' @export
 adbc_database_release <- function(database) {
   error <- adbc_allocate_error()
   status <- .Call(RAdbcDatabaseRelease, database, error)
@@ -182,34 +154,6 @@ adbc_connection_set_options <- function(connection, options) {
     stop_for_error(status, error)
   }
   invisible(connection)
-}
-
-#' @rdname adbc_connection_init
-#' @export
-adbc_connection_get_option <- function(connection, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcConnectionGetOption, connection, option, error)
-}
-
-#' @rdname adbc_connection_init
-#' @export
-adbc_connection_get_option_bytes <- function(connection, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcConnectionGetOptionBytes, connection, option, error)
-}
-
-#' @rdname adbc_connection_init
-#' @export
-adbc_connection_get_option_int <- function(connection, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcConnectionGetOptionInt, connection, option, error)
-}
-
-#' @rdname adbc_connection_init
-#' @export
-adbc_connection_get_option_double <- function(connection, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcConnectionGetOptionDouble, connection, option, error)
 }
 
 #' @rdname adbc_connection_init
@@ -468,34 +412,6 @@ adbc_statement_set_options <- function(statement, options) {
     stop_for_error(status, error)
   }
   invisible(statement)
-}
-
-#' @rdname adbc_statement_init
-#' @export
-adbc_statement_get_option <- function(statement, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcStatementGetOption, statement, option, error)
-}
-
-#' @rdname adbc_statement_init
-#' @export
-adbc_statement_get_option_bytes <- function(statement, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcStatementGetOptionBytes, statement, option, error)
-}
-
-#' @rdname adbc_statement_init
-#' @export
-adbc_statement_get_option_int <- function(statement, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcStatementGetOptionInt, statement, option, error)
-}
-
-#' @rdname adbc_statement_init
-#' @export
-adbc_statement_get_option_double <- function(statement, option) {
-  error <- adbc_allocate_error()
-  .Call(RAdbcStatementGetOptionDouble, statement, option, error)
 }
 
 #' @rdname adbc_statement_init

@@ -22,29 +22,6 @@ test_that("can initialize and release a database", {
   expect_error(adbc_database_release(db), "INVALID_STATE")
 })
 
-test_that("get option methods work on a database for the void driver", {
-  db <- adbc_database_init(adbc_driver_void())
-  expect_error(
-    adbc_database_get_option(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_bytes(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_int(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_double(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-})
-
 test_that("can initialize and release a connection", {
   db <- adbc_database_init(adbc_driver_void())
   con <- adbc_connection_init(db, some_key = "some_value")

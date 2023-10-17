@@ -41,18 +41,6 @@ static void adbc_error_warn(int code, AdbcError* error, const char* context) {
   }
 }
 
-static void adbc_error_stop(int code, AdbcError* error) {
-  SEXP status_sexp = PROTECT(adbc_wrap(code));
-  SEXP error_xptr = PROTECT(adbc_borrow_xptr<AdbcError>(error));
-
-  SEXP fun_sym = PROTECT(Rf_install("stop_for_error"));
-  SEXP fun_call = PROTECT(Rf_lang3(fun_sym, status_sexp, error_xptr));
-  SEXP pkg_chr = PROTECT(Rf_mkString("adbcdrivermanager"));
-  SEXP pkg_ns = PROTECT(R_FindNamespace(pkg_chr));
-  Rf_eval(fun_call, pkg_ns);
-  UNPROTECT(6);
-}
-
 static void finalize_driver_xptr(SEXP driver_xptr) {
   auto driver = reinterpret_cast<AdbcDriver*>(R_ExternalPtrAddr(driver_xptr));
   if (driver == nullptr) {
@@ -217,67 +205,6 @@ extern "C" SEXP RAdbcDatabaseSetOptionDouble(SEXP database_xptr, SEXP key_sexp,
   return adbc_wrap(AdbcDatabaseSetOptionDouble(database, key, value, error));
 }
 
-extern "C" SEXP RAdbcDatabaseGetOption(SEXP database_xptr, SEXP key_sexp,
-                                       SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-
-  size_t length = 0;
-  int status = AdbcDatabaseGetOption(database, key, nullptr, &length, error);
-  adbc_error_stop(status, error);
-
-  SEXP result_shelter = PROTECT(Rf_allocVector(RAWSXP, length));
-  auto result = reinterpret_cast<char*>(RAW(result_shelter));
-  status = AdbcDatabaseGetOption(database, key, result, &length, error);
-  adbc_error_stop(status, error);
-
-  SEXP result_char = PROTECT(Rf_mkCharLenCE(result, length, CE_UTF8));
-  SEXP result_string = PROTECT(Rf_ScalarString(result_char));
-  UNPROTECT(3);
-  return result_string;
-}
-
-extern "C" SEXP RAdbcDatabaseGetOptionBytes(SEXP database_xptr, SEXP key_sexp,
-                                            SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-
-  size_t length = 0;
-  int status = AdbcDatabaseGetOptionBytes(database, key, nullptr, &length, error);
-  adbc_error_stop(status, error);
-
-  SEXP result_sexp = PROTECT(Rf_allocVector(RAWSXP, length));
-  status = AdbcDatabaseGetOptionBytes(database, key, RAW(result_sexp), &length, error);
-  adbc_error_stop(status, error);
-  UNPROTECT(1);
-  return result_sexp;
-}
-
-extern "C" SEXP RAdbcDatabaseGetOptionInt(SEXP database_xptr, SEXP key_sexp,
-                                          SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-
-  int64_t value = NA_INTEGER;
-  int status = AdbcDatabaseGetOptionInt(database, key, &value, error);
-  adbc_error_stop(status, error);
-  return adbc_wrap(value);
-}
-
-extern "C" SEXP RAdbcDatabaseGetOptionDouble(SEXP database_xptr, SEXP key_sexp,
-                                             SEXP error_xptr) {
-  auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
-  const char* key = adbc_as_const_char(key_sexp);
-  auto error = adbc_from_xptr<AdbcError>(error_xptr);
-
-  double value = NA_REAL;
-  int status = AdbcDatabaseGetOptionDouble(database, key, &value, error);
-  adbc_error_stop(status, error);
-  return adbc_wrap(value);
-}
 
 extern "C" SEXP RAdbcDatabaseInit(SEXP database_xptr, SEXP error_xptr) {
   auto database = adbc_from_xptr<AdbcDatabase>(database_xptr);
