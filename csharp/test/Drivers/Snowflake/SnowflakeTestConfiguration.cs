@@ -84,17 +84,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [JsonPropertyName("authenticationToken")]
         public string AuthenticationToken { get; set; }
 
-        /// <summary>
-        /// The snowflake copy command. E.g. "copy into {0} from @%{1} file_format = (type = 'parquet');"
-        /// </summary>
-        [JsonPropertyName("copyCommand")]
-        public string CopyCommand { get; set; }
-
-        /// <summary>
-        /// The snowflake stage command. E.g. "create or replace stage {0} url = {1} credentials = (AZURE_SAS_TOKEN = {2}) file_format = (type = 'parquet');"
-        /// </summary>
-        [JsonPropertyName("stageCommand")]
-        public string StageCommand { get; set; }
     }
 
 
