@@ -37,6 +37,9 @@
     <loc>/reference/adbc_driver_void.html</loc>
   </url>
   <url>
+    <loc>/reference/adbc_error_from_array_stream.html</loc>
+  </url>
+  <url>
     <loc>/reference/adbc_statement_init.html</loc>
   </url>
   <url>

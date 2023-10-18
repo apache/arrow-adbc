@@ -45,7 +45,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="" class="logo" alt=""><h1>Statements</h1>
-      <small class="dont-index">Source: <a href="https://github.com/apache/arrow-adbc/blob/HEAD/R/adbc.R" class="external-link"><code>R/adbc.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/apache/arrow-adbc/blob/HEAD/R/adbc.R" class="external-link"><code>R/adbc.R</code></a>, <a href="https://github.com/apache/arrow-adbc/blob/HEAD/R/options.R" class="external-link"><code>R/options.R</code></a></small>
       <div class="d-none name"><code>adbc_statement_init.Rd</code></div>
     </div>
 
@@ -59,9 +59,17 @@
 <span></span>
 <span><span class="fu">adbc_statement_init_default</span><span class="op">(</span><span class="va">connection</span>, options <span class="op">=</span> <span class="cn">NULL</span>, subclass <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu">adbc_statement_release</span><span class="op">(</span><span class="va">statement</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu">adbc_statement_set_options</span><span class="op">(</span><span class="va">statement</span>, <span class="va">options</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">adbc_statement_release</span><span class="op">(</span><span class="va">statement</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">adbc_statement_get_option</span><span class="op">(</span><span class="va">statement</span>, <span class="va">option</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">adbc_statement_get_option_bytes</span><span class="op">(</span><span class="va">statement</span>, <span class="va">option</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">adbc_statement_get_option_int</span><span class="op">(</span><span class="va">statement</span>, <span class="va">option</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">adbc_statement_get_option_double</span><span class="op">(</span><span class="va">statement</span>, <span class="va">option</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -88,6 +96,10 @@ finer-grained control over behaviour at the R level.</p></dd>
 <dt>statement</dt>
 <dd><p>An adbc_statement</p></dd>
 
+
+<dt>option</dt>
+<dd><p>A specific option name</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -101,11 +113,11 @@ finer-grained control over behaviour at the R level.</p></dd>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span><span class="fu"><a href="adbc_driver_void.html">adbc_driver_void</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu"><a href="adbc_connection_init.html">adbc_connection_init</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">adbc_statement_init</span><span class="op">(</span><span class="va">con</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;adbc_statement at 0x55d20bae11c0&gt; </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;adbc_statement at 0x56529439ad60&gt; </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> List of 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ connection:&lt;adbc_connection at 0x55d20b869550&gt; </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  $ connection:&lt;adbc_connection at 0x56529427e950&gt; </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> List of 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   ..$ database:&lt;adbc_database at 0x55d20ba3dcd0&gt; </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ..$ database:&lt;adbc_database at 0x5652947b5ac0&gt; </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> List of 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   .. ..$ driver:&lt;adbc_driver_void&gt; List of 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   .. .. ..$ driver_init_func:Class 'adbc_driver_init_func' &lt;externalptr&gt; </span>

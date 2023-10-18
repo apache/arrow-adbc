@@ -75,11 +75,23 @@
 <span></span>
 <span><span class="fu">adbc_connection_commit</span><span class="op">(</span><span class="va">connection</span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu">adbc_connection_rollback</span><span class="op">(</span><span class="va">connection</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">adbc_connection_cancel</span><span class="op">(</span><span class="va">connection</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">adbc_connection_get_statistic_names</span><span class="op">(</span><span class="va">connection</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">adbc_connection_get_statistics</span><span class="op">(</span></span>
+<span>  <span class="va">connection</span>,</span>
+<span>  <span class="va">catalog</span>,</span>
+<span>  <span class="va">db_schema</span>,</span>
+<span>  <span class="va">table_name</span>,</span>
+<span>  approximate <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu">adbc_connection_quote_identifier</span><span class="op">(</span><span class="va">connection</span>, <span class="va">value</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">adbc_connection_quote_string</span><span class="op">(</span><span class="va">connection</span>, <span class="va">value</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu">adbc_connection_rollback</span><span class="op">(</span><span class="va">connection</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">adbc_connection_quote_string</span><span class="op">(</span><span class="va">connection</span>, <span class="va">value</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -112,8 +124,8 @@ a database schema. May be a search pattern.</p></dd>
 
 
 <dt>table_name</dt>
-<dd><p>Only show tables with the given name. If NULL, do not
-filter by name. May be a search pattern.</p></dd>
+<dd><p>Constrain an object or statistics query for a specific table.
+If NULL, do not filter by name. May be a search pattern.</p></dd>
 
 
 <dt>table_type</dt>
@@ -129,6 +141,13 @@ filter by name. May be a search pattern.</p></dd>
 
 <dt>serialized_partition</dt>
 <dd><p>The partition descriptor.</p></dd>
+
+
+<dt>approximate</dt>
+<dd><p>If <code>FALSE</code>, request exact values of statistics,
+else allow for best-effort, approximate, or cached values. The database
+may return approximate values regardless, as indicated in the result.
+Requesting exact values may be expensive or unsupported.</p></dd>
 
 
 <dt>value</dt>
