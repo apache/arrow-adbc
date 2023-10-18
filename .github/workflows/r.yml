@@ -72,19 +72,11 @@ jobs:
           PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
 
-      - name: Prepare sources (driver manager)
-        if: matrix.pkg == 'adbcdrivermanager'
-        run: |
-          R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
-          R CMD INSTALL r/${{ matrix.pkg }}
-        shell: bash
-
-      - name: Prepare sources
+      - name: Run bootstrap.R
         if: matrix.pkg != 'adbcdrivermanager'
         run: |
-          R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
-          R CMD INSTALL r/adbcdrivermanager
-          R CMD INSTALL r/${{ matrix.pkg }}
+          cd r/${{ matrix.pkg }}
+          Rscript bootstrap.R
         shell: bash
 
       - uses: r-lib/actions/setup-r-dependencies@v2
