@@ -132,7 +132,7 @@ jobs:
 
     strategy:
       matrix:
-        r-version: [3.6, 4.0, 4.1]
+        rversion: [3.6, 4.0, 4.1]
         os: [windows]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
 
