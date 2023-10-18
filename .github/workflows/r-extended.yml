@@ -86,9 +86,9 @@ jobs:
 
     strategy:
       matrix:
-        r-version: [3.6, 4.0, 4.1]
+        rversion: [3.6, 4.0, 4.1]
         os: [macOS, ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbdflightsql, adbcsnowflakesql]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, abdcflightsql, adbcsnowflakesql]
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
