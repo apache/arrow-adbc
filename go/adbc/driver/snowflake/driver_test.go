@@ -698,9 +698,9 @@ func TestJwtAuthenticationEncryptedValue(t *testing.T) {
 		t.Skip("Cannot find the `SNOWFLAKE_URI` value")
 	}
 
-	keyValue, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_VALUE")
+	keyValue, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_EN_VALUE")
 	if !ok {
-		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_VALUE` value")
+		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_EN_VALUE` value")
 	}
 
 	passcode, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_PASS")
