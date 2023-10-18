@@ -60,7 +60,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: r-lib/actions/setup-pandoc@v2
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: release
@@ -107,13 +106,8 @@ jobs:
         with:
           upload-snapshots: true
           working-directory: r/${{ matrix.pkg }}
-          # Using --no-multiarch here means that in version of R that support
-          # 32-bit Windows builds, only the 64-bit version is tested. With some
-          # effort we could also test 32-bit builds; however, they are not commonly
-          # used.
-          args: 'c("--no-manual", "--as-cran", "--no-multiarch")'
 
-      - name: Stop test database
+      - name: Shutdown docker compose services
         if: runner.os == 'Linux'
         run: |
           docker compose down
