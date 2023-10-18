@@ -47,11 +47,11 @@ permissions:
 
 jobs:
   r-release:
-    name: "R-${{ matrix.pkg }} (${{ matrix.os }})"
-    runs-on: ${{ matrix.os }}
+    name: "${{ matrix.pkg }} / ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
-        os: [macOS-latest, windows-latest, ubuntu-latest]
+        os: [macOS, windows, ubuntu]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
 
     env:
