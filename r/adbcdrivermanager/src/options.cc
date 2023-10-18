@@ -155,6 +155,7 @@ static inline SEXP adbc_get_option_bytes(SEXP obj_xptr, SEXP key_sexp, SEXP erro
   status = GetOption(obj, key, result, &length, error);
   adbc_error_stop(status, error);
 
+  UNPROTECT(1);
   return result_shelter;
 }
 
