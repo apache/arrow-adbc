@@ -675,7 +675,7 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 }
 
 func TestJwtAuthenticationUnencryptedValue(t *testing.T) {
-	// test doesn't participate in SnowflakeTests because of the
+	// test doesn't participate in SnowflakeTests because
 	// JWT auth has a different behavior
 	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
 	if !ok {
@@ -691,7 +691,7 @@ func TestJwtAuthenticationUnencryptedValue(t *testing.T) {
 }
 
 func TestJwtAuthenticationEncryptedValue(t *testing.T) {
-	// test doesn't participate in SnowflakeTests because of the
+	// test doesn't participate in SnowflakeTests because
 	// JWT auth has a different behavior
 	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
 	if !ok {
