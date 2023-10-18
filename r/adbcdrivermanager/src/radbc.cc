@@ -162,7 +162,7 @@ extern "C" SEXP RAdbcMoveDatabase(SEXP database_xptr) {
 }
 
 extern "C" SEXP RAdbcDatabaseValid(SEXP database_xptr) {
-  AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr, true);
+  AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr, /*nullable=*/true);
   return Rf_ScalarLogical(database != nullptr && database->private_data != nullptr);
 }
 
@@ -225,7 +225,8 @@ extern "C" SEXP RAdbcMoveConnection(SEXP connection_xptr) {
 }
 
 extern "C" SEXP RAdbcConnectionValid(SEXP connection_xptr) {
-  AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr, true);
+  AdbcConnection* connection =
+      adbc_from_xptr<AdbcConnection>(connection_xptr, /*nullable=*/true);
   return Rf_ScalarLogical(connection != nullptr && connection->private_data != nullptr);
 }
 
@@ -274,13 +275,13 @@ extern "C" SEXP RAdbcConnectionGetObjects(SEXP connection_xptr, SEXP depth_sexp,
                                           SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
   int depth = adbc_as_int(depth_sexp);
-  const char* catalog = adbc_as_const_char(catalog_sexp, true);
-  const char* db_schema = adbc_as_const_char(db_schema_sexp, true);
-  const char* table_name = adbc_as_const_char(table_name_sexp, true);
+  const char* catalog = adbc_as_const_char(catalog_sexp, /*nullable=*/true);
+  const char* db_schema = adbc_as_const_char(db_schema_sexp, /*nullable=*/true);
+  const char* table_name = adbc_as_const_char(table_name_sexp, /*nullable=*/true);
   std::pair<SEXP, const char**> table_type = adbc_as_const_char_list(table_type_sexp);
   PROTECT(table_type.first);
 
-  const char* column_name = adbc_as_const_char(column_name_sexp, true);
+  const char* column_name = adbc_as_const_char(column_name_sexp, /*nullable=*/true);
   auto out_stream = adbc_from_xptr<ArrowArrayStream>(out_stream_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
 
@@ -295,8 +296,8 @@ extern "C" SEXP RAdbcConnectionGetTableSchema(SEXP connection_xptr, SEXP catalog
                                               SEXP db_schema_sexp, SEXP table_name_sexp,
                                               SEXP schema_xptr, SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
-  const char* catalog = adbc_as_const_char(catalog_sexp, true);
-  const char* db_schema = adbc_as_const_char(db_schema_sexp, true);
+  const char* catalog = adbc_as_const_char(catalog_sexp, /*nullable=*/true);
+  const char* db_schema = adbc_as_const_char(db_schema_sexp, /*nullable=*/true);
   const char* table_name = adbc_as_const_char(table_name_sexp);
   auto schema = adbc_from_xptr<ArrowSchema>(schema_xptr);
   auto error = adbc_from_xptr<AdbcError>(error_xptr);
@@ -366,8 +367,8 @@ extern "C" SEXP RAdbcConnectionGetStatistics(SEXP connection_xptr, SEXP catalog_
                                              SEXP approximate_sexp, SEXP out_stream_xptr,
                                              SEXP error_xptr) {
   auto connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
-  const char* catalog = adbc_as_const_char(catalog_sexp, true);
-  const char* db_schema = adbc_as_const_char(db_schema_sexp, true);
+  const char* catalog = adbc_as_const_char(catalog_sexp, /*nullable=*/true);
+  const char* db_schema = adbc_as_const_char(db_schema_sexp, /*nullable=*/true);
   const char* table_name = adbc_as_const_char(table_name_sexp);
   char approximate = adbc_as_bool(approximate_sexp);
   auto out_stream = adbc_from_xptr<ArrowArrayStream>(out_stream_xptr);
@@ -427,7 +428,8 @@ extern "C" SEXP RAdbcMoveStatement(SEXP statement_xptr) {
 }
 
 extern "C" SEXP RAdbcStatementValid(SEXP statement_xptr) {
-  AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr, true);
+  AdbcStatement* statement =
+      adbc_from_xptr<AdbcStatement>(statement_xptr, /*nullable=*/true);
   return Rf_ScalarLogical(statement != nullptr && statement->private_data != nullptr);
 }
 
