@@ -406,6 +406,15 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     private key to be read in and parsed. Commonly encoded in PEM blocks
     of type "RSA PRIVATE KEY".
 
+``adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value``
+    Parses an encrypted or unencrypted PKCS #8 private key without having to
+    it from the file system. If using encrypted, the
+    ``adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password`` value
+    is required and used to decrypt.
+
+``adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password``
+    Passcode to use when passing an encrypted PKCS #8 value.
+
 ``adbc.snowflake.sql.client_option.disable_telemetry``
     The Snowflake driver allows for telemetry information which can be
     disabled by setting this to ``true``. Value should be either ``true``

@@ -65,6 +65,15 @@ class DatabaseOptions(enum.Enum):
     #: this should point to a file containing a PKCS1 private key to be
     #: loaded. Commonly encoded in PEM blocks of type "RSA PRIVATE KEY"
     JWT_PRIVATE_KEY = "adbc.snowflake.sql.client_option.jwt_private_key"
+    #: parses a private key in PKCS #8, ASN.1 DER form. Specify the private key
+    #: value without having to load it from the file system.
+    JWT_PRIVATE_KEY_VALUE = (
+        "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value"
+    )
+    #: a passcode to use with encrypted private keys for JWT authentication.
+    JWT_PRIVATE_KEY_PASSWORD = (
+        "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password"
+    )
     #: Login retry timeout EXCLUDING network roundtrip and reading http response
     #: use format like http://pkg.go.dev/time#ParseDuration such as
     #: "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values

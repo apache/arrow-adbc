@@ -19,9 +19,7 @@ package snowflake_test
 
 import (
 	"context"
-	"crypto/rsa"
 	"database/sql"
-	"encoding/pem"
 	"fmt"
 	"os"
 	"runtime"
@@ -40,7 +38,6 @@ import (
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/youmark/pkcs8"
 )
 
 type SnowflakeQuirks struct {
@@ -677,68 +674,44 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
 }
 
-func TestUnencryptedJwtAuthenticationUsingString(t *testing.T) {
-	drv := gosnowflake.SnowflakeDriver{}
-
+func TestJwtAuthenticationUnencryptedValue(t *testing.T) {
+	// test doesn't participate in SnowflakeTests because of the
+	// JWT auth has a different behavior
 	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
-
 	if !ok {
-		panic("Cannot find the `SNOWFLAKE_URI` value")
+		t.Skip("Cannot find the `SNOWFLAKE_URI` value")
 	}
-
-	cfg, _ := gosnowflake.ParseDSN(uri)
-	cfg.Authenticator = gosnowflake.AuthTypeJwt
 
 	keyValue, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_VALUE")
-
 	if !ok {
-		panic("Cannot find the `SNOWFLAKE_TEST_PKCS8_VALUE` value")
+		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_VALUE` value")
 	}
 
-	// Windows funkiness
-	if runtime.GOOS == "windows" {
-		keyValue = strings.ReplaceAll(keyValue, "\\r", "\r")
-		keyValue = strings.ReplaceAll(keyValue, "\\n", "\n")
-	}
-
-	block, _ := pem.Decode([]byte(keyValue))
-	privKey, _ := pkcs8.ParsePKCS8PrivateKey(block.Bytes, nil)
-
-	cfg.PrivateKey = privKey.(*rsa.PrivateKey)
-
-	connector := gosnowflake.NewConnector(drv, *cfg)
-	ctx := context.Background()
-
-	_, err := connector.Connect(ctx)
-
-	if err != nil {
-		panic(err)
-	}
+	ConnectWithJwt(uri, keyValue, "")
 }
 
-func TestEncryptedJwtAuthenticationUsingString(t *testing.T) {
-	drv := gosnowflake.SnowflakeDriver{}
-
+func TestJwtAuthenticationEncryptedValue(t *testing.T) {
+	// test doesn't participate in SnowflakeTests because of the
+	// JWT auth has a different behavior
 	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
-
 	if !ok {
-		panic("Cannot find the `SNOWFLAKE_URI` value")
+		t.Skip("Cannot find the `SNOWFLAKE_URI` value")
 	}
 
-	cfg, _ := gosnowflake.ParseDSN(uri)
-	cfg.Authenticator = gosnowflake.AuthTypeJwt
-
-	keyValue, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_EN_VALUE")
-
+	keyValue, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_VALUE")
 	if !ok {
-		panic("Cannot find the `SNOWFLAKE_TEST_PKCS8_EN_VALUE` value")
+		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_VALUE` value")
 	}
 
 	passcode, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_PASS")
-
 	if !ok {
-		panic("Cannot find the `SNOWFLAKE_TEST_PKCS8_PASS` value")
+		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_PASS` value")
 	}
+
+	ConnectWithJwt(uri, keyValue, passcode)
+}
+
+func ConnectWithJwt(uri, keyValue, passcode string) {
 
 	// Windows funkiness
 	if runtime.GOOS == "windows" {
@@ -746,18 +719,43 @@ func TestEncryptedJwtAuthenticationUsingString(t *testing.T) {
 		keyValue = strings.ReplaceAll(keyValue, "\\n", "\n")
 	}
 
-	block, _ := pem.Decode([]byte(keyValue))
-
-	privKey, _ := pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(passcode))
-
-	cfg.PrivateKey = privKey.(*rsa.PrivateKey)
-
-	connector := gosnowflake.NewConnector(drv, *cfg)
-	ctx := context.Background()
-
-	_, err := connector.Connect(ctx)
-
+	cfg, err := gosnowflake.ParseDSN(uri)
 	if err != nil {
 		panic(err)
 	}
+
+	opts := map[string]string{
+		driver.OptionAccount:                 cfg.Account,
+		adbc.OptionKeyUsername:               cfg.User,
+		driver.OptionDatabase:                cfg.Database,
+		driver.OptionSchema:                  cfg.Schema,
+		driver.OptionAuthType:                driver.OptionValueAuthJwt,
+		driver.OptionJwtPrivateKeyPkcs8Value: keyValue,
+	}
+
+	if cfg.Warehouse != "" {
+		opts[driver.OptionWarehouse] = cfg.Warehouse
+	}
+
+	if cfg.Host != "" {
+		opts[driver.OptionHost] = cfg.Host
+	}
+
+	// if doing encrypted
+	if passcode != "" {
+		opts[driver.OptionJwtPrivateKeyPkcs8Password] = passcode
+	}
+
+	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	adbcDriver := driver.NewDriver(mem)
+	db, err := adbcDriver.NewDatabase(opts)
+	if err != nil {
+		panic(err)
+	}
+
+	cnxn, err := db.Open(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	defer cnxn.Close()
 }

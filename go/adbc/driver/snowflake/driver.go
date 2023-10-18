@@ -88,11 +88,10 @@ const (
 	// this should point to a file containing a PKCS1 private key to be
 	// loaded. Commonly encoded in PEM blocks of type "RSA PRIVATE KEY"
 	OptionJwtPrivateKey = "adbc.snowflake.sql.client_option.jwt_private_key"
-	// parses an unencrypted private key in PKCS #8, ASN.1 DER form. Specify the private key
-	// value without having to load it from the file system. Commonly encoded in PEM blocks
-	// of type "RSA PRIVATE KEY"
+	// parses a private key in PKCS #8, ASN.1 DER form. Specify the private key
+	// value without having to load it from the file system.
 	OptionJwtPrivateKeyPkcs8Value = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value"
-	// a passcode to use with JWT keys
+	// a passcode to use with encrypted private keys for JWT authentication
 	OptionJwtPrivateKeyPkcs8Password = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password"
 	OptionDisableTelemetry           = "adbc.snowflake.sql.client_option.disable_telemetry"
 	// snowflake driver logging level
