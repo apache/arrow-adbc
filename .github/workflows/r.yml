@@ -1,0 +1,147 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: R
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "adbc.h"
+      - "c/**"
+      - "go/adbc/driver/**"
+      - "go/adbc/pkg/**"
+      - "r/**"
+      - ".github/workflows/r.yml"
+
+  push:
+    paths:
+      - "adbc.h"
+      - "c/**"
+      - "go/adbc/driver/**"
+      - "go/adbc/pkg/**"
+      - "r/**"
+      - ".github/workflows/r.yml"
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  r:
+    name: "R-${{ matrix.config.r }}/${{ matrix.config.pkg }} (${{ matrix.config.os }})"
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      matrix:
+        config:
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcdrivermanager'}
+          - {os: windows-latest, r: 'release', pkg: 'adbcdrivermanager'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcdrivermanager'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcsqlite'}
+          - {os: windows-latest,   r: 'release', pkg: 'adbcsqlite'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsqlite'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcpostgresql'}
+          - {os: windows-latest,   r: 'release', pkg: 'adbcpostgresql'}
+          - {os: windows-latest,   r: '3.6', pkg: 'adbcpostgresql'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcpostgresql'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcsnowflake'}
+          - {os: windows-latest,   r: 'release', pkg: 'adbcsnowflake'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcsnowflake'}
+          - {os: ubuntu-latest,   r: 'release', pkg: 'adbcflightsql'}
+          - {os: macOS-latest,   r: 'release', pkg: 'adbcflightsql'}
+          - {os: windows-latest,   r: 'release', pkg: 'adbcflightsql'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - name: Set PKG_CONFIG_PATH on MacOS
+        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'macOS'
+        run: |
+          PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
+
+      - name: Prepare sources (driver manager)
+        if: matrix.config.pkg == 'adbcdrivermanager'
+        run: |
+          R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
+          R CMD INSTALL r/${{ matrix.config.pkg }}
+        shell: bash
+
+      - name: Prepare sources
+        if: matrix.config.pkg != 'adbcdrivermanager'
+        run: |
+          R -e "install.packages('nanoarrow', repos = 'https://cloud.r-project.org')"
+          R CMD INSTALL r/adbcdrivermanager
+          R CMD INSTALL r/${{ matrix.config.pkg }}
+        shell: bash
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
+          needs: check
+          working-directory: r/${{ matrix.config.pkg }}
+
+      - name: Start postgres test database
+        if: matrix.config.pkg == 'adbcpostgresql' && runner.os == 'Linux'
+        run: |
+          cd r/adbcpostgresql
+          docker compose up --detach postgres-test
+          ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
+          echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
+
+      - name: Start FlightSQL test database
+        if: matrix.config.pkg == 'adbcflightsql' && runner.os == 'Linux'
+        run: |
+          cd r/adbcpostgresql
+          docker compose up --detach flightsql-sqlite-test
+          ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
+          echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
+
+      - uses: r-lib/actions/check-r-package@v2
+        env:
+          ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }}
+        with:
+          upload-snapshots: true
+          working-directory: r/${{ matrix.config.pkg }}
+          # Using --no-multiarch here means that in version of R that support
+          # 32-bit Windows builds, only the 64-bit version is tested. With some
+          # effort we could also test 32-bit builds; however, they are not commonly
+          # used.
+          args: 'c("--no-manual", "--as-cran", "--no-multiarch")'
+
+      - name: Stop test database
+        if: runner.os == 'Linux'
+        run: |
+          docker compose down
