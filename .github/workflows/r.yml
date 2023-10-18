@@ -45,7 +45,6 @@ concurrency:
 permissions:
   contents: read
 
-# This job just checks f
 jobs:
   r-release:
     name: "R-${{ matrix.pkg }} (${{ matrix.os }})"
