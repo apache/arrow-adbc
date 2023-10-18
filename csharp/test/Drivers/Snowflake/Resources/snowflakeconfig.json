@@ -2,8 +2,6 @@
     "driverPath": "",
     "driverEntryPoint": "",
     "account": "",
-    "user": "",
-    "password": "",
     "warehouse": "",
     "authentication": {
         "auth_oauth": {
@@ -12,15 +10,14 @@
         "auth_jwt": {
             "private_key": "",
             "private_key_file": "",
-            "private_key_pwd": ""
+            "private_key_pwd": "",
+            "user": ""
         },
         "default": {
             "user": "",
             "password": ""
         }
     },
-    "authenticationType": "",
-    "authenticationTokenPath": "",
     "metadata": {
         "catalog": "",
         "schema": "",
