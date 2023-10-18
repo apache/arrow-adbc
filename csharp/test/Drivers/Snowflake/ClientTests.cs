@@ -131,6 +131,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     {
                         while (reader.Read())
                         {
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                Console.WriteLine(reader.GetString(i));
+                            }
                             count++;
                         }
                     }
@@ -140,6 +144,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 Assert.AreEqual(testConfiguration.ExpectedResultsCount, count);
             }
         }
+
+
+        /// <summary>
+        /// Validates if the client can connect to a live server
+        /// and parse the results.
+        /// </summary>
+        [Test, Order(3)]
+        public void CanClientExecuteQuerySchemaOnly()
+        {
+            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
+            {
+                SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+                using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+                {
+                    AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+
+                    adbcConnection.Open();
+
+                    AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
+
+                    DataTable schemaTable = reader.GetSchemaTable();
+
+                    Assert.IsTrue(schemaTable.Columns.Count > 0);
+                }
+            }
+        }
+
 
         /// <summary>
         /// Validates if the client can connect to a live server
@@ -354,13 +386,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 {
                     privateKey = File.ReadAllText(privateKeyFile);
                 }
-                builder["adbc.snowflake.sql.auth_type"] = testConfiguration.AuthenticationType;
+                builder["adbc.snowflake.sql.auth_type"] = SnowflakeAuthentication.AuthJwt;
                 builder["adbc.snowflake.sql.client_option.auth_token"] = privateKey;
                 builder["username"] = testConfiguration.Authentication.SnowflakeJwt.User;
             }
             else if (authType == "auth_oauth")
             {
-                builder["adbc.snowflake.sql.auth_type"] = testConfiguration.Authentication.OAuth;
+                builder["adbc.snowflake.sql.auth_type"] = SnowflakeAuthentication.AuthOAuth;
                 builder["adbc.snowflake.sql.client_option.auth_token"] = testConfiguration.Authentication.OAuth.Token;
                 if (testConfiguration.Authentication.OAuth.User != null)
                 {
