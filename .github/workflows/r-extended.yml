@@ -71,7 +71,6 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck, local::../adbcdrivermanager, arrow=?ignore-before-r=4.0.0
-          needs: check
           working-directory: r/${{ matrix.pkg }}
 
       - uses: r-lib/actions/check-r-package@v2
@@ -87,7 +86,7 @@ jobs:
 
     strategy:
       matrix:
-        rversion: [3.6, 4.0, 4.1]
+        rversion: ["3.6", "4.0", "4.1"]
         os: [ubuntu]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
       fail-fast: false
@@ -112,7 +111,6 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck, local::../adbcdrivermanager
-          needs: check
           working-directory: r/${{ matrix.pkg }}
 
       - uses: r-lib/actions/check-r-package@v2
@@ -121,14 +119,15 @@ jobs:
           working-directory: r/${{ matrix.pkg }}
 
   # Checks on older verions of R on Windows. The Windows build system changed
-  # several times so we need to check packages on every version.
+  # several times so we need to check packages on every version. Go-based
+  # drivers aren't supported before 4.2, so we don't check them here.
   old-rversions-windows:
     name: "${{ matrix.pkg }} / ${{ matrix.os }} / R ${{ matrix.rversion}}"
     runs-on: ${{ matrix.os }}-latest
 
     strategy:
       matrix:
-        rversion: [3.6, 4.0, 4.1]
+        rversion: ["3.6", "4.0", "4.1"]
         os: [windows]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
       fail-fast: false
@@ -153,10 +152,65 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck, local::../adbcdrivermanager
-          needs: check
           working-directory: r/${{ matrix.pkg }}
 
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
           working-directory: r/${{ matrix.pkg }}
+
+  # Runs tests with valgrind
+  valgrind:
+    name: "Test ${{ matrix.pkg }} with valgrind"
+    runs-on: ${{ matrix.os }}-latest
+
+    strategy:
+      matrix:
+        rversion: [release]
+        os: [ubuntu]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
+      fail-fast: false
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          rversion: ${{ matrix.rversion }}
+          use-public-rspm: true
+
+      - name: Install valgrind
+        run: |
+          sudo apt-get install -y valgrind
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::../adbcdrivermanager
+          working-directory: r/${{ matrix.pkg }}
+
+      - name: Run devtools::test() with valgrind
+        run: |
+          cd r/${{ matrix.pkg }}
+          R -d "valgrind --tool=memcheck --leak-check=full" -e "devtools::test()" > valgrind.out 2>&1
+
+      - name: Show output
+        if: always()
+        run: |
+          cat valgrind.out
+
+      - name: Check output
+        run: |
+          if grep -e "blocks are possibly lost" valgrind.out ; then
+            exit 1
+          fi
+
+          if grep -e "blocks are definitely lost" valgrind.out ; then
+            exit 1
+          fi
+
+          if grep -e "Conditional jump or move" valgrind.out ; then
+            exit 1
+          fi
