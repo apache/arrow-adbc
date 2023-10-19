@@ -34,9 +34,9 @@ permissions:
 jobs:
 
   # Runs R CMD check in the same way CRAN might (i.e., without any test databases,
-  # only using oldrel, release, devel.
+  # using oldrel, release, devel.
   check-for-cran:
-    name: "${{ matrix.pkg }} / ${{ matrix.os }} / R ${{ matrix.rversion}}"
+    name: "cran - ${{ matrix.pkg }} / ${{ matrix.os }} / R-${{ matrix.rversion}}"
     runs-on: ${{ matrix.os }}-latest
 
     strategy:
@@ -75,8 +75,8 @@ jobs:
 
   # Checks on older verions of R, just on Linux. This catches any accidental
   # usage of newer R functions.
-  old-rversions:
-    name: "${{ matrix.pkg }} / ${{ matrix.os }} / R ${{ matrix.rversion}}"
+  rversions:
+    name: "rversions ${{ matrix.pkg }} / ${{ matrix.os }} / R-${{ matrix.rversion}}"
     runs-on: ${{ matrix.os }}-latest
 
     strategy:
@@ -110,8 +110,8 @@ jobs:
   # Checks on older verions of R on Windows. The Windows build system changed
   # several times so we need to check packages on every version. Go-based
   # drivers aren't supported before 4.2, so we don't check them here.
-  old-rversions-windows:
-    name: "${{ matrix.pkg }} / ${{ matrix.os }} / R ${{ matrix.rversion}}"
+  winrversions:
+    name: "winrverions - ${{ matrix.pkg }} / ${{ matrix.os }} / R-${{ matrix.rversion}}"
     runs-on: ${{ matrix.os }}-latest
 
     strategy:
@@ -144,7 +144,7 @@ jobs:
 
   # Runs tests with valgrind
   valgrind:
-    name: "${{ matrix.pkg }} with valgrind"
+    name: "valgrind - ${{ matrix.pkg }}"
     runs-on: ${{ matrix.os }}-latest
 
     strategy:
