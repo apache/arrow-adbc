@@ -20,6 +20,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <utility>
+
 template <typename T>
 static inline const char* adbc_xptr_class();
 
@@ -77,13 +79,7 @@ static inline T* adbc_from_xptr(SEXP xptr, bool null_ok = false) {
 }
 
 template <typename T>
-static inline SEXP adbc_allocate_xptr(SEXP shelter_sexp = R_NilValue) {
-  void* ptr = malloc(sizeof(T));
-  if (ptr == nullptr) {
-    Rf_error("Failed to allocate T");
-  }
-
-  memset(ptr, 0, sizeof(T));
+static inline SEXP adbc_borrow_xptr(T* ptr, SEXP shelter_sexp = R_NilValue) {
   SEXP xptr = PROTECT(R_MakeExternalPtr(ptr, R_NilValue, shelter_sexp));
   SEXP xptr_class = PROTECT(Rf_allocVector(STRSXP, 2));
   SET_STRING_ELT(xptr_class, 0, Rf_mkChar(adbc_xptr_class<T>()));
@@ -101,6 +97,17 @@ static inline SEXP adbc_allocate_xptr(SEXP shelter_sexp = R_NilValue) {
 
   UNPROTECT(1);
   return xptr;
+}
+
+template <typename T>
+static inline SEXP adbc_allocate_xptr(SEXP shelter_sexp = R_NilValue) {
+  void* ptr = malloc(sizeof(T));
+  if (ptr == nullptr) {
+    Rf_error("Failed to allocate T");
+  }
+
+  memset(ptr, 0, sizeof(T));
+  return adbc_borrow_xptr<T>(reinterpret_cast<T*>(ptr), shelter_sexp);
 }
 
 template <typename T>
@@ -136,6 +143,10 @@ static inline const char* adbc_as_const_char(SEXP sexp, bool nullable = false) {
     return nullptr;
   }
 
+  if (Rf_isObject(sexp)) {
+    Rf_error("Can't convert classed object to const char*");
+  }
+
   if (TYPEOF(sexp) != STRSXP || Rf_length(sexp) != 1) {
     Rf_error("Expected character(1) for conversion to const char*");
   }
@@ -149,11 +160,24 @@ static inline const char* adbc_as_const_char(SEXP sexp, bool nullable = false) {
 }
 
 static inline int adbc_as_int(SEXP sexp) {
+  if (Rf_isObject(sexp)) {
+    Rf_error("Can't convert classed object to int");
+  }
+
   if (Rf_length(sexp) == 1) {
     switch (TYPEOF(sexp)) {
-      case REALSXP:
-        return REAL(sexp)[0];
+      case REALSXP: {
+        double value = REAL(sexp)[0];
+        if (!R_finite(value)) {
+          Rf_error("Can't convert non-finite double(1) to int");
+        }
+
+        return value;
+      }
+
       case INTSXP:
+      case LGLSXP:
+        // NA is OK here (or should be handled by the caller for a specific ADBC method)
         return INTEGER(sexp)[0];
     }
   }
@@ -161,6 +185,162 @@ static inline int adbc_as_int(SEXP sexp) {
   Rf_error("Expected integer(1) or double(1) for conversion to int");
 }
 
+static inline bool adbc_as_bool(SEXP sexp) {
+  if (Rf_isObject(sexp)) {
+    Rf_error("Can't convert classed object to bool");
+  }
+
+  if (Rf_length(sexp) == 1) {
+    switch (TYPEOF(sexp)) {
+      case REALSXP: {
+        double value = REAL(sexp)[0];
+        if (!R_finite(value)) {
+          Rf_error("Can't convert non-finite double(1) to bool");
+        }
+
+        return value != 0;
+      }
+
+      case INTSXP:
+      case LGLSXP: {
+        int value = INTEGER(sexp)[0];
+        if (value == NA_INTEGER) {
+          Rf_error("Can't convert NA to bool");
+        }
+
+        return value != 0;
+      }
+    }
+  }
+
+  Rf_error("Expected integer(1) or double(1) for conversion to int");
+}
+
+static inline int64_t adbc_as_int64(SEXP sexp) {
+  if (Rf_isObject(sexp)) {
+    Rf_error("Can't convert classed object to int64");
+  }
+
+  if (Rf_length(sexp) == 1) {
+    switch (TYPEOF(sexp)) {
+      case REALSXP: {
+        double value = REAL(sexp)[0];
+        if (!R_finite(value)) {
+          Rf_error("Can't convert non-finite double(1) to int64");
+        }
+
+        return value;
+      }
+
+      case INTSXP:
+      case LGLSXP:
+        return INTEGER(sexp)[0];
+    }
+  }
+
+  Rf_error("Expected integer(1) or double(1) for conversion to int64");
+}
+
+static inline double adbc_as_double(SEXP sexp) {
+  if (Rf_isObject(sexp)) {
+    Rf_error("Can't convert classed object to double");
+  }
+
+  if (Rf_length(sexp) == 1) {
+    switch (TYPEOF(sexp)) {
+      case REALSXP:
+        return REAL(sexp)[0];
+      case INTSXP:
+      case LGLSXP:
+        return INTEGER(sexp)[0];
+    }
+  }
+
+  Rf_error("Expected integer(1) or double(1) for conversion to double");
+}
+
+static inline std::pair<SEXP, const char**> adbc_as_const_char_list(SEXP sexp) {
+  if (Rf_isObject(sexp)) {
+    Rf_error("Can't convert classed object to const char**");
+  }
+
+  switch (TYPEOF(sexp)) {
+    case NILSXP:
+      return {R_NilValue, nullptr};
+    case STRSXP:
+      break;
+    default:
+      Rf_error("Expected character() for conversion to const char**");
+  }
+
+  int sexp_length = Rf_length(sexp);
+  SEXP result_shelter =
+      PROTECT(Rf_allocVector(RAWSXP, (sexp_length + 1) * sizeof(const char*)));
+  auto result = reinterpret_cast<const char**>(RAW(result_shelter));
+  for (int i = 0; i < sexp_length; i++) {
+    SEXP item = STRING_ELT(sexp, i);
+    if (item == NA_STRING) {
+      Rf_error("Can't convert NA_character_ element to const char*");
+    }
+
+    result[i] = Rf_translateCharUTF8(STRING_ELT(sexp, i));
+  }
+  result[sexp_length] = nullptr;
+  UNPROTECT(1);
+  return {result_shelter, result};
+}
+
+static inline std::pair<SEXP, int*> adbc_as_int_list(SEXP sexp) {
+  if (Rf_isObject(sexp)) {
+    Rf_error("Can't convert classed object to int*");
+  }
+
+  int result_length = Rf_length(sexp);
+
+  switch (TYPEOF(sexp)) {
+    case NILSXP:
+      return {R_NilValue, nullptr};
+
+    case INTSXP: {
+      int* result = INTEGER(sexp);
+      // NA is OK here (otherwise it would be hard to work around a driver that
+      // maybe used INT_MIN as a sentinel for something)
+      return {sexp, result};
+    }
+
+    case REALSXP: {
+      SEXP result_shelter = PROTECT(Rf_allocVector(INTSXP, result_length));
+      int* result = INTEGER(result_shelter);
+      for (int i = 0; i < result_length; i++) {
+        double item = REAL(sexp)[i];
+        if (!R_finite(item)) {
+          Rf_error("Can't convert non-finite element to int");
+        }
+
+        result[i] = item;
+      }
+
+      UNPROTECT(1);
+      return {result_shelter, result};
+    }
+
+    default:
+      Rf_error("Expected integer() or double() for conversion to int*");
+  }
+}
+
 static inline SEXP adbc_wrap_status(AdbcStatusCode code) {
   return Rf_ScalarInteger(code);
+}
+
+static inline void adbc_error_stop(int code, AdbcError* error) {
+  SEXP status_sexp = PROTECT(adbc_wrap_status(code));
+  SEXP error_xptr = PROTECT(adbc_borrow_xptr<AdbcError>(error));
+
+  SEXP fun_sym = PROTECT(Rf_install("stop_for_error"));
+  SEXP fun_call = PROTECT(Rf_lang3(fun_sym, status_sexp, error_xptr));
+  SEXP pkg_chr = PROTECT(Rf_mkString("adbcdrivermanager"));
+  SEXP pkg_ns = PROTECT(R_FindNamespace(pkg_chr));
+  Rf_eval(fun_call, pkg_ns);
+  UNPROTECT(6);
 }

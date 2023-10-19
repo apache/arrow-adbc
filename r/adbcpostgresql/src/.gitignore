@@ -31,4 +31,6 @@ statement.cc
 postgres_type.h
 postgres_copy_reader.h
 postgres_util.h
+result_helper.h
+result_helper.cc
 Makevars
