@@ -18,6 +18,7 @@
 name: R (extended)
 
 on:
+  # Run weekly
   schedule:
     - cron: '5 0 * * 0'
 
@@ -62,12 +63,6 @@ jobs:
           PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
 
-      - name: Run bootstrap.R
-        run: |
-          cd r/${{ matrix.pkg }}
-          Rscript bootstrap.R
-        shell: bash
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck, local::../adbcdrivermanager, arrow=?ignore-before-r=4.0.0
@@ -101,12 +96,6 @@ jobs:
         with:
           rversion: ${{ matrix.rversion }}
           use-public-rspm: true
-
-      - name: Run bootstrap.R
-        run: |
-          cd r/${{ matrix.pkg }}
-          Rscript bootstrap.R
-        shell: bash
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -142,12 +131,6 @@ jobs:
         with:
           rversion: ${{ matrix.rversion }}
           use-public-rspm: true
-
-      - name: Run bootstrap.R
-        run: |
-          cd r/${{ matrix.pkg }}
-          Rscript bootstrap.R
-        shell: bash
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -191,10 +174,28 @@ jobs:
           extra-packages: local::../adbcdrivermanager
           working-directory: r/${{ matrix.pkg }}
 
+      - name: Start postgres test database
+        if: matrix.pkg == 'adbcpostgresql'
+        run: |
+          cd r/adbcpostgresql
+          docker compose up --detach postgres-test
+          ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
+          echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
+
+      - name: Start FlightSQL test database
+        if: matrix.pkg == 'adbcflightsql'
+        run: |
+          cd r/adbcpostgresql
+          docker compose up --detach flightsql-sqlite-test
+          ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
+          echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
+
       - name: Run devtools::test() with valgrind
+        env:
+          ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           cd r/${{ matrix.pkg }}
-          R -d "valgrind --tool=memcheck --leak-check=full" -e "testthat::test_local()" > valgrind.out 2>&1
+          R -d "valgrind --tool=memcheck --leak-check=full --suppressions=../valgrind.supp --error-exitcode=1" -e "testthat::test_local()" > valgrind.out 2>&1
 
       - name: Show output
         if: always()
@@ -202,18 +203,7 @@ jobs:
           cd r/${{ matrix.pkg }}
           cat valgrind.out
 
-      - name: Check output
+      - name: Shutdown docker compose services
+        if: always()
         run: |
-          cd r/${{ matrix.pkg }}
-
-          if grep -e "blocks are possibly lost" valgrind.out ; then
-            exit 1
-          fi
-
-          if grep -e "blocks are definitely lost" valgrind.out ; then
-            exit 1
-          fi
-
-          if grep -e "Conditional jump or move" valgrind.out ; then
-            exit 1
-          fi
+          docker compose down
