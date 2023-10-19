@@ -56,7 +56,7 @@ class Error {
   static void CRelease(AdbcError* error) {
     auto error_obj = reinterpret_cast<Error*>(error->private_data);
     delete error_obj;
-    error->release = nullptr;
+    std::memset(error, 0, sizeof(AdbcError));
   }
 
  public:
@@ -311,6 +311,7 @@ class PrivateBase {
     }
 
     delete private_data;
+    obj->private_data = nullptr;
     return ADBC_STATUS_OK;
   }
 };
