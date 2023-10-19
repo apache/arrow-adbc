@@ -22,6 +22,9 @@ test_that("get option methods work on a database for the void driver", {
     class = "adbc_status_not_found"
   )
 
+  adbc_database_set_options(db, list("some_key" = "some value"))
+  expect_identical(adbc_database_get_option(db, "some_key"), "some value")
+
   expect_error(
     adbc_database_get_option_bytes(db, "some_key"),
     class = "adbc_status_not_found"
@@ -46,6 +49,9 @@ test_that("get option methods work on a connection for the void driver", {
     adbc_connection_get_option(con, "some_key"),
     class = "adbc_status_not_found"
   )
+
+  adbc_connection_set_options(con, list("some_key" = "some value"))
+  expect_identical(adbc_connection_get_option(con, "some_key"), "some value")
 
   expect_error(
     adbc_connection_get_option_bytes(con, "some_key"),
@@ -72,6 +78,9 @@ test_that("get option methods work on a statment for the void driver", {
     adbc_statement_get_option(stmt, "some_key"),
     class = "adbc_status_not_found"
   )
+
+  adbc_statement_set_options(stmt, list("some_key" = "some value"))
+  expect_identical(adbc_statement_get_option(stmt, "some_key"), "some value")
 
   expect_error(
     adbc_statement_get_option_bytes(stmt, "some_key"),
