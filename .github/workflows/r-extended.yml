@@ -42,7 +42,7 @@ jobs:
       matrix:
         rversion: [oldrel, release, devel]
         os: [macOS, windows, ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbdflightsql, adbcsnowflake]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
       fail-fast: false
 
     env:
