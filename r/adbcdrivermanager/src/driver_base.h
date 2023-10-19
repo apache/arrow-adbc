@@ -349,9 +349,15 @@ class StatementPrivateBase : public PrivateBase {
     return ADBC_STATUS_OK;
   }
 
+  virtual AdbcStatusCode ExecuteQuery(struct ArrowArrayStream* stream,
+                                      int64_t* rows_affected, struct AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  template <typename PrivateCls>
   static AdbcStatusCode CStatementNew(AdbcConnection* connection,
                                       AdbcStatement* statement, AdbcError* error) {
-    auto private_data = new StatementPrivateBase();
+    auto private_data = new PrivateCls();
     auto connection_private =
         reinterpret_cast<ConnectionPrivateT*>(connection->private_data);
     AdbcStatusCode status = private_data->Init(connection_private, error);
@@ -361,6 +367,14 @@ class StatementPrivateBase : public PrivateBase {
 
     statement->private_data = private_data;
     return ADBC_STATUS_OK;
+  }
+
+  template <typename PrivateCls>
+  static AdbcStatusCode CExecuteQuery(AdbcStatement* statement,
+                                      struct ArrowArrayStream* stream,
+                                      int64_t* rows_affected, struct AdbcError* error) {
+    auto private_data = reinterpret_cast<PrivateCls*>(statement->private_data);
+    return private_data->ExecuteQuery(stream, rows_affected, error);
   }
 };
 
@@ -410,15 +424,21 @@ class DriverBase {
     //   driver->ConnectionRollback = VoidConnectionRollback;
     //   driver->ConnectionSetOption = VoidConnectionSetOption;
 
+    driver->StatementNew = &StatementPrivateBase<
+        ConnectionPrivateT>::template CStatementNew<StatementPrivateT>;
+    driver->StatementRelease = &PrivateBase::CRelease<AdbcStatement, StatementPrivateT>;
+
+    driver->StatementSetOption =
+        &PrivateBase::CSetOption<AdbcStatement, StatementPrivateT>;
+    driver->StatementExecuteQuery = &StatementPrivateBase<
+        ConnectionPrivateT>::template CExecuteQuery<StatementPrivateT>;
+
     //   driver->StatementBind = VoidStatementBind;
     //   driver->StatementBindStream = VoidStatementBindStream;
     //   driver->StatementExecutePartitions = VoidStatementExecutePartitions;
     //   driver->StatementExecuteQuery = VoidStatementExecuteQuery;
     //   driver->StatementGetParameterSchema = VoidStatementGetParameterSchema;
-    //   driver->StatementNew = VoidStatementNew;
     //   driver->StatementPrepare = VoidStatementPrepare;
-    //   driver->StatementRelease = VoidStatementRelease;
-    //   driver->StatementSetOption = VoidStatementSetOption;
     //   driver->StatementSetSqlQuery = VoidStatementSetSqlQuery;
 
     driver->release = &DriverBase::CRelease;
