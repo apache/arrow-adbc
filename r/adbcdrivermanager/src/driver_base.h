@@ -152,6 +152,8 @@ class PrivateBase {
 
   virtual bool OptionKeySupported(const char* key) const { return true; }
 
+  virtual AdbcStatusCode Init(void* parent, AdbcError* error) { return ADBC_STATUS_OK; }
+
   virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
 
  protected:
@@ -318,38 +320,25 @@ class PrivateBase {
 
 class DatabasePrivateBase : public PrivateBase {
  public:
-  virtual AdbcStatusCode Init(AdbcError* error) { return ADBC_STATUS_OK; }
-
   template <typename PrivateCls>
   static AdbcStatusCode CInit(AdbcDatabase* database, AdbcError* error) {
-    auto private_data = reinterpret_cast<DatabasePrivateBase*>(database->private_data);
-    return private_data->Init(error);
+    auto private_data = reinterpret_cast<PrivateCls*>(database->private_data);
+    return private_data->Init(nullptr, error);
   }
 };
 
-template <typename DatabasePrivateT>
 class ConnectionPrivateBase : public PrivateBase {
  public:
-  virtual AdbcStatusCode Init(DatabasePrivateT* parent, AdbcError* error) {
-    return ADBC_STATUS_OK;
-  }
-
   template <typename PrivateCls>
   static AdbcStatusCode CInit(AdbcConnection* connection, AdbcDatabase* database,
                               AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(connection->private_data);
-    auto database_private = reinterpret_cast<DatabasePrivateT*>(database->private_data);
-    return private_data->Init(database_private, error);
+    return private_data->Init(database->private_data, error);
   }
 };
 
-template <typename ConnectionPrivateT>
 class StatementPrivateBase : public PrivateBase {
  public:
-  virtual AdbcStatusCode Init(ConnectionPrivateT* parent, AdbcError* error) {
-    return ADBC_STATUS_OK;
-  }
-
   virtual AdbcStatusCode ExecuteQuery(struct ArrowArrayStream* stream,
                                       int64_t* rows_affected, struct AdbcError* error) {
     return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -359,9 +348,7 @@ class StatementPrivateBase : public PrivateBase {
   static AdbcStatusCode CStatementNew(AdbcConnection* connection,
                                       AdbcStatement* statement, AdbcError* error) {
     auto private_data = new PrivateCls();
-    auto connection_private =
-        reinterpret_cast<ConnectionPrivateT*>(connection->private_data);
-    AdbcStatusCode status = private_data->Init(connection_private, error);
+    AdbcStatusCode status = private_data->Init(connection->private_data, error);
     if (status != ADBC_STATUS_OK) {
       delete private_data;
     }
@@ -379,9 +366,9 @@ class StatementPrivateBase : public PrivateBase {
   }
 };
 
-template <typename DatabasePrivateT = DatabasePrivateBase,
-          typename ConnectionPrivateT = ConnectionPrivateBase<DatabasePrivateT>,
-          typename StatementPrivateT = StatementPrivateBase<ConnectionPrivateT>>
+template <typename StatementPrivateT = StatementPrivateBase,
+          typename ConnectionPrivateT = ConnectionPrivateBase,
+          typename DatabasePrivateT = DatabasePrivateBase>
 class DriverBase {
  private:
   static AdbcStatusCode CRelease(AdbcDriver* driver, AdbcError* error) {
@@ -406,8 +393,7 @@ class DriverBase {
     driver->DatabaseSetOption = &PrivateBase::CSetOption<AdbcDatabase, DatabasePrivateT>;
 
     driver->ConnectionNew = &PrivateBase::CNew<AdbcConnection, ConnectionPrivateT>;
-    driver->ConnectionInit =
-        &ConnectionPrivateBase<DatabasePrivateT>::template CInit<ConnectionPrivateT>;
+    driver->ConnectionInit = &ConnectionPrivateBase::CInit<ConnectionPrivateT>;
     driver->ConnectionRelease =
         &PrivateBase::CRelease<AdbcConnection, ConnectionPrivateT>;
 
@@ -425,14 +411,13 @@ class DriverBase {
     //   driver->ConnectionRollback = VoidConnectionRollback;
     //   driver->ConnectionSetOption = VoidConnectionSetOption;
 
-    driver->StatementNew = &StatementPrivateBase<
-        ConnectionPrivateT>::template CStatementNew<StatementPrivateT>;
+    driver->StatementNew = &StatementPrivateBase::CStatementNew<StatementPrivateT>;
     driver->StatementRelease = &PrivateBase::CRelease<AdbcStatement, StatementPrivateT>;
 
     driver->StatementSetOption =
         &PrivateBase::CSetOption<AdbcStatement, StatementPrivateT>;
-    driver->StatementExecuteQuery = &StatementPrivateBase<
-        ConnectionPrivateT>::template CExecuteQuery<StatementPrivateT>;
+    driver->StatementExecuteQuery =
+        &StatementPrivateBase::CExecuteQuery<StatementPrivateT>;
 
     //   driver->StatementBind = VoidStatementBind;
     //   driver->StatementBindStream = VoidStatementBindStream;
