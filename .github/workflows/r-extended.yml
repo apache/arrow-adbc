@@ -42,7 +42,8 @@ jobs:
       matrix:
         rversion: [oldrel, release, devel]
         os: [macOS, windows, ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbdflightsql, adbcsnowflakesql]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbdflightsql, adbcsnowflake]
+      fail-fast: false
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -78,17 +79,18 @@ jobs:
           upload-snapshots: true
           working-directory: r/${{ matrix.pkg }}
 
-  # Checks on older verions of R on MacOS and Linux (because Windows ony supports
-  # Go-based drivers for R >= 4.2)
-  old-rversions-macos-linux:
+  # Checks on older verions of R, just on Linux. This catches any accidental
+  # usage of newer R functions.
+  old-rversions:
     name: "${{ matrix.pkg }} / ${{ matrix.os }} / R ${{ matrix.rversion}}"
     runs-on: ${{ matrix.os }}-latest
 
     strategy:
       matrix:
         rversion: [3.6, 4.0, 4.1]
-        os: [macOS, ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, abdcflightsql, adbcsnowflakesql]
+        os: [ubuntu]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, abdcflightsql, adbcsnowflake]
+      fail-fast: false
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -101,12 +103,6 @@ jobs:
           rversion: ${{ matrix.rversion }}
           use-public-rspm: true
 
-      - name: Set PKG_CONFIG_PATH on MacOS
-        if: matrix.pkg == 'adbcpostgresql' && runner.os == 'macOS'
-        run: |
-          PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
-          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
-
       - name: Run bootstrap.R
         run: |
           cd r/${{ matrix.pkg }}
@@ -115,7 +111,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck, local::../adbcdrivermanager, arrow=?ignore-before-r=4.0.0
+          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
           needs: check
           working-directory: r/${{ matrix.pkg }}
 
@@ -124,8 +120,8 @@ jobs:
           upload-snapshots: true
           working-directory: r/${{ matrix.pkg }}
 
-  # Checks on older verions of R on MacOS and Linux (because Windows ony supports
-  # Go-based drivers for R >= 4.2)
+  # Checks on older verions of R on Windows. The Windows build system changed
+  # several times so we need to check packages on every version.
   old-rversions-windows:
     name: "${{ matrix.pkg }} / ${{ matrix.os }} / R ${{ matrix.rversion}}"
     runs-on: ${{ matrix.os }}-latest
@@ -135,6 +131,7 @@ jobs:
         rversion: [3.6, 4.0, 4.1]
         os: [windows]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
+      fail-fast: false
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -146,12 +143,6 @@ jobs:
         with:
           rversion: ${{ matrix.rversion }}
           use-public-rspm: true
-
-      - name: Set PKG_CONFIG_PATH on MacOS
-        if: matrix.pkg == 'adbcpostgresql' && runner.os == 'macOS'
-        run: |
-          PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
-          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
 
       - name: Run bootstrap.R
         run: |
