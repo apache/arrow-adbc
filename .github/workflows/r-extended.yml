@@ -194,15 +194,18 @@ jobs:
       - name: Run devtools::test() with valgrind
         run: |
           cd r/${{ matrix.pkg }}
-          R -d "valgrind --tool=memcheck --leak-check=full" -e "devtools::test()" > valgrind.out 2>&1
+          R -d "valgrind --tool=memcheck --leak-check=full" -e "testthat::test_local()" > valgrind.out 2>&1
 
       - name: Show output
         if: always()
         run: |
+          cd r/${{ matrix.pkg }}
           cat valgrind.out
 
       - name: Check output
         run: |
+          cd r/${{ matrix.pkg }}
+
           if grep -e "blocks are possibly lost" valgrind.out ; then
             exit 1
           fi
