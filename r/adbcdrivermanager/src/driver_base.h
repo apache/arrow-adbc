@@ -320,6 +320,8 @@ class PrivateBase {
 
 class DatabasePrivateBase : public PrivateBase {
  public:
+  // (there are no database functions other than option getting/setting)
+
   template <typename PrivateCls>
   static AdbcStatusCode CInit(AdbcDatabase* database, AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(database->private_data);
@@ -329,6 +331,8 @@ class DatabasePrivateBase : public PrivateBase {
 
 class ConnectionPrivateBase : public PrivateBase {
  public:
+  // TODO: Add connection functions here as methods
+
   template <typename PrivateCls>
   static AdbcStatusCode CInit(AdbcConnection* connection, AdbcDatabase* database,
                               AdbcError* error) {
@@ -339,10 +343,16 @@ class ConnectionPrivateBase : public PrivateBase {
 
 class StatementPrivateBase : public PrivateBase {
  public:
+  virtual AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
   virtual AdbcStatusCode ExecuteQuery(struct ArrowArrayStream* stream,
                                       int64_t* rows_affected, struct AdbcError* error) {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
+
+  // TODO: Add remaining statement functions here as methods
 
   template <typename PrivateCls>
   static AdbcStatusCode CStatementNew(AdbcConnection* connection,
@@ -384,50 +394,79 @@ class DriverBase {
     struct AdbcDriver* driver = (AdbcDriver*)raw_driver;
     std::memset(driver, 0, sizeof(AdbcDriver));
 
+    // Driver lifecycle
     driver->private_data = new DriverBase();
+    driver->release = &DriverBase::CRelease;
 
+    // Database lifecycle
     driver->DatabaseNew = &PrivateBase::CNew<AdbcDatabase, DatabasePrivateT>;
     driver->DatabaseInit = &DatabasePrivateBase::CInit<DatabasePrivateT>;
     driver->DatabaseRelease = &PrivateBase::CRelease<AdbcDatabase, DatabasePrivateT>;
 
+    // Database functions
     driver->DatabaseSetOption = &PrivateBase::CSetOption<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseSetOptionBytes =
+        &PrivateBase::CSetOptionBytes<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseSetOptionInt =
+        &PrivateBase::CSetOptionInt<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseSetOptionDouble =
+        &PrivateBase::CSetOptionDouble<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseGetOption = &PrivateBase::CGetOption<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseGetOptionBytes =
+        &PrivateBase::CGetOptionBytes<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseGetOptionInt =
+        &PrivateBase::CGetOptionInt<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseGetOptionDouble =
+        &PrivateBase::CGetOptionDouble<AdbcDatabase, DatabasePrivateT>;
 
+    // Connection lifecycle
     driver->ConnectionNew = &PrivateBase::CNew<AdbcConnection, ConnectionPrivateT>;
     driver->ConnectionInit = &ConnectionPrivateBase::CInit<ConnectionPrivateT>;
     driver->ConnectionRelease =
         &PrivateBase::CRelease<AdbcConnection, ConnectionPrivateT>;
 
+    // Connection functions
     driver->ConnectionSetOption =
         &PrivateBase::CSetOption<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionSetOptionBytes =
+        &PrivateBase::CSetOptionBytes<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionSetOptionInt =
+        &PrivateBase::CSetOptionInt<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionSetOptionDouble =
+        &PrivateBase::CSetOptionDouble<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionGetOption =
+        &PrivateBase::CGetOption<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionGetOptionBytes =
+        &PrivateBase::CGetOptionBytes<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionGetOptionInt =
+        &PrivateBase::CGetOptionInt<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionGetOptionDouble =
+        &PrivateBase::CGetOptionDouble<AdbcConnection, ConnectionPrivateT>;
 
-    //   driver->ConnectionCommit = VoidConnectionCommit;
-    //   driver->ConnectionGetInfo = VoidConnectionGetInfo;
-    //   driver->ConnectionGetObjects = VoidConnectionGetObjects;
-    //   driver->ConnectionGetTableSchema = VoidConnectionGetTableSchema;
-    //   driver->ConnectionGetTableTypes = VoidConnectionGetTableTypes;
-
-    //   driver->ConnectionReadPartition = VoidConnectionReadPartition;
-
-    //   driver->ConnectionRollback = VoidConnectionRollback;
-    //   driver->ConnectionSetOption = VoidConnectionSetOption;
-
+    // Statement lifecycle
     driver->StatementNew = &StatementPrivateBase::CStatementNew<StatementPrivateT>;
     driver->StatementRelease = &PrivateBase::CRelease<AdbcStatement, StatementPrivateT>;
 
+    // Statement functions
     driver->StatementSetOption =
         &PrivateBase::CSetOption<AdbcStatement, StatementPrivateT>;
+    driver->StatementSetOptionBytes =
+        &PrivateBase::CSetOptionBytes<AdbcStatement, StatementPrivateT>;
+    driver->StatementSetOptionInt =
+        &PrivateBase::CSetOptionInt<AdbcStatement, StatementPrivateT>;
+    driver->StatementSetOptionDouble =
+        &PrivateBase::CSetOptionDouble<AdbcStatement, StatementPrivateT>;
+    driver->StatementGetOption =
+        &PrivateBase::CGetOption<AdbcStatement, StatementPrivateT>;
+    driver->StatementGetOptionBytes =
+        &PrivateBase::CGetOptionBytes<AdbcStatement, StatementPrivateT>;
+    driver->StatementGetOptionInt =
+        &PrivateBase::CGetOptionInt<AdbcStatement, StatementPrivateT>;
+    driver->StatementGetOptionDouble =
+        &PrivateBase::CGetOptionDouble<AdbcStatement, StatementPrivateT>;
+
     driver->StatementExecuteQuery =
         &StatementPrivateBase::CExecuteQuery<StatementPrivateT>;
-
-    //   driver->StatementBind = VoidStatementBind;
-    //   driver->StatementBindStream = VoidStatementBindStream;
-    //   driver->StatementExecutePartitions = VoidStatementExecutePartitions;
-    //   driver->StatementExecuteQuery = VoidStatementExecuteQuery;
-    //   driver->StatementGetParameterSchema = VoidStatementGetParameterSchema;
-    //   driver->StatementPrepare = VoidStatementPrepare;
-    //   driver->StatementSetSqlQuery = VoidStatementSetSqlQuery;
-
-    driver->release = &DriverBase::CRelease;
 
     return ADBC_STATUS_OK;
   }
