@@ -89,7 +89,7 @@ jobs:
       matrix:
         rversion: [3.6, 4.0, 4.1]
         os: [ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, abdcflightsql, adbcsnowflake]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
       fail-fast: false
 
     env:
