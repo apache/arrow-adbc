@@ -307,7 +307,7 @@ static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
   return ADBC_STATUS_OK;
 }
 
-SEXP RAdbcVoidDriverInitFunc(void) {
+extern "C" SEXP RAdbcVoidDriverInitFunc(void) {
   SEXP xptr =
       PROTECT(R_MakeExternalPtrFn((DL_FUNC)VoidDriverInitFunc, R_NilValue, R_NilValue));
   Rf_setAttrib(xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));

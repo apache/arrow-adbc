@@ -1,8 +1,8 @@
 
+#include <cstring>
 #include <memory>
 #include <sstream>
 #include <string>
-#include <cstring>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -234,59 +234,59 @@ class PrivateBase {
   }
 
  public:
-  template <typename T>
+  template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOption(T* obj, const char* key, const char* value,
                                    AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateBase*>(obj->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     return private_data->SetOption<>(key, value, error);
   }
 
-  template <typename T>
+  template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOptionBytes(T* obj, const char* key, const uint8_t* value,
                                         size_t length, AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateBase*>(obj->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     return obj_private->SetOption<>(key, value, error);
   }
 
-  template <typename T>
+  template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOptionInt(T* obj, const char* key, int64_t value,
                                       AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateBase*>(obj->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     return obj_private->SetOption<>(key, value, error);
   }
 
-  template <typename T>
+  template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOptionDouble(T* obj, const char* key, double value,
                                          AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateBase*>(obj->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     return obj_private->SetOption<>(key, value, error);
   }
 
-  template <typename T>
+  template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOption(T* obj, const char* key, char* value, size_t* length,
                                    AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateBase*>(obj->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     return obj_private->GetOptionStringLike<>(key, value, length, error);
   }
 
-  template <typename T>
+  template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOptionBytes(T* obj, const char* key, uint8_t* value,
                                         size_t* length, AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateBase*>(obj->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     return obj_private->GetOptionStringLike<>(key, value, length, error);
   }
 
-  template <typename T>
+  template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOptionInt(T* obj, const char* key, int64_t* value,
                                       AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateBase*>(obj->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     return obj_private->GetOptionNumeric<>(key, value, error);
   }
 
-  template <typename T>
+  template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOptionDouble(T* obj, const char* key, double* value,
                                          AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateBase*>(obj->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     return obj_private->GetOptionNumeric<>(key, value, error);
   }
 
@@ -297,9 +297,9 @@ class PrivateBase {
     return ADBC_STATUS_OK;
   }
 
-  template <typename T>
+  template <typename T, typename PrivateClsT>
   static AdbcStatusCode CRelease(T* obj, AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateBase*>(obj->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     AdbcStatusCode result = private_data->Release(error);
     if (result != ADBC_STATUS_OK) {
       return result;
@@ -329,7 +329,8 @@ class ConnectionPrivateBase : public PrivateBase {
 
   static AdbcStatusCode CInit(AdbcConnection* connection, AdbcDatabase* database,
                               AdbcError* error) {
-    auto private_data = reinterpret_cast<ConnectionPrivateBase*>(connection->private_data);
+    auto private_data =
+        reinterpret_cast<ConnectionPrivateBase*>(connection->private_data);
     auto database_private = reinterpret_cast<DatabasePrivateT*>(database->private_data);
     return private_data->Init(database_private, error);
   }
@@ -345,7 +346,8 @@ class StatementPrivateBase : public PrivateBase {
   static AdbcStatusCode CStatementNew(AdbcConnection* connection,
                                       AdbcStatement* statement, AdbcError* error) {
     auto private_data = new StatementPrivateBase<ConnectionPrivateBase>();
-    auto connection_private = reinterpret_cast<ConnectionPrivateT*>(connection->private_data);
+    auto connection_private =
+        reinterpret_cast<ConnectionPrivateT*>(connection->private_data);
     AdbcStatusCode status = private_data->Init(connection_private, error);
     if (status != ADBC_STATUS_OK) {
       delete private_data;
@@ -360,60 +362,57 @@ template <typename DatabasePrivateT = DatabasePrivateBase,
           typename ConnectionPrivateT = ConnectionPrivateBase<DatabasePrivateT>,
           typename StatementPrivateT = StatementPrivateBase<ConnectionPrivateT>>
 class DriverBase {
-private:
+ private:
+  void CRelease(AdbcDriver* driver, AdbcError* error) {
+    auto driver_private = reinterpret_cast<DriverBase*>(driver->private_data);
+    delete driver_private;
+    driver->private_data = nullptr;
+    return ADBC_STATUS_OK;
+  }
 
-    void CRelease(AdbcDriver* driver, AdbcError* error) {
-        auto driver_private = reinterpret_cast<DriverBase*>(driver->private_data);
-        delete driver_private;
-        driver->private_data = nullptr;
-        return ADBC_STATUS_OK;
-    }
+ public:
+  static AdbcStatusCode InitFunc(int version, void* raw_driver, AdbcError* error) {
+    if (version != ADBC_VERSION_1_1_0) return ADBC_STATUS_NOT_IMPLEMENTED;
+    struct AdbcDriver* driver = (AdbcDriver*)raw_driver;
+    std::memset(driver, 0, sizeof(AdbcDriver));
 
-public:
+    auto driver_private = new DriverBase();
 
-static AdbcStatusCode InitFunc(int version, void* raw_driver,
-                                         struct AdbcError* error) {
-  if (version != ADBC_VERSION_1_1_0) return ADBC_STATUS_NOT_IMPLEMENTED;
-  struct AdbcDriver* driver = (struct AdbcDriver*)raw_driver;
-  memset(driver, 0, sizeof(struct AdbcDriver));
+    std::memset(driver_private, 0, sizeof(struct VoidDriverPrivate));
+    driver->private_data = driver_private;
 
-  auto driver_private = new DriverBase();
+    //   driver->DatabaseInit = &VoidDatabaseInit;
+    //   driver->DatabaseNew = VoidDatabaseNew;
+    //   driver->DatabaseRelease = VoidDatabaseRelease;
+    //   driver->DatabaseSetOption = VoidDatabaseSetOption;
 
-  memset(driver_private, 0, sizeof(struct VoidDriverPrivate));
-  driver->private_data = driver_private;
+    //   driver->ConnectionCommit = VoidConnectionCommit;
+    //   driver->ConnectionGetInfo = VoidConnectionGetInfo;
+    //   driver->ConnectionGetObjects = VoidConnectionGetObjects;
+    //   driver->ConnectionGetTableSchema = VoidConnectionGetTableSchema;
+    //   driver->ConnectionGetTableTypes = VoidConnectionGetTableTypes;
+    //   driver->ConnectionInit = VoidConnectionInit;
+    //   driver->ConnectionNew = VoidConnectionNew;
+    //   driver->ConnectionReadPartition = VoidConnectionReadPartition;
+    //   driver->ConnectionRelease = VoidConnectionRelease;
+    //   driver->ConnectionRollback = VoidConnectionRollback;
+    //   driver->ConnectionSetOption = VoidConnectionSetOption;
 
-//   driver->DatabaseInit = &VoidDatabaseInit;
-//   driver->DatabaseNew = VoidDatabaseNew;
-//   driver->DatabaseRelease = VoidDatabaseRelease;
-//   driver->DatabaseSetOption = VoidDatabaseSetOption;
+    //   driver->StatementBind = VoidStatementBind;
+    //   driver->StatementBindStream = VoidStatementBindStream;
+    //   driver->StatementExecutePartitions = VoidStatementExecutePartitions;
+    //   driver->StatementExecuteQuery = VoidStatementExecuteQuery;
+    //   driver->StatementGetParameterSchema = VoidStatementGetParameterSchema;
+    //   driver->StatementNew = VoidStatementNew;
+    //   driver->StatementPrepare = VoidStatementPrepare;
+    //   driver->StatementRelease = VoidStatementRelease;
+    //   driver->StatementSetOption = VoidStatementSetOption;
+    //   driver->StatementSetSqlQuery = VoidStatementSetSqlQuery;
 
-//   driver->ConnectionCommit = VoidConnectionCommit;
-//   driver->ConnectionGetInfo = VoidConnectionGetInfo;
-//   driver->ConnectionGetObjects = VoidConnectionGetObjects;
-//   driver->ConnectionGetTableSchema = VoidConnectionGetTableSchema;
-//   driver->ConnectionGetTableTypes = VoidConnectionGetTableTypes;
-//   driver->ConnectionInit = VoidConnectionInit;
-//   driver->ConnectionNew = VoidConnectionNew;
-//   driver->ConnectionReadPartition = VoidConnectionReadPartition;
-//   driver->ConnectionRelease = VoidConnectionRelease;
-//   driver->ConnectionRollback = VoidConnectionRollback;
-//   driver->ConnectionSetOption = VoidConnectionSetOption;
+    driver->release = VoidDriverRelease;
 
-//   driver->StatementBind = VoidStatementBind;
-//   driver->StatementBindStream = VoidStatementBindStream;
-//   driver->StatementExecutePartitions = VoidStatementExecutePartitions;
-//   driver->StatementExecuteQuery = VoidStatementExecuteQuery;
-//   driver->StatementGetParameterSchema = VoidStatementGetParameterSchema;
-//   driver->StatementNew = VoidStatementNew;
-//   driver->StatementPrepare = VoidStatementPrepare;
-//   driver->StatementRelease = VoidStatementRelease;
-//   driver->StatementSetOption = VoidStatementSetOption;
-//   driver->StatementSetSqlQuery = VoidStatementSetSqlQuery;
-
-  driver->release = VoidDriverRelease;
-
-  return ADBC_STATUS_OK;
-}
+    return ADBC_STATUS_OK;
+  }
 };
 
 }  // namespace r
