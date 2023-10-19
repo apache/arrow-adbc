@@ -17,3 +17,4 @@
 
 utils.c
 utils.h
+options.h
