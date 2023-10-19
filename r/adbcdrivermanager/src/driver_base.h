@@ -166,6 +166,7 @@ class PrivateBase {
     }
 
     options_[key] = Option(value);
+    return ADBC_STATUS_OK;
   }
 
   AdbcStatusCode SetOptionBytes(const char* key, const uint8_t* value, size_t length,
@@ -318,6 +319,7 @@ class DatabasePrivateBase : public PrivateBase {
  public:
   virtual AdbcStatusCode Init(AdbcError* error) { return ADBC_STATUS_OK; }
 
+  template <typename PrivateCls>
   static AdbcStatusCode CInit(AdbcDatabase* database, AdbcError* error) {
     auto private_data = reinterpret_cast<DatabasePrivateBase*>(database->private_data);
     return private_data->Init(error);
@@ -331,10 +333,10 @@ class ConnectionPrivateBase : public PrivateBase {
     return ADBC_STATUS_OK;
   }
 
+  template <typename PrivateCls>
   static AdbcStatusCode CInit(AdbcConnection* connection, AdbcDatabase* database,
                               AdbcError* error) {
-    auto private_data =
-        reinterpret_cast<ConnectionPrivateBase*>(connection->private_data);
+    auto private_data = reinterpret_cast<PrivateCls*>(connection->private_data);
     auto database_private = reinterpret_cast<DatabasePrivateT*>(database->private_data);
     return private_data->Init(database_private, error);
   }
@@ -349,7 +351,7 @@ class StatementPrivateBase : public PrivateBase {
 
   static AdbcStatusCode CStatementNew(AdbcConnection* connection,
                                       AdbcStatement* statement, AdbcError* error) {
-    auto private_data = new StatementPrivateBase<ConnectionPrivateT>();
+    auto private_data = new StatementPrivateBase();
     auto connection_private =
         reinterpret_cast<ConnectionPrivateT*>(connection->private_data);
     AdbcStatusCode status = private_data->Init(connection_private, error);
@@ -367,7 +369,7 @@ template <typename DatabasePrivateT = DatabasePrivateBase,
           typename StatementPrivateT = StatementPrivateBase<ConnectionPrivateT>>
 class DriverBase {
  private:
-  AdbcStatusCode CRelease(AdbcDriver* driver, AdbcError* error) {
+  static AdbcStatusCode CRelease(AdbcDriver* driver, AdbcError* error) {
     auto driver_private = reinterpret_cast<DriverBase*>(driver->private_data);
     delete driver_private;
     driver->private_data = nullptr;
@@ -375,20 +377,18 @@ class DriverBase {
   }
 
  public:
-  static AdbcStatusCode InitFunc(int version, void* raw_driver, AdbcError* error) {
+  static AdbcStatusCode Init(int version, void* raw_driver, AdbcError* error) {
     if (version != ADBC_VERSION_1_1_0) return ADBC_STATUS_NOT_IMPLEMENTED;
     struct AdbcDriver* driver = (AdbcDriver*)raw_driver;
     std::memset(driver, 0, sizeof(AdbcDriver));
 
-    auto driver_private = new DriverBase();
+    driver->private_data = new DriverBase();
 
-    std::memset(driver_private, 0, sizeof(struct VoidDriverPrivate));
-    driver->private_data = driver_private;
+    driver->DatabaseNew = &PrivateBase::CNew<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseInit = &DatabasePrivateBase::CInit<DatabasePrivateT>;
 
-    //   driver->DatabaseInit = &VoidDatabaseInit;
-    //   driver->DatabaseNew = VoidDatabaseNew;
-    //   driver->DatabaseRelease = VoidDatabaseRelease;
-    //   driver->DatabaseSetOption = VoidDatabaseSetOption;
+    driver->DatabaseRelease = &PrivateBase::CRelease<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseSetOption = &PrivateBase::CSetOption<AdbcDatabase, DatabasePrivateT>;
 
     //   driver->ConnectionCommit = VoidConnectionCommit;
     //   driver->ConnectionGetInfo = VoidConnectionGetInfo;
@@ -413,8 +413,7 @@ class DriverBase {
     //   driver->StatementSetOption = VoidStatementSetOption;
     //   driver->StatementSetSqlQuery = VoidStatementSetSqlQuery;
 
-    driver->release =
-        &DriverBase<DatabasePrivateT, ConnectionPrivateT, StatementPrivateT>::CRelease;
+    driver->release = &DriverBase::CRelease;
 
     return ADBC_STATUS_OK;
   }
