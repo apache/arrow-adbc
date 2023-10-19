@@ -17,6 +17,8 @@ class Error {
  public:
   Error(const std::string& message) : message_(message), sql_state_("\0\0\0\0\0") {}
 
+  Error(const char* message) : Error(std::string(message)) {}
+
   Error(const std::string& message,
         const std::vector<std::pair<std::string, std::string>>& details)
       : message_(message), details_(details), sql_state_("\0\0\0\0\0") {}
@@ -48,8 +50,8 @@ class Error {
 
  private:
   std::string message_;
-  std::string sql_state_;
   std::vector<std::pair<std::string, std::string>> details_;
+  std::string sql_state_;
 
   static void CRelease(AdbcError* error) {
     auto error_obj = reinterpret_cast<Error*>(error->private_data);
@@ -75,8 +77,9 @@ class Error {
 
 class Option {
  public:
-  enum Type { TYPE_STRING, TYPE_BYTES, TYPE_INT, TYPE_DOUBLE };
+  enum Type { TYPE_MISSING, TYPE_STRING, TYPE_BYTES, TYPE_INT, TYPE_DOUBLE };
 
+  Option() : type_(TYPE_MISSING) {}
   Option(const std::string& value) : type_(TYPE_STRING), value_string_(value) {}
   Option(const std::basic_string<uint8_t>& value)
       : type_(TYPE_BYTES), value_bytes_(value) {}
@@ -174,6 +177,7 @@ class PrivateBase {
 
     std::basic_string<uint8_t> cppvalue(value, length);
     options_[key] = Option(cppvalue);
+    return ADBC_STATUS_OK;
   }
 
   template <typename T>
@@ -197,19 +201,19 @@ class PrivateBase {
   AdbcStatusCode GetOptionNumeric(const char* key, T* value, AdbcError* error) const {
     auto result = options_.find(key);
     if (result == options_.end()) {
-      Error::InitErrorNotFound(key, error);
+      InitErrorNotFound(key, error);
       return ADBC_STATUS_NOT_FOUND;
     } else {
       AdbcStatusCode status = result->second.get_value(value);
       if (status != ADBC_STATUS_OK) {
-        Error::InitErrorWrongType(key, error);
+        InitErrorWrongType(key, error);
       }
 
       return status;
     }
   }
 
-  void InitErrorNotFound(const char* key, AdbcError* error) {
+  static void InitErrorNotFound(const char* key, AdbcError* error) {
     std::stringstream msg_builder;
     msg_builder << "Option not found for key '" << key << "'";
     Error cpperror(msg_builder.str());
@@ -217,7 +221,7 @@ class PrivateBase {
     cpperror.ToAdbc(error);
   }
 
-  void InitErrorWrongType(const char* key, AdbcError* error) {
+  static void InitErrorWrongType(const char* key, AdbcError* error) {
     std::stringstream msg_builder;
     msg_builder << "Wrong type requested for option key '" << key << "'";
     Error cpperror(msg_builder.str());
@@ -225,7 +229,7 @@ class PrivateBase {
     cpperror.ToAdbc(error);
   }
 
-  void InitErrorOptionNotSupported(const char* key, AdbcError* error) {
+  static void InitErrorOptionNotSupported(const char* key, AdbcError* error) {
     std::stringstream msg_builder;
     msg_builder << "Option '" << key << "' is not supported";
     Error cpperror(msg_builder.str());
@@ -238,56 +242,56 @@ class PrivateBase {
   static AdbcStatusCode CSetOption(T* obj, const char* key, const char* value,
                                    AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return private_data->SetOption<>(key, value, error);
+    return private_data->template SetOption<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOptionBytes(T* obj, const char* key, const uint8_t* value,
                                         size_t length, AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return obj_private->SetOption<>(key, value, error);
+    return private_data->template SetOption<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOptionInt(T* obj, const char* key, int64_t value,
                                       AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return obj_private->SetOption<>(key, value, error);
+    return private_data->template SetOption<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOptionDouble(T* obj, const char* key, double value,
                                          AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return obj_private->SetOption<>(key, value, error);
+    return private_data->template SetOption<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOption(T* obj, const char* key, char* value, size_t* length,
                                    AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return obj_private->GetOptionStringLike<>(key, value, length, error);
+    return private_data->template GetOptionStringLike<>(key, value, length, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOptionBytes(T* obj, const char* key, uint8_t* value,
                                         size_t* length, AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return obj_private->GetOptionStringLike<>(key, value, length, error);
+    return private_data->template GetOptionStringLike<>(key, value, length, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOptionInt(T* obj, const char* key, int64_t* value,
                                       AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return obj_private->GetOptionNumeric<>(key, value, error);
+    return private_data->template GetOptionNumeric<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOptionDouble(T* obj, const char* key, double* value,
                                          AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return obj_private->GetOptionNumeric<>(key, value, error);
+    return private_data->template GetOptionNumeric<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
@@ -297,7 +301,7 @@ class PrivateBase {
     return ADBC_STATUS_OK;
   }
 
-  template <typename T, typename PrivateClsT>
+  template <typename T, typename PrivateCls>
   static AdbcStatusCode CRelease(T* obj, AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
     AdbcStatusCode result = private_data->Release(error);
@@ -345,7 +349,7 @@ class StatementPrivateBase : public PrivateBase {
 
   static AdbcStatusCode CStatementNew(AdbcConnection* connection,
                                       AdbcStatement* statement, AdbcError* error) {
-    auto private_data = new StatementPrivateBase<ConnectionPrivateBase>();
+    auto private_data = new StatementPrivateBase<ConnectionPrivateT>();
     auto connection_private =
         reinterpret_cast<ConnectionPrivateT*>(connection->private_data);
     AdbcStatusCode status = private_data->Init(connection_private, error);
@@ -363,7 +367,7 @@ template <typename DatabasePrivateT = DatabasePrivateBase,
           typename StatementPrivateT = StatementPrivateBase<ConnectionPrivateT>>
 class DriverBase {
  private:
-  void CRelease(AdbcDriver* driver, AdbcError* error) {
+  AdbcStatusCode CRelease(AdbcDriver* driver, AdbcError* error) {
     auto driver_private = reinterpret_cast<DriverBase*>(driver->private_data);
     delete driver_private;
     driver->private_data = nullptr;
@@ -409,7 +413,8 @@ class DriverBase {
     //   driver->StatementSetOption = VoidStatementSetOption;
     //   driver->StatementSetSqlQuery = VoidStatementSetSqlQuery;
 
-    driver->release = VoidDriverRelease;
+    driver->release =
+        &DriverBase<DatabasePrivateT, ConnectionPrivateT, StatementPrivateT>::CRelease;
 
     return ADBC_STATUS_OK;
   }

@@ -19,6 +19,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include "driver_base.h"
+
 #include <string.h>
 
 #include <adbc.h>
