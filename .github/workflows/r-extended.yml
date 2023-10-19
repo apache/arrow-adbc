@@ -161,7 +161,7 @@ jobs:
 
   # Runs tests with valgrind
   valgrind:
-    name: "Test ${{ matrix.pkg }} with valgrind"
+    name: "${{ matrix.pkg }} with valgrind"
     runs-on: ${{ matrix.os }}-latest
 
     strategy:
