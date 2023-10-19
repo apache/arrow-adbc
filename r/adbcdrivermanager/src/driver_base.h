@@ -386,19 +386,27 @@ class DriverBase {
 
     driver->DatabaseNew = &PrivateBase::CNew<AdbcDatabase, DatabasePrivateT>;
     driver->DatabaseInit = &DatabasePrivateBase::CInit<DatabasePrivateT>;
-
     driver->DatabaseRelease = &PrivateBase::CRelease<AdbcDatabase, DatabasePrivateT>;
+
     driver->DatabaseSetOption = &PrivateBase::CSetOption<AdbcDatabase, DatabasePrivateT>;
+
+    driver->ConnectionNew = &PrivateBase::CNew<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionInit =
+        &ConnectionPrivateBase<DatabasePrivateT>::template CInit<ConnectionPrivateT>;
+    driver->ConnectionRelease =
+        &PrivateBase::CRelease<AdbcConnection, ConnectionPrivateT>;
+
+    driver->ConnectionSetOption =
+        &PrivateBase::CSetOption<AdbcConnection, ConnectionPrivateT>;
 
     //   driver->ConnectionCommit = VoidConnectionCommit;
     //   driver->ConnectionGetInfo = VoidConnectionGetInfo;
     //   driver->ConnectionGetObjects = VoidConnectionGetObjects;
     //   driver->ConnectionGetTableSchema = VoidConnectionGetTableSchema;
     //   driver->ConnectionGetTableTypes = VoidConnectionGetTableTypes;
-    //   driver->ConnectionInit = VoidConnectionInit;
-    //   driver->ConnectionNew = VoidConnectionNew;
+
     //   driver->ConnectionReadPartition = VoidConnectionReadPartition;
-    //   driver->ConnectionRelease = VoidConnectionRelease;
+
     //   driver->ConnectionRollback = VoidConnectionRollback;
     //   driver->ConnectionSetOption = VoidConnectionSetOption;
 
