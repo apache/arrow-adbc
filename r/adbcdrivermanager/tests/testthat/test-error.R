@@ -15,17 +15,31 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("adbc_error_from_array_stream() errors for invalid streams", {
+  stream <- nanoarrow::nanoarrow_allocate_array_stream()
+  expect_error(
+    adbc_error_from_array_stream(stream),
+    "must be a valid nanoarrow_array_stream"
+  )
+})
+
+test_that("adbc_error_from_array_stream() returns NULL for unrelated streams", {
+  stream <- nanoarrow::basic_array_stream(list(1:5))
+  expect_null(adbc_error_from_array_stream(stream))
+})
+
 test_that("error allocator works", {
   err <- adbc_allocate_error()
   expect_s3_class(err, "adbc_error")
 
   expect_output(expect_identical(print(err), err), "adbc_error")
   expect_output(expect_identical(str(err), err), "adbc_error")
-  expect_identical(length(err), 3L)
-  expect_identical(names(err), c("message", "vendor_code", "sqlstate"))
+  expect_identical(length(err), 4L)
+  expect_identical(names(err), c("message", "vendor_code", "sqlstate", "details"))
   expect_null(err$message)
   expect_identical(err$vendor_code, 0L)
   expect_identical(err$sqlstate, as.raw(c(0x00, 0x00, 0x00, 0x00, 0x00)))
+  expect_identical(err$details, setNames(list(), character()))
 })
 
 test_that("stop_for_error() gives a custom error class with extra info", {
