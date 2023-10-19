@@ -142,7 +142,8 @@ jobs:
           upload-snapshots: true
           working-directory: r/${{ matrix.pkg }}
 
-  # Runs tests with valgrind
+  # Runs tests with valgrind. Go does not support valgrind, so we don't run
+  # those tests here.
   valgrind:
     name: "valgrind - ${{ matrix.pkg }}"
     runs-on: ${{ matrix.os }}-latest
@@ -151,7 +152,7 @@ jobs:
       matrix:
         rversion: [release]
         os: [ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
       fail-fast: false
 
     env:
@@ -182,17 +183,7 @@ jobs:
           ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
           echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
 
-      - name: Start FlightSQL test database
-        if: matrix.pkg == 'adbcflightsql'
-        run: |
-          cd r/adbcpostgresql
-          docker compose up --detach flightsql-sqlite-test
-          ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
-          echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
-
       - name: Run devtools::test() with valgrind
-        env:
-          ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           cd r/${{ matrix.pkg }}
           R -d "valgrind --tool=memcheck --leak-check=full --suppressions=../valgrind.supp --error-exitcode=1" -e "testthat::test_local()" > valgrind.out 2>&1
