@@ -67,74 +67,65 @@ SEXP adbc_set_option_bytes(SEXP obj_xptr, SEXP key_sexp, SEXP value_sexp, SEXP e
 
 extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
                                        SEXP error_xptr) {
-  return adbc_set_option<AdbcDatabase, const char*>(database_xptr, key_sexp, value_sexp,
-                                                    error_xptr, &AdbcDatabaseSetOption);
-}
-
-extern "C" SEXP RAdbcDatabaseSetOptionBytes(SEXP database_xptr, SEXP key_sexp,
-                                            SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option_bytes<AdbcDatabase>(database_xptr, key_sexp, value_sexp,
-                                             error_xptr, &AdbcDatabaseSetOptionBytes);
-}
-
-extern "C" SEXP RAdbcDatabaseSetOptionInt(SEXP database_xptr, SEXP key_sexp,
-                                          SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcDatabase, int64_t>(database_xptr, key_sexp, value_sexp,
-                                                error_xptr, &AdbcDatabaseSetOptionInt);
-}
-
-extern "C" SEXP RAdbcDatabaseSetOptionDouble(SEXP database_xptr, SEXP key_sexp,
-                                             SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcDatabase, double>(database_xptr, key_sexp, value_sexp,
-                                               error_xptr, &AdbcDatabaseSetOptionDouble);
+  switch (TYPEOF(value_sexp)) {
+    case STRSXP:
+      return adbc_set_option<AdbcDatabase, const char*>(
+          database_xptr, key_sexp, value_sexp, error_xptr, &AdbcDatabaseSetOption);
+    case RAWSXP:
+      return adbc_set_option_bytes<AdbcDatabase>(database_xptr, key_sexp, value_sexp,
+                                                 error_xptr, &AdbcDatabaseSetOptionBytes);
+    case INTSXP:
+      return adbc_set_option<AdbcDatabase, int64_t>(
+          database_xptr, key_sexp, value_sexp, error_xptr, &AdbcDatabaseSetOptionInt);
+    case REALSXP:
+      return adbc_set_option<AdbcDatabase, double>(
+          database_xptr, key_sexp, value_sexp, error_xptr, &AdbcDatabaseSetOptionDouble);
+    default:
+      Rf_error("Option value type not suppported");
+  }
 }
 
 extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
                                          SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcConnection, const char*>(
-      connection_xptr, key_sexp, value_sexp, error_xptr, &AdbcConnectionSetOption);
-}
-
-extern "C" SEXP RAdbcConnectionSetOptionBytes(SEXP connection_xptr, SEXP key_sexp,
-                                              SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option_bytes<AdbcConnection>(connection_xptr, key_sexp, value_sexp,
-                                               error_xptr, &AdbcConnectionSetOptionBytes);
-}
-
-extern "C" SEXP RAdbcConnectionSetOptionInt(SEXP connection_xptr, SEXP key_sexp,
-                                            SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcConnection, int64_t>(
-      connection_xptr, key_sexp, value_sexp, error_xptr, &AdbcConnectionSetOptionInt);
-}
-
-extern "C" SEXP RAdbcConnectionSetOptionDouble(SEXP connection_xptr, SEXP key_sexp,
-                                               SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcConnection, double>(
-      connection_xptr, key_sexp, value_sexp, error_xptr, &AdbcConnectionSetOptionDouble);
+  switch (TYPEOF(value_sexp)) {
+    case STRSXP:
+      return adbc_set_option<AdbcConnection, const char*>(
+          connection_xptr, key_sexp, value_sexp, error_xptr, &AdbcConnectionSetOption);
+    case RAWSXP:
+      return adbc_set_option_bytes<AdbcConnection>(connection_xptr, key_sexp, value_sexp,
+                                                   error_xptr,
+                                                   &AdbcConnectionSetOptionBytes);
+    case INTSXP:
+      return adbc_set_option<AdbcConnection, int64_t>(
+          connection_xptr, key_sexp, value_sexp, error_xptr, &AdbcConnectionSetOptionInt);
+    case REALSXP:
+      return adbc_set_option<AdbcConnection, double>(connection_xptr, key_sexp,
+                                                     value_sexp, error_xptr,
+                                                     &AdbcConnectionSetOptionDouble);
+    default:
+      Rf_error("Option value type not suppported");
+  }
 }
 
 extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
                                         SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcStatement, const char*>(statement_xptr, key_sexp, value_sexp,
-                                                     error_xptr, &AdbcStatementSetOption);
-}
-
-extern "C" SEXP RAdbcStatementSetOptionBytes(SEXP statement_xptr, SEXP key_sexp,
-                                             SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option_bytes<AdbcStatement>(statement_xptr, key_sexp, value_sexp,
-                                              error_xptr, &AdbcStatementSetOptionBytes);
-}
-
-extern "C" SEXP RAdbcStatementSetOptionInt(SEXP statement_xptr, SEXP key_sexp,
-                                           SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcStatement, int64_t>(statement_xptr, key_sexp, value_sexp,
-                                                 error_xptr, &AdbcStatementSetOptionInt);
-}
-
-extern "C" SEXP RAdbcStatementSetOptionDouble(SEXP statement_xptr, SEXP key_sexp,
-                                              SEXP value_sexp, SEXP error_xptr) {
-  return adbc_set_option<AdbcStatement, double>(
-      statement_xptr, key_sexp, value_sexp, error_xptr, &AdbcStatementSetOptionDouble);
+  switch (TYPEOF(value_sexp)) {
+    case STRSXP:
+      return adbc_set_option<AdbcStatement, const char*>(
+          statement_xptr, key_sexp, value_sexp, error_xptr, &AdbcStatementSetOption);
+    case RAWSXP:
+      return adbc_set_option_bytes<AdbcStatement>(
+          statement_xptr, key_sexp, value_sexp, error_xptr, &AdbcStatementSetOptionBytes);
+    case INTSXP:
+      return adbc_set_option<AdbcStatement, int64_t>(
+          statement_xptr, key_sexp, value_sexp, error_xptr, &AdbcStatementSetOptionInt);
+    case REALSXP:
+      return adbc_set_option<AdbcStatement, double>(statement_xptr, key_sexp, value_sexp,
+                                                    error_xptr,
+                                                    &AdbcStatementSetOptionDouble);
+    default:
+      Rf_error("Option value type not suppported");
+  }
 }
 
 template <typename T, typename CharT>
