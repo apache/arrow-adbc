@@ -53,28 +53,10 @@ class Error {
   std::vector<std::pair<std::string, std::string>> details_;
   std::string sql_state_;
 
-  // Let the Driver use these to expose C callables wrapping option setters/getters
-  template <typename DatabaseT, typename ConnectionT, typename StatementT>
-  friend class Driver;
-
   static void CRelease(AdbcError* error) {
     auto error_obj = reinterpret_cast<Error*>(error->private_data);
     delete error_obj;
     std::memset(error, 0, sizeof(AdbcError));
-  }
-
-  static int CGetDetailCount(const AdbcError* error) {
-    if (error->vendor_code != ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
-      return 0;
-    }
-
-    auto error_obj = reinterpret_cast<Error*>(error->private_data);
-    return error_obj->DetailCount();
-  }
-
-  static AdbcErrorDetail CGetDetail(const AdbcError* error, int index) {
-    auto error_obj = reinterpret_cast<Error*>(error->private_data);
-    return error_obj->Detail(index);
   }
 };
 
@@ -322,6 +304,10 @@ class Driver final {
     driver->private_data = new Driver();
     driver->release = &CDriverRelease;
 
+    // Driver functions
+    driver->ErrorGetDetailCount = &CErrorGetDetailCount;
+    driver->ErrorGetDetail = &CErrorGetDetail;
+
     // Database lifecycle
     driver->DatabaseNew = &CNew<AdbcDatabase, DatabaseT>;
     driver->DatabaseInit = &CDatabaseInit;
@@ -380,17 +366,31 @@ class Driver final {
     return ADBC_STATUS_OK;
   }
 
-  // ObjectBase trampolines
-  template <typename T, typename Derived>
+  static int CErrorGetDetailCount(const AdbcError* error) {
+    if (error->vendor_code != ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
+      return 0;
+    }
+
+    auto error_obj = reinterpret_cast<Error*>(error->private_data);
+    return error_obj->DetailCount();
+  }
+
+  static AdbcErrorDetail CErrorGetDetail(const AdbcError* error, int index) {
+    auto error_obj = reinterpret_cast<Error*>(error->private_data);
+    return error_obj->Detail(index);
+  }
+
+  // Templatable trampolines
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CNew(T* obj, AdbcError* error) {
-    auto private_data = new Derived();
+    auto private_data = new ObjectT();
     obj->private_data = private_data;
     return ADBC_STATUS_OK;
   }
 
-  template <typename T, typename Derived>
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CRelease(T* obj, AdbcError* error) {
-    auto private_data = reinterpret_cast<Derived*>(obj->private_data);
+    auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
     AdbcStatusCode result = private_data->Release(error);
     if (result != ADBC_STATUS_OK) {
       return result;
@@ -401,59 +401,59 @@ class Driver final {
     return ADBC_STATUS_OK;
   }
 
-  template <typename T, typename Derived>
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CSetOption(T* obj, const char* key, const char* value,
                                    AdbcError* error) {
-    auto private_data = reinterpret_cast<Derived*>(obj->private_data);
+    auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
     return private_data->template CSetOption<>(key, value, error);
   }
 
-  template <typename T, typename Derived>
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CSetOptionBytes(T* obj, const char* key, const uint8_t* value,
                                         size_t length, AdbcError* error) {
-    auto private_data = reinterpret_cast<Derived*>(obj->private_data);
+    auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
     return private_data->template CSetOption<>(key, value, error);
   }
 
-  template <typename T, typename Derived>
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CSetOptionInt(T* obj, const char* key, int64_t value,
                                       AdbcError* error) {
-    auto private_data = reinterpret_cast<Derived*>(obj->private_data);
+    auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
     return private_data->template CSetOption<>(key, value, error);
   }
 
-  template <typename T, typename Derived>
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CSetOptionDouble(T* obj, const char* key, double value,
                                          AdbcError* error) {
-    auto private_data = reinterpret_cast<Derived*>(obj->private_data);
+    auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
     return private_data->template CSetOption<>(key, value, error);
   }
 
-  template <typename T, typename Derived>
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CGetOption(T* obj, const char* key, char* value, size_t* length,
                                    AdbcError* error) {
-    auto private_data = reinterpret_cast<Derived*>(obj->private_data);
+    auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
     return private_data->template CGetOptionStringLike<>(key, value, length, error);
   }
 
-  template <typename T, typename Derived>
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CGetOptionBytes(T* obj, const char* key, uint8_t* value,
                                         size_t* length, AdbcError* error) {
-    auto private_data = reinterpret_cast<Derived*>(obj->private_data);
+    auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
     return private_data->template CGetOptionStringLike<>(key, value, length, error);
   }
 
-  template <typename T, typename Derived>
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CGetOptionInt(T* obj, const char* key, int64_t* value,
                                       AdbcError* error) {
-    auto private_data = reinterpret_cast<Derived*>(obj->private_data);
+    auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
     return private_data->template CGetOptionNumeric<>(key, value, error);
   }
 
-  template <typename T, typename Derived>
+  template <typename T, typename ObjectT>
   static AdbcStatusCode CGetOptionDouble(T* obj, const char* key, double* value,
                                          AdbcError* error) {
-    auto private_data = reinterpret_cast<Derived*>(obj->private_data);
+    auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
     return private_data->template CGetOptionNumeric<>(key, value, error);
   }
 
