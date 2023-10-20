@@ -80,13 +80,23 @@ class Option {
   enum Type { TYPE_MISSING, TYPE_STRING, TYPE_BYTES, TYPE_INT, TYPE_DOUBLE };
 
   Option() : type_(TYPE_MISSING) {}
-  Option(const std::string& value) : type_(TYPE_STRING), value_string_(value) {}
-  Option(const std::basic_string<uint8_t>& value)
+  explicit Option(const std::string& value) : type_(TYPE_STRING), value_string_(value) {}
+  explicit Option(const std::basic_string<uint8_t>& value)
       : type_(TYPE_BYTES), value_bytes_(value) {}
-  Option(double value) : type_(TYPE_DOUBLE), value_double_(value) {}
-  Option(int64_t value) : type_(TYPE_INT), value_int_(value) {}
+  explicit Option(double value) : type_(TYPE_DOUBLE), value_double_(value) {}
+  explicit Option(int64_t value) : type_(TYPE_INT), value_int_(value) {}
 
-  AdbcStatusCode get_value(char* out, size_t* length) const {
+  Type type() const { return type_; }
+
+  const std::string& GetStringUnsafe() const { return value_string_; }
+
+  const std::basic_string<uint8_t>& GetBytesUnsafe() const { return value_bytes_; }
+
+  int64_t GetIntUnsafe() const { return value_int_; }
+
+  double GetDoubleUnsafe() const { return value_double_; }
+
+  AdbcStatusCode CGet(char* out, size_t* length) const {
     switch (type_) {
       case TYPE_STRING:
         if (*length < value_string_.size()) {
@@ -102,7 +112,7 @@ class Option {
     }
   }
 
-  AdbcStatusCode get_value(uint8_t* out, size_t* length) const {
+  AdbcStatusCode CGet(uint8_t* out, size_t* length) const {
     switch (type_) {
       case TYPE_BYTES:
         if (*length < value_bytes_.size()) {
@@ -118,7 +128,7 @@ class Option {
     }
   }
 
-  AdbcStatusCode get_value(int64_t* value) const {
+  AdbcStatusCode CGet(int64_t* value) const {
     switch (type_) {
       case TYPE_INT:
         return value_int_;
@@ -127,7 +137,7 @@ class Option {
     }
   }
 
-  AdbcStatusCode get_value(double* value) const {
+  AdbcStatusCode CGet(double* value) const {
     switch (type_) {
       case TYPE_DOUBLE:
         return value_double_;
@@ -146,11 +156,13 @@ class Option {
 
 // Base class for private_data of AdbcDatabase, AdbcConnection, and AdbcStatement
 // This class handles option setting and getting.
-class PrivateBase {
+class ObjectBase {
  public:
-  virtual ~PrivateBase() {}
+  virtual ~ObjectBase() {}
 
-  virtual bool OptionKeySupported(const char* key) const { return true; }
+  virtual bool OptionKeySupported(const char* key, const Option& value) const {
+    return true;
+  }
 
   virtual AdbcStatusCode Init(void* parent, AdbcError* error) { return ADBC_STATUS_OK; }
 
@@ -162,18 +174,21 @@ class PrivateBase {
  private:
   template <typename T>
   AdbcStatusCode SetOption(const char* key, T value, AdbcError* error) {
-    if (!OptionKeySupported(key)) {
+    Option option(value);
+    if (!OptionKeySupported(key, option)) {
       InitErrorOptionNotSupported(key, error);
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
-    options_[key] = Option(value);
+    options_[key] = option;
     return ADBC_STATUS_OK;
   }
 
   AdbcStatusCode SetOptionBytes(const char* key, const uint8_t* value, size_t length,
                                 AdbcError* error) {
-    if (!OptionKeySupported(key)) {
+    std::basic_string<uint8_t> cppvalue(value, length);
+    Option option(cppvalue);
+    if (!OptionKeySupported(key, option)) {
       InitErrorOptionNotSupported(key, error);
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
@@ -191,7 +206,7 @@ class PrivateBase {
       InitErrorNotFound(key, error);
       return ADBC_STATUS_NOT_FOUND;
     } else {
-      AdbcStatusCode status = result->second.get_value(value, length);
+      AdbcStatusCode status = result->second.CGet(value, length);
       if (status != ADBC_STATUS_OK) {
         InitErrorWrongType(key, error);
       }
@@ -207,7 +222,7 @@ class PrivateBase {
       InitErrorNotFound(key, error);
       return ADBC_STATUS_NOT_FOUND;
     } else {
-      AdbcStatusCode status = result->second.get_value(value);
+      AdbcStatusCode status = result->second.CGet(value);
       if (status != ADBC_STATUS_OK) {
         InitErrorWrongType(key, error);
       }
@@ -318,7 +333,7 @@ class PrivateBase {
   }
 };
 
-class DatabasePrivateBase : public PrivateBase {
+class DatabaseObjectBase : public ObjectBase {
  public:
   // (there are no database functions other than option getting/setting)
 
@@ -329,7 +344,7 @@ class DatabasePrivateBase : public PrivateBase {
   }
 };
 
-class ConnectionPrivateBase : public PrivateBase {
+class ConnectionObjectBase : public ObjectBase {
  public:
   // TODO: Add connection functions here as methods
 
@@ -341,7 +356,7 @@ class ConnectionPrivateBase : public PrivateBase {
   }
 };
 
-class StatementPrivateBase : public PrivateBase {
+class StatementObjectBase : public ObjectBase {
  public:
   virtual AdbcStatusCode ExecuteQuery(struct ArrowArrayStream* stream,
                                       int64_t* rows_affected, struct AdbcError* error) {
@@ -372,9 +387,9 @@ class StatementPrivateBase : public PrivateBase {
   }
 };
 
-template <typename StatementPrivateT = StatementPrivateBase,
-          typename ConnectionPrivateT = ConnectionPrivateBase,
-          typename DatabasePrivateT = DatabasePrivateBase>
+template <typename StatementPrivateT = StatementObjectBase,
+          typename ConnectionPrivateT = ConnectionObjectBase,
+          typename DatabasePrivateT = DatabaseObjectBase>
 class Driver {
  private:
   // Driver trampolines
@@ -419,71 +434,70 @@ class Driver {
     driver->release = &Driver::CDriverRelease;
 
     // Database lifecycle
-    driver->DatabaseNew = &PrivateBase::CNew<AdbcDatabase, DatabasePrivateT>;
-    driver->DatabaseInit = &DatabasePrivateBase::CInit<DatabasePrivateT>;
-    driver->DatabaseRelease = &PrivateBase::CRelease<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseNew = &ObjectBase::CNew<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseInit = &DatabaseObjectBase::CInit<DatabasePrivateT>;
+    driver->DatabaseRelease = &ObjectBase::CRelease<AdbcDatabase, DatabasePrivateT>;
 
     // Database functions
-    driver->DatabaseSetOption = &PrivateBase::CSetOption<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseSetOption = &ObjectBase::CSetOption<AdbcDatabase, DatabasePrivateT>;
     driver->DatabaseSetOptionBytes =
-        &PrivateBase::CSetOptionBytes<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CSetOptionBytes<AdbcDatabase, DatabasePrivateT>;
     driver->DatabaseSetOptionInt =
-        &PrivateBase::CSetOptionInt<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CSetOptionInt<AdbcDatabase, DatabasePrivateT>;
     driver->DatabaseSetOptionDouble =
-        &PrivateBase::CSetOptionDouble<AdbcDatabase, DatabasePrivateT>;
-    driver->DatabaseGetOption = &PrivateBase::CGetOption<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CSetOptionDouble<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseGetOption = &ObjectBase::CGetOption<AdbcDatabase, DatabasePrivateT>;
     driver->DatabaseGetOptionBytes =
-        &PrivateBase::CGetOptionBytes<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CGetOptionBytes<AdbcDatabase, DatabasePrivateT>;
     driver->DatabaseGetOptionInt =
-        &PrivateBase::CGetOptionInt<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CGetOptionInt<AdbcDatabase, DatabasePrivateT>;
     driver->DatabaseGetOptionDouble =
-        &PrivateBase::CGetOptionDouble<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CGetOptionDouble<AdbcDatabase, DatabasePrivateT>;
 
     // Connection lifecycle
-    driver->ConnectionNew = &PrivateBase::CNew<AdbcConnection, ConnectionPrivateT>;
-    driver->ConnectionInit = &ConnectionPrivateBase::CInit<ConnectionPrivateT>;
-    driver->ConnectionRelease =
-        &PrivateBase::CRelease<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionNew = &ObjectBase::CNew<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionInit = &ConnectionObjectBase::CInit<ConnectionPrivateT>;
+    driver->ConnectionRelease = &ObjectBase::CRelease<AdbcConnection, ConnectionPrivateT>;
 
     // Connection functions
     driver->ConnectionSetOption =
-        &PrivateBase::CSetOption<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CSetOption<AdbcConnection, ConnectionPrivateT>;
     driver->ConnectionSetOptionBytes =
-        &PrivateBase::CSetOptionBytes<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CSetOptionBytes<AdbcConnection, ConnectionPrivateT>;
     driver->ConnectionSetOptionInt =
-        &PrivateBase::CSetOptionInt<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CSetOptionInt<AdbcConnection, ConnectionPrivateT>;
     driver->ConnectionSetOptionDouble =
-        &PrivateBase::CSetOptionDouble<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CSetOptionDouble<AdbcConnection, ConnectionPrivateT>;
     driver->ConnectionGetOption =
-        &PrivateBase::CGetOption<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CGetOption<AdbcConnection, ConnectionPrivateT>;
     driver->ConnectionGetOptionBytes =
-        &PrivateBase::CGetOptionBytes<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CGetOptionBytes<AdbcConnection, ConnectionPrivateT>;
     driver->ConnectionGetOptionInt =
-        &PrivateBase::CGetOptionInt<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CGetOptionInt<AdbcConnection, ConnectionPrivateT>;
     driver->ConnectionGetOptionDouble =
-        &PrivateBase::CGetOptionDouble<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CGetOptionDouble<AdbcConnection, ConnectionPrivateT>;
 
     // Statement lifecycle
-    driver->StatementNew = &StatementPrivateBase::CStatementNew<StatementPrivateT>;
-    driver->StatementRelease = &PrivateBase::CRelease<AdbcStatement, StatementPrivateT>;
+    driver->StatementNew = &StatementObjectBase::CStatementNew<StatementPrivateT>;
+    driver->StatementRelease = &ObjectBase::CRelease<AdbcStatement, StatementPrivateT>;
 
     // Statement functions
     driver->StatementSetOption =
-        &PrivateBase::CSetOption<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CSetOption<AdbcStatement, StatementPrivateT>;
     driver->StatementSetOptionBytes =
-        &PrivateBase::CSetOptionBytes<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CSetOptionBytes<AdbcStatement, StatementPrivateT>;
     driver->StatementSetOptionInt =
-        &PrivateBase::CSetOptionInt<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CSetOptionInt<AdbcStatement, StatementPrivateT>;
     driver->StatementSetOptionDouble =
-        &PrivateBase::CSetOptionDouble<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CSetOptionDouble<AdbcStatement, StatementPrivateT>;
     driver->StatementGetOption =
-        &PrivateBase::CGetOption<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CGetOption<AdbcStatement, StatementPrivateT>;
     driver->StatementGetOptionBytes =
-        &PrivateBase::CGetOptionBytes<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CGetOptionBytes<AdbcStatement, StatementPrivateT>;
     driver->StatementGetOptionInt =
-        &PrivateBase::CGetOptionInt<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CGetOptionInt<AdbcStatement, StatementPrivateT>;
     driver->StatementGetOptionDouble =
-        &PrivateBase::CGetOptionDouble<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CGetOptionDouble<AdbcStatement, StatementPrivateT>;
 
     driver->StatementExecuteQuery = &Driver::CStatementExecuteQuery;
 
