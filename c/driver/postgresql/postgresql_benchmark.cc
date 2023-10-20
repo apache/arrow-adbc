@@ -22,6 +22,20 @@
 #include "adbc.h"
 #include "validation/adbc_validation_util.h"
 
+#define _ADBC_BENCHMARK_RETURN_NOT_OK_IMPL(NAME, EXPR) \
+  do {                                                 \
+    const int NAME = (EXPR);                           \
+    if (NAME) {                                        \
+      state.SkipWithError(error.message);              \
+      error.release(&error);                           \
+      return;                                          \
+    }                                                  \
+  } while (0)
+
+#define ADBC_BENCHMARK_RETURN_NOT_OK(EXPR) \
+  _ADBC_BENCHMARK_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, \
+                                                          __COUNTER__), EXPR)
+
 
 static void BM_PostgresqlExecute(benchmark::State& state) {
   const char* uri = std::getenv("ADBC_POSTGRESQL_TEST_URI");
@@ -32,84 +46,55 @@ static void BM_PostgresqlExecute(benchmark::State& state) {
   adbc_validation::Handle<struct AdbcDatabase> database;
   struct AdbcError error;
 
-  if (AdbcDatabaseNew(&database.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
-
-  if (AdbcDatabaseSetOption(&database.value, "uri", uri, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
-
-  if (AdbcDatabaseInit(&database.value, &error) != ADBC_STATUS_OK) {
-state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcDatabaseNew(&database.value, &error));
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcDatabaseSetOption(&database.value,
+                                                     "uri",
+                                                     uri,
+                                                     &error));
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcDatabaseInit(&database.value, &error));
 
   adbc_validation::Handle<struct AdbcConnection> connection;
-  if (AdbcConnectionNew(&connection.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
-
-  if (AdbcConnectionInit(&connection.value, &database.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcConnectionNew(&connection.value, &error));
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcConnectionInit(&connection.value,
+                                                  &database.value,
+                                                  &error));
 
   adbc_validation::Handle<struct AdbcStatement> statement;
-  if (AdbcStatementNew(&connection.value, &statement.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementNew(&connection.value,
+                                                &statement.value,
+                                                &error));
 
   const char* drop_query = "DROP TABLE IF EXISTS adbc_postgresql_ingest_benchmark";
-  if (AdbcStatementSetSqlQuery(&statement.value, drop_query, &error)
-      != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementSetSqlQuery(&statement.value,
+                                                        drop_query,
+                                                        &error));
 
-  if (AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error)
-      != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementExecuteQuery(&statement.value,
+                                                         nullptr,
+                                                         nullptr,
+                                                         &error));
 
   adbc_validation::Handle<struct ArrowSchema> schema;
   adbc_validation::Handle<struct ArrowArray> array;
   struct ArrowError na_error;
 
-  if (adbc_validation::MakeSchema(&schema.value, {
+  ADBC_BENCHMARK_RETURN_NOT_OK(adbc_validation::MakeSchema(&schema.value, {
         {"bools", NANOARROW_TYPE_BOOL},
         {"int16s", NANOARROW_TYPE_INT16},
         {"int32s", NANOARROW_TYPE_INT32},
         {"int64s", NANOARROW_TYPE_INT64},
         {"floats", NANOARROW_TYPE_FLOAT},
         {"doubles", NANOARROW_TYPE_DOUBLE},
-      }) != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+      }));
 
   if (ArrowArrayInitFromSchema(&array.value, &schema.value, &na_error) != NANOARROW_OK) {
-    state.SkipWithError(error.message);
+    state.SkipWithError("Call to ArrowArrayInitFromSchema failed!");
     error.release(&error);
     return;
   }
 
   if (ArrowArrayStartAppending(&array.value) != NANOARROW_OK) {
-    state.SkipWithError(error.message);
+    state.SkipWithError("Call to ArrowArrayStartAppending failed!");
     error.release(&error);
     return;
   }
@@ -142,7 +127,7 @@ state.SkipWithError(error.message);
   array.value.length = n_zeros + n_ones;
 
   if (ArrowArrayFinishBuildingDefault(&array.value, &na_error) != NANOARROW_OK) {
-    state.SkipWithError(error.message);
+    state.SkipWithError("Call to ArrowArrayFinishBuildingDefault failed");
     error.release(&error);
     return;
   }
@@ -151,63 +136,43 @@ state.SkipWithError(error.message);
     "CREATE TABLE adbc_postgresql_ingest_benchmark (bools BOOLEAN, int16s SMALLINT, "
     "int32s INTEGER, int64s BIGINT, floats REAL, doubles DOUBLE PRECISION)";
 
-  if (AdbcStatementSetSqlQuery(&statement.value, create_query, &error)
-      != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementSetSqlQuery(&statement.value,
+                                                        create_query,
+                                                        &error));
 
-  if (AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error)
-      != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementExecuteQuery(&statement.value,
+                                                         nullptr,
+                                                         nullptr,
+                                                         &error));
 
   adbc_validation::Handle<struct AdbcStatement> insert_stmt;
-  if (AdbcStatementNew(&connection.value, &insert_stmt.value, &error) != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementNew(&connection.value,
+                                                &insert_stmt.value,
+                                                &error));
 
-  if (AdbcStatementSetOption(&insert_stmt.value,
-                             ADBC_INGEST_OPTION_TARGET_TABLE,
-                             "adbc_postgresql_ingest_benchmark",
-                             &error) != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementSetOption(&insert_stmt.value,
+                                                      ADBC_INGEST_OPTION_TARGET_TABLE,
+                                                      "adbc_postgresql_ingest_benchmark",
+                                                      &error));
 
-  if (AdbcStatementSetOption(&insert_stmt.value,
-                             ADBC_INGEST_OPTION_MODE,
-                             ADBC_INGEST_OPTION_MODE_APPEND,
-                             &error) != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementSetOption(&insert_stmt.value,
+                                                      ADBC_INGEST_OPTION_MODE,
+                                                      ADBC_INGEST_OPTION_MODE_APPEND,
+                                                      &error));
 
   for (auto _ : state) {
     AdbcStatementBind(&insert_stmt.value, &array.value, &schema.value, &error);
     AdbcStatementExecuteQuery(&insert_stmt.value, nullptr, nullptr, &error);
   }
 
-  if (AdbcStatementSetSqlQuery(&statement.value, drop_query, &error)
-      != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementSetSqlQuery(&statement.value,
+                                                        drop_query,
+                                                        &error));
 
-  if (AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error)
-      != ADBC_STATUS_OK) {
-    state.SkipWithError(error.message);
-    error.release(&error);
-    return;
-  }
+  ADBC_BENCHMARK_RETURN_NOT_OK(AdbcStatementExecuteQuery(&statement.value,
+                                                         nullptr,
+                                                         nullptr,
+                                                         &error));
 }
 
 BENCHMARK(BM_PostgresqlExecute)->Iterations(1);
