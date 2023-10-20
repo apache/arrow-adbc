@@ -101,31 +101,84 @@ test_that("get option methods work on a statment for the void driver", {
 test_that("key_value_options works", {
   expect_identical(
     key_value_options(NULL),
-    setNames(character(), character())
+    structure(setNames(list(), character()), class = "adbc_options")
   )
 
   expect_identical(
     key_value_options(c("key" = "value")),
-    c("key" = "value")
+    structure(list("key" = "value"), class = "adbc_options")
   )
 
-  expect_identical(
-    key_value_options(list("key" = "value")),
-    c("key" = "value")
-  )
-
+  # NULLs dropped
   expect_identical(
     key_value_options(list("key" = "value", "key2" = NULL)),
-    c("key" = "value")
+    structure(list("key" = "value"), class = "adbc_options")
   )
 
+  # Integers stay integers
+  expect_identical(
+    key_value_options(list("key" = 1L)),
+    structure(list("key" = 1L), class = "adbc_options")
+  )
+
+  # Doubles opportunistically converted to integers if possible
+  expect_identical(
+    key_value_options(list("key" = 1)),
+    structure(list("key" = 1L), class = "adbc_options")
+  )
+
+  # Doubles not truncated to integers if not possible
+  expect_identical(
+    key_value_options(list("key" = 1.1)),
+    structure(list("key" = 1.1), class = "adbc_options")
+  )
+
+  # S3 objects converted to strings
+  expect_identical(
+    key_value_options(list("key" = as.Date("2000-01-01"))),
+    structure(list("key" = "2000-01-01"), class = "adbc_options")
+  )
+
+  # Can handle many options
+  expect_identical(
+    key_value_options(setNames(letters, letters)),
+    structure(as.list(setNames(letters, letters)), class = "adbc_options")
+  )
+
+  # adbc_options() arguments are appended
+  expect_identical(
+    key_value_options(
+      list(
+        "key" = "value",
+        key_value_options(list("key2" = "value2")),
+        "key3" = "value3"
+      )
+    ),
+    structure(
+      list("key" = "value", "key2" = "value2", "key3" = "value3"),
+      class = "adbc_options"
+    )
+  )
+
+  # Errors
   expect_error(
     key_value_options(list("value")),
     "must be named"
   )
 
   expect_error(
+    key_value_options(list(key = environment())),
+    "Option of type 'environment' (key: 'key') not supported",
+    fixed = TRUE
+  )
+
+  expect_error(
     key_value_options(setNames(list("value"), "")),
+    "must be named"
+  )
+
+  expect_error(
+    key_value_options(setNames(list("value"), NA_character_)),
     "must be named"
   )
 })

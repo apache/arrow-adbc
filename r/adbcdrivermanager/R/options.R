@@ -22,7 +22,7 @@ adbc_database_set_options <- function(database, options) {
   error <- adbc_allocate_error()
   for (i in seq_along(options)) {
     key <- names(options)[i]
-    value <- options[i]
+    value <- options[[i]]
     status <- .Call(
       RAdbcDatabaseSetOption,
       database,
@@ -42,7 +42,7 @@ adbc_connection_set_options <- function(connection, options) {
   error <- adbc_allocate_error()
   for (i in seq_along(options)) {
     key <- names(options)[i]
-    value <- options[i]
+    value <- options[[i]]
     status <- .Call(
       RAdbcConnectionSetOption,
       connection,
@@ -62,7 +62,7 @@ adbc_statement_set_options <- function(statement, options) {
   error <- adbc_allocate_error()
   for (i in seq_along(options)) {
     key <- names(options)[i]
-    value <- options[i]
+    value <- options[[i]]
     status <- .Call(
       RAdbcStatementSetOption,
       statement,
@@ -162,18 +162,70 @@ adbc_statement_get_option_double <- function(statement, option) {
 }
 
 key_value_options <- function(options) {
-  if (!is.character(options)) {
-    options <- as.list(options)
-    options <- options[!vapply(options, is.null, logical(1))]
-    options <- vapply(options, as.character, character(1))
-  }
+  options <- as.list(options)
 
-  keys <- names(options)
   if (length(options) == 0) {
     names(options) <- character()
-  } else if (is.null(keys) || all(keys == "")) {
-    stop("key/value options must be named")
+  } else if (is.null(names(options))) {
+    # OK to have no names, because options could contain a series of
+    # adbc_options() objects that will be concatenated
+    names(options) <- rep("", length(options))
   }
 
-  options
+  out <- vector("list", 10L)
+  out_names <- character(10L)
+  n_out <- 0L
+
+  for (i in seq_along(options)) {
+    key <- names(options)[[i]]
+    item <- options[[i]]
+
+    # Skip NULL item
+    if (is.null(item)) {
+      next
+    }
+
+    # Append all items of an existing adbc_options
+    if (inherits(item, "adbc_options")) {
+      out <- c(out[seq_len(n_out)], item)
+      out_names <- c(out_names[seq_len(n_out)], names(item))
+      n_out <- n_out + length(item)
+      next
+    }
+
+    # Otherwise, append a single value (coercing to character if item
+    # is an S3 object)
+    if (is.object(item)) {
+      item <- as.character(item)
+    }
+
+    if (identical(key, "") || identical(key, NA_character_)) {
+      stop("key/value options must be named")
+    }
+
+    n_out <- n_out + 1L
+    out_names[n_out] <- key
+    if (is.character(item)) {
+      out[[n_out]] <- item
+    } else if (is.integer(item) || numeric_is_integer(item)) {
+      out[[n_out]] <- as.integer(item)
+    } else if (is.numeric(item)) {
+      out [[n_out]] <- as.numeric(item)
+    } else {
+      stop(
+        sprintf(
+          "Option of type '%s' (key: '%s') not supported",
+           typeof(item),
+          key
+        )
+      )
+    }
+  }
+
+  names(out) <- out_names
+  structure(out[seq_len(n_out)], class = "adbc_options")
+}
+
+numeric_is_integer <- function(x) {
+  is.numeric(x) && identical(x, round(x))
 }
