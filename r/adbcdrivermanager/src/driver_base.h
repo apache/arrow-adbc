@@ -293,8 +293,6 @@ class ObjectBase {
 class DatabaseObjectBase : public ObjectBase {
  public:
   // (there are no database functions other than option getting/setting)
-
-
 };
 
 class ConnectionObjectBase : public ObjectBase {
@@ -313,7 +311,7 @@ class StatementObjectBase : public ObjectBase {
 };
 
 template <typename DatabaseT, typename ConnectionT, typename StatementT>
-class Driver {
+class Driver final {
  public:
   static AdbcStatusCode Init(int version, void* raw_driver, AdbcError* error) {
     if (version != ADBC_VERSION_1_1_0) return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -322,7 +320,7 @@ class Driver {
 
     // Driver lifecycle
     driver->private_data = new Driver();
-    driver->release = &Driver::CDriverRelease;
+    driver->release = &CDriverRelease;
 
     // Database lifecycle
     driver->DatabaseNew = &CNew<AdbcDatabase, DatabaseT>;
@@ -330,51 +328,45 @@ class Driver {
     driver->DatabaseRelease = &CRelease<AdbcDatabase, DatabaseT>;
 
     // Database functions
-    driver->DatabaseSetOption = &Driver::CSetOption<AdbcDatabase, DatabaseT>;
-    driver->DatabaseSetOptionBytes = &Driver::CSetOptionBytes<AdbcDatabase, DatabaseT>;
-    driver->DatabaseSetOptionInt = &Driver::CSetOptionInt<AdbcDatabase, DatabaseT>;
-    driver->DatabaseSetOptionDouble = &Driver::CSetOptionDouble<AdbcDatabase, DatabaseT>;
-    driver->DatabaseGetOption = &Driver::CGetOption<AdbcDatabase, DatabaseT>;
-    driver->DatabaseGetOptionBytes = &Driver::CGetOptionBytes<AdbcDatabase, DatabaseT>;
-    driver->DatabaseGetOptionInt = &Driver::CGetOptionInt<AdbcDatabase, DatabaseT>;
-    driver->DatabaseGetOptionDouble = &Driver::CGetOptionDouble<AdbcDatabase, DatabaseT>;
+    driver->DatabaseSetOption = &CSetOption<AdbcDatabase, DatabaseT>;
+    driver->DatabaseSetOptionBytes = &CSetOptionBytes<AdbcDatabase, DatabaseT>;
+    driver->DatabaseSetOptionInt = &CSetOptionInt<AdbcDatabase, DatabaseT>;
+    driver->DatabaseSetOptionDouble = &CSetOptionDouble<AdbcDatabase, DatabaseT>;
+    driver->DatabaseGetOption = &CGetOption<AdbcDatabase, DatabaseT>;
+    driver->DatabaseGetOptionBytes = &CGetOptionBytes<AdbcDatabase, DatabaseT>;
+    driver->DatabaseGetOptionInt = &CGetOptionInt<AdbcDatabase, DatabaseT>;
+    driver->DatabaseGetOptionDouble = &CGetOptionDouble<AdbcDatabase, DatabaseT>;
 
     // Connection lifecycle
-    driver->ConnectionNew = &Driver::CNew<AdbcConnection, ConnectionT>;
-    driver->ConnectionInit = &Driver::CConnectionInit;
-    driver->ConnectionRelease = &Driver::CRelease<AdbcConnection, ConnectionT>;
+    driver->ConnectionNew = &CNew<AdbcConnection, ConnectionT>;
+    driver->ConnectionInit = &CConnectionInit;
+    driver->ConnectionRelease = &CRelease<AdbcConnection, ConnectionT>;
 
     // Connection functions
-    driver->ConnectionSetOption = &Driver::CSetOption<AdbcConnection, ConnectionT>;
-    driver->ConnectionSetOptionBytes =
-        &Driver::CSetOptionBytes<AdbcConnection, ConnectionT>;
-    driver->ConnectionSetOptionInt = &Driver::CSetOptionInt<AdbcConnection, ConnectionT>;
-    driver->ConnectionSetOptionDouble =
-        &Driver::CSetOptionDouble<AdbcConnection, ConnectionT>;
-    driver->ConnectionGetOption = &Driver::CGetOption<AdbcConnection, ConnectionT>;
-    driver->ConnectionGetOptionBytes =
-        &Driver::CGetOptionBytes<AdbcConnection, ConnectionT>;
-    driver->ConnectionGetOptionInt = &Driver::CGetOptionInt<AdbcConnection, ConnectionT>;
-    driver->ConnectionGetOptionDouble =
-        &Driver::CGetOptionDouble<AdbcConnection, ConnectionT>;
+    driver->ConnectionSetOption = &CSetOption<AdbcConnection, ConnectionT>;
+    driver->ConnectionSetOptionBytes = &CSetOptionBytes<AdbcConnection, ConnectionT>;
+    driver->ConnectionSetOptionInt = &CSetOptionInt<AdbcConnection, ConnectionT>;
+    driver->ConnectionSetOptionDouble = &CSetOptionDouble<AdbcConnection, ConnectionT>;
+    driver->ConnectionGetOption = &CGetOption<AdbcConnection, ConnectionT>;
+    driver->ConnectionGetOptionBytes = &CGetOptionBytes<AdbcConnection, ConnectionT>;
+    driver->ConnectionGetOptionInt = &CGetOptionInt<AdbcConnection, ConnectionT>;
+    driver->ConnectionGetOptionDouble = &CGetOptionDouble<AdbcConnection, ConnectionT>;
 
     // Statement lifecycle
-    driver->StatementNew = &Driver::CStatementNew;
-    driver->StatementRelease = &Driver::CRelease<AdbcStatement, StatementT>;
+    driver->StatementNew = &CStatementNew;
+    driver->StatementRelease = &CRelease<AdbcStatement, StatementT>;
 
     // Statement functions
-    driver->StatementSetOption = &Driver::CSetOption<AdbcStatement, StatementT>;
-    driver->StatementSetOptionBytes = &Driver::CSetOptionBytes<AdbcStatement, StatementT>;
-    driver->StatementSetOptionInt = &Driver::CSetOptionInt<AdbcStatement, StatementT>;
-    driver->StatementSetOptionDouble =
-        &Driver::CSetOptionDouble<AdbcStatement, StatementT>;
-    driver->StatementGetOption = &Driver::CGetOption<AdbcStatement, StatementT>;
-    driver->StatementGetOptionBytes = &Driver::CGetOptionBytes<AdbcStatement, StatementT>;
-    driver->StatementGetOptionInt = &Driver::CGetOptionInt<AdbcStatement, StatementT>;
-    driver->StatementGetOptionDouble =
-        &Driver::CGetOptionDouble<AdbcStatement, StatementT>;
+    driver->StatementSetOption = &CSetOption<AdbcStatement, StatementT>;
+    driver->StatementSetOptionBytes = &CSetOptionBytes<AdbcStatement, StatementT>;
+    driver->StatementSetOptionInt = &CSetOptionInt<AdbcStatement, StatementT>;
+    driver->StatementSetOptionDouble = &CSetOptionDouble<AdbcStatement, StatementT>;
+    driver->StatementGetOption = &CGetOption<AdbcStatement, StatementT>;
+    driver->StatementGetOptionBytes = &CGetOptionBytes<AdbcStatement, StatementT>;
+    driver->StatementGetOptionInt = &CGetOptionInt<AdbcStatement, StatementT>;
+    driver->StatementGetOptionDouble = &CGetOptionDouble<AdbcStatement, StatementT>;
 
-    driver->StatementExecuteQuery = &Driver::CStatementExecuteQuery;
+    driver->StatementExecuteQuery = &CStatementExecuteQuery;
 
     return ADBC_STATUS_OK;
   }
@@ -472,8 +464,8 @@ class Driver {
   }
 
   // Connection trampolines
-  static AdbcStatusCode CConnectionInit(AdbcConnection* connection, AdbcDatabase* database,
-                                        AdbcError* error) {
+  static AdbcStatusCode CConnectionInit(AdbcConnection* connection,
+                                        AdbcDatabase* database, AdbcError* error) {
     auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
     return private_data->Init(database->private_data, error);
   }
