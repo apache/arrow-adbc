@@ -412,7 +412,7 @@ class Driver {
   static AdbcStatusCode CSetOptionBytes(T* obj, const char* key, const uint8_t* value,
                                         size_t length, AdbcError* error) {
     auto private_data = reinterpret_cast<ObjectT*>(obj->private_data);
-    return private_data->template CSetOption<>(key, value, error);
+    return private_data->CSetOptionBytes(key, value, length, error);
   }
 
   template <typename T, typename ObjectT>
