@@ -1,0 +1,89 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: R
+
+# A reusable workflow called from
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      pkg:
+        required: true
+        type: string
+      use_test_databases:
+        required: false
+        default: "false"
+        type: string
+      rversion:
+        required: false
+        default: release
+        type: string
+
+jobs:
+  r-check:
+    name: "${{ inputs.pkg }} / ${{ inputs.os }}"
+    runs-on: ${{ inputs.os }}-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - name: Set PKG_CONFIG_PATH on MacOS
+        if: inputs.pkg == 'adbcpostgresql' && runner.os == 'macOS'
+        run: |
+          PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
+          needs: check
+          working-directory: r/${{ inputs.pkg }}
+
+      - name: Start postgres test database
+        if: inputs.pkg == 'adbcpostgresql' && runner.os == 'Linux' && inputs.use_test_databases == 'true'
+        run: |
+          cd r/adbcpostgresql
+          docker compose up --detach postgres-test
+          ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
+          echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
+
+      - name: Start FlightSQL test database
+        if: inputs.pkg == 'adbcflightsql' && runner.os == 'Linux' && inputs.use_test_databases == 'true'
+        run: |
+          cd r/adbcpostgresql
+          docker compose up --detach flightsql-sqlite-test
+          ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
+          echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
+
+      - uses: r-lib/actions/check-r-package@v2
+        env:
+          ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }}
+          R_KEEP_PKG_SOURCE: yes
+        with:
+          working-directory: r/${{ inputs.pkg }}
+
+      - name: Shutdown docker compose services
+        if: runner.os == 'Linux' && inputs.use_test_databases == 'true'
+        run: |
+          docker compose down

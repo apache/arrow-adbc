@@ -47,59 +47,15 @@ permissions:
 
 jobs:
   check:
-    name: "${{ matrix.pkg }} / ${{ matrix.os }}"
-    runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
         os: [macOS, windows, ubuntu]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
 
-    env:
-      R_KEEP_PKG_SOURCE: yes
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: release
-          use-public-rspm: true
-
-      - name: Set PKG_CONFIG_PATH on MacOS
-        if: matrix.pkg == 'adbcpostgresql' && runner.os == 'macOS'
-        run: |
-          PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
-          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
-          needs: check
-          working-directory: r/${{ matrix.pkg }}
-
-      - name: Start postgres test database
-        if: matrix.pkg == 'adbcpostgresql' && runner.os == 'Linux'
-        run: |
-          cd r/adbcpostgresql
-          docker compose up --detach postgres-test
-          ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
-          echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
-
-      - name: Start FlightSQL test database
-        if: matrix.pkg == 'adbcflightsql' && runner.os == 'Linux'
-        run: |
-          cd r/adbcpostgresql
-          docker compose up --detach flightsql-sqlite-test
-          ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
-          echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
-
-      - uses: r-lib/actions/check-r-package@v2
-        env:
-          ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }}
-        with:
-          upload-snapshots: true
-          working-directory: r/${{ matrix.pkg }}
-
-      - name: Shutdown docker compose services
-        if: runner.os == 'Linux'
-        run: |
-          docker compose down
+    uses: ./.github/workflows/r-check.yml
+    with:
+      os: ${{ matrix.os }}
+      pkg: ${{ matrix.pkg }}
+      use_test_databases: "true"
+    secrets:
+      SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
