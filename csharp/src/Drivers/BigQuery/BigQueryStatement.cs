@@ -84,11 +84,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             if (arrowArray is Int64Array)
             {
-                return ((Int64Array)arrowArray).Values[index];
+                return ((Int64Array)arrowArray).GetValue(index);
             }
             else if (arrowArray is DoubleArray)
             {
-                return ((DoubleArray)arrowArray).Values[index];
+                return ((DoubleArray)arrowArray).GetValue(index);
             }
             else if (arrowArray is Decimal128Array)
             {
