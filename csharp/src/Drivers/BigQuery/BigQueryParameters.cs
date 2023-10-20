@@ -30,6 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string JsonCredential = "adbc.bigquery.auth_json_credential";
         public const string AllowLargeResults = "adbc.bigquery.allow_large_results";
         public const string UseLegacySQL = "adbc.bigquery.use_legacy_sql";
+        public const string LargeDecimalsAsString = "adbc.bigquery.large_decimals_as_string";
     }
 
     /// <summary>
@@ -40,5 +41,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string UserAuthenticationType = "user";
         public const string ServiceAccountAuthenticationType = "service";
         public const string TokenEndpoint = "https://accounts.google.com/o/oauth2/token";
+        public const string TreatLargeDecimalAsString = "true";
     }
 }

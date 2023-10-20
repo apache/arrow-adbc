@@ -56,6 +56,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public BigQueryConnection(IReadOnlyDictionary<string, string> properties)
         {
             this.properties = properties;
+
+            // add the default value for now and set to true 
+            Dictionary<string, string> modifiedProperties = this.properties.ToDictionary(k => k.Key, v => v.Value);
+            modifiedProperties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
+            this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);      
         }
 
         /// <summary>
@@ -352,21 +357,24 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             int length = 0;
 
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.TABLES",
-                catalog, dbSchema);
+                Sanitize(catalog), Sanitize(dbSchema));
 
             if (tableNamePattern != null)
             {
-                query = string.Concat(query, string.Format(" WHERE table_name LIKE '{0}'", tableNamePattern));
+                query = string.Concat(query, string.Format(" WHERE table_name LIKE '{0}'", Sanitize(tableNamePattern)));
                 if (tableTypes.Count > 0)
                 {
-                    query = string.Concat(query, string.Format(" AND table_type IN ('{0}')", string.Join("', '", tableTypes).ToUpper()));
+                    List<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x)).ToList();
+
+                    query = string.Concat(query, string.Format(" AND table_type IN ('{0}')", string.Join("', '", sanitizedTypes).ToUpper()));
                 }
             }
             else
             {
                 if (tableTypes.Count > 0)
                 {
-                    query = string.Concat(query, string.Format(" WHERE table_type IN ('{0}')", string.Join("', '", tableTypes).ToUpper()));
+                    List<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x)).ToList();
+                    query = string.Concat(query, string.Format(" WHERE table_type IN ('{0}')", string.Join("', '", sanitizedTypes).ToUpper()));
                 }
             }
 
@@ -437,11 +445,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             int length = 0;
 
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{2}'",
-                catalog, dbSchema, table);
+                Sanitize(catalog), Sanitize(dbSchema), Sanitize(table));
 
             if (columnNamePattern != null)
             {
-                query = string.Concat(query, string.Format("AND column_name LIKE '{0}'", columnNamePattern));
+                query = string.Concat(query, string.Format("AND column_name LIKE '{0}'", Sanitize(columnNamePattern)));
             }
 
             BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
@@ -517,7 +525,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             int length = 0;
 
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE table_name = '{2}'",
-               catalog, dbSchema, table);
+               Sanitize(catalog), Sanitize(dbSchema), Sanitize(table));
 
             BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
 
@@ -573,7 +581,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string constraintName)
         {
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE table_name = '{2}' AND constraint_name = '{3}' ORDER BY ordinal_position",
-               catalog, dbSchema, table, constraintName);
+               Sanitize(catalog), Sanitize(dbSchema), Sanitize(table), Sanitize(constraintName));
 
             StringArray.Builder constraintColumnNamesBuilder = new StringArray.Builder();
 
@@ -601,7 +609,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             int length = 0;
 
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE table_name = '{2}' AND constraint_name = '{3}'",
-               catalog, dbSchema, table, constraintName);
+               Sanitize(catalog), Sanitize(dbSchema), Sanitize(table), Sanitize(constraintName));
 
             BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
 
@@ -685,7 +693,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public override Schema GetTableSchema(string catalog, string dbSchema, string tableName)
         {
             string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{2}'",
-                catalog, dbSchema, tableName);
+                Sanitize(catalog), Sanitize(dbSchema), Sanitize(tableName));
 
             BigQueryResults result = this.client.ExecuteQuery(query, parameters: null);
 
@@ -883,6 +891,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     options[keyValuePair.Key] = keyValuePair.Value;
                 }
+                if (keyValuePair.Key == BigQueryParameters.LargeDecimalsAsString)
+                {
+                    options[keyValuePair.Key] = keyValuePair.Value;
+                }
             }
 
             return new ReadOnlyDictionary<string, string>(options);
@@ -892,6 +904,20 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             this.client?.Dispose();
             this.client = null;
+        }
+
+        private string Sanitize(string input)
+        {
+            bool isValidInput = Regex.IsMatch(input, "^([a-zA-Z0-9\\-]+[ _-]+?)*$");
+
+            if (isValidInput)
+            {
+                return input;
+            }
+            else
+            { 
+                throw new AdbcException($"{input} is invalid", AdbcStatusCode.InvalidArgument);
+            }
         }
 
         /// <summary>

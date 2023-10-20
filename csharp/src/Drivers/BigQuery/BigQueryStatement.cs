@@ -166,17 +166,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return null;
         }
 
-        static Schema TranslateSchema(TableSchema schema)
+        private Schema TranslateSchema(TableSchema schema)
         {
             return new Schema(schema.Fields.Select(TranslateField), null);
         }
 
-        static Field TranslateField(TableFieldSchema field)
+        private Field TranslateField(TableFieldSchema field)
         {
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
-        static IArrowType TranslateType(TableFieldSchema field)
+        private IArrowType TranslateType(TableFieldSchema field)
         {
             // per https://developers.google.com/resources/api-libraries/documentation/bigquery/v2/java/latest/com/google/api/services/bigquery/model/TableFieldSchema.html#getType--
 
@@ -209,8 +209,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 //(int)field.Precision, (int)field.Scale);
 
                 // treat these values as strings
-                case "BIGNUMERIC" or "BIGDECIMAL" or "GEOGRAPHY":
+                case "GEOGRAPHY":
                     return StringType.Default;
+
+                case "BIGNUMERIC" or "BIGDECIMAL":
+                    return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? StringType.Default : new Decimal256Type(0, 0);
 
                 // Google.Apis.Bigquery.v2.Data.TableFieldSchema do not include Array and Geography in types
                 default: throw new InvalidOperationException();
@@ -221,7 +224,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
-            BigQueryReadClient.ReadRowsStream readRowsStream = readClient.ReadRows(new ReadRowsRequest { ReadStream = streamName });
+            BigQueryReadClient.ReadRowsStream readRowsStream = readClient.ReadRows(new ReadRowsRequest { ReadStream = streamName  });
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
 
             ReadRowsStream stream = new ReadRowsStream(enumerator);
