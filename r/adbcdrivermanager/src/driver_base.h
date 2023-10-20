@@ -128,7 +128,8 @@ class Option {
   AdbcStatusCode CGet(int64_t* value) const {
     switch (type_) {
       case TYPE_INT:
-        return GetIntUnsafe();
+        *value = GetIntUnsafe();
+        return ADBC_STATUS_OK;
       default:
         return ADBC_STATUS_NOT_FOUND;
     }
@@ -137,7 +138,8 @@ class Option {
   AdbcStatusCode CGet(double* value) const {
     switch (type_) {
       case TYPE_DOUBLE:
-        return GetDoubleUnsafe();
+        *value = GetDoubleUnsafe();
+        return ADBC_STATUS_OK;
       default:
         return ADBC_STATUS_NOT_FOUND;
     }
