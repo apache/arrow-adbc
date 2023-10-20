@@ -78,7 +78,6 @@ test_that("get/set option can roundtrip integer options for database", {
     class = "adbc_status_not_found"
   )
 
-  db <- adbc_database_init(adbc_driver_void())
   adbc_database_set_options(db, list("some_key" = 123L))
   expect_identical(
     adbc_database_get_option_int(db, "some_key"),
@@ -109,7 +108,6 @@ test_that("get/set option can roundtrip integer options for database", {
     class = "adbc_status_not_found"
   )
 
-  db <- adbc_database_init(adbc_driver_void())
   adbc_database_set_options(db, list("some_key" = 123.4))
   expect_identical(
     adbc_database_get_option_double(db, "some_key"),
