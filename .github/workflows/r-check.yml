@@ -17,7 +17,6 @@
 
 name: R
 
-# A reusable workflow called from
 on:
   workflow_call:
     inputs:
@@ -26,10 +25,6 @@ on:
         type: string
       pkg:
         required: true
-        type: string
-      use_test_databases:
-        required: false
-        default: "false"
         type: string
       rversion:
         required: false
@@ -41,7 +36,6 @@ on:
 
 jobs:
   r-check:
-    name: "${{ inputs.pkg }} / ${{ inputs.os }}"
     runs-on: ${{ inputs.os }}-latest
 
     steps:
@@ -64,7 +58,7 @@ jobs:
           working-directory: r/${{ inputs.pkg }}
 
       - name: Start postgres test database
-        if: inputs.pkg == 'adbcpostgresql' && runner.os == 'Linux' && inputs.use_test_databases == 'true'
+        if: inputs.pkg == 'adbcpostgresql' && runner.os == 'Linux'
         run: |
           cd r/adbcpostgresql
           docker compose up --detach postgres-test
@@ -72,7 +66,7 @@ jobs:
           echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
 
       - name: Start FlightSQL test database
-        if: inputs.pkg == 'adbcflightsql' && runner.os == 'Linux' && inputs.use_test_databases == 'true'
+        if: inputs.pkg == 'adbcflightsql' && runner.os == 'Linux'
         run: |
           cd r/adbcpostgresql
           docker compose up --detach flightsql-sqlite-test
@@ -87,6 +81,6 @@ jobs:
           working-directory: r/${{ inputs.pkg }}
 
       - name: Shutdown docker compose services
-        if: runner.os == 'Linux' && inputs.use_test_databases == 'true'
+        if: runner.os == 'Linux'
         run: |
           docker compose down

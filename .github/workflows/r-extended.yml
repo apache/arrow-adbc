@@ -33,12 +33,8 @@ permissions:
 
 jobs:
 
-  # Runs R CMD check in the same way CRAN might (i.e., without any test databases,
-  # using oldrel, release, devel.
-  check-for-cran:
-    name: "cran - ${{ matrix.pkg }} / ${{ matrix.os }} / R-${{ matrix.rversion}}"
-    runs-on: ${{ matrix.os }}-latest
-
+  # Runs R CMD check on the same platforms/R versions CRAN does
+  cran:
     strategy:
       matrix:
         rversion: [oldrel, release, devel]
@@ -46,64 +42,13 @@ jobs:
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
       fail-fast: false
 
-    env:
-      R_KEEP_PKG_SOURCE: yes
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: r-lib/actions/setup-r@v2
-        with:
-          rversion: ${{ matrix.rversion }}
-          use-public-rspm: true
-
-      - name: Set PKG_CONFIG_PATH on MacOS
-        if: matrix.pkg == 'adbcpostgresql' && runner.os == 'macOS'
-        run: |
-          PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$(brew --prefix libpq)/lib/pkgconfig:$(brew --prefix openssl)/lib/pkgconfig"
-          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}" >> $GITHUB_ENV
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::rcmdcheck, local::../adbcdrivermanager, arrow=?ignore-before-r=4.0.0
-          working-directory: r/${{ matrix.pkg }}
-
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          upload-snapshots: true
-          working-directory: r/${{ matrix.pkg }}
-
-  # Checks on older verions of R, just on Linux. This catches any accidental
-  # usage of newer R functions.
-  rversions:
-    name: "rversions ${{ matrix.pkg }} / ${{ matrix.os }} / R-${{ matrix.rversion}}"
-    runs-on: ${{ matrix.os }}-latest
-
-    strategy:
-      matrix:
-        rversion: ["3.6", "4.0", "4.1"]
-        os: [ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
-      fail-fast: false
-
-    env:
-      R_KEEP_PKG_SOURCE: yes
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: r-lib/actions/setup-r@v2
-        with:
-          rversion: ${{ matrix.rversion }}
-          use-public-rspm: true
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
-          working-directory: r/${{ matrix.pkg }}
-
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          upload-snapshots: true
-          working-directory: r/${{ matrix.pkg }}
+    uses: ./.github/workflows/r-check.yml
+    with:
+      os: ${{ matrix.os }}
+      pkg: ${{ matrix.pkg }}
+      rversion: ${{ matrix.rversion }}
+    secrets:
+      SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
 
   # Checks on older verions of R on Windows. The Windows build system changed
   # several times so we need to check packages on every version. Go-based
