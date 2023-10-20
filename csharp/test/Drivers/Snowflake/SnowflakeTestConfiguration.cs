@@ -89,5 +89,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// </summary>
         [JsonPropertyName("pkcs8Passcode"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Pkcs8Passcode { get; set; }
+
+        /// <summary>
+        /// The Snowflake authentication type.
+        /// </summary>
+        [JsonPropertyName("useHighPrecision")]
+        public bool UseHighPrecision { get; set; } = true;
     }
 }

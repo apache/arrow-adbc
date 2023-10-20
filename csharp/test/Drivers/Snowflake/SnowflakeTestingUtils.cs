@@ -35,6 +35,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public const string HOST = "adbc.snowflake.sql.uri.host";
         public const string PKCS8_VALUE = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value";
         public const string PKCS8_PASS = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password";
+        public const string USE_HIGH_PRECISION = "adbc.snowflake.sql.client_option.use_high_precision";
     }
 
     internal class SnowflakeTestingUtils
@@ -61,8 +62,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 { SnowflakeParameters.USERNAME, testConfiguration.User },
                 { SnowflakeParameters.PASSWORD, testConfiguration.Password },
                 { SnowflakeParameters.WAREHOUSE, testConfiguration.Warehouse },
-                { SnowflakeParameters.AUTH_TYPE, testConfiguration.AuthenticationType }
+                { SnowflakeParameters.AUTH_TYPE, testConfiguration.AuthenticationType },
+                { SnowflakeParameters.USE_HIGH_PRECISION, testConfiguration.UseHighPrecision.ToString().ToLowerInvariant() }
             };
+
+            if(!string.IsNullOrWhiteSpace(testConfiguration.Host))
+            {
+                parameters[SnowflakeParameters.HOST] = testConfiguration.Host;
+            }
 
             Dictionary<string, string> options = new Dictionary<string, string>() { };
             AdbcDriver snowflakeDriver = CAdbcDriverImporter.Load(testConfiguration.DriverPath, testConfiguration.DriverEntryPoint);

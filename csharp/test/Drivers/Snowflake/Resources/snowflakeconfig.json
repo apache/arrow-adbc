@@ -10,6 +10,7 @@
     "authenticationType": "",
     "authenticationTokenPath": "",
     "pkcs8Passcode": "",
+    "useHighPrecision":  true,
     "metadata": {
         "catalog": "",
         "schema": "",

@@ -333,7 +333,7 @@ namespace Apache.Arrow.Adbc.C
             {
                 if (arrowArray is BooleanArray)
                 {
-                    return Convert.ToBoolean(((BooleanArray)arrowArray).Values[index]);
+                    return ((BooleanArray)arrowArray).GetValue(index);
                 }
                 else if (arrowArray is Date32Array)
                 {
@@ -941,7 +941,6 @@ namespace Apache.Arrow.Adbc.C
 
                     Dispose();
 
-                    throw new AdbcException(message);
                 }
             }
         }
