@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Reusable check for various combinations of (pkg, os, rversion)
 name: R
 
 on:
