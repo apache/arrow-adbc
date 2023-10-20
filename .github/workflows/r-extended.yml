@@ -17,8 +17,13 @@
 
 name: R (extended)
 
+# Runs weekly. This catches changes that happen because of
+# dependency updates and catches some of the more infrequent/obscure
+# changes that affect the R package.
 on:
-  # Run weekly
+  # Also can trigger manually (e.g., if release is upcoming, etc.)
+  workflow_dispatch:
+
   schedule:
     - cron: '5 0 * * 0'
 
@@ -50,44 +55,48 @@ jobs:
     secrets:
       SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
 
-  # Checks on older verions of R on Windows. The Windows build system changed
-  # several times so we need to check packages on every version. Go-based
-  # drivers aren't supported before 4.2, so we don't check them here.
-  winrversions:
-    name: "winrverions - ${{ matrix.pkg }} / ${{ matrix.os }} / R-${{ matrix.rversion}}"
-    runs-on: ${{ matrix.os }}-latest
-
+  # Check older versions of R on Linux. This catches accidental use of newer R functions.
+  rversions:
     strategy:
       matrix:
         rversion: ["3.6", "4.0", "4.1"]
+        os: [ubuntu]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
+      fail-fast: false
+
+    uses: ./.github/workflows/r-check.yml
+    with:
+      os: ${{ matrix.os }}
+      pkg: ${{ matrix.pkg }}
+      rversion: ${{ matrix.rversion }}
+    secrets:
+      SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
+
+  # Checks on older verions of R on Windows. The Windows build system changed
+  # several times so we need to check packages on every version. Go-based
+  # drivers aren't supported before 4.2, so we don't check them here.
+  # We don't need to check R 4.1 because the build system for R 4.0 and R 4.1
+  # are the same.
+  winrversions:
+    strategy:
+      matrix:
+        rversion: ["3.6", "4.0"]
         os: [windows]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
       fail-fast: false
 
-    env:
-      R_KEEP_PKG_SOURCE: yes
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: r-lib/actions/setup-r@v2
-        with:
-          rversion: ${{ matrix.rversion }}
-          use-public-rspm: true
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
-          working-directory: r/${{ matrix.pkg }}
-
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          upload-snapshots: true
-          working-directory: r/${{ matrix.pkg }}
+    uses: ./.github/workflows/r-check.yml
+    with:
+      os: ${{ matrix.os }}
+      pkg: ${{ matrix.pkg }}
+      rversion: ${{ matrix.rversion }}
+    secrets:
+      SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
 
   # Runs tests with valgrind. Go does not support valgrind, so we don't run
   # those tests here.
   valgrind:
-    name: "valgrind - ${{ matrix.pkg }}"
+    name: "valgrind (${{ matrix.pkg }})"
     runs-on: ${{ matrix.os }}-latest
 
     strategy:
@@ -96,9 +105,6 @@ jobs:
         os: [ubuntu]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
       fail-fast: false
-
-    env:
-      R_KEEP_PKG_SOURCE: yes
 
     steps:
       - uses: actions/checkout@v4

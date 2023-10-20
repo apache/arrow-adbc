@@ -17,6 +17,7 @@
 
 name: R
 
+# Runs on every PR that touches something the R package might use
 on:
   pull_request:
     branches:
@@ -27,16 +28,8 @@ on:
       - "go/adbc/driver/**"
       - "go/adbc/pkg/**"
       - "r/**"
-      - ".github/workflows/r.yml"
-
-  push:
-    paths:
-      - "adbc.h"
-      - "c/**"
-      - "go/adbc/driver/**"
-      - "go/adbc/pkg/**"
-      - "r/**"
-      - ".github/workflows/r.yml"
+      - ".github/workflows/r-basic.yml"
+      - ".github/workflows/r-check.yml"
 
 concurrency:
   group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
@@ -49,7 +42,7 @@ jobs:
   check:
     strategy:
       matrix:
-        os: [macOS, windows, ubuntu]
+        os: [ubuntu]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
 
     uses: ./.github/workflows/r-check.yml
