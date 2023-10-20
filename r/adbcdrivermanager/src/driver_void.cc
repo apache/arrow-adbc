@@ -23,9 +23,9 @@
 
 #include <adbc.h>
 
-using namespace adbc::r;
-
-using VoidDriver = Driver<DatabaseObjectBase, ConnectionObjectBase, StatementObjectBase>;
+using VoidDriver =
+    adbc::r::Driver<adbc::r::DatabaseObjectBase, adbc::r::ConnectionObjectBase,
+                    adbc::r::StatementObjectBase>;
 
 static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
                                          struct AdbcError* error) {
