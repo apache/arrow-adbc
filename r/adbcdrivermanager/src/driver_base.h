@@ -29,17 +29,17 @@ class Error {
 
   int DetailCount() const { return details_.size(); }
 
-  AdbcErrorDetail Detail(int index) {
-    const auto detail = details_[index];
+  AdbcErrorDetail Detail(int index) const {
+    const auto& detail = details_[index];
     return {detail.first.c_str(), reinterpret_cast<const uint8_t*>(detail.second.data()),
             detail.second.size()};
   }
 
-  void ToAdbc(AdbcError* adbc_error) {
+  void ToAdbc(AdbcError* adbc_error, AdbcDriver* driver = nullptr) {
     auto error_owned_by_adbc_error = new Error(message_, details_);
     adbc_error->message = const_cast<char*>(error_owned_by_adbc_error->message_.c_str());
     adbc_error->private_data = error_owned_by_adbc_error;
-    adbc_error->private_driver = nullptr;
+    adbc_error->private_driver = driver;
     adbc_error->vendor_code = ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
     for (size_t i = 0; i < 5; i++) {
       adbc_error->sqlstate[i] = error_owned_by_adbc_error->sql_state_[i];
@@ -148,6 +148,8 @@ class Option {
 // This class handles option setting and getting.
 class ObjectBase {
  public:
+  ObjectBase() : driver_(nullptr) {}
+
   virtual ~ObjectBase() {}
 
   virtual bool OptionKeySupported(const std::string& key, const Option& value) const {
@@ -157,11 +159,6 @@ class ObjectBase {
   virtual AdbcStatusCode Init(void* parent, AdbcError* error) { return ADBC_STATUS_OK; }
 
   virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
-
-  bool HasOption(const std::string& key) {
-    auto result = options_.find(key);
-    return result != options_.end();
-  }
 
   const Option& GetOption(const std::string& key,
                           const Option& default_value = Option()) const {
@@ -183,11 +180,14 @@ class ObjectBase {
   }
 
  private:
+  AdbcDriver* driver_;
   std::unordered_map<std::string, Option> options_;
 
   // Let the Driver use these to expose C callables wrapping option setters/getters
   template <typename DatabaseT, typename ConnectionT, typename StatementT>
   friend class Driver;
+
+  void set_driver(AdbcDriver* driver) { driver_ = driver; }
 
   template <typename T>
   AdbcStatusCode CSetOption(const char* key, T value, AdbcError* error) {
@@ -247,28 +247,28 @@ class ObjectBase {
     }
   }
 
-  static void InitErrorNotFound(const char* key, AdbcError* error) {
+  void InitErrorNotFound(const char* key, AdbcError* error) const {
     std::stringstream msg_builder;
     msg_builder << "Option not found for key '" << key << "'";
     Error cpperror(msg_builder.str());
     cpperror.AddDetail("adbc.r.option_key", key);
-    cpperror.ToAdbc(error);
+    cpperror.ToAdbc(error, driver_);
   }
 
-  static void InitErrorWrongType(const char* key, AdbcError* error) {
+  void InitErrorWrongType(const char* key, AdbcError* error) const {
     std::stringstream msg_builder;
     msg_builder << "Wrong type requested for option key '" << key << "'";
     Error cpperror(msg_builder.str());
     cpperror.AddDetail("adbc.r.option_key", key);
-    cpperror.ToAdbc(error);
+    cpperror.ToAdbc(error, driver_);
   }
 
-  static void InitErrorOptionNotSupported(const char* key, AdbcError* error) {
+  void InitErrorOptionNotSupported(const char* key, AdbcError* error) const {
     std::stringstream msg_builder;
     msg_builder << "Option '" << key << "' is not supported";
     Error cpperror(msg_builder.str());
     cpperror.AddDetail("adbc.r.option_key", key);
-    cpperror.ToAdbc(error);
+    cpperror.ToAdbc(error, driver_);
   }
 };
 
@@ -293,7 +293,7 @@ class StatementObjectBase : public ObjectBase {
 };
 
 template <typename DatabaseT, typename ConnectionT, typename StatementT>
-class Driver final {
+class Driver {
  public:
   static AdbcStatusCode Init(int version, void* raw_driver, AdbcError* error) {
     if (version != ADBC_VERSION_1_1_0) return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -460,13 +460,15 @@ class Driver final {
   // Database trampolines
   static AdbcStatusCode CDatabaseInit(AdbcDatabase* database, AdbcError* error) {
     auto private_data = reinterpret_cast<DatabaseT*>(database->private_data);
-    return private_data->Init(database->private_driver, error);
+    private_data->set_driver(database->private_driver);
+    return private_data->Init(database->private_driver->private_data, error);
   }
 
   // Connection trampolines
   static AdbcStatusCode CConnectionInit(AdbcConnection* connection,
                                         AdbcDatabase* database, AdbcError* error) {
     auto private_data = reinterpret_cast<ConnectionT*>(connection->private_data);
+    private_data->set_driver(connection->private_driver);
     return private_data->Init(database->private_data, error);
   }
 
@@ -474,6 +476,7 @@ class Driver final {
   static AdbcStatusCode CStatementNew(AdbcConnection* connection,
                                       AdbcStatement* statement, AdbcError* error) {
     auto private_data = new StatementT();
+    private_data->set_driver(connection->private_driver);
     AdbcStatusCode status = private_data->Init(connection->private_data, error);
     if (status != ADBC_STATUS_OK) {
       delete private_data;

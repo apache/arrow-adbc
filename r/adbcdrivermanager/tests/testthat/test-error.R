@@ -46,13 +46,16 @@ test_that("stop_for_error() gives a custom error class with extra info", {
   had_error <- FALSE
   tryCatch({
     db <- adbc_database_init(adbc_driver_void())
-    adbc_database_release(db)
-    adbc_database_release(db)
+    adbc_database_get_option(db, "this option does not exist")
   }, adbc_status = function(e) {
     had_error <<- TRUE
     expect_s3_class(e, "adbc_status")
-    expect_s3_class(e, "adbc_status_invalid_state")
-    expect_identical(e$error$status, 6L)
+    expect_s3_class(e, "adbc_status_not_found")
+    expect_identical(e$error$status, 3L)
+    expect_identical(
+      e$error$detail[["adbc.r.option_key"]],
+      charToRaw("this option does not exist")
+    )
   })
 
   expect_true(had_error)
