@@ -132,11 +132,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                         while (reader.Read())
                         {
                             count++;
-
-                            for(int i=0;i< reader.FieldCount;i++)
-                            {
-                                Console.WriteLine($"{reader.GetName(i)}: {reader.GetValue(i)}");
-                            }
                         }
                     }
                     finally { reader.Close(); }
