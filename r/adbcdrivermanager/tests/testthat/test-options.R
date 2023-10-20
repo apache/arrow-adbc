@@ -97,3 +97,35 @@ test_that("get option methods work on a statment for the void driver", {
     class = "adbc_status_not_found"
   )
 })
+
+test_that("key_value_options works", {
+  expect_identical(
+    key_value_options(NULL),
+    setNames(character(), character())
+  )
+
+  expect_identical(
+    key_value_options(c("key" = "value")),
+    c("key" = "value")
+  )
+
+  expect_identical(
+    key_value_options(list("key" = "value")),
+    c("key" = "value")
+  )
+
+  expect_identical(
+    key_value_options(list("key" = "value", "key2" = NULL)),
+    c("key" = "value")
+  )
+
+  expect_error(
+    key_value_options(list("value")),
+    "must be named"
+  )
+
+  expect_error(
+    key_value_options(setNames(list("value"), "")),
+    "must be named"
+  )
+})

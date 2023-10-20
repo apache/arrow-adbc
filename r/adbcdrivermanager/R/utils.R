@@ -15,23 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-key_value_options <- function(options) {
-  if (!is.character(options)) {
-    options <- as.list(options)
-    options <- options[!vapply(options, is.null, logical(1))]
-    options <- vapply(options, as.character, character(1))
-  }
-
-  keys <- names(options)
-  if (length(options) == 0) {
-    names(options) <- character()
-  } else if (is.null(keys) || all(keys == "")) {
-    stop("key/value options must be named")
-  }
-
-  options
-}
-
 new_env <- function() {
   new.env(parent = emptyenv())
 }
