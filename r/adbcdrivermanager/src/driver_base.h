@@ -343,10 +343,6 @@ class ConnectionPrivateBase : public PrivateBase {
 
 class StatementPrivateBase : public PrivateBase {
  public:
-  virtual AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
-    return ADBC_STATUS_NOT_IMPLEMENTED;
-  }
-
   virtual AdbcStatusCode ExecuteQuery(struct ArrowArrayStream* stream,
                                       int64_t* rows_affected, struct AdbcError* error) {
     return ADBC_STATUS_NOT_IMPLEMENTED;
@@ -379,13 +375,37 @@ class StatementPrivateBase : public PrivateBase {
 template <typename StatementPrivateT = StatementPrivateBase,
           typename ConnectionPrivateT = ConnectionPrivateBase,
           typename DatabasePrivateT = DatabasePrivateBase>
-class DriverBase {
+class Driver {
  private:
-  static AdbcStatusCode CRelease(AdbcDriver* driver, AdbcError* error) {
-    auto driver_private = reinterpret_cast<DriverBase*>(driver->private_data);
+  // Driver trampolines
+  static AdbcStatusCode CDriverRelease(AdbcDriver* driver, AdbcError* error) {
+    auto driver_private = reinterpret_cast<Driver*>(driver->private_data);
     delete driver_private;
     driver->private_data = nullptr;
     return ADBC_STATUS_OK;
+  }
+
+  // ObjectBase trampolines
+
+  // Statement trampolines
+  static AdbcStatusCode CStatementNew(AdbcConnection* connection,
+                                      AdbcStatement* statement, AdbcError* error) {
+    auto private_data = new StatementPrivateT();
+    AdbcStatusCode status = private_data->Init(connection->private_data, error);
+    if (status != ADBC_STATUS_OK) {
+      delete private_data;
+    }
+
+    statement->private_data = private_data;
+    return ADBC_STATUS_OK;
+  }
+
+  static AdbcStatusCode CStatementExecuteQuery(AdbcStatement* statement,
+                                               struct ArrowArrayStream* stream,
+                                               int64_t* rows_affected,
+                                               struct AdbcError* error) {
+    auto private_data = reinterpret_cast<StatementPrivateT*>(statement->private_data);
+    return private_data->ExecuteQuery(stream, rows_affected, error);
   }
 
  public:
@@ -395,8 +415,8 @@ class DriverBase {
     std::memset(driver, 0, sizeof(AdbcDriver));
 
     // Driver lifecycle
-    driver->private_data = new DriverBase();
-    driver->release = &DriverBase::CRelease;
+    driver->private_data = new Driver();
+    driver->release = &Driver::CDriverRelease;
 
     // Database lifecycle
     driver->DatabaseNew = &PrivateBase::CNew<AdbcDatabase, DatabasePrivateT>;
@@ -465,8 +485,7 @@ class DriverBase {
     driver->StatementGetOptionDouble =
         &PrivateBase::CGetOptionDouble<AdbcStatement, StatementPrivateT>;
 
-    driver->StatementExecuteQuery =
-        &StatementPrivateBase::CExecuteQuery<StatementPrivateT>;
+    driver->StatementExecuteQuery = &Driver::CStatementExecuteQuery;
 
     return ADBC_STATUS_OK;
   }
