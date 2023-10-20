@@ -82,85 +82,54 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override object GetValue(IArrowArray arrowArray, Field field, int index)
         {
-            if (arrowArray is Int64Array)
-            {
-                return ((Int64Array)arrowArray).GetValue(index);
-            }
-            else if (arrowArray is DoubleArray)
-            {
-                return ((DoubleArray)arrowArray).GetValue(index);
-            }
-            else if (arrowArray is Decimal128Array)
-            {
-                try
-                {
-                    // the value may be <decimal.min or >decimal.max
-                    // then Arrow throws an exception
-                    // no good way to check prior to
-                    return ((Decimal128Array)arrowArray).GetValue(index);
-                }
-                catch (OverflowException oex)
-                {
-                    return ParseDecimalValueFromOverflowException(oex);
-                }
-            }
-            else if (arrowArray is Decimal256Array)
-            {
-                try
-                {
-                    return ((Decimal256Array)arrowArray).GetValue(index);
-                }
-                catch (OverflowException oex)
-                {
-                    return ParseDecimalValueFromOverflowException(oex);
-                }
-            }
-            else if (arrowArray is BooleanArray)
-            {
-                return ((BooleanArray)arrowArray).GetValue(index);
-            }
-            else if (arrowArray is StringArray)
-            {
-                return ((StringArray)arrowArray).GetString(index);
-            }
-            else if (arrowArray is BinaryArray)
-            {
-                ReadOnlySpan<byte> bytes = ((BinaryArray)arrowArray).GetBytes(index);
+            if(arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
+            if (field == null) throw new ArgumentNullException(nameof(field));
+            if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
 
-                if (bytes != null)
-                    return bytes.ToArray();
-            }
-            else if (arrowArray is Date32Array)
+            try
             {
-                Date32Array date32Array = (Date32Array)arrowArray;
+                switch (arrowArray)
+                {
+                    case Int64Array int64Array:
+                        return int64Array.GetValue(index);
+                    case DoubleArray doubleArray:
+                        return doubleArray.GetValue(index);
+                    case Decimal128Array decimal128Array:
+                        return decimal128Array.GetValue(index);
+                    case Decimal256Array decimal256Array:
+                        return decimal256Array.GetValue(index);
+                    case BooleanArray booleanArray:
+                        return booleanArray.GetValue(index);
+                    case StringArray stringArray:
+                        return stringArray.GetString(index);
+                    case BinaryArray binaryArray:
 
-                return date32Array.GetDateTime(index);
-            }
-            else if (arrowArray is Date64Array)
-            {
-                Date64Array date64Array = (Date64Array)arrowArray;
+                        ReadOnlySpan<byte> bytes = binaryArray.GetBytes(index);
 
-                return date64Array.GetDateTime(index);
+                        if (bytes != null)
+                            return bytes.ToArray();
+                        else
+                            return null;
+
+                    case Date32Array date32Array:
+                        return date32Array.GetDateTime(index);
+                    case Date64Array date64Array:
+                        return date64Array.GetDateTime(index);
+                    case Time64Array time64Array:
+                        return time64Array.GetValue(index);
+                    case TimestampArray timestampArray:
+                        DateTimeOffset dateTimeOffset = timestampArray.GetTimestamp(index).Value;
+                        return dateTimeOffset;
+                    case StructArray structArray:
+                        return SerializeToJson(structArray, index);
+                    // maybe not be needed?
+                    case ListArray listArray:
+                        return listArray.GetSlicedValues(index);
+                }
             }
-            else if (arrowArray is Time64Array)
+            catch (OverflowException oex)
             {
-                return ((Time64Array)arrowArray).GetValue(index);
-            }
-            else if (arrowArray is TimestampArray)
-            {
-                TimestampArray timestampArray = (TimestampArray)arrowArray;
-                DateTimeOffset dateTimeOffset = timestampArray.GetTimestamp(index).Value;
-                return dateTimeOffset;
-            }
-            else if (arrowArray is StructArray)
-            {
-                StructArray structArray = (StructArray)arrowArray;
-                return SerializeToJson(structArray, index);
-            }
-            // maybe not be needed?
-            else if (arrowArray is ListArray)
-            {
-                return ((ListArray)arrowArray).GetSlicedValues(index);
+                return ParseDecimalValueFromOverflowException(oex);
             }
 
             return null;
