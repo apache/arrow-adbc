@@ -58,6 +58,5 @@ jobs:
     with:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
-      use_test_databases: "true"
     secrets:
       SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
