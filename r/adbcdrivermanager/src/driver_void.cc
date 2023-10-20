@@ -25,7 +25,7 @@
 
 static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
                                          struct AdbcError* error) {
-  return adbc::r::DriverBase<>::Init(version, raw_driver, error);
+  return adbc::r::Driver<>::Init(version, raw_driver, error);
 }
 
 extern "C" SEXP RAdbcVoidDriverInitFunc(void) {

@@ -96,17 +96,28 @@ class Option {
 
   double GetDoubleUnsafe() const { return value_double_; }
 
+ private:
+  Type type_;
+  std::string value_string_;
+  std::basic_string<uint8_t> value_bytes_;
+  double value_double_;
+  int64_t value_int_;
+
+  // Methods used by trampolines below
+  friend class ObjectBase;
+
   AdbcStatusCode CGet(char* out, size_t* length) const {
     switch (type_) {
-      case TYPE_STRING:
-        if (*length < value_string_.size()) {
-          *length = value_string_.size();
+      case TYPE_STRING: {
+        const std::string& value = GetStringUnsafe();
+        if (*length < value.size()) {
+          *length = value.size();
         } else {
-          memcpy(out, value_string_.data(), value_string_.size());
+          memcpy(out, value.data(), value.size());
         }
 
         return ADBC_STATUS_OK;
-
+      }
       default:
         return ADBC_STATUS_NOT_FOUND;
     }
@@ -114,15 +125,16 @@ class Option {
 
   AdbcStatusCode CGet(uint8_t* out, size_t* length) const {
     switch (type_) {
-      case TYPE_BYTES:
-        if (*length < value_bytes_.size()) {
-          *length = value_bytes_.size();
+      case TYPE_BYTES: {
+        const std::basic_string<uint8_t>& value = GetBytesUnsafe();
+        if (*length < value.size()) {
+          *length = value.size();
         } else {
-          memcpy(out, value_bytes_.data(), value_bytes_.size());
+          memcpy(out, value.data(), value.size());
         }
 
         return ADBC_STATUS_OK;
-
+      }
       default:
         return ADBC_STATUS_NOT_FOUND;
     }
@@ -131,7 +143,7 @@ class Option {
   AdbcStatusCode CGet(int64_t* value) const {
     switch (type_) {
       case TYPE_INT:
-        return value_int_;
+        return GetIntUnsafe();
       default:
         return ADBC_STATUS_NOT_FOUND;
     }
@@ -140,18 +152,11 @@ class Option {
   AdbcStatusCode CGet(double* value) const {
     switch (type_) {
       case TYPE_DOUBLE:
-        return value_double_;
+        return GetDoubleUnsafe();
       default:
         return ADBC_STATUS_NOT_FOUND;
     }
   }
-
- private:
-  Type type_;
-  std::string value_string_;
-  std::basic_string<uint8_t> value_bytes_;
-  double value_double_;
-  int64_t value_int_;
 };
 
 // Base class for private_data of AdbcDatabase, AdbcConnection, and AdbcStatement
@@ -193,8 +198,7 @@ class ObjectBase {
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
 
-    std::basic_string<uint8_t> cppvalue(value, length);
-    options_[key] = Option(cppvalue);
+    options_[key] = option;
     return ADBC_STATUS_OK;
   }
 
