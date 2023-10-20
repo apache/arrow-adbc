@@ -133,6 +133,12 @@ test_that("key_value_options works", {
     structure(list("key" = 1.1), class = "adbc_options")
   )
 
+  # Raw vectors are supported
+  expect_identical(
+    key_value_options(list("key" = as.raw(c(0x01, 0x05)))),
+    structure(list("key" = as.raw(c(0x01, 0x05))), class = "adbc_options")
+  )
+
   # S3 objects converted to strings
   expect_identical(
     key_value_options(list("key" = as.Date("2000-01-01"))),
