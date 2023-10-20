@@ -165,7 +165,7 @@ class ObjectBase {
  public:
   virtual ~ObjectBase() {}
 
-  virtual bool OptionKeySupported(const char* key, const Option& value) const {
+  virtual bool OptionKeySupported(const std::string& key, const Option& value) const {
     return true;
   }
 
@@ -173,44 +173,71 @@ class ObjectBase {
 
   virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
 
- protected:
-  std::unordered_map<std::string, Option> options_;
-
- private:
-  template <typename T>
-  AdbcStatusCode SetOption(const char* key, T value, AdbcError* error) {
-    Option option(value);
-    if (!OptionKeySupported(key, option)) {
-      InitErrorOptionNotSupported(key, error);
-      return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
-
-    options_[key] = option;
-    return ADBC_STATUS_OK;
+  bool HasOption(const std::string& key) {
+    auto result = options_.find(key);
+    return result != options_.end();
   }
 
-  AdbcStatusCode SetOptionBytes(const char* key, const uint8_t* value, size_t length,
-                                AdbcError* error) {
-    std::basic_string<uint8_t> cppvalue(value, length);
-    Option option(cppvalue);
-    if (!OptionKeySupported(key, option)) {
-      InitErrorOptionNotSupported(key, error);
-      return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
-
-    options_[key] = option;
-    return ADBC_STATUS_OK;
-  }
-
-  template <typename T>
-  AdbcStatusCode GetOptionStringLike(const char* key, T* value, size_t* length,
-                                     AdbcError* error) const {
+  const Option& GetOption(const std::string& key,
+                          const Option& default_value = Option()) const {
     auto result = options_.find(key);
     if (result == options_.end()) {
+      return default_value;
+    } else {
+      return result->second;
+    }
+  }
+
+  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
+    if (!OptionKeySupported(key, value)) {
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+
+    options_[key] = value;
+    return ADBC_STATUS_OK;
+  }
+
+ private:
+  std::unordered_map<std::string, Option> options_;
+
+  // Let the Driver use these to expose C callables wrapping option setters/getters
+  template <typename DatabaseT, typename ConnectionT, typename StatementT>
+  friend class Driver;
+
+  template <typename T>
+  AdbcStatusCode CSetOption(const char* key, T value, AdbcError* error) {
+    Option option(value);
+    AdbcStatusCode status = SetOption(key, option);
+    if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
+      InitErrorOptionNotSupported(key, error);
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+
+    return status;
+  }
+
+  AdbcStatusCode CSetOptionBytes(const char* key, const uint8_t* value, size_t length,
+                                 AdbcError* error) {
+    std::basic_string<uint8_t> cppvalue(value, length);
+    Option option(cppvalue);
+    AdbcStatusCode status = SetOption(key, option);
+    if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
+      InitErrorOptionNotSupported(key, error);
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+
+    return status;
+  }
+
+  template <typename T>
+  AdbcStatusCode CGetOptionStringLike(const char* key, T* value, size_t* length,
+                                      AdbcError* error) const {
+    Option result = GetOption(key);
+    if (result.type() == Option::TYPE_MISSING) {
       InitErrorNotFound(key, error);
       return ADBC_STATUS_NOT_FOUND;
     } else {
-      AdbcStatusCode status = result->second.CGet(value, length);
+      AdbcStatusCode status = result.CGet(value, length);
       if (status != ADBC_STATUS_OK) {
         InitErrorWrongType(key, error);
       }
@@ -220,13 +247,13 @@ class ObjectBase {
   }
 
   template <typename T>
-  AdbcStatusCode GetOptionNumeric(const char* key, T* value, AdbcError* error) const {
-    auto result = options_.find(key);
-    if (result == options_.end()) {
+  AdbcStatusCode CGetOptionNumeric(const char* key, T* value, AdbcError* error) const {
+    Option result = GetOption(key);
+    if (result.type() == Option::TYPE_MISSING) {
       InitErrorNotFound(key, error);
       return ADBC_STATUS_NOT_FOUND;
     } else {
-      AdbcStatusCode status = result->second.CGet(value);
+      AdbcStatusCode status = result.CGet(value);
       if (status != ADBC_STATUS_OK) {
         InitErrorWrongType(key, error);
       }
@@ -239,7 +266,7 @@ class ObjectBase {
     std::stringstream msg_builder;
     msg_builder << "Option not found for key '" << key << "'";
     Error cpperror(msg_builder.str());
-    cpperror.AddDetail("adbc.r.requested_key", key);
+    cpperror.AddDetail("adbc.r.option_key", key);
     cpperror.ToAdbc(error);
   }
 
@@ -247,7 +274,7 @@ class ObjectBase {
     std::stringstream msg_builder;
     msg_builder << "Wrong type requested for option key '" << key << "'";
     Error cpperror(msg_builder.str());
-    cpperror.AddDetail("adbc.r.requested_key", key);
+    cpperror.AddDetail("adbc.r.option_key", key);
     cpperror.ToAdbc(error);
   }
 
@@ -255,7 +282,7 @@ class ObjectBase {
     std::stringstream msg_builder;
     msg_builder << "Option '" << key << "' is not supported";
     Error cpperror(msg_builder.str());
-    cpperror.AddDetail("adbc.r.requested_key", key);
+    cpperror.AddDetail("adbc.r.option_key", key);
     cpperror.ToAdbc(error);
   }
 
@@ -264,56 +291,56 @@ class ObjectBase {
   static AdbcStatusCode CSetOption(T* obj, const char* key, const char* value,
                                    AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return private_data->template SetOption<>(key, value, error);
+    return private_data->template CSetOption<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOptionBytes(T* obj, const char* key, const uint8_t* value,
                                         size_t length, AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return private_data->template SetOption<>(key, value, error);
+    return private_data->template CSetOption<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOptionInt(T* obj, const char* key, int64_t value,
                                       AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return private_data->template SetOption<>(key, value, error);
+    return private_data->template CSetOption<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CSetOptionDouble(T* obj, const char* key, double value,
                                          AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return private_data->template SetOption<>(key, value, error);
+    return private_data->template CSetOption<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOption(T* obj, const char* key, char* value, size_t* length,
                                    AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return private_data->template GetOptionStringLike<>(key, value, length, error);
+    return private_data->template CGetOptionStringLike<>(key, value, length, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOptionBytes(T* obj, const char* key, uint8_t* value,
                                         size_t* length, AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return private_data->template GetOptionStringLike<>(key, value, length, error);
+    return private_data->template CGetOptionStringLike<>(key, value, length, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOptionInt(T* obj, const char* key, int64_t* value,
                                       AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return private_data->template GetOptionNumeric<>(key, value, error);
+    return private_data->template CGetOptionNumeric<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
   static AdbcStatusCode CGetOptionDouble(T* obj, const char* key, double* value,
                                          AdbcError* error) {
     auto private_data = reinterpret_cast<PrivateCls*>(obj->private_data);
-    return private_data->template GetOptionNumeric<>(key, value, error);
+    return private_data->template CGetOptionNumeric<>(key, value, error);
   }
 
   template <typename T, typename PrivateCls>
@@ -368,32 +395,9 @@ class StatementObjectBase : public ObjectBase {
   }
 
   // TODO: Add remaining statement functions here as methods
-
-  template <typename PrivateCls>
-  static AdbcStatusCode CStatementNew(AdbcConnection* connection,
-                                      AdbcStatement* statement, AdbcError* error) {
-    auto private_data = new PrivateCls();
-    AdbcStatusCode status = private_data->Init(connection->private_data, error);
-    if (status != ADBC_STATUS_OK) {
-      delete private_data;
-    }
-
-    statement->private_data = private_data;
-    return ADBC_STATUS_OK;
-  }
-
-  template <typename PrivateCls>
-  static AdbcStatusCode CExecuteQuery(AdbcStatement* statement,
-                                      struct ArrowArrayStream* stream,
-                                      int64_t* rows_affected, struct AdbcError* error) {
-    auto private_data = reinterpret_cast<PrivateCls*>(statement->private_data);
-    return private_data->ExecuteQuery(stream, rows_affected, error);
-  }
 };
 
-template <typename StatementPrivateT = StatementObjectBase,
-          typename ConnectionPrivateT = ConnectionObjectBase,
-          typename DatabasePrivateT = DatabaseObjectBase>
+template <typename DatabaseT, typename ConnectionT, typename StatementT>
 class Driver {
  private:
   // Driver trampolines
@@ -409,7 +413,7 @@ class Driver {
   // Statement trampolines
   static AdbcStatusCode CStatementNew(AdbcConnection* connection,
                                       AdbcStatement* statement, AdbcError* error) {
-    auto private_data = new StatementPrivateT();
+    auto private_data = new StatementT();
     AdbcStatusCode status = private_data->Init(connection->private_data, error);
     if (status != ADBC_STATUS_OK) {
       delete private_data;
@@ -423,7 +427,7 @@ class Driver {
                                                struct ArrowArrayStream* stream,
                                                int64_t* rows_affected,
                                                struct AdbcError* error) {
-    auto private_data = reinterpret_cast<StatementPrivateT*>(statement->private_data);
+    auto private_data = reinterpret_cast<StatementT*>(statement->private_data);
     return private_data->ExecuteQuery(stream, rows_affected, error);
   }
 
@@ -438,70 +442,62 @@ class Driver {
     driver->release = &Driver::CDriverRelease;
 
     // Database lifecycle
-    driver->DatabaseNew = &ObjectBase::CNew<AdbcDatabase, DatabasePrivateT>;
-    driver->DatabaseInit = &DatabaseObjectBase::CInit<DatabasePrivateT>;
-    driver->DatabaseRelease = &ObjectBase::CRelease<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseNew = &ObjectBase::CNew<AdbcDatabase, DatabaseT>;
+    driver->DatabaseInit = &DatabaseObjectBase::CInit<DatabaseT>;
+    driver->DatabaseRelease = &ObjectBase::CRelease<AdbcDatabase, DatabaseT>;
 
     // Database functions
-    driver->DatabaseSetOption = &ObjectBase::CSetOption<AdbcDatabase, DatabasePrivateT>;
+    driver->DatabaseSetOption = &ObjectBase::CSetOption<AdbcDatabase, DatabaseT>;
     driver->DatabaseSetOptionBytes =
-        &ObjectBase::CSetOptionBytes<AdbcDatabase, DatabasePrivateT>;
-    driver->DatabaseSetOptionInt =
-        &ObjectBase::CSetOptionInt<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CSetOptionBytes<AdbcDatabase, DatabaseT>;
+    driver->DatabaseSetOptionInt = &ObjectBase::CSetOptionInt<AdbcDatabase, DatabaseT>;
     driver->DatabaseSetOptionDouble =
-        &ObjectBase::CSetOptionDouble<AdbcDatabase, DatabasePrivateT>;
-    driver->DatabaseGetOption = &ObjectBase::CGetOption<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CSetOptionDouble<AdbcDatabase, DatabaseT>;
+    driver->DatabaseGetOption = &ObjectBase::CGetOption<AdbcDatabase, DatabaseT>;
     driver->DatabaseGetOptionBytes =
-        &ObjectBase::CGetOptionBytes<AdbcDatabase, DatabasePrivateT>;
-    driver->DatabaseGetOptionInt =
-        &ObjectBase::CGetOptionInt<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CGetOptionBytes<AdbcDatabase, DatabaseT>;
+    driver->DatabaseGetOptionInt = &ObjectBase::CGetOptionInt<AdbcDatabase, DatabaseT>;
     driver->DatabaseGetOptionDouble =
-        &ObjectBase::CGetOptionDouble<AdbcDatabase, DatabasePrivateT>;
+        &ObjectBase::CGetOptionDouble<AdbcDatabase, DatabaseT>;
 
     // Connection lifecycle
-    driver->ConnectionNew = &ObjectBase::CNew<AdbcConnection, ConnectionPrivateT>;
-    driver->ConnectionInit = &ConnectionObjectBase::CInit<ConnectionPrivateT>;
-    driver->ConnectionRelease = &ObjectBase::CRelease<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionNew = &ObjectBase::CNew<AdbcConnection, ConnectionT>;
+    driver->ConnectionInit = &ConnectionObjectBase::CInit<ConnectionT>;
+    driver->ConnectionRelease = &ObjectBase::CRelease<AdbcConnection, ConnectionT>;
 
     // Connection functions
-    driver->ConnectionSetOption =
-        &ObjectBase::CSetOption<AdbcConnection, ConnectionPrivateT>;
+    driver->ConnectionSetOption = &ObjectBase::CSetOption<AdbcConnection, ConnectionT>;
     driver->ConnectionSetOptionBytes =
-        &ObjectBase::CSetOptionBytes<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CSetOptionBytes<AdbcConnection, ConnectionT>;
     driver->ConnectionSetOptionInt =
-        &ObjectBase::CSetOptionInt<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CSetOptionInt<AdbcConnection, ConnectionT>;
     driver->ConnectionSetOptionDouble =
-        &ObjectBase::CSetOptionDouble<AdbcConnection, ConnectionPrivateT>;
-    driver->ConnectionGetOption =
-        &ObjectBase::CGetOption<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CSetOptionDouble<AdbcConnection, ConnectionT>;
+    driver->ConnectionGetOption = &ObjectBase::CGetOption<AdbcConnection, ConnectionT>;
     driver->ConnectionGetOptionBytes =
-        &ObjectBase::CGetOptionBytes<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CGetOptionBytes<AdbcConnection, ConnectionT>;
     driver->ConnectionGetOptionInt =
-        &ObjectBase::CGetOptionInt<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CGetOptionInt<AdbcConnection, ConnectionT>;
     driver->ConnectionGetOptionDouble =
-        &ObjectBase::CGetOptionDouble<AdbcConnection, ConnectionPrivateT>;
+        &ObjectBase::CGetOptionDouble<AdbcConnection, ConnectionT>;
 
     // Statement lifecycle
-    driver->StatementNew = &StatementObjectBase::CStatementNew<StatementPrivateT>;
-    driver->StatementRelease = &ObjectBase::CRelease<AdbcStatement, StatementPrivateT>;
+    driver->StatementNew = &Driver::CStatementNew;
+    driver->StatementRelease = &ObjectBase::CRelease<AdbcStatement, StatementT>;
 
     // Statement functions
-    driver->StatementSetOption =
-        &ObjectBase::CSetOption<AdbcStatement, StatementPrivateT>;
+    driver->StatementSetOption = &ObjectBase::CSetOption<AdbcStatement, StatementT>;
     driver->StatementSetOptionBytes =
-        &ObjectBase::CSetOptionBytes<AdbcStatement, StatementPrivateT>;
-    driver->StatementSetOptionInt =
-        &ObjectBase::CSetOptionInt<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CSetOptionBytes<AdbcStatement, StatementT>;
+    driver->StatementSetOptionInt = &ObjectBase::CSetOptionInt<AdbcStatement, StatementT>;
     driver->StatementSetOptionDouble =
-        &ObjectBase::CSetOptionDouble<AdbcStatement, StatementPrivateT>;
-    driver->StatementGetOption =
-        &ObjectBase::CGetOption<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CSetOptionDouble<AdbcStatement, StatementT>;
+    driver->StatementGetOption = &ObjectBase::CGetOption<AdbcStatement, StatementT>;
     driver->StatementGetOptionBytes =
-        &ObjectBase::CGetOptionBytes<AdbcStatement, StatementPrivateT>;
-    driver->StatementGetOptionInt =
-        &ObjectBase::CGetOptionInt<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CGetOptionBytes<AdbcStatement, StatementT>;
+    driver->StatementGetOptionInt = &ObjectBase::CGetOptionInt<AdbcStatement, StatementT>;
     driver->StatementGetOptionDouble =
-        &ObjectBase::CGetOptionDouble<AdbcStatement, StatementPrivateT>;
+        &ObjectBase::CGetOptionDouble<AdbcStatement, StatementT>;
 
     driver->StatementExecuteQuery = &Driver::CStatementExecuteQuery;
 

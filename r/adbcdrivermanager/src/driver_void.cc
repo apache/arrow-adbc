@@ -23,9 +23,13 @@
 
 #include <adbc.h>
 
+using namespace adbc::r;
+
+using VoidDriver = Driver<DatabaseObjectBase, ConnectionObjectBase, StatementObjectBase>;
+
 static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
                                          struct AdbcError* error) {
-  return adbc::r::Driver<>::Init(version, raw_driver, error);
+  return VoidDriver::Init(version, raw_driver, error);
 }
 
 extern "C" SEXP RAdbcVoidDriverInitFunc(void) {
