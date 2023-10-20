@@ -7,12 +7,15 @@
 \alias{adbc_connection_get_table_types}
 \alias{adbc_connection_read_partition}
 \alias{adbc_connection_commit}
+\alias{adbc_connection_rollback}
+\alias{adbc_connection_cancel}
+\alias{adbc_connection_get_statistic_names}
+\alias{adbc_connection_get_statistics}
 \alias{adbc_connection_quote_identifier}
 \alias{adbc_connection_quote_string}
-\alias{adbc_connection_rollback}
 \title{Connection methods}
 \usage{
-adbc_connection_get_info(connection, info_codes)
+adbc_connection_get_info(connection, info_codes = NULL)
 
 adbc_connection_get_objects(
   connection,
@@ -32,11 +35,23 @@ adbc_connection_read_partition(connection, serialized_partition)
 
 adbc_connection_commit(connection)
 
+adbc_connection_rollback(connection)
+
+adbc_connection_cancel(connection)
+
+adbc_connection_get_statistic_names(connection)
+
+adbc_connection_get_statistics(
+  connection,
+  catalog,
+  db_schema,
+  table_name,
+  approximate = FALSE
+)
+
 adbc_connection_quote_identifier(connection, value, ...)
 
 adbc_connection_quote_string(connection, value, ...)
-
-adbc_connection_rollback(connection)
 }
 \arguments{
 \item{connection}{An \link[=adbc_connection_init]{adbc_connection}}
@@ -56,8 +71,8 @@ a search pattern.}
 not filter by database schema. If an empty string, only show tables without
 a database schema. May be a search pattern.}
 
-\item{table_name}{Only show tables with the given name. If NULL, do not
-filter by name. May be a search pattern.}
+\item{table_name}{Constrain an object or statistics query for a specific table.
+If NULL, do not filter by name. May be a search pattern.}
 
 \item{table_type}{Only show tables matching one of the given table types. If
 NULL, show tables of any type. Valid table types can be fetched from
@@ -67,6 +82,11 @@ GetTableTypes. Terminate the list with a NULL entry.}
 filter by name. May be a search pattern.}
 
 \item{serialized_partition}{The partition descriptor.}
+
+\item{approximate}{If \code{FALSE}, request exact values of statistics,
+else allow for best-effort, approximate, or cached values. The database
+may return approximate values regardless, as indicated in the result.
+Requesting exact values may be expensive or unsupported.}
 
 \item{value}{A string or identifier.}
 
