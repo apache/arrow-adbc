@@ -35,6 +35,9 @@ on:
         required: false
         default: release
         type: string
+    secrets:
+      SNOWFLAKE_URI:
+        required: false
 
 jobs:
   r-check:
