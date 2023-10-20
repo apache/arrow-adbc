@@ -457,6 +457,11 @@ AdbcStatusCode StatementBind(struct AdbcStatement*, struct ArrowArray*,
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode StatementBindStream(struct AdbcStatement*, struct ArrowArrayStream*,
+                                   struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode StatementCancel(struct AdbcStatement* statement, struct AdbcError* error) {
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
@@ -1666,6 +1671,7 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     CHECK_REQUIRED(driver, StatementNew);
     CHECK_REQUIRED(driver, StatementRelease);
     FILL_DEFAULT(driver, StatementBind);
+    FILL_DEFAULT(driver, StatementBindStream);
     FILL_DEFAULT(driver, StatementGetParameterSchema);
     FILL_DEFAULT(driver, StatementPrepare);
     FILL_DEFAULT(driver, StatementSetOption);
