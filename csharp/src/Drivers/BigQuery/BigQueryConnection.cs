@@ -57,10 +57,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             this.properties = properties;
 
-            // add the default value for now and set to true 
+            // add the default value for now and set to true
             Dictionary<string, string> modifiedProperties = this.properties.ToDictionary(k => k.Key, v => v.Value);
             modifiedProperties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
-            this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);      
+            this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);
         }
 
         /// <summary>
@@ -908,14 +908,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private string Sanitize(string input)
         {
-            bool isValidInput = Regex.IsMatch(input, "^([a-zA-Z0-9\\-]+[ _-]+?)*$");
+            bool isValidInput = Regex.IsMatch(input, "^[a-zA-Z0-9_-]+");
 
             if (isValidInput)
             {
                 return input;
             }
             else
-            { 
+            {
                 throw new AdbcException($"{input} is invalid", AdbcStatusCode.InvalidArgument);
             }
         }
