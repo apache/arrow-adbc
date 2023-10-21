@@ -31,9 +31,10 @@ namespace r {
 
 class Error {
  public:
-  Error(const std::string& message) : message_(message), sql_state_("\0\0\0\0\0") {}
+  explicit Error(const std::string& message)
+      : message_(message), sql_state_("\0\0\0\0\0") {}
 
-  Error(const char* message) : Error(std::string(message)) {}
+  explicit Error(const char* message) : Error(std::string(message)) {}
 
   Error(const std::string& message,
         const std::vector<std::pair<std::string, std::string>>& details)
