@@ -23,21 +23,9 @@ test_that("get/set option can roundtrip string options for database", {
   )
 
   adbc_database_set_options(db, list("some_key" = "some value"))
-  expect_identical(adbc_database_get_option(db, "some_key"), "some value")
-
-  expect_error(
+  expect_identical(
     adbc_database_get_option_bytes(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_int(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_double(db, "some_key"),
-    class = "adbc_status_not_found"
+    "some value"
   )
 })
 
@@ -52,21 +40,6 @@ test_that("get/set option can roundtrip bytes options for database", {
   expect_identical(
     adbc_database_get_option_bytes(db, "some_key"),
     charToRaw("some value")
-  )
-
-  expect_error(
-    adbc_database_get_option(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_int(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_double(db, "some_key"),
-    class = "adbc_status_not_found"
   )
 })
 
@@ -83,24 +56,9 @@ test_that("get/set option can roundtrip integer options for database", {
     adbc_database_get_option_int(db, "some_key"),
     123L
   )
-
-  expect_error(
-    adbc_database_get_option(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_bytes(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_double(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
 })
 
-test_that("get/set option can roundtrip integer options for database", {
+test_that("get/set option can roundtrip double options for database", {
   db <- adbc_database_init(adbc_driver_void())
 
   expect_error(
@@ -112,21 +70,6 @@ test_that("get/set option can roundtrip integer options for database", {
   expect_identical(
     adbc_database_get_option_double(db, "some_key"),
     123.4
-  )
-
-  expect_error(
-    adbc_database_get_option(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_bytes(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_database_get_option_int(db, "some_key"),
-    class = "adbc_status_not_found"
   )
 })
 
@@ -141,21 +84,9 @@ test_that("get/set option can roundtrip string options for connection", {
   )
 
   adbc_connection_set_options(con, list("some_key" = "some value"))
-  expect_identical(adbc_connection_get_option(con, "some_key"), "some value")
-
-  expect_error(
-    adbc_connection_get_option_bytes(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_connection_get_option_int(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_connection_get_option_double(con, "some_key"),
-    class = "adbc_status_not_found"
+  expect_identical(
+    adbc_connection_get_option(con, "some_key"),
+    "some value"
   )
 })
 
@@ -173,21 +104,6 @@ test_that("get/set option can roundtrip bytes options for connection", {
     adbc_connection_get_option_bytes(con, "some_key"),
     charToRaw("some value")
   )
-
-  expect_error(
-    adbc_connection_get_option(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_connection_get_option_int(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_connection_get_option_double(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
 })
 
 test_that("get/set option can roundtrip int options for connection", {
@@ -203,21 +119,6 @@ test_that("get/set option can roundtrip int options for connection", {
   expect_identical(
     adbc_connection_get_option_int(con, "some_key"),
     123L
-  )
-
-  expect_error(
-    adbc_connection_get_option(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_connection_get_option_bytes(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_connection_get_option_double(con, "some_key"),
-    class = "adbc_status_not_found"
   )
 })
 
@@ -235,21 +136,6 @@ test_that("get/set option can roundtrip double options for connection", {
     adbc_connection_get_option_double(con, "some_key"),
     123.4
   )
-
-  expect_error(
-    adbc_connection_get_option(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_connection_get_option_bytes(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_connection_get_option_int(con, "some_key"),
-    class = "adbc_status_not_found"
-  )
 })
 
 test_that("get/set option can roundtrip string options for statement", {
@@ -263,21 +149,9 @@ test_that("get/set option can roundtrip string options for statement", {
   )
 
   adbc_statement_set_options(stmt, list("some_key" = "some value"))
-  expect_identical(adbc_statement_get_option(stmt, "some_key"), "some value")
-
-  expect_error(
-    adbc_statement_get_option_bytes(stmt, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_statement_get_option_int(stmt, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_statement_get_option_double(stmt, "some_key"),
-    class = "adbc_status_not_found"
+  expect_identical(
+    adbc_statement_get_option(stmt, "some_key"),
+    "some value"
   )
 })
 
@@ -296,21 +170,6 @@ test_that("get/set option can roundtrip bytes options for statement", {
     adbc_statement_get_option_bytes(stmt, "some_key"),
     charToRaw("some value")
   )
-
-  expect_error(
-    adbc_statement_get_option(stmt, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_statement_get_option_int(stmt, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_statement_get_option_double(stmt, "some_key"),
-    class = "adbc_status_not_found"
-  )
 })
 
 test_that("get/set option can roundtrip int options for statement", {
@@ -327,21 +186,6 @@ test_that("get/set option can roundtrip int options for statement", {
   expect_identical(
     adbc_statement_get_option_int(stmt, "some_key"),
     123L
-  )
-
-  expect_error(
-    adbc_statement_get_option(stmt, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_statement_get_option_bytes(stmt, "some_key"),
-    class = "adbc_status_not_found"
-  )
-
-  expect_error(
-    adbc_statement_get_option_double(stmt, "some_key"),
-    class = "adbc_status_not_found"
   )
 })
 
@@ -360,19 +204,84 @@ test_that("get/set option can roundtrip double options for statement", {
     adbc_statement_get_option_double(stmt, "some_key"),
     123.4
   )
+})
+
+test_that("void driver errors getting string option of incorrect type", {
+  db <- adbc_database_init(adbc_driver_void())
+  adbc_database_set_options(db, list("some_key" = "some value"))
 
   expect_error(
-    adbc_statement_get_option(stmt, "some_key"),
+    adbc_database_get_option_bytes(db, "some_key"),
     class = "adbc_status_not_found"
   )
 
   expect_error(
-    adbc_statement_get_option_bytes(stmt, "some_key"),
+    adbc_database_get_option_int(db, "some_key"),
     class = "adbc_status_not_found"
   )
 
   expect_error(
-    adbc_statement_get_option_int(stmt, "some_key"),
+    adbc_database_get_option_double(db, "some_key"),
+    class = "adbc_status_not_found"
+  )
+})
+
+test_that("void driver errors getting bytes option of incorrect type", {
+  db <- adbc_database_init(adbc_driver_void())
+  adbc_database_set_options(db, list("some_key" = charToRaw("some value")))
+
+  expect_error(
+    adbc_database_get_option(db, "some_key"),
+    class = "adbc_status_not_found"
+  )
+
+  expect_error(
+    adbc_database_get_option_int(db, "some_key"),
+    class = "adbc_status_not_found"
+  )
+
+  expect_error(
+    adbc_database_get_option_double(db, "some_key"),
+    class = "adbc_status_not_found"
+  )
+})
+
+test_that("void driver errors getting integer option of incorrect type", {
+  db <- adbc_database_init(adbc_driver_void())
+  adbc_database_set_options(db, list("some_key" = 123L))
+
+  expect_error(
+    adbc_database_get_option(db, "some_key"),
+    class = "adbc_status_not_found"
+  )
+
+  expect_error(
+    adbc_database_get_option_bytes(db, "some_key"),
+    class = "adbc_status_not_found"
+  )
+
+  expect_error(
+    adbc_database_get_option_double(db, "some_key"),
+    class = "adbc_status_not_found"
+  )
+})
+
+test_that("void driver errors getting double option of incorrect type", {
+  db <- adbc_database_init(adbc_driver_void())
+  adbc_database_set_options(db, list("some_key" = 123.4))
+
+  expect_error(
+    adbc_database_get_option(db, "some_key"),
+    class = "adbc_status_not_found"
+  )
+
+  expect_error(
+    adbc_database_get_option_bytes(db, "some_key"),
+    class = "adbc_status_not_found"
+  )
+
+  expect_error(
+    adbc_database_get_option_int(db, "some_key"),
     class = "adbc_status_not_found"
   )
 })
