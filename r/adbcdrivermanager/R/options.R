@@ -161,7 +161,7 @@ adbc_statement_get_option_double <- function(statement, option) {
   .Call(RAdbcStatementGetOptionDouble, statement, option, error)
 }
 
-# Ensures that options are a list of character, integer, or double
+# Ensures that options are a list of bare character, raw, integer, or double
 key_value_options <- function(options) {
   options <- as.list(options)
 
@@ -208,10 +208,10 @@ key_value_options <- function(options) {
     out_names[n_out] <- key
     if (is.character(item)) {
       out[[n_out]] <- item
-    } else if (is.integer(item) || numeric_is_integer(item)) {
+    } else if (is.integer(item)) {
       out[[n_out]] <- as.integer(item)
-    } else if (is.numeric(item)) {
-      out[[n_out]] <- as.numeric(item)
+    } else if (is.double(item)) {
+      out[[n_out]] <- as.double(item)
     } else if (is.raw(item)) {
       out[[n_out]] <- item
     } else {
@@ -227,8 +227,4 @@ key_value_options <- function(options) {
 
   names(out) <- out_names
   structure(out[seq_len(n_out)], class = "adbc_options")
-}
-
-numeric_is_integer <- function(x) {
-  is.numeric(x) && identical(x, round(x))
 }

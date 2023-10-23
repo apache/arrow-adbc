@@ -400,16 +400,10 @@ test_that("key_value_options works", {
     structure(list("key" = 1L), class = "adbc_options")
   )
 
-  # Doubles opportunistically converted to integers if possible
+  # Doubles stay doubles
   expect_identical(
     key_value_options(list("key" = 1)),
-    structure(list("key" = 1L), class = "adbc_options")
-  )
-
-  # Doubles not truncated to integers if not possible
-  expect_identical(
-    key_value_options(list("key" = 1.1)),
-    structure(list("key" = 1.1), class = "adbc_options")
+    structure(list("key" = 1), class = "adbc_options")
   )
 
   # Raw vectors are supported
