@@ -44,14 +44,6 @@ class Error {
     details_.push_back({key, value});
   }
 
-  int DetailCount() const { return details_.size(); }
-
-  AdbcErrorDetail Detail(int index) const {
-    const auto& detail = details_[index];
-    return {detail.first.c_str(), reinterpret_cast<const uint8_t*>(detail.second.data()),
-            detail.second.size()};
-  }
-
   void ToAdbc(AdbcError* adbc_error, AdbcDriver* driver = nullptr) {
     auto error_owned_by_adbc_error = new Error(message_, details_);
     adbc_error->message = const_cast<char*>(error_owned_by_adbc_error->message_.c_str());
@@ -69,6 +61,18 @@ class Error {
   std::string message_;
   std::vector<std::pair<std::string, std::string>> details_;
   std::string sql_state_;
+
+  // Let the Driver use these to expose C callables wrapping option setters/getters
+  template <typename DatabaseT, typename ConnectionT, typename StatementT>
+  friend class Driver;
+
+  int CDetailCount() const { return details_.size(); }
+
+  AdbcErrorDetail CDetail(int index) const {
+    const auto& detail = details_[index];
+    return {detail.first.c_str(), reinterpret_cast<const uint8_t*>(detail.second.data()),
+            detail.second.size()};
+  }
 
   static void CRelease(AdbcError* error) {
     auto error_obj = reinterpret_cast<Error*>(error->private_data);
@@ -391,12 +395,12 @@ class Driver {
     }
 
     auto error_obj = reinterpret_cast<Error*>(error->private_data);
-    return error_obj->DetailCount();
+    return error_obj->CDetailCount();
   }
 
   static AdbcErrorDetail CErrorGetDetail(const AdbcError* error, int index) {
     auto error_obj = reinterpret_cast<Error*>(error->private_data);
-    return error_obj->Detail(index);
+    return error_obj->CDetail(index);
   }
 
   // Templatable trampolines
