@@ -24,7 +24,7 @@ test_that("get/set option can roundtrip string options for database", {
 
   adbc_database_set_options(db, list("some_key" = "some value"))
   expect_identical(
-    adbc_database_get_option_bytes(db, "some_key"),
+    adbc_database_get_option(db, "some_key"),
     "some value"
   )
 })

@@ -45,15 +45,22 @@ class Error {
   }
 
   void ToAdbc(AdbcError* adbc_error, AdbcDriver* driver = nullptr) {
-    auto error_owned_by_adbc_error = new Error(message_, details_);
-    adbc_error->message = const_cast<char*>(error_owned_by_adbc_error->message_.c_str());
-    adbc_error->private_data = error_owned_by_adbc_error;
-    adbc_error->private_driver = driver;
-    adbc_error->vendor_code = ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
-    for (size_t i = 0; i < 5; i++) {
-      adbc_error->sqlstate[i] = error_owned_by_adbc_error->sql_state_[i];
+    if (adbc_error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
+      auto error_owned_by_adbc_error = new Error(message_, details_);
+      adbc_error->message =
+          const_cast<char*>(error_owned_by_adbc_error->message_.c_str());
+      adbc_error->private_data = error_owned_by_adbc_error;
+      adbc_error->private_driver = driver;
+    } else {
+      adbc_error->message = reinterpret_cast<char*>(std::malloc(message_.size() + 1));
+      if (adbc_error->message != nullptr) {
+        memcpy(adbc_error->message, message_.c_str(), message_.size() + 1);
+      }
     }
 
+    for (size_t i = 0; i < 5; i++) {
+      adbc_error->sqlstate[i] = sql_state_[i];
+    }
     adbc_error->release = &CRelease;
   }
 
@@ -75,8 +82,13 @@ class Error {
   }
 
   static void CRelease(AdbcError* error) {
-    auto error_obj = reinterpret_cast<Error*>(error->private_data);
-    delete error_obj;
+    if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
+      auto error_obj = reinterpret_cast<Error*>(error->private_data);
+      delete error_obj;
+    } else {
+      std::free(error->message);
+    }
+
     std::memset(error, 0, sizeof(AdbcError));
   }
 };

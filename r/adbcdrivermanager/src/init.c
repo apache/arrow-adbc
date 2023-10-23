@@ -23,7 +23,7 @@
 SEXP RAdbcLogDriverInitFunc(void);
 SEXP RAdbcMonkeyDriverInitFunc(void);
 SEXP RAdbcVoidDriverInitFunc(void);
-SEXP RAdbcAllocateError(SEXP shelter_sexp);
+SEXP RAdbcAllocateError(SEXP shelter_sexp, SEXP use_legacy_error_sexp);
 SEXP RAdbcErrorProxy(SEXP error_xptr);
 SEXP RAdbcErrorFromArrayStream(SEXP stream_xptr);
 SEXP RAdbcStatusCodeMessage(SEXP status_sexp);
@@ -103,7 +103,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcLogDriverInitFunc", (DL_FUNC)&RAdbcLogDriverInitFunc, 0},
     {"RAdbcMonkeyDriverInitFunc", (DL_FUNC)&RAdbcMonkeyDriverInitFunc, 0},
     {"RAdbcVoidDriverInitFunc", (DL_FUNC)&RAdbcVoidDriverInitFunc, 0},
-    {"RAdbcAllocateError", (DL_FUNC)&RAdbcAllocateError, 1},
+    {"RAdbcAllocateError", (DL_FUNC)&RAdbcAllocateError, 2},
     {"RAdbcErrorProxy", (DL_FUNC)&RAdbcErrorProxy, 1},
     {"RAdbcErrorFromArrayStream", (DL_FUNC)&RAdbcErrorFromArrayStream, 1},
     {"RAdbcStatusCodeMessage", (DL_FUNC)&RAdbcStatusCodeMessage, 1},

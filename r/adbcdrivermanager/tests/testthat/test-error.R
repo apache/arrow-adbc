@@ -37,7 +37,6 @@ test_that("error allocator works", {
   expect_identical(length(err), 4L)
   expect_identical(names(err), c("message", "vendor_code", "sqlstate", "details"))
   expect_null(err$message)
-  expect_identical(err$vendor_code, 0L)
   expect_identical(err$sqlstate, as.raw(c(0x00, 0x00, 0x00, 0x00, 0x00)))
   expect_identical(err$details, setNames(list(), character()))
 })
@@ -56,6 +55,26 @@ test_that("stop_for_error() gives a custom error class with extra info", {
       e$error$detail[["adbc.r.option_key"]],
       charToRaw("this option does not exist")
     )
+  })
+
+  expect_true(had_error)
+})
+
+test_that("void driver can report error to ADBC 1.0.0 structs", {
+  opts <- options(adbcdrivermanager.use_legacy_error = TRUE)
+  on.exit(options(opts))
+
+  had_error <- FALSE
+  tryCatch({
+    db <- adbc_database_init(adbc_driver_void())
+    adbc_database_get_option(db, "this option does not exist")
+  }, adbc_status = function(e) {
+    had_error <<- TRUE
+    expect_s3_class(e, "adbc_status")
+    expect_s3_class(e, "adbc_status_not_found")
+    expect_identical(e$error$status, 3L)
+    expect_identical(e$error$vendor_code, 0L)
+    expect_identical(e$error$details, setNames(list(), character()))
   })
 
   expect_true(had_error)

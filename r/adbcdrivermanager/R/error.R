@@ -42,8 +42,12 @@ adbc_error_from_array_stream <- function(stream) {
   .Call(RAdbcErrorFromArrayStream, stream)
 }
 
-adbc_allocate_error <- function(shelter = NULL) {
-  .Call(RAdbcAllocateError, shelter)
+adbc_allocate_error <- function(shelter = NULL, use_legacy_error = NULL) {
+  if (is.null(use_legacy_error)) {
+    use_legacy_error <- getOption("adbcdrivermanager.use_legacy_error", FALSE)
+  }
+
+  .Call(RAdbcAllocateError, shelter, use_legacy_error)
 }
 
 stop_for_error <- function(status, error) {
