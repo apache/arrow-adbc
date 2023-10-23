@@ -69,9 +69,18 @@ namespace Apache.Arrow.Adbc.Tests
             {
                 if (netType.BaseType.Name.Contains("PrimitiveArray") && value != null)
                 {
-                    object internalValue = value.GetType().GetMethod("GetValue").Invoke(value, new object[] { 0 });
+                    int length = Convert.ToInt32(value.GetType().GetProperty("Length").GetValue(value));
 
-                    Assert.IsTrue(internalValue.GetType() == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
+                    if (length > 0)
+                    {
+                        object internalValue = value.GetType().GetMethod("GetValue").Invoke(value, new object[] { 0 });
+
+                        Assert.IsTrue(internalValue.GetType() == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Could not validate the values inside of {netType.Name} because it is empty");
+                    }
                 }
                 else
                 {

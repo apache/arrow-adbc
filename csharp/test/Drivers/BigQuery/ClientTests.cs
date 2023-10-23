@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -46,7 +47,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                     string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
 
-                    List<int> expectedResults = new List<int>() { -1, 1, 1 };
+                    List<int> expectedResults = new List<int>() { -1, 1, 1, 1 };
 
                     for (int i = 0; i < queries.Length; i++)
                     {
@@ -108,6 +109,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         while (reader.Read())
                         {
                             count++;
+
+                            for(int i=0;i<reader.FieldCount;i++)
+                            {
+                                object value = reader.GetValue(i);
+
+                                if (value == null)
+                                    value = "(null)";
+
+                                Console.WriteLine($"{reader.GetName(i)}: {value}");
+                            }
                         }
                     }
                     finally { reader.Close(); }

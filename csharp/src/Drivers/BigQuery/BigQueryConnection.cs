@@ -57,7 +57,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             this.properties = properties;
 
-            // add the default value for now and set to true
+            // add the default value for now and set to true until C# has a BigDecimal
             Dictionary<string, string> modifiedProperties = this.properties.ToDictionary(k => k.Key, v => v.Value);
             modifiedProperties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
             this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);
@@ -390,7 +390,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 tableConstraintsValues.Add(GetConstraintSchema(
                     depth, catalog, dbSchema, row["table_name"].ToString(), columnNamePattern));
 
-                // TODO: add constraints
                 if (depth == GetObjectsDepth.Tables)
                 {
                     tableColumnsValues.Add(null);
@@ -906,9 +905,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this.client = null;
         }
 
+        private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");
+
         private string Sanitize(string input)
         {
-            bool isValidInput = Regex.IsMatch(input, "^[a-zA-Z0-9_-]+");
+            bool isValidInput = sanitizedInputRegex.IsMatch(input);
 
             if (isValidInput)
             {

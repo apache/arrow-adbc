@@ -59,8 +59,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             readClientBuilder.Credential = this.credential;
             BigQueryReadClient readClient = readClientBuilder.Build();
 
-            // TODO: translate the schema
-
             string table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
 
             ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
@@ -104,12 +102,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         return stringArray.GetString(index);
                     case BinaryArray binaryArray:
 
-                        ReadOnlySpan<byte> bytes = binaryArray.GetBytes(index);
+                        if(!binaryArray.IsNull(index))
+                            return binaryArray.GetBytes(index).ToArray();
 
-                        if (bytes != null)
-                            return bytes.ToArray();
-                        else
-                            return null;
+                        return null;
 
                     case Date32Array date32Array:
                         return date32Array.GetDateTime(index);
@@ -118,8 +114,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     case Time64Array time64Array:
                         return time64Array.GetValue(index);
                     case TimestampArray timestampArray:
-                        DateTimeOffset dateTimeOffset = timestampArray.GetTimestamp(index).Value;
-                        return dateTimeOffset;
+                        DateTimeOffset? dateTimeOffset = timestampArray.GetTimestamp(index);
+
+                        if(dateTimeOffset != null)
+                            return dateTimeOffset.Value;
+
+                        return null;
                     case StructArray structArray:
                         return SerializeToJson(structArray, index);
                     // maybe not be needed?
@@ -172,17 +172,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "RECORD" or "STRUCT":
                     // its a json string
                     return StringType.Default;
-                // get schema cannot get precison and scale
-                case "NUMERIC" or "DECIMAL":
-                    return new Decimal128Type(38, 9);
-                //(int)field.Precision, (int)field.Scale);
 
                 // treat these values as strings
                 case "GEOGRAPHY":
                     return StringType.Default;
 
+                // get schema cannot get precision and scale for NUMERIC or BIGNUMERIC types
+                // instead, the max values are returned from BigQuery
+                // see 'precision' on https://cloud.google.com/bigquery/docs/reference/rest/v2/tables
+                // and discussion in https://github.com/apache/arrow-adbc/pull/1192#discussion_r1365987279
+
+                case "NUMERIC" or "DECIMAL":
+                    return new Decimal128Type(38, 9);
+
                 case "BIGNUMERIC" or "BIGDECIMAL":
-                    return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? StringType.Default : new Decimal256Type(0, 0);
+                    return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? StringType.Default : new Decimal256Type(76, 38);
 
                 // Google.Apis.Bigquery.v2.Data.TableFieldSchema do not include Array and Geography in types
                 default: throw new InvalidOperationException();

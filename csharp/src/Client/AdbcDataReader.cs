@@ -328,6 +328,5 @@ namespace Apache.Arrow.Adbc.Client
 
             return new ValueTask<RecordBatch>(recordBatch);
         }
-
     }
 }
