@@ -2,16 +2,16 @@
     "driverPath": "",
     "driverEntryPoint": "",
     "account": "",
-    "user":  "",
-    "password":  "",
+    "user": "",
+    "password": "",
     "warehouse": "",
-    "authenticationType":"",
+    "authenticationType": "",
     "authenticationTokenPath": "",
     "metadata": {
         "catalog": "",
         "schema": "",
         "table": "",
-        "expectedColumnCount":  0
+        "expectedColumnCount": 0
     },
     "query": "",
     "expectedResults": 0

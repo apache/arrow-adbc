@@ -22,6 +22,9 @@ The Snowflake tests leverage the interop nature of the C# ADBC library. These re
 
 To compile, navigate to the `go/adbc/pkg` directory of the cloned [arrow-adbc](https://github.com/apache/arrow-adbc) repository then run the `make` command.  If you encounter compilation errors, please ensure that Go, [GCC and C++](https://code.visualstudio.com/docs/cpp/config-mingw) tools are installed. And following [Contributing to ADBC](https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md#environment-setup).
 
+## Setup
+The environment variable `SNOWFLAKE_TEST_CONFIG_FILE` must be set to a configuration file for the tests to execute. If it is not, the tests will show as passed with an output message that they are skipped.
+
 ## Configuration
 
 The following values can be setup in the configuration
