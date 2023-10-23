@@ -25,13 +25,12 @@
 
 #include <adbc.h>
 
-// This file defines a developer-friendly way to create an ADBC driver,
-// currently intended for testing the R driver manager. It handles errors,
-// option getting/setting, and managing the export of the many C
-// callables that compose an AdbcDriver. In general, functions or methods
-// intended to be called from C are prefixed with "C" and are private (i.e.,
-// the public and protected methods are the only ones that driver authors
-// should ever interact with).
+// This file defines a developer-friendly way to create an ADBC driver, currently intended
+// for testing the R driver manager. It handles errors, option getting/setting, and
+// managing the export of the many C callables that compose an AdbcDriver. In general,
+// functions or methods intended to be called from C are prefixed with "C" and are private
+// (i.e., the public and protected methods are the only ones that driver authors should
+// ever interact with).
 //
 // Example:
 // class MyDatabase: public DatabaseObjectBase {};
