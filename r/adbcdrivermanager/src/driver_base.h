@@ -206,6 +206,11 @@ class ObjectBase {
     }
   }
 
+ protected:
+  // Needed to export errors using Error::ToAdbc() that use 1.1.0 extensions
+  // (i.e., error details). This will be nullptr before Init() is called.
+  AdbcDriver* driver() const { return driver_; }
+
  private:
   AdbcDriver* driver_;
   std::unordered_map<std::string, Option> options_;
@@ -269,7 +274,7 @@ class ObjectBase {
     msg_builder << "Option not found for key '" << key << "'";
     Error cpperror(msg_builder.str());
     cpperror.AddDetail("adbc.r.option_key", key);
-    cpperror.ToAdbc(error, driver_);
+    cpperror.ToAdbc(error, driver());
   }
 
   void InitErrorWrongType(const char* key, AdbcError* error) const {
@@ -277,7 +282,7 @@ class ObjectBase {
     msg_builder << "Wrong type requested for option key '" << key << "'";
     Error cpperror(msg_builder.str());
     cpperror.AddDetail("adbc.r.option_key", key);
-    cpperror.ToAdbc(error, driver_);
+    cpperror.ToAdbc(error, driver());
   }
 };
 
