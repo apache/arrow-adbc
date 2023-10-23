@@ -206,8 +206,6 @@ class ObjectBase {
     }
   }
 
-
-
  private:
   AdbcDriver* driver_;
   std::unordered_map<std::string, Option> options_;
