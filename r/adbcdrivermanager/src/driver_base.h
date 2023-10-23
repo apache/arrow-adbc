@@ -187,13 +187,14 @@ class ObjectBase {
 
   virtual ~ObjectBase() {}
 
-  virtual bool OptionKeySupported(const std::string& key, const Option& value) const {
-    return true;
-  }
-
   virtual AdbcStatusCode Init(void* parent, AdbcError* error) { return ADBC_STATUS_OK; }
 
   virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
+
+  virtual AdbcStatusCode SetOption(const std::string& key, const Option& value) {
+    options_[key] = value;
+    return ADBC_STATUS_OK;
+  }
 
   const Option& GetOption(const std::string& key,
                           const Option& default_value = Option()) const {
@@ -205,14 +206,7 @@ class ObjectBase {
     }
   }
 
-  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
-    if (!OptionKeySupported(key, value)) {
-      return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
 
-    options_[key] = value;
-    return ADBC_STATUS_OK;
-  }
 
  private:
   AdbcDriver* driver_;
@@ -222,31 +216,21 @@ class ObjectBase {
   template <typename DatabaseT, typename ConnectionT, typename StatementT>
   friend class Driver;
 
+  // The AdbcDriver* struct is set right before Init() is called by the Driver
+  // trampoline.
   void set_driver(AdbcDriver* driver) { driver_ = driver; }
 
   template <typename T>
   AdbcStatusCode CSetOption(const char* key, T value, AdbcError* error) {
     Option option(value);
-    AdbcStatusCode status = SetOption(key, option);
-    if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
-      InitErrorOptionNotSupported(key, error);
-      return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
-
-    return status;
+    return SetOption(key, option);
   }
 
   AdbcStatusCode CSetOptionBytes(const char* key, const uint8_t* value, size_t length,
                                  AdbcError* error) {
     std::basic_string<uint8_t> cppvalue(value, length);
     Option option(cppvalue);
-    AdbcStatusCode status = SetOption(key, option);
-    if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
-      InitErrorOptionNotSupported(key, error);
-      return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
-
-    return status;
+    return SetOption(key, option);
   }
 
   template <typename T>
@@ -293,14 +277,6 @@ class ObjectBase {
   void InitErrorWrongType(const char* key, AdbcError* error) const {
     std::stringstream msg_builder;
     msg_builder << "Wrong type requested for option key '" << key << "'";
-    Error cpperror(msg_builder.str());
-    cpperror.AddDetail("adbc.r.option_key", key);
-    cpperror.ToAdbc(error, driver_);
-  }
-
-  void InitErrorOptionNotSupported(const char* key, AdbcError* error) const {
-    std::stringstream msg_builder;
-    msg_builder << "Option '" << key << "' is not supported";
     Error cpperror(msg_builder.str());
     cpperror.AddDetail("adbc.r.option_key", key);
     cpperror.ToAdbc(error, driver_);
