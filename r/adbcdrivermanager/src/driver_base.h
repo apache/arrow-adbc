@@ -25,6 +25,23 @@
 
 #include <adbc.h>
 
+// This file defines a developer-friendly way to create an ADBC driver,
+// currently intended for testing the R driver manager. It handles errors,
+// option getting/setting, and managing the export of the many C
+// callables that compose an AdbcDriver. In general, functions or methods
+// intended to be called from C are prefixed with "C" and are private (i.e.,
+// the public and protected methods are the only ones that driver authors
+// should ever interact with).
+//
+// Example:
+// class MyDatabase: public DatabaseObjectBase {};
+// class MyConnection: public ConnectionObjectBase {};
+// class MyStatement: public StatementObjectbase {};
+// AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver, AdbcError* error) {
+//   return Driver<MyDatabase, MyConnection, MyStatement>::Init(
+//     version, raw_driver, error);
+// }
+
 namespace adbc {
 
 namespace r {
@@ -93,6 +110,9 @@ class Error {
   }
 };
 
+// Variant that handles the option types that can be get/set by databases,
+// connections, and statements. It currently does not attempt conversion
+// (i.e., getting a double option as a string).
 class Option {
  public:
   enum Type { TYPE_MISSING, TYPE_STRING, TYPE_BYTES, TYPE_INT, TYPE_DOUBLE };
@@ -121,7 +141,7 @@ class Option {
   double value_double_;
   int64_t value_int_;
 
-  // Methods used by trampolines below
+  // Methods used by trampolines to export option values in C below
   friend class ObjectBase;
 
   AdbcStatusCode CGet(char* out, size_t* length) const {
@@ -187,15 +207,29 @@ class ObjectBase {
 
   virtual ~ObjectBase() {}
 
-  virtual AdbcStatusCode Init(void* parent, AdbcError* error) { return ADBC_STATUS_OK; }
-
-  virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
-
+  // Driver authors can override this method to reject options that are not supported or
+  // that are set at a time not supported by the driver (e.g., to reject options that are
+  // set after Init() is called if this is not supported).
   virtual AdbcStatusCode SetOption(const std::string& key, const Option& value) {
     options_[key] = value;
     return ADBC_STATUS_OK;
   }
 
+  // Called After zero or more SetOption() calls. The parent is the private_data of
+  // the AdbcDriver, AdbcDatabase, or AdbcConnection when initializing a subclass of
+  // DatabaseObjectBase, ConnectionObjectBase, and StatementObjectBase (respectively).
+  // For example, if you have defined Driver<MyDatabase, MyConnection, MyStatement>,
+  // you can reinterpret_cast<MyDatabase>(parent) in MyConnection::Init().
+  virtual AdbcStatusCode Init(void* parent, AdbcError* error) { return ADBC_STATUS_OK; }
+
+  // Called when the corresponding AdbcXXXRelease() function is invoked from C.
+  // Driver authors can override this method to return an error if the object is
+  // not in a valid state (e.g., if a connection has open statements) or to clean
+  // up resources when resource cleanup could fail. Resource cleanup that cannot fail
+  // (e.g., releasing memory) should generally be handled in the deleter.
+  virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
+
+  // Get an option that was previously set, providing an optional default value.
   const Option& GetOption(const std::string& key,
                           const Option& default_value = Option()) const {
     auto result = options_.find(key);
@@ -286,16 +320,30 @@ class ObjectBase {
   }
 };
 
+// Driver authors can subclass DatabaseObjectBase to track driver-specific
+// state pertaining to the AdbcDatbase. The private_data member of an
+// AdbcDatabase initialized by the driver will be a pointer to the
+// subclass of DatbaseObjectBase.
 class DatabaseObjectBase : public ObjectBase {
  public:
   // (there are no database functions other than option getting/setting)
 };
 
+// Driver authors can subclass ConnectionObjectBase to track driver-specific
+// state pertaining to the AdbcConnection. The private_data member of an
+// AdbcConnection initialized by the driver will be a pointer to the
+// subclass of ConnectionObjectBase. Driver authors can override methods to
+// implement the corresponding ConnectionXXX driver methods.
 class ConnectionObjectBase : public ObjectBase {
  public:
   // TODO: Add connection functions here as methods
 };
 
+// Driver authors can subclass StatementObjectBase to track driver-specific
+// state pertaining to the AdbcStatement. The private_data member of an
+// AdbcStatement initialized by the driver will be a pointer to the
+// subclass of StatementObjectBase. Driver authors can override methods to
+// implement the corresponding StatementXXX driver methods.
 class StatementObjectBase : public ObjectBase {
  public:
   virtual AdbcStatusCode ExecuteQuery(struct ArrowArrayStream* stream,
@@ -306,6 +354,9 @@ class StatementObjectBase : public ObjectBase {
   // TODO: Add remaining statement functions here as methods
 };
 
+// Driver authors can declare a template specialization of the Driver class
+// and use it to provide their driver init function. It is possible, but
+// rarely useful, to subclass a driver.
 template <typename DatabaseT, typename ConnectionT, typename StatementT>
 class Driver {
  public:
