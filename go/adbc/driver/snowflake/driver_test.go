@@ -763,6 +763,8 @@ func ConnectWithJwt(uri, keyValue, passcode string) {
 		panic(err)
 	}
 	defer cnxn.Close()
+}
+
 func (suite *SnowflakeTests) TestJwtPrivateKey() {
 	// grab the username from the DSN
 	cfg, err := gosnowflake.ParseDSN(suite.Quirks.dsn)
