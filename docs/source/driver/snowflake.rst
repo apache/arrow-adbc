@@ -408,7 +408,7 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
 
 ``adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value``
     Parses an encrypted or unencrypted PKCS #8 private key without having to
-    it from the file system. If using encrypted, the
+    read it from the file system. If using encrypted, the
     ``adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password`` value
     is required and used to decrypt.
 
