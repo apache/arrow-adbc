@@ -158,6 +158,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     .Select(c => c.Columns)
                     .FirstOrDefault();
 
+                Assert.IsTrue(columns != null, "Columns cannot be null");
+
                 Assert.AreEqual(metadataTestConfiguration.Metadata.ExpectedColumnCount, columns.Count);
             }
         }

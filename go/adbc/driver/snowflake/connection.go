@@ -326,7 +326,7 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 				IF (counter > 0) THEN
 				  statement := statement || ' UNION ALL ';
 				END IF;
-				statement := statement || ' SELECT CATALOG_NAME, SCHEMA_NAME FROM "' || rec.database_name || '".INFORMATION_SCHEMA.SCHEMATA';
+				statement := statement || ' SELECT CATALOG_NAME, SCHEMA_NAME FROM ' || rec.database_name || '.INFORMATION_SCHEMA.SCHEMATA';
 				counter := counter + 1;
 			END FOR;
 		  `
@@ -562,7 +562,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 			END IF;
 			`
 
-	const noSchema = `statement := statement || ' SELECT table_catalog, table_schema, table_name, table_type FROM "' || rec.database_name || '".INFORMATION_SCHEMA.TABLES';
+	const noSchema = `statement := statement || ' SELECT table_catalog, table_schema, table_name, table_type FROM ' || rec.database_name || '.INFORMATION_SCHEMA.TABLES';
 			counter := counter + 1;
 		END FOR;
 		`
@@ -574,7 +574,7 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 				numeric_precision_radix, numeric_scale, is_identity::boolean,
 				identity_generation, identity_increment,
 				character_maximum_length, character_octet_length, datetime_precision, comment
-		FROM "' || rec.database_name || '".INFORMATION_SCHEMA.COLUMNS';
+		FROM ' || rec.database_name || '.INFORMATION_SCHEMA.COLUMNS';
 
 		  counter := counter + 1;
 		END FOR;
@@ -865,6 +865,8 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	}
 	tblParts = append(tblParts, strconv.Quote(strings.ToUpper(tableName)))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
+
+	fmt.Println(fullyQualifiedTable)
 
 	rows, err := c.sqldb.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable)
 	if err != nil {

@@ -71,6 +71,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 parameters[SnowflakeParameters.HOST] = testConfiguration.Host;
             }
 
+            if(!string.IsNullOrWhiteSpace(testConfiguration.Database))
+            {
+                parameters[SnowflakeParameters.DATABASE] = testConfiguration.Database;
+            }
+
             Dictionary<string, string> options = new Dictionary<string, string>() { };
             AdbcDriver snowflakeDriver = CAdbcDriverImporter.Load(testConfiguration.DriverPath, testConfiguration.DriverEntryPoint);
 
@@ -103,22 +108,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             string[] sql = File.ReadAllLines("resources/SnowflakeData.sql");
 
-            string placeholder = "{ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}";
+            Dictionary<string, string> placeholderValues = new Dictionary<string, string>() {
+                {"{ADBC_CATALOG}", testConfiguration.Metadata.Catalog },
+                {"{ADBC_SCHEMA}", testConfiguration.Metadata.Schema },
+                {"{ADBC_TABLE}", testConfiguration.Metadata.Table }
+            };
 
             foreach (string line in sql)
             {
                 if (!line.TrimStart().StartsWith("--"))
                 {
-                    if (line.Contains(placeholder))
-                    {
-                        string modifiedLine = line.Replace(placeholder, $"{testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}");
+                    string modifiedLine = line;
 
-                        content.AppendLine(modifiedLine);
-                    }
-                    else
+                    foreach(string key in placeholderValues.Keys)
                     {
-                        content.AppendLine(line);
+                        if(modifiedLine.Contains(key))
+                            modifiedLine = modifiedLine.Replace(key, placeholderValues[key]);
                     }
+
+                    content.AppendLine(modifiedLine);
                 }
             }
 
