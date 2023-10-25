@@ -249,7 +249,6 @@ class SqliteStatementTest : public ::testing::Test,
     return TestSqlIngestType(NANOARROW_TYPE_UINT64, values);
   }
 
-  void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
   void TestSqlIngestDuration() {
     GTEST_SKIP() << "Cannot ingest DURATION (not implemented)";
   }
