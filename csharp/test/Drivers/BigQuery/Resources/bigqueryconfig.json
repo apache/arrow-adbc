@@ -1,0 +1,14 @@
+{
+    "projectId": "",
+    "clientId": "",
+    "clientSecret": "",
+    "refreshToken": "",
+    "metadata": {
+        "catalog": "",
+        "schema": "",
+        "table": "",
+        "expectedColumnCount":  0
+    },
+    "query": "",
+    "expectedResults": 0
+}

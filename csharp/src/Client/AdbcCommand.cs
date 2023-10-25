@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -167,11 +167,13 @@ namespace Apache.Arrow.Adbc.Client
         {
             switch (behavior)
             {
-                case CommandBehavior.SingleRow:
-                    throw new InvalidOperationException("Cannot read rows in Arrow");
-                default:
+                case CommandBehavior.SchemaOnly:   // The schema is not known until a read happens
+                case CommandBehavior.Default:
                     QueryResult result = this.ExecuteQuery();
                     return new AdbcDataReader(this, result);
+
+                default:
+                    throw new InvalidOperationException($"{behavior} is not supported with this provider");
             }
         }
 

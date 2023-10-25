@@ -393,7 +393,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 
 			if err != nil {
 				return adbc.Error{
-					Msg:  "failed parsing PKCS8 private key: " + err.Error(),
+					Msg:  "[Snowflake] failed parsing PKCS8 private key: " + err.Error(),
 					Code: adbc.StatusInvalidArgument,
 				}
 			}
