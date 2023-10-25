@@ -71,11 +71,6 @@ AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
       return ADBC_STATUS_INTERNAL;
     }
 
-    if (view.extension_name.data) {
-      SetError(error, "Column %d has unsupported type extension", i);
-      return ADBC_STATUS_NOT_IMPLEMENTED;
-    }
-
     if (view.type == NANOARROW_TYPE_DICTIONARY) {
       struct ArrowSchemaView value_view = {0};
       status = ArrowSchemaViewInit(&value_view, binder->schema.children[i]->dictionary,
@@ -97,11 +92,6 @@ AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
           SetError(error, "Column %d dictionary has unsupported type %s", i,
                    ArrowTypeString(value_view.type));
           return ADBC_STATUS_NOT_IMPLEMENTED;
-      }
-
-      if (value_view.extension_name.data) {
-        SetError(error, "Column %d dictionary has unsupported type extension", i);
-        return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
 
