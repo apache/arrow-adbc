@@ -941,6 +941,7 @@ namespace Apache.Arrow.Adbc.C
 
                     Dispose();
 
+                    throw new AdbcException(message);
                 }
             }
         }

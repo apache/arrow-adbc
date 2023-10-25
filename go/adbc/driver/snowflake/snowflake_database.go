@@ -364,7 +364,10 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			block, _ := pem.Decode([]byte(v))
 
 			if block == nil {
-				panic("Failed to parse PEM block containing the private key")
+				return adbc.Error{
+					Msg:  "Failed to parse PEM block containing the private key",
+					Code: adbc.StatusInvalidArgument,
+				}
 			}
 
 			var parsedKey any
@@ -374,12 +377,18 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 				if ok {
 					parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(passcode))
 				} else {
-					panic(OptionJwtPrivateKeyPkcs8Password + " is not configured")
+					return adbc.Error{
+						Msg:  OptionJwtPrivateKeyPkcs8Password + " is not configured",
+						Code: adbc.StatusInvalidArgument,
+					}
 				}
 			} else if block.Type == "PRIVATE KEY" {
 				parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes)
 			} else {
-				panic(block.Type + " is not supported")
+				return adbc.Error{
+					Msg:  block.Type + " is not supported",
+					Code: adbc.StatusInvalidArgument,
+				}
 			}
 
 			if err != nil {
