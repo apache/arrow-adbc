@@ -33,6 +33,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     /// Tests are ordered to ensure data is created
     /// for the other queries to run.
     /// </remarks>
+    [TestFixture]
     public class ClientTests
     {
         /// <summary>
@@ -102,6 +103,29 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                             Assert.Fail("Could not read the records");
                         }
                     }
+                }
+            }
+        }
+
+        [Test, Order(2)]
+        public void CanClientGetSchema()
+        {
+            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
+            {
+                SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+                using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+                {
+                    AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+
+                    adbcConnection.Open();
+
+                    AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
+
+                    DataTable table = reader.GetSchemaTable();
+
+                    // there is one row per field
+                    Assert.AreEqual(testConfiguration.Metadata.ExpectedColumnCount, table.Rows.Count);
                 }
             }
         }
