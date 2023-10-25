@@ -217,9 +217,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 StringArray stringArray = (StringArray)recordBatch.Column("table_type");
 
                 List<string> known_types = new List<string>
-            {
-                "BASE TABLE", "TEMPORARY TABLE", "VIEW"
-            };
+                {
+                    "BASE TABLE", "TEMPORARY TABLE", "VIEW"
+                };
 
                 int results = 0;
 
