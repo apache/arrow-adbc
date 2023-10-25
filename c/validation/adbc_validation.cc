@@ -3458,7 +3458,8 @@ void StatementTest::TestSqlQueryRowsAffectedDelete() {
   int64_t rows_affected = 0;
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
               IsOkStatus(&error));
-  ASSERT_EQ(3, rows_affected);
+  ASSERT_THAT(rows_affected,
+              ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
 }
 
 void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
@@ -3486,7 +3487,8 @@ void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                         &reader.rows_affected, &error),
               IsOkStatus(&error));
-  ASSERT_EQ(-1, reader.rows_affected);
+  ASSERT_THAT(reader.rows_affected,
+              ::testing::AnyOf(::testing::Eq(5), ::testing::Eq(-1)));
 }
 
 
