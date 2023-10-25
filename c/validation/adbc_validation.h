@@ -426,6 +426,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
+  TEST_F(FIXTURE, SqlIngestStringDictionary) { TestSqlIngestStringDictionary(); }       \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
   TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }           \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \

@@ -381,10 +381,15 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
         case NANOARROW_TYPE_DICTIONARY: {
           int64_t value_index =
               ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
-          struct ArrowBufferView value = ArrowArrayViewGetBytesUnsafe(
-              binder->batch.children[col]->dictionary, value_index);
-          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
-                                     SQLITE_STATIC);
+          if (ArrowArrayViewIsNull(binder->batch.children[col]->dictionary,
+                                   value_index)) {
+            status = sqlite3_bind_null(stmt, col + 1);
+          } else {
+            struct ArrowBufferView value = ArrowArrayViewGetBytesUnsafe(
+                binder->batch.children[col]->dictionary, value_index);
+            status = sqlite3_bind_text(stmt, col + 1, value.data.as_char,
+                                       value.size_bytes, SQLITE_STATIC);
+          }
           break;
         }
         case NANOARROW_TYPE_DATE32: {

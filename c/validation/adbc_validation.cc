@@ -1387,6 +1387,9 @@ void StatementTest::TestSqlIngestType(ArrowType type,
     Handle<struct ArrowSchema> dict_schema;
     ASSERT_THAT(ArrowSchemaInitFromType(&dict_schema.value, NANOARROW_TYPE_INT32),
                 IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetName(&dict_schema.value, schema.value.children[0]->name),
+                IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetName(schema.value.children[0], nullptr), IsOkErrno());
 
     // Swap it into the target schema
     ASSERT_THAT(ArrowSchemaAllocateDictionary(&dict_schema.value), IsOkErrno());
@@ -1768,7 +1771,7 @@ void StatementTest::TestSqlIngestInterval() {
 void StatementTest::TestSqlIngestStringDictionary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
       NANOARROW_TYPE_STRING, {std::nullopt, "", "", "1234", "例"},
-      /*dictionary_encoded*/ true));
+      /*dictionary_encode*/ true));
 }
 
 void StatementTest::TestSqlIngestTableEscaping() {
