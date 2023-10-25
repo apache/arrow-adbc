@@ -92,6 +92,12 @@ class DremioFlightSqlStatementTest : public ::testing::Test,
   void TestSqlIngestColumnEscaping() {
     GTEST_SKIP() << "Column escaping not implemented";
   }
+  void TestSqlQueryRowsAffectedDelete() {
+    GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
+  }
+  void TestSqlQueryRowsAffectedDeleteStream() {
+    GTEST_SKIP() << "Cannot query rows affected in delete stream (not implemented)";
+  }
 
  protected:
   DremioFlightSqlQuirks quirks_;

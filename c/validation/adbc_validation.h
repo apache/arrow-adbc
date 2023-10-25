@@ -365,6 +365,8 @@ class StatementTest {
   void TestSqlQueryCancel();
   void TestSqlQueryErrors();
   void TestSqlQueryTrailingSemicolons();
+  void TestSqlQueryRowsAffectedDelete();
+  void TestSqlQueryRowsAffectedDeleteStream();
 
   void TestSqlSchemaInts();
   void TestSqlSchemaFloats();
@@ -455,6 +457,10 @@ class StatementTest {
   TEST_F(FIXTURE, SqlQueryCancel) { TestSqlQueryCancel(); }                             \
   TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                             \
   TEST_F(FIXTURE, SqlQueryTrailingSemicolons) { TestSqlQueryTrailingSemicolons(); }     \
+  TEST_F(FIXTURE, SqlQueryRowsAffectedDelete) { TestSqlQueryRowsAffectedDelete(); }     \
+  TEST_F(FIXTURE, SqlQueryRowsAffectedDeleteStream) {                                   \
+    TestSqlQueryRowsAffectedDeleteStream();                                             \
+  }                                                                                     \
   TEST_F(FIXTURE, SqlSchemaInts) { TestSqlSchemaInts(); }                               \
   TEST_F(FIXTURE, SqlSchemaFloats) { TestSqlSchemaFloats(); }                           \
   TEST_F(FIXTURE, SqlSchemaStrings) { TestSqlSchemaStrings(); }                         \
