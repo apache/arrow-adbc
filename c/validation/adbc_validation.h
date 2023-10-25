@@ -327,6 +327,9 @@ class StatementTest {
   void TestSqlIngestTimestampTz();
   void TestSqlIngestInterval();
 
+  // Dictionary-encoded
+  void TestSqlIngestStringDictionary();
+
   // ---- End Type-specific tests ----------------
 
   void TestSqlIngestTableEscaping();
@@ -385,7 +388,8 @@ class StatementTest {
   struct AdbcStatement statement;
 
   template <typename CType>
-  void TestSqlIngestType(ArrowType type, const std::vector<std::optional<CType>>& values);
+  void TestSqlIngestType(ArrowType type, const std::vector<std::optional<CType>>& values,
+                         bool dictionary_encode);
 
   template <typename CType>
   void TestSqlIngestNumericType(ArrowType type);
