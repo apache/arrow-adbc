@@ -554,6 +554,22 @@ TEST_F(SqliteReaderTest, InferIntRejectStr) {
           "[SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY"));
 }
 
+TEST_F(SqliteReaderTest, InferIntRejectBlob) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((1), (NULL), (X''), (NULL))", /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {1, std::nullopt}));
+
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(
+      reader.stream->get_last_error(&reader.stream.value),
+      ::testing::HasSubstr(
+          "[SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY"));
+}
+
 TEST_F(SqliteReaderTest, InferFloatReadIntFloat) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
@@ -575,6 +591,25 @@ TEST_F(SqliteReaderTest, InferFloatReadIntFloat) {
 TEST_F(SqliteReaderTest, InferFloatRejectStr) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((1E0), (NULL), (2E0), (3), (""), (NULL))",
+                                     /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {1.0, std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {2.0, 3.0}));
+
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(
+      reader.stream->get_last_error(&reader.stream.value),
+      ::testing::HasSubstr(
+          "[SQLite] Type mismatch in column 0: expected DOUBLE but got STRING/BINARY"));
+}
+
+TEST_F(SqliteReaderTest, InferFloatRejectBlob) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((1E0), (NULL), (2E0), (3), (X''), (NULL))",
                                      /*infer_rows=*/2, &reader));
   ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
