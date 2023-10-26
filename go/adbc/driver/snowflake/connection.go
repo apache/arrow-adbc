@@ -866,8 +866,6 @@ func (c *cnxn) GetTableSchema(ctx context.Context, catalog *string, dbSchema *st
 	tblParts = append(tblParts, strconv.Quote(strings.ToUpper(tableName)))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
-	fmt.Println(fullyQualifiedTable)
-
 	rows, err := c.sqldb.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
