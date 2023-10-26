@@ -34,15 +34,17 @@ static void finalize_error_xptr(SEXP error_xptr) {
   adbc_xptr_default_finalize<AdbcError>(error_xptr);
 }
 
-extern "C" SEXP RAdbcAllocateError(SEXP shelter_sexp) {
+extern "C" SEXP RAdbcAllocateError(SEXP shelter_sexp, SEXP use_legacy_error_sexp) {
+  bool use_legacy_error = adbc_as_bool(use_legacy_error_sexp);
+
   SEXP error_xptr = PROTECT(adbc_allocate_xptr<AdbcError>(shelter_sexp));
   R_RegisterCFinalizer(error_xptr, &finalize_error_xptr);
 
   AdbcError* error = adbc_from_xptr<AdbcError>(error_xptr);
-  error->message = nullptr;
-  error->vendor_code = 0;
-  memset(error->sqlstate, 0, sizeof(error->sqlstate));
-  error->release = nullptr;
+  *error = ADBC_ERROR_INIT;
+  if (use_legacy_error) {
+    error->vendor_code = 0;
+  }
 
   UNPROTECT(1);
   return error_xptr;

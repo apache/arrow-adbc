@@ -23,34 +23,16 @@
 SEXP RAdbcLogDriverInitFunc(void);
 SEXP RAdbcMonkeyDriverInitFunc(void);
 SEXP RAdbcVoidDriverInitFunc(void);
-SEXP RAdbcAllocateError(SEXP shelter_sexp);
+SEXP RAdbcAllocateError(SEXP shelter_sexp, SEXP use_legacy_error_sexp);
 SEXP RAdbcErrorProxy(SEXP error_xptr);
 SEXP RAdbcErrorFromArrayStream(SEXP stream_xptr);
 SEXP RAdbcStatusCodeMessage(SEXP status_sexp);
 SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
                             SEXP error_xptr);
-SEXP RAdbcDatabaseSetOptionBytes(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
-                                 SEXP error_xptr);
-SEXP RAdbcDatabaseSetOptionInt(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
-                               SEXP error_xptr);
-SEXP RAdbcDatabaseSetOptionDouble(SEXP database_xptr, SEXP key_sexp, SEXP value_sexp,
-                                  SEXP error_xptr);
 SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp, SEXP value_sexp,
                               SEXP error_xptr);
-SEXP RAdbcConnectionSetOptionBytes(SEXP connection_xptr, SEXP key_sexp, SEXP value_sexp,
-                                   SEXP error_xptr);
-SEXP RAdbcConnectionSetOptionInt(SEXP connection_xptr, SEXP key_sexp, SEXP value_sexp,
-                                 SEXP error_xptr);
-SEXP RAdbcConnectionSetOptionDouble(SEXP connection_xptr, SEXP key_sexp, SEXP value_sexp,
-                                    SEXP error_xptr);
 SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp, SEXP value_sexp,
                              SEXP error_xptr);
-SEXP RAdbcStatementSetOptionBytes(SEXP statement_xptr, SEXP key_sexp, SEXP value_sexp,
-                                  SEXP error_xptr);
-SEXP RAdbcStatementSetOptionInt(SEXP statement_xptr, SEXP key_sexp, SEXP value_sexp,
-                                SEXP error_xptr);
-SEXP RAdbcStatementSetOptionDouble(SEXP statement_xptr, SEXP key_sexp, SEXP value_sexp,
-                                   SEXP error_xptr);
 SEXP RAdbcDatabaseGetOption(SEXP database_xptr, SEXP key_sexp, SEXP error_xptr);
 SEXP RAdbcDatabaseGetOptionBytes(SEXP database_xptr, SEXP key_sexp, SEXP error_xptr);
 SEXP RAdbcDatabaseGetOptionInt(SEXP database_xptr, SEXP key_sexp, SEXP error_xptr);
@@ -121,22 +103,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcLogDriverInitFunc", (DL_FUNC)&RAdbcLogDriverInitFunc, 0},
     {"RAdbcMonkeyDriverInitFunc", (DL_FUNC)&RAdbcMonkeyDriverInitFunc, 0},
     {"RAdbcVoidDriverInitFunc", (DL_FUNC)&RAdbcVoidDriverInitFunc, 0},
-    {"RAdbcAllocateError", (DL_FUNC)&RAdbcAllocateError, 1},
+    {"RAdbcAllocateError", (DL_FUNC)&RAdbcAllocateError, 2},
     {"RAdbcErrorProxy", (DL_FUNC)&RAdbcErrorProxy, 1},
     {"RAdbcErrorFromArrayStream", (DL_FUNC)&RAdbcErrorFromArrayStream, 1},
     {"RAdbcStatusCodeMessage", (DL_FUNC)&RAdbcStatusCodeMessage, 1},
     {"RAdbcDatabaseSetOption", (DL_FUNC)&RAdbcDatabaseSetOption, 4},
-    {"RAdbcDatabaseSetOptionBytes", (DL_FUNC)&RAdbcDatabaseSetOptionBytes, 4},
-    {"RAdbcDatabaseSetOptionInt", (DL_FUNC)&RAdbcDatabaseSetOptionInt, 4},
-    {"RAdbcDatabaseSetOptionDouble", (DL_FUNC)&RAdbcDatabaseSetOptionDouble, 4},
     {"RAdbcConnectionSetOption", (DL_FUNC)&RAdbcConnectionSetOption, 4},
-    {"RAdbcConnectionSetOptionBytes", (DL_FUNC)&RAdbcConnectionSetOptionBytes, 4},
-    {"RAdbcConnectionSetOptionInt", (DL_FUNC)&RAdbcConnectionSetOptionInt, 4},
-    {"RAdbcConnectionSetOptionDouble", (DL_FUNC)&RAdbcConnectionSetOptionDouble, 4},
     {"RAdbcStatementSetOption", (DL_FUNC)&RAdbcStatementSetOption, 4},
-    {"RAdbcStatementSetOptionBytes", (DL_FUNC)&RAdbcStatementSetOptionBytes, 4},
-    {"RAdbcStatementSetOptionInt", (DL_FUNC)&RAdbcStatementSetOptionInt, 4},
-    {"RAdbcStatementSetOptionDouble", (DL_FUNC)&RAdbcStatementSetOptionDouble, 4},
     {"RAdbcDatabaseGetOption", (DL_FUNC)&RAdbcDatabaseGetOption, 3},
     {"RAdbcDatabaseGetOptionBytes", (DL_FUNC)&RAdbcDatabaseGetOptionBytes, 3},
     {"RAdbcDatabaseGetOptionInt", (DL_FUNC)&RAdbcDatabaseGetOptionInt, 3},
