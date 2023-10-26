@@ -246,7 +246,7 @@ class SqliteStatementTest : public ::testing::Test,
 
   void TestSqlIngestUInt64() {
     std::vector<std::optional<uint64_t>> values = {std::nullopt, 0, INT64_MAX};
-    return TestSqlIngestType(NANOARROW_TYPE_UINT64, values);
+    return TestSqlIngestType(NANOARROW_TYPE_UINT64, values, /*dictionary_encode*/ false);
   }
 
   void TestSqlIngestDuration() {
