@@ -27,6 +27,5 @@ x64
 *.csproj.user
 *.pass
 
-src/arrow
 artifacts/
 TestResults/
