@@ -47,14 +47,17 @@ namespace r {
 
 class Error {
  public:
-  explicit Error(const std::string& message)
-      : message_(message), sql_state_("\0\0\0\0\0") {}
+  explicit Error(const std::string& message) : message_(message) {
+    std::memset(sql_state_, 0, sizeof(sql_state_));
+  }
 
   explicit Error(const char* message) : Error(std::string(message)) {}
 
   Error(const std::string& message,
         const std::vector<std::pair<std::string, std::string>>& details)
-      : message_(message), details_(details), sql_state_("\0\0\0\0\0") {}
+      : message_(message), details_(details) {
+    std::memset(sql_state_, 0, sizeof(sql_state_));
+  }
 
   void AddDetail(const std::string& key, const std::string& value) {
     details_.push_back({key, value});
@@ -70,20 +73,18 @@ class Error {
     } else {
       adbc_error->message = reinterpret_cast<char*>(std::malloc(message_.size() + 1));
       if (adbc_error->message != nullptr) {
-        memcpy(adbc_error->message, message_.c_str(), message_.size() + 1);
+        std::memcpy(adbc_error->message, message_.c_str(), message_.size() + 1);
       }
     }
 
-    for (size_t i = 0; i < 5; i++) {
-      adbc_error->sqlstate[i] = sql_state_[i];
-    }
+    std::memcpy(adbc_error->sqlstate, sql_state_, sizeof(sql_state_));
     adbc_error->release = &CRelease;
   }
 
  private:
   std::string message_;
   std::vector<std::pair<std::string, std::string>> details_;
-  std::string sql_state_;
+  char sql_state_[5];
 
   // Let the Driver use these to expose C callables wrapping option setters/getters
   template <typename DatabaseT, typename ConnectionT, typename StatementT>
