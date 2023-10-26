@@ -47,25 +47,25 @@ namespace r {
 
 class Error {
  public:
-  explicit Error(const std::string& message) : message_(message) {
+  explicit Error(std::string message) : message_(std::move(message)) {
     std::memset(sql_state_, 0, sizeof(sql_state_));
   }
 
   explicit Error(const char* message) : Error(std::string(message)) {}
 
-  Error(const std::string& message,
-        const std::vector<std::pair<std::string, std::string>>& details)
-      : message_(message), details_(details) {
+  Error(std::string message, std::vector<std::pair<std::string, std::string>> details)
+      : message_(std::move(message)), details_(std::move(details)) {
     std::memset(sql_state_, 0, sizeof(sql_state_));
   }
 
-  void AddDetail(const std::string& key, const std::string& value) {
-    details_.push_back({key, value});
+  void AddDetail(std::string key, std::string value) {
+    details_.push_back({std::move(key), std::move(value)});
   }
 
   void ToAdbc(AdbcError* adbc_error, AdbcDriver* driver = nullptr) {
     if (adbc_error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
-      auto error_owned_by_adbc_error = new Error(message_, details_);
+      auto error_owned_by_adbc_error =
+          new Error(std::move(message_), std::move(details_));
       adbc_error->message =
           const_cast<char*>(error_owned_by_adbc_error->message_.c_str());
       adbc_error->private_data = error_owned_by_adbc_error;
