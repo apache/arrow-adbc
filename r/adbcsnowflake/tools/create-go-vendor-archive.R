@@ -44,10 +44,20 @@ withr::with_dir("src/go/adbc", {
     dst_go_arrow_cdata_dir <- "vendor/github.com/apache/arrow/go/v13/arrow/cdata/"
     stopifnot(file.copy(src_go_arrow_cdata_arrow_dir, dst_go_arrow_cdata_dir, recursive = TRUE))
   })
+
+  # github.com/zeebo/xxh3/Makefile does not end in LF, giving a check NOTE
+  write("\n", "vendor/github.com/zeebo/xxh3/Makefile", append = TRUE)
+
+  # pragmas in this file give a NOTE
+  f <- "vendor/golang.org/x/sys/cpu/cpu_gccgo_x86.c"
+  content <- paste0(readLines(f), collapse = "\n")
+  content <- gsub("#pragma", "// (disabled for CRAN) #pragma", content)
+  writeLines(content, f)
 })
 
 # Create .zip
 dst_zip <- file.path(getwd(), "tools/src-go-adbc-vendor.zip")
+unlink(dst_zip)
 withr::with_dir("src/go/adbc/vendor", {
   zip(dst_zip, list.files(recursive = TRUE))
 })
