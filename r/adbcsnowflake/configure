@@ -95,15 +95,21 @@ CXX=`"$R_BIN" CMD config CXX`
 # clang and gcc use different symbol-hiding syntax and we need to
 # make sure to hide any Adbc* symbols that might conflict with another
 # driver.
-if "$R_BIN" CMD config CC | grep -e "clang" ; then
+if "$R_BIN" CMD config CC | grep -e "clang" >/dev/null ; then
   SYMBOL_ARGS="-Wl,-exported_symbol,_adbcsnowflake_c_snowflake -Wl,-exported_symbol,_R_init_adbcsnowflake"
-elif "$R_BIN" CMD config CC | grep -e "gcc" ; then
+elif "$R_BIN" CMD config CC | grep -e "gcc" >/dev/null ; then
   SYMBOL_ARGS="-Wl,--version-script=go/symbols.map"
 fi
 
 # On OSX we need -framework Security because of some dependency somewhere
 if [ `uname` = "Darwin" ]; then
-  PKG_LIBS="-framework Security $PKG_LIBS"
+  PKG_LIBS="-framework Security -lresolv $PKG_LIBS"
+elif uname | grep -e "MSYS" >/dev/null ; then
+  # Windows
+  PKG_LIBS="$PKG_LIBS"
+else
+  # Linux
+  PKG_LIBS="-lresolv $PKG_LIBS"
 fi
 
 PKG_LIBS="$PKG_LIBS $SYMBOL_ARGS"
