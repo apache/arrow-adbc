@@ -48,8 +48,13 @@ fi
 # You can run Rscript tools/create-go-vendor-archive.zip to generate the
 # dependency archive and checksum file and place it in the tools/ directory.
 if [ -f tools/src-go-adbc-vendor.zip ]; then
+  DEFAULT_SHASUM_RTOOLS="/usr/bin/core_perl/shasum"
+  if [ -z "$SHASUM_BIN" ] && [  -f "$DEFAULT_SHASUM_RTOOLS" ]; then
+    SHASUM_BIN="$DEFAULT_SHASUM_RTOOLS"
+  fi
+
   cd tools
-  if shasum --algorithm 512 --check --status src-go-adbc-vendor.zip.sha512 ; then
+  if "$SHASUM_BIN" --algorithm 512 --check --status src-go-adbc-vendor.zip.sha512 ; then
     cd ..
     "$RSCRIPT_BIN" tools/extract-go-vendor-archive.R
   else
