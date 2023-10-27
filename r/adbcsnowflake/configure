@@ -78,7 +78,7 @@ if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_WIN" ]; then
   GO_BIN="$DEFAULT_GO_WIN"
 fi
 
-DEFAULT_GO_MACOS="/usr/local/go"
+DEFAULT_GO_MACOS="/usr/local/go/bin/go"
 if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_MACOS" ]; then
   GO_BIN="$DEFAULT_GO_MACOS"
 fi
