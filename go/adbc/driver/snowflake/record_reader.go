@@ -449,36 +449,28 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	}
 
 	if len(batches) == 0 {
-		if ld.TotalRows() != 0 {
-			// XXX(https://github.com/apache/arrow-adbc/issues/863): Snowflake won't return Arrow data for certain queries
-			schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision)
-			if err != nil {
-				return nil, adbc.Error{
-					Msg:  err.Error(),
-					Code: adbc.StatusInternal,
-				}
-			}
-
-			bldr := array.NewRecordBuilder(alloc, schema)
-			defer bldr.Release()
-
-			rec, err := jsonDataToArrow(ctx, bldr, ld)
-			if err != nil {
-				return nil, err
-			}
-			defer rec.Release()
-
-			return array.NewRecordReader(schema, []arrow.Record{rec})
-		}
-		schema := arrow.NewSchema([]arrow.Field{}, nil)
-		reader, err := array.NewRecordReader(schema, []arrow.Record{})
+		schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision)
 		if err != nil {
 			return nil, adbc.Error{
 				Msg:  err.Error(),
 				Code: adbc.StatusInternal,
 			}
 		}
-		return reader, nil
+
+		bldr := array.NewRecordBuilder(alloc, schema)
+		defer bldr.Release()
+
+		rec, err := jsonDataToArrow(ctx, bldr, ld)
+		if err != nil {
+			return nil, err
+		}
+		defer rec.Release()
+
+		if ld.TotalRows() != 0 {
+			return array.NewRecordReader(schema, []arrow.Record{rec})
+		} else {
+			return array.NewRecordReader(schema, []arrow.Record{})
+		}
 	}
 
 	ch := make(chan arrow.Record, bufferSize)
