@@ -274,6 +274,12 @@ class SqliteFlightSqlStatementTest : public ::testing::Test,
   void TestSqlIngestInterval() {
     GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
   }
+  void TestSqlQueryRowsAffectedDelete() {
+    GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
+  }
+  void TestSqlQueryRowsAffectedDeleteStream() {
+    GTEST_SKIP() << "Cannot query rows affected in delete stream (not implemented)";
+  }
 
  protected:
   SqliteFlightSqlQuirks quirks_;

@@ -1364,7 +1364,13 @@ AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
     sqlite3_mutex_leave(sqlite3_db_mutex(stmt->conn));
 
     AdbcSqliteBinderRelease(&stmt->binder);
-    if (rows_affected) *rows_affected = rows;
+    if (rows_affected) {
+      if (sqlite3_column_count(stmt->stmt) == 0) {
+        *rows_affected = sqlite3_changes(stmt->conn);
+      } else {
+        *rows_affected = rows;
+      }
+    }
     return status;
   }
 

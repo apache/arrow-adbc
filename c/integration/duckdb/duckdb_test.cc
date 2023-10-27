@@ -101,6 +101,12 @@ class DuckDbStatementTest : public ::testing::Test,
   }
 
   void TestSqlQueryErrors() { GTEST_SKIP() << "DuckDB does not set AdbcError.release"; }
+  void TestSqlQueryRowsAffectedDelete() {
+    GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
+  }
+  void TestSqlQueryRowsAffectedDeleteStream() {
+    GTEST_SKIP() << "Cannot query rows affected in delete stream (not implemented)";
+  }
 
   void TestErrorCompatibility() {
     GTEST_SKIP() << "DuckDB does not set AdbcError.release";

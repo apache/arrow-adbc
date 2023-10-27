@@ -19,7 +19,7 @@
 #include <R.h>
 #include <Rinternals.h>
 
-#include <string.h>
+#include <cstring>
 #include <utility>
 
 #include <adbc.h>
@@ -48,8 +48,7 @@ static void finalize_driver_xptr(SEXP driver_xptr) {
   }
 
   if (driver->release != nullptr) {
-    AdbcError error;
-    memset(&error, 0, sizeof(AdbcError));
+    AdbcError error = ADBC_ERROR_INIT;
     int status = driver->release(driver, &error);
     adbc_error_warn(status, &error, "finalize_driver_xptr()");
   }
@@ -65,8 +64,7 @@ static void finalize_database_xptr(SEXP database_xptr) {
   }
 
   if (database->private_data != nullptr) {
-    AdbcError error;
-    memset(&error, 0, sizeof(AdbcError));
+    AdbcError error = ADBC_ERROR_INIT;
     int status = AdbcDatabaseRelease(database, &error);
     adbc_error_warn(status, &error, "finalize_database_xptr()");
   }
@@ -127,8 +125,7 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
 
   AdbcDatabase* database = adbc_from_xptr<AdbcDatabase>(database_xptr);
 
-  AdbcError error;
-  memset(&error, 0, sizeof(AdbcError));
+  AdbcError error = ADBC_ERROR_INIT;
   int status = AdbcDatabaseNew(database, &error);
   adbc_error_stop(status, &error);
 
@@ -153,9 +150,9 @@ extern "C" SEXP RAdbcMoveDatabase(SEXP database_xptr) {
   R_RegisterCFinalizer(database_xptr_new, &finalize_database_xptr);
   AdbcDatabase* database_new = adbc_from_xptr<AdbcDatabase>(database_xptr_new);
 
-  memcpy(database_new, database, sizeof(AdbcDatabase));
+  std::memcpy(database_new, database, sizeof(AdbcDatabase));
   adbc_xptr_move_attrs(database_xptr, database_xptr_new);
-  memset(database, 0, sizeof(AdbcDatabase));
+  std::memset(database, 0, sizeof(AdbcDatabase));
 
   UNPROTECT(1);
   return database_xptr_new;
@@ -186,8 +183,7 @@ static void finalize_connection_xptr(SEXP connection_xptr) {
   }
 
   if (connection->private_data != nullptr) {
-    AdbcError error;
-    memset(&error, 0, sizeof(AdbcError));
+    AdbcError error = ADBC_ERROR_INIT;
     int status = AdbcConnectionRelease(connection, &error);
     adbc_error_warn(status, &error, "finalize_connection_xptr()");
   }
@@ -201,8 +197,7 @@ extern "C" SEXP RAdbcConnectionNew(void) {
 
   AdbcConnection* connection = adbc_from_xptr<AdbcConnection>(connection_xptr);
 
-  AdbcError error;
-  memset(&error, 0, sizeof(AdbcError));
+  AdbcError error = ADBC_ERROR_INIT;
   int status = AdbcConnectionNew(connection, &error);
   adbc_error_stop(status, &error);
 
@@ -216,9 +211,9 @@ extern "C" SEXP RAdbcMoveConnection(SEXP connection_xptr) {
   R_RegisterCFinalizer(connection_xptr_new, &finalize_connection_xptr);
   AdbcConnection* connection_new = adbc_from_xptr<AdbcConnection>(connection_xptr_new);
 
-  memcpy(connection_new, connection, sizeof(AdbcConnection));
+  std::memcpy(connection_new, connection, sizeof(AdbcConnection));
   adbc_xptr_move_attrs(connection_xptr, connection_xptr_new);
-  memset(connection, 0, sizeof(AdbcConnection));
+  std::memset(connection, 0, sizeof(AdbcConnection));
 
   UNPROTECT(1);
   return connection_xptr_new;
@@ -386,8 +381,7 @@ static void finalize_statement_xptr(SEXP statement_xptr) {
   }
 
   if (statement->private_data != nullptr) {
-    AdbcError error;
-    memset(&error, 0, sizeof(AdbcError));
+    AdbcError error = ADBC_ERROR_INIT;
     int status = AdbcStatementRelease(statement, &error);
     adbc_error_warn(status, &error, "finalize_statement_xptr()");
   }
@@ -402,8 +396,7 @@ extern "C" SEXP RAdbcStatementNew(SEXP connection_xptr) {
 
   AdbcStatement* statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
 
-  AdbcError error;
-  memset(&error, 0, sizeof(AdbcError));
+  AdbcError error = ADBC_ERROR_INIT;
   int status = AdbcStatementNew(connection, statement, &error);
   adbc_error_stop(status, &error);
 
@@ -419,9 +412,9 @@ extern "C" SEXP RAdbcMoveStatement(SEXP statement_xptr) {
   R_RegisterCFinalizer(statement_xptr_new, &finalize_statement_xptr);
   AdbcStatement* statement_new = adbc_from_xptr<AdbcStatement>(statement_xptr_new);
 
-  memcpy(statement_new, statement, sizeof(AdbcStatement));
+  std::memcpy(statement_new, statement, sizeof(AdbcStatement));
   adbc_xptr_move_attrs(statement_xptr, statement_xptr_new);
-  memset(statement, 0, sizeof(AdbcStatement));
+  std::memset(statement, 0, sizeof(AdbcStatement));
 
   UNPROTECT(1);
   return statement_xptr_new;

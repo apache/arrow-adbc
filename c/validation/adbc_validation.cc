@@ -1366,7 +1366,8 @@ void StatementTest::TestRelease() {
 
 template <typename CType>
 void StatementTest::TestSqlIngestType(ArrowType type,
-                                      const std::vector<std::optional<CType>>& values) {
+                                      const std::vector<std::optional<CType>>& values,
+                                      bool dictionary_encode) {
   if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
     GTEST_SKIP();
   }
@@ -1380,6 +1381,38 @@ void StatementTest::TestSqlIngestType(ArrowType type,
   ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
   ASSERT_THAT(MakeBatch<CType>(&schema.value, &array.value, &na_error, values),
               IsOkErrno());
+
+  if (dictionary_encode) {
+    // Create a dictionary-encoded version of the target schema
+    Handle<struct ArrowSchema> dict_schema;
+    ASSERT_THAT(ArrowSchemaInitFromType(&dict_schema.value, NANOARROW_TYPE_INT32),
+                IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetName(&dict_schema.value, schema.value.children[0]->name),
+                IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetName(schema.value.children[0], nullptr), IsOkErrno());
+
+    // Swap it into the target schema
+    ASSERT_THAT(ArrowSchemaAllocateDictionary(&dict_schema.value), IsOkErrno());
+    ArrowSchemaMove(schema.value.children[0], dict_schema.value.dictionary);
+    ArrowSchemaMove(&dict_schema.value, schema.value.children[0]);
+
+    // Create a dictionary-encoded array with easy 0...n indices so that the
+    // matched values will be the same.
+    Handle<struct ArrowArray> dict_array;
+    ASSERT_THAT(ArrowArrayInitFromType(&dict_array.value, NANOARROW_TYPE_INT32),
+                IsOkErrno());
+    ASSERT_THAT(ArrowArrayStartAppending(&dict_array.value), IsOkErrno());
+    for (size_t i = 0; i < values.size(); i++) {
+      ASSERT_THAT(ArrowArrayAppendInt(&dict_array.value, static_cast<int64_t>(i)),
+                  IsOkErrno());
+    }
+    ASSERT_THAT(ArrowArrayFinishBuildingDefault(&dict_array.value, nullptr), IsOkErrno());
+
+    // Swap it into the target batch
+    ASSERT_THAT(ArrowArrayAllocateDictionary(&dict_array.value), IsOkErrno());
+    ArrowArrayMove(array.value.children[0], dict_array.value.dictionary);
+    ArrowArrayMove(&dict_array.value, array.value.children[0]);
+  }
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
@@ -1448,7 +1481,7 @@ void StatementTest::TestSqlIngestNumericType(ArrowType type) {
     values.push_back(std::numeric_limits<CType>::max());
   }
 
-  return TestSqlIngestType(type, values);
+  return TestSqlIngestType(type, values, false);
 }
 
 void StatementTest::TestSqlIngestBool() {
@@ -1497,25 +1530,23 @@ void StatementTest::TestSqlIngestFloat64() {
 
 void StatementTest::TestSqlIngestString() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
-      NANOARROW_TYPE_STRING, {std::nullopt, "", "", "1234", "例"}));
+      NANOARROW_TYPE_STRING, {std::nullopt, "", "", "1234", "例"}, false));
 }
 
 void StatementTest::TestSqlIngestLargeString() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
-      NANOARROW_TYPE_LARGE_STRING, {std::nullopt, "", "", "1234", "例"}));
+      NANOARROW_TYPE_LARGE_STRING, {std::nullopt, "", "", "1234", "例"}, false));
 }
 
 void StatementTest::TestSqlIngestBinary() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::byte>>(
       NANOARROW_TYPE_BINARY,
-      {
-        std::nullopt, std::vector<std::byte>{},
-        std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
-        std::vector<std::byte>{
-          std::byte{0x01}, std::byte{0x02}, std::byte{0x03}, std::byte{0x04}
-        },
-        std::vector<std::byte>{std::byte{0xfe}, std::byte{0xff}}
-      }));
+      {std::nullopt, std::vector<std::byte>{},
+       std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
+       std::vector<std::byte>{std::byte{0x01}, std::byte{0x02}, std::byte{0x03},
+                              std::byte{0x04}},
+       std::vector<std::byte>{std::byte{0xfe}, std::byte{0xff}}},
+      false));
 }
 
 void StatementTest::TestSqlIngestDate32() {
@@ -1735,6 +1766,12 @@ void StatementTest::TestSqlIngestInterval() {
     ASSERT_EQ(nullptr, reader.array->release);
   }
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
+void StatementTest::TestSqlIngestStringDictionary() {
+  ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
+      NANOARROW_TYPE_STRING, {std::nullopt, "", "", "1234", "例"},
+      /*dictionary_encode*/ true));
 }
 
 void StatementTest::TestSqlIngestTableEscaping() {
@@ -2112,8 +2149,7 @@ void StatementTest::TestSqlIngestErrors() {
                                          {"coltwo", NANOARROW_TYPE_INT64}}),
               IsOkErrno());
   ASSERT_THAT(
-      (MakeBatch<int64_t, int64_t>(&schema.value, &array.value, &na_error,
-                                   {-42}, {-42})),
+      (MakeBatch<int64_t, int64_t>(&schema.value, &array.value, &na_error, {-42}, {-42})),
       IsOkErrno(&na_error));
 
   ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
@@ -3433,6 +3469,66 @@ void StatementTest::TestSqlQueryTrailingSemicolons() {
 
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
+
+void StatementTest::TestSqlQueryRowsAffectedDelete() {
+  ASSERT_THAT(quirks()->DropTable(&connection, "delete_test", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "CREATE TABLE delete_test (foo INT)", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+              "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "DELETE FROM delete_test WHERE foo >= 3", &error),
+              IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected,
+              ::testing::AnyOf(::testing::Eq(3), ::testing::Eq(-1)));
+}
+
+void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
+  ASSERT_THAT(quirks()->DropTable(&connection, "delete_test", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "CREATE TABLE delete_test (foo INT)", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+              "INSERT INTO delete_test (foo) VALUES (1), (2), (3), (4), (5)", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "DELETE FROM delete_test WHERE foo >= 3", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(reader.rows_affected,
+              ::testing::AnyOf(::testing::Eq(5), ::testing::Eq(-1)));
+}
+
+
+
 
 void StatementTest::TestTransactions() {
   if (!quirks()->supports_transactions() || quirks()->ddl_implicit_commit_txn()) {

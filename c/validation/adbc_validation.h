@@ -327,6 +327,9 @@ class StatementTest {
   void TestSqlIngestTimestampTz();
   void TestSqlIngestInterval();
 
+  // Dictionary-encoded
+  void TestSqlIngestStringDictionary();
+
   // ---- End Type-specific tests ----------------
 
   void TestSqlIngestTableEscaping();
@@ -365,6 +368,8 @@ class StatementTest {
   void TestSqlQueryCancel();
   void TestSqlQueryErrors();
   void TestSqlQueryTrailingSemicolons();
+  void TestSqlQueryRowsAffectedDelete();
+  void TestSqlQueryRowsAffectedDeleteStream();
 
   void TestSqlSchemaInts();
   void TestSqlSchemaFloats();
@@ -385,7 +390,8 @@ class StatementTest {
   struct AdbcStatement statement;
 
   template <typename CType>
-  void TestSqlIngestType(ArrowType type, const std::vector<std::optional<CType>>& values);
+  void TestSqlIngestType(ArrowType type, const std::vector<std::optional<CType>>& values,
+                         bool dictionary_encode);
 
   template <typename CType>
   void TestSqlIngestNumericType(ArrowType type);
@@ -422,6 +428,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTimestamp) { TestSqlIngestTimestamp(); }                     \
   TEST_F(FIXTURE, SqlIngestTimestampTz) { TestSqlIngestTimestampTz(); }                 \
   TEST_F(FIXTURE, SqlIngestInterval) { TestSqlIngestInterval(); }                       \
+  TEST_F(FIXTURE, SqlIngestStringDictionary) { TestSqlIngestStringDictionary(); }       \
   TEST_F(FIXTURE, SqlIngestTableEscaping) { TestSqlIngestTableEscaping(); }             \
   TEST_F(FIXTURE, SqlIngestColumnEscaping) { TestSqlIngestColumnEscaping(); }           \
   TEST_F(FIXTURE, SqlIngestAppend) { TestSqlIngestAppend(); }                           \
@@ -455,6 +462,10 @@ class StatementTest {
   TEST_F(FIXTURE, SqlQueryCancel) { TestSqlQueryCancel(); }                             \
   TEST_F(FIXTURE, SqlQueryErrors) { TestSqlQueryErrors(); }                             \
   TEST_F(FIXTURE, SqlQueryTrailingSemicolons) { TestSqlQueryTrailingSemicolons(); }     \
+  TEST_F(FIXTURE, SqlQueryRowsAffectedDelete) { TestSqlQueryRowsAffectedDelete(); }     \
+  TEST_F(FIXTURE, SqlQueryRowsAffectedDeleteStream) {                                   \
+    TestSqlQueryRowsAffectedDeleteStream();                                             \
+  }                                                                                     \
   TEST_F(FIXTURE, SqlSchemaInts) { TestSqlSchemaInts(); }                               \
   TEST_F(FIXTURE, SqlSchemaFloats) { TestSqlSchemaFloats(); }                           \
   TEST_F(FIXTURE, SqlSchemaStrings) { TestSqlSchemaStrings(); }                         \

@@ -60,7 +60,7 @@ AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
   struct ArrowSchemaView view = {0};
   for (int i = 0; i < binder->schema.n_children; i++) {
     status = ArrowSchemaViewInit(&view, binder->schema.children[i], &arrow_error);
-    if (status != 0) {
+    if (status != NANOARROW_OK) {
       SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
                strerror(status), status, arrow_error.message);
       return ADBC_STATUS_INVALID_ARGUMENT;
@@ -70,6 +70,31 @@ AdbcStatusCode AdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
       SetError(error, "Column %d has UNINITIALIZED type", i);
       return ADBC_STATUS_INTERNAL;
     }
+
+    if (view.type == NANOARROW_TYPE_DICTIONARY) {
+      struct ArrowSchemaView value_view = {0};
+      status = ArrowSchemaViewInit(&value_view, binder->schema.children[i]->dictionary,
+                                   &arrow_error);
+      if (status != NANOARROW_OK) {
+        SetError(error, "Failed to parse schema for column %d->dictionary: %s (%d): %s",
+                 i, strerror(status), status, arrow_error.message);
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      // We only support string/binary dictionary-encoded values
+      switch (value_view.type) {
+        case NANOARROW_TYPE_STRING:
+        case NANOARROW_TYPE_LARGE_STRING:
+        case NANOARROW_TYPE_BINARY:
+        case NANOARROW_TYPE_LARGE_BINARY:
+          break;
+        default:
+          SetError(error, "Column %d dictionary has unsupported type %s", i,
+                   ArrowTypeString(value_view.type));
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+    }
+
     binder->types[i] = view.type;
   }
 
@@ -308,7 +333,7 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
         case NANOARROW_TYPE_LARGE_BINARY: {
           struct ArrowBufferView value =
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
-          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
+          status = sqlite3_bind_blob(stmt, col + 1, value.data.as_char, value.size_bytes,
                                      SQLITE_STATIC);
           break;
         }
@@ -351,6 +376,20 @@ AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
           status = sqlite3_bind_text(stmt, col + 1, value.data.as_char, value.size_bytes,
                                      SQLITE_STATIC);
+          break;
+        }
+        case NANOARROW_TYPE_DICTIONARY: {
+          int64_t value_index =
+              ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
+          if (ArrowArrayViewIsNull(binder->batch.children[col]->dictionary,
+                                   value_index)) {
+            status = sqlite3_bind_null(stmt, col + 1);
+          } else {
+            struct ArrowBufferView value = ArrowArrayViewGetBytesUnsafe(
+                binder->batch.children[col]->dictionary, value_index);
+            status = sqlite3_bind_text(stmt, col + 1, value.data.as_char,
+                                       value.size_bytes, SQLITE_STATIC);
+          }
           break;
         }
         case NANOARROW_TYPE_DATE32: {
@@ -529,14 +568,8 @@ int StatementReaderGetOneValue(struct StatementReader* reader, int col,
         case SQLITE_INTEGER:
         case SQLITE_FLOAT:
         case SQLITE_TEXT:
-        case SQLITE_BLOB: {
-          // Let SQLite convert
-          struct ArrowStringView value = {
-              .data = (const char*)sqlite3_column_text(reader->stmt, col),
-              .size_bytes = sqlite3_column_bytes(reader->stmt, col),
-          };
-          return ArrowArrayAppendString(out, value);
-        }
+        case SQLITE_BLOB:
+          break;
         default: {
           snprintf(reader->error.message, sizeof(reader->error.message),
                    "[SQLite] Type mismatch in column %d: expected STRING but got unknown "
@@ -545,7 +578,34 @@ int StatementReaderGetOneValue(struct StatementReader* reader, int col,
           return ENOTSUP;
         }
       }
-      break;
+
+      // Let SQLite convert
+      struct ArrowStringView value = {
+          .data = (const char*)sqlite3_column_text(reader->stmt, col),
+          .size_bytes = sqlite3_column_bytes(reader->stmt, col),
+      };
+      return ArrowArrayAppendString(out, value);
+    }
+
+    case NANOARROW_TYPE_BINARY: {
+      switch (sqlite_type) {
+        case SQLITE_TEXT:
+        case SQLITE_BLOB:
+          break;
+        default: {
+          snprintf(reader->error.message, sizeof(reader->error.message),
+                   "[SQLite] Type mismatch in column %d: expected BLOB but got unknown "
+                   "type %d",
+                   col, sqlite_type);
+          return ENOTSUP;
+        }
+      }
+
+      // Let SQLite convert
+      struct ArrowBufferView value;
+      value.data.data = sqlite3_column_blob(reader->stmt, col);
+      value.size_bytes = sqlite3_column_bytes(reader->stmt, col);
+      return ArrowArrayAppendBytes(out, value);
     }
 
     default: {
@@ -1014,7 +1074,39 @@ AdbcStatusCode StatementReaderInferOneValue(
       CHECK_NA(INTERNAL, ArrowBufferAppend(data, &offset, sizeof(offset)), error);
       break;
     }
-    case SQLITE_BLOB:
+    case SQLITE_BLOB: {
+      ArrowBitmapAppendUnsafe(validity, /*set=*/1, /*length=*/1);
+
+      switch (*current_type) {
+        case NANOARROW_TYPE_INT64: {
+          AdbcStatusCode status = StatementReaderUpcastInt64ToBinary(data, binary, error);
+          if (status != ADBC_STATUS_OK) return status;
+          *current_type = NANOARROW_TYPE_BINARY;
+          break;
+        }
+        case NANOARROW_TYPE_DOUBLE: {
+          AdbcStatusCode status =
+              StatementReaderUpcastDoubleToBinary(data, binary, error);
+          if (status != ADBC_STATUS_OK) return status;
+          *current_type = NANOARROW_TYPE_BINARY;
+          break;
+        }
+        case NANOARROW_TYPE_STRING:
+          *current_type = NANOARROW_TYPE_BINARY;
+          break;
+        case NANOARROW_TYPE_BINARY:
+          break;
+        default:
+          return ADBC_STATUS_INTERNAL;
+      }
+
+      const void* value = sqlite3_column_blob(stmt, col);
+      const int size = sqlite3_column_bytes(stmt, col);
+      const int32_t offset = ((int32_t*)data->data)[data->size_bytes / 4 - 1] + size;
+      CHECK_NA(INTERNAL, ArrowBufferAppend(binary, value, size), error);
+      CHECK_NA(INTERNAL, ArrowBufferAppend(data, &offset, sizeof(offset)), error);
+      break;
+    }
     default: {
       return ADBC_STATUS_NOT_IMPLEMENTED;
     }
