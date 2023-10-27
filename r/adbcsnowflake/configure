@@ -18,6 +18,12 @@
 R_BIN="$R_HOME/bin/R"
 RSCRIPT_BIN="$R_HOME/bin/Rscript"
 
+# Set to non-false for CRAN releases, which require this approach to comply with
+# guidance regarding large dependency sources. When non-false, this script
+# will fail if the download fails or if checksum verification fails on
+# the downloaded file.
+DOWNLOAD_DEPENDENCY_ARCHIVE="false"
+
 # Run bootstrap.R. This will have already run if we are installing a source
 # package built with pkgbuild::build() with pkgbuild >1.4.0; however, we
 # run it again in case this is R CMD INSTALL on a directory or
@@ -28,7 +34,16 @@ if [ -f bootstrap.R ]; then
   "$RSCRIPT_BIN" bootstrap.R
 fi
 
-# If we've fetched an archive of the vendored sources (or built one for testing)
+# If we need to fetch an archive of the vendored dependencies, do so now
+if [ ! "$DOWNLOAD_DEPENDENCY_ARCHIVE" = "false" ]; then
+  "$RSCRIPT_BIN" tools/download-go-vendor-archive.R
+  if [ ! -f tools/src-go-adbc-vendor.zip ]; then
+    echo "Failed to fetch vendored dependency archive"
+    exit 1
+  fi
+fi
+
+# If we've fetched an archive of vendored dependencies (or built one for testing)
 # extract it into src/go/adbc/vendor to use the archived/vendored dependencies.
 # You can run Rscript tools/create-go-vendor-archive.zip to generate the
 # dependency archive and checksum file and place it in the tools/ directory.
