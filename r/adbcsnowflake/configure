@@ -63,22 +63,33 @@ if [ -z "$GO_BIN" ]; then
   GO_BIN=`which go`
 fi
 
+# Try some default install locations that might not be on PATH
+DEFAULT_GO_WIN="C:/Program Files/Go/bin/go.exe"
+if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_WIN" ]; then
+  GO_BIN="$DEFAULT_GO_WIN"
+fi
+
+DEFAULT_GO_MACOS="/usr/local/go"
+if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_MACOS" ]; then
+  GO_BIN="$DEFAULT_GO_MACOS"
+fi
+
+DEFAULT_GO_HOMEBREW_M1="/opt/homebrew/bin/go"
+if [ -z "$GO_BIN" ] && [ -f "$DEFAULT_GO_HOMEBREW_M1" ]; then
+  GO_BIN="$DEFAULT_GO_HOMEBREW_M1"
+fi
+
 if [ -z "$GO_BIN" ]; then
-  if [ ! -f src/go/tmp/go/bin/go ]; then
-    echo ""
-    echo "Downloading and extracting Go into the package source directory:"
-    echo "This may take a few minutes. To eliminate this step, install Go"
-    echo "from your faviourite package manager or set the GO_BIN environment variable:"
-    echo "- apt-get install golang"
-    echo "- brew install golang"
-    echo "- dnf install golang"
-    echo "- apk add go"
-    echo "- pacman -S go"
-
-    "$RSCRIPT_BIN" tools/download-go.R
-  fi
-
-  GO_BIN="`pwd`/src/go/tmp/go/bin/go"
+  echo ""
+  echo "The Go compiler is required to install this package. You can install go"
+  echo "from your faviourite package manager or set the GO_BIN environment variable:"
+  echo "- apt-get install golang"
+  echo "- brew install golang"
+  echo "- dnf install golang"
+  echo "- apk add go"
+  echo "- pacman -S go"
+  echo "...or from the official installers available at https://go.dev/dl/"
+  exit 1
 fi
 
 echo "Trying 'go version' with GO_BIN at '$GO_BIN'"
