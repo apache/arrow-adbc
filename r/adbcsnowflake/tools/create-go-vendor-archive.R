@@ -46,7 +46,22 @@ withr::with_dir("src/go/adbc", {
   })
 })
 
-dst_zip <- file.path(getwd(), "tools/vendor.zip")
+# Create .zip
+dst_zip <- file.path(getwd(), "tools/src-go-adbc-vendor.zip")
 withr::with_dir("src/go/adbc/vendor", {
   zip(dst_zip, list.files(recursive = TRUE))
+})
+
+# Create checksum
+dst_checksum <- paste0(dst_zip, ".sha512")
+withr::with_dir("tools", {
+
+  system(
+    paste(
+      "shasum --algorithm 512",
+      basename(dst_zip),
+      ">",
+      basename(dst_checksum)
+    )
+  )
 })
