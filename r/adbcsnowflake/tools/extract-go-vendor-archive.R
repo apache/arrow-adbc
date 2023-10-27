@@ -15,20 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-PKG_CPPFLAGS=-DADBC_EXPORT=""
-PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_snowflake
+dst_vendor_zip <- "tools/src-go-adbc-vendor.zip"
+dst_vendor <- "src/go/adbc/vendor"
+if (file.exists(dst_vendor)) {
+  unlink(dst_vendor, recursive = TRUE)
+}
 
-CGO_CC = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CC`
-CGO_CXX = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CXX`
-CGO_CFLAGS = $(ALL_CPPFLAGS)
-GO_BIN = $(CURDIR)/go/tmp/go/bin/go.exe
-
-.PHONY: all gostatic gobin
-all: $(SHLIB)
-$(SHLIB): gostatic
-
-gostatic: gobin
-		(cd "$(CURDIR)/go/adbc"; CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" "$(GO_BIN)" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_snowflake.a -buildmode=c-archive "./pkg/snowflake")
-
-gobin:
-		(cd ..; "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" "tools/download-go.R")
+cat(sprintf("Extracting '%s' to '%s'...\n", dst_vendor_zip, dst_vendor))
+unzip("tools/src-go-adbc-vendor.zip", exdir = dst_vendor)

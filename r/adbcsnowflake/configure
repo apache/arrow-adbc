@@ -28,6 +28,21 @@ if [ -f bootstrap.R ]; then
   "$RSCRIPT_BIN" bootstrap.R
 fi
 
+# If we've fetched an archive of the vendored sources (or built one for testing)
+# extract it into src/go/adbc/vendor to use the archived/vendored dependencies.
+# You can run Rscript tools/create-go-vendor-archive.zip to generate the
+# dependency archive and checksum file and place it in the tools/ directory.
+if [ -f tools/src-go-adbc-vendor.zip ]; then
+  cd tools
+  if shasum --algorithm 512 --check --status src-go-adbc-vendor.zip.sha512 ; then
+    cd ..
+    "$RSCRIPT_BIN" tools/extract-go-vendor-archive.R
+  else
+    echo "Checksum verification failed for vendored dependency archive"
+    exit 1
+  fi
+fi
+
 # Find the go binary so that we can go build!
 if [ -z "$GO_BIN" ]; then
   GO_BIN=`which go`
@@ -81,6 +96,7 @@ PKG_LIBS="$PKG_LIBS $SYMBOL_ARGS"
 sed \
   -e "s|@gobin@|$GO_BIN|" \
   -e "s|@libs@|$PKG_LIBS|" \
+  -e "s|@cflags@|$PKG_CPPFLAGS|" \
   -e "s|@cc@|$CC|" \
   -e "s|@cxx@|$CXX|" \
   src/Makevars.in > src/Makevars
