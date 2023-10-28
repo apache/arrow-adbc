@@ -68,6 +68,14 @@ if [ -f tools/src-go-adbc-vendor.zip ]; then
 fi
 
 # Find the go binary so that we can go build!
+# If we've downloaded a specific version of go to src/go/tmp, use that
+# one (helpful for testing different version of go locally)
+PREVIOUSLY_DOWNLOADED_GO="`pwd`/src/go/tmp/go/bin/go"
+if [ -z "$GO_BIN" ] && [ -f "$PREVIOUSLY_DOWNLOADED_GO" ]; then
+  GO_BIN="$PREVIOUSLY_DOWNLOADED_GO"
+fi
+
+# Check go on PATH
 if [ -z "$GO_BIN" ]; then
   GO_BIN=`which go`
 fi
@@ -123,7 +131,7 @@ fi
 
 # On OSX we need -framework Security because of some dependency somewhere
 if [ `uname` = "Darwin" ]; then
-  PKG_LIBS="-framework Security -lresolv $PKG_LIBS"
+  PKG_LIBS="-framework Security $PKG_LIBS"
 elif uname | grep -e "MSYS" >/dev/null ; then
   # Windows
   PKG_LIBS="$PKG_LIBS"
