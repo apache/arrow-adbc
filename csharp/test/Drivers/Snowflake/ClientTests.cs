@@ -158,6 +158,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     while (reader.Read())
                     {
                         count++;
+
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            object value = reader.GetValue(i);
+
+                            if (value == null)
+                                value = "(null)";
+
+                            Console.WriteLine($"{reader.GetName(i)}: {value}");
+                        }
                     }
                 }
                 finally { reader.Close(); }
@@ -192,6 +202,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     while (reader.Read())
                     {
                         count++;
+
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            object value = reader.GetValue(i);
+
+                            if (value == null)
+                                value = "(null)";
+
+                            Console.WriteLine($"{reader.GetName(i)}: {value}");
+                        }
                     }
                 }
                 finally { reader.Close(); }

@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Drivers.FlightSql;
@@ -22,7 +23,9 @@ using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
 {
-
+    /// <summary>
+    /// Class for testing the ADBC Client using the FlightSql ADBC driver.
+    /// </summary>
     public class ClientTests
     {
         /// <summary>
@@ -70,6 +73,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
                     while (reader.Read())
                     {
                         count++;
+
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            object value = reader.GetValue(i);
+
+                            if (value == null)
+                                value = "(null)";
+
+                            Console.WriteLine($"{reader.GetName(i)}: {value}");
+                        }
                     }
                 }
                 finally { reader.Close(); }

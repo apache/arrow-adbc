@@ -29,6 +29,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     /// <summary>
     /// Class for testing the ADBC Client using the BigQuery ADBC driver.
     /// </summary>
+    /// /// <remarks>
+    /// Tests are ordered to ensure data is created for the other
+    /// queries to run.
+    /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class ClientTests
     {

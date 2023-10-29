@@ -22,7 +22,7 @@ using Xunit;
 namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
 {
     /// <summary>
-    /// Abstract class for the ADBC connection tests.
+    /// Class for testing the FlightSql ADBC driver connection tests.
     /// </summary>
     public class DriverTests
     {
