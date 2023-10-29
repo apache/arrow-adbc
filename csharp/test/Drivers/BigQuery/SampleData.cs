@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Text;
 using Apache.Arrow.Types;
 
@@ -40,7 +41,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             {
                 new ColumnNetTypeArrowTypeValue("id", typeof(long), typeof(Int64Type), 1L),
                 new ColumnNetTypeArrowTypeValue("number", typeof(double), typeof(DoubleType), 1.23d),
-                new ColumnNetTypeArrowTypeValue("decimal", typeof(decimal), typeof(Decimal128Type), decimal.Parse("4.56")),
+                new ColumnNetTypeArrowTypeValue("decimal", typeof(SqlDecimal), typeof(Decimal128Type), SqlDecimal.Parse("4.56")),
                 new ColumnNetTypeArrowTypeValue("big_decimal", typeof(string), typeof(StringType), "789000000000000000000000000000000000000"),
                 new ColumnNetTypeArrowTypeValue("is_active", typeof(bool), typeof(BooleanType), true),
                 new ColumnNetTypeArrowTypeValue("name", typeof(string), typeof(StringType), "John Doe"),

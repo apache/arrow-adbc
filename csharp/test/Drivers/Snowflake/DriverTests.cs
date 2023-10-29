@@ -19,9 +19,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Adbc.Tests.Metadata;
+using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
-using NUnit.Framework;
-using NUnit.Framework.Internal;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     /// Tests are ordered to ensure data is created for the other
     /// queries to run.
     /// </remarks>
-    [TestFixture]
+    [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class DriverTests
     {
         /// <summary>
@@ -43,226 +43,220 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Tests are ordered to ensure data is created
         /// for the other queries to run.
         /// </remarks>
-        [Test, Order(1)]
+        [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
-            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
+
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
+
+            AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
+
+            AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
+            AdbcConnection adbcConnection = adbcDatabase.Connect(options);
+
+            string[] queries = SnowflakeTestingUtils.GetQueries(testConfiguration);
+
+            List<int> expectedResults = new List<int>() { -1, 1, 1 };
+
+            for (int i = 0; i < queries.Length; i++)
             {
-                SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+                string query = queries[i];
+                AdbcStatement statement = adbcConnection.CreateStatement();
+                statement.SqlQuery = query;
 
-                Dictionary<string, string> parameters = new Dictionary<string, string>();
-                Dictionary<string, string> options = new Dictionary<string, string>();
+                UpdateResult updateResult = statement.ExecuteUpdate();
 
-                AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
-                AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
-                AdbcConnection adbcConnection = adbcDatabase.Connect(options);
-
-                string[] queries = SnowflakeTestingUtils.GetQueries(testConfiguration);
-
-                List<int> expectedResults = new List<int>() { -1, 1, 1 };
-
-                for (int i = 0; i < queries.Length; i++)
-                {
-                    string query = queries[i];
-                    AdbcStatement statement = adbcConnection.CreateStatement();
-                    statement.SqlQuery = query;
-
-                    UpdateResult updateResult = statement.ExecuteUpdate();
-
-                    Assert.AreEqual(expectedResults[i], updateResult.AffectedRows, $"The expected affected rows do not match the actual affected rows at position {i}.");
-                }
+                Assert.Equal(expectedResults[i], updateResult.AffectedRows);
             }
         }
 
         /// <summary>
         /// Validates if the driver can call GetInfo.
         /// </summary>
-        [Test, Order(2)]
+        [SkippableFact, Order(2)]
         public void CanGetInfo()
         {
-            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
+
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+
+            SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
+
+            AdbcDatabase adbcDatabase = driver.Open(parameters);
+            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
+
+            IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
+
+            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
+
+            List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
+
+            for (int i = 0; i < infoNameArray.Length; i++)
             {
-                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i);
+                DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
 
-                SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+                Assert.Contains(value.ToString(), expectedValues);
 
-                AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
-
-                AdbcDatabase adbcDatabase = driver.Open(parameters);
-                AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-                IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
-
-                RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
-                UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
-
-                List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
-
-                for (int i = 0; i < infoNameArray.Length; i++)
-                {
-                    AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i);
-                    DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
-
-                    Assert.IsTrue(expectedValues.Contains(value.ToString()));
-
-                    StringArray stringArray = (StringArray)valueArray.Fields[0];
-                    Console.WriteLine($"{value}={stringArray.GetString(i)}");
-                }
+                StringArray stringArray = (StringArray)valueArray.Fields[0];
+                Console.WriteLine($"{value}={stringArray.GetString(i)}");
             }
         }
 
         /// <summary>
         /// Validates if the driver can call GetObjects.
         /// </summary>
-        [Test, Order(3)]
+        [SkippableFact, Order(3)]
         public void CanGetObjects()
         {
-            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
-            {
-                Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
 
-                SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
 
-                AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
+            SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-                // need to add the database
-                string databaseName = metadataTestConfiguration.Metadata.Catalog;
-                string schemaName = metadataTestConfiguration.Metadata.Schema;
-                string tableName = metadataTestConfiguration.Metadata.Table;
-                string columnName = null;
+            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
 
-                parameters["adbc.snowflake.sql.db"] = databaseName;
-                parameters["adbc.snowflake.sql.schema"] = schemaName;
+            // need to add the database
+            string databaseName = metadataTestConfiguration.Metadata.Catalog;
+            string schemaName = metadataTestConfiguration.Metadata.Schema;
+            string tableName = metadataTestConfiguration.Metadata.Table;
+            string columnName = null;
 
-                AdbcDatabase adbcDatabase = driver.Open(parameters);
-                AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
+            parameters["adbc.snowflake.sql.db"] = databaseName;
+            parameters["adbc.snowflake.sql.schema"] = schemaName;
 
-                IArrowArrayStream stream = adbcConnection.GetObjects(
-                        depth: AdbcConnection.GetObjectsDepth.All,
-                        catalogPattern: databaseName,
-                        dbSchemaPattern: schemaName,
-                        tableNamePattern: tableName,
-                        tableTypes: new List<string> { "BASE TABLE", "VIEW" },
-                        columnNamePattern: columnName);
+            AdbcDatabase adbcDatabase = driver.Open(parameters);
+            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
 
-                RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            IArrowArrayStream stream = adbcConnection.GetObjects(
+                    depth: AdbcConnection.GetObjectsDepth.All,
+                    catalogPattern: databaseName,
+                    dbSchemaPattern: schemaName,
+                    tableNamePattern: tableName,
+                    tableTypes: new List<string> { "BASE TABLE", "VIEW" },
+                    columnNamePattern: columnName);
 
-                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
+            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-                List<AdbcColumn> columns = catalogs
-                    .Select(s => s.DbSchemas)
-                    .FirstOrDefault()
-                    .Select(t => t.Tables)
-                    .FirstOrDefault()
-                    .Select(c => c.Columns)
-                    .FirstOrDefault();
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
-                Assert.AreEqual(metadataTestConfiguration.Metadata.ExpectedColumnCount, columns.Count);
-            }
+            List<AdbcColumn> columns = catalogs
+                .Select(s => s.DbSchemas)
+                .FirstOrDefault()
+                .Select(t => t.Tables)
+                .FirstOrDefault()
+                .Select(c => c.Columns)
+                .FirstOrDefault();
+
+            Assert.Equal(metadataTestConfiguration.Metadata.ExpectedColumnCount, columns.Count);
         }
 
         /// <summary>
         /// Validates if the driver can call GetTableSchema.
         /// </summary>
-        [Test, Order(4)]
+        [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
-            {
-                Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
 
-                SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
 
-                AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
+            SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-                AdbcDatabase adbcDatabase = driver.Open(parameters);
-                AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
+            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
 
-                string databaseName = metadataTestConfiguration.Metadata.Catalog;
-                string schemaName = metadataTestConfiguration.Metadata.Schema;
-                string tableName = metadataTestConfiguration.Metadata.Table;
+            AdbcDatabase adbcDatabase = driver.Open(parameters);
+            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
 
-                Schema schema = adbcConnection.GetTableSchema(databaseName, schemaName, tableName);
+            string databaseName = metadataTestConfiguration.Metadata.Catalog;
+            string schemaName = metadataTestConfiguration.Metadata.Schema;
+            string tableName = metadataTestConfiguration.Metadata.Table;
 
-                int numberOfFields = schema.FieldsList.Count;
+            Schema schema = adbcConnection.GetTableSchema(databaseName, schemaName, tableName);
 
-                Assert.AreEqual(metadataTestConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
-            }
+            int numberOfFields = schema.FieldsList.Count;
+
+            Assert.Equal(metadataTestConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
         }
 
         /// <summary>
         /// Validates if the driver can call GetTableTypes.
         /// </summary>
-        [Test, Order(5)]
+        [SkippableFact, Order(5)]
         public void CanGetTableTypes()
         {
-            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
-            {
-                Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
 
-                SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
 
-                AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
+            SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-                AdbcDatabase adbcDatabase = driver.Open(parameters);
-                AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
+            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
 
-                IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
+            AdbcDatabase adbcDatabase = driver.Open(parameters);
+            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
 
-                RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
+            IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
 
-                StringArray stringArray = (StringArray)recordBatch.Column("table_type");
+            RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
 
-                List<string> known_types = new List<string>
+            StringArray stringArray = (StringArray)recordBatch.Column("table_type");
+
+            List<string> known_types = new List<string>
             {
                 "BASE TABLE", "TEMPORARY TABLE", "VIEW"
             };
 
-                int results = 0;
+            int results = 0;
 
-                for (int i = 0; i < stringArray.Length; i++)
+            for (int i = 0; i < stringArray.Length; i++)
+            {
+                string value = stringArray.GetString(i);
+
+                if (known_types.Contains(value))
                 {
-                    string value = stringArray.GetString(i);
-
-                    if (known_types.Contains(value))
-                    {
-                        results++;
-                    }
+                    results++;
                 }
-
-                Assert.AreEqual(known_types.Count, results);
             }
+
+            Assert.Equal(known_types.Count, results);
         }
 
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
-        [Test, Order(6)]
+        [SkippableFact, Order(6)]
         public void CanExecuteQuery()
         {
-            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
-            {
-                SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
 
-                Dictionary<string, string> parameters = new Dictionary<string, string>();
-                Dictionary<string, string> options = new Dictionary<string, string>();
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-                AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
 
-                AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
-                AdbcConnection adbcConnection = adbcDatabase.Connect(options);
+            AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
 
-                Console.WriteLine(testConfiguration.Query);
+            AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
+            AdbcConnection adbcConnection = adbcDatabase.Connect(options);
 
-                AdbcStatement statement = adbcConnection.CreateStatement();
-                statement.SqlQuery = testConfiguration.Query;
+            Console.WriteLine(testConfiguration.Query);
 
-                QueryResult queryResult = statement.ExecuteQuery();
+            AdbcStatement statement = adbcConnection.CreateStatement();
+            statement.SqlQuery = testConfiguration.Query;
 
-                Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
-            }
+            QueryResult queryResult = statement.ExecuteQuery();
+
+            Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
         }
     }
 }

@@ -18,6 +18,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Data.SqlTypes;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Client
@@ -101,6 +102,8 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(bool);
 
                 case ArrowTypeId.Decimal128:
+                    return typeof(SqlDecimal);
+
                 case ArrowTypeId.Decimal256:
                     return typeof(decimal);
 

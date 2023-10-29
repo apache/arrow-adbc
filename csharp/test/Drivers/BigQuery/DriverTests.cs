@@ -19,9 +19,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Apache.Arrow.Adbc.Tests.Metadata;
+using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
-using NUnit.Framework;
-using NUnit.Framework.Internal;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
@@ -32,196 +32,190 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     /// Tests are ordered to ensure data is created for the other
     /// queries to run.
     /// </remarks>
-    [TestFixture]
+    [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class DriverTests
     {
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
-        [Test, Order(1)]
+        [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
-            if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
+            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
+
+            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+
+            string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
+
+            List<int> expectedResults = new List<int>() { -1, 1, 1, 1 };
+
+            for (int i = 0; i < queries.Length; i++)
             {
-                BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+                string query = queries[i];
+                AdbcStatement statement = adbcConnection.CreateStatement();
+                statement.SqlQuery = query;
 
-                AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+                UpdateResult updateResult = statement.ExecuteUpdate();
 
-                string[] queries = BigQueryTestingUtils.GetQueries(testConfiguration);
-
-                List<int> expectedResults = new List<int>() { -1, 1, 1, 1 };
-
-                for (int i = 0; i < queries.Length; i++)
-                {
-                    string query = queries[i];
-                    AdbcStatement statement = adbcConnection.CreateStatement();
-                    statement.SqlQuery = query;
-
-                    UpdateResult updateResult = statement.ExecuteUpdate();
-
-                    Assert.AreEqual(expectedResults[i], updateResult.AffectedRows, $"The expected affected rows do not match the actual affected rows at position {i}.");
-                }
+                Assert.Equal(expectedResults[i], updateResult.AffectedRows);
             }
         }
 
         /// <summary>
         /// Validates if the driver can call GetInfo.
         /// </summary>
-        [Test, Order(2)]
+        [SkippableFact, Order(2)]
         public void CanGetInfo()
         {
-            if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
+            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
+
+            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+
+            IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
+
+            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
+
+            List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
+
+            for (int i = 0; i < infoNameArray.Length; i++)
             {
-                BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+                AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i);
+                DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
 
-                AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+                Assert.Contains(value.ToString(), expectedValues);
 
-                IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
-
-                RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
-                UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
-
-                List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
-
-                for (int i = 0; i < infoNameArray.Length; i++)
-                {
-                    AdbcInfoCode value = (AdbcInfoCode)infoNameArray.GetValue(i);
-                    DenseUnionArray valueArray = (DenseUnionArray)recordBatch.Column("info_value");
-
-                    Assert.IsTrue(expectedValues.Contains(value.ToString()));
-
-                    StringArray stringArray = (StringArray)valueArray.Fields[0];
-                    Console.WriteLine($"{value}={stringArray.GetString(i)}");
-                }
+                StringArray stringArray = (StringArray)valueArray.Fields[0];
+                Console.WriteLine($"{value}={stringArray.GetString(i)}");
             }
         }
 
         /// <summary>
         /// Validates if the driver can call GetObjects.
         /// </summary>
-        [Test, Order(3)]
+        [SkippableFact, Order(3)]
         public void CanGetObjects()
         {
-            if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
-            {
-                BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
 
-                // need to add the database
-                string catalogName = testConfiguration.Metadata.Catalog;
-                string schemaName = testConfiguration.Metadata.Schema;
-                string tableName = testConfiguration.Metadata.Table;
-                string columnName = null;
+            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
-                AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+            // need to add the database
+            string catalogName = testConfiguration.Metadata.Catalog;
+            string schemaName = testConfiguration.Metadata.Schema;
+            string tableName = testConfiguration.Metadata.Table;
+            string columnName = null;
 
-                IArrowArrayStream stream = adbcConnection.GetObjects(
-                        depth: AdbcConnection.GetObjectsDepth.All,
-                        catalogPattern: catalogName,
-                        dbSchemaPattern: schemaName,
-                        tableNamePattern: tableName,
-                        tableTypes: new List<string> { "BASE TABLE", "VIEW" },
-                        columnNamePattern: columnName);
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
 
-                RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            IArrowArrayStream stream = adbcConnection.GetObjects(
+                    depth: AdbcConnection.GetObjectsDepth.All,
+                    catalogPattern: catalogName,
+                    dbSchemaPattern: schemaName,
+                    tableNamePattern: tableName,
+                    tableTypes: new List<string> { "BASE TABLE", "VIEW" },
+                    columnNamePattern: columnName);
 
-                List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, schemaName);
+            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
-                List<AdbcColumn> columns = catalogs
-                    .Select(s => s.DbSchemas)
-                    .FirstOrDefault()
-                    .Select(t => t.Tables)
-                    .FirstOrDefault()
-                    .Select(c => c.Columns)
-                    .FirstOrDefault();
+            List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, catalogName, schemaName);
 
-                Assert.AreEqual(testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
-            }
+            List<AdbcColumn> columns = catalogs
+                .Select(s => s.DbSchemas)
+                .FirstOrDefault()
+                .Select(t => t.Tables)
+                .FirstOrDefault()
+                .Select(c => c.Columns)
+                .FirstOrDefault();
+
+            Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
         }
 
         /// <summary>
         /// Validates if the driver can call GetTableSchema.
         /// </summary>
-        [Test, Order(4)]
+        [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
-            {
-                BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
 
-                AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
-                string catalogName = testConfiguration.Metadata.Catalog;
-                string schemaName = testConfiguration.Metadata.Schema;
-                string tableName = testConfiguration.Metadata.Table;
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
 
-                Schema schema = adbcConnection.GetTableSchema(catalogName, schemaName, tableName);
+            string catalogName = testConfiguration.Metadata.Catalog;
+            string schemaName = testConfiguration.Metadata.Schema;
+            string tableName = testConfiguration.Metadata.Table;
 
-                int numberOfFields = schema.FieldsList.Count;
+            Schema schema = adbcConnection.GetTableSchema(catalogName, schemaName, tableName);
 
-                Assert.AreEqual(testConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
-            }
+            int numberOfFields = schema.FieldsList.Count;
+
+            Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
         }
 
         /// <summary>
         /// Validates if the driver can call GetTableTypes.
         /// </summary>
-        [Test, Order(5)]
+        [SkippableFact, Order(5)]
         public void CanGetTableTypes()
         {
-            if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
+            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
+
+            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+
+            IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
+
+            RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
+
+            StringArray stringArray = (StringArray)recordBatch.Column("table_type");
+
+            List<string> known_types = new List<string>
             {
-                BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+                "BASE TABLE", "VIEW"
+            };
 
-                AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+            int results = 0;
 
-                IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
+            for (int i = 0; i < stringArray.Length; i++)
+            {
+                string value = stringArray.GetString(i);
 
-                RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
-
-                StringArray stringArray = (StringArray)recordBatch.Column("table_type");
-
-                List<string> known_types = new List<string>
+                if (known_types.Contains(value))
                 {
-                    "BASE TABLE", "VIEW"
-                };
-
-                int results = 0;
-
-                for (int i = 0; i < stringArray.Length; i++)
-                {
-                    string value = stringArray.GetString(i);
-
-                    if (known_types.Contains(value))
-                    {
-                        results++;
-                    }
+                    results++;
                 }
-
-                Assert.AreEqual(known_types.Count, results);
             }
+
+            Assert.Equal(known_types.Count, results);
         }
 
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
-        [Test, Order(6)]
+        [SkippableFact, Order(6)]
         public void CanExecuteQuery()
         {
-            if (Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE))
-            {
-                BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
 
-                AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
+            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
-                AdbcStatement statement = adbcConnection.CreateStatement();
-                statement.SqlQuery = testConfiguration.Query;
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
 
-                QueryResult queryResult = statement.ExecuteQuery();
+            AdbcStatement statement = adbcConnection.CreateStatement();
+            statement.SqlQuery = testConfiguration.Query;
 
-                Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
-            }
+            QueryResult queryResult = statement.ExecuteQuery();
+
+            Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
         }
     }
 }

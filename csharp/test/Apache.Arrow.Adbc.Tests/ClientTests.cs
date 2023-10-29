@@ -22,7 +22,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using Apache.Arrow.Types;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
 {
@@ -59,11 +59,11 @@ namespace Apache.Arrow.Adbc.Tests
 
             Type netType = reader[name]?.GetType();
 
-            Assert.IsTrue(clientArrowType == ctv.ExpectedNetType, $"{name} is {clientArrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema");
+            Assert.True(clientArrowType == ctv.ExpectedNetType, $"{name} is {clientArrowType.Name} and not {ctv.ExpectedNetType.Name} in the column schema");
 
-            Assert.IsTrue(dataTableType == ctv.ExpectedNetType, $"{name} is {dataTableType.Name} and not {ctv.ExpectedNetType.Name} in the data table");
+            Assert.True(dataTableType == ctv.ExpectedNetType, $"{name} is {dataTableType.Name} and not {ctv.ExpectedNetType.Name} in the data table");
 
-            Assert.IsTrue(arrowType.GetType() == ctv.ExpectedArrowArrayType, $"{name} is {arrowType.Name} and not {ctv.ExpectedArrowArrayType.Name} in the provider type");
+            Assert.True(arrowType.GetType() == ctv.ExpectedArrowArrayType, $"{name} is {arrowType.Name} and not {ctv.ExpectedArrowArrayType.Name} in the provider type");
 
             if (netType != null)
             {
@@ -75,7 +75,7 @@ namespace Apache.Arrow.Adbc.Tests
                     {
                         object internalValue = value.GetType().GetMethod("GetValue").Invoke(value, new object[] { 0 });
 
-                        Assert.IsTrue(internalValue.GetType() == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
+                        Assert.True(internalValue.GetType() == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
                     }
                     else
                     {
@@ -84,7 +84,7 @@ namespace Apache.Arrow.Adbc.Tests
                 }
                 else
                 {
-                    Assert.IsTrue(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
+                    Assert.True(netType == ctv.ExpectedNetType, $"{name} is {netType.Name} and not {ctv.ExpectedNetType.Name} in the reader");
                 }
             }
 
@@ -92,18 +92,18 @@ namespace Apache.Arrow.Adbc.Tests
             {
                 if (!value.GetType().BaseType.Name.Contains("PrimitiveArray"))
                 {
-                    Assert.AreEqual(ctv.ExpectedNetType, value.GetType(), $"Expected type does not match actual type for {ctv.Name}");
+                    Assert.True(ctv.ExpectedNetType == value.GetType(), $"Expected type does not match actual type for {ctv.Name}");
 
                     if (value.GetType() == typeof(byte[]))
                     {
                         byte[] actualBytes = (byte[])value;
                         byte[] expectedBytes = (byte[])ctv.ExpectedValue;
 
-                        Assert.IsTrue(actualBytes.SequenceEqual(expectedBytes), $"byte[] values do not match expected values for {ctv.Name}");
+                        Assert.True(actualBytes.SequenceEqual(expectedBytes), $"byte[] values do not match expected values for {ctv.Name}");
                     }
                     else
                     {
-                        Assert.AreEqual(ctv.ExpectedValue, value, $"Expected value does not match actual value for {ctv.Name}");
+                        Assert.True(ctv.ExpectedValue.Equals(value), $"Expected value does not match actual value for {ctv.Name}");
                     }
                 }
                 else
@@ -125,7 +125,7 @@ namespace Apache.Arrow.Adbc.Tests
 
                             if (i == j)
                             {
-                                Assert.AreEqual(expected, actual, $"Expected value does not match actual value for {ctv.Name} at {i}");
+                                Assert.True(expected.Equals(actual), $"Expected value does not match actual value for {ctv.Name} at {i}");
                             }
                         }
                     }

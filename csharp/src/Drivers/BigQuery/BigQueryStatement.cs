@@ -93,7 +93,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     case DoubleArray doubleArray:
                         return doubleArray.GetValue(index);
                     case Decimal128Array decimal128Array:
-                        return decimal128Array.GetValue(index);
+                        return decimal128Array.GetSqlDecimal(index);
                     case Decimal256Array decimal256Array:
                         return decimal256Array.GetValue(index);
                     case BooleanArray booleanArray:

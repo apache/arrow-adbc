@@ -15,32 +15,28 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.FlightSql;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
 {
     /// <summary>
     /// Abstract class for the ADBC connection tests.
     /// </summary>
-    [TestClass]
     public class DriverTests
     {
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
-        [TestMethod]
         public void CanDriverExecuteQuery()
         {
-            if (Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE))
-            {
-                FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
+            Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
 
-                Dictionary<string, string> parameters = new Dictionary<string, string>
+            FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
+
+            Dictionary<string, string> parameters = new Dictionary<string, string>
             {
                 { FlightSqlParameters.ServerAddress, flightSqlTestConfiguration.ServerAddress },
                 { FlightSqlParameters.RoutingTag, flightSqlTestConfiguration.RoutingTag },
@@ -48,21 +44,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
                 { FlightSqlParameters.Authorization, flightSqlTestConfiguration.Authorization}
             };
 
-                Dictionary<string, string> options = new Dictionary<string, string>()
+            Dictionary<string, string> options = new Dictionary<string, string>()
             {
                 { FlightSqlParameters.ServerAddress, flightSqlTestConfiguration.ServerAddress },
             };
 
-                FlightSqlDriver flightSqlDriver = new FlightSqlDriver();
-                FlightSqlDatabase flightSqlDatabase = flightSqlDriver.Open(parameters) as FlightSqlDatabase;
-                FlightSqlConnection connection = flightSqlDatabase.Connect(options) as FlightSqlConnection;
-                FlightSqlStatement statement = connection.CreateStatement() as FlightSqlStatement;
+            FlightSqlDriver flightSqlDriver = new FlightSqlDriver();
+            FlightSqlDatabase flightSqlDatabase = flightSqlDriver.Open(parameters) as FlightSqlDatabase;
+            FlightSqlConnection connection = flightSqlDatabase.Connect(options) as FlightSqlConnection;
+            FlightSqlStatement statement = connection.CreateStatement() as FlightSqlStatement;
 
-                statement.SqlQuery = flightSqlTestConfiguration.Query;
-                QueryResult queryResult = statement.ExecuteQuery();
+            statement.SqlQuery = flightSqlTestConfiguration.Query;
+            QueryResult queryResult = statement.ExecuteQuery();
 
-                Tests.DriverTests.CanExecuteQuery(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
-            }
+            Tests.DriverTests.CanExecuteQuery(queryResult, flightSqlTestConfiguration.ExpectedResultsCount);
         }
     }
 }
