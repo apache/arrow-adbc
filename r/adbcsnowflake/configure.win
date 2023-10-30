@@ -15,6 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# This package only compiles on R >= 4.2, where the normal configure
-# will work
+# On Windows, this package only compiles on R >= 4.2 where the normal
+# configure is sufficient
 ./configure
