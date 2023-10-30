@@ -1136,7 +1136,7 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     goto cleanup;
   }
 
-  sqlite3_str_appendf(insert_query, "INSERT INTO %s VALUES (", table);
+  sqlite3_str_appendf(insert_query, "INSERT INTO %s (", table);
   if (sqlite3_str_errcode(insert_query)) {
     SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
@@ -1154,11 +1154,26 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
         code = ADBC_STATUS_INTERNAL;
         goto cleanup;
       }
+
+      sqlite3_str_appendf(insert_query, "%s", ", ");
+      if (sqlite3_str_errcode(insert_query)) {
+        SetError(error, "[SQLite] Failed to build INSERT: %s",
+                 sqlite3_errmsg(stmt->conn));
+        code = ADBC_STATUS_INTERNAL;
+        goto cleanup;
+      }
     }
 
     sqlite3_str_appendf(create_query, "\"%w\"", stmt->binder.schema.children[i]->name);
     if (sqlite3_str_errcode(create_query)) {
       SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
+
+    sqlite3_str_appendf(insert_query, "\"%w\"", stmt->binder.schema.children[i]->name);
+    if (sqlite3_str_errcode(insert_query)) {
+      SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
@@ -1199,13 +1214,6 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
       default:
         break;
     }
-
-    sqlite3_str_appendf(insert_query, "%s?", (i > 0 ? ", " : ""));
-    if (sqlite3_str_errcode(insert_query)) {
-      SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
-      code = ADBC_STATUS_INTERNAL;
-      goto cleanup;
-    }
   }
 
   sqlite3_str_appendchar(create_query, 1, ')');
@@ -1213,6 +1221,22 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
+  }
+
+  sqlite3_str_appendall(insert_query, ") VALUES (");
+  if (sqlite3_str_errcode(insert_query)) {
+    SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  for (int i = 0; i < stmt->binder.schema.n_children; i++) {
+    sqlite3_str_appendf(insert_query, "%s?", (i > 0 ? ", " : ""));
+    if (sqlite3_str_errcode(insert_query)) {
+      SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
   }
 
   sqlite3_str_appendchar(insert_query, 1, ')');
