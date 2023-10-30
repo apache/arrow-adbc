@@ -673,6 +673,13 @@ authentication. This should be a path to a file containing a PKCS1
 private key to be read in and parsed. Commonly encoded in PEM blocks
 of type “RSA PRIVATE KEY”.</p>
 </dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value</span></code></dt><dd><p>Parses an encrypted or unencrypted PKCS #8 private key without having to
+read it from the file system. If using encrypted, the
+<code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password</span></code> value
+is required and used to decrypt.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password</span></code></dt><dd><p>Passcode to use when passing an encrypted PKCS #8 value.</p>
+</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.disable_telemetry</span></code></dt><dd><p>The Snowflake driver allows for telemetry information which can be
 disabled by setting this to <code class="docutils literal notranslate"><span class="pre">true</span></code>. Value should be either <code class="docutils literal notranslate"><span class="pre">true</span></code>
 or <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
