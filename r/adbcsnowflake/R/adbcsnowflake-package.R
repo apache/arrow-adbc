@@ -93,3 +93,43 @@ adbc_statement_init.adbcsnowflake_connection <- function(connection, ...,
     subclass = "adbcsnowflake_statement"
   )
 }
+
+adbcsnowflake_test_db <- function(...) {
+  args <- c(list(adbcsnowflake()), test_db_options(...))
+  do.call(adbc_database_init, args)
+}
+
+adbcsnowflake_has_test_db <- function() {
+  tryCatch({test_db_options(); TRUE}, error = function(e) FALSE)
+}
+
+test_db_options <- function(...) {
+  uri <- Sys.getenv("ADBC_SNOWFLAKE_TEST_URI", "")
+  if (!identical(uri, "")) {
+    return(list(uri = uri, ...))
+  }
+
+  account <- Sys.getenv("ADBC_SNOWFLAKE_TEST_ACCOUNT", "")
+  username <- Sys.getenv("ADBC_SNOWFLAKE_TEST_USERNAME", "")
+  auth_type <- Sys.getenv("ADBC_SNOWFLAKE_TEST_AUTH_TYPE", "auth_ext_browser")
+
+  if (identical(account, "") || identical(username, "")) {
+    stop(
+      paste(
+        "adbcsnowflake tests can be run by setting ADBC_SNOWFLAKE_TEST_URI",
+        "or by setting ADBC_SNOWFLAKE_TEST_ACCOUNT and ADBC_SNOWFLAKE_TEST_USERNAME,",
+        "which supports single-sign on (SSO) authentication via the browser.",
+        "You can set these environment variables in ~/.Renviron.",
+        "See https://arrow.apache.org/adbc/current/driver/snowflake.html",
+        "for more information."
+      )
+    )
+  }
+
+  list(
+    adbc.snowflake.sql.account = account,
+    username = username,
+    adbc.snowflake.sql.auth_type = auth_type,
+    ...
+  )
+}
