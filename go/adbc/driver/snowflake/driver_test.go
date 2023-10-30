@@ -27,6 +27,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -676,6 +677,92 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 
 	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
+}
+
+func TestJwtAuthenticationUnencryptedValue(t *testing.T) {
+	// test doesn't participate in SnowflakeTests because
+	// JWT auth has a different behavior
+	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
+	if !ok {
+		t.Skip("Cannot find the `SNOWFLAKE_URI` value")
+	}
+
+	keyValue, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_VALUE")
+	if !ok {
+		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_VALUE` value")
+	}
+
+	ConnectWithJwt(uri, keyValue, "")
+}
+
+func TestJwtAuthenticationEncryptedValue(t *testing.T) {
+	// test doesn't participate in SnowflakeTests because
+	// JWT auth has a different behavior
+	uri, ok := os.LookupEnv("SNOWFLAKE_URI")
+	if !ok {
+		t.Skip("Cannot find the `SNOWFLAKE_URI` value")
+	}
+
+	keyValue, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_EN_VALUE")
+	if !ok {
+		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_EN_VALUE` value")
+	}
+
+	passcode, ok := os.LookupEnv("SNOWFLAKE_TEST_PKCS8_PASS")
+	if !ok {
+		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_PASS` value")
+	}
+
+	ConnectWithJwt(uri, keyValue, passcode)
+}
+
+func ConnectWithJwt(uri, keyValue, passcode string) {
+
+	// Windows funkiness
+	if runtime.GOOS == "windows" {
+		keyValue = strings.ReplaceAll(keyValue, "\\r", "\r")
+		keyValue = strings.ReplaceAll(keyValue, "\\n", "\n")
+	}
+
+	cfg, err := gosnowflake.ParseDSN(uri)
+	if err != nil {
+		panic(err)
+	}
+
+	opts := map[string]string{
+		driver.OptionAccount:                 cfg.Account,
+		adbc.OptionKeyUsername:               cfg.User,
+		driver.OptionDatabase:                cfg.Database,
+		driver.OptionSchema:                  cfg.Schema,
+		driver.OptionAuthType:                driver.OptionValueAuthJwt,
+		driver.OptionJwtPrivateKeyPkcs8Value: keyValue,
+	}
+
+	if cfg.Warehouse != "" {
+		opts[driver.OptionWarehouse] = cfg.Warehouse
+	}
+
+	if cfg.Host != "" {
+		opts[driver.OptionHost] = cfg.Host
+	}
+
+	// if doing encrypted
+	if passcode != "" {
+		opts[driver.OptionJwtPrivateKeyPkcs8Password] = passcode
+	}
+
+	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	adbcDriver := driver.NewDriver(mem)
+	db, err := adbcDriver.NewDatabase(opts)
+	if err != nil {
+		panic(err)
+	}
+
+	cnxn, err := db.Open(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	defer cnxn.Close()
 }
 
 func (suite *SnowflakeTests) TestJwtPrivateKey() {

@@ -156,6 +156,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                         while (reader.Read())
                         {
                             count++;
+
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                Console.WriteLine($"{reader.GetName(i)}: {reader.GetValue(i)}");
+                            }
                         }
                     }
                     finally { reader.Close(); }
@@ -251,19 +256,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             DbConnectionStringBuilder builder = new DbConnectionStringBuilder(true);
 
-            builder["adbc.snowflake.sql.account"] = testConfiguration.Account;
-            builder["adbc.snowflake.sql.warehouse"] = testConfiguration.Warehouse;
-            builder["username"] = testConfiguration.User;
+            builder[SnowflakeParameters.ACCOUNT] = testConfiguration.Account;
+            builder[SnowflakeParameters.WAREHOUSE] = testConfiguration.Warehouse;
+            builder[SnowflakeParameters.HOST] = testConfiguration.Host;
+            builder[SnowflakeParameters.DATABASE] = testConfiguration.Database;
+            builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
 
             if (!string.IsNullOrEmpty(testConfiguration.AuthenticationTokenPath))
             {
+                builder[SnowflakeParameters.AUTH_TYPE] = testConfiguration.AuthenticationType;
+
                 string privateKey = File.ReadAllText(testConfiguration.AuthenticationTokenPath);
-                builder["adbc.snowflake.sql.auth_type"] = testConfiguration.AuthenticationType;
-                builder["adbc.snowflake.sql.client_option.auth_token"] = privateKey;
+
+                if (testConfiguration.AuthenticationType.Equals("auth_jwt", StringComparison.OrdinalIgnoreCase))
+                {
+                    builder[SnowflakeParameters.PKCS8_VALUE] = privateKey;
+
+                    if(!string.IsNullOrEmpty(testConfiguration.Pkcs8Passcode))
+                    {
+                        builder[SnowflakeParameters.PKCS8_PASS] = testConfiguration.Pkcs8Passcode;
+                    }
+                }
             }
             else
             {
-                builder["password"] = testConfiguration.Password;
+                builder[SnowflakeParameters.PASSWORD] = testConfiguration.Password;
             }
 
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration);

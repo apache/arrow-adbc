@@ -132,8 +132,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 string tableName = metadataTestConfiguration.Metadata.Table;
                 string columnName = null;
 
-                parameters["adbc.snowflake.sql.db"] = databaseName;
-                parameters["adbc.snowflake.sql.schema"] = schemaName;
+                parameters[SnowflakeParameters.DATABASE] = databaseName;
+                parameters[SnowflakeParameters.SCHEMA] = schemaName;
 
                 AdbcDatabase adbcDatabase = driver.Open(parameters);
                 AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
@@ -157,6 +157,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     .FirstOrDefault()
                     .Select(c => c.Columns)
                     .FirstOrDefault();
+
+                Assert.IsTrue(columns != null, "Columns cannot be null");
 
                 Assert.AreEqual(metadataTestConfiguration.Metadata.ExpectedColumnCount, columns.Count);
             }
@@ -215,9 +217,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 StringArray stringArray = (StringArray)recordBatch.Column("table_type");
 
                 List<string> known_types = new List<string>
-            {
-                "BASE TABLE", "TEMPORARY TABLE", "VIEW"
-            };
+                {
+                    "BASE TABLE", "TEMPORARY TABLE", "VIEW"
+                };
 
                 int results = 0;
 
