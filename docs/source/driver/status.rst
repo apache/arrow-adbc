@@ -52,12 +52,22 @@ Implementation Status
    * - PostgreSQL
      - C
      - C++
-     - Experimental
+     - Beta
 
    * - SQLite
      - C
      - C
      - Beta
+
+   * - Snowflake
+     - C, Go
+     - Go
+     - Experimental
+
+   * - BigQuery
+     - C#
+     - C#
+     - Experimental
 
 .. [#supported-languages] C drivers are usable from Go, Python, and Ruby as well.
 
