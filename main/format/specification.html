@@ -446,39 +446,7 @@ endpoints.</p>
 <section id="basic-usage">
 <h4>Basic Usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id1">
-%% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Driver as AdbcStatement
-    App -&gt;&gt; Driver: New
-    App -&gt;&gt; Driver: SetSqlQuery
-    App --&gt;&gt; Driver: Prepare
-    loop As many times as desired
-    App --&gt;&gt; Driver: GetParameterSchema
-    App --&gt;&gt; Driver: Bind
-    App -&gt;&gt; Driver: ExecuteQuery
-    Driver -&gt;&gt; App: ArrowArrayStream
-    App -&gt; App: consume result set
-    end
-    Note over App, Driver: SetSqlQuery and repeat (if desired)
-    App -&gt;&gt; Driver: Release
-<figcaption>
+<img alt="../_images/AdbcStatementBasicUsage.mmd.svg" src="../_images/AdbcStatementBasicUsage.mmd.svg" /><figcaption>
 <p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id1" title="Permalink to this image">#</a></p>
 </figcaption>
 </figure>
@@ -486,69 +454,16 @@ sequenceDiagram
 <section id="consuming-result-sets">
 <h4>Consuming Result Sets<a class="headerlink" href="#consuming-result-sets" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id2">
-%% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Stream as ArrowArrayStream
-    App -&gt;&gt; Stream: get_schema
-    Stream -&gt;&gt; App: ArrowSchema
-    loop Until stream exhausted
-        App -&gt;&gt; Stream: get_next
-        Stream -&gt;&gt; App: ArrowArray
-    end
-    App -&gt;&gt; Stream: release
-<figcaption>
-<p><span class="caption-text">This is equivalent to reading from what many Arrow
-libraries call a RecordBatchReader.</span><a class="headerlink" href="#id2" title="Permalink to this image">#</a></p>
+<img alt="../_images/AdbcStatementConsumeResultSet.mmd.svg" src="../_images/AdbcStatementConsumeResultSet.mmd.svg" /><figcaption>
+<p><span class="caption-text">This is equivalent to reading from what many Arrow libraries call a
+RecordBatchReader.</span><a class="headerlink" href="#id2" title="Permalink to this image">#</a></p>
 </figcaption>
 </figure>
 </section>
 <section id="bulk-data-ingestion">
 <h4>Bulk Data Ingestion<a class="headerlink" href="#bulk-data-ingestion" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id3">
-%% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Driver as AdbcStatement
-    App -&gt;&gt; Driver: New
-    App -&gt;&gt; Driver: SetOption(ADBC_INGEST_OPTION_TARGET_TABLE)
-    App -&gt;&gt; Driver: GetParameterSchema
-    App -&gt;&gt; Driver: Bind
-    App -&gt;&gt; Driver: ExecuteUpdate
-    App -&gt;&gt; Driver: Release
-<figcaption>
+<img alt="../_images/AdbcStatementBulkIngest.mmd.svg" src="../_images/AdbcStatementBulkIngest.mmd.svg" /><figcaption>
 <p><span class="caption-text">There is no need to prepare the statement.</span><a class="headerlink" href="#id3" title="Permalink to this image">#</a></p>
 </figcaption>
 </figure>
@@ -556,38 +471,7 @@ sequenceDiagram
 <section id="update-only-queries-no-result-set">
 <h4>Update-only Queries (No Result Set)<a class="headerlink" href="#update-only-queries-no-result-set" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id4">
-%% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Driver as AdbcStatement
-    App -&gt;&gt; Driver: New
-    App -&gt;&gt; Driver: SetSqlQuery
-    App --&gt;&gt; Driver: Prepare
-    loop As many times as desired
-    App --&gt;&gt; Driver: GetParameterSchema
-    App --&gt;&gt; Driver: Bind
-    App -&gt;&gt; Driver: ExecuteUpdate
-    Driver -&gt;&gt; App: affected rows
-    end
-    Note over App, Driver: SetSqlQuery and repeat (if desired)
-    App -&gt;&gt; Driver: Release
-<figcaption>
+<img alt="../_images/AdbcStatementUpdate.mmd.svg" src="../_images/AdbcStatementUpdate.mmd.svg" /><figcaption>
 <p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id4" title="Permalink to this image">#</a></p>
 </figcaption>
 </figure>
@@ -595,53 +479,9 @@ sequenceDiagram
 <section id="partitioned-execution">
 <h4>Partitioned Execution<a class="headerlink" href="#partitioned-execution" title="Permalink to this heading">#</a></h4>
 <figure class="align-default" id="id5">
-%% Licensed to the Apache Software Foundation (ASF) under one
-%% or more contributor license agreements.  See the NOTICE file
-%% distributed with this work for additional information
-%% regarding copyright ownership.  The ASF licenses this file
-%% to you under the Apache License, Version 2.0 (the
-%% &quot;License&quot;); you may not use this file except in compliance
-%% with the License.  You may obtain a copy of the License at
-%%
-%%   http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing,
-%% software distributed under the License is distributed on an
-%% &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%% KIND, either express or implied.  See the License for the
-%% specific language governing permissions and limitations
-%% under the License.
-
-sequenceDiagram
-    actor App
-    participant Driver as AdbcStatement
-    participant S1 as Server 1
-    participant S2 as Server 2
-
-    App -&gt;&gt; Driver: New
-    App -&gt;&gt; Driver: SetSqlQuery
-    App --&gt;&gt; Driver: Prepare
-    loop As many times as desired
-        App --&gt;&gt; Driver: GetParameterSchema
-        App --&gt;&gt; Driver: Bind
-        App -&gt;&gt; Driver: ExecutePartitions
-        Driver -&gt;&gt; App: AdbcPartitions
-        Note over App, S2: Consume the distributed result set
-        par Read from server 1
-            App -&gt;&gt; S1: ReadPartition
-            S1 -&gt;&gt; App: ArrowArrayStream
-            App -&gt; App: consume result set
-        and Read from server 2
-            App -&gt;&gt; S2: ReadPartition
-            S2 -&gt;&gt; App: ArrowArrayStream
-            App -&gt; App: consume result set
-        end
-    end
-    Note over App, Driver: SetSqlQuery and repeat (if desired)
-    App -&gt;&gt; Driver: Release
-<figcaption>
-<p><span class="caption-text">This is similar to fetching data in Arrow Flight RPC (by
-design). See <a class="reference external" href="https://arrow.apache.org/docs/format/Flight.html" title="(in Apache Arrow v13.0.0)"><span class="xref std std-doc">“Downloading Data”</span></a>.</span><a class="headerlink" href="#id5" title="Permalink to this image">#</a></p>
+<img alt="../_images/AdbcStatementPartitioned.mmd.svg" src="../_images/AdbcStatementPartitioned.mmd.svg" /><figcaption>
+<p><span class="caption-text">This is similar to fetching data in Arrow Flight RPC (by design). See
+<a class="reference external" href="https://arrow.apache.org/docs/format/Flight.html" title="(in Apache Arrow v13.0.0)"><span class="xref std std-doc">“Downloading Data”</span></a>.</span><a class="headerlink" href="#id5" title="Permalink to this image">#</a></p>
 </figcaption>
 </figure>
 </section>
@@ -810,8 +650,6 @@ and waiting for query execution to finish before reading results.</p>
     <script src="../_static/clipboard.min.js"></script>
     <script src="../_static/copybutton.js"></script>
     <script src="../_static/design-tabs.js"></script>
-    <script src="https://unpkg.com/mermaid@10.2.0/dist/mermaid.min.js"></script>
-    <script>mermaid.initialize({startOnLoad:true});</script>
     
 <script async defer src="../../version.js"></script></body>
 </html>

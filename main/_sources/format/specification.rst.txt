@@ -147,34 +147,39 @@ Lifecycle & Usage
 Basic Usage
 ~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementBasicUsage.mmd
-   :caption: Preparing the statement and binding parameters are optional.
+.. figure:: AdbcStatementBasicUsage.mmd.svg
+
+   Preparing the statement and binding parameters are optional.
 
 Consuming Result Sets
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementConsumeResultSet.mmd
-   :caption: This is equivalent to reading from what many Arrow
-             libraries call a RecordBatchReader.
+.. figure:: AdbcStatementConsumeResultSet.mmd.svg
+
+   This is equivalent to reading from what many Arrow libraries call a
+   RecordBatchReader.
 
 Bulk Data Ingestion
 ~~~~~~~~~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementBulkIngest.mmd
-   :caption: There is no need to prepare the statement.
+.. figure:: AdbcStatementBulkIngest.mmd.svg
+
+   There is no need to prepare the statement.
 
 Update-only Queries (No Result Set)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementUpdate.mmd
-   :caption: Preparing the statement and binding parameters are optional.
+.. figure:: AdbcStatementUpdate.mmd.svg
+
+   Preparing the statement and binding parameters are optional.
 
 Partitioned Execution
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementPartitioned.mmd
-   :caption: This is similar to fetching data in Arrow Flight RPC (by
-             design). See :doc:`"Downloading Data" <arrow:format/Flight>`.
+.. figure:: AdbcStatementPartitioned.mmd.svg
+
+   This is similar to fetching data in Arrow Flight RPC (by design). See
+   :doc:`"Downloading Data" <arrow:format/Flight>`.
 
 Error Handling
 ==============
