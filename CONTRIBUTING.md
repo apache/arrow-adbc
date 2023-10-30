@@ -160,6 +160,16 @@ $ make html
 
 The output can be found in `build/`.
 
+Some documentations are maintained as [Mermaid][mermaid] diagrams, which must
+be rendered and checked in.  This can be done as follows:
+
+```shell
+cd docs
+make -f mermaid.makefile -j all
+# Check in the updated files
+```
+
+[mermaid]: https://mermaid.js.org/
 [sphinx]: https://www.sphinx-doc.org/en/master/
 
 ### GLib
