@@ -339,14 +339,20 @@ non-go licenses, and then you can install `go-licenses` with:
 $ go install github.com/google/go-licenses@latest
 ```
 
-Finally, you can generate the LICENSE.txt with the following command:
+You can generate the LICENSE.txt with the following command:
 
 ```shell
 $ cd go/adbc && go-licenses report ./... \
   --ignore github.com/apache/arrow-adbc/go/adbc \
   --ignore github.com/apache/arrow/go/v11 \
   --ignore github.com/apache/arrow/go/v12 \
+  --ignore github.com/apache/arrow/go/v13 \
+  --ignore github.com/apache/arrow/go/v14 \
   --template ../../license.tpl > ../../LICENSE.txt 2> /dev/null
 ```
+
+You will have to manually fix up the license, since some packages do not
+fill out their metadata correctly and things like READMEs may end up in
+the license.
 
 [conventional-commits]: https://www.conventionalcommits.org/en/v1.0.0/
