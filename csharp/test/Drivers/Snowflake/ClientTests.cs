@@ -38,14 +38,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class ClientTests
     {
+        public ClientTests()
+        {
+           Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
+        }
+
         /// <summary>
         /// Validates if the client execute updates.
         /// </summary>
         [SkippableFact, Order(1)]
         public void CanClientExecuteUpdate()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
@@ -75,8 +78,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(2)]
         public void CanClientExecuteUpdateUsingExecuteReader()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
@@ -113,8 +114,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(3)]
         public void CanClientGetSchema()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
@@ -139,8 +138,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(4)]
         public void CanClientExecuteQuery()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             long count = 0;
@@ -183,8 +180,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(5)]
         public void CanClientExecuteQueryUsingPrivateKey()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             long count = 0;
@@ -227,8 +222,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(6)]
         public void VerifyTypesAndValues()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             Client.AdbcConnection dbConnection = GetSnowflakeAdbcConnection(testConfiguration);

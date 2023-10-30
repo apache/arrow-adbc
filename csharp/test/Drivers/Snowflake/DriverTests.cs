@@ -35,6 +35,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class DriverTests
     {
+        public DriverTests()
+        {
+           Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
+        }
+
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
@@ -46,8 +51,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             Dictionary<string, string> parameters = new Dictionary<string, string>();
@@ -80,8 +83,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(2)]
         public void CanGetInfo()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             Dictionary<string, string> parameters = new Dictionary<string, string>();
 
             SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
@@ -116,8 +117,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(3)]
         public void CanGetObjects()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             Dictionary<string, string> parameters = new Dictionary<string, string>();
 
             SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
@@ -165,8 +164,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             Dictionary<string, string> parameters = new Dictionary<string, string>();
 
             SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
@@ -193,8 +190,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(5)]
         public void CanGetTableTypes()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             Dictionary<string, string> parameters = new Dictionary<string, string>();
 
             SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
@@ -237,8 +232,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(6)]
         public void CanExecuteQuery()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
             Dictionary<string, string> parameters = new Dictionary<string, string>();

@@ -26,14 +26,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
     /// </summary>
     public class DriverTests
     {
+        public DriverTests()
+        {
+            Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
+        }
+
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
         public void CanDriverExecuteQuery()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
-
             FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
 
             Dictionary<string, string> parameters = new Dictionary<string, string>

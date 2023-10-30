@@ -35,6 +35,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class DriverTests
     {
+        public DriverTests()
+        {
+            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
+        }
+
         /// <summary>
         /// Validates if the driver can connect to a live server and
         /// parse the results.
@@ -42,8 +47,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
@@ -70,8 +73,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(2)]
         public void CanGetInfo()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
@@ -101,8 +102,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(3)]
         public void CanGetObjects()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             // need to add the database
@@ -142,8 +141,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
@@ -165,8 +162,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(5)]
         public void CanGetTableTypes()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);
@@ -204,8 +199,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(6)]
         public void CanExecuteQuery()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(testConfiguration);

@@ -36,14 +36,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public class ClientTests
     {
+        public ClientTests()
+        {
+            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
+        }
+
         /// <summary>
         /// Validates if the client execute updates.
         /// </summary>
         [SkippableFact, Order(1)]
         public void CanClientExecuteUpdate()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             using (Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
@@ -73,8 +76,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(2)]
         public void CanClientGetSchema()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             using (Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
@@ -99,8 +100,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(3)]
         public void CanClientExecuteQuery()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             long count = 0;
@@ -143,8 +142,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(4)]
         public void VerifyTypesAndValues()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
-
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
             Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration);

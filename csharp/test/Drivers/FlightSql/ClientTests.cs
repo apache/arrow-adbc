@@ -28,6 +28,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
     /// </summary>
     public class ClientTests
     {
+        public ClientTests()
+        {
+            Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
+        }
+
         /// <summary>
         /// Validates if the client can connect to a live server and
         /// parse the results.
@@ -35,8 +40,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
         [SkippableFact]
         public void CanFlightSqlConnectUsingClient()
         {
-            Skip.IfNot(Utils.CanExecuteTestConfig(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE));
-
             FlightSqlTestConfiguration flightSqlTestConfiguration = Utils.LoadTestConfiguration<FlightSqlTestConfiguration>(FlightSqlTestingUtils.FLIGHTSQL_TEST_CONFIG_VARIABLE);
 
             Dictionary<string, string> parameters = new Dictionary<string, string>
