@@ -60,7 +60,7 @@ Implementation Status
      - Beta
 
    * - Snowflake
-     - Go
+     - C, Go
      - Go
      - Experimental
 
