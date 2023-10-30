@@ -53,7 +53,6 @@ namespace Apache.Arrow.Adbc.Tests
                 {
                     dataTableType = row[SchemaTableColumn.DataType] as Type;
                     arrowType = row[SchemaTableColumn.ProviderType] as IArrowType;
-
                 }
             }
 

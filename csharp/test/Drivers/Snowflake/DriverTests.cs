@@ -85,9 +85,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
 
-            SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
+            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
 
             AdbcDatabase adbcDatabase = driver.Open(parameters);
             AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
@@ -119,14 +119,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
 
-            SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
+            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
 
             // need to add the database
-            string databaseName = metadataTestConfiguration.Metadata.Catalog;
-            string schemaName = metadataTestConfiguration.Metadata.Schema;
-            string tableName = metadataTestConfiguration.Metadata.Table;
+            string databaseName = testConfiguration.Metadata.Catalog;
+            string schemaName = testConfiguration.Metadata.Schema;
+            string tableName = testConfiguration.Metadata.Table;
             string columnName = null;
 
             parameters["adbc.snowflake.sql.db"] = databaseName;
@@ -155,7 +155,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 .Select(c => c.Columns)
                 .FirstOrDefault();
 
-            Assert.Equal(metadataTestConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+            Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
         }
 
         /// <summary>
@@ -166,22 +166,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
 
-            SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
+            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
 
             AdbcDatabase adbcDatabase = driver.Open(parameters);
             AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
 
-            string databaseName = metadataTestConfiguration.Metadata.Catalog;
-            string schemaName = metadataTestConfiguration.Metadata.Schema;
-            string tableName = metadataTestConfiguration.Metadata.Table;
+            string databaseName = testConfiguration.Metadata.Catalog;
+            string schemaName = testConfiguration.Metadata.Schema;
+            string tableName = testConfiguration.Metadata.Table;
 
             Schema schema = adbcConnection.GetTableSchema(databaseName, schemaName, tableName);
 
             int numberOfFields = schema.FieldsList.Count;
 
-            Assert.Equal(metadataTestConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
+            Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
         }
 
         /// <summary>
@@ -192,9 +192,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
 
-            SnowflakeTestConfiguration metadataTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(metadataTestConfiguration, out parameters);
+            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
 
             AdbcDatabase adbcDatabase = driver.Open(parameters);
             AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());

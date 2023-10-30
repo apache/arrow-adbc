@@ -105,7 +105,7 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(SqlDecimal);
 
                 case ArrowTypeId.Decimal256:
-                    return typeof(decimal);
+                    return typeof(string);
 
                 case ArrowTypeId.Time32:
                 case ArrowTypeId.Time64:

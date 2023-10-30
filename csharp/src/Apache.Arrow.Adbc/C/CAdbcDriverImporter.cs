@@ -21,7 +21,6 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
 
@@ -336,102 +335,68 @@ namespace Apache.Arrow.Adbc.C
                 if (field == null) throw new ArgumentNullException(nameof(field));
                 if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
 
-                try
+                switch (arrowArray)
                 {
-                    switch (arrowArray)
-                    {
-                        case BooleanArray booleanArray:
-                            return booleanArray.GetValue(index);
-                        case Date32Array date32Array:
-                            return date32Array.GetDateTime(index);
-                        case Date64Array date64Array:
-                            return date64Array.GetDateTime(index);
-                        case Decimal128Array decimal128Array:
-                            return decimal128Array.GetSqlDecimal(index);
-                        case Decimal256Array decimal256Array:
-                            return decimal256Array.GetValue(index);
-                        case DoubleArray doubleArray:
-                            return doubleArray.GetValue(index);
-                        case FloatArray floatArray:
-                            return floatArray.GetValue(index);
+                    case BooleanArray booleanArray:
+                        return booleanArray.GetValue(index);
+                    case Date32Array date32Array:
+                        return date32Array.GetDateTime(index);
+                    case Date64Array date64Array:
+                        return date64Array.GetDateTime(index);
+                    case Decimal128Array decimal128Array:
+                        return decimal128Array.GetSqlDecimal(index);
+                    case Decimal256Array decimal256Array:
+                        return decimal256Array.GetString(index);
+                    case DoubleArray doubleArray:
+                        return doubleArray.GetValue(index);
+                    case FloatArray floatArray:
+                        return floatArray.GetValue(index);
 #if NET5_0_OR_GREATER
-                        case PrimitiveArray<Half> halfFloatArray:
-                            return halfFloatArray.GetValue(index);
+                    case PrimitiveArray<Half> halfFloatArray:
+                        return halfFloatArray.GetValue(index);
 #endif
-                        case Int8Array int8Array:
-                            return int8Array.GetValue(index);
-                        case Int16Array int16Array:
-                            return int16Array.GetValue(index);
-                        case Int32Array int32Array:
-                            return int32Array.GetValue(index);
-                        case Int64Array int64Array:
-                            return int64Array.GetValue(index);
-                        case StringArray stringArray:
-                            return stringArray.GetString(index);
-                        case Time32Array time32Array:
-                            return time32Array.GetValue(index);
-                        case Time64Array time64Array:
-                            return time64Array.GetValue(index);
-                        case TimestampArray timestampArray:
-                            DateTimeOffset dateTimeOffset = timestampArray.GetTimestamp(index).Value;
-                            return dateTimeOffset;
-                        case UInt8Array uInt8Array:
-                            return uInt8Array.GetValue(index);
-                        case UInt16Array uInt16Array:
-                            return uInt16Array.GetValue(index);
-                        case UInt32Array uInt32Array:
-                            return uInt32Array.GetValue(index);
-                        case UInt64Array uInt64Array:
-                            return uInt64Array.GetValue(index);
+                    case Int8Array int8Array:
+                        return int8Array.GetValue(index);
+                    case Int16Array int16Array:
+                        return int16Array.GetValue(index);
+                    case Int32Array int32Array:
+                        return int32Array.GetValue(index);
+                    case Int64Array int64Array:
+                        return int64Array.GetValue(index);
+                    case StringArray stringArray:
+                        return stringArray.GetString(index);
+                    case Time32Array time32Array:
+                        return time32Array.GetValue(index);
+                    case Time64Array time64Array:
+                        return time64Array.GetValue(index);
+                    case TimestampArray timestampArray:
+                        DateTimeOffset dateTimeOffset = timestampArray.GetTimestamp(index).Value;
+                        return dateTimeOffset;
+                    case UInt8Array uInt8Array:
+                        return uInt8Array.GetValue(index);
+                    case UInt16Array uInt16Array:
+                        return uInt16Array.GetValue(index);
+                    case UInt32Array uInt32Array:
+                        return uInt32Array.GetValue(index);
+                    case UInt64Array uInt64Array:
+                        return uInt64Array.GetValue(index);
 
-                        case BinaryArray binaryArray:
-                            if (!binaryArray.IsNull(index))
-                                return binaryArray.GetBytes(index).ToArray();
+                    case BinaryArray binaryArray:
+                        if (!binaryArray.IsNull(index))
+                            return binaryArray.GetBytes(index).ToArray();
 
-                            return null;
+                        return null;
 
-                            // not covered:
-                            // -- struct array
-                            // -- dictionary array
-                            // -- fixed size binary
-                            // -- list array
-                            // -- union array
-                    }
+                        // not covered:
+                        // -- struct array
+                        // -- dictionary array
+                        // -- fixed size binary
+                        // -- list array
+                        // -- union array
                 }
-                catch (OverflowException oex)
-                {
-                    return ParseDecimalValueFromOverflowException(oex);
-                }
-
 
                 return null;
             }
-
-            private string ParseDecimalValueFromOverflowException(OverflowException oex)
-            {
-                if (oex == null)
-                    throw new ArgumentNullException(nameof(oex));
-
-                // any decimal value, positive or negative, with or without a decimal in place
-                Regex regex = new Regex(" -?\\d*\\.?\\d* ");
-
-                MatchCollection matches = regex.Matches(oex.Message);
-
-                // need the second value from the message
-                if (matches.Count == 2)
-                {
-                    string value = matches[1].Value;
-
-                    if (!string.IsNullOrEmpty(value))
-                    {
-                        return value.Trim();
-                    }
-                }
-
-                throw oex;
-            }
-
-
         }
 
         /// <summary>

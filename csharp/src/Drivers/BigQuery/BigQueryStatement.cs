@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -84,53 +83,47 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (field == null) throw new ArgumentNullException(nameof(field));
             if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
 
-            try
+            switch (arrowArray)
             {
-                switch (arrowArray)
-                {
-                    case Int64Array int64Array:
-                        return int64Array.GetValue(index);
-                    case DoubleArray doubleArray:
-                        return doubleArray.GetValue(index);
-                    case Decimal128Array decimal128Array:
-                        return decimal128Array.GetSqlDecimal(index);
-                    case Decimal256Array decimal256Array:
-                        return decimal256Array.GetValue(index);
-                    case BooleanArray booleanArray:
-                        return booleanArray.GetValue(index);
-                    case StringArray stringArray:
-                        return stringArray.GetString(index);
-                    case BinaryArray binaryArray:
+                case Int64Array int64Array:
+                    return int64Array.GetValue(index);
+                case DoubleArray doubleArray:
+                    return doubleArray.GetValue(index);
+                case Decimal128Array decimal128Array:
+                    return decimal128Array.GetSqlDecimal(index);
+                case Decimal256Array decimal256Array:
+                    return decimal256Array.GetString(index);
+                case BooleanArray booleanArray:
+                    return booleanArray.GetValue(index);
+                case StringArray stringArray:
+                    return stringArray.GetString(index);
+                case BinaryArray binaryArray:
 
-                        if(!binaryArray.IsNull(index))
-                            return binaryArray.GetBytes(index).ToArray();
+                    if(!binaryArray.IsNull(index))
+                        return binaryArray.GetBytes(index).ToArray();
 
-                        return null;
+                    return null;
 
-                    case Date32Array date32Array:
-                        return date32Array.GetDateTime(index);
-                    case Date64Array date64Array:
-                        return date64Array.GetDateTime(index);
-                    case Time64Array time64Array:
-                        return time64Array.GetValue(index);
-                    case TimestampArray timestampArray:
-                        DateTimeOffset? dateTimeOffset = timestampArray.GetTimestamp(index);
+                case Date32Array date32Array:
+                    return date32Array.GetDateTime(index);
+                case Date64Array date64Array:
+                    return date64Array.GetDateTime(index);
+                case Time64Array time64Array:
+                    return time64Array.GetValue(index);
+                case TimestampArray timestampArray:
+                    DateTimeOffset? dateTimeOffset = timestampArray.GetTimestamp(index);
 
-                        if(dateTimeOffset != null)
-                            return dateTimeOffset.Value;
+                    if(dateTimeOffset != null)
+                        return dateTimeOffset.Value;
 
-                        return null;
-                    case StructArray structArray:
-                        return SerializeToJson(structArray, index);
-                    // maybe not be needed?
-                    case ListArray listArray:
-                        return listArray.GetSlicedValues(index);
-                }
+                    return null;
+                case StructArray structArray:
+                    return SerializeToJson(structArray, index);
+                // maybe not be needed?
+                case ListArray listArray:
+                    return listArray.GetSlicedValues(index);
             }
-            catch (OverflowException oex)
-            {
-                return ParseDecimalValueFromOverflowException(oex);
-            }
+
 
             return null;
         }
@@ -236,30 +229,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     GetValue(structArray.Fields[i], structType.GetFieldByName(structType.Fields[i].Name), index));
             }
             return JsonSerializer.Serialize(jsonDictionary);
-        }
-
-        private string ParseDecimalValueFromOverflowException(OverflowException oex)
-        {
-            if (oex == null)
-                throw new ArgumentNullException(nameof(oex));
-
-            // any decimal value, positive or negative, with or without a decimal in place
-            Regex regex = new Regex(" -?\\d*\\.?\\d* ");
-
-            MatchCollection matches = regex.Matches(oex.Message);
-
-            // need the second value from the message
-            if (matches.Count == 2)
-            {
-                string value = matches[1].Value;
-
-                if (!string.IsNullOrEmpty(value))
-                {
-                    return value.Trim();
-                }
-            }
-
-            throw oex;
         }
 
         class MultiArrowReader : IArrowArrayStream
