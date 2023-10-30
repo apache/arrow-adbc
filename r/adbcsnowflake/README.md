@@ -46,10 +46,9 @@ pak::cache_clean()
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem.
-For examples of `uri` values to use as a connection value, see the
-documentation for the [upstream Go driver
-implementation](https://github.com/apache/arrow-adbc/blob/main/docs/source/driver/go/snowflake.rst#uri-format).
+This is a basic example which shows you how to solve a common problem. For examples
+of `uri` values to use as a connection value, see the
+[Snowflake driver documentation](https://arrow.apache.org/adbc/current/driver/snowflake.html#uri-format). Single sign-on browser-based authentication is also supported.
 
 ``` r
 library(adbcdrivermanager)

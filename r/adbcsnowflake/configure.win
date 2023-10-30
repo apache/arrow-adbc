@@ -15,9 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# See configure for a description of this process.
-# This is only for development: this file and bootstrap.R will be removed
-# prior to packaging
-if [ -f bootstrap.R ]; then
-  $R_HOME/bin/Rscript bootstrap.R
-fi
+# On Windows, this package only compiles on R >= 4.2 where the normal
+# configure is sufficient
+./configure

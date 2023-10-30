@@ -15,16 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-PKG_CPPFLAGS=-DADBC_EXPORT="" @cflags@
-PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_snowflake @libs@
+uri <- Sys.getenv("R_ADBCSNOWFLAKE_VENDORED_DEPENDENCY_URI", "")
 
-CGO_CC = @cc@
-CGO_CXX = @cxx@
-CGO_CFLAGS = $(ALL_CPPFLAGS)
+if (identical(uri, "")) {
+  # When there is a home for this that is not a local file:// URI,
+  # this is where we would set the default.
+  stop("R_ADBCSNOWFLAKE_VENDORED_DEPENDENCY_URI is not set")
+}
 
-.PHONY: all gostatic
-all: $(SHLIB)
-$(SHLIB): gostatic
-
-gostatic:
-		(cd "$(CURDIR)/go/adbc"; CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(PKG_LIBS)" "@gobin@" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_snowflake.a -buildmode=c-archive "./pkg/snowflake")
+cat(sprintf("Downloading vendored dependency archive from %s\n", uri))
+unlink("tools/src-go-adbc-vendor.zip")
+download.file(uri, "tools/src-go-adbc-vendor.zip")

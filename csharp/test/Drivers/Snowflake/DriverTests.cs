@@ -129,8 +129,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             string tableName = testConfiguration.Metadata.Table;
             string columnName = null;
 
-            parameters["adbc.snowflake.sql.db"] = databaseName;
-            parameters["adbc.snowflake.sql.schema"] = schemaName;
+                parameters[SnowflakeParameters.DATABASE] = databaseName;
+                parameters[SnowflakeParameters.SCHEMA] = schemaName;
 
             AdbcDatabase adbcDatabase = driver.Open(parameters);
             AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
@@ -155,9 +155,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 .Select(c => c.Columns)
                 .FirstOrDefault();
 
-            Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
-        }
+                Assert.True(columns != null, "Columns cannot be null");
 
+                Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+            }
+        
         /// <summary>
         /// Validates if the driver can call GetTableSchema.
         /// </summary>
