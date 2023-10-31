@@ -84,7 +84,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
                     string[] queries = SnowflakeTestingUtils.GetQueries(testConfiguration);
 
-                    List<object> expectedResults = new List<object>() { "Table ADBC_ALLTYPES successfully created.", 1L, 1L };
+                    List<object> expectedResults = new List<object>() { string.Format("Table {0} successfully created.",testConfiguration.Metadata.Table), 1L, 1L };
 
                     for (int i = 0; i < queries.Length; i++)
                     {
