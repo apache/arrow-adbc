@@ -67,7 +67,7 @@ The following table depicts how the BigQuery ADBC driver converts a BigQuery typ
 
 |  BigQuery Type   |      Arrow Type   | C# Type
 |----------|:-------------:|
-| BIGNUMERIC |    Decimal256    | decimal / string*
+| BIGNUMERIC |    Decimal256    | string
 | BOOL |    Boolean   | bool
 | BYTES |    Binary   | byte[]
 | DATE |    Date64   | DateTime
@@ -75,13 +75,11 @@ The following table depicts how the BigQuery ADBC driver converts a BigQuery typ
 | FLOAT64 |    Double   | double
 | GEOGRAPHY |    String   | string
 | INT64 |    Int64   | long
-| NUMERIC |    Decimal128   | decimal / string*
+| NUMERIC |    Decimal128   | SqlDecimal
 | STRING |    String   | string
 | STRUCT |    String+   | string
 | TIME |Time64   | long
 | TIMESTAMP |    Timestamp   | DateTimeOffset
-
-*An attempt is made to parse the original value as a `decimal` in C#. If that fails, the driver attempts to parse the overflow exception and return the original value.
 
 +A JSON string
 
