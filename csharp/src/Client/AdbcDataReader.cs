@@ -217,23 +217,21 @@ namespace Apache.Arrow.Adbc.Client
             if (value == null)
                 return null;
 
-            if(value.GetType() == typeof(SqlDecimal))
+            if(value is SqlDecimal dValue)
             {
                 if (this.DecimalBehavior == DecimalBehavior.UseSqlDecimal)
                 {
-                    return value;
+                    return dValue;
                 }
                 else
                 {
-                    SqlDecimal dvalue = (SqlDecimal)value;
-
                     try
                     {
-                        return dvalue.Value;
+                        return dValue.Value;
                     }
                     catch(OverflowException)
                     {
-                        return dvalue.ToString();
+                        return dValue.ToString();
                     }
                 }
             }

@@ -77,57 +77,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new UpdateResult(updatedRows);
         }
 
-        public override object GetValue(IArrowArray arrowArray, Field field, int index)
-        {
-            if(arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
-            if (field == null) throw new ArgumentNullException(nameof(field));
-            if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
-
-            switch (arrowArray)
-            {
-                case Int64Array int64Array:
-                    return int64Array.GetValue(index);
-                case DoubleArray doubleArray:
-                    return doubleArray.GetValue(index);
-                case Decimal128Array decimal128Array:
-                    return decimal128Array.GetSqlDecimal(index);
-                case Decimal256Array decimal256Array:
-                    return decimal256Array.GetString(index);
-                case BooleanArray booleanArray:
-                    return booleanArray.GetValue(index);
-                case StringArray stringArray:
-                    return stringArray.GetString(index);
-                case BinaryArray binaryArray:
-
-                    if(!binaryArray.IsNull(index))
-                        return binaryArray.GetBytes(index).ToArray();
-
-                    return null;
-
-                case Date32Array date32Array:
-                    return date32Array.GetDateTime(index);
-                case Date64Array date64Array:
-                    return date64Array.GetDateTime(index);
-                case Time64Array time64Array:
-                    return time64Array.GetValue(index);
-                case TimestampArray timestampArray:
-                    DateTimeOffset? dateTimeOffset = timestampArray.GetTimestamp(index);
-
-                    if(dateTimeOffset != null)
-                        return dateTimeOffset.Value;
-
-                    return null;
-                case StructArray structArray:
-                    return SerializeToJson(structArray, index);
-                // maybe not be needed?
-                case ListArray listArray:
-                    return listArray.GetSlicedValues(index);
-            }
-
-
-            return null;
-        }
-
         private Schema TranslateSchema(TableSchema schema)
         {
             return new Schema(schema.Fields.Select(TranslateField), null);

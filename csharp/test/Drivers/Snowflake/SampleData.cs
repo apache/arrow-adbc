@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 // https://github.com/apache/arrow-adbc/issues/1020 has Snowflake treat all values as decimal by default
                 new ColumnNetTypeArrowTypeValue("NUMBERTYPE", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(1m)),
-                new ColumnNetTypeArrowTypeValue("DECIMALTYPE", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(1231m)),
+                new ColumnNetTypeArrowTypeValue("DECIMALTYPE", typeof(double), typeof(DoubleType), 123.1d),
                 new ColumnNetTypeArrowTypeValue("NUMERICTYPE", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(1231m)),
                 new ColumnNetTypeArrowTypeValue("INTTYPE", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(123m)),
                 new ColumnNetTypeArrowTypeValue("INTEGERTYPE", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(123m)),
