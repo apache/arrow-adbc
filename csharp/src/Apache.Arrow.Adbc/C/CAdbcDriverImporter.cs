@@ -17,10 +17,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
 
@@ -328,158 +328,6 @@ namespace Apache.Arrow.Adbc.C
                     return new UpdateResult(rows);
                 }
             }
-
-            public override object GetValue(IArrowArray arrowArray, Field field, int index)
-            {
-                if (arrowArray is BooleanArray)
-                {
-                    return ((BooleanArray)arrowArray).GetValue(index);
-                }
-                else if (arrowArray is Date32Array)
-                {
-                    Date32Array date32Array = (Date32Array)arrowArray;
-
-                    return date32Array.GetDateTime(index);
-                }
-                else if (arrowArray is Date64Array)
-                {
-                    Date64Array date64Array = (Date64Array)arrowArray;
-
-                    return date64Array.GetDateTime(index);
-                }
-                else if (arrowArray is Decimal128Array)
-                {
-                    try
-                    {
-                        // the value may be <decimal.min or >decimal.max
-                        // then Arrow throws an exception
-                        // no good way to check prior to
-                        return ((Decimal128Array)arrowArray).GetValue(index);
-                    }
-                    catch (OverflowException oex)
-                    {
-                        return ParseDecimalValueFromOverflowException(oex);
-                    }
-                }
-                else if (arrowArray is Decimal256Array)
-                {
-                    try
-                    {
-                        return ((Decimal256Array)arrowArray).GetValue(index);
-                    }
-                    catch (OverflowException oex)
-                    {
-                        return ParseDecimalValueFromOverflowException(oex);
-                    }
-                }
-                else if (arrowArray is DoubleArray)
-                {
-                    return ((DoubleArray)arrowArray).Values[index];
-                }
-                else if (arrowArray is FloatArray)
-                {
-                    return ((FloatArray)arrowArray).GetValue(index);
-                }
-#if NET5_0_OR_GREATER
-                else if (arrowArray is PrimitiveArray<Half>)
-                {
-                    // TODO: HalfFloatArray not present in current library
-
-                    return ((PrimitiveArray<Half>)arrowArray).GetValue(index);
-                }
-#endif
-                else if (arrowArray is Int8Array)
-                {
-                    Int8Array array = (Int8Array)arrowArray;
-                    return array.GetValue(index);
-                }
-                else if (arrowArray is Int16Array)
-                {
-                    return ((Int16Array)arrowArray).Values[index];
-                }
-                else if (arrowArray is Int32Array)
-                {
-                    return ((Int32Array)arrowArray).Values[index];
-                }
-                else if (arrowArray is Int64Array)
-                {
-                    Int64Array array = (Int64Array)arrowArray;
-
-                    return array.GetValue(index);
-                }
-                else if (arrowArray is StringArray)
-                {
-                    return ((StringArray)arrowArray).GetString(index);
-                }
-                else if (arrowArray is Time32Array)
-                {
-                    return ((Time32Array)arrowArray).GetValue(index);
-                }
-                else if (arrowArray is Time64Array)
-                {
-                    return ((Time64Array)arrowArray).GetValue(index);
-                }
-                else if (arrowArray is TimestampArray)
-                {
-                    TimestampArray timestampArray = (TimestampArray)arrowArray;
-                    DateTimeOffset dateTimeOffset = timestampArray.GetTimestamp(index).Value;
-                    return dateTimeOffset;
-                }
-                else if (arrowArray is UInt8Array)
-                {
-                    return ((UInt8Array)arrowArray).GetValue(index);
-                }
-                else if (arrowArray is UInt16Array)
-                {
-                    return ((UInt16Array)arrowArray).GetValue(index);
-                }
-                else if (arrowArray is UInt32Array)
-                {
-                    return ((UInt32Array)arrowArray).GetValue(index);
-                }
-                else if (arrowArray is UInt64Array)
-                {
-                    return ((UInt64Array)arrowArray).GetValue(index);
-                }
-                else if (arrowArray is BinaryArray)
-                {
-                    ReadOnlySpan<byte> bytes = ((BinaryArray)arrowArray).GetBytes(index);
-
-                    if (bytes != null)
-                        return bytes.ToArray();
-                }
-
-                // not covered:
-                // -- struct array
-                // -- dictionary array
-                // -- fixed size binary
-                // -- list array
-                // -- union array
-
-                return null;
-            }
-
-            private string ParseDecimalValueFromOverflowException(OverflowException oex)
-            {
-                if (oex == null)
-                    throw new ArgumentNullException(nameof(oex));
-
-                // any decimal value, positive or negative, with or without a decimal in place
-                Regex regex = new Regex(" -?\\d*\\.?\\d* ");
-
-                var matches = regex.Matches(oex.Message);
-
-                foreach (Match match in matches)
-                {
-                    string value = match.Value;
-
-                    if (!string.IsNullOrEmpty(value))
-                        return value;
-                }
-
-                throw oex;
-            }
-
         }
 
         /// <summary>
