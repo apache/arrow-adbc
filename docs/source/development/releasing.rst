@@ -70,6 +70,9 @@ Some steps of the release require being a committer or a PMC member.
 Before creating a Release Candidate
 ===================================
 
+Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if
+any changes were needed.
+
 .. code-block::
 
    # Setup gpg agent for signing artifacts
