@@ -57,7 +57,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.FlightSql
 
             long count = 0;
 
-            using (Client.AdbcConnection adbcConnection = new Client.AdbcConnection(
+            using (Adbc.Client.AdbcConnection adbcConnection = new Adbc.Client.AdbcConnection(
                 new FlightSqlDriver(),
                 parameters,
                 options)

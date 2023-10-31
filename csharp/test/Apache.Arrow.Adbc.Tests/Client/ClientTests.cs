@@ -16,19 +16,19 @@
 */
 
 using System;
-using System.Data.SqlTypes;
-using Apache.Arrow.Adbc.Client;
-using Xunit;
-using Moq;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Data.SqlTypes;
 using System.Threading;
+using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
+using Moq;
+using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests.AdoNetClient
+namespace Apache.Arrow.Adbc.Tests.Client
 {
-    public class AdoNetClientTests
+    public class ClientTests
     {
         [Theory]
         [InlineData(DecimalBehavior.OverflowDecimalAsString, "79228162514264337593543950335", 29, 0, typeof(decimal))]
@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Tests.AdoNetClient
             mockStatement.Setup(x => x.ExecuteQuery()).Returns(queryResult); ;
             mockStatement.Setup(x => x.GetValue(It.IsAny<IArrowArray>(), It.IsAny<Field>(), It.IsAny<int>())).Returns(sqlDecimal);
 
-            Client.AdbcConnection mockConnection = new Client.AdbcConnection();
+            Adbc.Client.AdbcConnection mockConnection = new Adbc.Client.AdbcConnection();
             mockConnection.DecimalBehavior = decimalBehavior;
 
             AdbcCommand cmd = new AdbcCommand(mockStatement.Object, mockConnection);

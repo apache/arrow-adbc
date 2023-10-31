@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
                 adbcConnection.Open();
 
@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
                 adbcConnection.Open();
 
@@ -116,7 +116,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
                 AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
 
@@ -142,7 +142,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             long count = 0;
 
-            using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
             {
                 AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
 
@@ -184,7 +184,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             long count = 0;
 
-            using (Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
             {
                 AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
 
@@ -224,7 +224,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            Client.AdbcConnection dbConnection = GetSnowflakeAdbcConnection(testConfiguration);
+            Adbc.Client.AdbcConnection dbConnection = GetSnowflakeAdbcConnection(testConfiguration);
             dbConnection.Open();
 
             DbCommand dbCommand = dbConnection.CreateCommand();
@@ -257,7 +257,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
-        private Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration)
+        private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration)
         {
             // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html
 
@@ -292,19 +292,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration);
 
-            return new Client.AdbcConnection(builder.ConnectionString)
+            return new Adbc.Client.AdbcConnection(builder.ConnectionString)
             {
                 AdbcDriver = snowflakeDriver
             };
         }
 
-        private Client.AdbcConnection GetSnowflakeAdbcConnection(SnowflakeTestConfiguration testConfiguration)
+        private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnection(SnowflakeTestConfiguration testConfiguration)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
 
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
 
-            Client.AdbcConnection adbcConnection = new Client.AdbcConnection(
+            Adbc.Client.AdbcConnection adbcConnection = new Adbc.Client.AdbcConnection(
                 snowflakeDriver,
                 parameters: parameters,
                 options: new Dictionary<string, string>()

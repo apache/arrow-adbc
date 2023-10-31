@@ -49,7 +49,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
-            using (Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
             {
                 adbcConnection.Open();
 
@@ -78,7 +78,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
-            using (Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
             {
                 AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
 
@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             long count = 0;
 
-            using (Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
             {
                 AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
 
@@ -144,7 +144,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
-            Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration);
+            Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration);
 
             dbConnection.Open();
             DbCommand dbCommand = dbConnection.CreateCommand();
@@ -169,9 +169,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
-        private Client.AdbcConnection GetAdbcConnection(BigQueryTestConfiguration testConfiguration)
+        private Adbc.Client.AdbcConnection GetAdbcConnection(BigQueryTestConfiguration testConfiguration)
         {
-            return new Client.AdbcConnection(
+            return new Adbc.Client.AdbcConnection(
                 new BigQueryDriver(),
                 BigQueryTestingUtils.GetBigQueryParameters(testConfiguration),
                 new Dictionary<string,string>()
