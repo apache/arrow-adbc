@@ -80,7 +80,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 		case "FIXED":
 			switch f.Type.ID() {
 			case arrow.DECIMAL, arrow.DECIMAL256:
-				if useHighPrecision && precisionIsValidForDecimal128Type(int32(srcMeta.Precision), int32(srcMeta.Scale)) {
+				if useHighPrecision {
 					transformers[i] = identCol
 				} else {
 					if srcMeta.Scale == 0 {
@@ -94,7 +94,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 					}
 				}
 			default:
-				if useHighPrecision && precisionIsValidForDecimal128Type(int32(srcMeta.Precision), int32(srcMeta.Scale)) {
+				if useHighPrecision {
 					dt := &arrow.Decimal128Type{
 						Precision: int32(srcMeta.Precision),
 						Scale:     int32(srcMeta.Scale),
@@ -266,18 +266,6 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 	return out, getRecTransformer(out, transformers)
 }
 
-func precisionIsValidForDecimal128Type(precision, scale int32) bool {
-	// precision <19 throws an error for Decimal128Type
-	minPrecision := int32(19)
-	minPrecision += scale
-
-	if precision < minPrecision {
-		return false
-	} else {
-		return true
-	}
-}
-
 func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, error) {
 	var loc *time.Location
 
@@ -293,7 +281,7 @@ func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader
 		}
 		switch srcMeta.Type {
 		case "fixed":
-			if useHighPrecision && precisionIsValidForDecimal128Type(int32(srcMeta.Precision), int32(srcMeta.Scale)) {
+			if useHighPrecision {
 				fields[i].Type = &arrow.Decimal128Type{
 					Precision: int32(srcMeta.Precision),
 					Scale:     int32(srcMeta.Scale),

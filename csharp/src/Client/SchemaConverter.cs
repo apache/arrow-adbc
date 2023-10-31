@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Client
         /// <param name="schema">The Arrow schema</param>
         /// <param name="adbcStatement">The AdbcStatement to use</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public static DataTable ConvertArrowSchema(Schema schema, AdbcStatement adbcStatement)
+        public static DataTable ConvertArrowSchema(Schema schema, AdbcStatement adbcStatement, DecimalBehavior decimalBehavior)
         {
             if(schema == null)
                 throw new ArgumentNullException(nameof(schema));
@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Client
                 row[SchemaTableColumn.ColumnOrdinal] = columnOrdinal;
                 row[SchemaTableColumn.AllowDBNull] = f.IsNullable;
                 row[SchemaTableColumn.ProviderType] = f.DataType;
-                Type t = ConvertArrowType(f);
+                Type t = ConvertArrowType(f, decimalBehavior);
 
                 row[SchemaTableColumn.DataType] = t;
 
@@ -87,11 +87,11 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Convert types for Snowflake only
+        /// Convert types
         /// </summary>
         /// <param name="f"></param>
         /// <returns></returns>
-        public static Type ConvertArrowType(Field f)
+        public static Type ConvertArrowType(Field f, DecimalBehavior decimalBehavior)
         {
             switch (f.DataType.TypeId)
             {
@@ -102,7 +102,10 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(bool);
 
                 case ArrowTypeId.Decimal128:
-                    return typeof(SqlDecimal);
+                    if(decimalBehavior == DecimalBehavior.UseSqlDecimal)
+                        return typeof(SqlDecimal);
+                    else
+                        return typeof(decimal);
 
                 case ArrowTypeId.Decimal256:
                     return typeof(string);

@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
+using System.Data.SqlTypes;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
@@ -42,7 +43,7 @@ namespace Apache.Arrow.Adbc.Client
         private bool isClosed;
         private int recordsEffected = -1;
 
-        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult)
+        internal AdbcDataReader(AdbcCommand adbcCommand, QueryResult adbcQueryResult, DecimalBehavior decimalBehavior)
         {
             if (adbcCommand == null)
                 throw new ArgumentNullException(nameof(adbcCommand));
@@ -58,6 +59,7 @@ namespace Apache.Arrow.Adbc.Client
                 throw new ArgumentException("A Schema must be set for the AdbcQueryResult.Stream property");
 
             this.isClosed = false;
+            this.DecimalBehavior = decimalBehavior;
         }
 
         public override object this[int ordinal] => GetValue(ordinal);
@@ -76,6 +78,8 @@ namespace Apache.Arrow.Adbc.Client
         /// The Arrow schema under the reader
         /// </summary>
         public Schema ArrowSchema => this.schema;
+
+        public DecimalBehavior DecimalBehavior { get; set; }
 
         public override int RecordsAffected => this.recordsEffected;
 
@@ -128,12 +132,24 @@ namespace Apache.Arrow.Adbc.Client
 
         public override decimal GetDecimal(int ordinal)
         {
-            return (decimal) GetValue(ordinal);
+            return Convert.ToDecimal(GetValue(ordinal));
+        }
+
+        public SqlDecimal GetSqlDecimal(int ordinal)
+        {
+            if (this.DecimalBehavior == DecimalBehavior.UseSqlDecimal)
+            {
+                return (SqlDecimal)GetValue(ordinal);
+            }
+            else
+            {
+                throw new InvalidOperationException("Cannot convert to SqlDecimal if DecimalBehavior.UseSqlDecimal is not configured");
+            }
         }
 
         public override double GetDouble(int ordinal)
         {
-            return (double) GetValue(ordinal);
+            return Convert.ToDouble(GetValue(ordinal));
         }
 
         public override IEnumerator GetEnumerator()
@@ -196,7 +212,33 @@ namespace Apache.Arrow.Adbc.Client
 
         public override object GetValue(int ordinal)
         {
-            return GetValue(this.recordBatch?.Column(ordinal), ordinal);
+            object value = GetValue(this.recordBatch?.Column(ordinal), ordinal);
+
+            if (value == null)
+                return null;
+
+            if(value.GetType() == typeof(SqlDecimal))
+            {
+                if (this.DecimalBehavior == DecimalBehavior.UseSqlDecimal)
+                {
+                    return value;
+                }
+                else
+                {
+                    SqlDecimal dvalue = (SqlDecimal)value;
+
+                    try
+                    {
+                        return dvalue.Value;
+                    }
+                    catch(OverflowException)
+                    {
+                        return dvalue.ToString();
+                    }
+                }
+            }
+
+            return value;
         }
 
         public override int GetValues(object[] values)
@@ -248,7 +290,7 @@ namespace Apache.Arrow.Adbc.Client
         {
             if (this.schema != null)
             {
-                return SchemaConverter.ConvertArrowSchema(this.schema, this.adbcCommand.AdbcStatement);
+                return SchemaConverter.ConvertArrowSchema(this.schema, this.adbcCommand.AdbcStatement, this.DecimalBehavior);
             }
             else
             {
@@ -275,7 +317,7 @@ namespace Apache.Arrow.Adbc.Client
 
                 foreach (Field f in this.schema.FieldsList)
                 {
-                    Type t = SchemaConverter.ConvertArrowType(f);
+                    Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior);
 
                     if(f.HasMetadata &&
                        f.Metadata.ContainsKey("precision") &&
