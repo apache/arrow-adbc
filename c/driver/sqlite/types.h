@@ -34,6 +34,10 @@ struct SqliteDatabase {
 struct SqliteConnection {
   sqlite3* conn;
   char active_transaction;
+  char load_extension;
+
+  // Temporarily store an extension to load (need both entrypoint and path)
+  char* extension_path;
 };
 
 struct SqliteStatement {

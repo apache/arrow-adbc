@@ -183,6 +183,68 @@ class SqliteConnectionTest : public ::testing::Test,
 };
 ADBCV_TEST_CONNECTION(SqliteConnectionTest)
 
+TEST_F(SqliteConnectionTest, ExtensionLoading) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  // Can't enable here, or set either option
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "true", &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      "libsqlitezstd.so", &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  ASSERT_THAT(
+      AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.entrypoint",
+                              "entrypoint", &error),
+      adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  // Can't set entrypoint before path
+  ASSERT_THAT(
+      AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.entrypoint",
+                              "entrypoint", &error),
+      adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+
+  // path can't be null
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  // Shouldn't work unless enabled
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      "doesnotexist", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOption(
+                  &connection, "adbc.sqlite.load_extension.entrypoint", nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "invalid", &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "false", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "true", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  // Now enabled, but the extension doesn't exist anyways
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      "doesnotexist", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOption(
+                  &connection, "adbc.sqlite.load_extension.entrypoint", nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error),
+              adbc_validation::IsOkStatus(&error));
+}
+
 TEST_F(SqliteConnectionTest, GetInfoMetadata) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error),
               adbc_validation::IsOkStatus(&error));
