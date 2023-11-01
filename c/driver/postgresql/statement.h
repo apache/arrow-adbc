@@ -128,7 +128,8 @@ class PostgresStatement {
   AdbcStatusCode CreateBulkTable(
       const std::string& current_schema, const struct ArrowSchema& source_schema,
       const std::vector<struct ArrowSchemaView>& source_schema_fields,
-      std::string* escaped_table, struct AdbcError* error);
+      std::string* escaped_table, std::string* escaped_field_list,
+      struct AdbcError* error);
   AdbcStatusCode ExecuteUpdateBulk(int64_t* rows_affected, struct AdbcError* error);
   AdbcStatusCode ExecuteUpdateQuery(int64_t* rows_affected, struct AdbcError* error);
   AdbcStatusCode ExecutePreparedStatement(struct ArrowArrayStream* stream,
