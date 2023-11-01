@@ -333,6 +333,36 @@
 <span id="low-level-api"></span><h2>Low-Level API<a class="headerlink" href="#module-adbc_driver_sqlite" title="Permalink to this heading">#</a></h2>
 <p>Low-level ADBC bindings for the SQLite driver.</p>
 <dl class="py class">
+<dt class="sig sig-object py" id="adbc_driver_sqlite.ConnectionOptions">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_sqlite.</span></span><span class="sig-name descname"><span class="pre">ConnectionOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_sqlite.ConnectionOptions" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Connection options specific to the SQLite driver.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENABLED">
+<span class="sig-name descname"><span class="pre">LOAD_EXTENSION_ENABLED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.sqlite.load_extension.enabled'</span></em><a class="headerlink" href="#adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENABLED" title="Permalink to this definition">#</a></dt>
+<dd><p>Whether to enable (“true”) or disable (“false”) extension loading.
+Default is disabled.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENTRYPOINT">
+<span class="sig-name descname"><span class="pre">LOAD_EXTENSION_ENTRYPOINT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.sqlite.load_extension.entrypoint'</span></em><a class="headerlink" href="#adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENTRYPOINT" title="Permalink to this definition">#</a></dt>
+<dd><p>The path to an extension to load.
+Set this option after LOAD_EXTENSION_PATH.  This will actually
+load the extension.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_PATH">
+<span class="sig-name descname"><span class="pre">LOAD_EXTENSION_PATH</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.sqlite.load_extension.path'</span></em><a class="headerlink" href="#adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_PATH" title="Permalink to this definition">#</a></dt>
+<dd><p>The path to an extension to load.
+First set this option, then LOAD_EXTENSION_ENTRYPOINT.  The second
+call will actually load the extension.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="adbc_driver_sqlite.StatementOptions">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_sqlite.</span></span><span class="sig-name descname"><span class="pre">StatementOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_sqlite.StatementOptions" title="Permalink to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
@@ -357,8 +387,67 @@
 <p>DBAPI 2.0-compatible facade for the ADBC SQLite driver.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="adbc_driver_sqlite.dbapi.connect">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_sqlite.dbapi.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><span class="pre">Connection</span></a></span></span><a class="headerlink" href="#adbc_driver_sqlite.dbapi.connect" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">adbc_driver_sqlite.dbapi.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_sqlite.dbapi.AdbcSqliteConnection" title="adbc_driver_sqlite.dbapi.AdbcSqliteConnection"><span class="pre">AdbcSqliteConnection</span></a></span></span><a class="headerlink" href="#adbc_driver_sqlite.dbapi.connect" title="Permalink to this definition">#</a></dt>
 <dd><p>Connect to SQLite via ADBC.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="adbc_driver_sqlite.dbapi.AdbcSqliteConnection">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_sqlite.dbapi.</span></span><span class="sig-name descname"><span class="pre">AdbcSqliteConnection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager._lib.AdbcDatabase"><span class="pre">AdbcDatabase</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">_SharedDatabase</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.AdbcConnection" title="adbc_driver_manager._lib.AdbcConnection"><span class="pre">AdbcConnection</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autocommit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_sqlite.dbapi.AdbcSqliteConnection" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a></p>
+<p>A connection to an SQLite 3 database.</p>
+<p>This adds SQLite-specific functionality to the base ADBC-DBAPI bindings in
+the adbc_driver_manager.dbapi module.</p>
+<p class="rubric">Methods</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_sqlite.dbapi.AdbcSqliteConnection.enable_load_extension" title="adbc_driver_sqlite.dbapi.AdbcSqliteConnection.enable_load_extension"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_load_extension</span></code></a>(enabled)</p></td>
+<td><p>Toggle whether extension loading is allowed.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_sqlite.dbapi.AdbcSqliteConnection.load_extension" title="adbc_driver_sqlite.dbapi.AdbcSqliteConnection.load_extension"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_extension</span></code></a>(path, *[, entrypoint])</p></td>
+<td><p>Load an extension into the current connection.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_sqlite.dbapi.AdbcSqliteConnection.enable_load_extension">
+<span class="sig-name descname"><span class="pre">enable_load_extension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_sqlite.dbapi.AdbcSqliteConnection.enable_load_extension" title="Permalink to this definition">#</a></dt>
+<dd><p>Toggle whether extension loading is allowed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>enabled</strong></dt><dd><p>Whether extension loading is allowed or not.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_sqlite.dbapi.AdbcSqliteConnection.load_extension">
+<span class="sig-name descname"><span class="pre">load_extension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entrypoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#adbc_driver_sqlite.dbapi.AdbcSqliteConnection.load_extension" title="Permalink to this definition">#</a></dt>
+<dd><p>Load an extension into the current connection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>path</strong></dt><dd><p>The path to the extension to load.</p>
+</dd>
+<dt><strong>entrypoint</strong></dt><dd><p>The entrypoint to the extension.  If not provided or None, then
+SQLite will derive its own entrypoint name.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+<p>See the SQLite documentation for general information on extensions:
+<a class="reference external" href="https://www.sqlite.org/loadext.html">https://www.sqlite.org/loadext.html</a></p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -421,6 +510,12 @@
             <ul>
 <li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a><ul>
 <li><a class="reference internal" href="#module-adbc_driver_sqlite">Low-Level API</a><ul>
+<li><a class="reference internal" href="#adbc_driver_sqlite.ConnectionOptions"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENABLED"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.LOAD_EXTENSION_ENABLED</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENTRYPOINT"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.LOAD_EXTENSION_ENTRYPOINT</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_PATH"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.LOAD_EXTENSION_PATH</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#adbc_driver_sqlite.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_sqlite.StatementOptions.BATCH_ROWS"><code class="docutils literal notranslate"><span class="pre">StatementOptions.BATCH_ROWS</span></code></a></li>
 </ul>
@@ -430,6 +525,11 @@
 </li>
 <li><a class="reference internal" href="#module-adbc_driver_sqlite.dbapi">DBAPI 2.0 API</a><ul>
 <li><a class="reference internal" href="#adbc_driver_sqlite.dbapi.connect"><code class="docutils literal notranslate"><span class="pre">connect()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_sqlite.dbapi.AdbcSqliteConnection"><code class="docutils literal notranslate"><span class="pre">AdbcSqliteConnection</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_sqlite.dbapi.AdbcSqliteConnection.enable_load_extension"><code class="docutils literal notranslate"><span class="pre">AdbcSqliteConnection.enable_load_extension()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_sqlite.dbapi.AdbcSqliteConnection.load_extension"><code class="docutils literal notranslate"><span class="pre">AdbcSqliteConnection.load_extension()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

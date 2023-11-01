@@ -319,7 +319,7 @@
           
 <section class="genindex-section">
   <h1 id="index">Index</h1>
-  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#N"><strong>N</strong></a> | <a href="#O"><strong>O</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#Q"><strong>Q</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#U"><strong>U</strong></a> | <a href="#W"><strong>W</strong></a></div>
+  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#N"><strong>N</strong></a> | <a href="#O"><strong>O</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#Q"><strong>Q</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#U"><strong>U</strong></a> | <a href="#W"><strong>W</strong></a></div>
 </section>
 <section id="A" class="genindex-section">
   <h2>A</h2>
@@ -469,10 +469,10 @@
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv4N10AdbcDriver17ConnectionReleaseE">AdbcDriver::ConnectionRelease (C++ member)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="cpp/api/adbc.html#_CPPv4N10AdbcDriver18ConnectionRollbackE">AdbcDriver::ConnectionRollback (C++ member)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="cpp/api/adbc.html#_CPPv4N10AdbcDriver19ConnectionSetOptionE">AdbcDriver::ConnectionSetOption (C++ member)</a>
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv4N10AdbcDriver12DatabaseInitE">AdbcDriver::DatabaseInit (C++ member)</a>
@@ -550,6 +550,8 @@
         <li><a href="cpp/api/adbc.html#_CPPv4N14AdbcPartitions12private_dataE">AdbcPartitions::private_data (C++ member)</a>
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv4N14AdbcPartitions7releaseE">AdbcPartitions::release (C++ member)</a>
+</li>
+        <li><a href="python/api/adbc_driver_sqlite.html#adbc_driver_sqlite.dbapi.AdbcSqliteConnection">AdbcSqliteConnection (class in adbc_driver_sqlite.dbapi)</a>
 </li>
         <li><a href="cpp/api/adbc.html#_CPPv413AdbcStatement">AdbcStatement (C++ struct)</a>
 
@@ -678,6 +680,8 @@
         <ul>
           <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ConnectionOptions">(class in adbc_driver_manager)</a>
 </li>
+          <li><a href="python/api/adbc_driver_sqlite.html#adbc_driver_sqlite.ConnectionOptions">(class in adbc_driver_sqlite)</a>
+</li>
         </ul></li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ConnectionOptions.CURRENT_CATALOG">CURRENT_CATALOG (adbc_driver_manager.ConnectionOptions attribute)</a>
 </li>
@@ -725,16 +729,18 @@
   <h2>E</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_sqlite.html#adbc_driver_sqlite.dbapi.AdbcSqliteConnection.enable_load_extension">enable_load_extension() (adbc_driver_sqlite.dbapi.AdbcSqliteConnection method)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.Error">Error</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.execute">execute() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_partitions">execute_partitions() (adbc_driver_manager.AdbcStatement method)</a>
 </li>
-        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_query">execute_query() (adbc_driver_manager.AdbcStatement method)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_query">execute_query() (adbc_driver_manager.AdbcStatement method)</a>
+</li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_schema">execute_schema() (adbc_driver_manager.AdbcStatement method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.execute_update">execute_update() (adbc_driver_manager.AdbcStatement method)</a>
@@ -864,6 +870,24 @@
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatusCode.IO">IO (adbc_driver_manager.AdbcStatusCode attribute)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ConnectionOptions.ISOLATION_LEVEL">ISOLATION_LEVEL (adbc_driver_manager.ConnectionOptions attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="L" class="genindex-section">
+  <h2>L</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_sqlite.html#adbc_driver_sqlite.dbapi.AdbcSqliteConnection.load_extension">load_extension() (adbc_driver_sqlite.dbapi.AdbcSqliteConnection method)</a>
+</li>
+        <li><a href="python/api/adbc_driver_sqlite.html#adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENABLED">LOAD_EXTENSION_ENABLED (adbc_driver_sqlite.ConnectionOptions attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="python/api/adbc_driver_sqlite.html#adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENTRYPOINT">LOAD_EXTENSION_ENTRYPOINT (adbc_driver_sqlite.ConnectionOptions attribute)</a>
+</li>
+        <li><a href="python/api/adbc_driver_sqlite.html#adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_PATH">LOAD_EXTENSION_PATH (adbc_driver_sqlite.ConnectionOptions attribute)</a>
 </li>
     </ul></td>
   </tr></table>
