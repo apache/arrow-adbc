@@ -17,6 +17,7 @@
 
 #include "adbc.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
@@ -34,6 +35,12 @@
 #include "types.h"
 
 static const char kDefaultUri[] = "file:adbc_driver_sqlite?mode=memory&cache=shared";
+static const char kConnectionOptionEnableLoadExtension[] =
+    "adbc.sqlite.load_extension.enabled";
+static const char kConnectionOptionLoadExtensionPath[] =
+    "adbc.sqlite.load_extension.path";
+static const char kConnectionOptionLoadExtensionEntrypoint[] =
+    "adbc.sqlite.load_extension.entrypoint";
 // The batch size for query results (and for initial type inference)
 static const char kStatementOptionBatchRows[] = "adbc.sqlite.query.batch_rows";
 static const uint32_t kSupportedInfoCodes[] = {
@@ -107,8 +114,9 @@ AdbcStatusCode SqliteDatabaseSetOptionInt(struct AdbcDatabase* database, const c
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-int OpenDatabase(const char* maybe_uri, sqlite3** db, struct AdbcError* error) {
-  const char* uri = maybe_uri ? maybe_uri : kDefaultUri;
+int OpenDatabase(const struct SqliteDatabase* database, sqlite3** db,
+                 struct AdbcError* error) {
+  const char* uri = database->uri ? database->uri : kDefaultUri;
   int rc = sqlite3_open_v2(uri, db,
                            SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI,
                            /*zVfs=*/NULL);
@@ -178,7 +186,7 @@ AdbcStatusCode SqliteDatabaseInit(struct AdbcDatabase* database,
     return ADBC_STATUS_INVALID_STATE;
   }
 
-  return OpenDatabase(db->uri, &db->db, error);
+  return OpenDatabase(db, &db->db, error);
 }
 
 AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
@@ -224,6 +232,11 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
   CHECK_CONN_INIT(connection, error);
   struct SqliteConnection* conn = (struct SqliteConnection*)connection->private_data;
   if (strcmp(key, ADBC_CONNECTION_OPTION_AUTOCOMMIT) == 0) {
+    if (!conn->conn) {
+      SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
     if (strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
       if (conn->active_transaction) {
         AdbcStatusCode status = ExecuteQuery(conn, "COMMIT", error);
@@ -245,6 +258,67 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
       SetError(error, "[SQLite] Invalid connection option value %s=%s", key, value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
+    return ADBC_STATUS_OK;
+  } else if (strcmp(key, kConnectionOptionEnableLoadExtension) == 0) {
+    if (!conn->conn) {
+      SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
+    int rc = 0;
+    if (strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      rc = sqlite3_db_config(conn->conn, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 1, NULL);
+    } else if (strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      rc = sqlite3_db_config(conn->conn, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 0, NULL);
+    } else {
+      SetError(error, "[SQLite] Invalid connection option %s=%s", key,
+               value ? value : "(NULL)");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    if (rc != SQLITE_OK) {
+      SetError(error, "[SQLite] Failed to configure extension loading: %s",
+               sqlite3_errmsg(conn->conn));
+      return ADBC_STATUS_IO;
+    }
+    return ADBC_STATUS_OK;
+  } else if (strcmp(key, kConnectionOptionLoadExtensionPath) == 0) {
+    if (!conn->conn) {
+      SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    if (conn->extension_path) {
+      free(conn->extension_path);
+      conn->extension_path = NULL;
+    }
+    if (!value) {
+      SetError(error, "[SQLite] Must provide non-NULL %s", key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    conn->extension_path = strdup(value);
+    return ADBC_STATUS_OK;
+  } else if (strcmp(key, kConnectionOptionLoadExtensionEntrypoint) == 0) {
+    if (!conn->conn) {
+      SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    if (!conn->extension_path) {
+      SetError(error, "[SQLite] %s can only be set after setting %s", key,
+               kConnectionOptionLoadExtensionPath);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
+    char* message = NULL;
+    int rc = sqlite3_load_extension(conn->conn, conn->extension_path, value, &message);
+    if (rc != SQLITE_OK) {
+      SetError(error, "[SQLite] Failed to load extension %s (entrypoint %s): %s",
+               conn->extension_path, value ? value : "(NULL)",
+               message ? message : "(unknown error)");
+      if (message) sqlite3_free(message);
+      return ADBC_STATUS_UNKNOWN;
+    }
+
+    free(conn->extension_path);
+    conn->extension_path = NULL;
     return ADBC_STATUS_OK;
   }
   SetError(error, "[SQLite] Unknown connection option %s=%s", key,
@@ -285,7 +359,7 @@ AdbcStatusCode SqliteConnectionInit(struct AdbcConnection* connection,
     SetError(error, "[SQLite] AdbcConnectionInit: connection already initialized");
     return ADBC_STATUS_INVALID_STATE;
   }
-  return OpenDatabase(db->uri, &conn->conn, error);
+  return OpenDatabase(db, &conn->conn, error);
 }
 
 AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
@@ -299,6 +373,11 @@ AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
       SetError(error, "[SQLite] AdbcConnectionRelease: connection is busy");
       return ADBC_STATUS_IO;
     }
+    conn->conn = NULL;
+  }
+  if (conn->extension_path) {
+    free(conn->extension_path);
+    conn->extension_path = NULL;
   }
   free(connection->private_data);
   connection->private_data = NULL;
@@ -1570,7 +1649,7 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
   } else if (strcmp(key, kStatementOptionBatchRows) == 0) {
     char* end = NULL;
     long batch_size = strtol(value, &end, /*base=*/10);  // NOLINT(runtime/int)
-    if (errno != 0) {
+    if (errno == ERANGE) {
       SetError(error, "[SQLite] Invalid statement option value %s=%s (out of range)", key,
                value);
       return ADBC_STATUS_INVALID_ARGUMENT;
