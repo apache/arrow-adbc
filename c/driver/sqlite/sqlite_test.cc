@@ -98,6 +98,14 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  std::optional<std::string> PrimaryKeyIngestTableDdl(
+      std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id INTEGER PRIMARY KEY, value BIGINT)";
+    return ddl;
+  }
+
   std::optional<std::string> CompositePrimaryKeyTableDdl(
       std::string_view name) const override {
     std::string ddl = "CREATE TABLE ";

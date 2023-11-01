@@ -887,7 +887,8 @@ AdbcStatusCode PostgresStatement::Cancel(struct AdbcError* error) {
 AdbcStatusCode PostgresStatement::CreateBulkTable(
     const std::string& current_schema, const struct ArrowSchema& source_schema,
     const std::vector<struct ArrowSchemaView>& source_schema_fields,
-    std::string* escaped_table, struct AdbcError* error) {
+    std::string* escaped_table, std::string* escaped_field_list,
+    struct AdbcError* error) {
   PGconn* conn = connection_->conn();
 
   if (!ingest_.db_schema.empty() && ingest_.temporary) {
@@ -944,10 +945,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
 
   switch (ingest_.mode) {
     case IngestMode::kCreate:
+    case IngestMode::kAppend:
       // Nothing to do
       break;
-    case IngestMode::kAppend:
-      return ADBC_STATUS_OK;
     case IngestMode::kReplace: {
       std::string drop = "DROP TABLE IF EXISTS " + *escaped_table;
       PGresult* result = PQexecParams(conn, drop.c_str(), /*nParams=*/0,
@@ -972,7 +972,10 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
   create += " (";
 
   for (size_t i = 0; i < source_schema_fields.size(); i++) {
-    if (i > 0) create += ", ";
+    if (i > 0) {
+      create += ", ";
+      *escaped_field_list += ", ";
+    }
 
     const char* unescaped = source_schema.children[i]->name;
     char* escaped = PQescapeIdentifier(conn, unescaped, std::strlen(unescaped));
@@ -982,6 +985,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       return ADBC_STATUS_INTERNAL;
     }
     create += escaped;
+    *escaped_field_list += escaped;
     PQfreemem(escaped);
 
     switch (source_schema_fields[i].type) {
@@ -1032,6 +1036,10 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
                  ArrowTypeString(source_schema_fields[i].type));
         return ADBC_STATUS_NOT_IMPLEMENTED;
     }
+  }
+
+  if (ingest_.mode == IngestMode::kAppend) {
+    return ADBC_STATUS_OK;
   }
 
   create += ")";
@@ -1203,15 +1211,21 @@ AdbcStatusCode PostgresStatement::ExecuteUpdateBulk(int64_t* rows_affected,
   BindStream bind_stream(std::move(bind_));
   std::memset(&bind_, 0, sizeof(bind_));
   std::string escaped_table;
+  std::string escaped_field_list;
   RAISE_ADBC(bind_stream.Begin(
       [&]() -> AdbcStatusCode {
         return CreateBulkTable(current_schema, bind_stream.bind_schema.value,
-                               bind_stream.bind_schema_fields, &escaped_table, error);
+                               bind_stream.bind_schema_fields, &escaped_table,
+                               &escaped_field_list, error);
       },
       error));
   RAISE_ADBC(bind_stream.SetParamTypes(*type_resolver_, error));
 
-  std::string query = "COPY " + escaped_table + " FROM STDIN WITH (FORMAT binary)";
+  std::string query = "COPY ";
+  query += escaped_table;
+  query += " (";
+  query += escaped_field_list;
+  query += ") FROM STDIN WITH (FORMAT binary)";
   PGresult* result = PQexec(connection_->conn(), query.c_str());
   if (PQresultStatus(result) != PGRES_COPY_IN) {
     AdbcStatusCode code =
