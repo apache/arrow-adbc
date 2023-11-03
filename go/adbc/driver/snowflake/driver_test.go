@@ -236,7 +236,7 @@ func (s *SnowflakeQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 	return arrow.Metadata{}
 }
 
-func createTempSchema(uri string) string {
+func createTempSchema(database string, uri string) string {
 	db, err := sql.Open("snowflake", uri)
 	if err != nil {
 		panic(err)
@@ -244,7 +244,7 @@ func createTempSchema(uri string) string {
 	defer db.Close()
 
 	schemaName := strings.ToUpper("ADBC_TESTING_" + strings.ReplaceAll(uuid.New().String(), "-", "_"))
-	_, err = db.Exec(`CREATE SCHEMA ADBC_TESTING.` + schemaName)
+	_, err = db.Exec(`CREATE SCHEMA ` + database + `.` + schemaName)
 	if err != nil {
 		panic(err)
 	}
@@ -277,7 +277,7 @@ func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 
 	// avoid multiple runs clashing by operating in a fresh schema and then
 	// dropping that schema when we're done.
-	q := &SnowflakeQuirks{dsn: uri, catalogName: database, schemaName: createTempSchema(uri)}
+	q := &SnowflakeQuirks{dsn: uri, catalogName: database, schemaName: createTempSchema(database, uri)}
 	defer dropTempSchema(uri, q.schemaName)
 
 	fn(q)
@@ -644,13 +644,31 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 
 	suite.Require().NoError(suite.stmt.SetSqlQuery(`CREATE OR REPLACE TABLE NUMBERTYPETEST (
 		NUMBERDECIMAL NUMBER(38,0),
-		NUMBERFLOAT NUMBER(15,2)
+		NUMBERFLOAT NUMBER(15,2),
+		COLUMN3 NUMBER(16,2),
+		COLUMN4 NUMBER(17,2),
+		COLUMN5 NUMBER(18,2),
+		COLUMN6 NUMBER(19,2),
+		COLUMN7 NUMBER(20,2),
+		COLUMN8 NUMBER(21,2),
+		COLUMN9 NUMBER(22,2),
+		COLUMN10 NUMBER(23,2),
+		COLUMN11 NUMBER(24,2),
+		COLUMN12 NUMBER(25,2),
+		COLUMN13 NUMBER(26,2),
+		COLUMN14 NUMBER(27,2),
+		COLUMN15 NUMBER(28,2),
+		COLUMN16 NUMBER(29,2),
+		COLUMN17 NUMBER(30,2)
 	)`))
 	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO NUMBERTYPETEST (NUMBERDECIMAL, NUMBERFLOAT)
-		VALUES (1, 1234567.894), (12345678901234567890123456789012345678, 9876543210.987)`))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO NUMBERTYPETEST (NUMBERDECIMAL, NUMBERFLOAT, COLUMN3, COLUMN4, COLUMN5, COLUMN6, COLUMN7, COLUMN8, COLUMN9, COLUMN10, COLUMN11, COLUMN12, COLUMN13, COLUMN14, COLUMN15, COLUMN16, COLUMN17)
+		VALUES (1, 1234567.894, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (12345678901234567890123456789012345678, 9876543210.987,
+			99999999999999.99, 999999999999999.99, 9999999999999999.99, 99999999999999999.99, 99999999999999999.99,
+			999999999999999999.99, 9999999999999999999.99, 99999999999999999999.99, 999999999999999999999.99, 9999999999999999999999.99,
+			99999999999999999999999.99, 999999999999999999999999.99, 9999999999999999999999999.99, 99999999999999999999999999.99, 999999999999999999999999999.99)`))
 	_, err = suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
@@ -662,6 +680,10 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 	suite.EqualValues(2, n)
 	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 38, Scale: 0}, rdr.Schema().Field(0).Type), "expected decimal(38, 0), got %s", rdr.Schema().Field(0).Type)
 	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 15, Scale: 2}, rdr.Schema().Field(1).Type), "expected decimal(15, 2), got %s", rdr.Schema().Field(1).Type)
+	suite.True(rdr.Next())
+	rec := rdr.Record()
+
+	suite.Equal(9999999999999999, rec.Column(2).(*array.Decimal128).Value(1).LowBits)
 
 	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
 	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM NUMBERTYPETEST"))
@@ -673,7 +695,7 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
 	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(1).Type), "expected float64, got %s", rdr.Schema().Field(1).Type)
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec = rdr.Record()
 
 	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
