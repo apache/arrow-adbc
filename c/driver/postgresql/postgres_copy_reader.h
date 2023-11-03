@@ -1217,6 +1217,90 @@ class PostgresCopyIntervalFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
+
+// Inspiration for this taken from get_str_from_var in the pg source
+// src/backend/utils/adt/numeric.c
+class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
+public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    struct ArrowDecimal decimal;
+    // TODO: these need to be inferred from the schema not hard coded
+    constexpr int16_t precision = 10;
+    constexpr int16_t scale = 4;
+    ArrowDecimalInit(&decimal, 128, precision, scale);
+    ArrowArrayViewGetDecimalUnsafe(array_view_, index, &decimal);
+
+    // TODO: this is only guaranteed to work up to a precision of 18
+    // how do we handle higher?
+    int64_t int_val = ArrowDecimalGetIntUnsafe(&decimal);
+
+    // logic adoped from postgres int64_to_numericvar function
+    constexpr uint16_t kNumericPos = 0x0000;
+    constexpr uint16_t kNumericNeg = 0x4000;
+    constexpr uint64_t kNBase = 10000;
+    // Number of decimal digits per Postgres digit
+    constexpr int kDecDigits = 4;
+
+    constexpr int16_t var_digits = 20 / kDecDigits;
+    int16_t* buf = (int16_t*)std::malloc((var_digits + 1) * sizeof(int16_t));
+    buf[0] = 0;  // spare digit for rounding
+
+    uint64_t uval;
+    int16_t sign;
+    if (int_val < 0) {
+      sign = kNumericNeg;
+      uval = -int_val;
+    } else {
+      sign = kNumericPos;
+      uval = int_val;
+    }
+    int dscale = 0;
+
+    int16_t ndigits = 0;
+    int16_t weight;
+    if (int_val == 0) {
+      // TODO: change this
+      ndigits = 0;
+      weight = 0;
+    }
+
+
+    int16_t* ptr = buf + 1 + var_digits;
+    ndigits = 0;
+    do {
+      ptr--;
+      ndigits++;
+      const uint64_t newuval = uval / kNBase;
+      *ptr = uval - newuval * kNBase;
+      uval = newuval;
+    } while (uval);
+    weight = ndigits - 1;
+
+    // TODO: ndigits should equal pg_digits length
+    int32_t field_size_bytes = sizeof(ndigits)
+      + sizeof(weight)
+      + sizeof(sign)
+      + sizeof(dscale)
+      + ndigits * sizeof(int16_t);
+
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, ndigits, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, weight, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, sign, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, dscale, error));
+
+    // Not efficient but works for now
+    for (int16_t i = 0; i < ndigits; i++) {
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, ptr[i], error));
+    }
+
+    // TODO: RAII
+    std::free(buf);
+
+    return ADBC_STATUS_OK;
+  }
+};
+
 template <enum ArrowTimeUnit TU>
 class PostgresCopyDurationFieldWriter : public PostgresCopyFieldWriter {
  public:
@@ -1361,6 +1445,9 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       return NANOARROW_OK;
     case NANOARROW_TYPE_DOUBLE:
       *out = new PostgresCopyDoubleFieldWriter();
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_DECIMAL128:
+      *out = new PostgresCopyNumericFieldWriter();
       return NANOARROW_OK;
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_STRING:

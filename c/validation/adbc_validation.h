@@ -328,6 +328,9 @@ class StatementTest {
   void TestSqlIngestFloat32();
   void TestSqlIngestFloat64();
 
+  // Decmial
+  void TestSqlIngestDecimal128();
+
   // Strings
   void TestSqlIngestString();
   void TestSqlIngestLargeString();

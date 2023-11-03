@@ -141,7 +141,18 @@ int MakeSchema(struct ArrowSchema* schema, const std::vector<SchemaField>& field
   CHECK_ERRNO(ArrowSchemaSetTypeStruct(schema, fields.size()));
   size_t i = 0;
   for (const SchemaField& field : fields) {
-    CHECK_ERRNO(ArrowSchemaSetType(schema->children[i], field.type));
+    switch (field.type) {
+    case NANOARROW_TYPE_DECIMAL128:
+      // TODO: don't hardcore 10, 4
+      CHECK_ERRNO(AdbcNsArrowSchemaSetTypeDecimal(schema->children[i],
+                                                  field.type,
+                                                  10,
+                                                  4));
+      break;
+    default:
+      CHECK_ERRNO(ArrowSchemaSetType(schema->children[i], field.type));
+    }
+
     CHECK_ERRNO(ArrowSchemaSetName(schema->children[i], field.name.c_str()));
     if (!field.nullable) {
       schema->children[i]->flags &= ~ARROW_FLAG_NULLABLE;

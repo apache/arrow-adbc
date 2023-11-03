@@ -1528,6 +1528,97 @@ void StatementTest::TestSqlIngestFloat64() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<double>(NANOARROW_TYPE_DOUBLE));
 }
 
+// For full coverage, ensure that this contains Decimal examples that:
+// - Have >= four zeroes to the left of the decimal point
+// - Have >= four zeroes to the right of the decimal point
+// - Have >= four trailing zeroes to the right of the decimal point
+// - Have >= four leading zeroes before the first digit to the right of the decimal point
+// - Is < 0 (negative)
+// - The arrow Decimal implementations do not support special values nan, ±inf
+void StatementTest::TestSqlIngestDecimal128() {
+  if (!quirks()->supports_bulk_ingest(ADBC_INGEST_OPTION_MODE_CREATE)) {
+    GTEST_SKIP();
+  }
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", &error),
+              IsOkStatus(&error));
+
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr int32_t size = 128;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+  struct ArrowDecimal decimal4;
+  struct ArrowDecimal decimal5;
+
+  ArrowDecimalInit(&decimal1, size, 10, 4);
+  ArrowDecimalSetInt(&decimal1, -1234560);
+  ArrowDecimalInit(&decimal2, size, 10, 4);
+  ArrowDecimalSetInt(&decimal2, 1234);
+  ArrowDecimalInit(&decimal3, size, 10, 4);
+  ArrowDecimalSetInt(&decimal3, 10000);
+  ArrowDecimalInit(&decimal4, size, 10, 4);
+  ArrowDecimalSetInt(&decimal4, 1234560);
+  ArrowDecimalInit(&decimal5, size, 10, 0);
+  ArrowDecimalSetInt(&decimal5, 1000000);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {
+    std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5};
+
+  ASSERT_THAT(MakeSchema(&schema.value, {{"col", type}}), IsOkErrno());
+  ASSERT_THAT(MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                       &na_error, values), IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "bulk_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(rows_affected,
+              ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error),
+              IsOkStatus(&error));
+  {
+    StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ArrowType round_trip_type = quirks()->IngestSelectRoundTripType(type);
+    ASSERT_NO_FATAL_FAILURE(
+        CompareSchema(&reader.schema.value, {{"col", round_trip_type, NULLABLE}}));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(values.size(), reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    if (round_trip_type == type) {
+      ASSERT_NO_FATAL_FAILURE(
+          CompareArray<ArrowDecimal*>(reader.array_view->children[0], values));
+    }
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  }
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
 void StatementTest::TestSqlIngestString() {
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::string>(
       NANOARROW_TYPE_STRING, {std::nullopt, "", "", "1234", "例"}, false));

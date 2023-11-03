@@ -680,6 +680,67 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadNumeric) {
   EXPECT_EQ(std::string(item.data, item.size_bytes), "inf");
 }
 
+// This buffer is similar to the read variant above but removes special values
+// nan, ±inf as they are not supported via the Arrow Decimal types
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (  VALUES (NULL), (-123.456),
+// ('0.00001234'), ('1.0000'), (123.456), (1000000)) AS drvd(col))
+// TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericWrite[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0c, 0x00, 0x02, 0x00, 0x00, 0x40, 0x00, 0x00, 0x03, 0x00, 0x7b, 0x11,
+    0xd0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0, 0x00, 0x01, 0xff, 0xfe, 0x00, 0x00, 0x00,
+    0x08, 0x04, 0xd2, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x04, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x7b, 0x11, 0xd0, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x0a, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0xff, 0xff};
+
+TEST(PostgresCopyUtilsTest, PostgresCopyWriteNumeric) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr int32_t size = 128;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+  struct ArrowDecimal decimal4;
+  struct ArrowDecimal decimal5;
+
+  ArrowDecimalInit(&decimal1, size, 10, 4);
+  ArrowDecimalSetInt(&decimal1, -1234560);
+  ArrowDecimalInit(&decimal2, size, 10, 4);
+  ArrowDecimalSetInt(&decimal2, 1234);
+  ArrowDecimalInit(&decimal3, size, 10, 4);
+  ArrowDecimalSetInt(&decimal3, 10000);
+  ArrowDecimalInit(&decimal4, size, 10, 4);
+  ArrowDecimalSetInt(&decimal4, 1234560);
+  ArrowDecimalInit(&decimal5, size, 10, 0);
+  ArrowDecimalSetInt(&decimal5, 1000000);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {
+    std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5};
+
+  ASSERT_EQ(adbc_validation::MakeSchema(&schema.value, {{"col", type}}),
+            ADBC_STATUS_OK);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                       &na_error, values), ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
+  // so no need to test those bytes from the Writer
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericWrite) - 2;
+  ASSERT_EQ(buf.size_bytes, buf_size);
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericWrite[i]);
+  }
+}
+
 // COPY (SELECT CAST(col AS TIMESTAMP) FROM (  VALUES ('1900-01-01 12:34:56'),
 // ('2100-01-01 12:34:56'), (NULL)) AS drvd("col")) TO STDOUT WITH (FORMAT BINARY);
 static uint8_t kTestPgCopyTimestamp[] = {
