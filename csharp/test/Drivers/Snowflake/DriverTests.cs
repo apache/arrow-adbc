@@ -266,5 +266,53 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
             }
         }
+
+        /// <summary>
+        /// Validates if the driver can receive the correct values for numeric data types
+        /// integers
+        /// </summary>
+        [Test, Order(7)]
+        public void TestNumericRanges()
+        {
+            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
+            {
+                SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+                Dictionary<string, string> parameters = new();
+                Dictionary<string, string> options = new();
+
+                AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
+
+                AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
+                AdbcConnection adbcConnection = adbcDatabase.Connect(options);
+
+                string insertNumberStatement = string.Format("INSERT INTO {0}.{1}.{2} (NUMBERTYPE) VALUES (-1);", testConfiguration.Metadata.Catalog, testConfiguration.Metadata.Schema, testConfiguration.Metadata.Table);
+                Console.WriteLine(insertNumberStatement);
+
+                AdbcStatement statement = adbcConnection.CreateStatement();
+                statement.SqlQuery = insertNumberStatement;
+
+                UpdateResult updateResult = statement.ExecuteUpdate();
+
+                Assert.AreEqual(updateResult.AffectedRows, 1);
+
+                string selectNumberStatement = string.Format("SELECT NUMBERTYPE FROM {0}.{1}.{2} WHERE NUMBERTYPE={3};", testConfiguration.Metadata.Catalog, testConfiguration.Metadata.Schema, testConfiguration.Metadata.Table, -1);
+                Console.WriteLine(selectNumberStatement);
+
+                statement.SqlQuery = selectNumberStatement;
+
+                QueryResult queryResult = statement.ExecuteQuery();
+
+
+                string deleteNumberStatement = string.Format("DELETE FROM {0}.{1}.{2} WHERE NUMBERTYPE={3};", testConfiguration.Metadata.Catalog, testConfiguration.Metadata.Schema, testConfiguration.Metadata.Table, -1);
+                Console.WriteLine(deleteNumberStatement);
+
+                statement.SqlQuery = deleteNumberStatement;
+
+                updateResult = statement.ExecuteUpdate();
+
+                Assert.AreEqual(updateResult.AffectedRows, 1);
+
+            }
+        }
     }
 }
