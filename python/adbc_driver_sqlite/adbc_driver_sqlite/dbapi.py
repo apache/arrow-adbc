@@ -100,7 +100,7 @@ def connect(uri: typing.Optional[str] = None, **kwargs) -> "Connection":
     try:
         db = adbc_driver_sqlite.connect(uri)
         conn = adbc_driver_manager.AdbcConnection(db)
-        return adbc_driver_manager.dbapi.Connection(db, conn, **kwargs)
+        return Connection(db, conn, **kwargs)
     except Exception:
         if conn:
             conn.close()
@@ -112,5 +112,57 @@ def connect(uri: typing.Optional[str] = None, **kwargs) -> "Connection":
 # ----------------------------------------------------------
 # Classes
 
-Connection = adbc_driver_manager.dbapi.Connection
+
+class AdbcSqliteConnection(adbc_driver_manager.dbapi.Connection):
+    """
+    A connection to an SQLite 3 database.
+
+    This adds SQLite-specific functionality to the base ADBC-DBAPI bindings in
+    the adbc_driver_manager.dbapi module.
+    """
+
+    def enable_load_extension(self, enabled: bool) -> None:
+        """
+        Toggle whether extension loading is allowed.
+
+        Parameters
+        ----------
+        enabled
+            Whether extension loading is allowed or not.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        flag = adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENABLED.value
+        self.adbc_connection.set_options(**{flag: "true" if enabled else "false"})
+
+    def load_extension(
+        self, path: str, *, entrypoint: typing.Optional[str] = None
+    ) -> None:
+        """
+        Load an extension into the current connection.
+
+        Parameters
+        ----------
+        path
+            The path to the extension to load.
+        entrypoint
+            The entrypoint to the extension.  If not provided or None, then
+            SQLite will derive its own entrypoint name.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+
+        See the SQLite documentation for general information on extensions:
+        https://www.sqlite.org/loadext.html
+        """
+        flag = adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_PATH.value
+        self.adbc_connection.set_options(**{flag: path})
+        flag = adbc_driver_sqlite.ConnectionOptions.LOAD_EXTENSION_ENTRYPOINT.value
+        self.adbc_connection.set_options(**{flag: entrypoint})
+
+
+Connection = AdbcSqliteConnection
 Cursor = adbc_driver_manager.dbapi.Cursor

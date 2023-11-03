@@ -21,7 +21,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Xunit;
-using Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
 
 namespace Apache.Arrow.Adbc.Tests
 {
@@ -72,7 +71,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="value">The value of the ADBC value.</param>
         private void ValidateEnumValue(int enumValue, string adbcName, int value)
         {
-            Assert.AreEqual(enumValue, value);
+            Assert.Equal(enumValue, value);
 
             // find the corresponding value in adbc.h and validate it
             string path = GetPathForAdbcH();
@@ -81,11 +80,11 @@ namespace Apache.Arrow.Adbc.Tests
 
             string line = File.ReadAllLines(path).Where(x => x.StartsWith(pattern)).FirstOrDefault();
 
-            Assert.IsFalse(string.IsNullOrEmpty(line));
+            Assert.False(string.IsNullOrEmpty(line));
 
             string definedValue = line.Replace(pattern, "").Trim();
 
-            Assert.AreEqual(value, Convert.ToInt32(definedValue));
+            Assert.Equal(value, Convert.ToInt32(definedValue));
         }
 
         // C# is designed to match Java's AdbcDriver
@@ -171,9 +170,9 @@ namespace Apache.Arrow.Adbc.Tests
 
             if (parameterNames != null)
             {
-                Assert.IsTrue(parameterNames.Length > 0);
-                Assert.IsTrue(parameterTypes != null);
-                Assert.AreEqual(parameterNames.Length, parameterTypes.Length);
+                Assert.True(parameterNames.Length > 0);
+                Assert.True(parameterTypes != null);
+                Assert.Equal(parameterNames.Length, parameterTypes.Length);
 
                 ParameterInfo[] parameters = mi.GetParameters();
 
@@ -181,8 +180,8 @@ namespace Apache.Arrow.Adbc.Tests
                 {
                     ParameterInfo parameter = parameters[i];
 
-                    Assert.AreEqual(parameter.Name, parameterNames[i]);
-                    Assert.AreEqual(parameter.ParameterType, parameterTypes[i]);
+                    Assert.Equal(parameter.Name, parameterNames[i]);
+                    Assert.Equal(parameter.ParameterType, parameterTypes[i]);
                 }
             }
         }
@@ -198,7 +197,7 @@ namespace Apache.Arrow.Adbc.Tests
         {
             PropertyInfo pi = t.GetProperty(propertyName, propertyType);
 
-            Assert.IsNotNull(pi);
+            Assert.NotNull(pi);
         }
 
         private string GetPathForAdbcH()
@@ -207,7 +206,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             string path = Path.Combine(new string[] { "..", "..", "..", "..", "..", "adbc.h" });
 
-            Assert.IsTrue(File.Exists(path));
+            Assert.True(File.Exists(path));
 
             return path;
         }

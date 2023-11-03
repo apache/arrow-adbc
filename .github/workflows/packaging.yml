@@ -765,8 +765,6 @@ jobs:
 
       - name: Test wheel
         shell: cmd
-        # PyArrow wheels not yet available
-        if: matrix.python_version != "3.12"
         run: |
           pushd adbc
           where python.exe
