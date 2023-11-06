@@ -30,6 +30,8 @@ import (
 	"github.com/apache/arrow/go/v13/arrow"
 	"github.com/apache/arrow/go/v13/arrow/array"
 	"github.com/apache/arrow/go/v13/arrow/compute"
+	"github.com/apache/arrow/go/v13/arrow/compute/exec"
+	"github.com/apache/arrow/go/v13/arrow/decimal128"
 	"github.com/apache/arrow/go/v13/arrow/ipc"
 	"github.com/apache/arrow/go/v13/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
@@ -101,7 +103,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 					}
 					f.Type = dt
 					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-						return compute.CastArray(ctx, a, compute.SafeCastOptions(dt))
+					    return compute.CastArray(ctx, a, compute.SafeCastOptions(dt))
 					}
 				} else {
 					if srcMeta.Scale != 0 {
@@ -265,6 +267,70 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 	out := arrow.NewSchema(fields, &meta)
 	return out, getRecTransformer(out, transformers)
 }
+
+func abc() {
+	// pool := memory.NewGoAllocator()
+	ctx := context.Background()
+	execCtx := compute.DefaultExecCtx()
+	ctx = compute.SetExecCtx(ctx, execCtx)
+
+	add42 := compute.NewScalarFunction("extend_decimal", compute.Arity{
+		NArgs: 1,
+	}, compute.FunctionDoc{
+		Summary:  "Extends an input array into a decimal",
+		ArgNames: []string{"input"},
+	})
+
+	if err := add42.AddNewKernel(
+		[]exec.InputType{
+			{
+				Kind: exec.InputExact,
+				Type: arrow.PrimitiveTypes.Int8,
+			},
+		},
+		exec.NewOutputType(arrow.Decimal128Type { Precision: 10, Scale: 2 }),
+		func(ctx *exec.KernelCtx, span *exec.ExecSpan, result *exec.ExecResult) error {
+			for i, x := range span.Values[0].Array.Buffers[1].Buf {
+				result.Buffers[1].Buf[i] = x + 42
+			}
+			return nil
+		},
+		nil,
+	); err != nil {
+		// log.Fatal(err)
+	}
+
+	execCtx.Registry.AddFunction(add42, true)
+}
+
+type IntTypes interface {
+	~int8 | ~int16 | ~int32 | ~int64
+}
+
+type UintTypes interface {
+	~uint8 | ~uint16 | ~uint32 | ~uint64
+}
+
+func integerToDecimal128[T IntTypes | UintTypes](inType arrow.Type, outScale int32) exec.ArrayKernelExec {
+	var getDecimal func(v T) decimal128.Num
+	switch inType {
+	case arrow.UINT8, arrow.UINT16, arrow.UINT32, arrow.UINT64:
+		getDecimal = func(v T) decimal128.Num { return decimal128.FromU64(uint64(v)) }
+	default:
+		getDecimal = func(v T) decimal128.Num { return decimal128.FromI64(int64(v)) }
+	}
+	//return ScalarUnaryNotNull(func(_ *exec.KernelCtx, val T, err *error) decimal128.Num {
+	//	out, e := getDecimal(val)
+	//	if e != nil {
+	//		*err = e
+	//	}
+	//	return out
+	//})
+	return func(_ *exec.KernelCtx, val T, err *error) decimal128.Num {
+		return getDecimal(val)
+	}
+}
+
 
 func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, error) {
 	var loc *time.Location
