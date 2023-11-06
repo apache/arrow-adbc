@@ -67,5 +67,36 @@ if(ADBC_INTEGRATION_DUCKDB)
   add_subdirectory(integration/duckdb)
 endif()
 
+if(ADBC_BUILD_PYTHON)
+  find_package(Python REQUIRED COMPONENTS Interpreter Development)
+
+  if(NOT ADBC_DRIVER_MANAGER)
+    message(FATAL_ERROR "Building Python requires at least ADBC_DRIVER_MANAGER=ON")
+  endif()
+
+  if(NOT ADBC_BUILD_SHARED)
+    message(FATAL_ERROR "Building Python requires at least ADBC_BUILD_SHARED=ON")
+  endif()
+
+  add_custom_target(python COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
+                                   "${REPOSITORY_ROOT}/python/adbc_driver_manager")
+
+  if(ADBC_DRIVER_POSTGRESQL)
+    adbc_install_python_package(postgresql)
+  endif()
+
+  if(ADBC_DRIVER_SQLITE)
+    adbc_install_python_package(sqlite)
+  endif()
+
+  if(ADBC_DRIVER_FLIGHTSQL)
+    adbc_install_python_package(flightsql)
+  endif()
+
+  if(ADBC_DRIVER_SNOWFLAKE)
+    adbc_install_python_package(snowflake)
+  endif()
+endif()
+
 validate_config()
 config_summary_message()

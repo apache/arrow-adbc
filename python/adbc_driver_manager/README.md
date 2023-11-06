@@ -40,6 +40,17 @@ Dependencies: a C++ compiler.
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
 
+The cmake configuration option ``-DADBC_BUILD_PYTHON=ON`` will define a custom ``python`` target that can build and install this library, as long as ``-DADBC_DRIVER_MANAGER=ON`` is also specified.
+
+Assuming you run cmake from the project root:
+
+```shell
+cmake -S -c -B build --preset debug -DADBC_BUILD_PYTHON=ON
+cmake --build build --target python
+```
+
+will properly build and install the Python library for you.
+
 ## Testing
 
 The [SQLite driver](../../c/driver/sqlite/README.md) must be loadable

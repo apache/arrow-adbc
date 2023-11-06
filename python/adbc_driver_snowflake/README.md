@@ -29,20 +29,16 @@ the [driver manager][driver-manager] to provide a [DBAPI 2.0/PEP
 
 ## Building
 
-Dependencies: a build of the Snowflake driver, and the
-`adbc-driver-manager` Python package.  Optionally, install PyArrow to
-use the DBAPI 2.0-compatible interface.
+The cmake configuration option ``-DADBC_BUILD_PYTHON=ON`` will define a custom ``python`` target that can build and install this library, as long as ``-DADBC_DRIVER_SNOWFLAKE=ON`` is also specified.
 
-Set the environment variable `ADBC_SNOWFLAKE_LIBRARY` to the path to
-`libadbc_driver_snowflake.{dll,dylib,so}` before running `pip install`.
+Assuming you run cmake from the project root:
 
+```shell
+cmake -S -c -B build --preset debug -DADBC_BUILD_PYTHON=ON
+cmake --build build --target python
 ```
-# If not already installed
-pip install -e ../adbc_driver_manager
 
-export ADBC_SNOWFLAKE_LIBRARY=/path/to/libadbc_driver_snowflake.so
-pip install --no-deps -e .
-```
+will properly build and install the Python library for you.
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on the
 general build process.
