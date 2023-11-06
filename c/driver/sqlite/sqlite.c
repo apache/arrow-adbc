@@ -282,7 +282,6 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
     }
     return ADBC_STATUS_OK;
   } else if (strcmp(key, kConnectionOptionLoadExtensionPath) == 0) {
-#if !defined(ADBC_SQLITE_WITH_NO_LOAD_EXTENSION)
     if (!conn->conn) {
       SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
       return ADBC_STATUS_INVALID_STATE;
@@ -298,6 +297,7 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
     conn->extension_path = strdup(value);
     return ADBC_STATUS_OK;
   } else if (strcmp(key, kConnectionOptionLoadExtensionEntrypoint) == 0) {
+#if !defined(ADBC_SQLITE_WITH_NO_LOAD_EXTENSION)
     if (!conn->conn) {
       SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
       return ADBC_STATUS_INVALID_STATE;
