@@ -81,6 +81,25 @@ if(ADBC_BUILD_PYTHON)
   add_custom_target(python COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
                                    "${REPOSITORY_ROOT}/python/adbc_driver_manager")
 
+  macro(adbc_install_python_package TARGET)
+    # Python cannot use versioned suffixes - probably a smarter way to do this...
+    string(CONCAT adbc_driver_${TARGET}_shared_python_lib_name
+                  ${CMAKE_SHARED_LIBRARY_PREFIX}
+                  $<TARGET_FILE_BASE_NAME:adbc_driver_${TARGET}_shared>
+                  ${CMAKE_SHARED_LIBRARY_SUFFIX})
+
+    add_custom_command(TARGET python
+                       POST_BUILD
+                       COMMAND ${CMAKE_COMMAND} -E copy
+                               $<TARGET_FILE:adbc_driver_${TARGET}_shared>
+                               "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}/\
+adbc_driver_${TARGET}/${adbc_driver_${TARGET}_shared_python_lib_name}"
+                       COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
+                               "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}"
+                       COMMENT "pip installing the adbc_driver_${TARGET} library..."
+                               DEPENDS $<TARGET_FILE:adbc_driver_${TARGET}_shared>)
+  endmacro()
+
   if(ADBC_DRIVER_POSTGRESQL)
     adbc_install_python_package(postgresql)
   endif()

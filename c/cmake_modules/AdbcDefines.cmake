@@ -91,19 +91,6 @@ macro(adbc_configure_target TARGET)
                          PRIVATE ${ADBC_C_CXX_FLAGS_${ADBC_BUILD_WARNING_LEVEL}})
 endmacro()
 
-macro(adbc_install_python_package TARGET)
-  add_custom_command(TARGET python
-                     POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E copy
-                             $<TARGET_FILE:adbc_driver_${TARGET}_shared>
-                             "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}/\
-adbc_driver_${TARGET}/$<TARGET_FILE_NAME:adbc_driver_${TARGET}_shared>"
-                     COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
-                             "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}"
-                     COMMENT "pip installing the adbc_driver_${TARGET} library..."
-                             DEPENDS $<TARGET_FILE:adbc_driver_${TARGET}_shared>)
-endmacro()
-
 # Common testing setup
 add_custom_target(all-tests)
 if(ADBC_BUILD_TESTS)
