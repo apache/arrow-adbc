@@ -134,8 +134,6 @@ github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qq
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
-github.com/snowflakedb/gosnowflake v1.6.23-0.20230717195239-fec38ba82d2a h1:F7fKVj3t12jr3Bopzngsp/PZDm1or8zpk+29NN4YFGk=
-github.com/snowflakedb/gosnowflake v1.6.23-0.20230717195239-fec38ba82d2a/go.mod h1:KfO4F7bk+aXPUIvBqYxvPhxLlu2/w4TtSC8Rw/yr5Mg=
 github.com/snowflakedb/gosnowflake v1.6.23-0.20231106142408-8445dcaf46d9 h1:TCIqFsNrcVtups6vBXX2DHI+SjcXw22k0yf1JqzeZAM=
 github.com/snowflakedb/gosnowflake v1.6.23-0.20231106142408-8445dcaf46d9/go.mod h1:KfO4F7bk+aXPUIvBqYxvPhxLlu2/w4TtSC8Rw/yr5Mg=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
