@@ -70,9 +70,9 @@ endif()
 if(ADBC_BUILD_PYTHON)
   find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
-  if(NOT ADBC_DRIVER_MANAGER)
-    message(FATAL_ERROR "Building Python requires ADBC_DRIVER_MANAGER=ON")
-  endif()
+  #if(NOT ADBC_DRIVER_MANAGER)
+  #  message(FATAL_ERROR "Building Python requires ADBC_DRIVER_MANAGER=ON")
+  #endif()
 
   if(NOT ADBC_BUILD_SHARED)
     message(FATAL_ERROR "Building Python requires ADBC_BUILD_SHARED=ON")

@@ -96,7 +96,8 @@ macro(adbc_install_python_package TARGET)
                      POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E copy
                              $<TARGET_FILE:adbc_driver_${TARGET}_shared>
-                             "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}/adbc_driver_${TARGET}/libadbc_driver_${TARGET}.so"
+                             "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}/\
+adbc_driver_${TARGET}/$<TARGET_FILE_NAME:adbc_driver_${TARGET}_shared>"
                      COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
                              "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}"
                      COMMENT "pip installing the adbc_driver_${TARGET} library..."
