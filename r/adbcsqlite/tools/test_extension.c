@@ -15,18 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package flightsql
+#include <sqlite3.h>
+#include <stddef.h>
 
-import (
-	"database/sql"
-
-	"github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-	"github.com/apache/arrow-adbc/go/adbc/sqldriver"
-	"github.com/apache/arrow/go/v14/arrow/memory"
-)
-
-func init() {
-	sql.Register("flightsql", sqldriver.Driver{
-		Driver: flightsql.NewDriver(memory.DefaultAllocator),
-	})
-}
+void try_load_extension() { sqlite3_load_extension(NULL, NULL, NULL, NULL); }

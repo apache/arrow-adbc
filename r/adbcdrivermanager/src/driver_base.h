@@ -148,10 +148,11 @@ class Option {
     switch (type_) {
       case TYPE_STRING: {
         const std::string& value = GetStringUnsafe();
-        if (*length < value.size()) {
-          *length = value.size();
+        size_t value_size_with_terminator = value.size() + 1;
+        if (*length < value_size_with_terminator) {
+          *length = value_size_with_terminator;
         } else {
-          memcpy(out, value.data(), value.size());
+          memcpy(out, value.data(), value_size_with_terminator);
         }
 
         return ADBC_STATUS_OK;

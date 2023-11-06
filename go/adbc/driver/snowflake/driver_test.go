@@ -36,9 +36,9 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v13/arrow"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/memory"
+	"github.com/apache/arrow/go/v14/arrow"
+	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
@@ -194,7 +194,7 @@ func (s *SnowflakeQuirks) BindParameter(_ int) string            { return "?" }
 func (s *SnowflakeQuirks) SupportsBulkIngest(string) bool        { return true }
 func (s *SnowflakeQuirks) SupportsConcurrentStatements() bool    { return true }
 func (s *SnowflakeQuirks) SupportsCurrentCatalogSchema() bool    { return true }
-func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return false }
+func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return true }
 func (s *SnowflakeQuirks) SupportsGetSetOptions() bool           { return true }
 func (s *SnowflakeQuirks) SupportsPartitionedData() bool         { return false }
 func (s *SnowflakeQuirks) SupportsStatistics() bool              { return false }
@@ -730,6 +730,17 @@ func (suite *SnowflakeTests) SingleNumberType(precision int) {
 	suite.Equal(nil, rec)
 	// suite.Equal(0, rec.Column(0).(*array.Float64).Value(0))
 	// suite.Equal(uint64(9999), rec.Column(0).(*array.Decimal128).Value(1).LowBits())
+}
+
+func (suite *SnowflakeTests) TestDescribeOnly() {
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT CAST('9999.99' AS NUMBER(6, 2)) AS RESULT"))
+	schema, err := suite.stmt.(adbc.StatementExecuteSchema).ExecuteSchema(suite.ctx)
+	suite.Require().NoError(err)
+
+	suite.Equal(1, len(schema.Fields()))
+	suite.Equal("RESULT", schema.Field(0).Name)
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 6, Scale: 2}, schema.Field(0).Type), "expected decimal(6, 2), got %s", schema.Field(0).Type)
 }
 
 func TestJwtAuthenticationUnencryptedValue(t *testing.T) {

@@ -103,3 +103,24 @@ def test_ingest() -> None:
 
             with pytest.raises(dbapi.NotSupportedError):
                 cur.adbc_ingest("foo", table, db_schema_name="main")
+
+
+def test_extension() -> None:
+    with dbapi.connect() as conn:
+        # Can't load extensions until we enable loading
+        with pytest.raises(conn.OperationalError):
+            conn.load_extension("nonexistent")
+
+        conn.enable_load_extension(False)
+
+        with pytest.raises(conn.OperationalError):
+            conn.load_extension("nonexistent")
+
+        conn.enable_load_extension(True)
+
+        # We don't have a real extension to test, so these still fail
+        with pytest.raises(conn.OperationalError):
+            conn.load_extension("nonexistent")
+
+        with pytest.raises(conn.OperationalError):
+            conn.load_extension("nonexistent", entrypoint="entrypoint")

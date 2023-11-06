@@ -86,6 +86,19 @@ class DriverQuirks {
     return std::nullopt;
   }
 
+  /// \brief Get the statement to create a table with a primary key, or
+  ///   nullopt if not supported.  This is used to test ingestion into a table
+  ///   with an auto-incrementing primary key (which should not require the
+  ///   data to contain the primary key).
+  ///
+  /// The table should have two columns:
+  /// - "id" which should be an auto-incrementing primary key compatible with int64
+  /// - "value" with Arrow type int64
+  virtual std::optional<std::string> PrimaryKeyIngestTableDdl(
+      std::string_view name) const {
+    return std::nullopt;
+  }
+
   /// \brief Get the statement to create a table with a composite primary key,
   /// or nullopt if not supported.
   ///
@@ -347,6 +360,7 @@ class StatementTest {
   void TestSqlIngestTemporaryAppend();
   void TestSqlIngestTemporaryReplace();
   void TestSqlIngestTemporaryExclusive();
+  void TestSqlIngestPrimaryKey();
 
   void TestSqlPartitionedInts();
 
@@ -444,6 +458,7 @@ class StatementTest {
   TEST_F(FIXTURE, SqlIngestTemporaryAppend) { TestSqlIngestTemporaryAppend(); }         \
   TEST_F(FIXTURE, SqlIngestTemporaryReplace) { TestSqlIngestTemporaryReplace(); }       \
   TEST_F(FIXTURE, SqlIngestTemporaryExclusive) { TestSqlIngestTemporaryExclusive(); }   \
+  TEST_F(FIXTURE, SqlIngestPrimaryKey) { TestSqlIngestPrimaryKey(); }   \
   TEST_F(FIXTURE, SqlPartitionedInts) { TestSqlPartitionedInts(); }                     \
   TEST_F(FIXTURE, SqlPrepareGetParameterSchema) { TestSqlPrepareGetParameterSchema(); } \
   TEST_F(FIXTURE, SqlPrepareSelectNoParams) { TestSqlPrepareSelectNoParams(); }         \
