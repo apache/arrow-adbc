@@ -137,8 +137,9 @@ adbc_connection_release <- function(connection) {
 #' @param info_codes A list of metadata codes to fetch, or NULL to fetch all.
 #'   Valid values are documented in the adbc.h header.
 #' @param depth The level of nesting to display. If 0, display all levels. If 1,
-#'   display only catalogs (i.e. catalog_schemas will be null). If 2, display
-#'   only catalogs and schemas (i.e. db_schema_tables will be null), and so on.
+#'   display only catalogs (i.e., catalog_schemas will be null). If 2, display
+#'   only catalogs and schemas (i.e., db_schema_tables will be null). If 3,
+#'   display only catalogs, schemas, and tables.
 #' @param catalog Only show tables in the given catalog. If NULL, do not filter
 #'   by catalog. If an empty string, only show tables without a catalog. May be
 #'   a search pattern.
