@@ -325,7 +325,7 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
     SetError(error,
              "[SQLite] This build of the ADBC SQLite driver does not support extension "
              "loading");
-    return ADBC_STATUS_INTERNAL;
+    return ADBC_STATUS_NOT_IMPLEMENTED;
 #endif
   }
   SetError(error, "[SQLite] Unknown connection option %s=%s", key,
