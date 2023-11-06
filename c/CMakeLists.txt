@@ -71,11 +71,11 @@ if(ADBC_BUILD_PYTHON)
   find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
   if(NOT ADBC_DRIVER_MANAGER)
-    message(FATAL_ERROR "Building Python requires at least ADBC_DRIVER_MANAGER=ON")
+    message(FATAL_ERROR "Building Python requires ADBC_DRIVER_MANAGER=ON")
   endif()
 
   if(NOT ADBC_BUILD_SHARED)
-    message(FATAL_ERROR "Building Python requires at least ADBC_BUILD_SHARED=ON")
+    message(FATAL_ERROR "Building Python requires ADBC_BUILD_SHARED=ON")
   endif()
 
   add_custom_target(python COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
