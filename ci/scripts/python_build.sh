@@ -18,13 +18,16 @@
 
 set -e
 
+: ${BUILD_ALL:=1}
+: ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
+
 main() {
     local -r source_dir="${1}"
     local -r build_dir="${2}"
 
     set -x
 
-    cmake -S "${source_dir}/c" -B ${build_dir} -DADBC_BUILD_PYTHON=ON
+    cmake -S "${source_dir}/c" -B ${build_dir} -DADBC_DRIVER_MANAGER=${BUILD_DRIVER_MANAGER} -DADBC_BUILD_PYTHON=ON
     cmake --build build --target python
 
     set +x
