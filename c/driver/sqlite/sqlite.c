@@ -282,6 +282,7 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
     }
     return ADBC_STATUS_OK;
   } else if (strcmp(key, kConnectionOptionLoadExtensionPath) == 0) {
+#if !defined(ADBC_SQLITE_WITH_NO_LOAD_EXTENSION)
     if (!conn->conn) {
       SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
       return ADBC_STATUS_INVALID_STATE;
@@ -320,6 +321,12 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
     free(conn->extension_path);
     conn->extension_path = NULL;
     return ADBC_STATUS_OK;
+#else
+    SetError(error,
+             "[SQLite] This build of the ADBC SQLite driver does not support extension "
+             "loading");
+    return ADBC_STATUS_INTERNAL;
+#endif
   }
   SetError(error, "[SQLite] Unknown connection option %s=%s", key,
            value ? value : "(NULL)");
