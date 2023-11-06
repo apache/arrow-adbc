@@ -584,6 +584,41 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	return n, nil
 }
 
+// ExecuteQuery executes the current query or prepared statement
+// and returnes a RecordReader for the results along with the number
+// of rows affected if known, otherwise it will be -1.
+//
+// This invalidates any prior result sets on this statement.
+func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	if st.targetTable != "" {
+		return nil, adbc.Error{
+			Msg:  "cannot execute schema for ingestion",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	if st.query == "" {
+		return nil, adbc.Error{
+			Msg:  "cannot execute without a query",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	if st.streamBind != nil || st.bound != nil {
+		return nil, adbc.Error{
+			Msg:  "executing schema with bound params not yet implemented",
+			Code: adbc.StatusNotImplemented,
+		}
+	}
+
+	loader, err := st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusInternal, err)
+	}
+
+	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
+}
+
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (st *statement) Prepare(_ context.Context) error {
