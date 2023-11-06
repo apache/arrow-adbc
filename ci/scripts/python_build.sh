@@ -24,7 +24,7 @@ main() {
 
     set -x
 
-    cmake -S ${source_dir} -B ${build_dir} -DADBC_BUILD_PYTHON=ON
+    cmake -S "${source_dir}/c" -B ${build_dir} -DADBC_BUILD_PYTHON=ON
     cmake --build build --target python
 
     set +x

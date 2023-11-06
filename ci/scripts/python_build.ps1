@@ -21,5 +21,5 @@ $ErrorActionPreference = "Stop"
 $SourceDir = $Args[0]
 $BuildDir = $Args[1]
 
-cmake -S $SourceDir -B $BuildDir -DADBC_BUILD_PYTHON=ON
+cmake -S "$($SourceDir)\c" -B $BuildDir -DADBC_BUILD_PYTHON=ON
 cmake --build build --target python
