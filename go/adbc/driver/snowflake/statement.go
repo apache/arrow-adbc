@@ -584,11 +584,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	return n, nil
 }
 
-// ExecuteQuery executes the current query or prepared statement
-// and returnes a RecordReader for the results along with the number
-// of rows affected if known, otherwise it will be -1.
-//
-// This invalidates any prior result sets on this statement.
+// ExecuteSchema gets the schema of the result set of a query without executing it.
 func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 	if st.targetTable != "" {
 		return nil, adbc.Error{
