@@ -16,5 +16,6 @@
 // under the License.
 
 #include <sqlite3.h>
+#include <stddef.h>
 
 void try_load_extension() { sqlite3_load_extension(NULL, NULL, NULL, NULL); }
