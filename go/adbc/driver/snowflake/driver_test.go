@@ -194,7 +194,7 @@ func (s *SnowflakeQuirks) BindParameter(_ int) string            { return "?" }
 func (s *SnowflakeQuirks) SupportsBulkIngest(string) bool        { return true }
 func (s *SnowflakeQuirks) SupportsConcurrentStatements() bool    { return true }
 func (s *SnowflakeQuirks) SupportsCurrentCatalogSchema() bool    { return true }
-func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return false }
+func (s *SnowflakeQuirks) SupportsExecuteSchema() bool           { return true }
 func (s *SnowflakeQuirks) SupportsGetSetOptions() bool           { return true }
 func (s *SnowflakeQuirks) SupportsPartitionedData() bool         { return false }
 func (s *SnowflakeQuirks) SupportsStatistics() bool              { return false }
@@ -236,7 +236,7 @@ func (s *SnowflakeQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 	return arrow.Metadata{}
 }
 
-func createTempSchema(uri string) string {
+func createTempSchema(database string, uri string) string {
 	db, err := sql.Open("snowflake", uri)
 	if err != nil {
 		panic(err)
@@ -244,7 +244,7 @@ func createTempSchema(uri string) string {
 	defer db.Close()
 
 	schemaName := strings.ToUpper("ADBC_TESTING_" + strings.ReplaceAll(uuid.New().String(), "-", "_"))
-	_, err = db.Exec(`CREATE SCHEMA ADBC_TESTING.` + schemaName)
+	_, err = db.Exec(`CREATE SCHEMA ` + database + `.` + schemaName)
 	if err != nil {
 		panic(err)
 	}
@@ -277,7 +277,7 @@ func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 
 	// avoid multiple runs clashing by operating in a fresh schema and then
 	// dropping that schema when we're done.
-	q := &SnowflakeQuirks{dsn: uri, catalogName: database, schemaName: createTempSchema(uri)}
+	q := &SnowflakeQuirks{dsn: uri, catalogName: database, schemaName: createTempSchema(database, uri)}
 	defer dropTempSchema(uri, q.schemaName)
 
 	fn(q)
@@ -677,6 +677,17 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 
 	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
+}
+
+func (suite *SnowflakeTests) TestDescribeOnly() {
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT CAST('9999.99' AS NUMBER(6, 2)) AS RESULT"))
+	schema, err := suite.stmt.(adbc.StatementExecuteSchema).ExecuteSchema(suite.ctx)
+	suite.Require().NoError(err)
+
+	suite.Equal(1, len(schema.Fields()))
+	suite.Equal("RESULT", schema.Field(0).Name)
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 6, Scale: 2}, schema.Field(0).Type), "expected decimal(6, 2), got %s", schema.Field(0).Type)
 }
 
 func TestJwtAuthenticationUnencryptedValue(t *testing.T) {
