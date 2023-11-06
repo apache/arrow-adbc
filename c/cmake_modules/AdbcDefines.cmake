@@ -95,12 +95,12 @@ macro(adbc_install_python_package TARGET)
   add_custom_command(TARGET python
                      POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E copy
-                             $<TARGET_SONAME_FILE:adbc_driver_${TARGET}_shared>
+                             $<TARGET_FILE:adbc_driver_${TARGET}_shared>
                              "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}/adbc_driver_${TARGET}/libadbc_driver_${TARGET}.so"
                      COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
                              "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}"
                      COMMENT "pip installing the adbc_driver_${TARGET} library..."
-                             DEPENDS $<TARGET_SONAME_FILE:adbc_driver_${TARGET}_shared>)
+                             DEPENDS $<TARGET_FILE:adbc_driver_${TARGET}_shared>)
 endmacro()
 
 # Common testing setup
