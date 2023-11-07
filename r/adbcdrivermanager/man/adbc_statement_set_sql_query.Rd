@@ -8,6 +8,7 @@
 \alias{adbc_statement_bind}
 \alias{adbc_statement_bind_stream}
 \alias{adbc_statement_execute_query}
+\alias{adbc_statement_execute_schema}
 \title{Statement methods}
 \usage{
 adbc_statement_set_sql_query(statement, query)
@@ -23,6 +24,8 @@ adbc_statement_bind(statement, values, schema = NULL)
 adbc_statement_bind_stream(statement, stream, schema = NULL)
 
 adbc_statement_execute_query(statement, stream = NULL)
+
+adbc_statement_execute_schema(statement)
 }
 \arguments{
 \item{statement}{An \link[=adbc_statement_init]{adbc_statement}}

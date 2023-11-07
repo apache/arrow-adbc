@@ -165,7 +165,91 @@ password can be provided in the URI or via the ``username`` and ``password``
 options to the :cpp:class:`AdbcDatabase`.
 
 Alternately, other types of authentication can be specified and customized.
-See "Client Options" below.
+See "Client Options" below for details on all the options.
+
+SSO Authentication
+~~~~~~~~~~~~~~~~~~
+
+Snowflake supports `single sign-on
+<https://docs.snowflake.com/en/user-guide/admin-security-fed-auth-overview>`_.
+If your account has been configured with SSO, it can be used with the
+Snowflake driver by setting the following options when constructing the
+:cpp:class:`AdbcDatabase`:
+
+- ``adbc.snowflake.sql.account``: your Snowflake account.  (For example, if
+  you log in to ``https://foobar.snowflakecomputing.com``, then your account
+  identifier is ``foobar``.)
+- ``adbc.snowflake.sql.auth_type``: ``auth_ext_browser``.
+- ``username``: your username.  (This should probably be your email,
+  e.g. ``jdoe@example.com``.)
+
+A new browser tab or window should appear where you can continue the login.
+Once this is complete, you will have a complete ADBC database/connection
+object.  Some users have reported needing other configuration options, such as
+``adbc.snowflake.sql.region`` and ``adbc.snowflake.sql.uri.*`` (see below for
+a listing).
+
+.. tab-set::
+
+   .. tab-item:: Python
+      :sync: python
+
+      .. code-block:: python
+
+         import adbc_driver_snowflake.dbapi
+         # This will open a new browser tab, and block until you log in.
+         adbc_driver_snowflake.dbapi.connect(db_kwargs={
+             "adbc.snowflake.sql.account": "foobar",
+             "adbc.snowflake.sql.auth_type": "auth_ext_browser",
+             "username": "jdoe@example.com",
+         })
+
+   .. tab-item:: R
+      :sync: r
+
+      .. code-block:: r
+
+         library(adbcdrivermanager)
+         db <- adbc_database_init(
+           adbcsnowflake::adbcsnowflake(),
+           adbc.snowflake.sql.account = 'foobar',
+           adbc.snowflake.sql.auth_type = 'auth_ext_browser'
+           username = 'jdoe@example.com',
+         )
+         # This will open a new browser tab, and block until you log in.
+         con <- adbc_connection_init(db)
+
+   .. tab-item:: Go
+      :sync: go
+
+      .. code-block:: go
+
+         import (
+            "context"
+
+            "github.com/apache/arrow-adbc/go/adbc"
+            "github.com/apache/arrow-adbc/go/adbc/driver/snowflake"
+         )
+
+         func main() {
+            var drv snowflake.Driver
+            db, err := drv.NewDatabase(map[string]string{
+                snowflake.OptionAccount: "foobar",
+                snowflake.OptionAuthType: snowflake.OptionValueAuthExternalBrowser,
+                adbc.OptionKeyUsername: "jdoe@example.com",
+            })
+            if err != nil {
+                // handle error
+            }
+
+            cnxn, err := db.Open(context.Background())
+            if err != nil {
+                // handle error
+            }
+            defer cnxn.Close()
+         }
+
+
 
 Bulk Ingestion
 --------------
@@ -198,7 +282,7 @@ In addition, the current database and schema for the session must be set. If
 these are not set, the ``CREATE TEMPORARY STAGE`` command executed by the driver
 can fail with the following error:
 
-.. code-block::
+.. code-block:: sql
 
    CREATE TEMPORARY STAGE SYSTEM$BIND file_format=(type=csv field_optionally_enclosed_by='"')
    CANNOT perform CREATE STAGE. This session does not have a current schema. Call 'USE SCHEMA' or use a qualified name.
@@ -322,6 +406,15 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     private key to be read in and parsed. Commonly encoded in PEM blocks
     of type "RSA PRIVATE KEY".
 
+``adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value``
+    Parses an encrypted or unencrypted PKCS #8 private key without having to
+    read it from the file system. If using encrypted, the
+    ``adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password`` value
+    is required and used to decrypt.
+
+``adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password``
+    Passcode to use when passing an encrypted PKCS #8 value.
+
 ``adbc.snowflake.sql.client_option.disable_telemetry``
     The Snowflake driver allows for telemetry information which can be
     disabled by setting this to ``true``. Value should be either ``true``
@@ -337,6 +430,14 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
 ``adbc.snowflake.sql.client_option.store_temp_creds``
     When ``true``, the ID token is cached in the credential manager. Defaults
     to ``true`` on Windows/OSX, ``false`` on Linux.
+
+``adbc.snowflake.sql.client_option.use_high_precision``
+    When ``true``, fixed-point snowflake columns with the type ``NUMBER``
+    will be returned as ``Decimal128`` type Arrow columns using the precision
+    and scale of the ``NUMBER`` type. When ``false``, ``NUMBER`` columns
+    with a scale of 0 will be returned as ``Int64`` typed Arrow columns and
+    non-zero scaled columns will be returned as ``Float64`` typed Arrow columns.
+    The default is ``true``.
 
 
 Metadata

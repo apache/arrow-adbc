@@ -33,6 +33,12 @@ if(ADBC_BUILD_TESTS)
   add_subdirectory(validation)
 endif()
 
+if(ADBC_BUILD_BENCHMARKS)
+  add_custom_target(all-benchmarks)
+  add_custom_target(benchmark ctest -L benchmark)
+  add_dependencies(benchmark all-benchmarks)
+endif()
+
 if(ADBC_INTEGRATION_DUCKDB)
   set(ADBC_DRIVER_MANAGER ON)
 endif()

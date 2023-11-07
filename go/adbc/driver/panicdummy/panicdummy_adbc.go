@@ -25,9 +25,9 @@ import (
 	"os"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v13/arrow"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/memory"
+	"github.com/apache/arrow/go/v14/arrow"
+	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/memory"
 )
 
 func maybePanic(fname string) {
@@ -42,6 +42,11 @@ func maybePanic(fname string) {
 
 type Driver struct {
 	Alloc memory.Allocator
+}
+
+// NewDriver creates a new PanicDummy driver using the given Arrow allocator.
+func NewDriver(alloc memory.Allocator) adbc.Driver {
+	return Driver{Alloc: alloc}
 }
 
 func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {

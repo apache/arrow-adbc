@@ -20,7 +20,7 @@ include(FetchContent)
 if(ADBC_BUILD_TESTS)
   fetchcontent_declare(duckdb
                        GIT_REPOSITORY https://github.com/duckdb/duckdb.git
-                       GIT_TAG e8e4cea5ec9d1a84c1f516d0f0674f8785a3e786 # v0.8.0
+                       GIT_TAG 0d84ccf478578278b2d1168675b8b93c60f78a5e # v0.9.0
                        GIT_PROGRESS TRUE
                        USES_TERMINAL_DOWNLOAD TRUE)
   set(BUILD_JEMALLOC_EXTENSION
@@ -49,12 +49,8 @@ if(ADBC_BUILD_TESTS)
       CACHE INTERNAL "Disable UBSAN")
   # Force cmake to honor our options here in the subproject
   cmake_policy(SET CMP0077 NEW)
+  message(STATUS "Fetching DuckDB")
   fetchcontent_makeavailable(duckdb)
-
-  include_directories(SYSTEM ${REPOSITORY_ROOT})
-  include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
-  include_directories(PRIVATE ${REPOSITORY_ROOT}/c/driver)
-  include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
 
   add_test_case(integration_duckdb_test
                 PREFIX
@@ -71,5 +67,9 @@ if(ADBC_BUILD_TESTS)
                 nanoarrow)
   add_dependencies(adbc-integration-duckdb-test duckdb)
   target_compile_features(adbc-integration-duckdb-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-integration-duckdb-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-integration-duckdb-test)
 endif()

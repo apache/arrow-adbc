@@ -16,6 +16,7 @@
 // under the License.
 
 #include <chrono>
+#include <optional>
 #include <random>
 #include <thread>
 
@@ -31,6 +32,10 @@
 
 using adbc_validation::IsOkErrno;
 using adbc_validation::IsOkStatus;
+
+extern "C" {
+AdbcStatusCode FlightSQLDriverInit(int, void*, struct AdbcError*);
+}
 
 #define CHECK_OK(EXPR)                                              \
   do {                                                              \
@@ -89,11 +94,31 @@ class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
   }
 
   std::string BindParameter(int index) const override { return "?"; }
+
+  bool supports_bulk_ingest(const char* /*mode*/) const override { return false; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_transactions() const override { return false; }
   bool supports_get_sql_info() const override { return true; }
+  std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
+      uint32_t info_code) const override {
+    switch (info_code) {
+      case ADBC_INFO_DRIVER_NAME:
+        return "ADBC Flight SQL Driver - Go";
+      case ADBC_INFO_DRIVER_VERSION:
+        return "(unknown or development build)";
+      case ADBC_INFO_DRIVER_ADBC_VERSION:
+        return ADBC_VERSION_1_1_0;
+      case ADBC_INFO_VENDOR_NAME:
+        return "db_name";
+      case ADBC_INFO_VENDOR_VERSION:
+        return "sqlite 3";
+      case ADBC_INFO_VENDOR_ARROW_VERSION:
+        return "12.0.0";
+      default:
+        return std::nullopt;
+    }
+  }
   bool supports_get_objects() const override { return true; }
-  bool supports_bulk_ingest() const override { return false; }
   bool supports_partitioned_data() const override { return true; }
   bool supports_dynamic_parameter_binding() const override { return true; }
 };
@@ -209,6 +234,20 @@ TEST_F(SqliteFlightSqlTest, TestGarbageInput) {
   ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
 }
 
+TEST_F(SqliteFlightSqlTest, AdbcDriverBackwardsCompatibility) {
+  // XXX: sketchy cast
+  auto* driver = static_cast<struct AdbcDriver*>(malloc(ADBC_DRIVER_1_0_0_SIZE));
+  std::memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
+
+  ASSERT_THAT(::FlightSQLDriverInit(ADBC_VERSION_1_0_0, driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(::FlightSQLDriverInit(424242, driver, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+
+  free(driver);
+}
+
 class SqliteFlightSqlConnectionTest : public ::testing::Test,
                                       public adbc_validation::ConnectionTest {
  public:
@@ -229,11 +268,156 @@ class SqliteFlightSqlStatementTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
   void TestSqlIngestTableEscaping() { GTEST_SKIP() << "Table escaping not implemented"; }
+  void TestSqlIngestColumnEscaping() {
+    GTEST_SKIP() << "Column escaping not implemented";
+  }
   void TestSqlIngestInterval() {
     GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
+  }
+  void TestSqlQueryRowsAffectedDelete() {
+    GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
+  }
+  void TestSqlQueryRowsAffectedDeleteStream() {
+    GTEST_SKIP() << "Cannot query rows affected in delete stream (not implemented)";
   }
 
  protected:
   SqliteFlightSqlQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(SqliteFlightSqlStatementTest)
+
+// Test what happens when using the ADBC 1.1.0 error structure
+TEST_F(SqliteFlightSqlStatementTest, NonexistentTable) {
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value,
+                                       "SELECT * FROM tabledoesnotexist", &error),
+              IsOkStatus(&error));
+
+  for (auto vendor_code : {0, ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA}) {
+    error.vendor_code = vendor_code;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+    ASSERT_EQ(0, AdbcErrorGetDetailCount(&error));
+    error.release(&error);
+  }
+}
+
+TEST_F(SqliteFlightSqlStatementTest, CancelError) {
+  // Ensure cancellation propagates properly through the Go FFI boundary
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, "SELECT 1", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementCancel(&statement.value, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  int retcode = 0;
+  while (true) {
+    retcode = reader.MaybeNext();
+    if (retcode != 0 || !reader.array->release) break;
+  }
+
+  ASSERT_EQ(ECANCELED, retcode);
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  const struct AdbcError* adbc_error =
+      AdbcErrorFromArrayStream(&reader.stream.value, &status);
+  ASSERT_NE(nullptr, adbc_error);
+  ASSERT_EQ(ADBC_STATUS_CANCELLED, status);
+}
+
+TEST_F(SqliteFlightSqlStatementTest, RpcError) {
+  // Ensure errors that happen at the start of the stream propagate properly
+  // through the Go FFI boundary
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, "SELECT", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  error.vendor_code = ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+
+  int count = AdbcErrorGetDetailCount(&error);
+  ASSERT_NE(0, count);
+  for (int i = 0; i < count; i++) {
+    struct AdbcErrorDetail detail = AdbcErrorGetDetail(&error, i);
+    ASSERT_NE(nullptr, detail.key);
+    ASSERT_NE(nullptr, detail.value);
+    ASSERT_NE(0, detail.value_length);
+    EXPECT_STREQ("afsql-sqlite-query", detail.key);
+    EXPECT_EQ("SELECT", std::string_view(reinterpret_cast<const char*>(detail.value),
+                                         detail.value_length));
+  }
+}
+
+TEST_F(SqliteFlightSqlStatementTest, StreamError) {
+  // Ensure errors that happen during the stream propagate properly through
+  // the Go FFI boundary
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value,
+                                       R"(
+DROP TABLE IF EXISTS foo;
+CREATE TABLE foo (a INT);
+WITH RECURSIVE sequence(x) AS
+    (SELECT 1 UNION ALL SELECT x+1 FROM sequence LIMIT 1024)
+INSERT INTO foo(a)
+SELECT x FROM sequence;
+INSERT INTO foo(a) VALUES ('foo');)",
+                                       &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, "SELECT * FROM foo", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  int retcode = 0;
+  while (true) {
+    retcode = reader.MaybeNext();
+    if (retcode != 0 || !reader.array->release) break;
+  }
+
+  ASSERT_NE(0, retcode);
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  const struct AdbcError* adbc_error =
+      AdbcErrorFromArrayStream(&reader.stream.value, &status);
+  ASSERT_NE(nullptr, adbc_error);
+  ASSERT_EQ(ADBC_STATUS_UNKNOWN, status);
+
+  int count = AdbcErrorGetDetailCount(adbc_error);
+  ASSERT_NE(0, count);
+  for (int i = 0; i < count; i++) {
+    struct AdbcErrorDetail detail = AdbcErrorGetDetail(adbc_error, i);
+    ASSERT_NE(nullptr, detail.key);
+    ASSERT_NE(nullptr, detail.value);
+    ASSERT_NE(0, detail.value_length);
+    EXPECT_STREQ("grpc-status-details-bin", detail.key);
+  }
+}

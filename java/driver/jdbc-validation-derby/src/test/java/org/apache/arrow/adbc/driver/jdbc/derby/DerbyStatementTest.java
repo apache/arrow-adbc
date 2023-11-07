@@ -20,6 +20,7 @@ package org.apache.arrow.adbc.driver.jdbc.derby;
 import java.nio.file.Path;
 import org.apache.arrow.adbc.driver.testsuite.AbstractStatementTest;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.io.TempDir;
 
 class DerbyStatementTest extends AbstractStatementTest {
@@ -29,4 +30,8 @@ class DerbyStatementTest extends AbstractStatementTest {
   static void beforeAll() {
     quirks = new DerbyQuirks(tempDir);
   }
+
+  @Override
+  @Disabled("Not supported")
+  public void executeSchemaParams() {}
 }

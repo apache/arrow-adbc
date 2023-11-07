@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import collections.abc
+
 import pyarrow
 import pytest
 
@@ -23,25 +25,32 @@ import adbc_driver_postgresql
 
 
 @pytest.fixture
-def postgres(postgres_uri: str) -> adbc_driver_manager.AdbcConnection:
+def postgres(
+    postgres_uri: str,
+) -> collections.abc.Generator[adbc_driver_manager.AdbcConnection, None, None]:
     with adbc_driver_postgresql.connect(postgres_uri) as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
             yield conn
 
 
-def test_query_trivial(postgres):
+def test_connection_get_table_schema(postgres: adbc_driver_manager.AdbcConnection):
+    with pytest.raises(adbc_driver_manager.ProgrammingError, match="NOT_FOUND"):
+        postgres.get_table_schema(None, None, "thistabledoesnotexist")
+
+
+def test_query_trivial(postgres: adbc_driver_manager.AdbcConnection) -> None:
     with adbc_driver_manager.AdbcStatement(postgres) as stmt:
         stmt.set_sql_query("SELECT 1")
         stream, _ = stmt.execute_query()
-        reader = pyarrow.RecordBatchReader._import_from_c(stream.address)
-        assert reader.read_all()
+        with pyarrow.RecordBatchReader._import_from_c(stream.address) as reader:
+            assert reader.read_all()
 
 
-def test_version():
+def test_version() -> None:
     assert adbc_driver_postgresql.__version__  # type:ignore
 
 
-def test_failed_connection():
+def test_failed_connection() -> None:
     with pytest.raises(
         adbc_driver_manager.OperationalError, match=".*libpq.*Failed to connect.*"
     ):

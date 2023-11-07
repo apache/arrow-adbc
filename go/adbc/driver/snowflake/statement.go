@@ -25,9 +25,9 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v13/arrow"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/memory"
+	"github.com/apache/arrow/go/v14/arrow"
+	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 	"golang.org/x/exp/constraints"
 )
@@ -42,10 +42,11 @@ type statement struct {
 	alloc               memory.Allocator
 	queueSize           int
 	prefetchConcurrency int
+	useHighPrecision    bool
 
 	query       string
 	targetTable string
-	append      bool
+	ingestMode  string
 
 	bound      arrow.Record
 	streamBind array.RecordReader
@@ -73,6 +74,35 @@ func (st *statement) Close() error {
 	return nil
 }
 
+func (st *statement) GetOption(key string) (string, error) {
+	return "", adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (st *statement) GetOptionBytes(key string) ([]byte, error) {
+	return nil, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (st *statement) GetOptionInt(key string) (int64, error) {
+	switch key {
+	case OptionStatementQueueSize:
+		return int64(st.queueSize), nil
+	}
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+func (st *statement) GetOptionDouble(key string) (float64, error) {
+	return 0, adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotFound,
+	}
+}
+
 // SetOption sets a string option on this statement
 func (st *statement) SetOption(key string, val string) error {
 	switch key {
@@ -82,12 +112,16 @@ func (st *statement) SetOption(key string, val string) error {
 	case adbc.OptionKeyIngestMode:
 		switch val {
 		case adbc.OptionValueIngestModeAppend:
-			st.append = true
+			fallthrough
 		case adbc.OptionValueIngestModeCreate:
-			st.append = false
+			fallthrough
+		case adbc.OptionValueIngestModeReplace:
+			fallthrough
+		case adbc.OptionValueIngestModeCreateAppend:
+			st.ingestMode = val
 		default:
 			return adbc.Error{
-				Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),
+				Msg:  fmt.Sprintf("[Snowflake] invalid statement option %s=%s", key, val),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -95,39 +129,80 @@ func (st *statement) SetOption(key string, val string) error {
 		sz, err := strconv.Atoi(val)
 		if err != nil {
 			return adbc.Error{
-				Msg:  fmt.Sprintf("could not parse '%s' as int for option '%s'", val, key),
+				Msg:  fmt.Sprintf("[Snowflake] could not parse '%s' as int for option '%s'", val, key),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		if sz <= 0 {
-			return adbc.Error{
-				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be > 0", sz, key),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		st.queueSize = sz
+		return st.SetOptionInt(key, int64(sz))
 	case OptionStatementPrefetchConcurrency:
 		concurrency, err := strconv.Atoi(val)
 		if err != nil {
 			return adbc.Error{
-				Msg:  fmt.Sprintf("could not parse '%s' as int for option '%s'", val, key),
+				Msg:  fmt.Sprintf("[Snowflake] could not parse '%s' as int for option '%s'", val, key),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		if concurrency <= 0 {
+		return st.SetOptionInt(key, int64(concurrency))
+	case OptionUseHighPrecision:
+		switch val {
+		case adbc.OptionValueEnabled:
+			st.useHighPrecision = true
+		case adbc.OptionValueDisabled:
+			st.useHighPrecision = false
+		default:
 			return adbc.Error{
-				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be > 0", concurrency, key),
+				Msg:  fmt.Sprintf("[Snowflake] invalid statement option %s=%s", key, val),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		st.prefetchConcurrency = concurrency
 	default:
 		return adbc.Error{
-			Msg:  fmt.Sprintf("invalid statement option %s=%s", key, val),
-			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+			Code: adbc.StatusNotImplemented,
 		}
 	}
 	return nil
+}
+
+func (st *statement) SetOptionBytes(key string, value []byte) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (st *statement) SetOptionInt(key string, value int64) error {
+	switch key {
+	case OptionStatementQueueSize:
+		if value <= 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Snowflake] Invalid value for statement option '%s': '%d' is not a positive integer", OptionStatementQueueSize, value),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		st.queueSize = int(value)
+		return nil
+	case OptionStatementPrefetchConcurrency:
+		if value <= 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("invalid value ('%d') for option '%s', must be > 0", value, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		st.prefetchConcurrency = int(value)
+		return nil
+	}
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
+}
+
+func (st *statement) SetOptionDouble(key string, value float64) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
+		Code: adbc.StatusNotImplemented,
+	}
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -196,6 +271,9 @@ func (st *statement) initIngest(ctx context.Context) (string, error) {
 	)
 
 	createBldr.WriteString("CREATE TABLE ")
+	if st.ingestMode == adbc.OptionValueIngestModeCreateAppend {
+		createBldr.WriteString(" IF NOT EXISTS ")
+	}
 	createBldr.WriteString(st.targetTable)
 	createBldr.WriteString(" (")
 
@@ -237,7 +315,22 @@ func (st *statement) initIngest(ctx context.Context) (string, error) {
 	createBldr.WriteString(")")
 	insertBldr.WriteString(")")
 
-	if !st.append {
+	switch st.ingestMode {
+	case adbc.OptionValueIngestModeAppend:
+		// Do nothing
+	case adbc.OptionValueIngestModeReplace:
+		replaceQuery := "DROP TABLE IF EXISTS " + st.targetTable
+		_, err := st.cnxn.cn.ExecContext(ctx, replaceQuery, nil)
+		if err != nil {
+			return "", errToAdbcErr(adbc.StatusInternal, err)
+		}
+
+		fallthrough
+	case adbc.OptionValueIngestModeCreate:
+		fallthrough
+	case adbc.OptionValueIngestModeCreateAppend:
+		fallthrough
+	default:
 		// create the table!
 		createQuery := createBldr.String()
 		_, err := st.cnxn.cn.ExecContext(ctx, createQuery, nil)
@@ -459,7 +552,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return nil, -1, errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	rdr, err := newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency)
+	rdr, err := newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
 	nrec := loader.TotalRows()
 	return rdr, nrec, err
 }
@@ -489,6 +582,37 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	}
 
 	return n, nil
+}
+
+// ExecuteSchema gets the schema of the result set of a query without executing it.
+func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	if st.targetTable != "" {
+		return nil, adbc.Error{
+			Msg:  "cannot execute schema for ingestion",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	if st.query == "" {
+		return nil, adbc.Error{
+			Msg:  "cannot execute without a query",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
+	if st.streamBind != nil || st.bound != nil {
+		return nil, adbc.Error{
+			Msg:  "executing schema with bound params not yet implemented",
+			Code: adbc.StatusNotImplemented,
+		}
+	}
+
+	loader, err := st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusInternal, err)
+	}
+
+	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
 }
 
 // Prepare turns this statement into a prepared statement to be executed

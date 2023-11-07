@@ -17,6 +17,7 @@
 
 from typing import Generator
 
+import pyarrow
 import pytest
 
 from adbc_driver_postgresql import StatementOptions, dbapi
@@ -26,6 +27,32 @@ from adbc_driver_postgresql import StatementOptions, dbapi
 def postgres(postgres_uri: str) -> Generator[dbapi.Connection, None, None]:
     with dbapi.connect(postgres_uri) as conn:
         yield conn
+
+
+def test_conn_current_catalog(postgres: dbapi.Connection) -> None:
+    assert postgres.adbc_current_catalog != ""
+
+
+def test_conn_current_db_schema(postgres: dbapi.Connection) -> None:
+    assert postgres.adbc_current_db_schema == "public"
+
+
+def test_conn_change_db_schema(postgres: dbapi.Connection) -> None:
+    assert postgres.adbc_current_db_schema == "public"
+
+    with postgres.cursor() as cur:
+        cur.execute("CREATE SCHEMA IF NOT EXISTS dbapischema")
+
+    assert postgres.adbc_current_db_schema == "public"
+    postgres.adbc_current_db_schema = "dbapischema"
+    assert postgres.adbc_current_db_schema == "dbapischema"
+
+
+def test_conn_get_info(postgres: dbapi.Connection) -> None:
+    info = postgres.adbc_get_info()
+    assert info["driver_name"] == "ADBC PostgreSQL Driver"
+    assert info["driver_adbc_version"] == 1_001_000
+    assert info["vendor_name"] == "PostgreSQL"
 
 
 def test_query_batch_size(postgres: dbapi.Connection):
@@ -47,6 +74,12 @@ def test_query_batch_size(postgres: dbapi.Connection):
         cur.adbc_statement.set_options(
             **{StatementOptions.BATCH_SIZE_HINT_BYTES.value: "1"}
         )
+        assert (
+            cur.adbc_statement.get_option_int(
+                StatementOptions.BATCH_SIZE_HINT_BYTES.value
+            )
+            == 1
+        )
         cur.execute("SELECT * FROM test_batch_size")
         table = cur.fetch_arrow_table()
         assert len(table.to_batches()) == 65536
@@ -54,15 +87,130 @@ def test_query_batch_size(postgres: dbapi.Connection):
         cur.adbc_statement.set_options(
             **{StatementOptions.BATCH_SIZE_HINT_BYTES.value: "4096"}
         )
+        assert (
+            cur.adbc_statement.get_option_int(
+                StatementOptions.BATCH_SIZE_HINT_BYTES.value
+            )
+            == 4096
+        )
         cur.execute("SELECT * FROM test_batch_size")
         table = cur.fetch_arrow_table()
         assert 64 <= len(table.to_batches()) <= 256
+
+
+def test_query_cancel(postgres: dbapi.Connection) -> None:
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_batch_size")
+        cur.execute("CREATE TABLE test_batch_size (ints INT)")
+        cur.execute(
+            """
+            INSERT INTO test_batch_size (ints)
+            SELECT generated :: INT
+            FROM GENERATE_SERIES(1, 1048576) temp(generated)
+        """
+        )
+        postgres.commit()
+
+    # Ensure different ways of reading all raise the desired error
+    with postgres.cursor() as cur:
+        cur.execute("SELECT * FROM test_batch_size")
+        cur.adbc_cancel()
+        with pytest.raises(postgres.OperationalError, match="canceling statement"):
+            cur.fetchone()
+
+    postgres.rollback()
+
+    with postgres.cursor() as cur:
+        cur.execute("SELECT * FROM test_batch_size")
+        cur.adbc_cancel()
+        with pytest.raises(postgres.OperationalError, match="canceling statement"):
+            cur.fetch_arrow_table()
+
+    postgres.rollback()
+
+    with postgres.cursor() as cur:
+        cur.execute("SELECT * FROM test_batch_size")
+        cur.adbc_cancel()
+        with pytest.raises(postgres.OperationalError, match="canceling statement"):
+            cur.fetch_df()
+
+
+def test_query_execute_schema(postgres: dbapi.Connection) -> None:
+    with postgres.cursor() as cur:
+        schema = cur.adbc_execute_schema("SELECT 1 AS foo")
+        assert schema == pyarrow.schema([("foo", "int32")])
+
+
+def test_query_invalid(postgres: dbapi.Connection) -> None:
+    with postgres.cursor() as cur:
+        with pytest.raises(
+            postgres.ProgrammingError, match="failed to prepare query"
+        ) as excinfo:
+            cur.execute("SELECT * FROM tabledoesnotexist")
+
+        assert excinfo.value.sqlstate == "42P01"
+        assert len(excinfo.value.details) > 0
 
 
 def test_query_trivial(postgres: dbapi.Connection):
     with postgres.cursor() as cur:
         cur.execute("SELECT 1")
         assert cur.fetchone() == (1,)
+
+
+def test_stmt_ingest(postgres: dbapi.Connection) -> None:
+    table = pyarrow.table(
+        [
+            [1, 2, 3],
+            ["a", None, "b"],
+        ],
+        names=["ints", "strs"],
+    )
+    double_table = pyarrow.table(
+        [
+            [1, 1, 2, 2, 3, 3],
+            ["a", "a", None, None, "b", "b"],
+        ],
+        names=["ints", "strs"],
+    )
+
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_ingest")
+
+        with pytest.raises(
+            postgres.ProgrammingError, match='"public.test_ingest" does not exist'
+        ):
+            cur.adbc_ingest("test_ingest", table, mode="append")
+        postgres.rollback()
+
+        cur.adbc_ingest("test_ingest", table, mode="replace")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
+
+        with pytest.raises(
+            postgres.ProgrammingError, match='"test_ingest" already exists'
+        ):
+            cur.adbc_ingest("test_ingest", table, mode="create")
+
+        cur.adbc_ingest("test_ingest", table, mode="create_append")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == double_table
+
+        cur.adbc_ingest("test_ingest", table, mode="replace")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
+
+        cur.execute("DROP TABLE IF EXISTS test_ingest")
+
+        cur.adbc_ingest("test_ingest", table, mode="create_append")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
+
+        cur.execute("DROP TABLE IF EXISTS test_ingest")
+
+        cur.adbc_ingest("test_ingest", table, mode="create")
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
 
 
 def test_ddl(postgres: dbapi.Connection):
@@ -106,3 +254,103 @@ def test_reuse(postgres: dbapi.Connection) -> None:
 
         cur.execute("SELECT 2")
         assert cur.fetchone() == (2,)
+
+
+def test_ingest(postgres: dbapi.Connection) -> None:
+    table = pyarrow.Table.from_pydict({"numbers": [1, 2], "letters": ["a", "b"]})
+
+    with postgres.cursor() as cur:
+        cur.adbc_ingest("foo", table, mode="replace", db_schema_name="public")
+
+        cur.execute("SELECT * FROM public.foo")
+        assert cur.fetch_arrow_table() == table
+
+        with pytest.raises(dbapi.NotSupportedError):
+            cur.adbc_ingest("foo", table, catalog_name="main")
+
+
+def test_ingest_schema(postgres: dbapi.Connection) -> None:
+    table = pyarrow.Table.from_pydict({"numbers": [1, 2], "letters": ["a", "b"]})
+
+    with postgres.cursor() as cur:
+        cur.execute("CREATE SCHEMA IF NOT EXISTS testschema")
+        cur.execute("DROP TABLE IF EXISTS testschema.foo")
+
+        postgres.commit()
+
+        cur.adbc_ingest("foo", table, mode="create", db_schema_name="testschema")
+
+        cur.execute("SELECT * FROM testschema.foo ORDER BY numbers")
+        assert cur.fetch_arrow_table() == table
+
+
+def test_ingest_temporary(postgres: dbapi.Connection) -> None:
+    table = pyarrow.Table.from_pydict(
+        {
+            "numbers": [1, 2],
+            "letters": ["a", "b"],
+        }
+    )
+    temp = pyarrow.Table.from_pydict(
+        {
+            "ints": [3, 4],
+            "strs": ["c", "d"],
+        }
+    )
+
+    table2 = pyarrow.Table.from_pydict(
+        {
+            "numbers": [1, 2, 1, 2],
+            "letters": ["a", "b", "a", "b"],
+        }
+    )
+    temp2 = pyarrow.Table.from_pydict(
+        {
+            "ints": [3, 4, 3, 4],
+            "strs": ["c", "d", "c", "d"],
+        }
+    )
+
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS public.temporary")
+        cur.execute("DROP TABLE IF EXISTS pg_temp.temporary")
+
+        cur.adbc_ingest("temporary", table, mode="create")
+        cur.adbc_ingest("temporary", temp, mode="create", temporary=True)
+
+        cur.execute("SELECT * FROM public.temporary")
+        assert cur.fetch_arrow_table() == table
+        cur.execute("SELECT * FROM pg_temp.temporary")
+        assert cur.fetch_arrow_table() == temp
+        cur.execute("SELECT * FROM temporary")
+        assert cur.fetch_arrow_table() == temp
+
+        cur.adbc_ingest("temporary", table, mode="append")
+        cur.adbc_ingest("temporary", temp, mode="append", temporary=True)
+
+        cur.execute("SELECT * FROM public.temporary")
+        assert cur.fetch_arrow_table() == table2
+        cur.execute("SELECT * FROM pg_temp.temporary")
+        assert cur.fetch_arrow_table() == temp2
+        cur.execute("SELECT * FROM temporary")
+        assert cur.fetch_arrow_table() == temp2
+
+        cur.adbc_ingest("temporary", table, mode="replace")
+        cur.adbc_ingest("temporary", temp, mode="replace", temporary=True)
+
+        cur.execute("SELECT * FROM public.temporary")
+        assert cur.fetch_arrow_table() == table
+        cur.execute("SELECT * FROM pg_temp.temporary")
+        assert cur.fetch_arrow_table() == temp
+        cur.execute("SELECT * FROM temporary")
+        assert cur.fetch_arrow_table() == temp
+
+        cur.adbc_ingest("temporary", table, mode="create_append")
+        cur.adbc_ingest("temporary", temp, mode="create_append", temporary=True)
+
+        cur.execute("SELECT * FROM public.temporary")
+        assert cur.fetch_arrow_table() == table2
+        cur.execute("SELECT * FROM pg_temp.temporary")
+        assert cur.fetch_arrow_table() == temp2
+        cur.execute("SELECT * FROM temporary")
+        assert cur.fetch_arrow_table() == temp2

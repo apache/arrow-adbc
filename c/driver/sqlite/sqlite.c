@@ -17,6 +17,7 @@
 
 #include "adbc.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
@@ -28,11 +29,18 @@
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
 
+#include "common/options.h"
 #include "common/utils.h"
 #include "statement_reader.h"
 #include "types.h"
 
 static const char kDefaultUri[] = "file:adbc_driver_sqlite?mode=memory&cache=shared";
+static const char kConnectionOptionEnableLoadExtension[] =
+    "adbc.sqlite.load_extension.enabled";
+static const char kConnectionOptionLoadExtensionPath[] =
+    "adbc.sqlite.load_extension.path";
+static const char kConnectionOptionLoadExtensionEntrypoint[] =
+    "adbc.sqlite.load_extension.entrypoint";
 // The batch size for query results (and for initial type inference)
 static const char kStatementOptionBatchRows[] = "adbc.sqlite.query.batch_rows";
 static const uint32_t kSupportedInfoCodes[] = {
@@ -86,8 +94,29 @@ AdbcStatusCode SqliteDatabaseSetOption(struct AdbcDatabase* database, const char
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-int OpenDatabase(const char* maybe_uri, sqlite3** db, struct AdbcError* error) {
-  const char* uri = maybe_uri ? maybe_uri : kDefaultUri;
+AdbcStatusCode SqliteDatabaseSetOptionBytes(struct AdbcDatabase* database,
+                                            const char* key, const uint8_t* value,
+                                            size_t length, struct AdbcError* error) {
+  CHECK_DB_INIT(database, error);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode SqliteDatabaseSetOptionDouble(struct AdbcDatabase* database,
+                                             const char* key, double value,
+                                             struct AdbcError* error) {
+  CHECK_DB_INIT(database, error);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode SqliteDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
+                                          int64_t value, struct AdbcError* error) {
+  CHECK_DB_INIT(database, error);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+int OpenDatabase(const struct SqliteDatabase* database, sqlite3** db,
+                 struct AdbcError* error) {
+  const char* uri = database->uri ? database->uri : kDefaultUri;
   int rc = sqlite3_open_v2(uri, db,
                            SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI,
                            /*zVfs=*/NULL);
@@ -120,6 +149,33 @@ AdbcStatusCode ExecuteQuery(struct SqliteConnection* conn, const char* query,
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode SqliteDatabaseGetOption(struct AdbcDatabase* database, const char* key,
+                                       char* value, size_t* length,
+                                       struct AdbcError* error) {
+  CHECK_DB_INIT(database, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode SqliteDatabaseGetOptionBytes(struct AdbcDatabase* database,
+                                            const char* key, uint8_t* value,
+                                            size_t* length, struct AdbcError* error) {
+  CHECK_DB_INIT(database, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode SqliteDatabaseGetOptionDouble(struct AdbcDatabase* database,
+                                             const char* key, double* value,
+                                             struct AdbcError* error) {
+  CHECK_DB_INIT(database, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode SqliteDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
+                                          int64_t* value, struct AdbcError* error) {
+  CHECK_DB_INIT(database, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
 AdbcStatusCode SqliteDatabaseInit(struct AdbcDatabase* database,
                                   struct AdbcError* error) {
   CHECK_DB_INIT(database, error);
@@ -130,7 +186,7 @@ AdbcStatusCode SqliteDatabaseInit(struct AdbcDatabase* database,
     return ADBC_STATUS_INVALID_STATE;
   }
 
-  return OpenDatabase(db->uri, &db->db, error);
+  return OpenDatabase(db, &db->db, error);
 }
 
 AdbcStatusCode SqliteDatabaseRelease(struct AdbcDatabase* database,
@@ -176,6 +232,11 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
   CHECK_CONN_INIT(connection, error);
   struct SqliteConnection* conn = (struct SqliteConnection*)connection->private_data;
   if (strcmp(key, ADBC_CONNECTION_OPTION_AUTOCOMMIT) == 0) {
+    if (!conn->conn) {
+      SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
     if (strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
       if (conn->active_transaction) {
         AdbcStatusCode status = ExecuteQuery(conn, "COMMIT", error);
@@ -198,9 +259,98 @@ AdbcStatusCode SqliteConnectionSetOption(struct AdbcConnection* connection,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     return ADBC_STATUS_OK;
+  } else if (strcmp(key, kConnectionOptionEnableLoadExtension) == 0) {
+    if (!conn->conn) {
+      SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
+    int rc = 0;
+    if (strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      rc = sqlite3_db_config(conn->conn, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 1, NULL);
+    } else if (strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      rc = sqlite3_db_config(conn->conn, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 0, NULL);
+    } else {
+      SetError(error, "[SQLite] Invalid connection option %s=%s", key,
+               value ? value : "(NULL)");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    if (rc != SQLITE_OK) {
+      SetError(error, "[SQLite] Failed to configure extension loading: %s",
+               sqlite3_errmsg(conn->conn));
+      return ADBC_STATUS_IO;
+    }
+    return ADBC_STATUS_OK;
+  } else if (strcmp(key, kConnectionOptionLoadExtensionPath) == 0) {
+    if (!conn->conn) {
+      SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    if (conn->extension_path) {
+      free(conn->extension_path);
+      conn->extension_path = NULL;
+    }
+    if (!value) {
+      SetError(error, "[SQLite] Must provide non-NULL %s", key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    conn->extension_path = strdup(value);
+    return ADBC_STATUS_OK;
+  } else if (strcmp(key, kConnectionOptionLoadExtensionEntrypoint) == 0) {
+#if !defined(ADBC_SQLITE_WITH_NO_LOAD_EXTENSION)
+    if (!conn->conn) {
+      SetError(error, "[SQLite] %s can only be set after AdbcConnectionInit", key);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+    if (!conn->extension_path) {
+      SetError(error, "[SQLite] %s can only be set after setting %s", key,
+               kConnectionOptionLoadExtensionPath);
+      return ADBC_STATUS_INVALID_STATE;
+    }
+
+    char* message = NULL;
+    int rc = sqlite3_load_extension(conn->conn, conn->extension_path, value, &message);
+    if (rc != SQLITE_OK) {
+      SetError(error, "[SQLite] Failed to load extension %s (entrypoint %s): %s",
+               conn->extension_path, value ? value : "(NULL)",
+               message ? message : "(unknown error)");
+      if (message) sqlite3_free(message);
+      return ADBC_STATUS_UNKNOWN;
+    }
+
+    free(conn->extension_path);
+    conn->extension_path = NULL;
+    return ADBC_STATUS_OK;
+#else
+    SetError(error,
+             "[SQLite] This build of the ADBC SQLite driver does not support extension "
+             "loading");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+#endif
   }
   SetError(error, "[SQLite] Unknown connection option %s=%s", key,
            value ? value : "(NULL)");
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode SqliteConnectionSetOptionBytes(struct AdbcConnection* connection,
+                                              const char* key, const uint8_t* value,
+                                              size_t length, struct AdbcError* error) {
+  CHECK_DB_INIT(connection, error);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode SqliteConnectionSetOptionDouble(struct AdbcConnection* connection,
+                                               const char* key, double value,
+                                               struct AdbcError* error) {
+  CHECK_DB_INIT(connection, error);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode SqliteConnectionSetOptionInt(struct AdbcConnection* connection,
+                                            const char* key, int64_t value,
+                                            struct AdbcError* error) {
+  CHECK_DB_INIT(connection, error);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -216,7 +366,7 @@ AdbcStatusCode SqliteConnectionInit(struct AdbcConnection* connection,
     SetError(error, "[SQLite] AdbcConnectionInit: connection already initialized");
     return ADBC_STATUS_INVALID_STATE;
   }
-  return OpenDatabase(db->uri, &conn->conn, error);
+  return OpenDatabase(db, &conn->conn, error);
 }
 
 AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
@@ -230,6 +380,11 @@ AdbcStatusCode SqliteConnectionRelease(struct AdbcConnection* connection,
       SetError(error, "[SQLite] AdbcConnectionRelease: connection is busy");
       return ADBC_STATUS_IO;
     }
+    conn->conn = NULL;
+  }
+  if (conn->extension_path) {
+    free(conn->extension_path);
+    conn->extension_path = NULL;
   }
   free(connection->private_data);
   connection->private_data = NULL;
@@ -282,7 +437,8 @@ AdbcStatusCode SqliteConnectionGetInfoImpl(const uint32_t* info_codes,
 }  // NOLINT(whitespace/indent)
 
 AdbcStatusCode SqliteConnectionGetInfo(struct AdbcConnection* connection,
-                                       uint32_t* info_codes, size_t info_codes_length,
+                                       const uint32_t* info_codes,
+                                       size_t info_codes_length,
                                        struct ArrowArrayStream* out,
                                        struct AdbcError* error) {
   CHECK_CONN_INIT(connection, error);
@@ -503,12 +659,9 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
     const char* from_col = (const char*)sqlite3_column_text(fk_stmt, 3);
     const char* to_col = (const char*)sqlite3_column_text(fk_stmt, 4);
 
+    // New foreign key constraint or -constraint sets
     if (fk_id != prev_fk_id) {
-      CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(constraint_name_col, ArrowCharView("FOREIGN KEY")),
-               error);
-
+      // Not first constraint of the table
       if (prev_fk_id != -1) {
         CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_names_col), error);
         CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_col), error);
@@ -516,28 +669,34 @@ AdbcStatusCode SqliteConnectionGetConstraintsImpl(
       }
       prev_fk_id = fk_id;
 
+      CHECK_NA(INTERNAL, ArrowArrayAppendNull(constraint_name_col, 1), error);
       CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   constraint_column_names_items,
-                   (struct ArrowStringView){
-                       .data = from_col, .size_bytes = sqlite3_column_bytes(pk_stmt, 3)}),
-               error);
-      CHECK_NA(INTERNAL, ArrowArrayAppendString(fk_catalog_col, ArrowCharView("main")),
-               error);
-      CHECK_NA(INTERNAL, ArrowArrayAppendNull(fk_db_schema_col, 1), error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   fk_table_col,
-                   (struct ArrowStringView){
-                       .data = to_table, .size_bytes = sqlite3_column_bytes(pk_stmt, 2)}),
-               error);
-      CHECK_NA(INTERNAL,
-               ArrowArrayAppendString(
-                   fk_column_name_col,
-                   (struct ArrowStringView){
-                       .data = to_col, .size_bytes = sqlite3_column_bytes(pk_stmt, 4)}),
+               ArrowArrayAppendString(constraint_type_col, ArrowCharView("FOREIGN KEY")),
                error);
     }
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(
+                 constraint_column_names_items,
+                 (struct ArrowStringView){
+                     .data = from_col, .size_bytes = sqlite3_column_bytes(fk_stmt, 3)}),
+             error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendString(fk_catalog_col, ArrowCharView("main")),
+             error);
+    CHECK_NA(INTERNAL, ArrowArrayAppendNull(fk_db_schema_col, 1), error);
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(
+                 fk_table_col,
+                 (struct ArrowStringView){
+                     .data = to_table, .size_bytes = sqlite3_column_bytes(fk_stmt, 2)}),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowArrayAppendString(
+                 fk_column_name_col,
+                 (struct ArrowStringView){
+                     .data = to_col, .size_bytes = sqlite3_column_bytes(fk_stmt, 4)}),
+             error);
+
+    CHECK_NA(INTERNAL, ArrowArrayFinishElement(constraint_column_usage_items), error);
   }
   RAISE(INTERNAL, rc == SQLITE_DONE, sqlite3_errmsg(conn->conn), error);
   if (prev_fk_id != -1) {
@@ -754,6 +913,34 @@ AdbcStatusCode SqliteConnectionGetObjects(struct AdbcConnection* connection, int
   return BatchToArrayStream(&array, &schema, out, error);
 }
 
+AdbcStatusCode SqliteConnectionGetOption(struct AdbcConnection* connection,
+                                         const char* key, char* value, size_t* length,
+                                         struct AdbcError* error) {
+  CHECK_DB_INIT(connection, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode SqliteConnectionGetOptionBytes(struct AdbcConnection* connection,
+                                              const char* key, uint8_t* value,
+                                              size_t* length, struct AdbcError* error) {
+  CHECK_DB_INIT(connection, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode SqliteConnectionGetOptionDouble(struct AdbcConnection* connection,
+                                               const char* key, double* value,
+                                               struct AdbcError* error) {
+  CHECK_DB_INIT(connection, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode SqliteConnectionGetOptionInt(struct AdbcConnection* connection,
+                                            const char* key, int64_t* value,
+                                            struct AdbcError* error) {
+  CHECK_DB_INIT(connection, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
 AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
                                               const char* catalog, const char* db_schema,
                                               const char* table_name,
@@ -774,25 +961,26 @@ AdbcStatusCode SqliteConnectionGetTableSchema(struct AdbcConnection* connection,
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
-  struct StringBuilder query = {0};
-  if (StringBuilderInit(&query, /*initial_size=*/64) != 0) {
-    SetError(error, "[SQLite] Could not initiate StringBuilder");
+  sqlite3_str* query = sqlite3_str_new(NULL);
+  if (sqlite3_str_errcode(query)) {
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(conn->conn));
     return ADBC_STATUS_INTERNAL;
   }
 
-  if (StringBuilderAppend(&query, "%s%s", "SELECT * FROM ", table_name) != 0) {
-    StringBuilderReset(&query);
-    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+  sqlite3_str_appendf(query, "%s%Q", "SELECT * FROM ", table_name);
+  if (sqlite3_str_errcode(query)) {
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(conn->conn));
+    sqlite3_free(sqlite3_str_finish(query));
     return ADBC_STATUS_INTERNAL;
   }
 
   sqlite3_stmt* stmt = NULL;
-  int rc =
-      sqlite3_prepare_v2(conn->conn, query.buffer, query.size, &stmt, /*pzTail=*/NULL);
-  StringBuilderReset(&query);
+  int rc = sqlite3_prepare_v2(conn->conn, sqlite3_str_value(query),
+                              sqlite3_str_length(query), &stmt, /*pzTail=*/NULL);
+  sqlite3_free(sqlite3_str_finish(query));
   if (rc != SQLITE_OK) {
-    SetError(error, "[SQLite] Failed to prepare query: %s", sqlite3_errmsg(conn->conn));
-    return ADBC_STATUS_INTERNAL;
+    SetError(error, "[SQLite] GetTableSchema: %s", sqlite3_errmsg(conn->conn));
+    return ADBC_STATUS_NOT_FOUND;
   }
 
   struct ArrowArrayStream stream = {0};
@@ -927,6 +1115,7 @@ AdbcStatusCode SqliteStatementRelease(struct AdbcStatement* statement,
   }
   if (stmt->query) free(stmt->query);
   AdbcSqliteBinderRelease(&stmt->binder);
+  if (stmt->target_catalog) free(stmt->target_catalog);
   if (stmt->target_table) free(stmt->target_table);
   if (rc != SQLITE_OK) {
     SetError(error,
@@ -981,29 +1170,61 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   AdbcStatusCode code = ADBC_STATUS_OK;
 
   // Create statements for CREATE TABLE / INSERT
-  sqlite3_str* create_query = sqlite3_str_new(NULL);
-  if (sqlite3_str_errcode(create_query)) {
-    SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
-    return ADBC_STATUS_INTERNAL;
-  }
-  struct StringBuilder insert_query = {0};
+  sqlite3_str* create_query = NULL;
+  sqlite3_str* insert_query = NULL;
+  char* table = NULL;
 
-  if (StringBuilderInit(&insert_query, /*initial_size=*/256) != 0) {
-    SetError(error, "[SQLite] Could not initiate StringBuilder");
-    sqlite3_free(sqlite3_str_finish(create_query));
-    return ADBC_STATUS_INTERNAL;
-  }
-
-  sqlite3_str_appendf(create_query, "%s%Q%s", "CREATE TABLE ", stmt->target_table, " (");
+  create_query = sqlite3_str_new(NULL);
   if (sqlite3_str_errcode(create_query)) {
     SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
 
-  if (StringBuilderAppend(&insert_query, "%s%s%s", "INSERT INTO ", stmt->target_table,
-                          " VALUES (") != 0) {
-    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+  insert_query = sqlite3_str_new(NULL);
+  if (sqlite3_str_errcode(insert_query)) {
+    SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  if (stmt->target_catalog != NULL && stmt->temporary != 0) {
+    SetError(error, "[SQLite] Cannot specify both %s and %s",
+             ADBC_INGEST_OPTION_TARGET_CATALOG, ADBC_INGEST_OPTION_TEMPORARY);
+    code = ADBC_STATUS_INVALID_STATE;
+    goto cleanup;
+  }
+
+  if (stmt->target_catalog != NULL) {
+    table = sqlite3_mprintf("\"%w\" . \"%w\"", stmt->target_catalog, stmt->target_table);
+  } else if (stmt->temporary == 0) {
+    // If not temporary, explicitly target the main database
+    table = sqlite3_mprintf("main . \"%w\"", stmt->target_table);
+  } else {
+    // OK to be redundant (CREATE TEMP TABLE temp.foo)
+    table = sqlite3_mprintf("temp . \"%w\"", stmt->target_table);
+  }
+
+  if (table == NULL) {
+    // Allocation failure
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  if (stmt->temporary != 0) {
+    sqlite3_str_appendf(create_query, "CREATE TEMPORARY TABLE %s (", table);
+  } else {
+    sqlite3_str_appendf(create_query, "CREATE TABLE %s (", table);
+  }
+  if (sqlite3_str_errcode(create_query)) {
+    SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  sqlite3_str_appendf(insert_query, "INSERT INTO %s (", table);
+  if (sqlite3_str_errcode(insert_query)) {
+    SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
@@ -1014,15 +1235,31 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     if (i > 0) {
       sqlite3_str_appendf(create_query, "%s", ", ");
       if (sqlite3_str_errcode(create_query)) {
-        SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+        SetError(error, "[SQLite] Failed to build CREATE: %s",
+                 sqlite3_errmsg(stmt->conn));
+        code = ADBC_STATUS_INTERNAL;
+        goto cleanup;
+      }
+
+      sqlite3_str_appendf(insert_query, "%s", ", ");
+      if (sqlite3_str_errcode(insert_query)) {
+        SetError(error, "[SQLite] Failed to build INSERT: %s",
+                 sqlite3_errmsg(stmt->conn));
         code = ADBC_STATUS_INTERNAL;
         goto cleanup;
       }
     }
 
-    sqlite3_str_appendf(create_query, "%Q", stmt->binder.schema.children[i]->name);
+    sqlite3_str_appendf(create_query, "\"%w\"", stmt->binder.schema.children[i]->name);
     if (sqlite3_str_errcode(create_query)) {
-      SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
+      SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
+      code = ADBC_STATUS_INTERNAL;
+      goto cleanup;
+    }
+
+    sqlite3_str_appendf(insert_query, "\"%w\"", stmt->binder.schema.children[i]->name);
+    if (sqlite3_str_errcode(insert_query)) {
+      SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
@@ -1030,13 +1267,14 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
     int status =
         ArrowSchemaViewInit(&view, stmt->binder.schema.children[i], &arrow_error);
     if (status != 0) {
-      SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
+      SetError(error, "[SQLite] Failed to parse schema for column %d: %s (%d): %s", i,
                strerror(status), status, arrow_error.message);
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
 
     switch (view.type) {
+      case NANOARROW_TYPE_BOOL:
       case NANOARROW_TYPE_UINT8:
       case NANOARROW_TYPE_UINT16:
       case NANOARROW_TYPE_UINT32:
@@ -1062,31 +1300,34 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
       default:
         break;
     }
+  }
 
-    if (i > 0) {
-      if (StringBuilderAppend(&insert_query, "%s", ", ") != 0) {
-        SetError(error, "[SQLite] Call to StringBuilderAppend failed");
-        code = ADBC_STATUS_INTERNAL;
-        goto cleanup;
-      }
-    }
+  sqlite3_str_appendchar(create_query, 1, ')');
+  if (sqlite3_str_errcode(create_query)) {
+    SetError(error, "[SQLite] Failed to build CREATE: %s", sqlite3_errmsg(stmt->conn));
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
 
-    if (StringBuilderAppend(&insert_query, "%s", "?") != 0) {
-      SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+  sqlite3_str_appendall(insert_query, ") VALUES (");
+  if (sqlite3_str_errcode(insert_query)) {
+    SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
+    code = ADBC_STATUS_INTERNAL;
+    goto cleanup;
+  }
+
+  for (int i = 0; i < stmt->binder.schema.n_children; i++) {
+    sqlite3_str_appendf(insert_query, "%s?", (i > 0 ? ", " : ""));
+    if (sqlite3_str_errcode(insert_query)) {
+      SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
       code = ADBC_STATUS_INTERNAL;
       goto cleanup;
     }
   }
 
-  sqlite3_str_appendchar(create_query, 1, ')');
-  if (sqlite3_str_errcode(create_query)) {
-    SetError(error, "[SQLite] %s", sqlite3_errmsg(stmt->conn));
-    code = ADBC_STATUS_INTERNAL;
-    goto cleanup;
-  }
-
-  if (StringBuilderAppend(&insert_query, "%s", ")") != 0) {
-    SetError(error, "[SQLite] Call to StringBuilderAppend failed");
+  sqlite3_str_appendchar(insert_query, 1, ')');
+  if (sqlite3_str_errcode(insert_query)) {
+    SetError(error, "[SQLite] Failed to build INSERT: %s", sqlite3_errmsg(stmt->conn));
     code = ADBC_STATUS_INTERNAL;
     goto cleanup;
   }
@@ -1110,11 +1351,13 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
   }
 
   if (code == ADBC_STATUS_OK) {
-    int rc = sqlite3_prepare_v2(stmt->conn, insert_query.buffer, (int)insert_query.size,
-                                insert_statement, /*pzTail=*/NULL);
+    int rc = sqlite3_prepare_v2(stmt->conn, sqlite3_str_value(insert_query),
+                                sqlite3_str_length(insert_query), insert_statement,
+                                /*pzTail=*/NULL);
     if (rc != SQLITE_OK) {
-      SetError(error, "[SQLite] Failed to prepare statement: %s (executed '%s')",
-               sqlite3_errmsg(stmt->conn), insert_query.buffer);
+      SetError(error, "[SQLite] Failed to prepare statement: %s (executed '%.*s')",
+               sqlite3_errmsg(stmt->conn), sqlite3_str_length(insert_query),
+               sqlite3_str_value(insert_query));
       code = ADBC_STATUS_INTERNAL;
     }
   }
@@ -1123,7 +1366,8 @@ AdbcStatusCode SqliteStatementInitIngest(struct SqliteStatement* stmt,
 
 cleanup:
   sqlite3_free(sqlite3_str_finish(create_query));
-  StringBuilderReset(&insert_query);
+  sqlite3_free(sqlite3_str_finish(insert_query));
+  if (table != NULL) sqlite3_free(table);
   return code;
 }
 
@@ -1230,7 +1474,13 @@ AdbcStatusCode SqliteStatementExecuteQuery(struct AdbcStatement* statement,
     sqlite3_mutex_leave(sqlite3_db_mutex(stmt->conn));
 
     AdbcSqliteBinderRelease(&stmt->binder);
-    if (rows_affected) *rows_affected = rows;
+    if (rows_affected) {
+      if (sqlite3_column_count(stmt->stmt) == 0) {
+        *rows_affected = sqlite3_changes(stmt->conn);
+      } else {
+        *rows_affected = rows;
+      }
+    }
     return status;
   }
 
@@ -1249,6 +1499,10 @@ AdbcStatusCode SqliteStatementSetSqlQuery(struct AdbcStatement* statement,
   if (stmt->query) {
     free(stmt->query);
     stmt->query = NULL;
+  }
+  if (stmt->target_catalog) {
+    free(stmt->target_catalog);
+    stmt->target_catalog = NULL;
   }
   if (stmt->target_table) {
     free(stmt->target_table);
@@ -1284,6 +1538,34 @@ AdbcStatusCode SqliteStatementBindStream(struct AdbcStatement* statement,
   CHECK_STMT_INIT(statement, error);
   struct SqliteStatement* stmt = (struct SqliteStatement*)statement->private_data;
   return AdbcSqliteBinderSetArrayStream(&stmt->binder, stream, error);
+}
+
+AdbcStatusCode SqliteStatementGetOption(struct AdbcStatement* statement, const char* key,
+                                        char* value, size_t* length,
+                                        struct AdbcError* error) {
+  CHECK_DB_INIT(statement, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode SqliteStatementGetOptionBytes(struct AdbcStatement* statement,
+                                             const char* key, uint8_t* value,
+                                             size_t* length, struct AdbcError* error) {
+  CHECK_DB_INIT(statement, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode SqliteStatementGetOptionDouble(struct AdbcStatement* statement,
+                                              const char* key, double* value,
+                                              struct AdbcError* error) {
+  CHECK_DB_INIT(statement, error);
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode SqliteStatementGetOptionInt(struct AdbcStatement* statement,
+                                           const char* key, int64_t* value,
+                                           struct AdbcError* error) {
+  CHECK_DB_INIT(statement, error);
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode SqliteStatementGetParameterSchema(struct AdbcStatement* statement,
@@ -1337,6 +1619,20 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
     stmt->target_table = (char*)malloc(len);
     strncpy(stmt->target_table, value, len);
     return ADBC_STATUS_OK;
+  } else if (strcmp(key, ADBC_INGEST_OPTION_TARGET_CATALOG) == 0) {
+    if (stmt->query) {
+      free(stmt->query);
+      stmt->query = NULL;
+    }
+    if (stmt->target_catalog) {
+      free(stmt->target_catalog);
+      stmt->target_catalog = NULL;
+    }
+
+    size_t len = strlen(value) + 1;
+    stmt->target_catalog = (char*)malloc(len);
+    strncpy(stmt->target_catalog, value, len);
+    return ADBC_STATUS_OK;
   } else if (strcmp(key, ADBC_INGEST_OPTION_MODE) == 0) {
     if (strcmp(value, ADBC_INGEST_OPTION_MODE_APPEND) == 0) {
       stmt->append = 1;
@@ -1347,10 +1643,20 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     return ADBC_STATUS_OK;
+  } else if (strcmp(key, ADBC_INGEST_OPTION_TEMPORARY) == 0) {
+    if (strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      stmt->temporary = 1;
+    } else if (strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      stmt->temporary = 0;
+    } else {
+      SetError(error, "[SQLite] Invalid statement option value %s=%s", key, value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    return ADBC_STATUS_OK;
   } else if (strcmp(key, kStatementOptionBatchRows) == 0) {
     char* end = NULL;
     long batch_size = strtol(value, &end, /*base=*/10);  // NOLINT(runtime/int)
-    if (errno != 0) {
+    if (errno == ERANGE) {
       SetError(error, "[SQLite] Invalid statement option value %s=%s (out of range)", key,
                value);
       return ADBC_STATUS_INVALID_ARGUMENT;
@@ -1375,6 +1681,27 @@ AdbcStatusCode SqliteStatementSetOption(struct AdbcStatement* statement, const c
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode SqliteStatementSetOptionBytes(struct AdbcStatement* statement,
+                                             const char* key, const uint8_t* value,
+                                             size_t length, struct AdbcError* error) {
+  CHECK_DB_INIT(statement, error);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode SqliteStatementSetOptionDouble(struct AdbcStatement* statement,
+                                              const char* key, double value,
+                                              struct AdbcError* error) {
+  CHECK_DB_INIT(statement, error);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode SqliteStatementSetOptionInt(struct AdbcStatement* statement,
+                                           const char* key, int64_t value,
+                                           struct AdbcError* error) {
+  CHECK_DB_INIT(statement, error);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode SqliteStatementExecutePartitions(struct AdbcStatement* statement,
                                                 struct ArrowSchema* schema,
                                                 struct AdbcPartitions* partitions,
@@ -1393,7 +1720,7 @@ AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError*
   }
 
   struct AdbcDriver* driver = (struct AdbcDriver*)raw_driver;
-  memset(driver, 0, sizeof(*driver));
+  memset(driver, 0, ADBC_DRIVER_1_0_0_SIZE);
   driver->DatabaseInit = SqliteDatabaseInit;
   driver->DatabaseNew = SqliteDatabaseNew;
   driver->DatabaseRelease = SqliteDatabaseRelease;
@@ -1425,8 +1752,39 @@ AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError*
 
 // Public names
 
+AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
+                                     char* value, size_t* length,
+                                     struct AdbcError* error) {
+  return SqliteDatabaseGetOption(database, key, value, length, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          uint8_t* value, size_t* length,
+                                          struct AdbcError* error) {
+  return SqliteDatabaseGetOptionBytes(database, key, value, length, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t* value, struct AdbcError* error) {
+  return SqliteDatabaseGetOptionInt(database, key, value, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double* value, struct AdbcError* error) {
+  return SqliteDatabaseGetOptionDouble(database, key, value, error);
+}
+
+AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
+  return SqliteDatabaseInit(database, error);
+}
+
 AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
   return SqliteDatabaseNew(database, error);
+}
+
+AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
+                                   struct AdbcError* error) {
+  return SqliteDatabaseRelease(database, error);
 }
 
 AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
@@ -1434,13 +1792,49 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
   return SqliteDatabaseSetOption(database, key, value, error);
 }
 
-AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
-  return SqliteDatabaseInit(database, error);
+AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          const uint8_t* value, size_t length,
+                                          struct AdbcError* error) {
+  return SqliteDatabaseSetOptionBytes(database, key, value, length, error);
 }
 
-AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
-                                   struct AdbcError* error) {
-  return SqliteDatabaseRelease(database, error);
+AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t value, struct AdbcError* error) {
+  return SqliteDatabaseSetOptionInt(database, key, value, error);
+}
+
+AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double value, struct AdbcError* error) {
+  return SqliteDatabaseSetOptionDouble(database, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
+                                    struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
+                                       char* value, size_t* length,
+                                       struct AdbcError* error) {
+  return SqliteConnectionGetOption(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, uint8_t* value,
+                                            size_t* length, struct AdbcError* error) {
+  return SqliteConnectionGetOptionBytes(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t* value,
+                                          struct AdbcError* error) {
+  return SqliteConnectionGetOptionInt(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double* value,
+                                             struct AdbcError* error) {
+  return SqliteConnectionGetOptionDouble(connection, key, value, error);
 }
 
 AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
@@ -1451,6 +1845,24 @@ AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
 AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
                                        const char* value, struct AdbcError* error) {
   return SqliteConnectionSetOption(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, const uint8_t* value,
+                                            size_t length, struct AdbcError* error) {
+  return SqliteConnectionSetOptionBytes(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t value,
+                                          struct AdbcError* error) {
+  return SqliteConnectionSetOptionInt(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double value,
+                                             struct AdbcError* error) {
+  return SqliteConnectionSetOptionDouble(connection, key, value, error);
 }
 
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
@@ -1465,7 +1877,7 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 }
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
-                                     uint32_t* info_codes, size_t info_codes_length,
+                                     const uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
   return SqliteConnectionGetInfo(connection, info_codes, info_codes_length, out, error);
@@ -1479,6 +1891,20 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         struct AdbcError* error) {
   return SqliteConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
                                     table_type, column_name, out, error);
+}
+
+AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
+                                           const char* catalog, const char* db_schema,
+                                           const char* table_name, char approximate,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
+                                               struct ArrowArrayStream* out,
+                                               struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -1515,6 +1941,11 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
   return SqliteConnectionRollback(connection, error);
 }
 
+AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
+                                   struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
                                 struct AdbcStatement* statement,
                                 struct AdbcError* error) {
@@ -1531,6 +1962,12 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                          int64_t* rows_affected,
                                          struct AdbcError* error) {
   return SqliteStatementExecuteQuery(statement, out, rows_affected, error);
+}
+
+AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcError* error) {
+  return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
@@ -1561,6 +1998,29 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
   return SqliteStatementBindStream(statement, stream, error);
 }
 
+AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
+                                      char* value, size_t* length,
+                                      struct AdbcError* error) {
+  return SqliteStatementGetOption(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, uint8_t* value,
+                                           size_t* length, struct AdbcError* error) {
+  return SqliteStatementGetOptionBytes(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const char* key,
+                                         int64_t* value, struct AdbcError* error) {
+  return SqliteStatementGetOptionInt(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double* value,
+                                            struct AdbcError* error) {
+  return SqliteStatementGetOptionDouble(statement, key, value, error);
+}
+
 AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
                                                struct ArrowSchema* schema,
                                                struct AdbcError* error) {
@@ -1570,6 +2030,23 @@ AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
 AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
                                       const char* value, struct AdbcError* error) {
   return SqliteStatementSetOption(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, const uint8_t* value,
+                                           size_t length, struct AdbcError* error) {
+  return SqliteStatementSetOptionBytes(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const char* key,
+                                         int64_t value, struct AdbcError* error) {
+  return SqliteStatementSetOptionInt(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double value,
+                                            struct AdbcError* error) {
+  return SqliteStatementSetOptionDouble(statement, key, value, error);
 }
 
 AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,

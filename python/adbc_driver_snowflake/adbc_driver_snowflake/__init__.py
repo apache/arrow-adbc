@@ -65,6 +65,15 @@ class DatabaseOptions(enum.Enum):
     #: this should point to a file containing a PKCS1 private key to be
     #: loaded. Commonly encoded in PEM blocks of type "RSA PRIVATE KEY"
     JWT_PRIVATE_KEY = "adbc.snowflake.sql.client_option.jwt_private_key"
+    #: parses a private key in PKCS #8, ASN.1 DER form. Specify the private key
+    #: value without having to load it from the file system.
+    JWT_PRIVATE_KEY_VALUE = (
+        "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value"
+    )
+    #: a passcode to use with encrypted private keys for JWT authentication.
+    JWT_PRIVATE_KEY_PASSWORD = (
+        "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password"
+    )
     #: Login retry timeout EXCLUDING network roundtrip and reading http response
     #: use format like http://pkg.go.dev/time#ParseDuration such as
     #: "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
@@ -85,6 +94,14 @@ class DatabaseOptions(enum.Enum):
     SCHEMA = "adbc.snowflake.sql.schema"
     SSL_SKIP_VERIFY = "adbc.snowflake.sql.client_option.tls_skip_verify"
     WAREHOUSE = "adbc.snowflake.sql.warehouse"
+    #: control the data type which will be used for NUMBER columns that
+    #: use a FIXED data type. By default, this is enabled and NUMBER
+    #: columns will all be returned as Decimal128 columns using the precision
+    #: and scale of the NUMBER type. If disabled, fixed-point data types
+    #: with a scale of 0 will be returned as Int64 columns, and a non-zero
+    #: scale will be returned as a Float64 column. This option must be
+    #: set using 'true' or 'false'.
+    USE_HIGH_PRECISION = "adbc.snowflake.sql.client_option.use_high_precision"
 
 
 class StatementOptions(enum.Enum):

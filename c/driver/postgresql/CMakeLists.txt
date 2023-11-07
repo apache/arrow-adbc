@@ -29,8 +29,10 @@ endif()
 add_arrow_lib(adbc_driver_postgresql
               SOURCES
               connection.cc
+              error.cc
               database.cc
               postgresql.cc
+              result_helper.cc
               statement.cc
               OUTPUTS
               ADBC_LIBRARIES
@@ -49,14 +51,15 @@ add_arrow_lib(adbc_driver_postgresql
               adbc_driver_common
               nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
-include_directories(SYSTEM ${REPOSITORY_ROOT})
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
-include_directories(SYSTEM ${LIBPQ_INCLUDE_DIRS})
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver)
 
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+  target_include_directories(${LIB_TARGET} SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
 endforeach()
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
@@ -81,5 +84,28 @@ if(ADBC_BUILD_TESTS)
                 nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-postgresql-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}
+                                     ${REPOSITORY_ROOT}/c/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-postgresql-test)
+endif()
+
+if(ADBC_BUILD_BENCHMARKS)
+  find_package(benchmark REQUIRED)
+  # TODO: should add_benchmark be linking benchmark::benchmark for us?
+  add_benchmark(postgresql_benchmark
+                EXTRA_LINK_LIBS
+                adbc_driver_common
+                adbc_validation
+                nanoarrow
+                ${TEST_LINK_LIBS}
+                benchmark::benchmark)
+  # add_benchmark replaces _ with - when creating target
+  target_include_directories(postgresql-benchmark
+                             PRIVATE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/vendor
+                                     ${REPOSITORY_ROOT}/c/driver)
 endif()

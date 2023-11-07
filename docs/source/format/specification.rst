@@ -57,6 +57,26 @@ implementations will support this.
 - Go: ``OptionKeyAutoCommit``
 - Java: ``org.apache.arrow.adbc.core.AdbcConnection#setAutoCommit(boolean)``
 
+Metadata
+--------
+
+ADBC exposes a variety of metadata about the database, such as what catalogs,
+schemas, and tables exist, the Arrow schema of tables, and so on.
+
+.. _specification-statistics:
+
+Statistics
+----------
+
+.. note:: Since API revision 1.1.0
+
+ADBC exposes table/column statistics, such as the (unique) row count, min/max
+values, and so on.  The goal here is to make ADBC work better in federation
+scenarios, where one query engine wants to read Arrow data from another
+database.  Having statistics available lets the "outer" query planner make
+better choices about things like join order, or even decide to skip reading
+data entirely.
+
 Statements
 ==========
 
@@ -84,6 +104,16 @@ frees the user from knowing the right SQL syntax for their database.
 - Go: ``OptionKeyIngestTargetTable``
 - Java: ``org.apache.arrow.adbc.core.AdbcConnection#bulkIngest(String, org.apache.arrow.adbc.core.BulkIngestMode)``
 
+.. _specification-cancellation:
+
+Cancellation
+------------
+
+.. note:: Since API revision 1.1.0
+
+Queries (and operations that implicitly represent queries, like fetching
+:ref:`specification-statistics`) can be cancelled.
+
 Partitioned Result Sets
 -----------------------
 
@@ -97,6 +127,16 @@ machines.
 - Go: ``Statement.ExecutePartitions``
 - Java: ``org.apache.arrow.adbc.core.AdbcStatement#executePartitioned()``
 
+.. _specification-incremental-execution:
+
+In principle, a vendor could return the results of partitioned execution as
+they are available, instead of all at once.  Incremental execution allows
+drivers to expose this.  When enabled, each call to ``ExecutePartitions`` will
+return available endpoints to read instead of blocking to retrieve all
+endpoints.
+
+.. note:: Since API revision 1.1.0
+
 Lifecycle & Usage
 -----------------
 
@@ -107,31 +147,107 @@ Lifecycle & Usage
 Basic Usage
 ~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementBasicUsage.mmd
-   :caption: Preparing the statement and binding parameters are optional.
+.. figure:: AdbcStatementBasicUsage.mmd.svg
+
+   Preparing the statement and binding parameters are optional.
 
 Consuming Result Sets
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementConsumeResultSet.mmd
-   :caption: This is equivalent to reading from what many Arrow
-             libraries call a RecordBatchReader.
+.. figure:: AdbcStatementConsumeResultSet.mmd.svg
+
+   This is equivalent to reading from what many Arrow libraries call a
+   RecordBatchReader.
 
 Bulk Data Ingestion
 ~~~~~~~~~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementBulkIngest.mmd
-   :caption: There is no need to prepare the statement.
+.. figure:: AdbcStatementBulkIngest.mmd.svg
+
+   There is no need to prepare the statement.
 
 Update-only Queries (No Result Set)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementUpdate.mmd
-   :caption: Preparing the statement and binding parameters are optional.
+.. figure:: AdbcStatementUpdate.mmd.svg
+
+   Preparing the statement and binding parameters are optional.
 
 Partitioned Execution
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. mermaid:: AdbcStatementPartitioned.mmd
-   :caption: This is similar to fetching data in Arrow Flight RPC (by
-             design). See :doc:`"Downloading Data" <arrow:format/Flight>`.
+.. figure:: AdbcStatementPartitioned.mmd.svg
+
+   This is similar to fetching data in Arrow Flight RPC (by design). See
+   :doc:`"Downloading Data" <arrow:format/Flight>`.
+
+Error Handling
+==============
+
+The error handling strategy varies by language.
+
+In C, most methods take a :cpp:class:`AdbcError`.  In Go, most methods return
+an error that can be cast to an ``AdbcError``.  In Java, most methods raise an
+``AdbcException``.
+
+In all cases, an error contains:
+
+- A status code,
+- An error message,
+- An optional vendor code (a vendor-specific status code),
+- An optional 5-character "SQLSTATE" code (a SQL-like vendor-specific code).
+
+.. _specification-rich-error-metadata:
+
+Rich Error Metadata
+-------------------
+
+.. note:: Since API revision 1.1.0
+
+Drivers can expose additional rich error metadata.  This can be used to return
+structured error information.  For example, a driver could use something like
+the `Googleapis ErrorDetails`_.
+
+In C, Go and Java, :cpp:class:`AdbcError`, ``AdbcError``, and
+``AdbcException`` respectively expose a list of additional metadata.  For C,
+see the documentation of :cpp:class:`AdbcError` to learn how the struct was
+expanded while preserving ABI.
+
+.. _Googleapis ErrorDetails: https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto
+
+Changelog
+=========
+
+Version 1.1.0
+-------------
+
+The info key ADBC_INFO_DRIVER_ADBC_VERSION can be used to retrieve the
+driver's supported ADBC version.
+
+The canonical options "uri", "username", and "password" were added to make
+configuration consistent between drivers.
+
+:ref:`specification-cancellation` and the ability to both get and set options
+of different types were added.  (Previously, you could set string options but
+could not get option values or get/set values of other types.)  This can be
+used to get and set the current active catalog and/or schema through a pair of
+new canonical options.
+
+:ref:`specification-bulk-ingestion` supports two additional modes:
+
+- "adbc.ingest.mode.replace" will drop existing data, then behave like
+  "create".
+- "adbc.ingest.mode.create_append" will behave like "create", except if the
+  table already exists, it will not error.
+
+:ref:`specification-rich-error-metadata` has been added, allowing clients to
+get additional error metadata.
+
+The ability to retrive table/column :ref:`statistics
+<specification-statistics>` was added.  The goal here is to make ADBC work
+better in federation scenarios, where one query engine wants to read Arrow
+data from another database.
+
+:ref:`Incremental execution <specification-incremental-execution>` allows
+streaming partitions of a result set as they are available instead of blocking
+and waiting for query execution to finish before reading results.

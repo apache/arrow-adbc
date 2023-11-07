@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -27,17 +28,30 @@
 extern "C" {
 #endif
 
-// The printf checking attribute doesn't work properly on gcc 4.8
-// and results in spurious compiler warnings
-#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5)
+int AdbcStatusCodeToErrno(AdbcStatusCode code);
+
+// If using mingw's c99-compliant printf, we need a different format-checking attribute
+#if defined(__USE_MINGW_ANSI_STDIO) && defined(__MINGW_PRINTF_FORMAT)
+#define ADBC_CHECK_PRINTF_ATTRIBUTE __attribute__((format(__MINGW_PRINTF_FORMAT, 2, 3)))
+#elif defined(__GNUC__)
 #define ADBC_CHECK_PRINTF_ATTRIBUTE __attribute__((format(printf, 2, 3)))
 #else
 #define ADBC_CHECK_PRINTF_ATTRIBUTE
 #endif
 
-/// Set error details using a format string.
+/// Set error message using a format string.
 void SetError(struct AdbcError* error, const char* format,
               ...) ADBC_CHECK_PRINTF_ATTRIBUTE;
+
+/// Set error message using a format string.
+void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args);
+
+/// Add an error detail.
+void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* detail,
+                       size_t detail_length);
+
+int CommonErrorGetDetailCount(const struct AdbcError* error);
+struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int index);
 
 struct StringBuilder {
   char* buffer;
@@ -117,6 +131,9 @@ AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
                                                  uint32_t info_code,
                                                  const char* info_value,
                                                  struct AdbcError* error);
+AdbcStatusCode AdbcConnectionGetInfoAppendInt(struct ArrowArray* array,
+                                              uint32_t info_code, int64_t info_value,
+                                              struct AdbcError* error);
 
 AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
                                                struct AdbcError* error);

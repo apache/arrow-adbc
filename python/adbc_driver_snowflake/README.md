@@ -19,12 +19,13 @@
 
 # ADBC Snowflake Driver for Python
 
-This package contains bindings for the [Snowflake
-driver](../../c/driver/snowflake/README.md), using the [driver
-manager](../adbc_driver_manager/README.md) to provide a [DBAPI 2.0/PEP
+This package contains bindings for the [Snowflake driver][snowflake], using
+the [driver manager][driver-manager] to provide a [DBAPI 2.0/PEP
 249-compatible][dbapi] interface on top.
 
 [dbapi]: https://peps.python.org/pep-0249/
+[driver-manager]: https://arrow.apache.org/adbc/current/python/driver_manager.html
+[snowflake]: https://arrow.apache.org/adbc/current/driver/snowflake.html
 
 ## Building
 

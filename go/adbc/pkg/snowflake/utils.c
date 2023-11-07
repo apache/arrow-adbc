@@ -35,17 +35,97 @@ void Snowflake_release_error(struct AdbcError* error) {
   error->release = NULL;
 }
 
-AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
-  return SnowflakeDatabaseNew(database, error);
+void SnowflakeReleaseErrWithDetails(struct AdbcError* error) {
+  if (!error || error->release != SnowflakeReleaseErrWithDetails ||
+      !error->private_data) {
+    return;
+  }
+
+  struct SnowflakeError* details =
+      (struct SnowflakeError*) error->private_data;
+  for (int i = 0; i < details->count; i++) {
+    free(details->keys[i]);
+    free(details->values[i]);
+  }
+  free(details->keys);
+  free(details->values);
+  free(details->lengths);
+  free(details);
+
+  free(error->message);
+  error->message = NULL;
+  error->release = NULL;
+  error->private_data = NULL;
 }
 
-AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
-                                     const char* value, struct AdbcError* error) {
-  return SnowflakeDatabaseSetOption(database, key, value, error);
+int SnowflakeErrorGetDetailCount(const struct AdbcError* error) {
+  if (!error || error->release != SnowflakeReleaseErrWithDetails ||
+      !error->private_data) {
+    return 0;
+  }
+
+  return ((struct SnowflakeError*) error->private_data)->count;
+}
+
+struct AdbcErrorDetail SnowflakeErrorGetDetail(const struct AdbcError* error,
+                                                 int index) {
+  if (!error || error->release != SnowflakeReleaseErrWithDetails ||
+      !error->private_data) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+  struct SnowflakeError* details = (struct SnowflakeError*) error->private_data;
+  if (index < 0 || index >= details->count) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+
+  return (struct AdbcErrorDetail){
+    .key = details->keys[index],
+    .value = details->values[index],
+    .value_length = details->lengths[index]
+  };
+}
+
+int AdbcErrorGetDetailCount(const struct AdbcError* error) {
+  return SnowflakeErrorGetDetailCount(error);
+}
+
+struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
+  return SnowflakeErrorGetDetail(error, index);
+}
+
+const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
+                                                 AdbcStatusCode* status) {
+  return SnowflakeErrorFromArrayStream(stream, status);
+}
+
+AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
+                                     char* value, size_t* length,
+                                     struct AdbcError* error) {
+  return SnowflakeDatabaseGetOption(database, key, value, length, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          uint8_t* value, size_t* length,
+                                          struct AdbcError* error) {
+  return SnowflakeDatabaseGetOptionBytes(database, key, value, length, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double* value, struct AdbcError* error) {
+  return SnowflakeDatabaseGetOptionDouble(database, key, value, error);
+}
+
+AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t* value, struct AdbcError* error) {
+  return SnowflakeDatabaseGetOptionInt(database, key, value, error);
 }
 
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
   return SnowflakeDatabaseInit(database, error);
+}
+
+AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
+  return SnowflakeDatabaseNew(database, error);
 }
 
 AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
@@ -53,34 +133,44 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
   return SnowflakeDatabaseRelease(database, error);
 }
 
-AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
-                                 struct AdbcError* error) {
-  return SnowflakeConnectionNew(connection, error);
+AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
+                                     const char* value, struct AdbcError* error) {
+  return SnowflakeDatabaseSetOption(database, key, value, error);
 }
 
-AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
-                                       const char* value, struct AdbcError* error) {
-  return SnowflakeConnectionSetOption(connection, key, value, error);
+AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
+                                          const uint8_t* value, size_t length,
+                                          struct AdbcError* error) {
+  return SnowflakeDatabaseSetOptionBytes(database, key, value, length, error);
 }
 
-AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
-                                  struct AdbcDatabase* database,
-                                  struct AdbcError* error) {
-  return SnowflakeConnectionInit(connection, database, error);
+AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
+                                           double value, struct AdbcError* error) {
+  return SnowflakeDatabaseSetOptionDouble(database, key, value, error);
 }
 
-AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
-                                     struct AdbcError* error) {
-  return SnowflakeConnectionRelease(connection, error);
+AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
+                                        int64_t value, struct AdbcError* error) {
+  return SnowflakeDatabaseSetOptionInt(database, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
+                                    struct AdbcError* error) {
+  return SnowflakeConnectionCancel(connection, error);
+}
+
+AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
+                                    struct AdbcError* error) {
+  return SnowflakeConnectionCommit(connection, error);
 }
 
 AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
-                                     uint32_t* info_codes, size_t info_codes_length,
+                                     const uint32_t* info_codes, size_t info_codes_length,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error) {
   if (out) memset(out, 0, sizeof(*out));
-  return SnowflakeConnectionGetInfo(connection, info_codes, info_codes_length, out,
-                                    error);
+  return SnowflakeConnectionGetInfo(connection, info_codes, info_codes_length,
+                                      out, error);
 }
 
 AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
@@ -91,7 +181,46 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         struct AdbcError* error) {
   if (out) memset(out, 0, sizeof(*out));
   return SnowflakeConnectionGetObjects(connection, depth, catalog, db_schema, table_name,
-                                       table_type, column_name, out, error);
+                                         table_type, column_name, out, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
+                                       char* value, size_t* length,
+                                       struct AdbcError* error) {
+  return SnowflakeConnectionGetOption(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, uint8_t* value,
+                                            size_t* length, struct AdbcError* error) {
+  return SnowflakeConnectionGetOptionBytes(connection, key, value, length, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double* value,
+                                             struct AdbcError* error) {
+  return SnowflakeConnectionGetOptionDouble(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t* value,
+                                          struct AdbcError* error) {
+  return SnowflakeConnectionGetOptionInt(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
+                                           const char* catalog, const char* db_schema,
+                                           const char* table_name, char approximate,
+                                           struct ArrowArrayStream* out,
+                                           struct AdbcError* error) {
+  return SnowflakeConnectionGetStatistics(connection, catalog, db_schema, table_name,
+                                            approximate, out, error);
+}
+
+AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
+                                               struct ArrowArrayStream* out,
+                                               struct AdbcError* error) {
+  return SnowflakeConnectionGetStatisticNames(connection, out, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
@@ -101,7 +230,7 @@ AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
                                             struct AdbcError* error) {
   if (schema) memset(schema, 0, sizeof(*schema));
   return SnowflakeConnectionGetTableSchema(connection, catalog, db_schema, table_name,
-                                           schema, error);
+                                        schema, error);
 }
 
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
@@ -111,6 +240,17 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
   return SnowflakeConnectionGetTableTypes(connection, out, error);
 }
 
+AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
+                                  struct AdbcDatabase* database,
+                                  struct AdbcError* error) {
+  return SnowflakeConnectionInit(connection, database, error);
+}
+
+AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
+                                 struct AdbcError* error) {
+  return SnowflakeConnectionNew(connection, error);
+}
+
 AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
                                            const uint8_t* serialized_partition,
                                            size_t serialized_length,
@@ -118,12 +258,12 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
                                            struct AdbcError* error) {
   if (out) memset(out, 0, sizeof(*out));
   return SnowflakeConnectionReadPartition(connection, serialized_partition,
-                                          serialized_length, out, error);
+                                       serialized_length, out, error);
 }
 
-AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
-                                    struct AdbcError* error) {
-  return SnowflakeConnectionCommit(connection, error);
+AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
+                                     struct AdbcError* error) {
+  return SnowflakeConnectionRelease(connection, error);
 }
 
 AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
@@ -131,39 +271,32 @@ AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
   return SnowflakeConnectionRollback(connection, error);
 }
 
-AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
-                                struct AdbcStatement* statement,
-                                struct AdbcError* error) {
-  return SnowflakeStatementNew(connection, statement, error);
+AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
+                                       const char* value, struct AdbcError* error) {
+  return SnowflakeConnectionSetOption(connection, key, value, error);
 }
 
-AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
-                                    struct AdbcError* error) {
-  return SnowflakeStatementRelease(statement, error);
+AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
+                                            const char* key, const uint8_t* value,
+                                            size_t length, struct AdbcError* error) {
+  return SnowflakeConnectionSetOptionBytes(connection, key, value, length, error);
 }
 
-AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
-                                         struct ArrowArrayStream* out,
-                                         int64_t* rows_affected,
-                                         struct AdbcError* error) {
-  if (out) memset(out, 0, sizeof(*out));
-  return SnowflakeStatementExecuteQuery(statement, out, rows_affected, error);
-}
-
-AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
-                                    struct AdbcError* error) {
-  return SnowflakeStatementPrepare(statement, error);
-}
-
-AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
-                                        const char* query, struct AdbcError* error) {
-  return SnowflakeStatementSetSqlQuery(statement, query, error);
-}
-
-AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
-                                             const uint8_t* plan, size_t length,
+AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
+                                             const char* key, double value,
                                              struct AdbcError* error) {
-  return SnowflakeStatementSetSubstraitPlan(statement, plan, length, error);
+  return SnowflakeConnectionSetOptionDouble(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
+                                          const char* key, int64_t value,
+                                          struct AdbcError* error) {
+  return SnowflakeConnectionSetOptionInt(connection, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
+                                   struct AdbcError* error) {
+  return SnowflakeStatementCancel(statement, error);
 }
 
 AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
@@ -178,18 +311,6 @@ AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
   return SnowflakeStatementBindStream(statement, stream, error);
 }
 
-AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
-                                               struct ArrowSchema* schema,
-                                               struct AdbcError* error) {
-  if (schema) memset(schema, 0, sizeof(*schema));
-  return SnowflakeStatementGetParameterSchema(statement, schema, error);
-}
-
-AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
-                                      const char* value, struct AdbcError* error) {
-  return SnowflakeStatementSetOption(statement, key, value, error);
-}
-
 AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               struct ArrowSchema* schema,
                                               struct AdbcPartitions* partitions,
@@ -197,13 +318,126 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               struct AdbcError* error) {
   if (schema) memset(schema, 0, sizeof(*schema));
   if (partitions) memset(partitions, 0, sizeof(*partitions));
-  return SnowflakeStatementExecutePartitions(statement, schema, partitions, rows_affected,
-                                             error);
+  return SnowflakeStatementExecutePartitions(statement, schema, partitions,
+                                               rows_affected, error);
+}
+
+AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
+                                         struct ArrowArrayStream* out,
+                                         int64_t* rows_affected,
+                                         struct AdbcError* error) {
+  if (out) memset(out, 0, sizeof(*out));
+  return SnowflakeStatementExecuteQuery(statement, out, rows_affected, error);
+}
+
+AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcError* error) {
+  if (schema) memset(schema, 0, sizeof(*schema));
+  return SnowflakeStatementExecuteSchema(statement, schema, error);
+}
+
+AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
+                                      char* value, size_t* length,
+                                      struct AdbcError* error) {
+  return SnowflakeStatementGetOption(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, uint8_t* value,
+                                           size_t* length, struct AdbcError* error) {
+  return SnowflakeStatementGetOptionBytes(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double* value,
+                                            struct AdbcError* error) {
+  return SnowflakeStatementGetOptionDouble(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement,
+                                         const char* key, int64_t* value,
+                                         struct AdbcError* error) {
+  return SnowflakeStatementGetOptionInt(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
+                                               struct ArrowSchema* schema,
+                                               struct AdbcError* error) {
+  if (schema) memset(schema, 0, sizeof(*schema));
+  return SnowflakeStatementGetParameterSchema(statement, schema, error);
+}
+
+AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
+                                struct AdbcStatement* statement,
+                                struct AdbcError* error) {
+  return SnowflakeStatementNew(connection, statement, error);
+}
+
+AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
+                                    struct AdbcError* error) {
+  return SnowflakeStatementPrepare(statement, error);
+}
+
+AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
+                                    struct AdbcError* error) {
+  return SnowflakeStatementRelease(statement, error);
+}
+
+AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
+                                        const char* query, struct AdbcError* error) {
+  return SnowflakeStatementSetSqlQuery(statement, query, error);
+}
+
+AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
+                                             const uint8_t* plan, size_t length,
+                                             struct AdbcError* error) {
+  return SnowflakeStatementSetSubstraitPlan(statement, plan, length, error);
+}
+
+AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
+                                      const char* value, struct AdbcError* error) {
+  return SnowflakeStatementSetOption(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
+                                           const char* key, const uint8_t* value,
+                                           size_t length, struct AdbcError* error) {
+  return SnowflakeStatementSetOptionBytes(statement, key, value, length, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
+                                            const char* key, double value,
+                                            struct AdbcError* error) {
+  return SnowflakeStatementSetOptionDouble(statement, key, value, error);
+}
+
+AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
+                                         const char* key, int64_t value,
+                                         struct AdbcError* error) {
+  return SnowflakeStatementSetOptionInt(statement, key, value, error);
 }
 
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
   return SnowflakeDriverInit(version, driver, error);
+}
+
+int SnowflakeArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
+int SnowflakeArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);
+
+int SnowflakeArrayStreamGetSchemaTrampoline(struct ArrowArrayStream* stream,
+                                              struct ArrowSchema* out) {
+  // XXX(https://github.com/apache/arrow-adbc/issues/729)
+  memset(out, 0, sizeof(*out));
+  return SnowflakeArrayStreamGetSchema(stream, out);
+}
+
+int SnowflakeArrayStreamGetNextTrampoline(struct ArrowArrayStream* stream,
+                                            struct ArrowArray* out) {
+  // XXX(https://github.com/apache/arrow-adbc/issues/729)
+  memset(out, 0, sizeof(*out));
+  return SnowflakeArrayStreamGetNext(stream, out);
 }
 
 #ifdef __cplusplus

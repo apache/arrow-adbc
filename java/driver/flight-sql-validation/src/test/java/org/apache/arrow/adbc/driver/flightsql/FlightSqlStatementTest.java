@@ -30,4 +30,16 @@ class FlightSqlStatementTest extends AbstractStatementTest {
   @Override
   @Disabled("Requires spec clarification")
   public void prepareQueryWithParameters() {}
+
+  @Override
+  @Disabled("Not supported")
+  public void executeSchema() {}
+
+  @Override
+  @Disabled("Not supported")
+  public void executeSchemaPrepared() {}
+
+  @Override
+  @Disabled("Not supported")
+  public void executeSchemaParams() {}
 }

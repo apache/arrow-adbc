@@ -31,6 +31,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
+
 #include "common/utils.h"
 
 namespace adbc_validation {
@@ -53,6 +54,11 @@ struct Releaser {
       value->release(value);
     }
   }
+};
+
+template <>
+struct Releaser<struct ArrowBuffer> {
+  static void Release(struct ArrowBuffer* buffer) { ArrowBufferReset(buffer); }
 };
 
 template <>
@@ -238,8 +244,9 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
               const std::vector<std::optional<T>>& values) {
   for (const auto& v : values) {
     if (v.has_value()) {
-      if constexpr (std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value ||
-                    std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value) {
+      if constexpr (std::is_same<T, bool>::value || std::is_same<T, int8_t>::value ||
+                    std::is_same<T, int16_t>::value || std::is_same<T, int32_t>::value ||
+                    std::is_same<T, int64_t>::value) {
         if (int errno_res = ArrowArrayAppendInt(array, *v); errno_res != 0) {
           return errno_res;
         }
@@ -260,6 +267,14 @@ int MakeArray(struct ArrowArray* parent, struct ArrowArray* array,
       } else if constexpr (std::is_same<T, std::string>::value) {
         struct ArrowBufferView view;
         view.data.as_char = v->c_str();
+        view.size_bytes = v->size();
+        if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
+          return errno_res;
+        }
+      } else if constexpr (std::is_same<T, std::vector<std::byte>>::value) {
+        static_assert(std::is_same_v<uint8_t, unsigned char>);
+        struct ArrowBufferView view;
+        view.data.as_uint8 = reinterpret_cast<const uint8_t*>(v->data());
         view.size_bytes = v->size();
         if (int errno_res = ArrowArrayAppendBytes(array, view); errno_res != 0) {
           return errno_res;
@@ -351,6 +366,9 @@ void CompareArray(struct ArrowArrayView* array,
       } else if constexpr (std::is_same<T, float>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_float[i]);
+      } else if constexpr (std::is_same<T, bool>::value) {
+        ASSERT_NE(array->buffer_views[1].data.data, nullptr);
+        ASSERT_EQ(*v, ArrowBitGet(array->buffer_views[1].data.as_uint8, i));
       } else if constexpr (std::is_same<T, int8_t>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         ASSERT_EQ(*v, array->buffer_views[1].data.as_int8[i]);
@@ -379,6 +397,12 @@ void CompareArray(struct ArrowArrayView* array,
         struct ArrowStringView view = ArrowArrayViewGetStringUnsafe(array, i);
         std::string str(view.data, view.size_bytes);
         ASSERT_EQ(*v, str);
+      } else if constexpr (std::is_same<T, std::vector<std::byte>>::value) {
+        struct ArrowBufferView view = ArrowArrayViewGetBytesUnsafe(array, i);
+        ASSERT_EQ(v->size(), view.size_bytes);
+        for (int64_t i = 0; i < view.size_bytes; i++) {
+          ASSERT_EQ((*v)[i], std::byte{view.data.as_uint8[i]});
+        }
       } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
         struct ArrowInterval interval;
@@ -403,5 +427,8 @@ void CompareArray(struct ArrowArrayView* array,
 void CompareSchema(
     struct ArrowSchema* schema,
     const std::vector<std::tuple<std::optional<std::string>, ArrowType, bool>>& fields);
+
+/// \brief Helper method to get the vendor version of a driver
+std::string GetDriverVendorVersion(struct AdbcConnection* connection);
 
 }  // namespace adbc_validation

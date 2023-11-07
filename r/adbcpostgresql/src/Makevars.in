@@ -19,8 +19,10 @@ PKG_CPPFLAGS=-I../src @cppflags@ -DADBC_EXPORT=""
 PKG_LIBS=@libs@
 
 OBJECTS = init.o \
+    error.o \
     connection.o \
     database.o \
+    result_helper.o \
     statement.o \
     common/utils.o \
     postgresql.o \

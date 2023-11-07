@@ -18,7 +18,7 @@
 package:
   name: arrow-adbc-split
   # TODO: this needs to get bumped by the release process
-  version: 0.6.0
+  version: 0.8.0
 
 source:
   path: ../../
@@ -63,7 +63,7 @@ outputs:
         - {{ compiler('cxx') }}
         - _go_select *=cgo
         - cmake
-        - go-cgo >=1.18
+        - go-cgo >=1.19
         - ninja
         - pkg-config
     test:

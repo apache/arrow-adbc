@@ -46,7 +46,7 @@ class DuckDbQuirks : public adbc_validation::DriverQuirks {
 
   std::string BindParameter(int index) const override { return "?"; }
 
-  bool supports_bulk_ingest() const override { return false; }
+  bool supports_bulk_ingest(const char* /*mode*/) const override { return false; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_dynamic_parameter_binding() const override { return false; }
   bool supports_get_sql_info() const override { return false; }
@@ -75,6 +75,7 @@ class DuckDbConnectionTest : public ::testing::Test,
 
   void TestAutocommitDefault() { GTEST_SKIP(); }
   void TestMetadataGetTableSchema() { GTEST_SKIP(); }
+  void TestMetadataGetTableSchemaNotFound() { GTEST_SKIP(); }
   void TestMetadataGetTableTypes() { GTEST_SKIP(); }
 
  protected:
@@ -95,6 +96,21 @@ class DuckDbStatementTest : public ::testing::Test,
   void TestSqlPrepareErrorNoQuery() { GTEST_SKIP(); }
 
   void TestSqlIngestTableEscaping() { GTEST_SKIP() << "Table escaping not implemented"; }
+  void TestSqlIngestColumnEscaping() {
+    GTEST_SKIP() << "Column escaping not implemented";
+  }
+
+  void TestSqlQueryErrors() { GTEST_SKIP() << "DuckDB does not set AdbcError.release"; }
+  void TestSqlQueryRowsAffectedDelete() {
+    GTEST_SKIP() << "Cannot query rows affected in delete (not implemented)";
+  }
+  void TestSqlQueryRowsAffectedDeleteStream() {
+    GTEST_SKIP() << "Cannot query rows affected in delete stream (not implemented)";
+  }
+
+  void TestErrorCompatibility() {
+    GTEST_SKIP() << "DuckDB does not set AdbcError.release";
+  }
 
  protected:
   DuckDbQuirks quirks_;

@@ -23,8 +23,8 @@ main() {
     local -r source_top_dir="$( cd "${source_dir}/../../" && pwd )"
     pushd "${source_top_dir}"
 
-    if [ "$#" -ne 2 ]; then
-        echo "Usage: $0 <version> <rc-num>"
+    if [ "$#" -ne 3 ]; then
+        echo "Usage: $0 <prev-version> <version> <rc-num>"
         exit 1
     fi
 

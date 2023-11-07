@@ -89,7 +89,7 @@ The vote will be open for at least 72 hours.
 [ ] +0
 [ ] -1 Do not release this as Apache Arrow ADBC ${version} because...
 
-Note: to verify APT/YUM packages on macOS/AArch64, you must \`export DOCKER_DEFAULT_ARCHITECTURE=linux/amd64\`. (Or skip this step by \`export TEST_APT=0 TEST_YUM=0\`.)
+Note: to verify APT/YUM packages on macOS/AArch64, you must \`export DOCKER_DEFAULT_PLATFORM=linux/amd64\`. (Or skip this step by \`export TEST_APT=0 TEST_YUM=0\`.)
 
 [1]: https://github.com/apache/arrow-adbc/issues?q=is%3Aissue+milestone%3A%22ADBC+Libraries+${version}%22+is%3Aclosed
 [2]: https://github.com/apache/arrow-adbc/commit/${commit}

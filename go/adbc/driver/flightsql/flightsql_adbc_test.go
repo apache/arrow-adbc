@@ -42,12 +42,12 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
-	"github.com/apache/arrow/go/v13/arrow"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/flight"
-	"github.com/apache/arrow/go/v13/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v13/arrow/flight/flightsql/example"
-	"github.com/apache/arrow/go/v13/arrow/memory"
+	"github.com/apache/arrow/go/v14/arrow"
+	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/flight"
+	"github.com/apache/arrow/go/v14/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v14/arrow/flight/flightsql/example"
+	"github.com/apache/arrow/go/v14/arrow/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -100,7 +100,7 @@ func (s *FlightSQLQuirks) SetupDriver(t *testing.T) adbc.Driver {
 		_ = s.s.Serve()
 	}()
 
-	return driver.Driver{Alloc: s.mem}
+	return driver.NewDriver(s.mem)
 }
 
 func (s *FlightSQLQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
@@ -229,14 +229,20 @@ func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 	return err
 }
 
-func (s *FlightSQLQuirks) Alloc() memory.Allocator               { return s.mem }
-func (s *FlightSQLQuirks) BindParameter(_ int) string            { return "?" }
-func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool    { return true }
+func (s *FlightSQLQuirks) Alloc() memory.Allocator            { return s.mem }
+func (s *FlightSQLQuirks) BindParameter(_ int) string         { return "?" }
+func (s *FlightSQLQuirks) SupportsBulkIngest(string) bool     { return false }
+func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool { return true }
+func (s *FlightSQLQuirks) SupportsCurrentCatalogSchema() bool { return false }
+
+// The driver supports it, but the server we use for testing does not.
+func (s *FlightSQLQuirks) SupportsExecuteSchema() bool           { return false }
+func (s *FlightSQLQuirks) SupportsGetSetOptions() bool           { return true }
 func (s *FlightSQLQuirks) SupportsPartitionedData() bool         { return true }
+func (s *FlightSQLQuirks) SupportsStatistics() bool              { return false }
 func (s *FlightSQLQuirks) SupportsTransactions() bool            { return true }
 func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool      { return false }
 func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool { return true }
-func (s *FlightSQLQuirks) SupportsBulkIngest() bool              { return false }
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
@@ -247,12 +253,14 @@ func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 		return "(unknown or development build)"
 	case adbc.InfoDriverArrowVersion:
 		return "(unknown or development build)"
+	case adbc.InfoDriverADBCVersion:
+		return adbc.AdbcVersion1_1_0
 	case adbc.InfoVendorName:
 		return "db_name"
 	case adbc.InfoVendorVersion:
 		return "sqlite 3"
 	case adbc.InfoVendorArrowVersion:
-		return "13.0.0-SNAPSHOT"
+		return "14.0.0"
 	}
 
 	return nil
@@ -273,6 +281,7 @@ func (s *FlightSQLQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 	}
 }
 
+func (s *FlightSQLQuirks) Catalog() string  { return "" }
 func (s *FlightSQLQuirks) DBSchema() string { return "" }
 
 func TestADBCFlightSQL(t *testing.T) {
@@ -427,6 +436,14 @@ func (suite *OptionTests) TestOverrideHostname() {
 	// Just checks that the option is accepted - doesn't actually configure TLS
 	options := suite.Quirks.DatabaseOptions()
 	options["adbc.flight.sql.client_option.tls_override_hostname"] = "hostname"
+	_, err := suite.Driver.NewDatabase(options)
+	suite.Require().NoError(err)
+}
+
+func (suite *OptionTests) TestAuthority() {
+	// Just checks that the option is accepted
+	options := suite.Quirks.DatabaseOptions()
+	options["adbc.flight.sql.client_option.authority"] = "hostname"
 	_, err := suite.Driver.NewDatabase(options)
 	suite.Require().NoError(err)
 }
@@ -885,7 +902,7 @@ func (suite *ConnectionTests) SetupSuite() {
 
 	var err error
 	suite.ctx = context.Background()
-	suite.Driver = driver.Driver{Alloc: suite.alloc}
+	suite.Driver = driver.NewDriver(suite.alloc)
 	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+tcp://" + suite.server.Addr().String(),
 	})
@@ -978,7 +995,7 @@ func (suite *DomainSocketTests) SetupSuite() {
 	}()
 
 	suite.ctx = context.Background()
-	suite.Driver = driver.Driver{Alloc: suite.alloc}
+	suite.Driver = driver.NewDriver(suite.alloc)
 	suite.DB, err = suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+unix://" + listenSocket,
 	})

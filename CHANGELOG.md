@@ -237,3 +237,87 @@
 ### Perf
 
 - **go/adbc/driver/flightsql**: filter by schema in getObjectsTables (#726)
+
+## ADBC Libraries 0.6.0 (2023-08-23)
+
+### Feat
+
+- **python/adbc_driver_manager**: add fetch_record_batch (#989)
+- **c/driver**: Date32 support (#948)
+- **c/driver/postgresql**: Interval support (#908)
+- **go/adbc/driver/flightsql**: add context to gRPC errors (#921)
+- **c/driver/sqlite**: SQLite timestamp write support (#897)
+- **c/driver/postgresql**: Handle NUMERIC type by converting to string (#883)
+- **python/adbc_driver_postgresql**: add PostgreSQL options enum (#886)
+- **c/driver/postgresql**: TimestampTz write (#868)
+- **c/driver/postgresql**: Implement streaming/chunked output (#870)
+- **c/driver/postgresql**: Timestamp write support (#861)
+- **c/driver_manager,go/adbc,python**: trim down error messages (#866)
+- **c/driver/postgresql**: Int8 support (#858)
+- **c/driver/postgresql**: Better type error messages (#860)
+
+### Fix
+
+- **go/adbc/driver/flightsql**: Have GetTableSchema check for table name match instead of the first schema it receives (#980)
+- **r**: Ensure that info_codes are coerced to integer (#986)
+- **go/adbc/sqldriver**: fix handling of decimal types (#970)
+- **c/driver/postgresql**: Fix segfault associated with uninitialized copy_reader_ (#964)
+- **c/driver/sqlite**: add table types by default from arrow types (#955)
+- **csharp**: include GetTableTypes and GetTableSchema call for .NET 4.7.2  (#950)
+- **csharp**: include GetInfo and GetObjects call for .NET 4.7.2 (#945)
+- **c/driver/sqlite**: Wrap bulk ingests in a single begin/commit txn (#910)
+- **csharp**: fix C api to work under .NET 4.7.2 (#931)
+- **python/adbc_driver_snowflake**: allow connecting without URI (#923)
+- **go/adbc/pkg**: export Adbc* symbols on Windows (#916)
+- **go/adbc/driver/snowflake**: handle non-arrow result sets (#909)
+- **c/driver/sqlite**: fix escaping of sqlite TABLE CREATE columns (#906)
+- **go/adbc/pkg**: follow CGO rules properly (#902)
+- **go/adbc/driver/snowflake**: Fix integration tests by fixing timestamp handling (#889)
+- **go/adbc/driver/snowflake**: fix failing integration tests (#888)
+- **c/validation**: Fix ASAN-detected leak (#879)
+- **go/adbc**: fix crash on map type (#854)
+- **go/adbc/driver/snowflake**: handle result sets without Arrow data (#864)
+
+### Perf
+
+- **go/adbc/driver/snowflake**: Implement concurrency limit (#974)
+
+### Refactor
+
+- **c**: Vendor portable-snippets for overflow checks (#951)
+- **c/driver/postgresql**: Use ArrowArrayViewGetIntervalUnsafe from nanoarrow (#957)
+- **c/driver/postgresql**: Simplify current database querying (#880)
+
+## ADBC Libraries 0.7.0 (2023-09-20)
+
+### Feat
+
+- **r**: Add quoting/escaping generics (#1083)
+- **r**: Implement temporary table option in R driver manager (#1084)
+- **python/adbc_driver_flightsql**: add adbc.flight.sql.client_option.authority to DatabaseOptions (#1069)
+- **go/adbc/driver/snowflake**: improve XDBC support (#1034)
+- **go/adbc/driver/flightsql**: add adbc.flight.sql.client_option.authority  (#1060)
+- **c/driver**: support ingesting into temporary tables (#1057)
+- **c/driver**: support target catalog/schema for ingestion (#1056)
+- **go**: add basic driver logging (#1048)
+- **c/driver/postgresql**: Support ingesting LARGE_STRING types (#1050)
+- **c/driver/postgresql**: Duration support (#907)
+- ADBC API revision 1.1.0 (#971)
+
+### Fix
+
+- **java/driver/flight-sql**: fix leak in InfoMetadataBuilder (#1070)
+- **c/driver/postgresql**: Fix overflow in statement.cc (#1072)
+- **r/adbcdrivermanager**: Ensure nullable arguments `adbc_connection_get_objects()` can be specified (#1032)
+- **c/driver/sqlite**: Escape table name in sqlite GetTableSchema (#1036)
+- **c/driver**: return NOT_FOUND for GetTableSchema (#1026)
+- **c/driver_manager**: fix crash when error is null (#1029)
+- **c/driver/postgresql**: suppress console spam (#1027)
+- **c/driver/sqlite**: escape table names in INSERT, too (#1003)
+- **go/adbc/driver/snowflake**: properly handle time fields (#1021)
+- **r/adbcdrivermanager**: Make `adbc_xptr_is_valid()` return `FALSE` for external pointer to NULL (#1007)
+- **go/adbc**: don't include NUL in error messages (#998)
+
+### Refactor
+
+- **c/driver/postgresql**: hardcode overflow checks (#1051)

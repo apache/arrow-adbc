@@ -21,7 +21,9 @@ package drivermgr
 // #cgo windows CFLAGS: -DADBC_EXPORTING
 // #cgo windows CPPFLAGS: -DADBC_EXPORTING
 // #cgo CXXFLAGS: -std=c++11
+// #if !defined(ADBC_EXPORTING)
 // #define ADBC_EXPORTING
+// #endif
 // #include "adbc.h"
 // #include <stdlib.h>
 //
@@ -37,9 +39,9 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v13/arrow"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/cdata"
+	"github.com/apache/arrow/go/v14/arrow"
+	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/cdata"
 )
 
 type option struct {

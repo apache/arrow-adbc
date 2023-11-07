@@ -19,6 +19,7 @@
 #'
 #' @param driver An [adbc_driver()].
 #' @param database An [adbc_database][adbc_database_init].
+#' @param option A specific option name
 #' @param ... Driver-specific options. For the default method, these are
 #'   named values that are converted to strings.
 #' @param options A named `character()` or `list()` whose values are converted
@@ -64,26 +65,6 @@ adbc_database_init_default <- function(driver, options = NULL, subclass = charac
 
     adbc_xptr_move(database)
   })
-}
-
-#' @rdname adbc_database_init
-#' @export
-adbc_database_set_options <- function(database, options) {
-  options <- key_value_options(options)
-  error <- adbc_allocate_error()
-  for (i in seq_along(options)) {
-    key <- names(options)[i]
-    value <- options[i]
-    status <- .Call(
-      RAdbcDatabaseSetOption,
-      database,
-      key,
-      value,
-      error
-    )
-    stop_for_error(status, error)
-  }
-  invisible(database)
 }
 
 #' @rdname adbc_database_init
@@ -137,26 +118,6 @@ adbc_connection_init_default <- function(database, options = NULL, subclass = ch
 
 #' @rdname adbc_connection_init
 #' @export
-adbc_connection_set_options <- function(connection, options) {
-  options <- key_value_options(options)
-  error <- adbc_allocate_error()
-  for (i in seq_along(options)) {
-    key <- names(options)[i]
-    value <- options[i]
-    status <- .Call(
-      RAdbcConnectionSetOption,
-      connection,
-      key,
-      value,
-      error
-    )
-    stop_for_error(status, error)
-  }
-  invisible(connection)
-}
-
-#' @rdname adbc_connection_init
-#' @export
 adbc_connection_release <- function(connection) {
   if (isTRUE(connection$.release_database)) {
     database <- connection$database
@@ -176,22 +137,28 @@ adbc_connection_release <- function(connection) {
 #' @param info_codes A list of metadata codes to fetch, or NULL to fetch all.
 #'   Valid values are documented in the adbc.h header.
 #' @param depth The level of nesting to display. If 0, display all levels. If 1,
-#'   display only catalogs (i.e. catalog_schemas will be null). If 2, display
-#'   only catalogs and schemas (i.e. db_schema_tables will be null), and so on.
+#'   display only catalogs (i.e., catalog_schemas will be null). If 2, display
+#'   only catalogs and schemas (i.e., db_schema_tables will be null). If 3,
+#'   display only catalogs, schemas, and tables.
 #' @param catalog Only show tables in the given catalog. If NULL, do not filter
 #'   by catalog. If an empty string, only show tables without a catalog. May be
 #'   a search pattern.
 #' @param db_schema Only show tables in the given database schema. If NULL, do
 #'   not filter by database schema. If an empty string, only show tables without
 #'   a database schema. May be a search pattern.
-#' @param table_name Only show tables with the given name. If NULL, do not
-#'   filter by name. May be a search pattern.
+#' @param table_name Constrain an object or statistics query for a specific table.
+#'   If NULL, do not filter by name. May be a search pattern.
 #' @param table_type Only show tables matching one of the given table types. If
 #'   NULL, show tables of any type. Valid table types can be fetched from
 #'   GetTableTypes. Terminate the list with a NULL entry.
 #' @param column_name Only show columns with the given name. If NULL, do not
 #'   filter by name. May be a search pattern.
 #' @param serialized_partition The partition descriptor.
+#' @param approximate If `FALSE`, request exact values of statistics,
+#'   else allow for best-effort, approximate, or cached values. The database
+#'   may return approximate values regardless, as indicated in the result.
+#'   Requesting exact values may be expensive or unsupported.
+#' @param value A string or identifier.
 #'
 #' @return
 #'   - `adbc_connection_get_info()`, `adbc_connection_get_objects()`,
@@ -209,13 +176,13 @@ adbc_connection_release <- function(connection) {
 #' # (not implemented by the void driver)
 #' try(adbc_connection_get_info(con, 0))
 #'
-adbc_connection_get_info <- function(connection, info_codes) {
+adbc_connection_get_info <- function(connection, info_codes = NULL) {
   error <- adbc_allocate_error()
   out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
   status <- .Call(
     RAdbcConnectionGetInfo,
     connection,
-    as.integer(info_codes),
+    info_codes,
     out_stream,
     error
   )
@@ -226,8 +193,8 @@ adbc_connection_get_info <- function(connection, info_codes) {
 
 #' @rdname adbc_connection_get_info
 #' @export
-adbc_connection_get_objects <- function(connection, depth, catalog, db_schema,
-                                        table_name, table_type, column_name) {
+adbc_connection_get_objects <- function(connection, depth = 0L, catalog = NULL, db_schema = NULL,
+                                        table_name = NULL, table_type = NULL, column_name = NULL) {
   error <- adbc_allocate_error()
   out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
   status <- .Call(
@@ -302,12 +269,78 @@ adbc_connection_commit <- function(connection) {
   invisible(connection)
 }
 
+
 #' @rdname adbc_connection_get_info
 #' @export
 adbc_connection_rollback <- function(connection) {
   error <- adbc_allocate_error()
   .Call(RAdbcConnectionRollback, connection, error)
   invisible(connection)
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_cancel <- function(connection) {
+  error <- adbc_allocate_error()
+  .Call(RAdbcConnectionCancel, connection, error)
+  invisible(connection)
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_get_statistic_names <- function(connection) {
+  error <- adbc_allocate_error()
+  out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
+  status <- .Call(RAdbcConnectionGetStatisticNames, connection, out_stream, error)
+  stop_for_error(status, error)
+
+  out_stream
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_get_statistics <- function(connection, catalog, db_schema,
+                                           table_name, approximate = FALSE) {
+  error <- adbc_allocate_error()
+  out_stream <- nanoarrow::nanoarrow_allocate_array_stream()
+
+  status <- .Call(
+    RAdbcConnectionGetStatistics,
+    connection,
+    catalog,
+    db_schema,
+    table_name,
+    approximate,
+    out_stream,
+    error
+  )
+  stop_for_error(status, error)
+
+  out_stream
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_quote_identifier <- function(connection, value, ...) {
+  UseMethod("adbc_connection_quote_identifier")
+}
+
+#' @rdname adbc_connection_get_info
+#' @export
+adbc_connection_quote_string <- function(connection, value, ...) {
+  UseMethod("adbc_connection_quote_string")
+}
+
+#' @export
+adbc_connection_quote_identifier.default <- function(connection, value, ...) {
+  out <- gsub('"', '""', enc2utf8(value))
+  paste0('"', out, '"')
+}
+
+#' @export
+adbc_connection_quote_string.default <- function(connection, value, ...) {
+  out <- gsub("'", "''", enc2utf8(value))
+  paste0("'", out, "'")
 }
 
 #' Statements
@@ -343,26 +376,6 @@ adbc_statement_init_default <- function(connection, options = NULL, subclass = c
     class(statement) <- c(subclass, class(statement))
     adbc_xptr_move(statement)
   })
-}
-
-#' @rdname adbc_statement_init
-#' @export
-adbc_statement_set_options <- function(statement, options) {
-  options <- key_value_options(options)
-  error <- adbc_allocate_error()
-  for (i in seq_along(options)) {
-    key <- names(options)[i]
-    value <- options[i]
-    status <- .Call(
-      RAdbcStatementSetOption,
-      statement,
-      key,
-      value,
-      error
-    )
-    stop_for_error(status, error)
-  }
-  invisible(statement)
 }
 
 #' @rdname adbc_statement_init
@@ -472,4 +485,16 @@ adbc_statement_execute_query <- function(statement, stream = NULL) {
   result <- .Call(RAdbcStatementExecuteQuery, statement, stream, error)
   stop_for_error(result$status, error)
   result$rows_affected
+}
+
+#' @rdname adbc_statement_set_sql_query
+#' @export
+adbc_statement_execute_schema <- function(statement) {
+  error <- adbc_allocate_error()
+  out_schema <- nanoarrow::nanoarrow_allocate_schema()
+
+  status <- .Call(RAdbcStatementExecuteSchema, statement, out_schema, error)
+  stop_for_error(status, error)
+
+  out_schema
 }

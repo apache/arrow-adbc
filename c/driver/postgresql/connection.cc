@@ -19,6 +19,7 @@
 
 #include <cassert>
 #include <cinttypes>
+#include <cmath>
 #include <cstring>
 #include <memory>
 #include <sstream>
@@ -32,144 +33,21 @@
 
 #include "common/utils.h"
 #include "database.h"
+#include "error.h"
+#include "result_helper.h"
 
+namespace adbcpq {
 namespace {
 
 static const uint32_t kSupportedInfoCodes[] = {
-    ADBC_INFO_VENDOR_NAME,    ADBC_INFO_VENDOR_VERSION,       ADBC_INFO_DRIVER_NAME,
-    ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ARROW_VERSION,
+    ADBC_INFO_VENDOR_NAME,          ADBC_INFO_VENDOR_VERSION,
+    ADBC_INFO_DRIVER_NAME,          ADBC_INFO_DRIVER_VERSION,
+    ADBC_INFO_DRIVER_ARROW_VERSION, ADBC_INFO_DRIVER_ADBC_VERSION,
 };
 
 static const std::unordered_map<std::string, std::string> kPgTableTypes = {
     {"table", "r"},       {"view", "v"},          {"materialized_view", "m"},
     {"toast_table", "t"}, {"foreign_table", "f"}, {"partitioned_table", "p"}};
-
-struct PqRecord {
-  const char* data;
-  const int len;
-  const bool is_null;
-};
-
-// Used by PqResultHelper to provide index-based access to the records within each
-// row of a pg_result
-class PqResultRow {
- public:
-  PqResultRow(pg_result* result, int row_num) : result_(result), row_num_(row_num) {
-    ncols_ = PQnfields(result);
-  }
-
-  PqRecord operator[](const int& col_num) {
-    assert(col_num < ncols_);
-    const char* data = PQgetvalue(result_, row_num_, col_num);
-    const int len = PQgetlength(result_, row_num_, col_num);
-    const bool is_null = PQgetisnull(result_, row_num_, col_num);
-
-    return PqRecord{data, len, is_null};
-  }
-
- private:
-  pg_result* result_ = nullptr;
-  int row_num_;
-  int ncols_;
-};
-
-// Helper to manager the lifecycle of a PQResult. The query argument
-// will be evaluated as part of the constructor, with the desctructor handling cleanup
-// Caller must call Prepare then Execute, checking both for an OK AdbcStatusCode
-// prior to iterating
-class PqResultHelper {
- public:
-  explicit PqResultHelper(PGconn* conn, std::string query, struct AdbcError* error)
-      : conn_(conn), query_(std::move(query)), error_(error) {}
-
-  explicit PqResultHelper(PGconn* conn, std::string query,
-                          std::vector<std::string> param_values, struct AdbcError* error)
-      : conn_(conn),
-        query_(std::move(query)),
-        param_values_(param_values),
-        error_(error) {}
-
-  AdbcStatusCode Prepare() {
-    // TODO: make stmtName a unique identifier?
-    PGresult* result =
-        PQprepare(conn_, /*stmtName=*/"", query_.c_str(), param_values_.size(), NULL);
-    if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-      SetError(error_, "[libpq] Failed to prepare query: %s\nQuery was:%s",
-               PQerrorMessage(conn_), query_.c_str());
-      PQclear(result);
-      return ADBC_STATUS_IO;
-    }
-
-    PQclear(result);
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode Execute() {
-    std::vector<const char*> param_c_strs;
-
-    for (size_t index = 0; index < param_values_.size(); index++) {
-      param_c_strs.push_back(param_values_[index].c_str());
-    }
-
-    result_ = PQexecPrepared(conn_, "", param_values_.size(), param_c_strs.data(), NULL,
-                             NULL, 0);
-
-    if (PQresultStatus(result_) != PGRES_TUPLES_OK) {
-      SetError(error_, "[libpq] Failed to execute query: %s", PQerrorMessage(conn_));
-      return ADBC_STATUS_IO;
-    }
-
-    return ADBC_STATUS_OK;
-  }
-
-  ~PqResultHelper() {
-    if (result_ != nullptr) {
-      PQclear(result_);
-    }
-  }
-
-  int NumRows() { return PQntuples(result_); }
-
-  int NumColumns() { return PQnfields(result_); }
-
-  class iterator {
-    const PqResultHelper& outer_;
-    int curr_row_ = 0;
-
-   public:
-    explicit iterator(const PqResultHelper& outer, int curr_row = 0)
-        : outer_(outer), curr_row_(curr_row) {}
-    iterator& operator++() {
-      curr_row_++;
-      return *this;
-    }
-    iterator operator++(int) {
-      iterator retval = *this;
-      ++(*this);
-      return retval;
-    }
-    bool operator==(iterator other) const {
-      return outer_.result_ == other.outer_.result_ && curr_row_ == other.curr_row_;
-    }
-    bool operator!=(iterator other) const { return !(*this == other); }
-    PqResultRow operator*() { return PqResultRow(outer_.result_, curr_row_); }
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::ptrdiff_t;
-    using value_type = std::vector<PqResultRow>;
-    using pointer = const std::vector<PqResultRow>*;
-    using reference = const std::vector<PqResultRow>&;
-  };
-
-  iterator begin() { return iterator(*this); }
-  iterator end() { return iterator(*this, NumRows()); }
-
- private:
-  pg_result* result_ = nullptr;
-  PGconn* conn_;
-  std::string query_;
-  std::vector<std::string> param_values_;
-  struct AdbcError* error_;
-};
 
 class PqGetObjectsHelper {
  public:
@@ -725,9 +603,25 @@ class PqGetObjectsHelper {
   struct ArrowArray* fk_column_name_col_;
 };
 
+// A notice processor that does nothing with notices. In the future we can log
+// these, but this suppresses the default of printing to stderr.
+void SilentNoticeProcessor(void* /*arg*/, const char* /*message*/) {}
+
 }  // namespace
 
-namespace adbcpq {
+AdbcStatusCode PostgresConnection::Cancel(struct AdbcError* error) {
+  // > errbuf must be a char array of size errbufsize (the recommended size is
+  // > 256 bytes).
+  // https://www.postgresql.org/docs/current/libpq-cancel.html
+  char errbuf[256];
+  // > The return value is 1 if the cancel request was successfully dispatched
+  // > and 0 if not.
+  if (PQcancel(cancel_, errbuf, sizeof(errbuf)) != 1) {
+    SetError(error, "[libpq] Failed to cancel operation: %s", errbuf);
+    return ADBC_STATUS_UNKNOWN;
+  }
+  return ADBC_STATUS_OK;
+}
 
 AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
   if (autocommit_) {
@@ -735,21 +629,20 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
     return ADBC_STATUS_INVALID_STATE;
   }
 
-  PGresult* result = PQexec(conn_, "COMMIT");
+  PGresult* result = PQexec(conn_, "COMMIT; BEGIN TRANSACTION");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "%s%s", "[libpq] Failed to commit: ", PQerrorMessage(conn_));
+    AdbcStatusCode code = SetError(error, result, "%s%s",
+                                   "[libpq] Failed to commit: ", PQerrorMessage(conn_));
     PQclear(result);
-    return ADBC_STATUS_IO;
+    return code;
   }
   PQclear(result);
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode PostgresConnectionGetInfoImpl(const uint32_t* info_codes,
-                                             size_t info_codes_length,
-                                             struct ArrowSchema* schema,
-                                             struct ArrowArray* array,
-                                             struct AdbcError* error) {
+AdbcStatusCode PostgresConnection::PostgresConnectionGetInfoImpl(
+    const uint32_t* info_codes, size_t info_codes_length, struct ArrowSchema* schema,
+    struct ArrowArray* array, struct AdbcError* error) {
   RAISE_ADBC(AdbcInitConnectionGetInfoSchema(info_codes, info_codes_length, schema, array,
                                              error));
 
@@ -759,10 +652,22 @@ AdbcStatusCode PostgresConnectionGetInfoImpl(const uint32_t* info_codes,
         RAISE_ADBC(
             AdbcConnectionGetInfoAppendString(array, info_codes[i], "PostgreSQL", error));
         break;
-      case ADBC_INFO_VENDOR_VERSION:
-        RAISE_ADBC(AdbcConnectionGetInfoAppendString(
-            array, info_codes[i], std::to_string(PQlibVersion()).c_str(), error));
+      case ADBC_INFO_VENDOR_VERSION: {
+        const char* stmt = "SHOW server_version_num";
+        auto result_helper = PqResultHelper{conn_, std::string(stmt), error};
+        RAISE_ADBC(result_helper.Prepare());
+        RAISE_ADBC(result_helper.Execute());
+        auto it = result_helper.begin();
+        if (it == result_helper.end()) {
+          SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
+          return ADBC_STATUS_INTERNAL;
+        }
+        const char* server_version_num = (*it)[0].data;
+
+        RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
+                                                     server_version_num, error));
         break;
+      }
       case ADBC_INFO_DRIVER_NAME:
         RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
                                                      "ADBC PostgreSQL Driver", error));
@@ -775,6 +680,10 @@ AdbcStatusCode PostgresConnectionGetInfoImpl(const uint32_t* info_codes,
       case ADBC_INFO_DRIVER_ARROW_VERSION:
         RAISE_ADBC(AdbcConnectionGetInfoAppendString(array, info_codes[i],
                                                      NANOARROW_VERSION, error));
+        break;
+      case ADBC_INFO_DRIVER_ADBC_VERSION:
+        RAISE_ADBC(AdbcConnectionGetInfoAppendInt(array, info_codes[i],
+                                                  ADBC_VERSION_1_1_0, error));
         break;
       default:
         // Ignore
@@ -791,13 +700,12 @@ AdbcStatusCode PostgresConnectionGetInfoImpl(const uint32_t* info_codes,
 }
 
 AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
-                                           uint32_t* info_codes, size_t info_codes_length,
+                                           const uint32_t* info_codes,
+                                           size_t info_codes_length,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error) {
-  // XXX: mistake in adbc.h (should have been const pointer)
-  const uint32_t* codes = info_codes;
   if (!info_codes) {
-    codes = kSupportedInfoCodes;
+    info_codes = kSupportedInfoCodes;
     info_codes_length = sizeof(kSupportedInfoCodes) / sizeof(kSupportedInfoCodes[0]);
   }
 
@@ -806,8 +714,8 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
   struct ArrowArray array;
   std::memset(&array, 0, sizeof(array));
 
-  AdbcStatusCode status =
-      PostgresConnectionGetInfoImpl(codes, info_codes_length, &schema, &array, error);
+  AdbcStatusCode status = PostgresConnectionGetInfoImpl(info_codes, info_codes_length,
+                                                        &schema, &array, error);
   if (status != ADBC_STATUS_OK) {
     if (schema.release) schema.release(&schema);
     if (array.release) array.release(&array);
@@ -838,6 +746,399 @@ AdbcStatusCode PostgresConnection::GetObjects(
   }
 
   return BatchToArrayStream(&array, &schema, out, error);
+}
+
+AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
+                                             size_t* length, struct AdbcError* error) {
+  std::string output;
+  if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_CATALOG) == 0) {
+    output = PQdb(conn_);
+  } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
+    PqResultHelper result_helper{conn_, "SELECT CURRENT_SCHEMA", {}, error};
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+    auto it = result_helper.begin();
+    if (it == result_helper.end()) {
+      SetError(error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA'");
+      return ADBC_STATUS_INTERNAL;
+    }
+    output = (*it)[0].data;
+  } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_AUTOCOMMIT) == 0) {
+    output = autocommit_ ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED;
+  } else {
+    return ADBC_STATUS_NOT_FOUND;
+  }
+
+  if (output.size() + 1 <= *length) {
+    std::memcpy(value, output.c_str(), output.size() + 1);
+  }
+  *length = output.size() + 1;
+  return ADBC_STATUS_OK;
+}
+AdbcStatusCode PostgresConnection::GetOptionBytes(const char* option, uint8_t* value,
+                                                  size_t* length,
+                                                  struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresConnection::GetOptionInt(const char* option, int64_t* value,
+                                                struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+AdbcStatusCode PostgresConnection::GetOptionDouble(const char* option, double* value,
+                                                   struct AdbcError* error) {
+  return ADBC_STATUS_NOT_FOUND;
+}
+
+AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_schema,
+                                                   const char* table_name,
+                                                   struct ArrowSchema* schema,
+                                                   struct ArrowArray* array,
+                                                   struct AdbcError* error) {
+  // Set up schema
+  auto uschema = nanoarrow::UniqueSchema();
+  {
+    ArrowSchemaInit(uschema.get());
+    CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema.get(), /*num_columns=*/2), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema->children[0], NANOARROW_TYPE_STRING),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema->children[0], "catalog_name"), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema->children[1], NANOARROW_TYPE_LIST),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema->children[1], "catalog_db_schemas"),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(uschema->children[1]->children[0], 2),
+             error);
+    uschema->children[1]->flags &= ~ARROW_FLAG_NULLABLE;
+
+    struct ArrowSchema* db_schema_schema = uschema->children[1]->children[0];
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(db_schema_schema->children[0], NANOARROW_TYPE_STRING),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetName(db_schema_schema->children[0], "db_schema_name"), error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(db_schema_schema->children[1], NANOARROW_TYPE_LIST),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetName(db_schema_schema->children[1], "db_schema_statistics"),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetTypeStruct(db_schema_schema->children[1]->children[0], 5),
+             error);
+    db_schema_schema->children[1]->flags &= ~ARROW_FLAG_NULLABLE;
+
+    struct ArrowSchema* statistics_schema = db_schema_schema->children[1]->children[0];
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(statistics_schema->children[0], NANOARROW_TYPE_STRING),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(statistics_schema->children[0], "table_name"),
+             error);
+    statistics_schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(statistics_schema->children[1], NANOARROW_TYPE_STRING),
+             error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(statistics_schema->children[1], "column_name"),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(statistics_schema->children[2], NANOARROW_TYPE_INT16),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetName(statistics_schema->children[2], "statistic_key"), error);
+    statistics_schema->children[2]->flags &= ~ARROW_FLAG_NULLABLE;
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetTypeUnion(statistics_schema->children[3],
+                                     NANOARROW_TYPE_DENSE_UNION, 4),
+             error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetName(statistics_schema->children[3], "statistic_value"),
+             error);
+    statistics_schema->children[3]->flags &= ~ARROW_FLAG_NULLABLE;
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(statistics_schema->children[4], NANOARROW_TYPE_BOOL),
+             error);
+    CHECK_NA(
+        INTERNAL,
+        ArrowSchemaSetName(statistics_schema->children[4], "statistic_is_approximate"),
+        error);
+    statistics_schema->children[4]->flags &= ~ARROW_FLAG_NULLABLE;
+
+    struct ArrowSchema* value_schema = statistics_schema->children[3];
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(value_schema->children[0], NANOARROW_TYPE_INT64), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(value_schema->children[0], "int64"), error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(value_schema->children[1], NANOARROW_TYPE_UINT64), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(value_schema->children[1], "uint64"), error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(value_schema->children[2], NANOARROW_TYPE_DOUBLE), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(value_schema->children[2], "float64"), error);
+    CHECK_NA(INTERNAL,
+             ArrowSchemaSetType(value_schema->children[3], NANOARROW_TYPE_BINARY), error);
+    CHECK_NA(INTERNAL, ArrowSchemaSetName(value_schema->children[3], "binary"), error);
+  }
+
+  // Set up builders
+  struct ArrowError na_error = {0};
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayInitFromSchema(array, uschema.get(), &na_error),
+                  &na_error, error);
+  CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
+
+  struct ArrowArray* catalog_name_col = array->children[0];
+  struct ArrowArray* catalog_db_schemas_col = array->children[1];
+  struct ArrowArray* catalog_db_schemas_items = catalog_db_schemas_col->children[0];
+  struct ArrowArray* db_schema_name_col = catalog_db_schemas_items->children[0];
+  struct ArrowArray* db_schema_statistics_col = catalog_db_schemas_items->children[1];
+  struct ArrowArray* db_schema_statistics_items = db_schema_statistics_col->children[0];
+  struct ArrowArray* statistics_table_name_col = db_schema_statistics_items->children[0];
+  struct ArrowArray* statistics_column_name_col = db_schema_statistics_items->children[1];
+  struct ArrowArray* statistics_key_col = db_schema_statistics_items->children[2];
+  struct ArrowArray* statistics_value_col = db_schema_statistics_items->children[3];
+  struct ArrowArray* statistics_is_approximate_col =
+      db_schema_statistics_items->children[4];
+  // struct ArrowArray* value_int64_col = statistics_value_col->children[0];
+  // struct ArrowArray* value_uint64_col = statistics_value_col->children[1];
+  struct ArrowArray* value_float64_col = statistics_value_col->children[2];
+  // struct ArrowArray* value_binary_col = statistics_value_col->children[3];
+
+  // Query (could probably be massively improved)
+  std::string query = R"(
+    WITH
+      class AS (
+        SELECT nspname, relname, reltuples
+        FROM pg_namespace
+        INNER JOIN pg_class ON pg_class.relnamespace = pg_namespace.oid
+      )
+    SELECT tablename, attname, null_frac, avg_width, n_distinct, reltuples
+    FROM pg_stats
+    INNER JOIN class ON pg_stats.schemaname = class.nspname AND pg_stats.tablename = class.relname
+    WHERE pg_stats.schemaname = $1 AND tablename LIKE $2
+    ORDER BY tablename
+)";
+
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(catalog_name_col, ArrowCharView(PQdb(conn))),
+           error);
+  CHECK_NA(INTERNAL, ArrowArrayAppendString(db_schema_name_col, ArrowCharView(db_schema)),
+           error);
+
+  constexpr int8_t kStatsVariantFloat64 = 2;
+
+  std::string prev_table;
+
+  {
+    PqResultHelper result_helper{
+        conn, query, {db_schema, table_name ? table_name : "%"}, error};
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+
+    for (PqResultRow row : result_helper) {
+      auto reltuples = row[5].ParseDouble();
+      if (!reltuples.first) {
+        SetError(error, "[libpq] Invalid double value in reltuples: '%s'", row[5].data);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      if (std::strcmp(prev_table.c_str(), row[0].data) != 0) {
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendString(statistics_table_name_col,
+                                        ArrowStringView{row[0].data, row[0].len}),
+                 error);
+        CHECK_NA(INTERNAL, ArrowArrayAppendNull(statistics_column_name_col, 1), error);
+        CHECK_NA(INTERNAL,
+                 ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_ROW_COUNT_KEY),
+                 error);
+        CHECK_NA(INTERNAL, ArrowArrayAppendDouble(value_float64_col, reltuples.second),
+                 error);
+        CHECK_NA(INTERNAL,
+                 ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
+                 error);
+        CHECK_NA(INTERNAL, ArrowArrayAppendInt(statistics_is_approximate_col, 1), error);
+        CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
+        prev_table = std::string(row[0].data, row[0].len);
+      }
+
+      auto null_frac = row[2].ParseDouble();
+      if (!null_frac.first) {
+        SetError(error, "[libpq] Invalid double value in null_frac: '%s'", row[2].data);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_table_name_col,
+                                      ArrowStringView{row[0].data, row[0].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_column_name_col,
+                                      ArrowStringView{row[1].data, row[1].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_NULL_COUNT_KEY),
+               error);
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayAppendDouble(value_float64_col, null_frac.second * reltuples.second),
+          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
+               error);
+      CHECK_NA(INTERNAL, ArrowArrayAppendInt(statistics_is_approximate_col, 1), error);
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
+
+      auto average_byte_width = row[3].ParseDouble();
+      if (!average_byte_width.first) {
+        SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[3].data);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_table_name_col,
+                                      ArrowStringView{row[0].data, row[0].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_column_name_col,
+                                      ArrowStringView{row[1].data, row[1].len}),
+               error);
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY),
+          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendDouble(value_float64_col, average_byte_width.second),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
+               error);
+      CHECK_NA(INTERNAL, ArrowArrayAppendInt(statistics_is_approximate_col, 1), error);
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
+
+      auto n_distinct = row[4].ParseDouble();
+      if (!n_distinct.first) {
+        SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[4].data);
+        return ADBC_STATUS_INTERNAL;
+      }
+
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_table_name_col,
+                                      ArrowStringView{row[0].data, row[0].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendString(statistics_column_name_col,
+                                      ArrowStringView{row[1].data, row[1].len}),
+               error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayAppendInt(statistics_key_col, ADBC_STATISTIC_DISTINCT_COUNT_KEY),
+               error);
+      // > If greater than zero, the estimated number of distinct values in
+      // > the column. If less than zero, the negative of the number of
+      // > distinct values divided by the number of rows.
+      // https://www.postgresql.org/docs/current/view-pg-stats.html
+      CHECK_NA(
+          INTERNAL,
+          ArrowArrayAppendDouble(value_float64_col,
+                                 n_distinct.second > 0
+                                     ? n_distinct.second
+                                     : (std::fabs(n_distinct.second) * reltuples.second)),
+          error);
+      CHECK_NA(INTERNAL,
+               ArrowArrayFinishUnionElement(statistics_value_col, kStatsVariantFloat64),
+               error);
+      CHECK_NA(INTERNAL, ArrowArrayAppendInt(statistics_is_approximate_col, 1), error);
+      CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_items), error);
+    }
+  }
+
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(db_schema_statistics_col), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_items), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(catalog_db_schemas_col), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishElement(array), error);
+
+  CHECK_NA_DETAIL(INTERNAL, ArrowArrayFinishBuildingDefault(array, &na_error), &na_error,
+                  error);
+  uschema.move(schema);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresConnection::GetStatistics(const char* catalog,
+                                                 const char* db_schema,
+                                                 const char* table_name, bool approximate,
+                                                 struct ArrowArrayStream* out,
+                                                 struct AdbcError* error) {
+  // Simplify our jobs here
+  if (!approximate) {
+    SetError(error, "[libpq] Exact statistics are not implemented");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  } else if (!db_schema) {
+    SetError(error, "[libpq] Must request statistics for a single schema");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  } else if (catalog && std::strcmp(catalog, PQdb(conn_)) != 0) {
+    SetError(error, "[libpq] Can only request statistics for current catalog");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  struct ArrowSchema schema;
+  std::memset(&schema, 0, sizeof(schema));
+  struct ArrowArray array;
+  std::memset(&array, 0, sizeof(array));
+
+  AdbcStatusCode status = PostgresConnectionGetStatisticsImpl(
+      conn_, db_schema, table_name, &schema, &array, error);
+  if (status != ADBC_STATUS_OK) {
+    if (schema.release) schema.release(&schema);
+    if (array.release) array.release(&array);
+    return status;
+  }
+
+  return BatchToArrayStream(&array, &schema, out, error);
+}
+
+AdbcStatusCode PostgresConnectionGetStatisticNamesImpl(struct ArrowSchema* schema,
+                                                       struct ArrowArray* array,
+                                                       struct AdbcError* error) {
+  auto uschema = nanoarrow::UniqueSchema();
+  ArrowSchemaInit(uschema.get());
+
+  CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema.get(), NANOARROW_TYPE_STRUCT), error);
+  CHECK_NA(INTERNAL, ArrowSchemaAllocateChildren(uschema.get(), /*num_columns=*/2),
+           error);
+
+  ArrowSchemaInit(uschema.get()->children[0]);
+  CHECK_NA(INTERNAL,
+           ArrowSchemaSetType(uschema.get()->children[0], NANOARROW_TYPE_STRING), error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema.get()->children[0], "statistic_name"),
+           error);
+  uschema.get()->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  ArrowSchemaInit(uschema.get()->children[1]);
+  CHECK_NA(INTERNAL, ArrowSchemaSetType(uschema.get()->children[1], NANOARROW_TYPE_INT16),
+           error);
+  CHECK_NA(INTERNAL, ArrowSchemaSetName(uschema.get()->children[1], "statistic_key"),
+           error);
+  uschema.get()->children[1]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  CHECK_NA(INTERNAL, ArrowArrayInitFromSchema(array, uschema.get(), NULL), error);
+  CHECK_NA(INTERNAL, ArrowArrayStartAppending(array), error);
+  CHECK_NA(INTERNAL, ArrowArrayFinishBuildingDefault(array, NULL), error);
+
+  uschema.move(schema);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresConnection::GetStatisticNames(struct ArrowArrayStream* out,
+                                                     struct AdbcError* error) {
+  // We don't support any extended statistics, just return an empty stream
+  struct ArrowSchema schema;
+  std::memset(&schema, 0, sizeof(schema));
+  struct ArrowArray array;
+  std::memset(&array, 0, sizeof(array));
+
+  AdbcStatusCode status = PostgresConnectionGetStatisticNamesImpl(&schema, &array, error);
+  if (status != ADBC_STATUS_OK) {
+    if (schema.release) schema.release(&schema);
+    if (array.release) array.release(&array);
+    return status;
+  }
+  return BatchToArrayStream(&array, &schema, out, error);
+
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
@@ -880,7 +1181,14 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
   StringBuilderReset(&query);
 
   RAISE_ADBC(result_helper.Prepare());
-  RAISE_ADBC(result_helper.Execute());
+  auto result = result_helper.Execute();
+  if (result != ADBC_STATUS_OK) {
+    auto error_code = std::string(error->sqlstate, 5);
+    if ((error_code == "42P01") || (error_code == "42602")) {
+      return ADBC_STATUS_NOT_FOUND;
+    }
+    return result;
+  }
 
   auto uschema = nanoarrow::UniqueSchema();
   ArrowSchemaInit(uschema.get());
@@ -964,16 +1272,31 @@ AdbcStatusCode PostgresConnection::GetTableTypes(struct AdbcConnection* connecti
 AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
                                         struct AdbcError* error) {
   if (!database || !database->private_data) {
-    SetError(error, "%s", "[libpq] Must provide an initialized AdbcDatabase");
+    SetError(error, "[libpq] Must provide an initialized AdbcDatabase");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   database_ =
       *reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
   type_resolver_ = database_->type_resolver();
-  return database_->Connect(&conn_, error);
+
+  RAISE_ADBC(database_->Connect(&conn_, error));
+
+  cancel_ = PQgetCancel(conn_);
+  if (!cancel_) {
+    SetError(error, "[libpq] Could not initialize PGcancel");
+    return ADBC_STATUS_UNKNOWN;
+  }
+
+  std::ignore = PQsetNoticeProcessor(conn_, SilentNoticeProcessor, nullptr);
+
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresConnection::Release(struct AdbcError* error) {
+  if (cancel_) {
+    PQfreeCancel(cancel_);
+    cancel_ = nullptr;
+  }
   if (conn_) {
     return database_->Disconnect(&conn_, error);
   }
@@ -1023,8 +1346,35 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
       autocommit_ = autocommit;
     }
     return ADBC_STATUS_OK;
+  } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
+    // PostgreSQL doesn't accept a parameter here
+    PqResultHelper result_helper{
+        conn_, std::string("SET search_path TO ") + value, {}, error};
+    RAISE_ADBC(result_helper.Prepare());
+    RAISE_ADBC(result_helper.Execute());
+    return ADBC_STATUS_OK;
   }
   SetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
+
+AdbcStatusCode PostgresConnection::SetOptionBytes(const char* key, const uint8_t* value,
+                                                  size_t length,
+                                                  struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresConnection::SetOptionDouble(const char* key, double value,
+                                                   struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode PostgresConnection::SetOptionInt(const char* key, int64_t value,
+                                                struct AdbcError* error) {
+  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 }  // namespace adbcpq

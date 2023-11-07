@@ -19,13 +19,16 @@
 
 # ADBC Driver Manager for Python
 
-This package contains bindings for the ADBC Driver Manager, as well as
-a [DBAPI 2.0/PEP 249-compatible][dbapi] interface on top.  The DBAPI 2.0
-interface additionally requires PyArrow, and exposes a number of
-extensions mimicking those of [Turbodbc][turbodbc] or
-[DuckDB][duckdb]'s Python packages to allow you to retrieve Arrow
-Table objects instead of being limited to the row-oriented API of the
-base DBAPI interface.
+This package contains bindings for the ADBC Driver Manager, as well as a
+[DBAPI 2.0/PEP 249-compatible][dbapi] interface on top.  This can be used to
+load ADBC drivers at runtime and use them from Python.  Backend-specific
+packages like `adbc_driver_postgresql` wrap this package in a more convenient
+interface, and should be preferred where they exist.
+
+The DBAPI 2.0 interface requires PyArrow, and exposes a number of extensions
+mimicking those of [Turbodbc][turbodbc] or [DuckDB][duckdb]'s Python packages
+to allow you to retrieve Arrow Table objects instead of being limited to the
+row-oriented API of the base DBAPI interface.
 
 [dbapi]: https://peps.python.org/pep-0249/
 [duckdb]: https://duckdb.org/docs/api/python/overview

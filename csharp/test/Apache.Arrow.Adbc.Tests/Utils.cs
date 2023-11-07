@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -16,102 +16,86 @@
 */
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net.NetworkInformation;
 using System.Text.Json;
-using Apache.Arrow.Ipc;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 
 namespace Apache.Arrow.Adbc.Tests
 {
     public class Utils
     {
         /// <summary>
-        /// Writes record batches to an arrow file.
+        /// Indicates if a test can run.
         /// </summary>
-        /// <param name="file">The path of the arrow file.</param>
-        /// <remarks>
-        /// This method can be used during the generation of Arrow files for use in tests, but may
-        /// not have references to it in the solution.
-        /// </remarks>
-        public static void WriteTestRecordBatches(List<RecordBatch> recordBatches, string file)
+        /// <param name="environmentVariable">
+        /// The environment variable that contains the location of the config file.
+        /// </param>
+        public static bool CanExecuteTestConfig(string environmentVariable)
         {
-            if(recordBatches == null || recordBatches.Count == 0)
-            {
-                throw new ArgumentException("recordBatches must have at least one batch");
-            }
-
-            Schema schema = recordBatches[0].Schema;
-
-            Assert.IsFalse(File.Exists(file), $"Cannot overwrite {file}");
-
-            using (FileStream fs = new FileStream(file, FileMode.CreateNew))
-            using (ArrowFileWriter writer = new ArrowFileWriter(fs, schema))
-            {
-                writer.WriteStart();
-
-                foreach (RecordBatch batch in recordBatches)
-                { 
-                    writer.WriteRecordBatch(batch);
-                }
-
-                writer.WriteEnd();
-            }
+            return CanExecuteTest(environmentVariable, out _);
         }
 
         /// <summary>
-        /// Loads record batches from an arrow file.
+        /// Indicates if a test can run.
         /// </summary>
-        /// <param name="file">The path of the arrow file.</param>
-        public static List<RecordBatch> LoadTestRecordBatches(string file)
+        /// <param name="environmentVariable">
+        /// The environment variable that contains the location of the config file.
+        /// </param>
+        /// <param name="environmentValue">
+        /// The value from the environment variable.
+        /// </param>
+        public static bool CanExecuteTest(string environmentVariable, out string environmentValue)
         {
-            Assert.IsTrue(File.Exists(file), $"Cannot find {file}");
-
-            List<RecordBatch> recordBatches = new List<RecordBatch>();
-
-            using (FileStream fs = new FileStream(file, FileMode.Open))
-            using (ArrowFileReader reader = new ArrowFileReader(fs))
+            if (!string.IsNullOrWhiteSpace(environmentVariable))
             {
-                int batches = reader.RecordBatchCountAsync().Result;
+                environmentValue = Environment.GetEnvironmentVariable(environmentVariable);
 
-                for (int i = 0; i < batches; i++)
+                if (!string.IsNullOrWhiteSpace(environmentValue))
                 {
-                    recordBatches.Add(reader.ReadNextRecordBatch());
+                    if (File.Exists(environmentValue))
+                    {
+                        return true;
+                    }
                 }
             }
 
-            return recordBatches;
-        }
+            Console.WriteLine($"Cannot load test configuration from environment variable {environmentVariable}. The execution of this test will be skipped.");
 
-        /// <summary>
-        /// Loads a Statement with mocked results.
-        /// </summary>
-        public static Mock<IAdbcStatement> GetMockStatement(string file, int expectedResults)
-        {
-            List<RecordBatch> recordBatches = LoadTestRecordBatches(file);
-
-            Schema s = recordBatches.First().Schema;
-            QueryResult mockQueryResult = new QueryResult(expectedResults, new MockArrayStream(s, recordBatches));
-            
-            Mock<IAdbcStatement> mockSqlStatement = new Mock<IAdbcStatement>();
-            mockSqlStatement.Setup(s => s.ExecuteQuery()).Returns(mockQueryResult);
-
-            return mockSqlStatement;
+            environmentValue = string.Empty;
+            return false;
         }
 
         /// <summary>
         /// Loads a test configuration
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="fileName">The path of the configuration file</param>
+        /// <typeparam name="T">Return type</typeparam>
+        /// <param name="environmentVariable">
+        /// The name of the environment variable.
+        /// </param>
+        /// <returns>T</returns>
+        public static T LoadTestConfiguration<T>(string environmentVariable)
+            where T : TestConfiguration
+        {
+            if(CanExecuteTest(environmentVariable, out string environmentValue))
+                return GetTestConfiguration<T>(environmentValue);
+
+            throw new InvalidOperationException($"Cannot execute test configuration from environment variable `{environmentVariable}`");
+        }
+
+        /// <summary>
+        /// Loads a test configuration
+        /// </summary>
+        /// <typeparam name="T">Return type</typeparam>
+        /// <param name="fileName">
+        /// The path of the configuration file
+        /// </param>
         /// <returns>T</returns>
         public static T GetTestConfiguration<T>(string fileName)
             where T : TestConfiguration
         {
-            // use a JSON file vs. setting up environment variables
+            if(!File.Exists(fileName))
+                throw new FileNotFoundException(fileName);
+
+            // use a JSON file for the various settings
             string json = File.ReadAllText(fileName);
 
             T testConfiguration = JsonSerializer.Deserialize<T>(json);

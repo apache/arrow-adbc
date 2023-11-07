@@ -253,6 +253,7 @@ def test_execute_parameters(sqlite, parameters):
         pyarrow.record_batch([[1, 3], ["a", None]], names=["float", "str"]),
         pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]),
         pyarrow.table([[1, 3], ["a", None]], names=["float", "str"]).to_batches()[0],
+        ((x, y) for x, y in ((1, "a"), (3, None))),
     ],
 )
 def test_executemany_parameters(sqlite, parameters):
@@ -292,6 +293,26 @@ def test_executemany(sqlite):
         assert next(cur) == (3, 4)
         assert cur.rownumber == 2
         assert next(cur) == (5, 6)
+
+
+@pytest.mark.sqlite
+def test_fetch_record_batch(sqlite):
+    dataset = [
+        [1, 2],
+        [3, 4],
+        [5, 6],
+        [7, 8],
+        [9, 10],
+    ]
+    with sqlite.cursor() as cur:
+        cur.execute("CREATE TABLE foo (a, b)")
+        cur.executemany(
+            "INSERT INTO foo VALUES (?, ?)",
+            dataset,
+        )
+        cur.execute("SELECT * FROM foo")
+        rbr = cur.fetch_record_batch()
+        assert rbr.read_pandas().values.tolist() == dataset
 
 
 @pytest.mark.sqlite

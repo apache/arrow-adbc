@@ -17,15 +17,86 @@
 
 #include "utils.h"
 
+#include <assert.h>
 #include <errno.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <assert.h>
+#include <adbc.h>
 
-static size_t kErrorBufferSize = 256;
+static size_t kErrorBufferSize = 1024;
+
+int AdbcStatusCodeToErrno(AdbcStatusCode code) {
+  switch (code) {
+    case ADBC_STATUS_OK:
+      return 0;
+    case ADBC_STATUS_UNKNOWN:
+      return EIO;
+    case ADBC_STATUS_NOT_IMPLEMENTED:
+      return ENOTSUP;
+    case ADBC_STATUS_NOT_FOUND:
+      return ENOENT;
+    case ADBC_STATUS_ALREADY_EXISTS:
+      return EEXIST;
+    case ADBC_STATUS_INVALID_ARGUMENT:
+    case ADBC_STATUS_INVALID_STATE:
+      return EINVAL;
+    case ADBC_STATUS_INVALID_DATA:
+    case ADBC_STATUS_INTEGRITY:
+    case ADBC_STATUS_INTERNAL:
+    case ADBC_STATUS_IO:
+      return EIO;
+    case ADBC_STATUS_CANCELLED:
+      return ECANCELED;
+    case ADBC_STATUS_TIMEOUT:
+      return ETIMEDOUT;
+    case ADBC_STATUS_UNAUTHENTICATED:
+      // FreeBSD/macOS have EAUTH, but not other platforms
+    case ADBC_STATUS_UNAUTHORIZED:
+      return EACCES;
+    default:
+      return EIO;
+  }
+}
+
+/// For ADBC 1.1.0, the structure held in private_data.
+struct AdbcErrorDetails {
+  char* message;
+
+  // The metadata keys (may be NULL).
+  char** keys;
+  // The metadata values (may be NULL).
+  uint8_t** values;
+  // The metadata value lengths (may be NULL).
+  size_t* lengths;
+  // The number of initialized metadata.
+  int count;
+  // The length of the keys/values/lengths arrays above.
+  int capacity;
+};
+
+bool StringViewEquals(struct ArrowStringView stringView, const char* str) {
+  int64_t len = (int64_t)strlen(str);
+  return len == stringView.size_bytes &&
+         !strncmp(stringView.data, str, stringView.size_bytes);
+}
+
+static void ReleaseErrorWithDetails(struct AdbcError* error) {
+  struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+  free(details->message);
+
+  for (int i = 0; i < details->count; i++) {
+    free(details->keys[i]);
+    free(details->values[i]);
+  }
+
+  free(details->keys);
+  free(details->values);
+  free(details->lengths);
+  free(error->private_data);
+  *error = ADBC_ERROR_INIT;
+}
 
 static void ReleaseError(struct AdbcError* error) {
   free(error->message);
@@ -34,20 +105,132 @@ static void ReleaseError(struct AdbcError* error) {
 }
 
 void SetError(struct AdbcError* error, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  SetErrorVariadic(error, format, args);
+  va_end(args);
+}
+
+void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args) {
   if (!error) return;
   if (error->release) {
     // TODO: combine the errors if possible
     error->release(error);
   }
-  error->message = malloc(kErrorBufferSize);
-  if (!error->message) return;
 
-  error->release = &ReleaseError;
+  if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
+    error->private_data = malloc(sizeof(struct AdbcErrorDetails));
+    if (!error->private_data) return;
 
-  va_list args;
-  va_start(args, format);
+    struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+
+    details->message = malloc(kErrorBufferSize);
+    if (!details->message) {
+      free(details);
+      return;
+    }
+    details->keys = NULL;
+    details->values = NULL;
+    details->lengths = NULL;
+    details->count = 0;
+    details->capacity = 0;
+
+    error->message = details->message;
+    error->release = &ReleaseErrorWithDetails;
+  } else {
+    error->message = malloc(kErrorBufferSize);
+    if (!error->message) return;
+
+    error->release = &ReleaseError;
+  }
+
   vsnprintf(error->message, kErrorBufferSize, format, args);
-  va_end(args);
+}
+
+void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* detail,
+                       size_t detail_length) {
+  if (error->release != ReleaseErrorWithDetails) return;
+
+  struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+  if (details->count >= details->capacity) {
+    int new_capacity = (details->capacity == 0) ? 4 : (2 * details->capacity);
+    char** new_keys = calloc(new_capacity, sizeof(char*));
+    if (!new_keys) {
+      return;
+    }
+
+    uint8_t** new_values = calloc(new_capacity, sizeof(uint8_t*));
+    if (!new_values) {
+      free(new_keys);
+      return;
+    }
+
+    size_t* new_lengths = calloc(new_capacity, sizeof(size_t*));
+    if (!new_lengths) {
+      free(new_keys);
+      free(new_values);
+      return;
+    }
+
+    if (details->keys != NULL) {
+      memcpy(new_keys, details->keys, sizeof(char*) * details->count);
+      free(details->keys);
+    }
+    details->keys = new_keys;
+
+    if (details->values != NULL) {
+      memcpy(new_values, details->values, sizeof(uint8_t*) * details->count);
+      free(details->values);
+    }
+    details->values = new_values;
+
+    if (details->lengths != NULL) {
+      memcpy(new_lengths, details->lengths, sizeof(size_t) * details->count);
+      free(details->lengths);
+    }
+    details->lengths = new_lengths;
+
+    details->capacity = new_capacity;
+  }
+
+  char* key_data = strdup(key);
+  if (!key_data) return;
+  uint8_t* value_data = malloc(detail_length);
+  if (!value_data) {
+    free(key_data);
+    return;
+  }
+  memcpy(value_data, detail, detail_length);
+
+  int index = details->count;
+  details->keys[index] = key_data;
+  details->values[index] = value_data;
+  details->lengths[index] = detail_length;
+
+  details->count++;
+}
+
+int CommonErrorGetDetailCount(const struct AdbcError* error) {
+  if (error->release != ReleaseErrorWithDetails) {
+    return 0;
+  }
+  struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+  return details->count;
+}
+
+struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int index) {
+  if (error->release != ReleaseErrorWithDetails) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+  struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
+  if (index < 0 || index >= details->count) {
+    return (struct AdbcErrorDetail){NULL, NULL, 0};
+  }
+  return (struct AdbcErrorDetail){
+      .key = details->keys[index],
+      .value = details->values[index],
+      .value_length = details->lengths[index],
+  };
 }
 
 struct SingleBatchArrayStream {
@@ -240,6 +423,19 @@ AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
            error);
   // Append type code/offset
   CHECK_NA(INTERNAL, ArrowArrayFinishUnionElement(array->children[1], /*type_id=*/0),
+           error);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode AdbcConnectionGetInfoAppendInt(struct ArrowArray* array,
+                                              uint32_t info_code, int64_t info_value,
+                                              struct AdbcError* error) {
+  CHECK_NA(INTERNAL, ArrowArrayAppendUInt(array->children[0], info_code), error);
+  // Append to type variant
+  CHECK_NA(INTERNAL, ArrowArrayAppendInt(array->children[1]->children[2], info_value),
+           error);
+  // Append type code/offset
+  CHECK_NA(INTERNAL, ArrowArrayFinishUnionElement(array->children[1], /*type_id=*/2),
            error);
   return ADBC_STATUS_OK;
 }
@@ -816,8 +1012,7 @@ struct AdbcGetObjectsCatalog* AdbcGetObjectsDataGetCatalogByName(
   if (catalog_name != NULL) {
     for (int64_t i = 0; i < get_objects_data->n_catalogs; i++) {
       struct AdbcGetObjectsCatalog* catalog = get_objects_data->catalogs[i];
-      struct ArrowStringView name = catalog->catalog_name;
-      if (!strncmp(name.data, catalog_name, name.size_bytes)) {
+      if (StringViewEquals(catalog->catalog_name, catalog_name)) {
         return catalog;
       }
     }
@@ -835,8 +1030,7 @@ struct AdbcGetObjectsSchema* AdbcGetObjectsDataGetSchemaByName(
     if (catalog != NULL) {
       for (int64_t i = 0; i < catalog->n_db_schemas; i++) {
         struct AdbcGetObjectsSchema* schema = catalog->catalog_db_schemas[i];
-        struct ArrowStringView name = schema->db_schema_name;
-        if (!strncmp(name.data, schema_name, name.size_bytes)) {
+        if (StringViewEquals(schema->db_schema_name, schema_name)) {
           return schema;
         }
       }
@@ -855,8 +1049,7 @@ struct AdbcGetObjectsTable* AdbcGetObjectsDataGetTableByName(
     if (schema != NULL) {
       for (int64_t i = 0; i < schema->n_db_schema_tables; i++) {
         struct AdbcGetObjectsTable* table = schema->db_schema_tables[i];
-        struct ArrowStringView name = table->table_name;
-        if (!strncmp(name.data, table_name, name.size_bytes)) {
+        if (StringViewEquals(table->table_name, table_name)) {
           return table;
         }
       }
@@ -876,8 +1069,7 @@ struct AdbcGetObjectsColumn* AdbcGetObjectsDataGetColumnByName(
     if (table != NULL) {
       for (int64_t i = 0; i < table->n_table_columns; i++) {
         struct AdbcGetObjectsColumn* column = table->table_columns[i];
-        struct ArrowStringView name = column->column_name;
-        if (!strncmp(name.data, column_name, name.size_bytes)) {
+        if (StringViewEquals(column->column_name, column_name)) {
           return column;
         }
       }
@@ -897,8 +1089,7 @@ struct AdbcGetObjectsConstraint* AdbcGetObjectsDataGetConstraintByName(
     if (table != NULL) {
       for (int64_t i = 0; i < table->n_table_constraints; i++) {
         struct AdbcGetObjectsConstraint* constraint = table->table_constraints[i];
-        struct ArrowStringView name = constraint->constraint_name;
-        if (!strncmp(name.data, constraint_name, name.size_bytes)) {
+        if (StringViewEquals(constraint->constraint_name, constraint_name)) {
           return constraint;
         }
       }

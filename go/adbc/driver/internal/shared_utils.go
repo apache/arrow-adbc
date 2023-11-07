@@ -24,9 +24,9 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v13/arrow"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/memory"
+	"github.com/apache/arrow/go/v14/arrow"
+	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/memory"
 )
 
 type CatalogAndSchema struct {
@@ -267,6 +267,17 @@ func (g *GetObjects) appendTableInfo(tableInfo TableInfo) {
 		if !column.HasMetadata() {
 			g.ordinalPositionBuilder.Append(int32(colIndex + 1))
 			g.remarksBuilder.AppendNull()
+
+			g.xdbcDataTypeBuilder.AppendNull()
+			g.xdbcTypeNameBuilder.AppendNull()
+			g.xdbcNullableBuilder.AppendNull()
+			g.xdbcIsNullableBuilder.AppendNull()
+			g.xdbcColumnSizeBuilder.AppendNull()
+			g.xdbcDecimalDigitsBuilder.AppendNull()
+			g.xdbcNumPrecRadixBuilder.AppendNull()
+			g.xdbcCharOctetLengthBuilder.AppendNull()
+			g.xdbcDatetimeSubBuilder.AppendNull()
+			g.xdbcSqlDataTypeBuilder.AppendNull()
 		} else {
 			if remark, ok := column.Metadata.GetValue("COMMENT"); ok {
 				g.remarksBuilder.Append(remark)
@@ -274,7 +285,80 @@ func (g *GetObjects) appendTableInfo(tableInfo TableInfo) {
 				g.remarksBuilder.AppendNull()
 			}
 
+			if typeName, ok := column.Metadata.GetValue("XDBC_TYPE_NAME"); ok {
+				g.xdbcTypeNameBuilder.Append(typeName)
+			} else {
+				g.xdbcTypeNameBuilder.AppendNull()
+			}
+
+			if strNullable, ok := column.Metadata.GetValue("XDBC_NULLABLE"); ok {
+				nullable, _ := strconv.ParseBool(strNullable)
+				g.xdbcNullableBuilder.Append(boolToInt16(nullable))
+			} else {
+				g.xdbcNullableBuilder.AppendNull()
+			}
+
+			if strIsNullable, ok := column.Metadata.GetValue("XDBC_IS_NULLABLE"); ok {
+				g.xdbcIsNullableBuilder.Append(strIsNullable)
+			} else {
+				g.xdbcIsNullableBuilder.AppendNull()
+			}
+
+			if strDataTypeId, ok := column.Metadata.GetValue("XDBC_DATA_TYPE"); ok {
+				dataTypeId64, _ := strconv.ParseInt(strDataTypeId, 10, 16)
+				g.xdbcDataTypeBuilder.Append(int16(dataTypeId64))
+
+			} else {
+				g.xdbcDataTypeBuilder.AppendNull()
+			}
+
+			if strSqlDataTypeId, ok := column.Metadata.GetValue("XDBC_SQL_DATA_TYPE"); ok {
+				sqlDataTypeId64, _ := strconv.ParseInt(strSqlDataTypeId, 10, 16)
+				g.xdbcSqlDataTypeBuilder.Append(int16(sqlDataTypeId64))
+			} else {
+				g.xdbcSqlDataTypeBuilder.AppendNull()
+			}
+
+			if strPrecision, ok := column.Metadata.GetValue("XDBC_PRECISION"); ok { // for numeric values
+				precision64, _ := strconv.ParseInt(strPrecision, 10, 32)
+				g.xdbcColumnSizeBuilder.Append(int32(precision64))
+			} else if strCharLimit, ok := column.Metadata.GetValue("CHARACTER_MAXIMUM_LENGTH"); ok { // for text values
+				charLimit64, _ := strconv.ParseInt(strCharLimit, 10, 32)
+				g.xdbcColumnSizeBuilder.Append(int32(charLimit64))
+			} else {
+				g.xdbcColumnSizeBuilder.AppendNull()
+			}
+
+			if strScale, ok := column.Metadata.GetValue("XDBC_SCALE"); ok {
+				scale64, _ := strconv.ParseInt(strScale, 10, 16)
+				g.xdbcDecimalDigitsBuilder.Append(int16(scale64))
+			} else {
+				g.xdbcDecimalDigitsBuilder.AppendNull()
+			}
+
+			if strPrecRadix, ok := column.Metadata.GetValue("XDBC_NUM_PREC_RADIX"); ok {
+				precRadix64, _ := strconv.ParseInt(strPrecRadix, 10, 16)
+				g.xdbcNumPrecRadixBuilder.Append(int16(precRadix64))
+			} else {
+				g.xdbcNumPrecRadixBuilder.AppendNull()
+			}
+
+			if strCharOctetLen, ok := column.Metadata.GetValue("XDBC_CHAR_OCTET_LENGTH"); ok {
+				charOctLen64, _ := strconv.ParseInt(strCharOctetLen, 10, 32)
+				g.xdbcCharOctetLengthBuilder.Append(int32(charOctLen64))
+			} else {
+				g.xdbcCharOctetLengthBuilder.AppendNull()
+			}
+
+			if strDateTimeSub, ok := column.Metadata.GetValue("XDBC_DATETIME_SUB"); ok {
+				dateTimeSub64, _ := strconv.ParseInt(strDateTimeSub, 10, 16)
+				g.xdbcDatetimeSubBuilder.Append(int16(dateTimeSub64))
+			} else {
+				g.xdbcDatetimeSubBuilder.AppendNull()
+			}
+
 			pos := int32(colIndex + 1)
+
 			if ordinal, ok := column.Metadata.GetValue("ORDINAL_POSITION"); ok {
 				v, err := strconv.ParseInt(ordinal, 10, 32)
 				if err == nil {
@@ -284,17 +368,7 @@ func (g *GetObjects) appendTableInfo(tableInfo TableInfo) {
 			g.ordinalPositionBuilder.Append(pos)
 		}
 
-		g.xdbcDataTypeBuilder.AppendNull()
-		g.xdbcTypeNameBuilder.AppendNull()
-		g.xdbcColumnSizeBuilder.AppendNull()
-		g.xdbcDecimalDigitsBuilder.AppendNull()
-		g.xdbcNumPrecRadixBuilder.AppendNull()
-		g.xdbcNullableBuilder.AppendNull()
 		g.xdbcColumnDefBuilder.AppendNull()
-		g.xdbcSqlDataTypeBuilder.AppendNull()
-		g.xdbcDatetimeSubBuilder.AppendNull()
-		g.xdbcCharOctetLengthBuilder.AppendNull()
-		g.xdbcIsNullableBuilder.AppendNull()
 		g.xdbcScopeCatalogBuilder.AppendNull()
 		g.xdbcScopeSchemaBuilder.AppendNull()
 		g.xdbcScopeTableBuilder.AppendNull()
@@ -304,3 +378,41 @@ func (g *GetObjects) appendTableInfo(tableInfo TableInfo) {
 		g.tableColumnsItems.Append(true)
 	}
 }
+
+func boolToInt16(b bool) int16 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// The JDBC/ODBC-defined type of any object.
+// All the values here are the sames as in the JDBC and ODBC specs.
+type XdbcDataType int32
+
+const (
+	XdbcDataType_XDBC_UNKNOWN_TYPE  XdbcDataType = 0
+	XdbcDataType_XDBC_CHAR          XdbcDataType = 1
+	XdbcDataType_XDBC_NUMERIC       XdbcDataType = 2
+	XdbcDataType_XDBC_DECIMAL       XdbcDataType = 3
+	XdbcDataType_XDBC_INTEGER       XdbcDataType = 4
+	XdbcDataType_XDBC_SMALLINT      XdbcDataType = 5
+	XdbcDataType_XDBC_FLOAT         XdbcDataType = 6
+	XdbcDataType_XDBC_REAL          XdbcDataType = 7
+	XdbcDataType_XDBC_DOUBLE        XdbcDataType = 8
+	XdbcDataType_XDBC_DATETIME      XdbcDataType = 9
+	XdbcDataType_XDBC_INTERVAL      XdbcDataType = 10
+	XdbcDataType_XDBC_VARCHAR       XdbcDataType = 12
+	XdbcDataType_XDBC_DATE          XdbcDataType = 91
+	XdbcDataType_XDBC_TIME          XdbcDataType = 92
+	XdbcDataType_XDBC_TIMESTAMP     XdbcDataType = 93
+	XdbcDataType_XDBC_LONGVARCHAR   XdbcDataType = -1
+	XdbcDataType_XDBC_BINARY        XdbcDataType = -2
+	XdbcDataType_XDBC_VARBINARY     XdbcDataType = -3
+	XdbcDataType_XDBC_LONGVARBINARY XdbcDataType = -4
+	XdbcDataType_XDBC_BIGINT        XdbcDataType = -5
+	XdbcDataType_XDBC_TINYINT       XdbcDataType = -6
+	XdbcDataType_XDBC_BIT           XdbcDataType = -7
+	XdbcDataType_XDBC_WCHAR         XdbcDataType = -8
+	XdbcDataType_XDBC_WVARCHAR      XdbcDataType = -9
+)

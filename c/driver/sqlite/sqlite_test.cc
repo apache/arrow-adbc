@@ -45,26 +45,31 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
 
   AdbcStatusCode DropTable(struct AdbcConnection* connection, const std::string& name,
                            struct AdbcError* error) const override {
-    struct AdbcStatement statement;
-    std::memset(&statement, 0, sizeof(statement));
-    AdbcStatusCode status = AdbcStatementNew(connection, &statement, error);
-    if (status != ADBC_STATUS_OK) return status;
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
 
-    std::string query = "DROP TABLE IF EXISTS " + name;
-    status = AdbcStatementSetSqlQuery(&statement, query.c_str(), error);
-    if (status != ADBC_STATUS_OK) {
-      std::ignore = AdbcStatementRelease(&statement, error);
-      return status;
-    }
-    status = AdbcStatementExecuteQuery(&statement, nullptr, nullptr, error);
-    std::ignore = AdbcStatementRelease(&statement, error);
-    return status;
+    std::string query = "DROP TABLE IF EXISTS \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
+  }
+
+  AdbcStatusCode DropTempTable(struct AdbcConnection* connection, const std::string& name,
+                               struct AdbcError* error) const override {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    RAISE_ADBC(AdbcStatementNew(connection, &statement.value, error));
+
+    std::string query = "DROP TABLE IF EXISTS temp . \"" + name + "\"";
+    RAISE_ADBC(AdbcStatementSetSqlQuery(&statement.value, query.c_str(), error));
+    RAISE_ADBC(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, error));
+    return AdbcStatementRelease(&statement.value, error);
   }
 
   std::string BindParameter(int index) const override { return "?"; }
 
   ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const override {
     switch (ingest_type) {
+      case NANOARROW_TYPE_BOOL:
       case NANOARROW_TYPE_INT8:
       case NANOARROW_TYPE_INT16:
       case NANOARROW_TYPE_INT32:
@@ -77,6 +82,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE:
         return NANOARROW_TYPE_DOUBLE;
+      case NANOARROW_TYPE_LARGE_STRING:
       case NANOARROW_TYPE_DATE32:
       case NANOARROW_TYPE_TIMESTAMP:
         return NANOARROW_TYPE_STRING;
@@ -92,7 +98,63 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     return ddl;
   }
 
+  std::optional<std::string> PrimaryKeyIngestTableDdl(
+      std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id INTEGER PRIMARY KEY, value BIGINT)";
+    return ddl;
+  }
+
+  std::optional<std::string> CompositePrimaryKeyTableDdl(
+      std::string_view name) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += name;
+    ddl += " (id_primary_col1 INTEGER, id_primary_col2 INTEGER,";
+    ddl += " PRIMARY KEY (id_primary_col1, id_primary_col2));";
+    return ddl;
+  }
+
+  std::optional<std::string> ForeignKeyChildTableDdl(
+      std::string_view child_name, std::string_view parent_name_1,
+      std::string_view parent_name_2) const override {
+    std::string ddl = "CREATE TABLE ";
+    ddl += child_name;
+    ddl += " (id_child_col1 INTEGER PRIMARY KEY,";
+    ddl += " id_child_col2 INTEGER,";
+    ddl += " id_child_col3 INTEGER,";
+    ddl += " FOREIGN KEY (id_child_col3) REFERENCES ";
+    ddl += parent_name_1;
+    ddl += " (id),";
+    ddl += " FOREIGN KEY (id_child_col1, id_child_col2) REFERENCES ";
+    ddl += parent_name_2;
+    ddl += " (id_primary_col1, id_primary_col2));";
+    return ddl;
+  }
+
+  bool supports_bulk_ingest(const char* mode) const override {
+    return std::strcmp(mode, ADBC_INGEST_OPTION_MODE_APPEND) == 0 ||
+           std::strcmp(mode, ADBC_INGEST_OPTION_MODE_CREATE) == 0;
+  }
+  bool supports_bulk_ingest_catalog() const override { return true; }
+  bool supports_bulk_ingest_temporary() const override { return true; }
   bool supports_concurrent_statements() const override { return true; }
+  bool supports_get_option() const override { return false; }
+  std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
+      uint32_t info_code) const override {
+    switch (info_code) {
+      case ADBC_INFO_DRIVER_NAME:
+        return "ADBC SQLite Driver";
+      case ADBC_INFO_DRIVER_VERSION:
+        return "(unknown)";
+      case ADBC_INFO_VENDOR_NAME:
+        return "SQLite";
+      case ADBC_INFO_VENDOR_VERSION:
+        return "3.";
+      default:
+        return std::nullopt;
+    }
+  }
 
   std::string catalog() const override { return "main"; }
   std::string db_schema() const override { return ""; }
@@ -120,6 +182,68 @@ class SqliteConnectionTest : public ::testing::Test,
   SqliteQuirks quirks_;
 };
 ADBCV_TEST_CONNECTION(SqliteConnectionTest)
+
+TEST_F(SqliteConnectionTest, ExtensionLoading) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  // Can't enable here, or set either option
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "true", &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      "libsqlitezstd.so", &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+  ASSERT_THAT(
+      AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.entrypoint",
+                              "entrypoint", &error),
+      adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  // Can't set entrypoint before path
+  ASSERT_THAT(
+      AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.entrypoint",
+                              "entrypoint", &error),
+      adbc_validation::IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+
+  // path can't be null
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  // Shouldn't work unless enabled
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      "doesnotexist", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOption(
+                  &connection, "adbc.sqlite.load_extension.entrypoint", nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "invalid", &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "false", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.enabled",
+                                      "true", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  // Now enabled, but the extension doesn't exist anyways
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, "adbc.sqlite.load_extension.path",
+                                      "doesnotexist", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOption(
+                  &connection, "adbc.sqlite.load_extension.entrypoint", nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_UNKNOWN, &error));
+
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error),
+              adbc_validation::IsOkStatus(&error));
+}
 
 TEST_F(SqliteConnectionTest, GetInfoMetadata) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error),
@@ -192,46 +316,89 @@ class SqliteStatementTest : public ::testing::Test,
 
   void TestSqlIngestUInt64() {
     std::vector<std::optional<uint64_t>> values = {std::nullopt, 0, INT64_MAX};
-    return TestSqlIngestType(NANOARROW_TYPE_UINT64, values);
+    return TestSqlIngestType(NANOARROW_TYPE_UINT64, values, /*dictionary_encode*/ false);
   }
 
-  void TestSqlIngestBinary() { GTEST_SKIP() << "Cannot ingest BINARY (not implemented)"; }
+  void TestSqlIngestDuration() {
+    GTEST_SKIP() << "Cannot ingest DURATION (not implemented)";
+  }
   void TestSqlIngestInterval() {
     GTEST_SKIP() << "Cannot ingest Interval (not implemented)";
   }
 
  protected:
-  void ValidateIngestedTimestampData(struct ArrowArrayView* values,
-                                     enum ArrowTimeUnit unit,
-                                     const char* timezone) override {
-    std::vector<std::optional<std::string>> expected;
-    switch (unit) {
-      case (NANOARROW_TIME_UNIT_SECOND):
-        expected.insert(expected.end(), {std::nullopt, "1969-12-31T23:59:18",
-                                         "1970-01-01T00:00:00", "1970-01-01T00:00:42"});
+  void ValidateIngestedTemporalData(struct ArrowArrayView* values, ArrowType type,
+                                    enum ArrowTimeUnit unit,
+                                    const char* timezone) override {
+    switch (type) {
+      case NANOARROW_TYPE_TIMESTAMP: {
+        std::vector<std::optional<std::string>> expected;
+        switch (unit) {
+          case (NANOARROW_TIME_UNIT_SECOND):
+            expected.insert(expected.end(),
+                            {std::nullopt, "1969-12-31T23:59:18", "1970-01-01T00:00:00",
+                             "1970-01-01T00:00:42"});
+            break;
+          case (NANOARROW_TIME_UNIT_MILLI):
+            expected.insert(expected.end(),
+                            {std::nullopt, "1969-12-31T23:59:59.958",
+                             "1970-01-01T00:00:00.000", "1970-01-01T00:00:00.042"});
+            break;
+          case (NANOARROW_TIME_UNIT_MICRO):
+            expected.insert(expected.end(),
+                            {std::nullopt, "1969-12-31T23:59:59.999958",
+                             "1970-01-01T00:00:00.000000", "1970-01-01T00:00:00.000042"});
+            break;
+          case (NANOARROW_TIME_UNIT_NANO):
+            expected.insert(
+                expected.end(),
+                {std::nullopt, "1969-12-31T23:59:59.999999958",
+                 "1970-01-01T00:00:00.000000000", "1970-01-01T00:00:00.000000042"});
+            break;
+        }
+        ASSERT_NO_FATAL_FAILURE(
+            adbc_validation::CompareArray<std::string>(values, expected));
         break;
-      case (NANOARROW_TIME_UNIT_MILLI):
-        expected.insert(expected.end(),
-                        {std::nullopt, "1969-12-31T23:59:59.958",
-                         "1970-01-01T00:00:00.000", "1970-01-01T00:00:00.042"});
-        break;
-      case (NANOARROW_TIME_UNIT_MICRO):
-        expected.insert(expected.end(),
-                        {std::nullopt, "1969-12-31T23:59:59.999958",
-                         "1970-01-01T00:00:00.000000", "1970-01-01T00:00:00.000042"});
-        break;
-      case (NANOARROW_TIME_UNIT_NANO):
-        expected.insert(expected.end(), {std::nullopt, "1969-12-31T23:59:59.999999958",
-                                         "1970-01-01T00:00:00.000000000",
-                                         "1970-01-01T00:00:00.000000042"});
-        break;
+      }
+      default:
+        FAIL() << "ValidateIngestedTemporalData not implemented for type " << type;
     }
-    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(values, expected));
   }
 
   SqliteQuirks quirks_;
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
+
+TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "test-table", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  std::string table = "test-table";
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(
+      adbc_validation::MakeSchema(&schema.value, {{"index", NANOARROW_TYPE_INT64},
+                                                  {"create", NANOARROW_TYPE_STRING}}),
+      adbc_validation::IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, std::string>(
+                  &schema.value, &array.value, &na_error, {42, -42, std::nullopt},
+                  {"foo", std::nullopt, ""})),
+              adbc_validation::IsOkErrno(&na_error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     table.c_str(), &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  int64_t rows_affected = 0;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_EQ(3, rows_affected);
+}
 
 // -- SQLite Specific Tests ------------------------------------------
 
@@ -457,6 +624,22 @@ TEST_F(SqliteReaderTest, InferIntRejectStr) {
           "[SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY"));
 }
 
+TEST_F(SqliteReaderTest, InferIntRejectBlob) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecSelect(R"((1), (NULL), (X''), (NULL))", /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<int64_t>(reader.array_view->children[0], {1, std::nullopt}));
+
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(
+      reader.stream->get_last_error(&reader.stream.value),
+      ::testing::HasSubstr(
+          "[SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY"));
+}
+
 TEST_F(SqliteReaderTest, InferFloatReadIntFloat) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
@@ -478,6 +661,25 @@ TEST_F(SqliteReaderTest, InferFloatReadIntFloat) {
 TEST_F(SqliteReaderTest, InferFloatRejectStr) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((1E0), (NULL), (2E0), (3), (""), (NULL))",
+                                     /*infer_rows=*/2, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {1.0, std::nullopt}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<double>(reader.array_view->children[0], {2.0, 3.0}));
+
+  ASSERT_THAT(reader.MaybeNext(), ::testing::Not(IsOkErrno()));
+  ASSERT_THAT(
+      reader.stream->get_last_error(&reader.stream.value),
+      ::testing::HasSubstr(
+          "[SQLite] Type mismatch in column 0: expected DOUBLE but got STRING/BINARY"));
+}
+
+TEST_F(SqliteReaderTest, InferFloatRejectBlob) {
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(ExecSelect(R"((1E0), (NULL), (2E0), (3), (X''), (NULL))",
                                      /*infer_rows=*/2, &reader));
   ASSERT_EQ(NANOARROW_TYPE_DOUBLE, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());

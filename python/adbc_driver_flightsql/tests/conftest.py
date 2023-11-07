@@ -71,3 +71,13 @@ def dremio_dbapi(dremio_uri, dremio_user, dremio_pass):
         },
     ) as conn:
         yield conn
+
+
+@pytest.fixture
+def test_dbapi():
+    uri = os.environ.get("ADBC_TEST_FLIGHTSQL_URI")
+    if not uri:
+        pytest.skip("Set ADBC_TEST_FLIGHTSQL_URI to run tests")
+
+    with adbc_driver_flightsql.dbapi.connect(uri) as conn:
+        yield conn

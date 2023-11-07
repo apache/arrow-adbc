@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -316,12 +317,16 @@ namespace Apache.Arrow.Adbc.C
 
             public override unsafe UpdateResult ExecuteUpdate()
             {
-                throw AdbcException.NotImplemented("Driver does not support ExecuteUpdate");
-            }
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(_nativeDriver.StatementSetSqlQuery, ref _nativeStatement, SqlQuery);
 
-            public override object GetValue(IArrowArray arrowArray, Field field, int index)
-            {
-                throw new NotImplementedException();
+                    long rows = 0;
+
+                    caller.Call(_nativeDriver.StatementExecuteQuery, ref _nativeStatement, null, ref rows);
+
+                    return new UpdateResult(rows);
+                }
             }
         }
 

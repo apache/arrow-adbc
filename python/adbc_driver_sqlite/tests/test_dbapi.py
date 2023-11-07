@@ -85,3 +85,42 @@ def test_create_types(tmp_path: Path) -> None:
                 assert len(col) == 6
             actual_types = [col[2] for col in table_info]
             assert actual_types == ["INTEGER", "TEXT"]
+
+
+def test_ingest() -> None:
+    table = pa.Table.from_pydict({"numbers": [1, 2], "letters": ["a", "b"]})
+
+    with dbapi.connect() as conn:
+        with conn.cursor() as cur:
+            cur.adbc_ingest("foo", table, catalog_name="main")
+            cur.adbc_ingest("foo", table, catalog_name="temp")
+
+            cur.execute("SELECT * FROM main.foo")
+            assert cur.fetch_arrow_table() == table
+
+            cur.execute("SELECT * FROM temp.foo")
+            assert cur.fetch_arrow_table() == table
+
+            with pytest.raises(dbapi.NotSupportedError):
+                cur.adbc_ingest("foo", table, db_schema_name="main")
+
+
+def test_extension() -> None:
+    with dbapi.connect() as conn:
+        # Can't load extensions until we enable loading
+        with pytest.raises(conn.OperationalError):
+            conn.load_extension("nonexistent")
+
+        conn.enable_load_extension(False)
+
+        with pytest.raises(conn.OperationalError):
+            conn.load_extension("nonexistent")
+
+        conn.enable_load_extension(True)
+
+        # We don't have a real extension to test, so these still fail
+        with pytest.raises(conn.OperationalError):
+            conn.load_extension("nonexistent")
+
+        with pytest.raises(conn.OperationalError):
+            conn.load_extension("nonexistent", entrypoint="entrypoint")

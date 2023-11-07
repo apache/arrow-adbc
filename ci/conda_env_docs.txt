@@ -17,13 +17,15 @@
 
 breathe
 doxygen
-furo
+# XXX(https://github.com/apache/arrow-adbc/issues/987)
+furo=2023.07.26
 make
+# Needed to install mermaid
+nodejs
 numpydoc
 pytest
 sphinx>=5.0
 sphinx-autobuild
 sphinx-copybutton
 sphinx-design
-sphinxcontrib-mermaid
 r-pkgdown

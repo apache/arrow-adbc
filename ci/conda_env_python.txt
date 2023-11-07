@@ -24,4 +24,5 @@ setuptools
 
 # For integration testing
 polars
+protobuf
 python-duckdb

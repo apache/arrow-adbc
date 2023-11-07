@@ -15,23 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-key_value_options <- function(options) {
-  if (!is.character(options)) {
-    options <- as.list(options)
-    options <- options[!vapply(options, is.null, logical(1))]
-    options <- vapply(options, as.character, character(1))
-  }
-
-  keys <- names(options)
-  if (length(options) == 0) {
-    names(options) <- character()
-  } else if (is.null(keys) || all(keys == "")) {
-    stop("key/value options must be named")
-  }
-
-  options
-}
-
 new_env <- function() {
   new.env(parent = emptyenv())
 }
@@ -81,10 +64,18 @@ print.adbc_xptr <- function(x, ...) {
 }
 
 #' @export
+format.adbc_xptr <- function(x, ...) {
+  sprintf(
+    "<%s at %s> ",
+    class(x)[1],
+    nanoarrow::nanoarrow_pointer_addr_pretty(x)
+  )
+}
+
+#' @export
 str.adbc_xptr <- function(object, ...) {
-  cat(sprintf("<%s> %s ", class(object)[1], format(object)))
+  cat(sprintf("%s\n", format(object)))
   env_proxy <- as.list(xptr_env(object))
-  env_proxy$options <- as.list(env_proxy$options)
   str(env_proxy, ...)
   invisible(object)
 }

@@ -43,7 +43,9 @@ try:
 except ImportError as e:
     raise ImportError("PyArrow is required for the DBAPI-compatible interface") from e
 
-from . import _lib
+import adbc_driver_manager
+
+from . import _lib, _reader
 
 if typing.TYPE_CHECKING:
     import pandas
@@ -78,6 +80,7 @@ _KNOWN_INFO_VALUES = {
     100: "driver_name",
     101: "driver_version",
     102: "driver_arrow_version",
+    103: "driver_adbc_version",
 }
 
 # ----------------------------------------------------------
@@ -344,6 +347,16 @@ class Connection(_Closeable):
     # API Extensions
     # ------------------------------------------------------------
 
+    def adbc_cancel(self) -> None:
+        """
+        Cancel any ongoing operations on this connection.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        self._conn.cancel()
+
     def adbc_clone(self) -> "Connection":
         """
         Create a new Connection sharing the same underlying database.
@@ -478,6 +491,40 @@ class Connection(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         return self._conn
+
+    @property
+    def adbc_current_catalog(self) -> str:
+        """
+        The name of the current catalog.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        key = adbc_driver_manager.ConnectionOptions.CURRENT_CATALOG.value
+        return self._conn.get_option(key)
+
+    @adbc_current_catalog.setter
+    def adbc_current_catalog(self, catalog: str) -> None:
+        key = adbc_driver_manager.ConnectionOptions.CURRENT_CATALOG.value
+        self._conn.set_options(**{key: catalog})
+
+    @property
+    def adbc_current_db_schema(self) -> str:
+        """
+        The name of the current schema.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        key = adbc_driver_manager.ConnectionOptions.CURRENT_DB_SCHEMA.value
+        return self._conn.get_option(key)
+
+    @adbc_current_db_schema.setter
+    def adbc_current_db_schema(self, db_schema: str) -> None:
+        key = adbc_driver_manager.ConnectionOptions.CURRENT_DB_SCHEMA.value
+        self._conn.set_options(**{key: db_schema})
 
     @property
     def adbc_database(self) -> _lib.AdbcDatabase:
@@ -621,7 +668,8 @@ class Cursor(_Closeable):
         self._prepare_execute(operation, parameters)
         handle, self._rowcount = self._stmt.execute_query()
         self._results = _RowIterator(
-            pyarrow.RecordBatchReader._import_from_c(handle.address)
+            # pyarrow.RecordBatchReader._import_from_c(handle.address)
+            _reader.AdbcRecordBatchReader._import_from_c(handle.address)
         )
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
@@ -653,12 +701,11 @@ class Cursor(_Closeable):
         ):
             arrow_parameters = seq_of_parameters
         elif seq_of_parameters:
-            arrow_parameters = pyarrow.record_batch(
-                [
-                    pyarrow.array([row[col_idx] for row in seq_of_parameters])
-                    for col_idx in range(len(seq_of_parameters[0]))
-                ],
-                names=[str(i) for i in range(len(seq_of_parameters[0]))],
+            arrow_parameters = pyarrow.RecordBatch.from_pydict(
+                {
+                    str(col_idx): pyarrow.array(x)
+                    for col_idx, x in enumerate(map(list, zip(*seq_of_parameters)))
+                },
             )
         else:
             arrow_parameters = pyarrow.record_batch([])
@@ -729,14 +776,27 @@ class Cursor(_Closeable):
     # API Extensions
     # ------------------------------------------------------------
 
+    def adbc_cancel(self) -> None:
+        """
+        Cancel any ongoing operations on this statement.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        self._stmt.cancel()
+
     def adbc_ingest(
         self,
         table_name: str,
         data: Union[pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader],
-        mode: Literal["append", "create"] = "create",
+        mode: Literal["append", "create", "replace", "create_append"] = "create",
+        *,
+        catalog_name: Optional[str] = None,
+        db_schema_name: Optional[str] = None,
+        temporary: bool = False,
     ) -> int:
-        """
-        Ingest Arrow data into a database table.
+        """Ingest Arrow data into a database table.
 
         Depending on the driver, this can avoid per-row overhead that
         would result from a typical prepare-bind-insert loop.
@@ -748,7 +808,23 @@ class Cursor(_Closeable):
         data
             The Arrow data to insert.
         mode
-            Whether to append data to an existing table, or create a new table.
+            How to deal with existing data:
+
+            - 'append': append to a table (error if table does not exist)
+            - 'create': create a table and insert (error if table exists)
+            - 'create_append': create a table (if not exists) and insert
+            - 'replace': drop existing table (if any), then same as 'create'
+        catalog_name
+            If given, the catalog to create/locate the table in.
+            **This API is EXPERIMENTAL.**
+        db_schema_name
+            If given, the schema to create/locate the table in.
+            **This API is EXPERIMENTAL.**
+        temporary
+            Whether to ingest to a temporary table or not.  Most drivers will
+            not support setting this along with catalog_name and/or
+            db_schema_name.
+            **This API is EXPERIMENTAL.**
 
         Returns
         -------
@@ -759,19 +835,48 @@ class Cursor(_Closeable):
         Notes
         -----
         This is an extension and not part of the DBAPI standard.
+
         """
         if mode == "append":
             c_mode = _lib.INGEST_OPTION_MODE_APPEND
         elif mode == "create":
             c_mode = _lib.INGEST_OPTION_MODE_CREATE
+        elif mode == "create_append":
+            c_mode = _lib.INGEST_OPTION_MODE_CREATE_APPEND
+        elif mode == "replace":
+            c_mode = _lib.INGEST_OPTION_MODE_REPLACE
         else:
             raise ValueError(f"Invalid value for 'mode': {mode}")
-        self._stmt.set_options(
-            **{
-                _lib.INGEST_OPTION_TARGET_TABLE: table_name,
-                _lib.INGEST_OPTION_MODE: c_mode,
+
+        options = {
+            _lib.INGEST_OPTION_TARGET_TABLE: table_name,
+            _lib.INGEST_OPTION_MODE: c_mode,
+        }
+        if catalog_name is not None:
+            options[
+                adbc_driver_manager.StatementOptions.INGEST_TARGET_CATALOG.value
+            ] = catalog_name
+        if db_schema_name is not None:
+            options[
+                adbc_driver_manager.StatementOptions.INGEST_TARGET_DB_SCHEMA.value
+            ] = db_schema_name
+        self._stmt.set_options(**options)
+
+        if temporary:
+            self._stmt.set_options(
+                **{
+                    adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: "true",
+                }
+            )
+        else:
+            # Need to explicitly clear it, but not all drivers support this
+            options = {
+                adbc_driver_manager.StatementOptions.INGEST_TEMPORARY.value: "false",
             }
-        )
+            try:
+                self._stmt.set_options(**options)
+            except NotSupportedError:
+                pass
 
         if isinstance(data, pyarrow.RecordBatch):
             array = _lib.ArrowArrayHandle()
@@ -809,6 +914,23 @@ class Cursor(_Closeable):
         self._prepare_execute(operation, parameters)
         partitions, schema, self._rowcount = self._stmt.execute_partitions()
         return partitions, pyarrow.Schema._import_from_c(schema.address)
+
+    def adbc_execute_schema(self, operation, parameters=None) -> pyarrow.Schema:
+        """
+        Get the schema of the result set of a query without executing it.
+
+        Returns
+        -------
+        pyarrow.Schema
+            The schema of the result set.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        self._prepare_execute(operation, parameters)
+        schema = self._stmt.execute_schema()
+        return pyarrow.Schema._import_from_c(schema.address)
 
     def adbc_prepare(self, operation: Union[bytes, str]) -> Optional[pyarrow.Schema]:
         """
@@ -926,6 +1048,24 @@ class Cursor(_Closeable):
             )
         return self._results.fetch_df()
 
+    def fetch_record_batch(self) -> pyarrow.RecordBatchReader:
+        """
+        Fetch the result as a PyArrow RecordBatchReader.
+
+        This implements a similar API as DuckDB:
+        https://duckdb.org/docs/guides/python/export_arrow.html#export-as-a-recordbatchreader
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+        """
+        if self._results is None:
+            raise ProgrammingError(
+                "Cannot fetch_record_batch() before execute()",
+                status_code=_lib.AdbcStatusCode.INVALID_STATE,
+            )
+        return self._results._reader
+
 
 # ----------------------------------------------------------
 # Utilities
@@ -973,7 +1113,7 @@ class _RowIterator(_Closeable):
         self.rownumber += 1
         return row
 
-    def fetchmany(self, size: int):
+    def fetchmany(self, size: int) -> List[tuple]:
         rows = []
         for _ in range(size):
             row = self.fetchone()
@@ -982,7 +1122,7 @@ class _RowIterator(_Closeable):
             rows.append(row)
         return rows
 
-    def fetchall(self):
+    def fetchall(self) -> List[tuple]:
         rows = []
         while True:
             row = self.fetchone()
@@ -991,10 +1131,10 @@ class _RowIterator(_Closeable):
             rows.append(row)
         return rows
 
-    def fetch_arrow_table(self):
+    def fetch_arrow_table(self) -> pyarrow.Table:
         return self._reader.read_all()
 
-    def fetch_df(self):
+    def fetch_df(self) -> "pandas.DataFrame":
         return self._reader.read_pandas()
 
 
