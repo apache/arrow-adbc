@@ -752,6 +752,8 @@ func (suite *SnowflakeTests) TestIntDecimalLowPrecision() {
 			query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
 			decimalNumber, err := decimal128.FromString(numberString, int32(precision), int32(scale))
 			suite.NoError(err)
+			// The current behavior of the driver for decimal128 values too large to fit into 64 bits is to simply
+			// return the low 64 bits of the value.
 			number := int64(decimalNumber.LowBits())
 
 			suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
