@@ -294,9 +294,12 @@ func integerToDecimal128(ctx context.Context, a arrow.Array, dt *arrow.Decimal12
 		Scale:     int32(0),
 	}
 	result, err := compute.CastArray(ctx, a, compute.SafeCastOptions(dt0))
-	if err == nil {
-		result.Data().Reset(dt, result.Data().Len(), result.Data().Buffers(), result.Data().Children(), result.Data().NullN(), result.Data().Offset())
+	if err != nil {
+		return nil, err
 	}
+	
+	data := result.Data()
+	result.Data().Reset(dt, data.Len(), data.Buffers(), data.Children(), data.NullN(), data.Offset())
 	return result, err
 }
 
