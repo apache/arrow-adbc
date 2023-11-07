@@ -685,7 +685,7 @@ func (suite *SnowflakeTests) TestDecimalHighPrecision() {
 	for sign := 0; sign <= 1; sign++ {
 		for scale := 0; scale <= 2; scale++ {
 			for precision := 3; precision <= 38; precision++ {
-				numberString := strings.Repeat("9", precision - scale) + "." + strings.Repeat("9", scale)
+				numberString := strings.Repeat("9", precision-scale) + "." + strings.Repeat("9", scale)
 				if sign == 1 {
 					numberString = "-" + numberString
 				}
@@ -714,7 +714,7 @@ func (suite *SnowflakeTests) TestNonIntDecimalLowPrecision() {
 	for sign := 0; sign <= 1; sign++ {
 		for precision := 3; precision <= 38; precision++ {
 			scale := 2
-			numberString := strings.Repeat("9", precision - scale) + ".99"
+			numberString := strings.Repeat("9", precision-scale) + ".99"
 			if sign == 1 {
 				numberString = "-" + numberString
 			}
@@ -745,7 +745,7 @@ func (suite *SnowflakeTests) TestIntDecimalLowPrecision() {
 	for sign := 0; sign <= 1; sign++ {
 		for precision := 3; precision <= 38; precision++ {
 			scale := 0
-			numberString := strings.Repeat("9", precision - scale)
+			numberString := strings.Repeat("9", precision-scale)
 			if sign == 1 {
 				numberString = "-" + numberString
 			}
