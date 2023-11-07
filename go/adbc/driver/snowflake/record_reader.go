@@ -297,7 +297,7 @@ func integerToDecimal128(ctx context.Context, a arrow.Array, dt *arrow.Decimal12
 	if err != nil {
 		return nil, err
 	}
-	
+
 	data := result.Data()
 	result.Data().Reset(dt, data.Len(), data.Buffers(), data.Children(), data.NullN(), data.Offset())
 	return result, err
