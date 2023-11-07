@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
+using System.Numerics;
 using Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
@@ -48,28 +50,52 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         /// <summary>
-        /// Validates if the driver can receive the correct values for numeric data types
-        /// integers
+        /// Validates if driver can send and receive specific Integer values correctly
+        /// Snowflake types INT , INTEGER , BIGINT , SMALLINT , TINYINT , BYTEINT are all equivalent
         /// </summary>
         [SkippableFact]
-        public void TestNumericRanges()
+        public void TestIntegerRanges()
         {
-            string table = CreateTable(_statement);
+            string columnName = "INTTYPE";
+            string table = CreateTable(string.Format("{0} INT", columnName));
+            InsertAndValidateSelectNumberValue(table, columnName, -1);
+            InsertAndValidateSelectNumberValue(table, columnName, 0);
+            InsertAndValidateSelectNumberValue(table, columnName, 1);
+            InsertAndValidateSelectNumberValue(table, columnName, SqlDecimal.MinValue);
+            InsertAndValidateSelectNumberValue(table, columnName, SqlDecimal.MaxValue);
+        }
 
-            string insertNumberStatement = string.Format("INSERT INTO {0} (NUMBERTYPE) VALUES (-1);",table);
+        /// <summary>
+        /// Validates if driver can handle smaller Number type correctly
+        /// TODO: Currently fails, requires PR #1242 merge to pass.
+        /// </summary>
+        [SkippableFact]
+        public void TestSmallNumberRange()
+        {
+            string columnName = "SMALLNUMBER";
+            string table = CreateTable(string.Format("{0} NUMBER(2,0)", columnName));
+            InsertAndValidateSelectNumberValue(table, columnName, -1);
+            InsertAndValidateSelectNumberValue(table, columnName, 0);
+            InsertAndValidateSelectNumberValue(table, columnName, 1);
+            InsertAndValidateSelectNumberValue(table, columnName, -99);
+            InsertAndValidateSelectNumberValue(table, columnName, 99);
+            Assert.Throws<AdbcException>(() => InsertAndValidateSelectNumberValue(table, columnName, SqlDecimal.MinValue));
+            Assert.Throws<AdbcException>(() => InsertAndValidateSelectNumberValue(table, columnName, SqlDecimal.MaxValue));
+            Assert.Throws<AdbcException>(() => InsertAndValidateSelectNumberValue(table, columnName, -100));
+            Assert.Throws<AdbcException>(() => InsertAndValidateSelectNumberValue(table, columnName, 100));
+        }
+
+        private void InsertAndValidateSelectNumberValue(string table, string columnName,SqlDecimal value)
+        {
+            string insertNumberStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2});", table, columnName, value);
             Console.WriteLine(insertNumberStatement);
-
             _statement.SqlQuery = insertNumberStatement;
-
             UpdateResult updateResult = _statement.ExecuteUpdate();
-
             Assert.Equal(1, updateResult.AffectedRows);
 
-            string selectNumberStatement = string.Format("SELECT NUMBERTYPE FROM {0} WHERE NUMBERTYPE={1};",table,-1);
+            string selectNumberStatement = string.Format("SELECT {0} FROM {1} WHERE {0}={2};", columnName, table, value);
             Console.WriteLine(selectNumberStatement);
-
             _statement.SqlQuery = selectNumberStatement;
-
             QueryResult queryResult = _statement.ExecuteQuery();
             Assert.Equal(1, queryResult.RowCount);
             while (true)
@@ -79,28 +105,27 @@ namespace Apache.Arrow.Adbc.Tests
                 Decimal128Array queryResultArray = (Decimal128Array)nextBatch.Column(0);
                 for (int i = 0; i < queryResultArray.Length; i++)
                 {
-                    Assert.Equal(-1, queryResultArray.GetValue(i));
+                    Assert.Equal(value, queryResultArray.GetSqlDecimal(i));
                 }
             }
-
-
-            string deleteNumberStatement = string.Format("DELETE FROM {0} WHERE NUMBERTYPE={1};",table,-1);
-            Console.WriteLine(deleteNumberStatement);
-
-            _statement.SqlQuery = deleteNumberStatement;
-
-            updateResult = _statement.ExecuteUpdate();
-
-            Assert.Equal(1, updateResult.AffectedRows);
         }
 
-        private string CreateTable(AdbcStatement statement)
+        private string CreateTable(string columns)
         {
             string tableName = string.Format("{0}.{1}{2}", _catalogSchema, s_testTablePrefix, Guid.NewGuid().ToString().Replace("-",""));
-            string createTableStatement = string.Format("CREATE TABLE {0} (NUMBERTYPE NUMBER)",tableName);
+            string createTableStatement = string.Format("CREATE TABLE {0} ({1})",tableName,columns);
             _statement.SqlQuery = createTableStatement;
             _statement.ExecuteUpdate();
             return tableName;
+        }
+
+        private void DeleteFromTable(string tableName, string whereClause, int expectedRowsAffected)
+        {
+            string deleteNumberStatement = string.Format("DELETE FROM {0} WHERE {1};", tableName, whereClause);
+            Console.WriteLine(deleteNumberStatement);
+            _statement.SqlQuery = deleteNumberStatement;
+            UpdateResult updateResult = _statement.ExecuteUpdate();
+            Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
         }
 
         public void Dispose()
@@ -109,7 +134,6 @@ namespace Apache.Arrow.Adbc.Tests
                 "SELECT 'DROP TABLE {0}.' || table_name || ';' FROM {1}.INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE '{2}_%';",
                 _catalogSchema, _snowflakeTestConfiguration.Metadata.Catalog, s_testTablePrefix);
             Console.WriteLine(getDropCommandsQuery);
-
             _statement.SqlQuery = getDropCommandsQuery;
 
             try
@@ -125,7 +149,7 @@ namespace Apache.Arrow.Adbc.Tests
                     {
                         string dropCommandQuery = dropCommandsArray.GetString(i);
                         Console.WriteLine(dropCommandQuery);
-                        _statement.SqlQuery = getDropCommandsQuery;
+                        _statement.SqlQuery = dropCommandQuery;
                         _statement.ExecuteUpdate();
                     }
                 }
