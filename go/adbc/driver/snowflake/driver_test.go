@@ -26,6 +26,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -38,6 +39,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow/go/v14/arrow"
 	"github.com/apache/arrow/go/v14/arrow/array"
+	"github.com/apache/arrow/go/v14/arrow/decimal128"
 	"github.com/apache/arrow/go/v14/arrow/memory"
 	"github.com/google/uuid"
 	"github.com/snowflakedb/gosnowflake"
@@ -644,92 +646,129 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 
 	suite.Require().NoError(suite.stmt.SetSqlQuery(`CREATE OR REPLACE TABLE NUMBERTYPETEST (
 		NUMBERDECIMAL NUMBER(38,0),
-		NUMBERFLOAT NUMBER(15,2),
-		COLUMN3 NUMBER(16,2),
-		COLUMN4 NUMBER(17,2),
-		COLUMN5 NUMBER(18,2),
-		COLUMN6 NUMBER(19,2),
-		COLUMN7 NUMBER(20,2),
-		COLUMN8 NUMBER(21,2),
-		COLUMN9 NUMBER(22,2),
-		COLUMN10 NUMBER(23,2),
-		COLUMN11 NUMBER(24,2),
-		COLUMN12 NUMBER(25,2),
-		COLUMN13 NUMBER(26,2),
-		COLUMN14 NUMBER(27,2),
-		COLUMN15 NUMBER(28,2),
-		COLUMN16 NUMBER(29,2),
-		COLUMN17 NUMBER(30,2)
+		NUMBERFLOAT NUMBER(15,2)
 	)`))
 	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO NUMBERTYPETEST (NUMBERDECIMAL, NUMBERFLOAT, COLUMN3, COLUMN4, COLUMN5, COLUMN6, COLUMN7, COLUMN8, COLUMN9, COLUMN10, COLUMN11, COLUMN12, COLUMN13, COLUMN14, COLUMN15, COLUMN16, COLUMN17)
-		VALUES (1, 1234567.894, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (12345678901234567890123456789012345678, 9876543210.987,
-			99999999999999.99, 999999999999999.99, 9999999999999999.99, 99999999999999999.99, 99999999999999999.99,
-			999999999999999999.99, 9999999999999999999.99, 99999999999999999999.99, 999999999999999999999.99, 9999999999999999999999.99,
-			99999999999999999999999.99, 999999999999999999999999.99, 9999999999999999999999999.99, 99999999999999999999999999.99, 999999999999999999999999999.99)`))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO NUMBERTYPETEST (NUMBERDECIMAL, NUMBERFLOAT)
+		VALUES (1, 1234567.894), (12345678901234567890123456789012345678, 9876543210.987)`))
 	_, err = suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT NUMBERDECIMAL, COLUMN8 FROM NUMBERTYPETEST"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM NUMBERTYPETEST"))
 	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
 
 	suite.EqualValues(2, n)
 	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 38, Scale: 0}, rdr.Schema().Field(0).Type), "expected decimal(38, 0), got %s", rdr.Schema().Field(0).Type)
-	for i := 3; i < int(n); i++ {
-		precision := int32(i + 14)
-		suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: precision, Scale: 2}, rdr.Schema().Field(i).Type), "expected decimal(%d, 2), got %s", precision, rdr.Schema().Field(i).Type)
-	}
-	//suite.True(rdr.Next())
-	//rec := rdr.Record()
-
-	//suite.Equal(uint64(9999999999999999), rec.Column(1).(*array.Decimal128).Value(1).LowBits())
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 15, Scale: 2}, rdr.Schema().Field(1).Type), "expected decimal(15, 2), got %s", rdr.Schema().Field(1).Type)
 
 	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
-	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT NUMBERFLOAT, NUMBERFLOAT FROM NUMBERTYPETEST"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM NUMBERTYPETEST"))
 	rdr, n, err = suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
 
 	suite.EqualValues(2, n)
-	//suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
-	//for i := 1; i < 17; i++ {
-	//	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(i).Type), "expected float64, got %s", rdr.Schema().Field(i).Type)
-	//}
+	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
+	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(1).Type), "expected float64, got %s", rdr.Schema().Field(1).Type)
 	suite.True(rdr.Next())
 	rec := rdr.Record()
 
 	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
-	suite.Equal(9999999999999999.99, rec.Column(1).(*array.Float64).Value(1))
 }
 
-func (suite *SnowflakeTests) TestNumberTypes() {
-	suite.SingleNumberType(18)
-	suite.SingleNumberType(17)
+func (suite *SnowflakeTests) TestDecimalHighPrecision() {
+	for sign := 0; sign <= 1; sign++ {
+		for scale := 0; scale <= 2; scale++ {
+			for precision := 3; precision <= 38; precision++ {
+				numberString := strings.Repeat("9", precision - scale) + "." + strings.Repeat("9", scale)
+				if sign == 1 {
+					numberString = "-" + numberString
+				}
+				query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
+				number, err := decimal128.FromString(numberString, int32(precision), int32(scale))
+				suite.NoError(err)
+
+				suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueEnabled))
+				suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+				rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+				suite.Require().NoError(err)
+				defer rdr.Release()
+
+				suite.EqualValues(1, n)
+				suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: int32(precision), Scale: int32(scale)}, rdr.Schema().Field(0).Type), "expected decimal(%d, %d), got %s", precision, scale, rdr.Schema().Field(0).Type)
+				suite.True(rdr.Next())
+				rec := rdr.Record()
+
+				suite.Equal(number, rec.Column(0).(*array.Decimal128).Value(0))
+			}
+		}
+	}
 }
 
-func (suite *SnowflakeTests) SingleNumberType(precision int) {
-	query := "SELECT CAST('" + strings.Repeat("9", precision - 2) + fmt.Sprintf(".99' AS NUMBER(%d, 2)) AS RESULT", precision)
+func (suite *SnowflakeTests) TestNonIntDecimalLowPrecision() {
+	for sign := 0; sign <= 1; sign++ {
+		for precision := 3; precision <= 38; precision++ {
+			scale := 2
+			numberString := strings.Repeat("9", precision - scale) + ".99"
+			if sign == 1 {
+				numberString = "-" + numberString
+			}
+			query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
+			decimalNumber, err := decimal128.FromString(numberString, int32(precision), int32(scale))
+			suite.NoError(err)
+			number := decimalNumber.ToFloat64(int32(scale))
 
-	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
-	suite.Require().NoError(suite.stmt.SetSqlQuery(query))
-	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
-	suite.Require().NoError(err)
-	defer rdr.Release()
+			suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+			suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+			rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+			suite.Require().NoError(err)
+			defer rdr.Release()
 
-	suite.EqualValues(1, n)
-	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(0).Type), "expected float64, got %s", rdr.Schema().Field(0).Type)
-	//suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: int32(precision), Scale: 2}, rdr.Schema().Field(0).Type), "expected decimal(%d, 2), got %s", precision, rdr.Schema().Field(0).Type)
-	suite.True(rdr.Next())
-	rec := rdr.Record()
+			suite.EqualValues(1, n)
+			suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(0).Type), "expected float64, got %s", rdr.Schema().Field(0).Type)
+			suite.True(rdr.Next())
+			rec := rdr.Record()
 
-	suite.Equal(nil, rec)
-	// suite.Equal(0, rec.Column(0).(*array.Float64).Value(0))
-	// suite.Equal(uint64(9999), rec.Column(0).(*array.Decimal128).Value(1).LowBits())
+			value := rec.Column(0).(*array.Float64).Value(0)
+			difference := math.Abs(number - value)
+			suite.Truef(difference < 1e-13, "expected %f, got %f", number, value)
+		}
+	}
+}
+
+func (suite *SnowflakeTests) TestIntDecimalLowPrecision() {
+	for sign := 0; sign <= 1; sign++ {
+		for precision := 3; precision <= 38; precision++ {
+			scale := 0
+			numberString := strings.Repeat("9", precision - scale)
+			if sign == 1 {
+				numberString = "-" + numberString
+			}
+			query := "SELECT CAST('" + numberString + fmt.Sprintf("' AS NUMBER(%d, %d)) AS RESULT", precision, scale)
+			decimalNumber, err := decimal128.FromString(numberString, int32(precision), int32(scale))
+			suite.NoError(err)
+			number := int64(decimalNumber.LowBits())
+
+			suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+			suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+			rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+			suite.Require().NoError(err)
+			defer rdr.Release()
+
+			suite.EqualValues(1, n)
+			suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
+			suite.True(rdr.Next())
+			rec := rdr.Record()
+
+			value := rec.Column(0).(*array.Int64).Value(0)
+			suite.Equal(number, value)
+		}
+	}
 }
 
 func (suite *SnowflakeTests) TestDescribeOnly() {
