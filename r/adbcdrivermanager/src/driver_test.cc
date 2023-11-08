@@ -28,13 +28,65 @@ using VoidDriver =
                     adbc::r::StatementObjectBase>;
 
 static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
-                                         struct AdbcError* error) {
+                                         AdbcError* error) {
   return VoidDriver::Init(version, raw_driver, error);
 }
 
 extern "C" SEXP RAdbcVoidDriverInitFunc(void) {
   SEXP xptr =
       PROTECT(R_MakeExternalPtrFn((DL_FUNC)VoidDriverInitFunc, R_NilValue, R_NilValue));
+  Rf_setAttrib(xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
+  UNPROTECT(1);
+  return xptr;
+}
+
+class MonkeyDriverStatement : public adbc::r::StatementObjectBase {
+ public:
+  MonkeyDriverStatement() { stream_.release = nullptr; }
+
+  ~MonkeyDriverStatement() {
+    if (stream_.release != nullptr) {
+      stream_.release(&stream_);
+    }
+  }
+
+  AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
+    if (stream_.release != nullptr) {
+      stream_.release(&stream_);
+    }
+
+    std::memcpy(&stream_, stream, sizeof(ArrowArrayStream));
+    stream->release = nullptr;
+    return ADBC_STATUS_OK;
+  }
+
+  virtual AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
+                                      AdbcError* error) {
+    if (stream != nullptr) {
+      std::memcpy(stream, &stream_, sizeof(ArrowArrayStream));
+      stream_.release = nullptr;
+    }
+
+    *rows_affected = -1;
+    return ADBC_STATUS_OK;
+  }
+
+ private:
+  ArrowArrayStream stream_;
+};
+
+using MonkeyDriver =
+    adbc::r::Driver<adbc::r::DatabaseObjectBase, adbc::r::ConnectionObjectBase,
+                    MonkeyDriverStatement>;
+
+static AdbcStatusCode MonkeyDriverInitFunc(int version, void* raw_driver,
+                                           AdbcError* error) {
+  return MonkeyDriver::Init(version, raw_driver, error);
+}
+
+extern "C" SEXP RAdbcMonkeyDriverInitFunc(void) {
+  SEXP xptr =
+      PROTECT(R_MakeExternalPtrFn((DL_FUNC)MonkeyDriverInitFunc, R_NilValue, R_NilValue));
   Rf_setAttrib(xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
   UNPROTECT(1);
   return xptr;
