@@ -22,6 +22,16 @@ test_that("The log driver logs", {
 
     con <- adbc_connection_init(db, key = "value")
     expect_identical(adbc_connection_get_option(con, "key"), "value")
+    try(adbc_connection_commit(con))
+    try(adbc_connection_get_info(con))
+    try(adbc_connection_get_objects(con))
+    try(adbc_connection_get_table_schema(con, NULL, NULL, "table_name"))
+    try(adbc_connection_get_table_types(con))
+    try(adbc_connection_read_partition(con, raw()))
+    try(adbc_connection_rollback(con))
+    try(adbc_connection_cancel(con))
+    try(adbc_connection_get_statistics(con, NULL, NULL, "table_name"))
+    try(adbc_connection_get_statistic_names(con))
 
     stmt <- adbc_statement_init(con, key = "value")
     expect_identical(adbc_statement_get_option(stmt, "key"), "value")

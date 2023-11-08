@@ -19,6 +19,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <cstring>
+
 #include "driver_base.h"
 
 #include <adbc.h>
@@ -62,8 +64,8 @@ class MonkeyDriverStatement : public adbc::r::StatementObjectBase {
     return ADBC_STATUS_OK;
   }
 
-  virtual AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
-                                      AdbcError* error) {
+  AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
+                              AdbcError* error) {
     if (stream != nullptr) {
       std::memcpy(stream, &stream_, sizeof(ArrowArrayStream));
       stream_.release = nullptr;
@@ -137,6 +139,66 @@ class LogDriverConnection : public adbc::r::ConnectionObjectBase {
                           const Option& default_value = Option()) const {
     Rprintf("LogConnectionGetOption()\n");
     return adbc::r::ConnectionObjectBase::GetOption(key, default_value);
+  }
+
+  AdbcStatusCode Commit(AdbcError* error) {
+    Rprintf("LogConnectionCommit()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode GetInfo(const uint32_t* info_codes, size_t info_codes_length,
+                         ArrowArrayStream* out, AdbcError* error) {
+    Rprintf("LogConnectionGetInfo()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode GetObjects(int depth, const char* catalog, const char* db_schema,
+                            const char* table_name, const char** table_type,
+                            const char* column_name, ArrowArrayStream* out,
+                            AdbcError* error) {
+    Rprintf("LogConnectionGetObjects()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode GetTableSchema(const char* catalog, const char* db_schema,
+                                const char* table_name, ArrowSchema* schema,
+                                AdbcError* error) {
+    Rprintf("LogConnectionGetTableSchema()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode GetTableTypes(ArrowArrayStream* out, AdbcError* error) {
+    Rprintf("LogConnectionGetTableTypes()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode ReadPartition(const uint8_t* serialized_partition,
+                               size_t serialized_length, ArrowArrayStream* out,
+                               AdbcError* error) {
+    Rprintf("LogConnectionReadPartition()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode Rollback(AdbcError* error) {
+    Rprintf("LogConnectionRollback()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode Cancel(AdbcError* error) {
+    Rprintf("LogConnectionCancel()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode GetStatistics(const char* catalog, const char* db_schema,
+                               const char* table_name, char approximate,
+                               ArrowArrayStream* out, AdbcError* error) {
+    Rprintf("LogConnectionGetStatistics()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode GetStatisticNames(ArrowArrayStream* out, AdbcError* error) {
+    Rprintf("LogConnectionGetStatisticNames()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 };
 

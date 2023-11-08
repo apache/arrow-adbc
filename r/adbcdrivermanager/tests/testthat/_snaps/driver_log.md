@@ -23,6 +23,58 @@
       LogConnectionGetOption()
       LogConnectionGetOption()
     Code
+      try(adbc_connection_commit(con))
+    Output
+      LogConnectionCommit()
+      Error in adbc_connection_commit(con) : NOT_IMPLEMENTED
+    Code
+      try(adbc_connection_get_info(con))
+    Output
+      LogConnectionGetInfo()
+      Error in adbc_connection_get_info(con) : NOT_IMPLEMENTED
+    Code
+      try(adbc_connection_get_objects(con))
+    Output
+      LogConnectionGetObjects()
+      Error in adbc_connection_get_objects(con) : NOT_IMPLEMENTED
+    Code
+      try(adbc_connection_get_table_schema(con, NULL, NULL, "table_name"))
+    Output
+      LogConnectionGetTableSchema()
+      Error in adbc_connection_get_table_schema(con, NULL, NULL, "table_name") : 
+        NOT_IMPLEMENTED
+    Code
+      try(adbc_connection_get_table_types(con))
+    Output
+      LogConnectionGetTableTypes()
+      Error in adbc_connection_get_table_types(con) : NOT_IMPLEMENTED
+    Code
+      try(adbc_connection_read_partition(con, raw()))
+    Output
+      LogConnectionReadPartition()
+      Error in adbc_connection_read_partition(con, raw()) : NOT_IMPLEMENTED
+    Code
+      try(adbc_connection_rollback(con))
+    Output
+      LogConnectionRollback()
+      Error in adbc_connection_rollback(con) : NOT_IMPLEMENTED
+    Code
+      try(adbc_connection_cancel(con))
+    Output
+      LogConnectionCancel()
+      Error in adbc_connection_cancel(con) : NOT_IMPLEMENTED
+    Code
+      try(adbc_connection_get_statistics(con, NULL, NULL, "table_name"))
+    Output
+      LogConnectionGetStatistics()
+      Error in adbc_connection_get_statistics(con, NULL, NULL, "table_name") : 
+        NOT_IMPLEMENTED
+    Code
+      try(adbc_connection_get_statistic_names(con))
+    Output
+      LogConnectionGetStatisticNames()
+      Error in adbc_connection_get_statistic_names(con) : NOT_IMPLEMENTED
+    Code
       stmt <- adbc_statement_init(con, key = "value")
     Output
       LogStatementNew()
