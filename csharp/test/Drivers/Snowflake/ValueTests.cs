@@ -67,7 +67,7 @@ namespace Apache.Arrow.Adbc.Tests
 
         /// <summary>
         /// Validates if driver can handle smaller Number type correctly
-        /// TODO: Currently fails, requires PR #1242 merge to pass.
+        /// TODO: Currently fails, requires PR #1267 merge to pass.
         /// </summary>
         [SkippableFact]
         public void TestSmallNumberRange()
@@ -87,7 +87,7 @@ namespace Apache.Arrow.Adbc.Tests
 
         /// <summary>
         /// Validates if driver can handle a large scale Number type correctly
-        /// TODO: Currently fails, requires PR #1242 merge to pass.
+        /// TODO: Currently fails, requires PR #1267 merge to pass.
         /// </summary>
         [SkippableFact]
         public void TestLargeScaleNumberRange()
@@ -106,7 +106,7 @@ namespace Apache.Arrow.Adbc.Tests
 
         /// <summary>
         /// Validates if driver can handle a large scale Number type correctly
-        /// TODO: Currently fails, requires PR #1242 merge to pass.
+        /// TODO: Currently fails, requires PR #1267 merge to pass.
         /// </summary>
         [SkippableFact]
         public void TestSmallScaleNumberRange()
