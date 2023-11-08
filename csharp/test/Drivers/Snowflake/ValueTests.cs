@@ -31,7 +31,6 @@ namespace Apache.Arrow.Adbc.Tests
     public class ValueTests
     {
         static readonly string s_testTablePrefix = "ADBCVALUETEST_"; // Make configurable? Also; must be all caps if not double quoted
-
         readonly SnowflakeTestConfiguration _snowflakeTestConfiguration;
         readonly AdbcConnection _connection;
         readonly AdbcStatement _statement;
