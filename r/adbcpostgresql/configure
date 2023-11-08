@@ -22,7 +22,7 @@
 # ADBC repo into this package. If the file doesn't exist, we're installing
 # from a pre-built tarball.
 if [ -f bootstrap.R ]; then
-  $R_HOME/bin/Rscript bootstrap.R
+  "$R_HOME/bin/Rscript" bootstrap.R
 fi
 
 # Include and library flags
@@ -61,7 +61,7 @@ fi
 
 echo "Testing R CMD SHLIB with $PKG_CPPFLAGS $PKG_LIBS"
 PKG_CPPFLAGS="$PKG_CPPFLAGS" PKG_LIBS="$PKG_LIBS" \
-  $R_HOME/bin/R CMD SHLIB tools/test.c -o compile_test >compile_test.log 2>&1
+  "$R_HOME/bin/R" CMD SHLIB tools/test.c -o compile_test >compile_test.log 2>&1
 
 if [ $? -ne 0 ]; then
   echo "Test compile failed"
