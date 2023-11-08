@@ -18,9 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
-using System.Numerics;
 using Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake;
-using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -28,10 +26,9 @@ namespace Apache.Arrow.Adbc.Tests
     public class ValueTests : IDisposable
     {
         static readonly string s_testTablePrefix = "ADBCVALUETEST_"; // Make configurable? Also; must be all caps if not double quoted
-
         readonly SnowflakeTestConfiguration _snowflakeTestConfiguration;
         readonly AdbcConnection _connection;
-        AdbcStatement _statement;
+        readonly AdbcStatement _statement;
         readonly string _catalogSchema;
 
         public ValueTests()
@@ -58,11 +55,11 @@ namespace Apache.Arrow.Adbc.Tests
         {
             string columnName = "INTTYPE";
             string table = CreateTable(string.Format("{0} INT", columnName));
-            InsertAndValidateSelectNumberValue(table, columnName, -1);
-            InsertAndValidateSelectNumberValue(table, columnName, 0);
-            InsertAndValidateSelectNumberValue(table, columnName, 1);
-            InsertAndValidateSelectNumberValue(table, columnName, SqlDecimal.MinValue);
-            InsertAndValidateSelectNumberValue(table, columnName, SqlDecimal.MaxValue);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, -1);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, 0);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, 1);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.MinValue);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.MaxValue);
         }
 
         /// <summary>
@@ -74,49 +71,125 @@ namespace Apache.Arrow.Adbc.Tests
         {
             string columnName = "SMALLNUMBER";
             string table = CreateTable(string.Format("{0} NUMBER(2,0)", columnName));
-            InsertAndValidateSelectNumberValue(table, columnName, -1);
-            InsertAndValidateSelectNumberValue(table, columnName, 0);
-            InsertAndValidateSelectNumberValue(table, columnName, 1);
-            InsertAndValidateSelectNumberValue(table, columnName, -99);
-            InsertAndValidateSelectNumberValue(table, columnName, 99);
-            Assert.Throws<AdbcException>(() => InsertAndValidateSelectNumberValue(table, columnName, SqlDecimal.MinValue));
-            Assert.Throws<AdbcException>(() => InsertAndValidateSelectNumberValue(table, columnName, SqlDecimal.MaxValue));
-            Assert.Throws<AdbcException>(() => InsertAndValidateSelectNumberValue(table, columnName, -100));
-            Assert.Throws<AdbcException>(() => InsertAndValidateSelectNumberValue(table, columnName, 100));
+            ValidateInsertSelectDeleteSingleValue(table, columnName, -1);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, 0);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, 1);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, -99);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, 99);
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.MinValue));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.MaxValue));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleValue(table, columnName, -100));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleValue(table, columnName, 100));
         }
 
-        private void InsertAndValidateSelectNumberValue(string table, string columnName,SqlDecimal value)
+        /// <summary>
+        /// Validates if driver can handle a large scale Number type correctly
+        /// TODO: Currently fails, requires PR #1242 merge to pass.
+        /// </summary>
+        [SkippableFact]
+        public void TestLargeScaleNumberRange()
+        {
+            string columnName = "LARGESCALENUMBER";
+            string table = CreateTable(string.Format("{0} NUMBER(38,37)", columnName));
+            ValidateInsertSelectDeleteSingleValue(table, columnName, 0);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.MinValue);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.MaxValue);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.Parse("-2.003"));
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.Parse("4.85"));
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.Parse("0.0000000000000000000000000000000000001"));
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.Parse("9.5545204502636499875576383003668916798"));
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.Parse("99999999999999999999999999999999999999.9"));
+        }
+
+        /// <summary>
+        /// Validates if driver can handle a large scale Number type correctly
+        /// TODO: Currently fails, requires PR #1242 merge to pass.
+        /// </summary>
+        [SkippableFact]
+        public void TestSmallScaleNumberRange()
+        {
+            string columnName = "LARGESCALENUMBER";
+            string table = CreateTable(string.Format("{0} NUMBER(38,2)", columnName));
+            ValidateInsertSelectDeleteSingleValue(table, columnName, 0);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.MinValue);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.MaxValue);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.Parse("4.85"));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDecimal.Parse("-2.003")));
+        }
+
+        /// <summary>
+        /// Validates if driver can handle floating point number type correctly
+        /// TODO: Currently fails, requires PR #1242 merge to pass.
+        /// </summary>
+        [SkippableFact]
+        public void TestFloatNumberRange()
+        {
+            string columnName = "FLOATTYPE";
+            string table = CreateTable(string.Format("{0} FLOAT", columnName));
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDouble.Zero);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDouble.MinValue);
+            ValidateInsertSelectDeleteSingleValue(table, columnName, SqlDouble.MaxValue);
+        }
+
+        private void ValidateInsertSelectDeleteSingleValue(string table, string columnName, SqlDecimal value)
+        {
+            InsertSingleValue(table, columnName, value);
+            SelectAndValidateDecimalValues(table, columnName, value, 1);
+            DeleteFromTable(table, string.Format("{0}={1}", columnName, value), 1);
+        }
+
+        private void ValidateInsertSelectDeleteSingleValue(string table, string columnName, SqlDouble value)
+        {
+            InsertSingleValue(table, columnName, value);
+            SelectAndValidateDoubleValues(table, columnName, value, 1);
+            DeleteFromTable(table, string.Format("{0}={1}", columnName, value), 1);
+        }
+
+        private void InsertSingleValue(string table, string columnName, ValueType value)
         {
             string insertNumberStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2});", table, columnName, value);
             Console.WriteLine(insertNumberStatement);
             _statement.SqlQuery = insertNumberStatement;
             UpdateResult updateResult = _statement.ExecuteUpdate();
             Assert.Equal(1, updateResult.AffectedRows);
+        }
 
+        private void SelectAndValidateDecimalValues(string table, string columnName, SqlDecimal value, int count)
+        {
             string selectNumberStatement = string.Format("SELECT {0} FROM {1} WHERE {0}={2};", columnName, table, value);
             Console.WriteLine(selectNumberStatement);
             _statement.SqlQuery = selectNumberStatement;
             QueryResult queryResult = _statement.ExecuteQuery();
-            Assert.Equal(1, queryResult.RowCount);
+            Assert.Equal(count, queryResult.RowCount);
             while (true)
             {
                 RecordBatch nextBatch = queryResult.Stream.ReadNextRecordBatchAsync().Result;
                 if (nextBatch == null) { break; }
-                Decimal128Array queryResultArray = (Decimal128Array)nextBatch.Column(0);
-                for (int i = 0; i < queryResultArray.Length; i++)
+                Decimal128Array decimalArray = (Decimal128Array)nextBatch.Column(0);
+                for (int i = 0; i < decimalArray.Length; i++)
                 {
-                    Assert.Equal(value, queryResultArray.GetSqlDecimal(i));
+                    Assert.Equal(value, decimalArray.GetSqlDecimal(i));
                 }
             }
         }
 
-        private string CreateTable(string columns)
+        private void SelectAndValidateDoubleValues(string table, string columnName, SqlDouble value, int count)
         {
-            string tableName = string.Format("{0}.{1}{2}", _catalogSchema, s_testTablePrefix, Guid.NewGuid().ToString().Replace("-",""));
-            string createTableStatement = string.Format("CREATE TABLE {0} ({1})",tableName,columns);
-            _statement.SqlQuery = createTableStatement;
-            _statement.ExecuteUpdate();
-            return tableName;
+            string selectNumberStatement = string.Format("SELECT {0} FROM {1} WHERE {0}={2};", columnName, table, value);
+            Console.WriteLine(selectNumberStatement);
+            _statement.SqlQuery = selectNumberStatement;
+            QueryResult queryResult = _statement.ExecuteQuery();
+            Assert.Equal(count, queryResult.RowCount);
+            while (true)
+            {
+                RecordBatch nextBatch = queryResult.Stream.ReadNextRecordBatchAsync().Result;
+                if (nextBatch == null) { break; }
+                DoubleArray doubleArray = (DoubleArray)nextBatch.Column(0);
+                for (int i = 0; i < doubleArray.Length; i++)
+                {
+                    Assert.Equal(value, new SqlDouble((double)doubleArray.GetValue(i)));
+                }
+            }
         }
 
         private void DeleteFromTable(string tableName, string whereClause, int expectedRowsAffected)
@@ -128,6 +201,15 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
         }
 
+        private string CreateTable(string columns)
+        {
+            string tableName = string.Format("{0}.{1}{2}", _catalogSchema, s_testTablePrefix, Guid.NewGuid().ToString().Replace("-", ""));
+            string createTableStatement = string.Format("CREATE TABLE {0} ({1})", tableName, columns);
+            _statement.SqlQuery = createTableStatement;
+            _statement.ExecuteUpdate();
+            return tableName;
+        }
+
         public void Dispose()
         {
             string getDropCommandsQuery = string.Format(
@@ -135,11 +217,9 @@ namespace Apache.Arrow.Adbc.Tests
                 _catalogSchema, _snowflakeTestConfiguration.Metadata.Catalog, s_testTablePrefix);
             Console.WriteLine(getDropCommandsQuery);
             _statement.SqlQuery = getDropCommandsQuery;
-
             try
             {
                 QueryResult dropQueries = _statement.ExecuteQuery();
-
                 while (true)
                 {
                     RecordBatch nextBatch = dropQueries.Stream.ReadNextRecordBatchAsync().Result;
