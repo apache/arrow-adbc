@@ -321,6 +321,12 @@ test_that("key_value_options works", {
     structure(list("key" = as.raw(c(0x01, 0x05))), class = "adbc_options")
   )
 
+  # Logical becomes "true" or "false"
+  expect_identical(
+    key_value_options(list("key" = TRUE, "key2" = FALSE)),
+    structure(list("key" = "true", "key2" = "false"), class = "adbc_options")
+  )
+
   # S3 objects converted to strings
   expect_identical(
     key_value_options(list("key" = as.Date("2000-01-01"))),
