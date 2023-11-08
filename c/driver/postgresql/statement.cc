@@ -210,6 +210,33 @@ struct BindStream {
           type_id = PostgresTypeId::kInterval;
           param_lengths[i] = 16;
           break;
+        case ArrowType::NANOARROW_TYPE_DICTIONARY: {
+          struct ArrowSchemaView value_view;
+          CHECK_NA(INTERNAL,
+                   ArrowSchemaViewInit(&value_view, bind_schema->children[i]->dictionary,
+                                       nullptr),
+                   error);
+          switch (value_view.type) {
+            case NANOARROW_TYPE_BINARY:
+            case NANOARROW_TYPE_LARGE_BINARY:
+              type_id = PostgresTypeId::kBytea;
+              param_lengths[i] = 0;
+              break;
+            case NANOARROW_TYPE_STRING:
+            case NANOARROW_TYPE_LARGE_STRING:
+              type_id = PostgresTypeId::kText;
+              param_lengths[i] = 0;
+              break;
+            default:
+              SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
+                       static_cast<uint64_t>(i + 1), " ('",
+                       bind_schema->children[i]->name,
+                       "') has unsupported dictionary value parameter type ",
+                       ArrowTypeString(value_view.type));
+              return ADBC_STATUS_NOT_IMPLEMENTED;
+          }
+          break;
+        }
         default:
           SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                    static_cast<uint64_t>(i + 1), " ('", bind_schema->children[i]->name,
@@ -567,8 +594,8 @@ struct BindStream {
       }
 
       ArrowBuffer buffer = writer.WriteBuffer();
-      if (PQputCopyData(conn, reinterpret_cast<char*>(buffer.data),
-                        buffer.size_bytes) <= 0) {
+      if (PQputCopyData(conn, reinterpret_cast<char*>(buffer.data), buffer.size_bytes) <=
+          0) {
         SetError(error, "Error writing tuple field data: %s", PQerrorMessage(conn));
         return ADBC_STATUS_IO;
       }
@@ -1029,6 +1056,30 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
         create += " INTERVAL";
         break;
+      case ArrowType::NANOARROW_TYPE_DICTIONARY: {
+        struct ArrowSchemaView value_view;
+        CHECK_NA(INTERNAL,
+                 ArrowSchemaViewInit(&value_view, source_schema.children[i]->dictionary,
+                                     nullptr),
+                 error);
+        switch (value_view.type) {
+          case NANOARROW_TYPE_BINARY:
+          case NANOARROW_TYPE_LARGE_BINARY:
+            create += " BYTEA";
+            break;
+          case NANOARROW_TYPE_STRING:
+          case NANOARROW_TYPE_LARGE_STRING:
+            create += " TEXT";
+            break;
+          default:
+            SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
+                     static_cast<uint64_t>(i + 1), " ('", source_schema.children[i]->name,
+                     "') has unsupported dictionary value type for ingestion ",
+                     ArrowTypeString(value_view.type));
+            return ADBC_STATUS_NOT_IMPLEMENTED;
+        }
+        break;
+      }
       default:
         SetError(error, "%s%" PRIu64 "%s%s%s%s", "[libpq] Field #",
                  static_cast<uint64_t>(i + 1), " ('", source_schema.children[i]->name,

@@ -1283,11 +1283,17 @@ class PostgresCopyBinaryDictFieldWriter : public PostgresCopyFieldWriter {
  public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
     int64_t dict_index = ArrowArrayViewGetIntUnsafe(array_view_, index);
-    struct ArrowBufferView buffer_view =
-        ArrowArrayViewGetBytesUnsafe(array_view_->dictionary, dict_index);
-    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, buffer_view.size_bytes, error));
-    NANOARROW_RETURN_NOT_OK(
-        ArrowBufferAppend(buffer, buffer_view.data.as_uint8, buffer_view.size_bytes));
+    if (ArrowArrayViewIsNull(array_view_->dictionary, dict_index)) {
+      constexpr int32_t field_size_bytes = -1;
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    } else {
+      struct ArrowBufferView buffer_view =
+          ArrowArrayViewGetBytesUnsafe(array_view_->dictionary, dict_index);
+      NANOARROW_RETURN_NOT_OK(
+          WriteChecked<int32_t>(buffer, buffer_view.size_bytes, error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppend(buffer, buffer_view.data.as_uint8, buffer_view.size_bytes));
+    }
 
     return ADBC_STATUS_OK;
   }
@@ -1425,7 +1431,6 @@ static inline ArrowErrorCode MakeCopyFieldWriter(struct ArrowSchema* schema,
         case NANOARROW_TYPE_STRING:
         case NANOARROW_TYPE_LARGE_BINARY:
         case NANOARROW_TYPE_LARGE_STRING:
-        case NANOARROW_TYPE_FIXED_SIZE_BINARY:
           *out = new PostgresCopyBinaryDictFieldWriter();
           return NANOARROW_OK;
         default:
