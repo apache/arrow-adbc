@@ -37,6 +37,13 @@ test_that("The log driver logs", {
     expect_identical(adbc_statement_get_option(stmt, "key"), "value")
 
     try(adbc_statement_execute_query(stmt))
+    try(adbc_statement_execute_schema(stmt))
+    try(adbc_statement_prepare(stmt))
+    try(adbc_statement_set_sql_query(stmt, ""))
+    try(adbc_statement_set_substrait_plan(stmt, raw()))
+    try(adbc_statement_bind(stmt, data.frame()))
+    try(adbc_statement_bind_stream(stmt, data.frame()))
+    try(adbc_statement_cancel(stmt))
 
     adbc_statement_release(stmt)
     adbc_connection_release(con)

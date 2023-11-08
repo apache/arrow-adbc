@@ -222,19 +222,44 @@ class LogDriverStatement : public adbc::r::StatementObjectBase {
     return adbc::r::StatementObjectBase::GetOption(key, default_value);
   }
 
-  AdbcStatusCode SetSqlQuery(const char* query, AdbcError* error) {
-    Rprintf("LogStatementSetSqlQuery()\n");
-    return ADBC_STATUS_NOT_IMPLEMENTED;
-  }
-
   AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
                               AdbcError* error) {
     Rprintf("LogStatementExecuteQuery()\n");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
+  AdbcStatusCode ExecuteSchema(ArrowSchema* schema, AdbcError* error) {
+    Rprintf("LogStatementExecuteSchema()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode Prepare(AdbcError* error) {
+    Rprintf("LogStatementPrepare()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode SetSqlQuery(const char* query, AdbcError* error) {
+    Rprintf("LogStatementSetSqlQuery()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode SetSubstraitPlan(const uint8_t* plan, size_t length, AdbcError* error) {
+    Rprintf("LogStatementSetSubstraitPlan()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode Bind(ArrowArray* values, ArrowSchema* schema, AdbcError* error) {
+    Rprintf("LogStatementBind()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
   AdbcStatusCode BindStream(ArrowArrayStream* stream, AdbcError* error) {
     Rprintf("LogStatementBindStream()\n");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  AdbcStatusCode Cancel(AdbcError* error) {
+    Rprintf("LogStatementCancel()\n");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 };
