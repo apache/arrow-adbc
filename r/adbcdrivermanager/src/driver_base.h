@@ -231,8 +231,8 @@ class ObjectBase {
   virtual AdbcStatusCode Release(AdbcError* error) { return ADBC_STATUS_OK; }
 
   // Get an option that was previously set, providing an optional default value.
-  const Option& GetOption(const std::string& key,
-                          const Option& default_value = Option()) const {
+  virtual const Option& GetOption(const std::string& key,
+                                  const Option& default_value = Option()) const {
     auto result = options_.find(key);
     if (result == options_.end()) {
       return default_value;

@@ -18,9 +18,16 @@
 test_that("The log driver logs", {
   expect_snapshot({
     db <- adbc_database_init(adbc_driver_log(), key = "value")
+    expect_identical(adbc_database_get_option(db, "key"), "value")
+
     con <- adbc_connection_init(db, key = "value")
+    expect_identical(adbc_connection_get_option(con, "key"), "value")
+
     stmt <- adbc_statement_init(con, key = "value")
+    expect_identical(adbc_statement_get_option(stmt, "key"), "value")
+
     try(adbc_statement_execute_query(stmt))
+
     adbc_statement_release(stmt)
     adbc_connection_release(con)
     adbc_database_release(db)

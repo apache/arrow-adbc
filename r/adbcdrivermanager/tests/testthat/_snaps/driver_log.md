@@ -7,16 +7,31 @@
       LogDatabaseSetOption()
       LogDatabaseInit()
     Code
+      expect_identical(adbc_database_get_option(db, "key"), "value")
+    Output
+      LogDatabaseGetOption()
+      LogDatabaseGetOption()
+    Code
       con <- adbc_connection_init(db, key = "value")
     Output
       LogConnectionNew()
       LogConnectionSetOption()
       LogConnectionInit()
     Code
+      expect_identical(adbc_connection_get_option(con, "key"), "value")
+    Output
+      LogConnectionGetOption()
+      LogConnectionGetOption()
+    Code
       stmt <- adbc_statement_init(con, key = "value")
     Output
       LogStatementNew()
       LogStatementSetOption()
+    Code
+      expect_identical(adbc_statement_get_option(stmt, "key"), "value")
+    Output
+      LogStatementGetOption()
+      LogStatementGetOption()
     Code
       try(adbc_statement_execute_query(stmt))
     Output
@@ -34,5 +49,4 @@
       adbc_database_release(db)
     Output
       LogDatabaseRelease()
-      LogDriverRelease()
 
