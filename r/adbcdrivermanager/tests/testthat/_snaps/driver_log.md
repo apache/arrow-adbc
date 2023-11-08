@@ -90,6 +90,41 @@
       LogStatementExecuteQuery()
       Error in adbc_statement_execute_query(stmt) : NOT_IMPLEMENTED
     Code
+      try(adbc_statement_execute_schema(stmt))
+    Output
+      LogStatementExecuteSchema()
+      Error in adbc_statement_execute_schema(stmt) : NOT_IMPLEMENTED
+    Code
+      try(adbc_statement_prepare(stmt))
+    Output
+      LogStatementPrepare()
+      Error in adbc_statement_prepare(stmt) : NOT_IMPLEMENTED
+    Code
+      try(adbc_statement_set_sql_query(stmt, ""))
+    Output
+      LogStatementSetSqlQuery()
+      Error in adbc_statement_set_sql_query(stmt, "") : NOT_IMPLEMENTED
+    Code
+      try(adbc_statement_set_substrait_plan(stmt, raw()))
+    Output
+      LogStatementSetSubstraitPlan()
+      Error in adbc_statement_set_substrait_plan(stmt, raw()) : NOT_IMPLEMENTED
+    Code
+      try(adbc_statement_bind(stmt, data.frame()))
+    Output
+      LogStatementBind()
+      Error in adbc_statement_bind(stmt, data.frame()) : NOT_IMPLEMENTED
+    Code
+      try(adbc_statement_bind_stream(stmt, data.frame()))
+    Output
+      LogStatementBindStream()
+      Error in adbc_statement_bind_stream(stmt, data.frame()) : NOT_IMPLEMENTED
+    Code
+      try(adbc_statement_cancel(stmt))
+    Output
+      LogStatementCancel()
+      Error in adbc_statement_cancel(stmt) : NOT_IMPLEMENTED
+    Code
       adbc_statement_release(stmt)
     Output
       LogStatementRelease()
