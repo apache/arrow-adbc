@@ -49,7 +49,7 @@ if [ "$INCLUDE_DIR" ] || [ "$LIB_DIR" ]; then
 elif [ ! -z "$HAS_PKG_CONFIG" ]; then
   echo "Using pkg-config libpq to locate libpq headers/libs"
   PKG_CPPFLAGS="`pkg-config libpq --cflags` $PKG_CPPFLAGS"
-  PKG_LIBS="`pkg-config libpq --libs` -lpq $PKG_LIBS"
+  PKG_LIBS="`pkg-config libpq --libs` $PKG_LIBS"
 elif [ ! -z "$HAS_PG_CONFIG" ]; then
   echo "Using pg_config to locate libpq headers/libs"
   PKG_CPPFLAGS="-I`pg_config --includedir` $PKG_CPPFLAGS"
