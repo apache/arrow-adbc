@@ -1231,13 +1231,13 @@ class PostgresCopyDurationFieldWriter : public PostgresCopyFieldWriter {
     switch (TU) {
       case NANOARROW_TIME_UNIT_SECOND:
         if ((overflow_safe = raw_value <= kMaxSafeSecondsToMicros &&
-             raw_value >= kMinSafeSecondsToMicros)) {
+                             raw_value >= kMinSafeSecondsToMicros)) {
           value = raw_value * 1000000;
         }
         break;
       case NANOARROW_TIME_UNIT_MILLI:
         if ((overflow_safe = raw_value <= kMaxSafeMillisToMicros &&
-             raw_value >= kMinSafeMillisToMicros)) {
+                             raw_value >= kMinSafeMillisToMicros)) {
           value = raw_value * 1000;
         }
         break;
@@ -1251,11 +1251,8 @@ class PostgresCopyDurationFieldWriter : public PostgresCopyFieldWriter {
 
     if (!overflow_safe) {
       ArrowErrorSet(
-          error,
-          "Row %" PRId64 " duration value %" PRId64 " with unit %d would overflow",
-          index,
-          raw_value,
-          TU);
+          error, "Row %" PRId64 " duration value %" PRId64 " with unit %d would overflow",
+          index, raw_value, TU);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
@@ -1273,8 +1270,21 @@ class PostgresCopyDurationFieldWriter : public PostgresCopyFieldWriter {
 class PostgresCopyBinaryFieldWriter : public PostgresCopyFieldWriter {
  public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    struct ArrowBufferView buffer_view = ArrowArrayViewGetBytesUnsafe(array_view_, index);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, buffer_view.size_bytes, error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(buffer, buffer_view.data.as_uint8, buffer_view.size_bytes));
+
+    return ADBC_STATUS_OK;
+  }
+};
+
+class PostgresCopyBinaryDictFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    int64_t dict_index = ArrowArrayViewGetIntUnsafe(array_view_, index);
     struct ArrowBufferView buffer_view =
-        ArrowArrayViewGetBytesUnsafe(array_view_, index);
+        ArrowArrayViewGetBytesUnsafe(array_view_->dictionary, dict_index);
     NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, buffer_view.size_bytes, error));
     NANOARROW_RETURN_NOT_OK(
         ArrowBufferAppend(buffer, buffer_view.data.as_uint8, buffer_view.size_bytes));
@@ -1297,13 +1307,13 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
     switch (TU) {
       case NANOARROW_TIME_UNIT_SECOND:
         if ((overflow_safe = raw_value <= kMaxSafeSecondsToMicros &&
-             raw_value >= kMinSafeSecondsToMicros)) {
+                             raw_value >= kMinSafeSecondsToMicros)) {
           value = raw_value * 1000000;
         }
         break;
       case NANOARROW_TIME_UNIT_MILLI:
         if ((overflow_safe = raw_value <= kMaxSafeMillisToMicros &&
-             raw_value >= kMinSafeMillisToMicros)) {
+                             raw_value >= kMinSafeMillisToMicros)) {
           value = raw_value * 1000;
         }
         break;
@@ -1316,12 +1326,10 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
     }
 
     if (!overflow_safe) {
-      ArrowErrorSet(
-          error,
-          "Row %" PRId64 " timestamp value %" PRId64 " with unit %d would overflow",
-          index,
-          raw_value,
-          TU);
+      ArrowErrorSet(error,
+                    "Row %" PRId64 " timestamp value %" PRId64
+                    " with unit %d would overflow",
+                    index, raw_value, TU);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
@@ -1334,9 +1342,12 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
-static inline ArrowErrorCode MakeCopyFieldWriter(
-    const struct ArrowSchemaView& schema_view, PostgresCopyFieldWriter** out,
-    ArrowError* error) {
+static inline ArrowErrorCode MakeCopyFieldWriter(struct ArrowSchema* schema,
+                                                 PostgresCopyFieldWriter** out,
+                                                 ArrowError* error) {
+  struct ArrowSchemaView schema_view;
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
+
   switch (schema_view.type) {
     case NANOARROW_TYPE_BOOL:
       *out = new PostgresCopyBooleanFieldWriter();
@@ -1368,21 +1379,21 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       *out = new PostgresCopyBinaryFieldWriter();
       return NANOARROW_OK;
     case NANOARROW_TYPE_TIMESTAMP: {
-        switch (schema_view.time_unit) {
-          case NANOARROW_TIME_UNIT_NANO:
-            *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_NANO>();
-            break;
-          case NANOARROW_TIME_UNIT_MILLI:
-            *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MILLI>();
-            break;
-          case NANOARROW_TIME_UNIT_MICRO:
-            *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MICRO>();
-            break;
-          case NANOARROW_TIME_UNIT_SECOND:
-            *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_SECOND>();
-            break;
-        }
-        return NANOARROW_OK;
+      switch (schema_view.time_unit) {
+        case NANOARROW_TIME_UNIT_NANO:
+          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_NANO>();
+          break;
+        case NANOARROW_TIME_UNIT_MILLI:
+          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MILLI>();
+          break;
+        case NANOARROW_TIME_UNIT_MICRO:
+          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_MICRO>();
+          break;
+        case NANOARROW_TIME_UNIT_SECOND:
+          *out = new PostgresCopyTimestampFieldWriter<NANOARROW_TIME_UNIT_SECOND>();
+          break;
+      }
+      return NANOARROW_OK;
     }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
       *out = new PostgresCopyIntervalFieldWriter();
@@ -1405,10 +1416,28 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       }
       return NANOARROW_OK;
     }
+    case NANOARROW_TYPE_DICTIONARY: {
+      struct ArrowSchemaView value_view;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaViewInit(&value_view, schema->dictionary, error));
+      switch (value_view.type) {
+        case NANOARROW_TYPE_BINARY:
+        case NANOARROW_TYPE_STRING:
+        case NANOARROW_TYPE_LARGE_BINARY:
+        case NANOARROW_TYPE_LARGE_STRING:
+        case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+          *out = new PostgresCopyBinaryDictFieldWriter();
+          return NANOARROW_OK;
+        default:
+          break;
+      }
+    }
     default:
-      ArrowErrorSet(error, "COPY Writer not implemented for type %d", schema_view.type);
-      return EINVAL;
+      break;
   }
+
+  ArrowErrorSet(error, "COPY Writer not implemented for type %d", schema_view.type);
+  return EINVAL;
 }
 
 class PostgresCopyStreamWriter {
@@ -1450,13 +1479,9 @@ class PostgresCopyStreamWriter {
     }
 
     for (int64_t i = 0; i < schema_->n_children; i++) {
-      struct ArrowSchemaView schema_view;
-      if (ArrowSchemaViewInit(&schema_view, schema_->children[i], error) !=
-          NANOARROW_OK) {
-        return ADBC_STATUS_INTERNAL;
-      }
       PostgresCopyFieldWriter* child_writer = nullptr;
-      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema_view, &child_writer, error));
+      NANOARROW_RETURN_NOT_OK(
+          MakeCopyFieldWriter(schema_->children[i], &child_writer, error));
       root_writer_.AppendChild(std::unique_ptr<PostgresCopyFieldWriter>(child_writer));
     }
 
