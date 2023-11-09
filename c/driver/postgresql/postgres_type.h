@@ -521,6 +521,9 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
           PostgresType::FromSchema(resolver, schema->children[0], &child, error));
       return resolver.FindArray(child.oid(), out, error);
     }
+    case NANOARROW_TYPE_DICTIONARY:
+      // Dictionary arrays always resolve to the dictionary type when binding or ingesting
+      return PostgresType::FromSchema(resolver, schema->dictionary, out, error);
 
     default:
       ArrowErrorSet(error, "Can't map Arrow type '%s' to Postgres type",
