@@ -23,7 +23,10 @@ using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
 {
-    public class ValueTests : IDisposable
+    // TODO: When supported, use prepared statements instead of SQL string literals
+    //      Which will better test how the driver handles values sent
+
+    public class ValueTests
     {
         static readonly string s_testTablePrefix = "ADBCVALUETEST_"; // Make configurable? Also; must be all caps if not double quoted
         readonly SnowflakeTestConfiguration _snowflakeTestConfiguration;
@@ -54,7 +57,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// These Snowflake types are equivalent: INT,INTEGER,BIGINT,SMALLINT,TINYINT,BYTEINT
         /// </summary>
         [SkippableFact]
-        public void TestIntegerRanges()
+        public void TestIntegerRange()
         {
             string columnName = "INTTYPE";
             string table = CreateTable(string.Format("{0} INT", columnName));
@@ -67,7 +70,6 @@ namespace Apache.Arrow.Adbc.Tests
 
         /// <summary>
         /// Validates if driver can handle smaller Number type correctly
-        /// TODO: Currently fails, requires PR #1267 merge to pass.
         /// </summary>
         [SkippableFact]
         public void TestSmallNumberRange()
@@ -87,7 +89,6 @@ namespace Apache.Arrow.Adbc.Tests
 
         /// <summary>
         /// Validates if driver can handle a large scale Number type correctly
-        /// TODO: Currently fails, requires PR #1267 merge to pass.
         /// </summary>
         [SkippableFact]
         public void TestLargeScaleNumberRange()
@@ -95,29 +96,39 @@ namespace Apache.Arrow.Adbc.Tests
             string columnName = "LARGESCALENUMBER";
             string table = CreateTable(string.Format("{0} NUMBER(38,37)", columnName));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MinValue);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MaxValue);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-2.003"));
+            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-2.0003"));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("4.85"));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("0.0000000000000000000000000000000000001"));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("9.5545204502636499875576383003668916798"));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("99999999999999999999999999999999999999.9"));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-10")));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("10")));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MinValue));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MaxValue));
         }
 
         /// <summary>
         /// Validates if driver can handle a large scale Number type correctly
-        /// TODO: Currently fails, requires PR #1267 merge to pass.
         /// </summary>
         [SkippableFact]
         public void TestSmallScaleNumberRange()
         {
-            string columnName = "LARGESCALENUMBER";
+            string columnName = "SMALLSCALENUMBER";
             string table = CreateTable(string.Format("{0} NUMBER(38,2)", columnName));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MinValue);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MaxValue);
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("4.85"));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-2.003")));
+            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-999999999999999999999999999999999999.99"));
+            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("999999999999999999999999999999999999.99"));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MinValue));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MaxValue));
+
+            // Snowflake will insert when input goes beyond scale, but storage will round value.
+            InsertSingleValue(table, columnName, "2.467");
+            SelectAndValidateDecimalValues(table, columnName, SqlDecimal.Parse("2.47"), 1);
+            DeleteFromTable(table, string.Format("{0}={1}", columnName, SqlDecimal.Parse("2.47")), 1);
+
+            InsertSingleValue(table, columnName, "-672.613");
+            SelectAndValidateDecimalValues(table, columnName, SqlDecimal.Parse("-672.61"), 1);
+            DeleteFromTable(table, string.Format("{0}={1}", columnName, SqlDecimal.Parse("-672.61")), 1);
         }
 
         /// <summary>
@@ -229,44 +240,10 @@ namespace Apache.Arrow.Adbc.Tests
         private string CreateTable(string columns)
         {
             string tableName = string.Format("{0}.{1}{2}", _catalogSchema, s_testTablePrefix, Guid.NewGuid().ToString().Replace("-", ""));
-            string createTableStatement = string.Format("CREATE TABLE {0} ({1})", tableName, columns);
+            string createTableStatement = string.Format("CREATE TEMPORARY TABLE {0} ({1})", tableName, columns);
             _statement.SqlQuery = createTableStatement;
             _statement.ExecuteUpdate();
             return tableName;
-        }
-
-        public void Dispose()
-        {
-            string getDropCommandsQuery = string.Format(
-                "SELECT 'DROP TABLE {0}.' || table_name || ';' FROM {1}.INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE '{2}_%';",
-                _catalogSchema, _snowflakeTestConfiguration.Metadata.Catalog, s_testTablePrefix);
-            Console.WriteLine(getDropCommandsQuery);
-            _statement.SqlQuery = getDropCommandsQuery;
-            try
-            {
-                QueryResult dropQueries = _statement.ExecuteQuery();
-                while (true)
-                {
-                    RecordBatch nextBatch = dropQueries.Stream.ReadNextRecordBatchAsync().Result;
-                    if (nextBatch == null) { break; }
-                    StringArray dropCommandsArray = (StringArray)nextBatch.Column(0);
-                    for (int i = 0; i < dropCommandsArray.Length; i++)
-                    {
-                        string dropCommandQuery = dropCommandsArray.GetString(i);
-                        Console.WriteLine(dropCommandQuery);
-                        _statement.SqlQuery = dropCommandQuery;
-                        _statement.ExecuteUpdate();
-                    }
-                }
-            }
-            catch (ArgumentNullException ex)
-            {
-                if (ex.Message.Contains("'fields'"))
-                {
-                    Console.WriteLine(string.Format("No tables found with prefix {0}", s_testTablePrefix));
-                }
-                else throw ex;
-            }
         }
     }
 }
