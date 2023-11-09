@@ -71,7 +71,10 @@ class MonkeyDriverStatement : public adbc::r::StatementObjectBase {
       stream_.release = nullptr;
     }
 
-    *rows_affected = -1;
+    if (rows_affected != nullptr) {
+      *rows_affected = -1;
+    }
+
     return ADBC_STATUS_OK;
   }
 
@@ -102,11 +105,6 @@ class LogDriverDatabase : public adbc::r::DatabaseObjectBase {
 
   ~LogDriverDatabase() { Rprintf("LogDatabaseRelease()\n"); }
 
-  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
-    Rprintf("LogDatabaseSetOption()\n");
-    return adbc::r::DatabaseObjectBase::SetOption(key, value);
-  }
-
   AdbcStatusCode Init(void* parent, AdbcError* error) {
     Rprintf("LogDatabaseInit()\n");
     return adbc::r::DatabaseObjectBase::Init(parent, error);
@@ -117,6 +115,11 @@ class LogDriverDatabase : public adbc::r::DatabaseObjectBase {
     Rprintf("LogDatabaseGetOption()\n");
     return adbc::r::DatabaseObjectBase::GetOption(key, default_value);
   }
+
+  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
+    Rprintf("LogDatabaseSetOption()\n");
+    return adbc::r::DatabaseObjectBase::SetOption(key, value);
+  }
 };
 
 class LogDriverConnection : public adbc::r::ConnectionObjectBase {
@@ -124,11 +127,6 @@ class LogDriverConnection : public adbc::r::ConnectionObjectBase {
   LogDriverConnection() { Rprintf("LogConnectionNew()\n"); }
 
   ~LogDriverConnection() { Rprintf("LogConnectionRelease()\n"); }
-
-  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
-    Rprintf("LogConnectionSetOption()\n");
-    return adbc::r::ConnectionObjectBase::SetOption(key, value);
-  }
 
   AdbcStatusCode Init(void* parent, AdbcError* error) {
     Rprintf("LogConnectionInit()\n");
@@ -139,6 +137,11 @@ class LogDriverConnection : public adbc::r::ConnectionObjectBase {
                           const Option& default_value = Option()) const {
     Rprintf("LogConnectionGetOption()\n");
     return adbc::r::ConnectionObjectBase::GetOption(key, default_value);
+  }
+
+  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
+    Rprintf("LogConnectionSetOption()\n");
+    return adbc::r::ConnectionObjectBase::SetOption(key, value);
   }
 
   AdbcStatusCode Commit(AdbcError* error) {
@@ -211,15 +214,15 @@ class LogDriverStatement : public adbc::r::StatementObjectBase {
     return adbc::r::StatementObjectBase::Init(parent, error);
   }
 
-  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
-    Rprintf("LogStatementSetOption()\n");
-    return adbc::r::StatementObjectBase::SetOption(key, value);
-  }
-
   const Option& GetOption(const std::string& key,
                           const Option& default_value = Option()) const {
     Rprintf("LogStatementGetOption()\n");
     return adbc::r::StatementObjectBase::GetOption(key, default_value);
+  }
+
+  AdbcStatusCode SetOption(const std::string& key, const Option& value) {
+    Rprintf("LogStatementSetOption()\n");
+    return adbc::r::StatementObjectBase::SetOption(key, value);
   }
 
   AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
