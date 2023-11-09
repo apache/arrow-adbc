@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -15,39 +15,31 @@
  * limitations under the License.
  */
 
-namespace Apache.Arrow.Adbc
+using System.Runtime.InteropServices;
+
+namespace Apache.Arrow.Adbc.C
 {
     /// <summary>
-    /// How to handle already-existing/nonexistent tables for bulk ingest
-    /// operations.
+    /// Extra key-value metadata for an error.
+    ///
+    /// Added in ADBC 1.1.0.
     /// </summary>
-    public enum BulkIngestMode
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe struct CAdbcErrorDetail
     {
         /// <summary>
-        /// Create the table and insert data; error if the table exists.
+        /// The metadata key.
         /// </summary>
-        Create,
+        public byte* key;
 
         /// <summary>
-        /// Do not create the table and append data; error if the table
-        /// does not exist (<see cref="AdbcStatusCode.NotFound"/>) or
-        /// does not match the schema of the data to append
-        /// (<see cref="AdbcStatusCode.AlreadyExists"/>).
+        /// The metadata value.
         /// </summary>
-        Append,
+        public byte* values;
 
         /// <summary>
-        /// Create the table and insert data; drop the original table if it already exists.
-        ///
-        /// Added as part of API version 1.1.0
+        /// The metadata value length.
         /// </summary>
-        Replace,
-
-        /// <summary>
-        /// Insert data; create the table if it does not exist or error
-        /// (<see cref="AdbcStatusCode.AlreadyExists"/>) if the table exists but the schema does not
-        /// match the schema of the data to append.
-        /// </summary>
-        CreateAppend,
+        public nint lengths;
     }
 }

@@ -50,6 +50,16 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// The driver Arrow library version
         /// </summary>
-        DriverArrowVersion = 102
+        DriverArrowVersion = 102,
+
+        /// <summary>
+        /// The driver ADBC API version
+        /// </summary>
+        /// <remarks>
+        /// The value should be one of the ADBC_VERSION...
+        ///
+        /// Added in ADBC 1.1.0.
+        /// </remarks>
+        DriverAdbcVersion = 103,
     }
 }

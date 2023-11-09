@@ -39,6 +39,7 @@ namespace Apache.Arrow.Adbc.C
     {
         private const string driverInit = "AdbcDriverInit";
         private const int ADBC_VERSION_1_0_0 = 1000000;
+        private const int ADBC_VERSION_1_1_0 = 1001000;
 
         /// <summary>
         /// Loads an <see cref="AdbcDriver"/> from the file system.
