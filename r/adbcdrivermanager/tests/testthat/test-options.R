@@ -32,7 +32,7 @@ test_that("get/set option can roundtrip string options for database", {
 test_that("get/set option can roundtrip bytes options for database", {
   db <- adbc_database_init(adbc_driver_void())
   expect_error(
-    adbc_database_get_option(db, "some_key"),
+    adbc_database_get_option_bytes(db, "some_key"),
     class = "adbc_status_not_found"
   )
 
@@ -47,7 +47,7 @@ test_that("get/set option can roundtrip integer options for database", {
   db <- adbc_database_init(adbc_driver_void())
 
   expect_error(
-    adbc_database_get_option(db, "some_key"),
+    adbc_database_get_option_int(db, "some_key"),
     class = "adbc_status_not_found"
   )
 
@@ -62,7 +62,7 @@ test_that("get/set option can roundtrip double options for database", {
   db <- adbc_database_init(adbc_driver_void())
 
   expect_error(
-    adbc_database_get_option(db, "some_key"),
+    adbc_database_get_option_double(db, "some_key"),
     class = "adbc_status_not_found"
   )
 
@@ -95,7 +95,7 @@ test_that("get/set option can roundtrip bytes options for connection", {
   con <- adbc_connection_init(db)
 
   expect_error(
-    adbc_connection_get_option(con, "some_key"),
+    adbc_connection_get_option_bytes(con, "some_key"),
     class = "adbc_status_not_found"
   )
 
@@ -111,7 +111,7 @@ test_that("get/set option can roundtrip int options for connection", {
   con <- adbc_connection_init(db)
 
   expect_error(
-    adbc_connection_get_option(con, "some_key"),
+    adbc_connection_get_option_int(con, "some_key"),
     class = "adbc_status_not_found"
   )
 
@@ -127,7 +127,7 @@ test_that("get/set option can roundtrip double options for connection", {
   con <- adbc_connection_init(db)
 
   expect_error(
-    adbc_connection_get_option(con, "some_key"),
+    adbc_connection_get_option_double(con, "some_key"),
     class = "adbc_status_not_found"
   )
 
@@ -161,7 +161,7 @@ test_that("get/set option can roundtrip bytes options for statement", {
   stmt <- adbc_statement_init(con)
 
   expect_error(
-    adbc_statement_get_option(stmt, "some_key"),
+    adbc_statement_get_option_bytes(stmt, "some_key"),
     class = "adbc_status_not_found"
   )
 
@@ -178,7 +178,7 @@ test_that("get/set option can roundtrip int options for statement", {
   stmt <- adbc_statement_init(con)
 
   expect_error(
-    adbc_statement_get_option(stmt, "some_key"),
+    adbc_statement_get_option_int(stmt, "some_key"),
     class = "adbc_status_not_found"
   )
 
@@ -195,7 +195,7 @@ test_that("get/set option can roundtrip double options for statement", {
   stmt <- adbc_statement_init(con)
 
   expect_error(
-    adbc_statement_get_option(stmt, "some_key"),
+    adbc_statement_get_option_double(stmt, "some_key"),
     class = "adbc_status_not_found"
   )
 
