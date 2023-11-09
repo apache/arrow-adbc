@@ -265,7 +265,8 @@ adbc_connection_read_partition <- function(connection, serialized_partition) {
 #' @export
 adbc_connection_commit <- function(connection) {
   error <- adbc_allocate_error()
-  .Call(RAdbcConnectionCommit, connection, error)
+  status <- .Call(RAdbcConnectionCommit, connection, error)
+  stop_for_error(status, error)
   invisible(connection)
 }
 
@@ -274,7 +275,8 @@ adbc_connection_commit <- function(connection) {
 #' @export
 adbc_connection_rollback <- function(connection) {
   error <- adbc_allocate_error()
-  .Call(RAdbcConnectionRollback, connection, error)
+  status <- .Call(RAdbcConnectionRollback, connection, error)
+  stop_for_error(status, error)
   invisible(connection)
 }
 
@@ -282,7 +284,8 @@ adbc_connection_rollback <- function(connection) {
 #' @export
 adbc_connection_cancel <- function(connection) {
   error <- adbc_allocate_error()
-  .Call(RAdbcConnectionCancel, connection, error)
+  status <- .Call(RAdbcConnectionCancel, connection, error)
+  stop_for_error(status, error)
   invisible(connection)
 }
 
@@ -497,4 +500,13 @@ adbc_statement_execute_schema <- function(statement) {
   stop_for_error(status, error)
 
   out_schema
+}
+
+#' @rdname adbc_statement_set_sql_query
+#' @export
+adbc_statement_cancel <- function(statement) {
+  error <- adbc_allocate_error()
+  status <- .Call(RAdbcStatementCancel, statement, error)
+  stop_for_error(status, error)
+  invisible(statement)
 }

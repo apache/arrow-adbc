@@ -30,6 +30,6 @@ test_that("the monkey driver sees, and the monkey driver does", {
   adbc_statement_release(stmt)
 
   stmt <- adbc_statement_init(con, input)
-  expect_identical(adbc_statement_execute_query(stmt, NULL), 0)
+  expect_identical(adbc_statement_execute_query(stmt, NULL), -1)
   adbc_statement_release(stmt)
 })
