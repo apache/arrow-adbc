@@ -19,12 +19,14 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake;
+using Apache.Arrow.Ipc;
+using Apache.Arrow.Types;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
 {
     // TODO: When supported, use prepared statements instead of SQL string literals
-    //      Which will better test how the driver handles values sent
+    //      Which will better test how the driver handles values sent/received
 
     public class ValueTests
     {
@@ -54,13 +56,13 @@ namespace Apache.Arrow.Adbc.Tests
 
         /// <summary>
         /// Validates if driver can send and receive specific Integer values correctly
-        /// These Snowflake types are equivalent: INT,INTEGER,BIGINT,SMALLINT,TINYINT,BYTEINT
+        /// These Snowflake types are equivalent: NUMBER(38,0),INT,INTEGER,BIGINT,SMALLINT,TINYINT,BYTEINT
         /// </summary>
         [SkippableFact]
         public void TestIntegerRange()
         {
             string columnName = "INTTYPE";
-            string table = CreateTable(string.Format("{0} INT", columnName));
+            string table = CreateTemporaryTable(string.Format("{0} INT", columnName));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, -1);
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 1);
@@ -75,7 +77,7 @@ namespace Apache.Arrow.Adbc.Tests
         public void TestSmallNumberRange()
         {
             string columnName = "SMALLNUMBER";
-            string table = CreateTable(string.Format("{0} NUMBER(2,0)", columnName));
+            string table = CreateTemporaryTable(string.Format("{0} NUMBER(2,0)", columnName));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, -1);
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 1);
@@ -94,7 +96,7 @@ namespace Apache.Arrow.Adbc.Tests
         public void TestLargeScaleNumberRange()
         {
             string columnName = "LARGESCALENUMBER";
-            string table = CreateTable(string.Format("{0} NUMBER(38,37)", columnName));
+            string table = CreateTemporaryTable(string.Format("{0} NUMBER(38,37)", columnName));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-2.0003"));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("4.85"));
@@ -113,7 +115,7 @@ namespace Apache.Arrow.Adbc.Tests
         public void TestSmallScaleNumberRange()
         {
             string columnName = "SMALLSCALENUMBER";
-            string table = CreateTable(string.Format("{0} NUMBER(38,2)", columnName));
+            string table = CreateTemporaryTable(string.Format("{0} NUMBER(38,2)", columnName));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("4.85"));
             ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-999999999999999999999999999999999999.99"));
@@ -121,13 +123,14 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MinValue));
             Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MaxValue));
 
-            // Snowflake will insert when input goes beyond scale, but storage will round value.
+            // Snowflake allows insert when input goes beyond scale, but storage will round value.
+            // Round up test
             InsertSingleValue(table, columnName, "2.467");
-            SelectAndValidateDecimalValues(table, columnName, SqlDecimal.Parse("2.47"), 1);
+            SelectAndValidateValues(table, columnName, SqlDecimal.Parse("2.47"), 1);
             DeleteFromTable(table, string.Format("{0}={1}", columnName, SqlDecimal.Parse("2.47")), 1);
-
+            // Round down test
             InsertSingleValue(table, columnName, "-672.613");
-            SelectAndValidateDecimalValues(table, columnName, SqlDecimal.Parse("-672.61"), 1);
+            SelectAndValidateValues(table, columnName, SqlDecimal.Parse("-672.61"), 1);
             DeleteFromTable(table, string.Format("{0}={1}", columnName, SqlDecimal.Parse("-672.61")), 1);
         }
 
@@ -139,7 +142,7 @@ namespace Apache.Arrow.Adbc.Tests
         public void TestFloatNumberRange()
         {
             string columnName = "FLOATTYPE";
-            string table = CreateTable(string.Format("{0} FLOAT", columnName));
+            string table = CreateTemporaryTable(string.Format("{0} FLOAT", columnName));
             ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, 0);
             ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, double.NegativeInfinity);
             ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, double.PositiveInfinity);
@@ -154,7 +157,7 @@ namespace Apache.Arrow.Adbc.Tests
         private void ValidateInsertSelectDeleteSingleDecimalValue(string table, string columnName, SqlDecimal value)
         {
             InsertSingleValue(table, columnName, value.ToString());
-            SelectAndValidateDecimalValues(table, columnName, value, 1);
+            SelectAndValidateValues(table, columnName, value, 1);
             DeleteFromTable(table, string.Format("{0}={1}", columnName, value), 1);
         }
 
@@ -162,7 +165,7 @@ namespace Apache.Arrow.Adbc.Tests
         {
             string valueString = ConvertDoubleToString(value);
             InsertSingleValue(table, columnName, valueString);
-            SelectAndValidateDoubleValues(table, columnName, value, 1);
+            SelectAndValidateValues(table, columnName, value, 1);
             DeleteFromTable(table, string.Format("{0}={1}", columnName, valueString), 1);
         }
 
@@ -175,7 +178,7 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(1, updateResult.AffectedRows);
         }
 
-        private string ConvertDoubleToString(double value)
+        private static string ConvertDoubleToString(double value)
         {
             switch (value)
             {
@@ -190,40 +193,45 @@ namespace Apache.Arrow.Adbc.Tests
             }
         }
 
-        private void SelectAndValidateDecimalValues(string table, string columnName, SqlDecimal value, int count)
+        private async void SelectAndValidateValues(string table, string columnName, object value, int count)
         {
-            string selectNumberStatement = string.Format("SELECT {0} FROM {1} WHERE {0}={2};", columnName, table, value);
-            Console.WriteLine(selectNumberStatement);
-            _statement.SqlQuery = selectNumberStatement;
-            QueryResult queryResult = _statement.ExecuteQuery();
-            Assert.Equal(count, queryResult.RowCount);
-            while (true)
+            string selectNumberStatement;
+            if (value.GetType() == typeof(double))
             {
-                RecordBatch nextBatch = queryResult.Stream.ReadNextRecordBatchAsync().Result;
-                if (nextBatch == null) { break; }
-                Decimal128Array decimalArray = (Decimal128Array)nextBatch.Column(0);
-                for (int i = 0; i < decimalArray.Length; i++)
-                {
-                    Assert.Equal(value, decimalArray.GetSqlDecimal(i));
-                }
+                selectNumberStatement = string.Format("SELECT {0} FROM {1} WHERE {0}={2};", columnName, table, ConvertDoubleToString((double)value));
             }
-        }
-
-        private void SelectAndValidateDoubleValues(string table, string columnName, double value, int count)
-        {
-            string selectNumberStatement = string.Format("SELECT {0} FROM {1} WHERE {0}={2};", columnName, table, ConvertDoubleToString(value));
+            else
+            {
+                selectNumberStatement = string.Format("SELECT {0} FROM {1} WHERE {0}={2};", columnName, table, value);
+            }
             Console.WriteLine(selectNumberStatement);
             _statement.SqlQuery = selectNumberStatement;
             QueryResult queryResult = _statement.ExecuteQuery();
             Assert.Equal(count, queryResult.RowCount);
-            while (true)
+            using (IArrowArrayStream stream = queryResult.Stream)
             {
-                RecordBatch nextBatch = queryResult.Stream.ReadNextRecordBatchAsync().Result;
-                if (nextBatch == null) { break; }
-                DoubleArray doubleArray = (DoubleArray)nextBatch.Column(0);
-                for (int i = 0; i < doubleArray.Length; i++)
+                Field field = stream.Schema.GetFieldByName(columnName);
+                while (true)
                 {
-                    Assert.Equal(value, doubleArray.GetValue(i));
+                    RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync();
+                    if (nextBatch == null) { break; }
+                    switch (field.DataType)
+                    {
+                        case Decimal128Type:
+                            Decimal128Array decimalArray = (Decimal128Array)nextBatch.Column(0);
+                            for (int i = 0; i < decimalArray.Length; i++)
+                            {
+                                Assert.Equal(value, decimalArray.GetSqlDecimal(i));
+                            }
+                            break;
+                        case DoubleType:
+                            DoubleArray doubleArray = (DoubleArray)nextBatch.Column(0);
+                            for (int i = 0; i < doubleArray.Length; i++)
+                            {
+                                Assert.Equal(value, doubleArray.GetValue(i));
+                            }
+                            break;
+                    }
                 }
             }
         }
@@ -237,7 +245,7 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
         }
 
-        private string CreateTable(string columns)
+        private string CreateTemporaryTable(string columns)
         {
             string tableName = string.Format("{0}.{1}{2}", _catalogSchema, s_testTablePrefix, Guid.NewGuid().ToString().Replace("-", ""));
             string createTableStatement = string.Format("CREATE TEMPORARY TABLE {0} ({1})", tableName, columns);
