@@ -90,7 +90,8 @@ LIBRARY=$<TARGET_FILE:adbc_driver_${TARGET}_shared>" ${Python_EXECUTABLE} -m pip
                                --no-deps -e
                                "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}"
                        COMMENT "pip installing the adbc_driver_${TARGET} library..."
-                               DEPENDS $<TARGET_FILE:adbc_driver_${TARGET}_shared>)
+                               DEPENDS $<TARGET_FILE:adbc_driver_${TARGET}_shared>
+                       WORKING_DIRECTORY ${REPOSITORY_ROOT})
   endmacro()
 
   if(ADBC_DRIVER_POSTGRESQL)
