@@ -25,4 +25,4 @@ $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
 
 cmake -S "$($SourceDir)\c" -B $BuildDir -DADBC_DRIVER_MANAGER=$BuildDriverManager -DADBC_BUILD_PYTHON=ON
-cmake --build build --target python
+cmake --build $BuildDir --target python

@@ -28,7 +28,7 @@ main() {
     set -x
 
     cmake -S "${source_dir}/c" -B ${build_dir} -DADBC_DRIVER_MANAGER=${BUILD_DRIVER_MANAGER} -DADBC_BUILD_PYTHON=ON
-    cmake --build build --target python
+    cmake --build ${build_dir} --target python
 
     set +x
 }
