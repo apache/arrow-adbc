@@ -19,7 +19,12 @@
 set -e
 
 : ${BUILD_ALL:=1}
+: ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
+: ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
+: ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
+: ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
+
 
 main() {
     local -r source_dir="${1}"
@@ -27,7 +32,13 @@ main() {
 
     set -x
 
-    cmake -S "${source_dir}/c" -B ${build_dir} -DADBC_DRIVER_MANAGER=${BUILD_DRIVER_MANAGER} -DADBC_BUILD_PYTHON=ON
+    cmake -S "${source_dir}/c" -B ${build_dir} \
+          -DADBC_DRIVER_MANAGER=${BUILD_DRIVER_MANAGER} \
+          -DADBC_DRIVER_FLIGHTSQL=${BUILD_DRIVER_FLIGHTSQL} \
+          -DADBC_DRIVER_POSTGRESQL=${BUILD_DRIVER_POSTGRESQL} \
+          -DADBC_DRIVER_SQLITE=${BUILD_DRIVER_SQLITE} \
+          -DADBC_DRIVER_SNOWFLAKE=${BUILD_DRIVER_SNOWFLAKE} \
+          -DADBC_BUILD_PYTHON=ON
     cmake --build ${build_dir} --target python
 
     set +x
