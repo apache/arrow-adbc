@@ -87,6 +87,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
+        public override object GetValue(IArrowArray arrowArray, Field field, int index)
+        {
+            switch(arrowArray)
+            {
+                case StructArray structArray:
+                    return SerializeToJson(structArray, index);
+                case ListArray listArray:
+                    return listArray.GetSlicedValues(index);
+                default:
+                    return base.GetValue(arrowArray, field, index);
+            }
+        }
+
         private IArrowType TranslateType(TableFieldSchema field)
         {
             // per https://developers.google.com/resources/api-libraries/documentation/bigquery/v2/java/latest/com/google/api/services/bigquery/model/TableFieldSchema.html#getType--
