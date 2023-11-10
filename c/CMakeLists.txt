@@ -70,31 +70,24 @@ endif()
 if(ADBC_BUILD_PYTHON)
   find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
-  #if(NOT ADBC_DRIVER_MANAGER)
-  #  message(FATAL_ERROR "Building Python requires ADBC_DRIVER_MANAGER=ON")
-  #endif()
-
   if(NOT ADBC_BUILD_SHARED)
     message(FATAL_ERROR "Building Python requires ADBC_BUILD_SHARED=ON")
   endif()
 
+  # NB: the Python packages require the driver manager to be installed,
+  # but you don't technically need -DADBC_DRIVER_MANAGER=ON when installing
+  # other Python packages. To be safe then, we always install the driver
+  # manager package, regardless of the value of -DABC_DRIVER_MANAGER
   add_custom_target(python COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
                                    "${REPOSITORY_ROOT}/python/adbc_driver_manager")
 
   macro(adbc_install_python_package TARGET)
-    # Python cannot use versioned suffixes - probably a smarter way to do this...
-    string(CONCAT adbc_driver_${TARGET}_shared_python_lib_name
-                  ${CMAKE_SHARED_LIBRARY_PREFIX}
-                  $<TARGET_FILE_BASE_NAME:adbc_driver_${TARGET}_shared>
-                  ${CMAKE_SHARED_LIBRARY_SUFFIX})
-
+    string(TOUPPER ${TARGET} ${TARGET}_LIB_upper)
     add_custom_command(TARGET python
                        POST_BUILD
-                       COMMAND ${CMAKE_COMMAND} -E copy
-                               $<TARGET_FILE:adbc_driver_${TARGET}_shared>
-                               "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}/\
-adbc_driver_${TARGET}/${adbc_driver_${TARGET}_shared_python_lib_name}"
-                       COMMAND ${Python_EXECUTABLE} -m pip install --no-deps -e
+                       COMMAND ${CMAKE_COMMAND} -E env "ADBC_${${TARGET}_LIB_upper}_\
+LIBRARY=$<TARGET_FILE:adbc_driver_${TARGET}_shared>" ${Python_EXECUTABLE} -m pip install
+                               --no-deps -e
                                "${REPOSITORY_ROOT}/python/adbc_driver_${TARGET}"
                        COMMENT "pip installing the adbc_driver_${TARGET} library..."
                                DEPENDS $<TARGET_FILE:adbc_driver_${TARGET}_shared>)

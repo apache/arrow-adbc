@@ -18,8 +18,32 @@
 # under the License.
 
 import os
+import shutil
+from pathlib import Path
 
 from setuptools import setup
+
+source_root = Path(__file__).parent
+repo_root = source_root.joinpath("../../")
+
+# ------------------------------------------------------------
+# Resolve Shared Library
+
+library = os.environ.get("ADBC_POSTGRESQL_LIBRARY")
+target = source_root.joinpath(
+    "./adbc_driver_postgresql/libadbc_driver_postgresql.so"
+).resolve()
+if not library:
+    if os.environ.get("_ADBC_IS_SDIST", "").strip().lower() in ("1", "true"):
+        print("Building sdist, not requiring ADBC_POSTGRESQL_LIBRARY")
+    elif os.environ.get("_ADBC_IS_CONDA", "").strip().lower() in ("1", "true"):
+        print("Building Conda package, not requiring ADBC_POSTGRESQL_LIBRARY")
+    elif target.is_file():
+        print("Driver already exists (but may be stale?), continuing")
+    else:
+        raise ValueError("Must provide ADBC_POSTGRESQL_LIBRARY")
+else:
+    shutil.copy(library, target)
 
 # ------------------------------------------------------------
 # Resolve Version (miniver)

@@ -40,9 +40,24 @@ with adbc_driver_sqlite.dbapi.connect() as conn:
 
 ## Building
 
-The cmake configuration option ``-DADBC_BUILD_PYTHON=ON`` will define a custom ``python`` target that can build and install this library, as long as ``-DADBC_DRIVER_SQLITE=ON`` is also specified.
+Dependencies: a build of the SQLite driver, and the
+`adbc-driver-manager` Python package.  Optionally, install PyArrow to
+use the DBAPI 2.0-compatible interface.
 
-Assuming you run cmake from the project root:
+Set the environment variable `ADBC_SQLITE_LIBRARY` to the path to
+`libadbc_driver_sqlite.{dll,dylib,so}` before running `pip install`.
+
+```
+# If not already installed
+pip install -e ../adbc_driver_manager
+
+export ADBC_SQLITE_LIBRARY=/path/to/libadbc_driver_sqlite.so
+pip install --no-deps -e .
+```
+
+For users building from the arrow-adbc source repository, you can alternately use CMake to manage library dependencies and set environment variables for you. Assuming you specify ``-DADBC_DRIVER_SQLITE=ON`` you can also add ``-DADBC_BUILD_PYTHON=ON`` to define a ``python`` target.
+
+For example, assuming you run cmake from the project root:
 
 ```shell
 cmake -S -c -B build --preset debug -DADBC_BUILD_PYTHON=ON

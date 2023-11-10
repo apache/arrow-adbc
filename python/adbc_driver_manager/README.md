@@ -38,11 +38,9 @@ row-oriented API of the base DBAPI interface.
 
 Dependencies: a C++ compiler.
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
+For users building from the arrow-adbc source repository, you can alternately use CMake to manage library dependencies and set environment variables for you. You can add ``-DADBC_BUILD_PYTHON=ON`` to define a ``python`` target.
 
-The cmake configuration option ``-DADBC_BUILD_PYTHON=ON`` will define a custom ``python`` target that can build and install this library, as long as ``-DADBC_DRIVER_MANAGER=ON`` is also specified.
-
-Assuming you run cmake from the project root:
+For example, assuming you run cmake from the project root:
 
 ```shell
 cmake -S -c -B build --preset debug -DADBC_BUILD_PYTHON=ON
@@ -50,6 +48,8 @@ cmake --build build --target python
 ```
 
 will properly build and install the Python library for you.
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
 
 ## Testing
 
