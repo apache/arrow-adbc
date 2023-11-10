@@ -101,20 +101,36 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 					}
 					f.Type = dt
 					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-						return compute.CastArray(ctx, a, compute.SafeCastOptions(dt))
+						return integerToDecimal128(ctx, a, dt)
 					}
 				} else {
 					if srcMeta.Scale != 0 {
 						f.Type = arrow.PrimitiveTypes.Float64
-						transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-							result, err := compute.Divide(ctx, compute.ArithmeticOptions{NoCheckOverflow: true},
-								&compute.ArrayDatum{Value: a.Data()},
-								compute.NewDatum(math.Pow10(int(srcMeta.Scale))))
-							if err != nil {
-								return nil, err
+						// For precisions of 16, 17 and 18, a conversion from int64 to float64 fails with an error
+						// So for these precisions, we instead convert first to a decimal128 and then to a float64.
+						if srcMeta.Precision > 15 && srcMeta.Precision < 19 {
+							transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+								result, err := integerToDecimal128(ctx, a, &arrow.Decimal128Type{
+									Precision: int32(srcMeta.Precision),
+									Scale:     int32(srcMeta.Scale),
+								})
+								if err != nil {
+									return nil, err
+								}
+								return compute.CastArray(ctx, result, compute.UnsafeCastOptions(f.Type))
 							}
-							defer result.Release()
-							return result.(*compute.ArrayDatum).MakeArray(), nil
+						} else {
+							// For precisions less than 16, we can simply scale the integer value appropriately
+							transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+								result, err := compute.Divide(ctx, compute.ArithmeticOptions{NoCheckOverflow: true},
+									&compute.ArrayDatum{Value: a.Data()},
+									compute.NewDatum(math.Pow10(int(srcMeta.Scale))))
+								if err != nil {
+									return nil, err
+								}
+								defer result.Release()
+								return result.(*compute.ArrayDatum).MakeArray(), nil
+							}
 						}
 					} else {
 						f.Type = arrow.PrimitiveTypes.Int64
@@ -264,6 +280,27 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 	meta := sc.Metadata()
 	out := arrow.NewSchema(fields, &meta)
 	return out, getRecTransformer(out, transformers)
+}
+
+func integerToDecimal128(ctx context.Context, a arrow.Array, dt *arrow.Decimal128Type) (arrow.Array, error) {
+	// We can't do a cast directly into the destination type because the numbers we get from Snowflake
+	// are scaled integers. So not only would the cast produce the wrong value, it also risks producing
+	// an error of precisions which e.g. can't hold every int64. To work around these problems, we instead
+	// cast into a decimal type of a precision and scale which we know will hold all values and won't
+	// require scaling, We then substitute the type on this array with the actual return type.
+
+	dt0 := &arrow.Decimal128Type{
+		Precision: int32(20),
+		Scale:     int32(0),
+	}
+	result, err := compute.CastArray(ctx, a, compute.SafeCastOptions(dt0))
+	if err != nil {
+		return nil, err
+	}
+
+	data := result.Data()
+	result.Data().Reset(dt, data.Len(), data.Buffers(), data.Children(), data.NullN(), data.Offset())
+	return result, err
 }
 
 func rowTypesToArrowSchema(ctx context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, error) {

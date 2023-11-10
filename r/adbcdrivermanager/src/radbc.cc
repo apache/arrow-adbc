@@ -534,3 +534,10 @@ extern "C" SEXP RAdbcStatementExecutePartitions(SEXP statement_xptr, SEXP out_sc
                                                 SEXP partitions_xptr, SEXP error_xptr) {
   return adbc_wrap_status(ADBC_STATUS_NOT_IMPLEMENTED);
 }
+
+extern "C" SEXP RAdbcStatementCancel(SEXP statement_xptr, SEXP error_xptr) {
+  auto statement = adbc_from_xptr<AdbcStatement>(statement_xptr);
+  auto error = adbc_from_xptr<AdbcError>(error_xptr);
+  int status = AdbcStatementCancel(statement, error);
+  return adbc_wrap_status(status);
+}
