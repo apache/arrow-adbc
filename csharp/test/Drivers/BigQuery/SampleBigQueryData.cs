@@ -81,9 +81,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 new SampleData()
                 {
                     Query = "SELECT " +
-                        "CAST(1.7976931348623157e+308 as FLOAT64) as number, " +
-                        "PARSE_NUMERIC(\"9.99999999999999999999999999999999E+28\") as decimal, " +
-                        "PARSE_BIGNUMERIC(\"5.7896044618658097711785492504343953926634992332820282019728792003956564819968E+37\") as big_decimal ",
+                            "CAST(1.7976931348623157e+308 as FLOAT64) as number, " +
+                            "PARSE_NUMERIC(\"9.99999999999999999999999999999999E+28\") as decimal, " +
+                            "PARSE_BIGNUMERIC(\"5.7896044618658097711785492504343953926634992332820282019728792003956564819968E+37\") as big_decimal ",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {
                         new ColumnNetTypeArrowTypeValue("number", typeof(double), typeof(DoubleType), 1.7976931348623157e+308d),
