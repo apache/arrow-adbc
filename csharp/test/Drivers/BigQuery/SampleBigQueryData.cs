@@ -16,14 +16,9 @@
 */
 
 using System;
-using System.Buffers.Text;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
-using System.Drawing;
-using System.Numerics;
 using System.Text;
-using System.Xml.Linq;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
@@ -34,7 +29,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     internal class SampleBigQueryData
     {
         /// <summary>
-        /// Represents the different types of data for Big Query.
+        /// Represents the different types of data for BigQuery.
         /// </summary>
         public static SampleDataBuilder GetSampleData()
         {
@@ -108,16 +103,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                             "CAST(NULL as INT64) as id, " +
                             "CAST(NULL as FLOAT64) as number, " +
                             "PARSE_NUMERIC(NULL) as decimal,  " +
-                            "PARSE_BIGNUMERIC(NULL) as big_decimal,  " +
-                            "CAST(NULL as BOOL) as is_active,  " +
-                            "CAST(NULL as STRING)  as name,  " +
-                            "FROM_BASE64(NULL) as data,  " +
-                            "CAST(NULL as DATE) as date,  " +
-                            "CAST(NULL as TIME) as time,  " +
-                            "CAST(NULL as DATETIME) as datetime,  " +
+                            "PARSE_BIGNUMERIC(NULL) as big_decimal, " +
+                            "CAST(NULL as BOOL) as is_active, " +
+                            "CAST(NULL as STRING)  as name, " +
+                            "FROM_BASE64(NULL) as data, " +
+                            "CAST(NULL as DATE) as date, " +
+                            "CAST(NULL as TIME) as time, " +
+                            "CAST(NULL as DATETIME) as datetime, " +
                             "CAST(NULL as TIMESTAMP) as timestamp," +
-                            "ST_GEOGPOINT(NULL, NULL) as point,  " +
-                            "CAST(NULL as ARRAY<INT64>) as numbers,  " +
+                            "ST_GEOGPOINT(NULL, NULL) as point, " +
+                            "CAST(NULL as ARRAY<INT64>) as numbers, " +
                             "STRUCT(CAST(NULL as STRING) as name, CAST(NULL as INT64) as age) as person",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {

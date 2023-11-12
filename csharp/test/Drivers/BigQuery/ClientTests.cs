@@ -144,33 +144,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
-            Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration);
-
-            dbConnection.Open();
-
-            SampleDataBuilder sampleDataBuilder = SampleBigQueryData.GetSampleData();
-
-            foreach (SampleData sample in sampleDataBuilder.Samples)
+            using (Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration))
             {
-                DbCommand dbCommand = dbConnection.CreateCommand();
+                dbConnection.Open();
 
-                dbCommand.CommandText = sample.Query;
+                SampleDataBuilder sampleDataBuilder = SampleBigQueryData.GetSampleData();
 
-                DbDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
-
-                if (reader.Read())
+                foreach (SampleData sample in sampleDataBuilder.Samples)
                 {
-                    var column_schema = reader.GetColumnSchema();
-                    DataTable dataTable = reader.GetSchemaTable();
+                    DbCommand dbCommand = dbConnection.CreateCommand();
 
-                    for (int i = 0; i < reader.FieldCount; i++)
+                    dbCommand.CommandText = sample.Query;
+
+                    DbDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
+
+                    if (reader.Read())
                     {
-                        object value = reader.GetValue(i);
-                        ColumnNetTypeArrowTypeValue ctv = sample.ExpectedValues[i];
+                        var column_schema = reader.GetColumnSchema();
+                        DataTable dataTable = reader.GetSchemaTable();
 
-                        Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            object value = reader.GetValue(i);
+                            ColumnNetTypeArrowTypeValue ctv = sample.ExpectedValues[i];
+
+                            Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
+                        }
                     }
                 }
+
+                dbConnection.Close();
             }
         }
 
