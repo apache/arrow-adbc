@@ -377,6 +377,72 @@ gboolean gadbc_statement_execute(GADBCStatement* statement, gboolean need_result
 }
 
 /**
+ * gadbc_statement_execute_query:
+ * @statement: A #GADBCStatement.
+ * @n_rows_affected: (out) (optional): Return location for the number of rows
+ *   affected if known.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Execute a statement and ignore the results.
+ *
+ * This invalidates any prior result sets.
+ *
+ * Returns: %TRUE if execution is done successfully, %FALSE otherwise.
+ *
+ * Since: 0.1.0
+ */
+gboolean gadbc_statement_execute_query(GADBCStatement* statement, gint64* n_rows_affected,
+                                 GError** error) {
+  const gchar* context = "[adbc][statement][execute]";
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcStatementExecuteQuery(adbc_statement, NULL,
+                                                         n_rows_affected, &adbc_error);
+  gboolean success = gadbc_error_check(error, status_code, &adbc_error, context);
+  return success;
+}
+
+/**
+ * gadbc_statement_execute_reader:
+ * @statement: A #GADBCStatement.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Execute a statement and get the results using a #GArrowRecordBatchReader.
+ *
+ * This invalidates any prior result sets.
+ *
+ * Returns: (transfer full): #GArrowRecordBatchReader if execution is done successfully, %NULL otherwise.
+ *
+ * Since: 0.1.0
+ */
+GArrowRecordBatchReader*
+gadbc_statement_execute_reader(GADBCStatement* statement,
+                                 GError** error) {
+  const gchar* context = "[adbc][statement][execute]";
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
+  struct ArrowArrayStream* array_stream = NULL;
+  array_stream = g_new0(struct ArrowArrayStream, 1);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code = AdbcStatementExecuteQuery(adbc_statement, array_stream,
+                                             NULL, &adbc_error);
+  gadbc_error_check(error, status_code, &adbc_error, context);
+
+  GArrowRecordBatchReader* reader = NULL;
+  if (array_stream) {
+    reader = garrow_record_batch_reader_import(array_stream, error);
+    g_free(array_stream);
+  }
+  return reader;
+}
+/**
  * gadbc_statement_get_raw:
  * @statement: A #GADBCStatement.
  * @context: (nullable): A context where this is called from. This is used in

@@ -87,11 +87,10 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  gpointer c_abi_array_stream;
   gint64 n_rows_affected;
-  if (!gadbc_statement_execute(statement, TRUE, &c_abi_array_stream, &n_rows_affected,
+  if (!gadbc_statement_execute_query(statement, &n_rows_affected,
                                &error)) {
-    g_print("Error executing a query: %s", error->message);
+    g_print("Error executing a query ingnoring results: %s", error->message);
     g_error_free(error);
     g_object_unref(statement);
     g_object_unref(conn);
@@ -99,9 +98,7 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  GArrowRecordBatchReader* reader =
-      garrow_record_batch_reader_import(c_abi_array_stream, &error);
-  g_free(c_abi_array_stream);
+  GArrowRecordBatchReader* reader = gadbc_statement_execute_reader(statement, &error);
   if (!reader) {
     g_print("Error importing a result: %s", error->message);
     g_error_free(error);

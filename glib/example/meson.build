@@ -17,8 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-arrow_glib = dependency('arrow-glib')
-
 executable('sqlite', 'sqlite.c',
            dependencies: [adbc_glib, arrow_glib],
            link_language: 'c')

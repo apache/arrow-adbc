@@ -63,6 +63,7 @@ install_headers(headers, subdir: project_include_sub_dir)
 gobject = dependency('gobject-2.0')
 dependencies = [
   adbc_driver_manager,
+  arrow_glib,
   gobject,
 ]
 libadbc_glib = library('adbc-glib',

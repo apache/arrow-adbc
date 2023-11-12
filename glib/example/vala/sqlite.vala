@@ -31,17 +31,10 @@ int main (string[] args) {
         var stm = new GADBC.Statement (conn);
         string sql = "SELECT sqlite_version() AS version";
         stm.set_sql_query (sql);
-        void *c_abi_array_stream = null;
-        stm.execute (true, out c_abi_array_stream, null);
-        try {
-            GLib.message ("Statement executed: %s", sql);
-            var reader = GArrow.RecordBatchReader.import (c_abi_array_stream);
-            var table = reader.read_all ();
-            GLib.message ("Executed result: %s", table.to_string ());
-        } finally {
-            GLib.free (c_abi_array_stream);
-        }
-      GLib.message ("Statement executed: %s", sql);
+        GArrow.RecordBatchReader reader = stm.execute_reader ();
+        GLib.message ("Statement executed: %s", sql);
+        var table = reader.read_all ();
+        GLib.message ("Read result: %s", table.to_string ());
       }
       catch (GLib.Error e) {
         GLib.message ("Error executing statement: %s", e.message);

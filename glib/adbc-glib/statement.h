@@ -20,6 +20,7 @@
 #pragma once
 
 #include <adbc-glib/connection.h>
+#include <arrow-glib/arrow-glib.h>
 
 G_BEGIN_DECLS
 
@@ -74,6 +75,13 @@ gboolean gadbc_statement_bind_stream(GADBCStatement* statement,
 GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_statement_execute(GADBCStatement* statement, gboolean need_result,
                                  gpointer* c_abi_array_stream, gint64* n_rows_affected,
+                                 GError** error);
+// GADBC_AVAILABLE_IN_0_8
+gboolean gadbc_statement_execute_query(GADBCStatement* statement, gint64* n_rows_affected,
+                                 GError** error);
+// GADBC_AVAILABLE_IN_0_8
+GArrowRecordBatchReader*
+gadbc_statement_execute_reader(GADBCStatement* statement,
                                  GError** error);
 
 G_END_DECLS

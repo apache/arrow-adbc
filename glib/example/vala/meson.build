@@ -29,7 +29,7 @@ if generate_vapi
       dependency('gobject-2.0'),
     ],
     'vala_args': [
-      '--pkg', 'posix',
+      '--pkg', 'posix', '--disable-since-check'
     ],
   }
   executable('sqlite', 'sqlite.vala',
