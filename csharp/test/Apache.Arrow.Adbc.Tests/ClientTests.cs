@@ -18,8 +18,10 @@
 using System;
 using System.Collections;
 using System.Collections.ObjectModel;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Data.Common;
+using System.Data.SqlTypes;
 using System.Linq;
 using Apache.Arrow.Types;
 using Xunit;
@@ -93,16 +95,15 @@ namespace Apache.Arrow.Adbc.Tests
                 {
                     Assert.True(ctv.ExpectedNetType == value.GetType(), $"Expected type does not match actual type for {ctv.Name}");
 
-                    if (value.GetType() == typeof(byte[]))
+                    if (value is byte[] actualBytes)
                     {
-                        byte[] actualBytes = (byte[])value;
                         byte[] expectedBytes = (byte[])ctv.ExpectedValue;
 
                         Assert.True(actualBytes.SequenceEqual(expectedBytes), $"byte[] values do not match expected values for {ctv.Name}");
                     }
                     else
                     {
-                        Assert.True(ctv.ExpectedValue.Equals(value), $"Expected value does not match actual value for {ctv.Name}");
+                        Assert.True(ctv.ExpectedValue.Equals(value), $"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name}");
                     }
                 }
                 else

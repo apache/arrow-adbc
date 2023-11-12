@@ -147,24 +147,29 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration);
 
             dbConnection.Open();
-            DbCommand dbCommand = dbConnection.CreateCommand();
-            dbCommand.CommandText = testConfiguration.Query;
 
-            DbDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
+            SampleDataBuilder sampleDataBuilder = SampleBigQueryData.GetSampleData();
 
-            if (reader.Read())
+            foreach (SampleData sample in sampleDataBuilder.Samples)
             {
-                var column_schema = reader.GetColumnSchema();
-                DataTable dataTable = reader.GetSchemaTable();
+                DbCommand dbCommand = dbConnection.CreateCommand();
 
-                List<ColumnNetTypeArrowTypeValue> expectedValues = SampleData.GetSampleData();
+                dbCommand.CommandText = sample.Query;
 
-                for (int i = 0; i < reader.FieldCount; i++)
+                DbDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
+
+                if (reader.Read())
                 {
-                    object value = reader.GetValue(i);
-                    ColumnNetTypeArrowTypeValue ctv = expectedValues[i];
+                    var column_schema = reader.GetColumnSchema();
+                    DataTable dataTable = reader.GetSchemaTable();
 
-                    Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        object value = reader.GetValue(i);
+                        ColumnNetTypeArrowTypeValue ctv = sample.ExpectedValues[i];
+
+                        Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
+                    }
                 }
             }
         }
