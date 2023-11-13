@@ -56,7 +56,9 @@ namespace Apache.Arrow.Adbc.Tests
             for (int i = 0; i < queries.Length; i++)
             {
                 string query = queries[i];
-                AdbcCommand adbcCommand = adbcConnection.CreateCommand();
+
+                using AdbcCommand adbcCommand = adbcConnection.CreateCommand();
+
                 adbcCommand.CommandText = query;
 
                 int rows = adbcCommand.ExecuteNonQuery();
@@ -75,11 +77,10 @@ namespace Apache.Arrow.Adbc.Tests
             if (adbcConnection == null) throw new ArgumentNullException(nameof(adbcConnection));
             if (testConfiguration == null) throw new ArgumentNullException(nameof(testConfiguration));
 
-            AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-
             adbcConnection.Open();
 
-            AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
+            using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            using AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
 
             DataTable table = reader.GetSchemaTable();
 
@@ -100,11 +101,10 @@ namespace Apache.Arrow.Adbc.Tests
 
             long count = 0;
 
-            AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-
             adbcConnection.Open();
 
-            AdbcDataReader reader = adbcCommand.ExecuteReader();
+            using AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
+            using AdbcDataReader reader = adbcCommand.ExecuteReader();
 
             try
             {
@@ -144,12 +144,10 @@ namespace Apache.Arrow.Adbc.Tests
 
             foreach (SampleData sample in sampleDataBuilder.Samples)
             {
-                DbCommand dbCommand = adbcConnection.CreateCommand();
-
+                using AdbcCommand dbCommand = adbcConnection.CreateCommand();
                 dbCommand.CommandText = sample.Query;
 
-                DbDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
-
+                using AdbcDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
                 if (reader.Read())
                 {
                     var column_schema = reader.GetColumnSchema();
@@ -166,8 +164,6 @@ namespace Apache.Arrow.Adbc.Tests
                     }
                 }
             }
-
-            adbcConnection.Close();
         }
 
         /// <summary>
