@@ -26,7 +26,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     /// <summary>
     /// Gets the sample data
     /// </summary>
-    internal class SampleBigQueryData
+    internal class BigQueryData
     {
         /// <summary>
         /// Represents the different types of data for BigQuery.
@@ -43,20 +43,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             sampleDataBuilder.Samples.Add(
                 new SampleData() {
                     Query = "SELECT " +
-                        "CAST(1 as INT64) as id, " +
-                        "CAST(1.23 as FLOAT64) as number, " +
-                        "PARSE_NUMERIC(\"4.56\") as decimal, " +
-                        "PARSE_BIGNUMERIC(\"7.89000000000000000000000000000000000000\") as big_decimal, " +
-                        "CAST(True as BOOL) as is_active, " +
-                        "'John Doe' as name, " +
-                        "FROM_BASE64('YWJjMTIz') as data, " +
-                        "CAST('2023-09-08' as DATE) as date, " +
-                        "CAST('12:34:56' as TIME) as time, " +
-                        "CAST('2023-09-08 12:34:56' as DATETIME) as datetime, " +
-                        "CAST('2023-09-08 12:34:56+00:00' as TIMESTAMP) as timestamp, " +
-                        "ST_GEOGPOINT(1, 2) as point, " +
-                        "ARRAY[1, 2, 3] as numbers, " +
-                        "STRUCT('John Doe' as name, 30 as age) as person",
+                            "CAST(1 as INT64) as id, " +
+                            "CAST(1.23 as FLOAT64) as number, " +
+                            "PARSE_NUMERIC(\"4.56\") as decimal, " +
+                            "PARSE_BIGNUMERIC(\"7.89000000000000000000000000000000000000\") as big_decimal, " +
+                            "CAST(True as BOOL) as is_active, " +
+                            "'John Doe' as name, " +
+                            "FROM_BASE64('YWJjMTIz') as data, " +
+                            "CAST('2023-09-08' as DATE) as date, " +
+                            "CAST('12:34:56' as TIME) as time, " +
+                            "CAST('2023-09-08 12:34:56' as DATETIME) as datetime, " +
+                            "CAST('2023-09-08 12:34:56+00:00' as TIMESTAMP) as timestamp, " +
+                            "ST_GEOGPOINT(1, 2) as point, " +
+                            "ARRAY[1, 2, 3] as numbers, " +
+                            "STRUCT('John Doe' as name, 30 as age) as person",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {
                         new ColumnNetTypeArrowTypeValue("id", typeof(long), typeof(Int64Type), 1L),
