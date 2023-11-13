@@ -22,11 +22,12 @@
 There are example codes in this directory.
 
 C example codes exist in this directory. Language bindings example
-codes exists in sub directories. For example, Vala example codes exists
-in `vala/` sub directory.
+codes exists in sub directories:
+
+  * `vala/`: Vala examples
 
 ## C example codes
 
 Here are example codes in this directory:
 
-  * `sqlite.c`: It shows how to connect to a database using SQLite.
+  * `sqlite.c`: It shows how to connect to a SQLite database.

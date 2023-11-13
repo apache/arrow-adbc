@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-if generate_vapi
+if build_example and generate_vapi
   vala_example_executable_kwargs = {
     'c_args': [
       '-I' + meson.build_root(),
@@ -30,6 +30,7 @@ if generate_vapi
     ],
     'vala_args': [
       '--pkg', 'posix',
+      '--vapidir', arrow_glib.get_variable('vapidir'),
     ],
   }
   executable('sqlite', 'sqlite.vala',

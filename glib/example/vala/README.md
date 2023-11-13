@@ -26,10 +26,10 @@ There are Vala example codes in this directory.
 Here is a command line to build an example in this directory:
 
 ```console
-$ valac --pkg adbc-glib --pkg posix XXX.vala
+$ valac --pkg adbc-glib --pkg arrow-glib --pkg posix XXX.vala
 ```
 
-## GLib Vala example codes
+## Vala example codes
 
 Here are example codes in this directory:
 

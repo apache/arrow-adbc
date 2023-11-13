@@ -15,45 +15,48 @@
 // specific language governing permissions and limitations
 // under the License.
 
-
 int main (string[] args) {
-  try {
-    var database = new GADBC.Database ();
-    database.set_option ("driver", "adbc_driver_sqlite");
-    database.set_option ("uri", "test.sqlite");
-    database.init ();
-    GLib.message ("Database initialization done...");
-    try {
-      var conn = new GADBC.Connection ();
-      conn.init (database);
-      GLib.message ("Connection to database initialized...");
-      try {
-        var stm = new GADBC.Statement (conn);
-        string sql = "SELECT sqlite_version() AS version";
-        stm.set_sql_query (sql);
-        void *c_abi_array_stream = null;
-        stm.execute (true, out c_abi_array_stream, null);
-        try {
-            GLib.message ("Statement executed: %s", sql);
-            var reader = GArrow.RecordBatchReader.import (c_abi_array_stream);
-            var table = reader.read_all ();
-            GLib.message ("Executed result: %s", table.to_string ());
-        } finally {
-            GLib.free (c_abi_array_stream);
-        }
-      GLib.message ("Statement executed: %s", sql);
-      }
-      catch (GLib.Error e) {
-        GLib.message ("Error executing statement: %s", e.message);
-      }
-    }
-    catch (GLib.Error e) {
-      GLib.message ("Error initializing the connection: %s", e.message);
-    }
-  }
-  catch (GLib.Error e) {
-    GLib.message ("Error initializing the database: %s", e.message);
-  }
+    var exit_code = Posix.EXIT_FAILURE;
 
-  return Posix.EXIT_SUCCESS;
+    try {
+        var database = new GADBC.Database ();
+        database.set_option ("driver", "adbc_driver_sqlite");
+        database.set_option ("uri", ":memory:");
+        database.init ();
+        try {
+            var connection = new GADBC.Connection ();
+            connection.init (database);
+            try {
+                var statement = new GADBC.Statement (connection);
+                string sql = "SELECT sqlite_version() AS version";
+                statement.set_sql_query (sql);
+                try {
+                    void *c_abi_array_stream = null;
+                    int64 n_rows_affected;
+                    statement.execute (true, out c_abi_array_stream, out n_rows_affected);
+                    try {
+                        var reader = GArrow.RecordBatchReader.import (c_abi_array_stream);
+                        var table = reader.read_all ();
+                        stdout.printf ("Result:\n%s", table.to_string ());
+                    } finally {
+                        GLib.free (c_abi_array_stream);
+                    }
+                    exit_code = Posix.EXIT_SUCCESS;
+                } catch (GLib.Error error) {
+                    GLib.error ("Failed to execute a statement: %s", error.message);
+                }
+            }
+            catch (GLib.Error error) {
+                GLib.error ("Failed to create a statement: %s", error.message);
+            }
+        }
+        catch (GLib.Error error) {
+            GLib.error ("Failed to create a connection: %s", error.message);
+        }
+    }
+    catch (GLib.Error error) {
+        GLib.error ("Failed to create a database: %s", error.message);
+    }
+
+    return exit_code;
 }

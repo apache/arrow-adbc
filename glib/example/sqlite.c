@@ -23,125 +23,113 @@
 #include <arrow-glib/arrow-glib.h>
 
 int main(int argc, char** argv) {
-  GADBCDatabase* database;
-  GADBCConnection* conn;
+  int result = EXIT_FAILURE;
+  GADBCDatabase* database = NULL;
+  GADBCConnection* connection = NULL;
+  GADBCStatement* statement = NULL;
   GError* error = NULL;
+
   database = gadbc_database_new(&error);
   if (!database) {
-    g_print("Error creating a Database: %s", error->message);
-    g_error_free(error);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+    g_print("Failed to create a database: %s", error->message);
+    goto exit;
   }
 
   if (!gadbc_database_set_option(database, "driver", "adbc_driver_sqlite", &error)) {
-    g_print("Error initializing the database: %s", error->message);
-    g_error_free(error);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+    g_print("Failed to set driver: %s", error->message);
+    goto exit;
   }
-  if (!gadbc_database_set_option(database, "uri", "test.db", &error)) {
-    g_print("Error initializing the database: %s", error->message);
-    g_error_free(error);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+  if (!gadbc_database_set_option(database, "uri", ":memory:", &error)) {
+    g_print("Failed to set database URI: %s", error->message);
+    goto exit;
   }
   if (!gadbc_database_init(database, &error)) {
-    g_print("Error initializing the database: %s", error->message);
-    g_error_free(error);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+    g_print("Failed to initialize a database: %s", error->message);
+    goto exit;
   }
 
-  conn = gadbc_connection_new(&error);
-  if (!conn) {
-    g_print("Error creating a Connection: %s", error->message);
-    g_error_free(error);
-    g_object_unref(database);
-    g_object_unref(conn);
-    return EXIT_FAILURE;
+  connection = gadbc_connection_new(&error);
+  if (!connection) {
+    g_print("Failed to create a connection: %s", error->message);
+    goto exit;
   }
-  if (!gadbc_connection_init(conn, database, &error)) {
-    g_print("Error initializing a Connection: %s", error->message);
-    g_error_free(error);
-    g_object_unref(database);
-    g_object_unref(conn);
-    return EXIT_FAILURE;
+  if (!gadbc_connection_init(connection, database, &error)) {
+    g_print("Failed to initialize a connection: %s", error->message);
+    goto exit;
   }
 
-  GADBCStatement* statement = gadbc_statement_new(conn, &error);
+  statement = gadbc_statement_new(connection, &error);
   if (!statement) {
-    g_print("Error initializing a statement: %s", error->message);
-    g_error_free(error);
-    g_object_unref(conn);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+    g_print("Failed to create a statement: %s", error->message);
+    goto exit;
   }
   if (!gadbc_statement_set_sql_query(statement, "select sqlite_version() as version",
                                      &error)) {
-    g_print("Error setting a query: %s", error->message);
-    g_error_free(error);
-    g_object_unref(statement);
-    g_object_unref(conn);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+    g_print("Failed to set a query: %s", error->message);
+    goto exit;
   }
 
   gpointer c_abi_array_stream;
   gint64 n_rows_affected;
   if (!gadbc_statement_execute(statement, TRUE, &c_abi_array_stream, &n_rows_affected,
                                &error)) {
-    g_print("Error executing a query: %s", error->message);
-    g_error_free(error);
-    g_object_unref(statement);
-    g_object_unref(conn);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+    g_print("Failed to execute a query: %s", error->message);
+    goto exit;
   }
 
   GArrowRecordBatchReader* reader =
       garrow_record_batch_reader_import(c_abi_array_stream, &error);
   g_free(c_abi_array_stream);
   if (!reader) {
-    g_print("Error importing a result: %s", error->message);
-    g_error_free(error);
-    g_object_unref(statement);
-    g_object_unref(conn);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+    g_print("Failed to import a result: %s", error->message);
+    goto exit;
   }
 
   GArrowTable* table = garrow_record_batch_reader_read_all(reader, &error);
   g_object_unref(reader);
   if (!table) {
-    g_print("Error reading a result: %s", error->message);
-    g_error_free(error);
-    g_object_unref(statement);
-    g_object_unref(conn);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+    g_print("Failed to read a result: %s", error->message);
+    goto exit;
   }
   gchar* table_content = garrow_table_to_string(table, &error);
   g_object_unref(table);
   if (!table_content) {
-    g_print("Error stringify a result: %s", error->message);
-    g_error_free(error);
-    g_object_unref(statement);
-    g_object_unref(conn);
-    g_object_unref(database);
-    return EXIT_FAILURE;
+    g_print("Failed to stringify a result: %s", error->message);
+    goto exit;
   }
   g_print("Result:\n%s\n", table_content);
   g_free(table_content);
-  gadbc_statement_release(statement, &error);
+
+  result = EXIT_SUCCESS;
+
+exit:
   if (error) {
-    g_print("Error releasing a statement: %s", error->message);
     g_error_free(error);
     error = NULL;
   }
-  g_object_unref(statement);
-  g_object_unref(conn);
-  g_object_unref(database);
-
-  return EXIT_SUCCESS;
+  if (statement) {
+    if (!gadbc_statement_release(statement, &error)) {
+      g_print("Failed to release a statement: %s", error->message);
+      g_error_free(error);
+      error = NULL;
+    }
+    g_object_unref(statement);
+  }
+  if (connection) {
+    if (!gadbc_connection_release(connection, &error)) {
+      g_print("Failed to release a connection: %s", error->message);
+      g_error_free(error);
+      error = NULL;
+    }
+    g_object_unref(connection);
+  }
+  if (database) {
+    if (!gadbc_database_release(database, &error)) {
+      g_print("Failed to release a database: %s", error->message);
+      g_error_free(error);
+      error = NULL;
+    }
+    g_object_unref(database);
+  }
+  return result;
 }

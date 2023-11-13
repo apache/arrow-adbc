@@ -17,11 +17,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-arrow_glib = dependency('arrow-glib')
-
-executable('sqlite', 'sqlite.c',
-           dependencies: [adbc_glib, arrow_glib],
-           link_language: 'c')
+if build_example
+  arrow_glib = dependency('arrow-glib')
+  executable('sqlite', 'sqlite.c',
+             dependencies: [adbc_glib, arrow_glib],
+             link_language: 'c')
+endif
 
 install_data('README.md',
              install_dir: join_paths(data_dir, meson.project_name(), 'example'))

@@ -68,6 +68,8 @@ else
                                                 dirs: [adbc_build_dir])
 endif
 
+build_example = get_option('example')
+
 dependency('gobject-introspection-1.0', required: false).found()
 generate_vapi = get_option('vapi')
 if generate_vapi
