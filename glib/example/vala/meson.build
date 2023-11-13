@@ -37,7 +37,11 @@ if build_example and generate_vapi
              kwargs: vala_example_executable_kwargs)
 endif
 
-install_data('README.md',
+files = [
+  'README.md',
+  'sqlite.vala',
+]
+install_data(files,
              install_dir: join_paths(data_dir,
                                      meson.project_name(),
                                      'example',

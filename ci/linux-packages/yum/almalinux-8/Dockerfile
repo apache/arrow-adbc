@@ -38,5 +38,6 @@ RUN \
     python3-pip \
     rpmdevtools \
     sqlite-devel \
-    tar && \
+    tar \
+    vala && \
   yum clean ${quiet} all

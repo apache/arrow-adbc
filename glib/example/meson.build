@@ -24,7 +24,11 @@ if build_example
              link_language: 'c')
 endif
 
-install_data('README.md',
+files = [
+  'README.md',
+  'sqlite.c',
+]
+install_data(files,
              install_dir: join_paths(data_dir, meson.project_name(), 'example'))
 
 subdir('vala')
