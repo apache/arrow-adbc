@@ -1268,7 +1268,6 @@ public:
     const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
     const int16_t dscale = scale;
 
-    // TODO: ndigits should equal pg_digits length
     int32_t field_size_bytes = sizeof(ndigits)
       + sizeof(weight)
       + sizeof(sign)
