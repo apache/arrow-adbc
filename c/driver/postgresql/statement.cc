@@ -210,6 +210,10 @@ struct BindStream {
           type_id = PostgresTypeId::kInterval;
           param_lengths[i] = 16;
           break;
+        case ArrowType::NANOARROW_TYPE_DECIMAL128:
+          type_id = PostgresTypeId::kNumeric;
+          param_lengths[i] = 0;
+          break;
         case ArrowType::NANOARROW_TYPE_DICTIONARY: {
           struct ArrowSchemaView value_view;
           CHECK_NA(INTERNAL,
@@ -1055,6 +1059,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(
       case ArrowType::NANOARROW_TYPE_DURATION:
       case ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
         create += " INTERVAL";
+        break;
+      case ArrowType::NANOARROW_TYPE_DECIMAL128:
+        create += " DECIMAL";
         break;
       case ArrowType::NANOARROW_TYPE_DICTIONARY: {
         struct ArrowSchemaView value_view;

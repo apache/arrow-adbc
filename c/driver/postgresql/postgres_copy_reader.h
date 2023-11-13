@@ -1225,56 +1225,48 @@ public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
     struct ArrowDecimal decimal;
     // TODO: these need to be inferred from the schema not hard coded
-    constexpr int16_t precision = 10;
-    constexpr int16_t scale = 4;
+    constexpr int16_t precision = 19;
+    constexpr int16_t scale = 8;
     ArrowDecimalInit(&decimal, 128, precision, scale);
     ArrowArrayViewGetDecimalUnsafe(array_view_, index, &decimal);
-
-    // TODO: this is only guaranteed to work up to a precision of 18
-    // how do we handle higher?
-    int64_t int_val = ArrowDecimalGetIntUnsafe(&decimal);
-
-    // logic adoped from postgres int64_to_numericvar function
     constexpr uint16_t kNumericPos = 0x0000;
     constexpr uint16_t kNumericNeg = 0x4000;
-    constexpr uint64_t kNBase = 10000;
+    constexpr int64_t kNBase = 10000;
     // Number of decimal digits per Postgres digit
     constexpr int kDecDigits = 4;
 
-    constexpr int16_t var_digits = 20 / kDecDigits;
-    int16_t* buf = (int16_t*)std::malloc((var_digits + 1) * sizeof(int16_t));
-    buf[0] = 0;  // spare digit for rounding
-
-    uint64_t uval;
-    int16_t sign;
-    if (int_val < 0) {
-      sign = kNumericNeg;
-      uval = -int_val;
-    } else {
-      sign = kNumericPos;
-      uval = int_val;
+    // TODO: need some kind of bounds check on this
+    int64_t decimal_int = ArrowDecimalGetIntUnsafe(&decimal);
+    // TODO: is -INT64_MIN possible? If so how do we handle?
+    if (decimal_int < 0) {
+      decimal_int = -decimal_int;
     }
-    int dscale = 0;
+    std::vector<int16_t> pg_digits;
 
-    int16_t ndigits = 0;
-    int16_t weight;
-    if (int_val == 0) {
-      // TODO: change this
-      ndigits = 0;
-      weight = 0;
+    int16_t weight = -1;
+    constexpr size_t nloops = (precision + kDecDigits - 1) / kDecDigits;
+    for (size_t i = 0; i < nloops; i++) {
+      const int64_t rem = decimal_int % kNBase;
+      // TODO: postgres seems to pack records to the left of a decimal place
+      // internally, so 1000000.0 would be sent as one digit of 100 with
+      // a weight of 1 (there are weight + 1 pg digits to the left of a decimal place)
+      // Here we still send two digits of 100 and 0000
+      pg_digits.insert(pg_digits.begin(), rem);
+
+      // TODO: how does pg deal with words when integer and decimal part are sent
+      // in same word?
+      decimal_int /= kNBase;
+      if (i >= scale / kDecDigits) {
+        weight++;
+        if (decimal_int == 0) {
+          break;
+        }
+      }
     }
 
-
-    int16_t* ptr = buf + 1 + var_digits;
-    ndigits = 0;
-    do {
-      ptr--;
-      ndigits++;
-      const uint64_t newuval = uval / kNBase;
-      *ptr = uval - newuval * kNBase;
-      uval = newuval;
-    } while (uval);
-    weight = ndigits - 1;
+    int16_t ndigits = pg_digits.size();
+    const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
+    const int16_t dscale = scale;
 
     // TODO: ndigits should equal pg_digits length
     int32_t field_size_bytes = sizeof(ndigits)
@@ -1289,13 +1281,9 @@ public:
     NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, sign, error));
     NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, dscale, error));
 
-    // Not efficient but works for now
-    for (int16_t i = 0; i < ndigits; i++) {
-      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, ptr[i], error));
+    for (auto pg_digit : pg_digits) {
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, pg_digit, error));
     }
-
-    // TODO: RAII
-    std::free(buf);
 
     return ADBC_STATUS_OK;
   }

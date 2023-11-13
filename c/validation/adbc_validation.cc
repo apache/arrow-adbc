@@ -1555,16 +1555,16 @@ void StatementTest::TestSqlIngestDecimal128() {
   struct ArrowDecimal decimal4;
   struct ArrowDecimal decimal5;
 
-  ArrowDecimalInit(&decimal1, size, 10, 4);
-  ArrowDecimalSetInt(&decimal1, -1234560);
-  ArrowDecimalInit(&decimal2, size, 10, 4);
+  ArrowDecimalInit(&decimal1, size, 19, 8);
+  ArrowDecimalSetInt(&decimal1, -12345600000);
+  ArrowDecimalInit(&decimal2, size, 19, 8);
   ArrowDecimalSetInt(&decimal2, 1234);
-  ArrowDecimalInit(&decimal3, size, 10, 4);
-  ArrowDecimalSetInt(&decimal3, 10000);
-  ArrowDecimalInit(&decimal4, size, 10, 4);
-  ArrowDecimalSetInt(&decimal4, 1234560);
-  ArrowDecimalInit(&decimal5, size, 10, 0);
-  ArrowDecimalSetInt(&decimal5, 1000000);
+  ArrowDecimalInit(&decimal3, size, 19, 8);
+  ArrowDecimalSetInt(&decimal3, 100000000);
+  ArrowDecimalInit(&decimal4, size, 19, 8);
+  ArrowDecimalSetInt(&decimal4, 12345600000);
+  ArrowDecimalInit(&decimal5, size, 19, 8);
+  ArrowDecimalSetInt(&decimal5, 100000000000000);
 
   const std::vector<std::optional<ArrowDecimal*>> values = {
     std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5};
@@ -1608,10 +1608,19 @@ void StatementTest::TestSqlIngestDecimal128() {
     ASSERT_EQ(values.size(), reader.array->length);
     ASSERT_EQ(1, reader.array->n_children);
 
-    if (round_trip_type == type) {
-      ASSERT_NO_FATAL_FAILURE(
-          CompareArray<ArrowDecimal*>(reader.array_view->children[0], values));
-    }
+    // Currently postgres roundtrips to string, but in the future we should
+    // roundtrip to a decimal
+    //
+    //if (round_trip_type == type) {
+    //  ASSERT_NO_FATAL_FAILURE(
+    //      CompareArray<ArrowDecimal*>(reader.array_view->children[0], values));
+    //}
+
+    const std::vector<std::optional<std::string>> str_values = {
+      std::nullopt, "-123.45600000", "0.00001234", "1.00000000", "123.45600000",
+      "1000000.00000000"};
+    ASSERT_NO_FATAL_FAILURE(
+            CompareArray<std::string>(reader.array_view->children[0], str_values));
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);

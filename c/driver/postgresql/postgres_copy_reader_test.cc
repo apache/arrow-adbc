@@ -708,16 +708,16 @@ TEST(PostgresCopyUtilsTest, PostgresCopyWriteNumeric) {
   struct ArrowDecimal decimal4;
   struct ArrowDecimal decimal5;
 
-  ArrowDecimalInit(&decimal1, size, 10, 4);
-  ArrowDecimalSetInt(&decimal1, -1234560);
-  ArrowDecimalInit(&decimal2, size, 10, 4);
+  ArrowDecimalInit(&decimal1, size, 19, 8);
+  ArrowDecimalSetInt(&decimal1, -12345600000);
+  ArrowDecimalInit(&decimal2, size, 19, 8);
   ArrowDecimalSetInt(&decimal2, 1234);
-  ArrowDecimalInit(&decimal3, size, 10, 4);
-  ArrowDecimalSetInt(&decimal3, 10000);
-  ArrowDecimalInit(&decimal4, size, 10, 4);
-  ArrowDecimalSetInt(&decimal4, 1234560);
-  ArrowDecimalInit(&decimal5, size, 10, 0);
-  ArrowDecimalSetInt(&decimal5, 1000000);
+  ArrowDecimalInit(&decimal3, size, 19, 8);
+  ArrowDecimalSetInt(&decimal3, 100000000);
+  ArrowDecimalInit(&decimal4, size, 19, 8);
+  ArrowDecimalSetInt(&decimal4, 12345600000);
+  ArrowDecimalInit(&decimal5, size, 19, 8);
+  ArrowDecimalSetInt(&decimal5, 100000000000000);
 
   const std::vector<std::optional<ArrowDecimal*>> values = {
     std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5};
