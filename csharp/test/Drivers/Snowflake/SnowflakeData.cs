@@ -72,7 +72,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                             "CAST('2023-07-28 12:34:56' as TIMESTAMP_TZ(9)) as TIMESTAMPTZTYPE",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {
-                        // https://github.com/apache/arrow-adbc/issues/1020 has Snowflake treat all values as decimal by default
                         new ColumnNetTypeArrowTypeValue("NUMBERTYPE", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(1m)),
                         new ColumnNetTypeArrowTypeValue("DECIMALTYPE", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(123.1m)),
                         new ColumnNetTypeArrowTypeValue("NUMERICTYPE", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(123.1m)),
@@ -128,7 +127,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                             "CAST(NULL as TIMESTAMP_TZ(9)) as TIMESTAMPTZTYPE",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {
-                        // https://github.com/apache/arrow-adbc/issues/1020 has Snowflake treat all values as decimal by default
                         new ColumnNetTypeArrowTypeValue("NUMBERTYPE", typeof(SqlDecimal), typeof(Decimal128Type), null),
                         new ColumnNetTypeArrowTypeValue("DECIMALTYPE", typeof(SqlDecimal), typeof(Decimal128Type), null),
                         new ColumnNetTypeArrowTypeValue("NUMERICTYPE", typeof(SqlDecimal), typeof(Decimal128Type), null),
