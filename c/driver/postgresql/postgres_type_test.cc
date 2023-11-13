@@ -279,6 +279,15 @@ TEST(PostgresTypeTest, PostgresTypeFromSchema) {
   EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::kBool);
   schema.reset();
 
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::kText);
+  schema.reset();
+
   ArrowError error;
   ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO),
             NANOARROW_OK);

@@ -186,8 +186,7 @@ namespace Apache.Arrow.Adbc
                 case Time64Array time64Array:
                     return time64Array.GetValue(index);
                 case TimestampArray timestampArray:
-                    DateTimeOffset dateTimeOffset = timestampArray.GetTimestamp(index).Value;
-                    return dateTimeOffset;
+                    return timestampArray.GetTimestamp(index);
                 case UInt8Array uInt8Array:
                     return uInt8Array.GetValue(index);
                 case UInt16Array uInt16Array:

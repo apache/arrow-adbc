@@ -50,6 +50,19 @@ if [ $? -ne 0 ] || [ ! -z "$FORCE_VENDORED_SQLITE3" ]; then
 else
   echo "Success!"
   PKG_LIBS="$PKG_LIBS -lsqlite3"
+
+  # Apple -lsqlite3 does not contain sqlite3_load_extension()
+  echo "Testing SQLite for sqlite3_load_extension()"
+  PKG_CPPFLAGS="$PKG_CPPFLAGS" PKG_LIBS="$PKG_LIBS" \
+    $R_HOME/bin/R CMD SHLIB tools/test_extension.c -o sqlite_test >sqlite_test.log 2>&1
+
+  if [ $? -ne 0 ]; then
+    echo "Compile of sqlite3_load_extension() test failed"
+    cat sqlite_test.log
+    PKG_CPPFLAGS="$PKG_CPPFLAGS -DADBC_SQLITE_WITH_NO_LOAD_EXTENSION"
+  else
+    echo "Success!"
+  fi
 fi
 
 # Add mingw printf flag if on Windows

@@ -137,8 +137,9 @@ adbc_connection_release <- function(connection) {
 #' @param info_codes A list of metadata codes to fetch, or NULL to fetch all.
 #'   Valid values are documented in the adbc.h header.
 #' @param depth The level of nesting to display. If 0, display all levels. If 1,
-#'   display only catalogs (i.e. catalog_schemas will be null). If 2, display
-#'   only catalogs and schemas (i.e. db_schema_tables will be null), and so on.
+#'   display only catalogs (i.e., catalog_schemas will be null). If 2, display
+#'   only catalogs and schemas (i.e., db_schema_tables will be null). If 3,
+#'   display only catalogs, schemas, and tables.
 #' @param catalog Only show tables in the given catalog. If NULL, do not filter
 #'   by catalog. If an empty string, only show tables without a catalog. May be
 #'   a search pattern.
@@ -264,7 +265,8 @@ adbc_connection_read_partition <- function(connection, serialized_partition) {
 #' @export
 adbc_connection_commit <- function(connection) {
   error <- adbc_allocate_error()
-  .Call(RAdbcConnectionCommit, connection, error)
+  status <- .Call(RAdbcConnectionCommit, connection, error)
+  stop_for_error(status, error)
   invisible(connection)
 }
 
@@ -273,7 +275,8 @@ adbc_connection_commit <- function(connection) {
 #' @export
 adbc_connection_rollback <- function(connection) {
   error <- adbc_allocate_error()
-  .Call(RAdbcConnectionRollback, connection, error)
+  status <- .Call(RAdbcConnectionRollback, connection, error)
+  stop_for_error(status, error)
   invisible(connection)
 }
 
@@ -281,7 +284,8 @@ adbc_connection_rollback <- function(connection) {
 #' @export
 adbc_connection_cancel <- function(connection) {
   error <- adbc_allocate_error()
-  .Call(RAdbcConnectionCancel, connection, error)
+  status <- .Call(RAdbcConnectionCancel, connection, error)
+  stop_for_error(status, error)
   invisible(connection)
 }
 
@@ -496,4 +500,13 @@ adbc_statement_execute_schema <- function(statement) {
   stop_for_error(status, error)
 
   out_schema
+}
+
+#' @rdname adbc_statement_set_sql_query
+#' @export
+adbc_statement_cancel <- function(statement) {
+  error <- adbc_allocate_error()
+  status <- .Call(RAdbcStatementCancel, statement, error)
+  stop_for_error(status, error)
+  invisible(statement)
 }

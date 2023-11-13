@@ -28,9 +28,11 @@ IO.pipe do |input, output|
                 out: output,
                 err: File::NULL)
     output.close
-    Process.waitpid(pid)
-    arrow_glib_version = input.read.strip.sub(/-SNAPSHOT\z/, "")
-    red_arrow_version = "<= #{arrow_glib_version}"
+    _, status = Process.waitpid2(pid)
+    if status.success?
+      arrow_glib_version = input.read.strip.sub(/-SNAPSHOT\z/, "").strip
+      red_arrow_version = "<= #{arrow_glib_version}"
+    end
   rescue SystemCallError
   end
 end
