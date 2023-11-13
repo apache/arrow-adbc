@@ -15,10 +15,8 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Xunit;
@@ -57,16 +55,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                 List<int> expectedResults = new List<int>() { -1, 1, 1, 1 };
 
-                for (int i = 0; i < queries.Length; i++)
-                {
-                    string query = queries[i];
-                    AdbcCommand adbcCommand = adbcConnection.CreateCommand();
-                    adbcCommand.CommandText = query;
-
-                    int rows = adbcCommand.ExecuteNonQuery();
-
-                    Assert.Equal(expectedResults[i], rows);
-                }
+                Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, testConfiguration, queries, expectedResults);
             }
         }
 
@@ -80,16 +69,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
             {
-                AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-
-                adbcConnection.Open();
-
-                AdbcDataReader reader = adbcCommand.ExecuteReader(CommandBehavior.SchemaOnly);
-
-                DataTable table = reader.GetSchemaTable();
-
-                // there is one row per field
-                Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, table.Rows.Count);
+                Tests.ClientTests.CanClientGetSchema(adbcConnection, testConfiguration);
             }
         }
 
@@ -102,37 +82,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
-            long count = 0;
-
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
             {
-                AdbcCommand adbcCommand = new AdbcCommand(testConfiguration.Query, adbcConnection);
-
-                adbcConnection.Open();
-
-                AdbcDataReader reader = adbcCommand.ExecuteReader();
-
-                try
-                {
-                    while (reader.Read())
-                    {
-                        count++;
-
-                        for(int i=0;i<reader.FieldCount;i++)
-                        {
-                            object value = reader.GetValue(i);
-
-                            if (value == null)
-                                value = "(null)";
-
-                            Console.WriteLine($"{reader.GetName(i)}: {value}");
-                        }
-                    }
-                }
-                finally { reader.Close(); }
+                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, testConfiguration);
             }
-
-            Assert.Equal(testConfiguration.ExpectedResultsCount, count);
         }
 
         /// <summary>
@@ -144,28 +97,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
 
-            Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration);
-
-            dbConnection.Open();
-            DbCommand dbCommand = dbConnection.CreateCommand();
-            dbCommand.CommandText = testConfiguration.Query;
-
-            DbDataReader reader = dbCommand.ExecuteReader(CommandBehavior.Default);
-
-            if (reader.Read())
+            using(Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection(testConfiguration))
             {
-                var column_schema = reader.GetColumnSchema();
-                DataTable dataTable = reader.GetSchemaTable();
+                SampleDataBuilder sampleDataBuilder = BigQueryData.GetSampleData();
 
-                List<ColumnNetTypeArrowTypeValue> expectedValues = SampleData.GetSampleData();
-
-                for (int i = 0; i < reader.FieldCount; i++)
-                {
-                    object value = reader.GetValue(i);
-                    ColumnNetTypeArrowTypeValue ctv = expectedValues[i];
-
-                    Tests.ClientTests.AssertTypeAndValue(ctv, value, reader, column_schema, dataTable);
-                }
+                Tests.ClientTests.VerifyTypesAndValues(dbConnection, sampleDataBuilder);
             }
         }
 
