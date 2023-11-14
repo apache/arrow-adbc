@@ -166,6 +166,8 @@ func (dm *DriverMgrSuite) TestGetObjects() {
 				}
 			]`))
 	dm.NoError(err)
+	defer expRec.Release()
+
 	dm.Truef(array.RecordEqual(expRec, rec), "expected: %s\ngot: %s", expRec, rec)
 	dm.False(rdr.Next())
 }
@@ -211,6 +213,8 @@ func (dm *DriverMgrSuite) TestGetObjectsTableType() {
 				}
 			]`))
 	dm.NoError(err)
+	defer expRec.Release()
+
 	dm.Truef(array.RecordEqual(expRec, rec), "expected: %s\ngot: %s", expRec, rec)
 	dm.False(rdr.Next())
 }
