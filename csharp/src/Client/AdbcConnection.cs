@@ -146,6 +146,7 @@ namespace Apache.Arrow.Adbc.Client
         {
             this.adbcConnectionInternal?.Dispose();
             this.adbcConnectionInternal = null;
+            this.adbcStatement = null;
 
             base.Dispose(disposing);
         }
