@@ -149,6 +149,7 @@ ${APT_INSTALL} libadbc-driver-manager-dev=${package_version}
 required_packages=()
 required_packages+=(cmake)
 required_packages+=(gcc)
+required_packages+=(libc6-dev)
 required_packages+=(make)
 required_packages+=(pkg-config)
 ${APT_INSTALL} ${required_packages[@]}

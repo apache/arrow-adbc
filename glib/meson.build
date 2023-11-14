@@ -30,7 +30,7 @@ version_major = version_numbers[0].to_int()
 version_minor = version_numbers[1].to_int()
 version_micro = version_numbers[2].to_int()
 
-api_version = '@0@.0'.format(version_major)
+api_version = '1.0'
 so_version = version_major
 library_version = '.'.join(version_numbers)
 
@@ -39,6 +39,7 @@ include_dir = get_option('includedir')
 project_include_sub_dir = meson.project_name()
 data_dir = get_option('datadir')
 gir_dir = prefix / data_dir / 'gir-1.0'
+vapi_dir = data_dir / 'vala' / 'vapi'
 
 gnome = import('gnome')
 pkgconfig = import('pkgconfig')
@@ -67,7 +68,17 @@ else
                                                 dirs: [adbc_build_dir])
 endif
 
+build_example = get_option('example')
+
+dependency('gobject-introspection-1.0', required: false).found()
+generate_vapi = get_option('vapi')
+if generate_vapi
+  pkgconfig_variables += ['vapidir=@0@'.format(vapi_dir)]
+  add_languages('vala')
+endif
+
 subdir('adbc-glib')
+subdir('example')
 
 install_data('../LICENSE.txt',
              'README.md',
