@@ -1236,37 +1236,57 @@ public:
     constexpr int kDecDigits = 4;
 
     // TODO: need some kind of bounds check on this
-    int64_t decimal_int = ArrowDecimalGetIntUnsafe(&decimal);
+    const int64_t decimal_int = ArrowDecimalGetIntUnsafe(&decimal);
+
     // TODO: is -INT64_MIN possible? If so how do we handle?
-    if (decimal_int < 0) {
-      decimal_int = -decimal_int;
-    }
+    int64_t value = decimal_int < 0 ? -decimal_int : decimal_int;
     std::vector<int16_t> pg_digits;
 
-    int16_t weight = -1;
+    int16_t weight = -(scale / kDecDigits);
+    int16_t dscale = scale;
     constexpr size_t nloops = (precision + kDecDigits - 1) / kDecDigits;
+    bool seen_decimal = scale == 0;
+    bool truncating_trailing_zeros = true;
+
     for (size_t i = 0; i < nloops; i++) {
-      const int64_t rem = decimal_int % kNBase;
+      const int64_t rem = value % kNBase;
       // TODO: postgres seems to pack records to the left of a decimal place
       // internally, so 1000000.0 would be sent as one digit of 100 with
       // a weight of 1 (there are weight + 1 pg digits to the left of a decimal place)
       // Here we still send two digits of 100 and 0000
-      pg_digits.insert(pg_digits.begin(), rem);
+      if (rem == 0) {
+        if (!seen_decimal && truncating_trailing_zeros) {
+          dscale -= kDecDigits;
+        }
+      } else {
+        pg_digits.insert(pg_digits.begin(), rem);
+        if (!seen_decimal && truncating_trailing_zeros) {
+          if (rem % 1000 == 0) {
+            dscale -= 3;
+          } else if (rem % 100 == 0) {
+            dscale -= 2;
+          } else if (rem % 10 == 0) {
+            dscale -= 1;
+          }
+        }
+        truncating_trailing_zeros = false;
+      }
 
       // TODO: how does pg deal with words when integer and decimal part are sent
       // in same word?
-      decimal_int /= kNBase;
-      if (i >= scale / kDecDigits) {
-        weight++;
-        if (decimal_int == 0) {
-          break;
-        }
+      value /= kNBase;
+      if (value == 0) {
+        break;
+      }
+      weight++;
+
+      if (i >= scale / kDecDigits - 1) {
+        seen_decimal = true;
       }
     }
 
     int16_t ndigits = pg_digits.size();
     const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
-    const int16_t dscale = scale;
 
     int32_t field_size_bytes = sizeof(ndigits)
       + sizeof(weight)

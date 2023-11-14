@@ -1617,8 +1617,7 @@ void StatementTest::TestSqlIngestDecimal128() {
     //}
 
     const std::vector<std::optional<std::string>> str_values = {
-      std::nullopt, "-123.45600000", "0.00001234", "1.00000000", "123.45600000",
-      "1000000.00000000"};
+      std::nullopt, "-123.456", "0.00001234", "1", "123.456", "1000000"};
     ASSERT_NO_FATAL_FAILURE(
             CompareArray<std::string>(reader.array_view->children[0], str_values));
 
