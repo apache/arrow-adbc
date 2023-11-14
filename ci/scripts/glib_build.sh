@@ -54,12 +54,12 @@ build_subproject() {
           -Dvapi="${enable_vapi}" \
           "${build_dir}/glib" \
           "${source_dir}/glib"
+    meson install -C "${build_dir}/glib"
     "${build_dir}/glib/example/sqlite"
     if [[ "${enable_vapi}" = "true" ]]; then
         "${build_dir}/glib/example/vala/sqlite"
     fi
     "${build_dir}/build/sqlite"
-    meson install -C "${build_dir}/glib"
 }
 
 main() {
