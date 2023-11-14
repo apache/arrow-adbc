@@ -216,6 +216,39 @@ func (dm *DriverMgrSuite) TestGetObjectsDBSchema() {
 	dm.False(rdr.Next())
 }
 
+func (dm *DriverMgrSuite) TestGetObjectsTableName() {
+	tableName := "does_not_exist"
+	rdr, err := dm.conn.GetObjects(dm.ctx, adbc.ObjectDepthAll, nil, nil, &tableName, nil, nil)
+	dm.NoError(err)
+	defer rdr.Release()
+
+	expSchema := adbc.GetObjectsSchema
+	dm.True(expSchema.Equal(rdr.Schema()))
+	dm.True(rdr.Next())
+
+	rec := rdr.Record()
+	dm.Equal(int64(1), rec.NumRows())
+	expRec, _, err := array.RecordFromJSON(
+		memory.DefaultAllocator,
+		expSchema,
+		strings.NewReader(
+			`[
+				{
+					"catalog_name": "main",
+					"catalog_db_schemas": [
+						{
+							"db_schema_tables": []
+						}
+					]
+				}
+			]`))
+	dm.NoError(err)
+	defer expRec.Release()
+
+	dm.Truef(array.RecordEqual(expRec, rec), "expected: %s\ngot: %s", expRec, rec)
+	dm.False(rdr.Next())
+}
+
 func (dm *DriverMgrSuite) TestGetObjectsTableType() {
 	rdr, err := dm.conn.GetObjects(dm.ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, []string{"not_a_table"})
 	dm.NoError(err)
