@@ -52,12 +52,17 @@ func (dm *DriverMgrSuite) SetupSuite() {
 		"driver": "adbc_driver_sqlite",
 	})
 	dm.NoError(err)
+
 	db, err := dm.db.Open(dm.ctx)
 	dm.NoError(err)
+	defer db.Close()
+
 	stmt, err := db.NewStatement()
 	dm.NoError(err)
+
 	err = stmt.SetSqlQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")
 	dm.NoError(err)
+
 	nrows, err := stmt.ExecuteUpdate(dm.ctx)
 	dm.NoError(err)
 	dm.Equal(int64(0), nrows)
@@ -159,6 +164,7 @@ func (dm *DriverMgrSuite) TestGetObjects() {
 					]
 				}
 			]`))
+	dm.NoError(err)
 	dm.Truef(array.RecordEqual(expRec, rec), "expected: %s\ngot: %s", expRec, rec)
 	dm.False(rdr.Next())
 }
@@ -203,6 +209,7 @@ func (dm *DriverMgrSuite) TestGetObjectsTableType() {
 					]
 				}
 			]`))
+	dm.NoError(err)
 	dm.Truef(array.RecordEqual(expRec, rec), "expected: %s\ngot: %s", expRec, rec)
 	dm.False(rdr.Next())
 }
