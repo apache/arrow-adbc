@@ -567,17 +567,6 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 
 	lastChannelIndex := len(chs) - 1
 	go func() {
-		// place this here so that we always clean up, but they can't be in a
-		// separate goroutine. Otherwise we'll have a race condition between
-		// the call to wait and the calls to group.Go to kick off the jobs
-		// to perform the pre-fetching (GH-1283).
-		defer func() {
-			rdr.err = group.Wait()
-			// don't close the last channel until after the group is finished,
-			// so that Next() can only return after reader.err may have been set
-			close(chs[lastChannelIndex])
-		}()
-
 		for i, b := range batches[1:] {
 			batch, batchIdx := b, i+1
 			chs[batchIdx] = make(chan arrow.Record, bufferSize)
@@ -611,6 +600,15 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 				return rr.Err()
 			})
 		}
+
+		// place this here so that we always clean up, but they can't be in a
+		// separate goroutine. Otherwise we'll have a race condition between
+		// the call to wait and the calls to group.Go to kick off the jobs
+		// to perform the pre-fetching (GH-1283).
+		rdr.err = group.Wait()
+		// don't close the last channel until after the group is finished,
+		// so that Next() can only return after reader.err may have been set
+		close(chs[lastChannelIndex])
 	}()
 
 	return rdr, nil
