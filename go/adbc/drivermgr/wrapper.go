@@ -208,7 +208,50 @@ func (c *cnxn) GetInfo(_ context.Context, infoCodes []adbc.InfoCode) (array.Reco
 }
 
 func (c *cnxn) GetObjects(_ context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (array.RecordReader, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		out         C.struct_ArrowArrayStream
+		err         C.struct_AdbcError
+		catalog_    *C.char
+		dbSchema_   *C.char
+		tableName_  *C.char
+		columnName_ *C.char
+		tableType_  **C.char
+	)
+
+	if catalog != nil {
+		catalog_ = C.CString(*catalog)
+		defer C.free(unsafe.Pointer(catalog_))
+	}
+
+	if dbSchema != nil {
+		dbSchema_ = C.CString(*dbSchema)
+		defer C.free(unsafe.Pointer(dbSchema_))
+	}
+
+	if tableName != nil {
+		tableName_ = C.CString(*tableName)
+		defer C.free(unsafe.Pointer(tableName_))
+	}
+
+	if columnName != nil {
+		columnName_ = C.CString(*columnName)
+		defer C.free(unsafe.Pointer(columnName_))
+	}
+
+	if len(tableType) > 0 {
+		cArr := []*C.char{}
+		for _, tt := range tableType {
+			cs := C.CString(tt)
+			cArr = append(cArr, cs)
+			defer C.free(unsafe.Pointer(cs))
+		}
+		tableType_ = &cArr[0]
+	}
+
+	if code := adbc.Status(C.AdbcConnectionGetObjects(c.conn, C.int(depth), catalog_, dbSchema_, tableName_, tableType_, columnName_, &out, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+	return getRdr(&out)
 }
 
 func (c *cnxn) GetTableSchema(_ context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error) {

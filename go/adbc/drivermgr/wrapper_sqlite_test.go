@@ -52,6 +52,15 @@ func (dm *DriverMgrSuite) SetupSuite() {
 		"driver": "adbc_driver_sqlite",
 	})
 	dm.NoError(err)
+	db, err := dm.db.Open(dm.ctx)
+	dm.NoError(err)
+	stmt, err := db.NewStatement()
+	dm.NoError(err)
+	err = stmt.SetSqlQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")
+	dm.NoError(err)
+	nrows, err := stmt.ExecuteUpdate(dm.ctx)
+	dm.NoError(err)
+	dm.Equal(int64(0), nrows)
 }
 
 func (dm *DriverMgrSuite) SetupTest() {
@@ -96,6 +105,106 @@ func (dm *DriverMgrSuite) TestMetadataGetInfo() {
 	rdr.Release()
 
 	// TODO(apache/arrow-nanoarrow#76): values are not checked because go fails to import the union values
+}
+
+func (dm *DriverMgrSuite) TestGetObjects() {
+	rdr, err := dm.conn.GetObjects(dm.ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
+	dm.NoError(err)
+	defer rdr.Release()
+
+	expSchema := adbc.GetObjectsSchema
+	dm.True(expSchema.Equal(rdr.Schema()))
+	dm.True(rdr.Next())
+
+	rec := rdr.Record()
+	dm.Equal(int64(1), rec.NumRows())
+	expRec, _, err := array.RecordFromJSON(
+		memory.DefaultAllocator,
+		expSchema,
+		strings.NewReader(
+			`[
+				{
+					"catalog_name": "main",
+					"catalog_db_schemas": [
+						{
+							"db_schema_tables": [
+								{
+									"table_name": "test_table",
+									"table_type": "table",
+									"table_columns": [
+										{
+											"column_name": "id",
+											"ordinal_position": 1,
+											"xdbc_type_name": "INTEGER",
+											"xdbc_nullable": 1,
+											"xdbc_is_nullable": "YES"
+										},
+										{
+											"column_name": "name",
+											"ordinal_position": 2,
+											"xdbc_type_name": "TEXT",
+											"xdbc_nullable": 1,
+											"xdbc_is_nullable": "YES"
+										}
+									],
+									"table_constraints": [
+										{
+											"constraint_type": "PRIMARY KEY",
+											"constraint_column_names": ["id"]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]`))
+	dm.Truef(array.RecordEqual(expRec, rec), "expected: %s\ngot: %s", expRec, rec)
+	dm.False(rdr.Next())
+}
+
+func (dm *DriverMgrSuite) TestGetObjectsCatalog() {
+	catalog := "does_not_exist"
+	rdr, err := dm.conn.GetObjects(dm.ctx, adbc.ObjectDepthAll, &catalog, nil, nil, nil, nil)
+	dm.NoError(err)
+	defer rdr.Release()
+
+	expSchema := adbc.GetObjectsSchema
+	dm.True(expSchema.Equal(rdr.Schema()))
+	dm.True(rdr.Next())
+
+	rec := rdr.Record()
+	dm.Equal(int64(0), rec.NumRows())
+	dm.False(rdr.Next())
+}
+
+func (dm *DriverMgrSuite) TestGetObjectsTableType() {
+	rdr, err := dm.conn.GetObjects(dm.ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, []string{"not_a_table"})
+	dm.NoError(err)
+	defer rdr.Release()
+
+	expSchema := adbc.GetObjectsSchema
+	dm.True(expSchema.Equal(rdr.Schema()))
+	dm.True(rdr.Next())
+
+	rec := rdr.Record()
+	dm.Equal(int64(1), rec.NumRows())
+	expRec, _, err := array.RecordFromJSON(
+		memory.DefaultAllocator,
+		expSchema,
+		strings.NewReader(
+			`[
+				{
+					"catalog_name": "main",
+					"catalog_db_schemas": [
+						{
+							"db_schema_tables": []
+						}
+					]
+				}
+			]`))
+	dm.Truef(array.RecordEqual(expRec, rec), "expected: %s\ngot: %s", expRec, rec)
+	dm.False(rdr.Next())
 }
 
 func (dm *DriverMgrSuite) TestSqlExecute() {
