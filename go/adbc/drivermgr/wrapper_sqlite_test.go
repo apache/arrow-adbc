@@ -59,6 +59,7 @@ func (dm *DriverMgrSuite) SetupSuite() {
 
 	stmt, err := db.NewStatement()
 	dm.NoError(err)
+	defer stmt.Close()
 
 	err = stmt.SetSqlQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")
 	dm.NoError(err)
