@@ -249,6 +249,59 @@ func (dm *DriverMgrSuite) TestGetObjectsTableName() {
 	dm.False(rdr.Next())
 }
 
+func (dm *DriverMgrSuite) TestGetObjectsColumnName() {
+	columnName := "name"
+	rdr, err := dm.conn.GetObjects(dm.ctx, adbc.ObjectDepthAll, nil, nil, nil, &columnName, nil)
+	dm.NoError(err)
+	defer rdr.Release()
+
+	expSchema := adbc.GetObjectsSchema
+	dm.True(expSchema.Equal(rdr.Schema()))
+	dm.True(rdr.Next())
+
+	rec := rdr.Record()
+	dm.Equal(int64(1), rec.NumRows())
+	expRec, _, err := array.RecordFromJSON(
+		memory.DefaultAllocator,
+		expSchema,
+		strings.NewReader(
+			`[
+				{
+					"catalog_name": "main",
+					"catalog_db_schemas": [
+						{
+							"db_schema_tables": [
+								{
+									"table_name": "test_table",
+									"table_type": "table",
+									"table_columns": [
+										{
+											"column_name": "name",
+											"ordinal_position": 2,
+											"xdbc_type_name": "TEXT",
+											"xdbc_nullable": 1,
+											"xdbc_is_nullable": "YES"
+										}
+									],
+									"table_constraints": [
+										{
+											"constraint_type": "PRIMARY KEY",
+											"constraint_column_names": ["id"]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]`))
+	dm.NoError(err)
+	defer expRec.Release()
+
+	dm.Truef(array.RecordEqual(expRec, rec), "expected: %s\ngot: %s", expRec, rec)
+	dm.False(rdr.Next())
+}
+
 func (dm *DriverMgrSuite) TestGetObjectsTableType() {
 	rdr, err := dm.conn.GetObjects(dm.ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, []string{"not_a_table"})
 	dm.NoError(err)
