@@ -23,7 +23,7 @@
 #include <arrow-glib/arrow-glib.h>
 
 int main(int argc, char** argv) {
-  int result = EXIT_FAILURE;
+  int exit_code = EXIT_FAILURE;
   GADBCDatabase* database = NULL;
   GADBCConnection* connection = NULL;
   GADBCStatement* statement = NULL;
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
   g_print("Result:\n%s\n", table_content);
   g_free(table_content);
 
-  result = EXIT_SUCCESS;
+  exit_code = EXIT_SUCCESS;
 
 exit:
   if (error) {
@@ -131,5 +131,5 @@ exit:
     }
     g_object_unref(database);
   }
-  return result;
+  return exit_code;
 }
