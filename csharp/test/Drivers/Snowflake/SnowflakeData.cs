@@ -97,7 +97,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                         new ColumnNetTypeArrowTypeValue("BOOLEANTYPE", typeof(bool), typeof(BooleanType), true),
                         new ColumnNetTypeArrowTypeValue("DATETYPE", typeof(DateTime), typeof(Date32Type), new DateTime(2023, 7, 28)),
                         new ColumnNetTypeArrowTypeValue("DATETIMETYPE", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023,7,28, 12,34,56), TimeSpan.Zero)),
-                        new ColumnNetTypeArrowTypeValue("TIMETYPE", typeof(long), typeof(Time64Type), 45296000000000L),
+#if NET6_0_OR_GREATER
+                        new ColumnNetTypeArrowTypeValue("TIMETYPE", typeof(TimeOnly), typeof(Time64Type), new TimeOnly(12, 34, 56)),
+#else
+                        new ColumnNetTypeArrowTypeValue("TIMETYPE", typeof(TimeSpan), typeof(Time64Type), new TimeSpan(12, 34, 56)),
+#endif
                         new ColumnNetTypeArrowTypeValue("TIMESTAMPTYPE", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023,7,28,12,34,56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("TIMESTAMPLTZTYPE", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023,7,28,19,34,56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("TIMESTAMPNTZTYPE", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023,7,28, 12,34,56), TimeSpan.Zero)),
@@ -137,7 +141,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                         new ColumnNetTypeArrowTypeValue("BINARYTYPE", typeof(byte[]), typeof(BinaryType),  null),
                         new ColumnNetTypeArrowTypeValue("BOOLEANTYPE", typeof(bool), typeof(BooleanType), null),
                         new ColumnNetTypeArrowTypeValue("DATETYPE", typeof(DateTime), typeof(Date32Type), null),
-                        new ColumnNetTypeArrowTypeValue("TIMETYPE", typeof(long), typeof(Time64Type), null),
+#if NET6_0_OR_GREATER
+                        new ColumnNetTypeArrowTypeValue("TIMETYPE", typeof(TimeOnly), typeof(Time64Type), null),
+#else
+                        new ColumnNetTypeArrowTypeValue("TIMETYPE", typeof(TimeSpan), typeof(Time64Type), null),
+#endif
                         new ColumnNetTypeArrowTypeValue("TIMESTAMPTYPE", typeof(DateTimeOffset), typeof(TimestampType), null),
                         new ColumnNetTypeArrowTypeValue("TIMESTAMPLTZTYPE", typeof(DateTimeOffset), typeof(TimestampType), null),
                         new ColumnNetTypeArrowTypeValue("TIMESTAMPNTZTYPE", typeof(DateTimeOffset), typeof(TimestampType), null),

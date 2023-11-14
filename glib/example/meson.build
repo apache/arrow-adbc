@@ -1,3 +1,5 @@
+# -*- indent-tabs-mode: nil -*-
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,29 +17,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-ARG FROM=almalinux:9
-FROM ${FROM}
+if build_example
+  arrow_glib = dependency('arrow-glib')
+  executable('sqlite', 'sqlite.c',
+             dependencies: [adbc_glib, arrow_glib],
+             link_language: 'c')
+endif
 
-ARG DEBUG
+files = [
+  'README.md',
+  'sqlite.c',
+]
+install_data(files,
+             install_dir: join_paths(data_dir, meson.project_name(), 'example'))
 
-RUN \
-  quiet=$([ "${DEBUG}" = "yes" ] || echo "--quiet") && \
-  dnf install -y ${quiet} epel-release && \
-  dnf install -y https://apache.jfrog.io/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm && \
-  dnf install --enablerepo=crb -y ${quiet} \
-    ccache \
-    cmake \
-    gcc-c++ \
-    gobject-introspection-devel \
-    golang \
-    libpq-devel \
-    make \
-    ninja-build \
-    pkg-config \
-    python3 \
-    python3-pip \
-    rpmdevtools \
-    sqlite-devel \
-    tar \
-    vala && \
-  dnf clean ${quiet} all
+subdir('vala')
