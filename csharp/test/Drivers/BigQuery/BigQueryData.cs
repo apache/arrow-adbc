@@ -67,7 +67,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         new ColumnNetTypeArrowTypeValue("name", typeof(string), typeof(StringType), "John Doe"),
                         new ColumnNetTypeArrowTypeValue("data", typeof(byte[]), typeof(BinaryType), UTF8Encoding.UTF8.GetBytes("abc123")),
                         new ColumnNetTypeArrowTypeValue("date", typeof(DateTime), typeof(Date64Type), new DateTime(2023, 9, 8)),
-                        new ColumnNetTypeArrowTypeValue("time", typeof(long), typeof(Time64Type), 45296000000L), //'12:34:56'
+#if NET6_0_OR_GREATER
+                        new ColumnNetTypeArrowTypeValue("time", typeof(TimeOnly), typeof(Time64Type), new TimeOnly(12, 34, 56)), //'12:34:56'
+#else
+                        new ColumnNetTypeArrowTypeValue("time", typeof(TimeSpan), typeof(Time64Type), new TimeSpan(12, 34, 56)),
+#endif
                         new ColumnNetTypeArrowTypeValue("datetime", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023, 9, 8, 12, 34, 56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("timestamp", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023, 9, 8, 12, 34, 56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("point", typeof(string), typeof(StringType), "POINT(1 2)"),
@@ -124,7 +128,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         new ColumnNetTypeArrowTypeValue("name", typeof(string), typeof(StringType), null),
                         new ColumnNetTypeArrowTypeValue("data", typeof(byte[]), typeof(BinaryType), null),
                         new ColumnNetTypeArrowTypeValue("date", typeof(DateTime), typeof(Date64Type), null),
-                        new ColumnNetTypeArrowTypeValue("time", typeof(long), typeof(Time64Type), null),
+#if NET6_0_OR_GREATER
+                        new ColumnNetTypeArrowTypeValue("time", typeof(TimeOnly), typeof(Time64Type), null),
+#else
+                        new ColumnNetTypeArrowTypeValue("time", typeof(TimeSpan), typeof(Time64Type), null),
+#endif
                         new ColumnNetTypeArrowTypeValue("datetime", typeof(DateTimeOffset), typeof(TimestampType), null),
                         new ColumnNetTypeArrowTypeValue("timestamp", typeof(DateTimeOffset), typeof(TimestampType), null),
                         new ColumnNetTypeArrowTypeValue("point", typeof(string), typeof(StringType), null),
