@@ -365,6 +365,24 @@ func (dm *DriverMgrSuite) TestGetTableSchemaDBSchema() {
 	dm.Nil(schema)
 }
 
+func (dm *DriverMgrSuite) TestGetTableTypes() {
+	rdr, err := dm.conn.GetTableTypes(dm.ctx)
+	dm.NoError(err)
+	defer rdr.Release()
+
+	expSchema := adbc.TableTypesSchema
+	dm.True(expSchema.Equal(rdr.Schema()))
+	dm.True(rdr.Next())
+
+	rec := rdr.Record()
+	dm.Equal(int64(2), rec.NumRows())
+
+	expTableTypes := []string{"table", "view"}
+	dm.Contains(expTableTypes, rec.Column(0).ValueStr(0))
+	dm.Contains(expTableTypes, rec.Column(0).ValueStr(1))
+	dm.False(rdr.Next())
+}
+
 func (dm *DriverMgrSuite) TestSqlExecute() {
 	query := "SELECT 1"
 	st, err := dm.conn.NewStatement()

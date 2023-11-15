@@ -297,7 +297,15 @@ func (c *cnxn) GetTableSchema(_ context.Context, catalog, dbSchema *string, tabl
 }
 
 func (c *cnxn) GetTableTypes(context.Context) (array.RecordReader, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		out C.struct_ArrowArrayStream
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionGetTableTypes(c.conn, &out, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+	return getRdr(&out)
 }
 
 func (c *cnxn) Commit(context.Context) error {
