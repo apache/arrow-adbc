@@ -53,11 +53,11 @@ func (dm *DriverMgrSuite) SetupSuite() {
 	})
 	dm.NoError(err)
 
-	db, err := dm.db.Open(dm.ctx)
+	cnxn, err := dm.db.Open(dm.ctx)
 	dm.NoError(err)
-	defer db.Close()
+	defer cnxn.Close()
 
-	stmt, err := db.NewStatement()
+	stmt, err := cnxn.NewStatement()
 	dm.NoError(err)
 	defer stmt.Close()
 
@@ -381,6 +381,21 @@ func (dm *DriverMgrSuite) TestGetTableTypes() {
 	dm.Contains(expTableTypes, rec.Column(0).ValueStr(0))
 	dm.Contains(expTableTypes, rec.Column(0).ValueStr(1))
 	dm.False(rdr.Next())
+}
+
+func (dm *DriverMgrSuite) TestCommit() {
+	err := dm.conn.Commit(dm.ctx)
+	dm.Error(err)
+	dm.ErrorContains(err, "No active transaction, cannot commit")
+}
+
+func (dm *DriverMgrSuite) TestCommitAutocommitDisabled() {
+	cnxnopt, ok := dm.conn.(adbc.PostInitOptions)
+	dm.True(ok)
+
+	cnxnopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled)
+	err := dm.conn.Commit(dm.ctx)
+	dm.NoError(err)
 }
 
 func (dm *DriverMgrSuite) TestSqlExecute() {

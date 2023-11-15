@@ -309,7 +309,15 @@ func (c *cnxn) GetTableTypes(context.Context) (array.RecordReader, error) {
 }
 
 func (c *cnxn) Commit(context.Context) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionCommit(c.conn, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+
+	return nil
 }
 
 func (c *cnxn) Rollback(context.Context) error {
