@@ -186,6 +186,19 @@ func getRdr(out *C.struct_ArrowArrayStream) (array.RecordReader, error) {
 	return rdr.(array.RecordReader), nil
 }
 
+func getSchema(out *C.struct_ArrowSchema) (*arrow.Schema, error) {
+	// Maybe: ImportCArrowSchema should perform this check?
+	if out.format == nil {
+		return nil, nil
+	}
+
+	schema, err := cdata.ImportCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(out)))
+	if err != nil {
+		return nil, err
+	}
+	return schema, nil
+}
+
 type cnxn struct {
 	conn *C.struct_AdbcConnection
 }
@@ -255,7 +268,32 @@ func (c *cnxn) GetObjects(_ context.Context, depth adbc.ObjectDepth, catalog, db
 }
 
 func (c *cnxn) GetTableSchema(_ context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		schema     C.struct_ArrowSchema
+		err        C.struct_AdbcError
+		catalog_   *C.char
+		dbSchema_  *C.char
+		tableName_ *C.char
+	)
+
+	if catalog != nil {
+		catalog_ = C.CString(*catalog)
+		defer C.free(unsafe.Pointer(catalog_))
+	}
+
+	if dbSchema != nil {
+		dbSchema_ = C.CString(*dbSchema)
+		defer C.free(unsafe.Pointer(dbSchema_))
+	}
+
+	tableName_ = C.CString(tableName)
+	defer C.free(unsafe.Pointer(tableName_))
+
+	if code := adbc.Status(C.AdbcConnectionGetTableSchema(c.conn, catalog_, dbSchema_, tableName_, &schema, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+
+	return getSchema(&schema)
 }
 
 func (c *cnxn) GetTableTypes(context.Context) (array.RecordReader, error) {

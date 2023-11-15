@@ -334,6 +334,37 @@ func (dm *DriverMgrSuite) TestGetObjectsTableType() {
 	dm.False(rdr.Next())
 }
 
+func (dm *DriverMgrSuite) TestGetTableSchema() {
+	schema, err := dm.conn.GetTableSchema(dm.ctx, nil, nil, "test_table")
+	dm.NoError(err)
+
+	expSchema := arrow.NewSchema(
+		[]arrow.Field{
+			{Name: "id", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+			{Name: "name", Type: arrow.PrimitiveTypes.Int64, Nullable: true}, // Should be arrow.BinaryTypes.String
+		}, nil)
+	dm.True(expSchema.Equal(schema))
+}
+
+func (dm *DriverMgrSuite) TestGetTableSchemaInvalidTable() {
+	_, err := dm.conn.GetTableSchema(dm.ctx, nil, nil, "unknown_table")
+	dm.Error(err)
+}
+
+func (dm *DriverMgrSuite) TestGetTableSchemaCatalog() {
+	catalog := "does_not_exist"
+	schema, err := dm.conn.GetTableSchema(dm.ctx, &catalog, nil, "test_table")
+	dm.NoError(err)
+	dm.Nil(schema)
+}
+
+func (dm *DriverMgrSuite) TestGetTableSchemaDBSchema() {
+	dbSchema := "does_not_exist"
+	schema, err := dm.conn.GetTableSchema(dm.ctx, nil, &dbSchema, "test_table")
+	dm.NoError(err)
+	dm.Nil(schema)
+}
+
 func (dm *DriverMgrSuite) TestSqlExecute() {
 	query := "SELECT 1"
 	st, err := dm.conn.NewStatement()
