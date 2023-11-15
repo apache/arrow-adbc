@@ -41,11 +41,11 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         public ValueTests()
         {
-            if (Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE))
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
             {
                 _snowflakeTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-                Dictionary<string, string> parameters = new();
-                Dictionary<string, string> options = new();
+                Dictionary<string, string> parameters = new Dictionary<string,string>();
+                Dictionary<string, string> options = new Dictionary<string, string>();
                 AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_snowflakeTestConfiguration, out parameters);
                 AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
                 _connection = adbcDatabase.Connect(options);
