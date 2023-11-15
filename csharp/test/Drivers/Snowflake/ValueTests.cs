@@ -162,12 +162,12 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         private void ValidateInsertSelectDeleteSingleDoubleValue(string table, string columnName, double value)
-                {
+        {
             string valueString = ConvertDoubleToString(value);
             InsertSingleValue(table, columnName, valueString);
             SelectAndValidateValues(table, columnName, value, 1);
             DeleteFromTable(table, string.Format("{0}={1}", columnName, valueString), 1);
-            }
+        }
 
         private void InsertSingleValue(string table, string columnName, string value)
         {
@@ -181,7 +181,7 @@ namespace Apache.Arrow.Adbc.Tests
         private static string ConvertDoubleToString(double value)
         {
             switch (value)
-        {
+            {
                 case double.PositiveInfinity:
                     return "'inf'";
                 case double.NegativeInfinity:
@@ -201,7 +201,7 @@ namespace Apache.Arrow.Adbc.Tests
                 selectNumberStatement = string.Format("SELECT {0} FROM {1} WHERE {0}={2};", columnName, table, ConvertDoubleToString((double)value));
             }
             else
-        {
+            {
                 selectNumberStatement = string.Format("SELECT {0} FROM {1} WHERE {0}={2};", columnName, table, value);
             }
             Console.WriteLine(selectNumberStatement);
@@ -227,23 +227,22 @@ namespace Apache.Arrow.Adbc.Tests
                         case DoubleType:
                             DoubleArray doubleArray = (DoubleArray)nextBatch.Column(0);
                             for (int i = 0; i < doubleArray.Length; i++)
-                    {
+                            {
                                 Assert.Equal(value, doubleArray.GetValue(i));
                             }
                             break;
                     }
-                    }
                 }
             }
-
+        }
         private void DeleteFromTable(string tableName, string whereClause, int expectedRowsAffected)
-                {
+        {
             string deleteNumberStatement = string.Format("DELETE FROM {0} WHERE {1};", tableName, whereClause);
             Console.WriteLine(deleteNumberStatement);
             _statement.SqlQuery = deleteNumberStatement;
             UpdateResult updateResult = _statement.ExecuteUpdate();
             Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
-            }
+        }
 
         private string CreateTemporaryTable(string columns)
         {
