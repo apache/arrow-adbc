@@ -321,7 +321,15 @@ func (c *cnxn) Commit(context.Context) error {
 }
 
 func (c *cnxn) Rollback(context.Context) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionRollback(c.conn, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+
+	return nil
 }
 
 func (c *cnxn) NewStatement() (adbc.Statement, error) {

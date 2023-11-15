@@ -398,6 +398,21 @@ func (dm *DriverMgrSuite) TestCommitAutocommitDisabled() {
 	dm.NoError(err)
 }
 
+func (dm *DriverMgrSuite) TestRollback() {
+	err := dm.conn.Rollback(dm.ctx)
+	dm.Error(err)
+	dm.ErrorContains(err, "No active transaction, cannot rollback")
+}
+
+func (dm *DriverMgrSuite) TestRollbackAutocommitDisabled() {
+	cnxnopt, ok := dm.conn.(adbc.PostInitOptions)
+	dm.True(ok)
+
+	cnxnopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled)
+	err := dm.conn.Rollback(dm.ctx)
+	dm.NoError(err)
+}
+
 func (dm *DriverMgrSuite) TestSqlExecute() {
 	query := "SELECT 1"
 	st, err := dm.conn.NewStatement()
