@@ -508,6 +508,24 @@ func (dm *DriverMgrSuite) TestSqlPrepareMultipleParams() {
 	dm.False(rdr.Next())
 }
 
+func (dm *DriverMgrSuite) TestGetParameterSchema() {
+	query := "SELECT ?1, ?2"
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	dm.Require().NoError(st.SetSqlQuery(query))
+	defer st.Close()
+
+	expSchema := arrow.NewSchema([]arrow.Field{
+		{Name: "?1", Type: arrow.Null, Nullable: true},
+		{Name: "?2", Type: arrow.Null, Nullable: true},
+	}, nil)
+
+	schema, err := st.GetParameterSchema()
+	dm.NoError(err)
+
+	dm.True(expSchema.Equal(schema))
+}
+
 func TestDriverMgr(t *testing.T) {
 	suite.Run(t, new(DriverMgrSuite))
 }

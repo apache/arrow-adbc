@@ -471,7 +471,16 @@ func (s *stmt) BindStream(_ context.Context, stream array.RecordReader) error {
 }
 
 func (s *stmt) GetParameterSchema() (*arrow.Schema, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		schema C.struct_ArrowSchema
+		err    C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcStatementGetParameterSchema(s.st, &schema, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+
+	return getSchema(&schema)
 }
 
 func (s *stmt) ExecutePartitions(context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
