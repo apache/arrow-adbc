@@ -52,6 +52,8 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 
         private static List<AdbcDbSchema> ParseDbSchema(StructArray dbSchemaArray, string schemaName)
         {
+            if (dbSchemaArray == null) return null;
+
             StringArray schemaNameArray = (StringArray)dbSchemaArray.Fields[0]; // db_schema_name
             ListArray tablesArray = (ListArray)dbSchemaArray.Fields[1]; // db_schema_tables
 
@@ -71,6 +73,8 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 
         private static List<AdbcTable> ParseTables(StructArray tablesArray)
         {
+            if (tablesArray == null) return null;
+
             StringArray tableNameArray = (StringArray)tablesArray.Fields[0]; // table_name
             StringArray tableTypeArray = (StringArray)tablesArray.Fields[1]; // table_type
             ListArray columnsArray = (ListArray)tablesArray.Fields[2]; // table_columns
@@ -93,6 +97,8 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
 
         private static List<AdbcColumn> ParseColumns(StructArray columnsArray)
         {
+            if (columnsArray == null) return null;
+
             List<AdbcColumn> columns = new List<AdbcColumn>();
 
             StringArray column_name = (StringArray)columnsArray.Fields[StandardSchemas.ColumnSchema.FindIndex(f => f.Name == "column_name")]; // column_name | utf8 not null
