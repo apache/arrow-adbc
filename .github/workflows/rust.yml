@@ -56,13 +56,19 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      - name: Install stable Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "stable"
       - uses: Swatinem/rust-cache@v2
       - name: Check format
         run: cargo fmt -- --check
       - name: Clippy
-        run: cargo clippy --tests
+        run: cargo clippy --workspace --all-targets --all-features -- -Dwarnings
       - name: Test
         shell: bash -l {0}
-        run: cargo test
+        run: |
+          cargo test --workspace --all-targets --all-features
+          cargo test --workspace --doc --all-features
       - name: Check docs
-        run: cargo doc
+        run: cargo doc --workspace --all-features
