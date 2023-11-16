@@ -174,28 +174,40 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
+        [SkippableFact]
+        public void VerifySchemaTables()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnection(testConfiguration))
+            {
+                adbcConnection.Open();
+
+                var schemas = adbcConnection.GetSchema();
+                Assert.Equal(8, schemas.Rows.Count);
+
+
+
+                // MetaDataCollections, Restrictions, Databases, Schemas, TableTypes, Tables, Columns, ForeignKeys
+            }
+        }
         private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration)
         {
             // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html
 
             DbConnectionStringBuilder builder = new DbConnectionStringBuilder(true);
-
             builder[SnowflakeParameters.ACCOUNT] = testConfiguration.Account;
             builder[SnowflakeParameters.WAREHOUSE] = testConfiguration.Warehouse;
             builder[SnowflakeParameters.HOST] = testConfiguration.Host;
             builder[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
-
             if (!string.IsNullOrEmpty(testConfiguration.AuthenticationTokenPath))
             {
                 builder[SnowflakeParameters.AUTH_TYPE] = testConfiguration.AuthenticationType;
-
                 string privateKey = File.ReadAllText(testConfiguration.AuthenticationTokenPath);
-
                 if (testConfiguration.AuthenticationType.Equals("auth_jwt", StringComparison.OrdinalIgnoreCase))
                 {
                     builder[SnowflakeParameters.PKCS8_VALUE] = privateKey;
-
                     if(!string.IsNullOrEmpty(testConfiguration.Pkcs8Passcode))
                     {
                         builder[SnowflakeParameters.PKCS8_PASS] = testConfiguration.Pkcs8Passcode;
@@ -206,15 +218,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 builder[SnowflakeParameters.PASSWORD] = testConfiguration.Password;
             }
-
             AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration);
-
             return new Adbc.Client.AdbcConnection(builder.ConnectionString)
             {
                 AdbcDriver = snowflakeDriver
             };
         }
-
         private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnection(SnowflakeTestConfiguration testConfiguration)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();

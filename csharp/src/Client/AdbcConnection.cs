@@ -19,6 +19,10 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
+using Apache.Arrow.Ipc;
+using Apache.Arrow.Types;
+using GetObjectsDepth = Apache.Arrow.Adbc.AdbcConnection.GetObjectsDepth;
 
 namespace Apache.Arrow.Adbc.Client
 {
@@ -40,10 +44,10 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         public AdbcConnection()
         {
-           this.AdbcDriver = null;
-           this.DecimalBehavior = DecimalBehavior.UseSqlDecimal;
-           this.adbcConnectionParameters = new Dictionary<string, string>();
-           this.adbcConnectionOptions = new Dictionary<string, string>();
+            this.AdbcDriver = null;
+            this.DecimalBehavior = DecimalBehavior.UseSqlDecimal;
+            this.adbcConnectionParameters = new Dictionary<string, string>();
+            this.adbcConnectionOptions = new Dictionary<string, string>();
         }
 
         /// <summary>
@@ -160,7 +164,7 @@ namespace Apache.Arrow.Adbc.Client
                     throw new InvalidOperationException("No connection values are present to connect with");
                 }
 
-                if(this.AdbcDriver == null)
+                if (this.AdbcDriver == null)
                 {
                     throw new InvalidOperationException("The ADBC driver is not specified");
                 }
@@ -172,7 +176,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override void Close()
         {
-           this.Dispose();
+            this.Dispose();
         }
 
         public override ConnectionState State
@@ -182,6 +186,8 @@ namespace Apache.Arrow.Adbc.Client
                 return this.adbcConnectionInternal != null ? ConnectionState.Open : ConnectionState.Closed;
             }
         }
+
+        private Adbc.AdbcConnection Connection => this.adbcConnectionInternal ?? throw new InvalidOperationException("Invalid operation. The connection is closed.");
 
         /// <summary>
         /// Builds a connection string based on the adbcConnectionParameters.
@@ -216,7 +222,7 @@ namespace Apache.Arrow.Adbc.Client
 
             this.adbcConnectionParameters.Clear();
 
-            foreach(string key in builder.Keys)
+            foreach (string key in builder.Keys)
             {
                 this.adbcConnectionParameters.Add(key, Convert.ToString(builder[key]));
             }
@@ -224,7 +230,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override DataTable GetSchema()
         {
-            return GetSchema(null);
+            return GetSchema("metadatacollections", null);
         }
 
         public override DataTable GetSchema(string collectionName)
@@ -234,8 +240,22 @@ namespace Apache.Arrow.Adbc.Client
 
         public override DataTable GetSchema(string collectionName, string[] restrictionValues)
         {
-            Schema arrowSchema = this.adbcConnectionInternal.GetTableSchema("", "", "");
-            return SchemaConverter.ConvertArrowSchema(arrowSchema, this.AdbcStatement, this.DecimalBehavior);
+            SchemaCollection collection;
+            if (!SchemaCollection.TryGetCollection(collectionName, out collection))
+            {
+                throw new ArgumentException(
+                    $"The requested collection ('{collectionName}') is not defined",
+                    nameof(collectionName));
+            }
+
+            if (restrictionValues != null && restrictionValues.Length > collection.Restrictions.Length)
+            {
+                throw new ArgumentException(
+                    $"More restrictions were provided than the requested schema ('{collectionName}') supports.",
+                    nameof(restrictionValues));
+            }
+
+            return collection.GetSchema(this.Connection, restrictionValues);
         }
 
         #region NOT_IMPLEMENTED
@@ -257,5 +277,459 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         #endregion
+
+#if false
+        static DataTable Translate(IArrowArrayStream stream)
+        {
+            var result = new DataTable("Catalogs");
+            result.Columns.Add("TABLE_CATALOG", typeof(string));
+
+            while (true)
+            {
+                var batch = stream.ReadNextRecordBatchAsync().Result;
+                if (batch == null) { return result; }
+
+                var catalogNames = (StringArray)batch.Column(0);
+                for (int i = 0; i < catalogNames.Length; i++)
+                {
+                    result.Rows.Add(catalogNames.GetString(i));
+                }
+            }
+        }
+
+        static DataTable Translate2(IArrowArrayStream stream)
+        {
+            var result = new DataTable("Schemas");
+            result.Columns.Add("TABLE_CATALOG", typeof(string));
+            result.Columns.Add("TABLE_SCHEMA", typeof(string));
+
+            while (true)
+            {
+                var batch = stream.ReadNextRecordBatchAsync().Result;
+                if (batch == null) { return result; }
+
+                var catalogNames = (StringArray)batch.Column(0);
+                var schemaIndexes = (ListArray)batch.Column(1);
+                var schemas = (StructArray)schemaIndexes.Values;
+                var schemaNames = (StringArray)schemas.Fields[0];
+                int schemaIndex = 0;
+                for (int i = 0; i < catalogNames.Length; i++)
+                {
+                    string catalog = catalogNames.GetString(i);
+                    int schemaCount = schemaIndexes.GetValueLength(i);
+                    for (int j = 0; j < schemaCount; j++)
+                    {
+                        result.Rows.Add(catalog, schemaNames.GetString(schemaIndex++));
+                    }
+                }
+            }
+        }
+
+        static DataTable Translate3(IArrowArrayStream stream)
+        {
+            var result = new DataTable("Tables");
+            result.Columns.Add("TABLE_CATALOG", typeof(string));
+            result.Columns.Add("TABLE_SCHEMA", typeof(string));
+            result.Columns.Add("TABLE_NAME", typeof(string));
+            result.Columns.Add("TABLE_TYPE", typeof(string));
+
+            while (true)
+            {
+                var batch = stream.ReadNextRecordBatchAsync().Result;
+                if (batch == null) { return result; }
+
+                var catalogNames = (StringArray)batch.Column(0);
+                var schemaIndexes = (ListArray)batch.Column(1);
+                var schemas = (StructArray)schemaIndexes.Values;
+                var schemaNames = (StringArray)schemas.Fields[0];
+                var tableIndexes = (ListArray)schemas.Fields[1];
+                var tables = (StructArray)tableIndexes.Values;
+                var tableNames = (StringArray)tables.Fields[0];
+                var tableTypes = (StringArray)tables.Fields[1];
+                int schemaIndex = 0;
+                int tableIndex = 0;
+                for (int i = 0; i < catalogNames.Length; i++)
+                {
+                    string catalog = catalogNames.GetString(i);
+                    int schemaCount = schemaIndexes.GetValueLength(i);
+                    for (int j = 0; j < schemaCount; j++)
+                    {
+                        string schema = schemaNames.GetString(schemaIndex);
+                        int tableCount = tableIndexes.GetValueLength(schemaIndex++);
+                        for (int k = 0; k < tableCount; k++)
+                        {
+                            string table = tableNames.GetString(tableIndex);
+                            string tableType = tableTypes.GetString(tableIndex++);
+                            result.Rows.Add(catalog, schema, table, tableType);
+                        }
+                    }
+                }
+            }
+        }
+
+        static DataTable Translate4(IArrowArrayStream stream)
+        {
+            var result = new DataTable("Columns");
+            result.Columns.Add("TABLE_CATALOG", typeof(string));
+            result.Columns.Add("TABLE_SCHEMA", typeof(string));
+            result.Columns.Add("TABLE_NAME", typeof(string));
+            result.Columns.Add("COLUMN_NAME", typeof(string));
+            result.Columns.Add("ORDINAL_POSITION", typeof(int));
+
+            while (true)
+            {
+                var batch = stream.ReadNextRecordBatchAsync().Result;
+                if (batch == null) { return result; }
+
+                var catalogNames = (StringArray)batch.Column(0);
+                var schemaIndexes = (ListArray)batch.Column(1);
+                var schemas = (StructArray)schemaIndexes.Values;
+                var schemaNames = (StringArray)schemas.Fields[0];
+                var tableIndexes = (ListArray)schemas.Fields[1];
+                var tables = (StructArray)tableIndexes.Values;
+                var tableNames = (StringArray)tables.Fields[0];
+                var columnIndexes = (ListArray)tables.Fields[2];
+                var columns = (StructArray)columnIndexes.Values;
+                var columnNames = (StringArray)columns.Fields[0];
+                var ordinalPositions = (Int32Array)columns.Fields[1];
+                int schemaIndex = 0;
+                int tableIndex = 0;
+                int columnIndex = 0;
+                for (int i = 0; i < catalogNames.Length; i++)
+                {
+                    string catalog = catalogNames.GetString(i);
+                    int schemaCount = schemaIndexes.GetValueLength(i);
+                    for (int j = 0; j < schemaCount; j++)
+                    {
+                        string schema = schemaNames.GetString(schemaIndex);
+                        int tableCount = tableIndexes.GetValueLength(schemaIndex++);
+                        for (int k = 0; k < tableCount; k++)
+                        {
+                            string table = tableNames.GetString(tableIndex);
+                            int columnCount = columnIndexes.GetValueLength(tableIndex++);
+                            for (int l = 0; l < columnCount; l++)
+                            {
+                                string column = columnNames.GetString(columnIndex);
+                                int? ordinalPosition = ordinalPositions.GetValue(columnIndex++);
+                                result.Rows.Add(catalog, schema, table, column, ordinalPosition);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+#endif
+
+        abstract class SchemaCollection
+        {
+            protected static readonly List<SchemaCollection> collections;
+            static readonly SortedDictionary<string, SchemaCollection> schemaCollections;
+
+            static SchemaCollection()
+            {
+                schemaCollections = new SortedDictionary<string, SchemaCollection>(StringComparer.OrdinalIgnoreCase);
+                Add(new MetadataCollection());
+                Add(new RestrictionsCollection());
+                Add(new CatalogsCollection());
+                Add(new SchemasCollection());
+                Add(new TablesCollection());
+                Add(new ColumnsCollection());
+                Add(new PrimaryKeysCollection());
+                Add(new ForeignKeysCollection());
+            }
+
+            static void Add(SchemaCollection collection)
+            {
+                collections.Add(collection);
+                schemaCollections.Add(collection.Name, collection);
+            }
+
+            public static bool TryGetCollection(string name, out SchemaCollection collection)
+            {
+                return schemaCollections.TryGetValue(name, out collection);
+            }
+
+            public abstract string Name { get; }
+            public abstract string[] Restrictions { get; }
+
+            public abstract DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string[] restrictions);
+        }
+
+        sealed class MetadataCollection : SchemaCollection
+        {
+            public override string Name => "MetaDataCollections";
+            public override string[] Restrictions => new string[0];
+
+            public override DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string[] restrictions)
+            {
+                var result = new DataTable(Name);
+                result.Columns.Add("CollectionName", typeof(string));
+                result.Columns.Add("NumberOfRestrictions", typeof(int));
+
+                foreach (var collection in collections)
+                {
+                    result.Rows.Add(collection.Name, collection.Restrictions.Length);
+                }
+
+                return result;
+            }
+        }
+
+        sealed class RestrictionsCollection : SchemaCollection
+        {
+            public override string Name => "Restrictions";
+            public override string[] Restrictions => new string[0];
+
+            public override DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string[] restrictions)
+            {
+                var result = new DataTable(Name);
+                result.Columns.Add("CollectionName", typeof(string));
+                result.Columns.Add("RestrictionName", typeof(string));
+                result.Columns.Add("RestrictionNumber", typeof(int));
+
+                foreach (var collection in collections)
+                {
+                    var collectionRestrictions = collection.Restrictions;
+                    for (int i = 0; i < collectionRestrictions.Length; i++)
+                    {
+                        result.Rows.Add(collection.Name, collectionRestrictions[i], i + 1);
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        abstract class ArrowCollection : SchemaCollection
+        {
+            protected abstract MapItem[] Map { get; }
+
+            protected abstract IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions);
+
+            public override DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string[] restrictions)
+            {
+                // Flattens the hierarchical ADBC schema into a DataTable
+
+                var map = this.Map;
+                var result = new DataTable(Name);
+                List<string> path = new List<string>();
+                int[] counters = null;
+                foreach (MapItem item in map)
+                {
+                    result.Columns.Add(item.AdoName, item.Type);
+
+                    for (int i = 1; i < item.AdbcPath.Length; i++)
+                    {
+                        if (path.Count < i)
+                        {
+                            path.Add(item.AdbcPath[i]);
+                        }
+                        else if (!StringComparer.OrdinalIgnoreCase.Equals(path[i - 1], item.AdbcPath[i]))
+                        {
+                            throw new InvalidOperationException($"expected '{path[i = 1]}' found '{item.AdbcPath[i]}'");
+                        }
+                    }
+                }
+
+                // counters = new int[maxDepth];
+
+                using (var stream = Invoke(adbcConnection, restrictions))
+                {
+                    while (true)
+                    {
+                        using (var batch = stream.ReadNextRecordBatchAsync().Result)
+                        {
+                            if (batch == null) { return result; }
+
+
+                        }
+                    }
+                }
+            }
+
+            Func<RecordBatch, int[], object> Something(string[] parts, Type type)
+            {
+                int last = parts.Length - 1;
+                Func<IArrowArray, int[], object> valueGetter;
+                switch (Type.GetTypeCode(type))
+                {
+                    case TypeCode.Boolean:
+                        valueGetter = (array, index) => ((BooleanArray)array).GetValue(index[last]);
+                        break;
+                    case TypeCode.Int16:
+                        valueGetter = (array, index) => ((Int16Array)array).GetValue(index[last]);
+                        break;
+                    case TypeCode.Int32:
+                        valueGetter = (array, index) => ((Int32Array)array).GetValue(index[last]);
+                        break;
+                    case TypeCode.Int64:
+                        valueGetter = (array, index) => ((Int64Array)array).GetValue(index[last]);
+                        break;
+                    case TypeCode.String:
+                        valueGetter = (array, index) => ((StringArray)array).GetString(index[last]);
+                        break;
+                    default:
+                        throw new NotSupportedException($"Type {type.FullName} is not supported.");
+                }
+
+                for (int i = parts.Length - 1; i > 0; i--)
+                {
+                    valueGetter = (array, index) => 
+                }
+
+                while (parts)
+            }
+
+            protected struct MapItem
+            {
+                public readonly string AdoName;
+                public readonly string[] AdbcPath;
+                public readonly Type Type;
+
+                public MapItem(string adoName, string[] adbcPath, Type type)
+                {
+                    this.AdoName = adoName;
+                    this.AdbcPath = adbcPath;
+                    this.Type = type;
+                }
+            }
+        }
+
+        sealed class CatalogsCollection : ArrowCollection
+        {
+            public override string Name => "Catalogs";
+            public override string[] Restrictions => new[] { "Catalog" };
+
+            protected override MapItem[] Map => new[]
+            {
+                new MapItem("TABLE_CATALOG", new[] { "catalog_name" }, typeof(string)),
+            };
+
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            {
+                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                return connection.GetObjects(GetObjectsDepth.Catalogs, catalog, null, null, null, null);
+            }
+        }
+
+
+        class SchemasCollection : ArrowCollection
+        {
+            public override string Name => "Schemas";
+            public override string[] Restrictions => new[] { "Catalog", "Schema" };
+
+            protected override MapItem[] Map => new[]
+            {
+                new MapItem("TABLE_CATALOG", new [] { "catalog_name" }, typeof(string)),
+                new MapItem("TABLE_SCHEMA", new [] { "catalog_db_schemas", "db_schema_name" }, typeof(string)),
+            };
+
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            {
+                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                string schema = restrictions?.Length > 1 ? restrictions[1] : null;
+                return connection.GetObjects(GetObjectsDepth.DbSchemas, catalog, schema, null, null, null);
+            }
+        }
+
+        class TableTypesCollection : ArrowCollection
+        {
+            public override string Name => "TableTypes";
+            public override string[] Restrictions => new string[0];
+
+            protected override MapItem[] Map => new[]
+            {
+                new MapItem("TABLE_TYPE", new [] { "table_type" }, typeof(string)),
+            };
+
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            {
+                return connection.GetTableTypes();
+            }
+        }
+
+        class TablesCollection : ArrowCollection
+        {
+            public override string Name => "Tables";
+            public override string[] Restrictions => new[] { "Catalog", "Schema", "Table", "TableType" };
+
+            protected override MapItem[] Map => new[]
+            {
+                new MapItem("TABLE_CATALOG", new [] { "catalog_name" }, typeof(string)),
+                new MapItem("TABLE_SCHEMA", new [] { "catalog_db_schemas", "db_schema_name" }, typeof(string)),
+                new MapItem("TABLE_NAME", new [] { "catalog_db_schemas", "db_schema_tables", "table_name" }, typeof(string)),
+                new MapItem("TABLE_TYPE", new [] { "catalog_db_schemas", "db_schema_tables", "table_type" }, typeof(string)),
+            };
+
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            {
+                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                string schema = restrictions?.Length > 1 ? restrictions[1] : null;
+                string table = restrictions?.Length > 2 ? restrictions[2] : null;
+                List<string> tableTypes = restrictions?.Length > 3 ? restrictions[3].Split(',').ToList() : null;
+                return connection.GetObjects(GetObjectsDepth.Tables, catalog, schema, table, tableTypes, null);
+            }
+        }
+
+        class ColumnsCollection : ArrowCollection
+        {
+            public override string Name => "Columns";
+            public override string[] Restrictions => new[] { "Catalog", "Schema", "Table", "Column" };
+
+            protected override MapItem[] Map => new[]
+            {
+                new MapItem("TABLE_CATALOG", new [] { "catalog_name" }, typeof(string)),
+                new MapItem("TABLE_SCHEMA", new [] { "catalog_db_schemas", "db_schema_name" }, typeof(string)),
+                new MapItem("TABLE_NAME", new [] { "catalog_db_schemas", "db_schema_tables", "table_name" }, typeof(string)),
+                new MapItem("COLUMN_NAME", new [] { "catalog_db_schemas", "db_schema_tables", "table_name" }, typeof(string)),
+            };
+
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            {
+                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                string schema = restrictions?.Length > 1 ? restrictions[1] : null;
+                string table = restrictions?.Length > 2 ? restrictions[2] : null;
+                string column = restrictions?.Length > 3 ? restrictions[3] : null;
+                return connection.GetObjects(GetObjectsDepth.All, catalog, schema, table, null, column);
+            }
+        }
+
+        class PrimaryKeysCollection : ArrowCollection
+        {
+            public override string Name => "PrimaryKeys";
+            public override string[] Restrictions => new[] { "Catalog", "Schema", "Table" };
+
+            protected override MapItem[] Map => new[]
+            {
+                new MapItem("TABLE_CATALOG", new [] { "catalog_name" }, typeof(string)),
+            };
+
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            {
+                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                string schema = restrictions?.Length > 1 ? restrictions[1] : null;
+                string table = restrictions?.Length > 2 ? restrictions[2] : null;
+                return connection.GetObjects(GetObjectsDepth.All, catalog, schema, table, null, null);
+            }
+        }
+
+        class ForeignKeysCollection : ArrowCollection
+        {
+            public override string Name => "ForeignKeys";
+            public override string[] Restrictions => new[] { "Catalog", "Schema", "Table" };
+
+            protected override MapItem[] Map => new[]
+            {
+                new MapItem("TABLE_CATALOG", new [] { "catalog_name" }, typeof(string)),
+            };
+
+            protected override IArrowArrayStream Invoke(Adbc.AdbcConnection connection, string[] restrictions)
+            {
+                string catalog = restrictions?.Length > 0 ? restrictions[0] : null;
+                string schema = restrictions?.Length > 1 ? restrictions[1] : null;
+                string table = restrictions?.Length > 2 ? restrictions[2] : null;
+                return connection.GetObjects(GetObjectsDepth.All, catalog, schema, table, null, null);
+            }
+        }
     }
 }
