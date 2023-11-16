@@ -33,11 +33,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
     /// queries to run.
     /// </remarks>
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
-    public class DriverTests
+    public class DriverTests : IDisposable
     {
+        readonly SnowflakeTestConfiguration _testConfiguration;
+        readonly AdbcDriver _snowflakeDriver;
+        readonly AdbcDatabase _database;
+        readonly AdbcConnection _connection;
+
         public DriverTests()
         {
-           Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
+            Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
+            _testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
+            _snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_testConfiguration, out parameters);
+
+            string databaseName = _testConfiguration.Metadata.Catalog;
+            string schemaName = _testConfiguration.Metadata.Schema;
+
+            parameters[SnowflakeParameters.DATABASE] = databaseName;
+            parameters[SnowflakeParameters.SCHEMA] = schemaName;
+
+            _database = _snowflakeDriver.Open(parameters);
+            _connection = _database.Connect(options);
         }
 
         /// <summary>
@@ -51,24 +70,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(1)]
         public void CanExecuteUpdate()
         {
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-            Dictionary<string, string> options = new Dictionary<string, string>();
-
-            AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
-            AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(options);
-
-            string[] queries = SnowflakeTestingUtils.GetQueries(testConfiguration);
+            string[] queries = SnowflakeTestingUtils.GetQueries(_testConfiguration);
 
             List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
             for (int i = 0; i < queries.Length; i++)
             {
                 string query = queries[i];
-                AdbcStatement statement = adbcConnection.CreateStatement();
+                using AdbcStatement statement = _connection.CreateStatement();
                 statement.SqlQuery = query;
 
                 UpdateResult updateResult = statement.ExecuteUpdate();
@@ -83,18 +92,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(2)]
         public void CanGetInfo()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            IArrowArrayStream stream = adbcConnection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
-
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            using IArrowArrayStream stream = _connection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
             UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
 
             List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
@@ -117,22 +116,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(3)]
         public void CanGetObjectsCatalogs()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            string databaseName = _testConfiguration.Metadata.Catalog;
 
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
-            string databaseName = testConfiguration.Metadata.Catalog;
-            string schemaName = testConfiguration.Metadata.Schema;
-
-            parameters[SnowflakeParameters.DATABASE] = databaseName;
-            parameters[SnowflakeParameters.SCHEMA] = schemaName;
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            IArrowArrayStream stream = adbcConnection.GetObjects(
+            using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Catalogs,
                     catalogPattern: databaseName,
                     dbSchemaPattern: null,
@@ -140,7 +126,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     tableTypes: new List<string> { "BASE TABLE", "VIEW" },
                     columnNamePattern: null);
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, null);
 
@@ -156,37 +142,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(3)]
         public void CanGetObjectsCatalogsWithPattern()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            string databaseName = _testConfiguration.Metadata.Catalog;
+            string schemaName = _testConfiguration.Metadata.Schema;
+            string partialDatabaseName = GetPartialNameForPatternMatch(databaseName);
 
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
 
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
-            string databaseName = testConfiguration.Metadata.Catalog;
-            string schemaName = testConfiguration.Metadata.Schema;
-            string partialDatabaseName = $"{GetPartialNameForPatternMatch(databaseName)}%";
-
-            parameters[SnowflakeParameters.DATABASE] = databaseName;
-            parameters[SnowflakeParameters.SCHEMA] = schemaName;
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            IArrowArrayStream stream = adbcConnection.GetObjects(
+            using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Catalogs,
-                    catalogPattern: partialDatabaseName,
+                    catalogPattern: $"{partialDatabaseName}%",
                     dbSchemaPattern: null,
                     tableNamePattern: null,
                     tableTypes: new List<string> { "BASE TABLE", "VIEW" },
                     columnNamePattern: null);
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, null);
 
             AdbcCatalog catalog = catalogs.FirstOrDefault();
 
             Assert.True(catalog != null, "catalog should not be null");
+            Assert.StartsWith(databaseName, catalog.Name);
         }
 
         /// <summary>
@@ -195,23 +171,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(3)]
         public void CanGetObjectsDbSchemas()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
             // need to add the database
-            string databaseName = testConfiguration.Metadata.Catalog;
-            string schemaName = testConfiguration.Metadata.Schema;
+            string databaseName = _testConfiguration.Metadata.Catalog;
+            string schemaName = _testConfiguration.Metadata.Schema;
 
-            parameters[SnowflakeParameters.DATABASE] = databaseName;
-            parameters[SnowflakeParameters.SCHEMA] = schemaName;
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            IArrowArrayStream stream = adbcConnection.GetObjects(
+            using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.DbSchemas,
                     catalogPattern: databaseName,
                     dbSchemaPattern: schemaName,
@@ -219,7 +183,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     tableTypes: new List<string> { "BASE TABLE", "VIEW" },
                     columnNamePattern: null);
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
@@ -238,32 +202,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(3)]
         public void CanGetObjectsDbSchemasWithPattern()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
             // need to add the database
-            string databaseName = testConfiguration.Metadata.Catalog;
-            string schemaName = testConfiguration.Metadata.Schema;
-            string partialSchemaName = $"{GetPartialNameForPatternMatch(schemaName)}%";
+            string databaseName = _testConfiguration.Metadata.Catalog;
+            string schemaName = _testConfiguration.Metadata.Schema;
+            string partialSchemaName = GetPartialNameForPatternMatch(schemaName);
 
-            parameters[SnowflakeParameters.DATABASE] = databaseName;
-            parameters[SnowflakeParameters.SCHEMA] = schemaName;
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            IArrowArrayStream stream = adbcConnection.GetObjects(
+            using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.DbSchemas,
                     catalogPattern: databaseName,
-                    dbSchemaPattern: partialSchemaName,
+                    dbSchemaPattern: $"{partialSchemaName}%",
                     tableNamePattern: null,
                     tableTypes: new List<string> { "BASE TABLE", "VIEW" },
                     columnNamePattern: null);
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
@@ -273,6 +225,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             AdbcDbSchema dbSchema = dbSchemas.FirstOrDefault();
 
             Assert.True(dbSchema != null, "dbSchema should not be null");
+            Assert.StartsWith(partialSchemaName, dbSchema.Name);
         }
 
         /// <summary>
@@ -281,24 +234,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(3)]
         public void CanGetObjectsTables()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
             // need to add the database
-            string databaseName = testConfiguration.Metadata.Catalog;
-            string schemaName = testConfiguration.Metadata.Schema;
-            string tableName = testConfiguration.Metadata.Table;
+            string databaseName = _testConfiguration.Metadata.Catalog;
+            string schemaName = _testConfiguration.Metadata.Schema;
+            string tableName = _testConfiguration.Metadata.Table;
 
-            parameters[SnowflakeParameters.DATABASE] = databaseName;
-            parameters[SnowflakeParameters.SCHEMA] = schemaName;
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            IArrowArrayStream stream = adbcConnection.GetObjects(
+            using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.All,
                     catalogPattern: databaseName,
                     dbSchemaPattern: schemaName,
@@ -306,7 +247,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     tableTypes: new List<string> { "BASE TABLE", "VIEW" },
                     columnNamePattern: null);
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
@@ -327,33 +268,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(3)]
         public void CanGetObjectsTablesWithPattern()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
             // need to add the database
-            string databaseName = testConfiguration.Metadata.Catalog;
-            string schemaName = testConfiguration.Metadata.Schema;
-            string tableName = testConfiguration.Metadata.Table;
-            string partialTableName = $"{GetPartialNameForPatternMatch(tableName)}%";
+            string databaseName = _testConfiguration.Metadata.Catalog;
+            string schemaName = _testConfiguration.Metadata.Schema;
+            string tableName = _testConfiguration.Metadata.Table;
+            string partialTableName = GetPartialNameForPatternMatch(tableName);
 
-            parameters[SnowflakeParameters.DATABASE] = databaseName;
-            parameters[SnowflakeParameters.SCHEMA] = schemaName;
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            IArrowArrayStream stream = adbcConnection.GetObjects(
+            using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.All,
                     catalogPattern: databaseName,
                     dbSchemaPattern: schemaName,
-                    tableNamePattern: partialTableName,
+                    tableNamePattern: $"{partialTableName}%",
                     tableTypes: new List<string> { "BASE TABLE", "VIEW" },
                     columnNamePattern: null);
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
@@ -365,6 +294,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             AdbcTable table = tables.FirstOrDefault();
 
             Assert.True(table != null, "table should not be null");
+            Assert.StartsWith(partialTableName, table.Name);
         }
 
         /// <summary>
@@ -373,25 +303,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(3)]
         public void CanGetObjectsAll()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
             // need to add the database
-            string databaseName = testConfiguration.Metadata.Catalog;
-            string schemaName = testConfiguration.Metadata.Schema;
-            string tableName = testConfiguration.Metadata.Table;
+            string databaseName = _testConfiguration.Metadata.Catalog;
+            string schemaName = _testConfiguration.Metadata.Schema;
+            string tableName = _testConfiguration.Metadata.Table;
             string columnName = null;
 
-            parameters[SnowflakeParameters.DATABASE] = databaseName;
-            parameters[SnowflakeParameters.SCHEMA] = schemaName;
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            IArrowArrayStream stream = adbcConnection.GetObjects(
+            using IArrowArrayStream stream = _connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.All,
                     catalogPattern: databaseName,
                     dbSchemaPattern: schemaName,
@@ -399,7 +317,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                     tableTypes: new List<string> { "BASE TABLE", "VIEW" },
                     columnNamePattern: columnName);
 
-            RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
+            using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
 
             List<AdbcCatalog> catalogs = GetObjectsParser.ParseCatalog(recordBatch, databaseName, schemaName);
 
@@ -413,7 +331,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             Assert.True(columns != null, "Columns cannot be null");
 
-            Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
         }
 
         /// <summary>
@@ -422,24 +340,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(4)]
         public void CanGetTableSchema()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            string databaseName = _testConfiguration.Metadata.Catalog;
+            string schemaName = _testConfiguration.Metadata.Schema;
+            string tableName = _testConfiguration.Metadata.Table;
 
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            string databaseName = testConfiguration.Metadata.Catalog;
-            string schemaName = testConfiguration.Metadata.Schema;
-            string tableName = testConfiguration.Metadata.Table;
-
-            Schema schema = adbcConnection.GetTableSchema(databaseName, schemaName, tableName);
+            Schema schema = _connection.GetTableSchema(databaseName, schemaName, tableName);
 
             int numberOfFields = schema.FieldsList.Count;
 
-            Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
+            Assert.Equal(_testConfiguration.Metadata.ExpectedColumnCount, numberOfFields);
         }
 
         /// <summary>
@@ -448,18 +357,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(5)]
         public void CanGetTableTypes()
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            using IArrowArrayStream arrowArrayStream = _connection.GetTableTypes();
 
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            AdbcDriver driver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
-            AdbcDatabase adbcDatabase = driver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(new Dictionary<string, string>());
-
-            IArrowArrayStream arrowArrayStream = adbcConnection.GetTableTypes();
-
-            RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
+            using RecordBatch recordBatch = arrowArrayStream.ReadNextRecordBatchAsync().Result;
 
             StringArray stringArray = (StringArray)recordBatch.Column("table_type");
 
@@ -490,24 +390,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(6)]
         public void CanExecuteQuery()
         {
-            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-            Dictionary<string, string> options = new Dictionary<string, string>();
-
-            AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(testConfiguration, out parameters);
-
-            AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
-            AdbcConnection adbcConnection = adbcDatabase.Connect(options);
-
-            Console.WriteLine(testConfiguration.Query);
-
-            AdbcStatement statement = adbcConnection.CreateStatement();
-            statement.SqlQuery = testConfiguration.Query;
+            using AdbcStatement statement = _connection.CreateStatement();
+            statement.SqlQuery = _testConfiguration.Query;
 
             QueryResult queryResult = statement.ExecuteQuery();
 
-            Tests.DriverTests.CanExecuteQuery(queryResult, testConfiguration.ExpectedResultsCount);
+            Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
         }
 
         private string GetPartialNameForPatternMatch(string name)
@@ -515,6 +403,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             if (string.IsNullOrEmpty(name) || name.Length == 1) return name;
 
             return name.Substring(0, name.Length / 2);
+        }
+
+        public void Dispose()
+        {
+            _connection.Dispose();
+            _database.Dispose();
+            _snowflakeDriver.Dispose();
         }
     }
 }
