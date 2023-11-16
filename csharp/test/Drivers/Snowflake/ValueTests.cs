@@ -58,102 +58,161 @@ namespace Apache.Arrow.Adbc.Tests
         /// Validates if driver can send and receive specific Integer values correctly
         /// These Snowflake types are equivalent: NUMBER(38,0),INT,INTEGER,BIGINT,SMALLINT,TINYINT,BYTEINT
         /// </summary>
-        [SkippableFact]
-        public void TestIntegerRange()
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(0)]
+        [InlineData(1)]
+        public void TestIntegerSanity(int value)
         {
             string columnName = "INTTYPE";
             string table = CreateTemporaryTable(string.Format("{0} INT", columnName));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, -1);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 1);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MinValue);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MaxValue);
+            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, value);
+        }
+
+        /// <summary>
+        /// Validates if driver can handle the largest / smallest numbers
+        /// </summary>
+        [Theory]
+        [InlineData("99999999999999999999999999999999999999")]
+        [InlineData("-99999999999999999999999999999999999999")]
+        public void TestIntegerMinMax(string value)
+        {
+            string columnName = "INTTYPE";
+            string table = CreateTemporaryTable(string.Format("{0} INT", columnName));
+            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse(value));
         }
 
         /// <summary>
         /// Validates if driver can handle smaller Number type correctly
         /// </summary>
-        [SkippableFact]
-        public void TestSmallNumberRange()
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(99)]
+        [InlineData(-99)]
+        public void TestSmallNumberRange(int value)
         {
             string columnName = "SMALLNUMBER";
             string table = CreateTemporaryTable(string.Format("{0} NUMBER(2,0)", columnName));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, -1);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 1);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, -99);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 99);
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MinValue));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MaxValue));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, -100));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 100));
+            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, value);
+        }
+
+        /// <summary>
+        /// Validates if driver correctly errors out when the values exceed the column's limit
+        /// </summary>
+        [Theory]
+        [InlineData(-100)]
+        [InlineData(100)]
+        [InlineData(int.MaxValue)]
+        [InlineData(int.MinValue)]
+        public void TestSmallNumberRangeOverlimit(int value)
+        {
+            string columnName = "SMALLNUMBER";
+            string table = CreateTemporaryTable(string.Format("{0} NUMBER(2,0)", columnName));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, value));
         }
 
         /// <summary>
         /// Validates if driver can handle a large scale Number type correctly
         /// </summary>
-        [SkippableFact]
-        public void TestLargeScaleNumberRange()
+        [Theory]
+        [InlineData("0")]
+        [InlineData("-2.003")]
+        [InlineData("4.85")]
+        [InlineData("0.0000000000000000000000000000000000001")]
+        [InlineData("9.5545204502636499875576383003668916798")]
+        public void TestLargeScaleNumberRange(string value)
         {
             string columnName = "LARGESCALENUMBER";
             string table = CreateTemporaryTable(string.Format("{0} NUMBER(38,37)", columnName));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-2.0003"));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("4.85"));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("0.0000000000000000000000000000000000001"));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("9.5545204502636499875576383003668916798"));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-10")));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("10")));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MinValue));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MaxValue));
+            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse(value));
         }
 
         /// <summary>
-        /// Validates if driver can handle a large scale Number type correctly
+        /// Validates if driver can error handle when input goes beyond a large scale Number type
         /// </summary>
-        [SkippableFact]
-        public void TestSmallScaleNumberRange()
+        [Theory]
+        [InlineData("-10")]
+        [InlineData("10")]
+        [InlineData("99999999999999999999999999999999999999")]
+        [InlineData("-99999999999999999999999999999999999999")]
+        public void TestLargeScaleNumberOverlimit(string value)
+        {
+            string columnName = "LARGESCALENUMBER";
+            string table = CreateTemporaryTable(string.Format("{0} NUMBER(38,37)", columnName));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse(value)));
+        }
+
+        /// <summary>
+        /// Validates if driver can handle a small scale Number type correctly
+        /// </summary>
+        [Theory]
+        [InlineData("0")]
+        [InlineData("4.85")]
+        [InlineData("-999999999999999999999999999999999999.99")]
+        [InlineData("999999999999999999999999999999999999.99")]
+        public void TestSmallScaleNumberRange(string value)
         {
             string columnName = "SMALLSCALENUMBER";
             string table = CreateTemporaryTable(string.Format("{0} NUMBER(38,2)", columnName));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, 0);
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("4.85"));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("-999999999999999999999999999999999999.99"));
-            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse("999999999999999999999999999999999999.99"));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MinValue));
-            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.MaxValue));
+            ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse(value));
+        }
 
-            // Snowflake allows insert when input goes beyond scale, but storage will round value.
-            // Round up test
-            InsertSingleValue(table, columnName, "2.467");
-            SelectAndValidateValues(table, columnName, SqlDecimal.Parse("2.47"), 1);
-            DeleteFromTable(table, string.Format("{0}={1}", columnName, SqlDecimal.Parse("2.47")), 1);
-            // Round down test
-            InsertSingleValue(table, columnName, "-672.613");
-            SelectAndValidateValues(table, columnName, SqlDecimal.Parse("-672.61"), 1);
-            DeleteFromTable(table, string.Format("{0}={1}", columnName, SqlDecimal.Parse("-672.61")), 1);
+        /// <summary>
+        /// Validates if driver can error handle when an insert goes beyond a small scale Number type correctly
+        /// </summary>
+        [Theory]
+        [InlineData("-99999999999999999999999999999999999999")]
+        [InlineData("99999999999999999999999999999999999999")]
+        public void TestSmallScaleNumberOverlimit(string value)
+        {
+            string columnName = "SMALLSCALENUMBER";
+            string table = CreateTemporaryTable(string.Format("{0} NUMBER(38,2)", columnName));
+            Assert.Throws<AdbcException>(() => ValidateInsertSelectDeleteSingleDecimalValue(table, columnName, SqlDecimal.Parse(value)));
+        }
+
+
+        /// <summary>
+        /// Tests that decimals are rounded as expected.
+        /// Snowflake allows inserts of scales beyond the data type size, but storage of value will round it up or down
+        /// </summary>
+        [Theory]
+        [InlineData(2.467, 2.47)]
+        [InlineData(-672.613, -672.61)]
+        public void TestRoundingNumbers(decimal input, decimal output)
+        {
+            string columnName = "SMALLSCALENUMBER";
+            string table = CreateTemporaryTable(string.Format("{0} NUMBER(38,2)", columnName));
+            SqlDecimal value = new SqlDecimal(input);
+            SqlDecimal returned = new SqlDecimal(output);
+            InsertSingleValue(table, columnName, value.ToString());
+            SelectAndValidateValues(table, columnName, returned, 1);
+            DeleteFromTable(table, string.Format("{0}={1}", columnName, returned), 1);
         }
 
         /// <summary>
         /// Validates if driver can handle floating point number type correctly
         /// These Snowflake types are equivalent: FLOAT,FLOAT4,FLOAT8,DOUBLE,DOUBLE PRECISION,REAL
         /// </summary>
-        [SkippableFact]
-        public void TestFloatNumberRange()
+        [Theory]
+        [InlineData(0)]
+        [InlineData(0.2)]
+        [InlineData(15e-03)]
+        [InlineData(1.234E+2)]
+        [InlineData(double.NegativeInfinity)]
+        [InlineData(double.PositiveInfinity)]
+        [InlineData(double.NaN)]
+        [InlineData(double.MinValue)]
+        [InlineData(double.MaxValue)]
+        public void TestFloatValuesInsertSelectDelete(double value)
         {
             string columnName = "FLOATTYPE";
             string table = CreateTemporaryTable(string.Format("{0} FLOAT", columnName));
-            ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, 0);
-            ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, double.NegativeInfinity);
-            ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, double.PositiveInfinity);
-            ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, double.NaN);
-            ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, 0.2);
-            ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, 15e-03);
-            ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, 1.234E+2);
-
-            // Double-check: Sends +/- 1.7976931348623157E+308, but gets back infinity
-            //ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, double.MaxValue);
-            //ValidateInsertSelectDeleteSingleDoubleValue(table, columnName, double.MinValue);
+            string valueString = ConvertDoubleToString(value);
+            InsertSingleValue(table, columnName, valueString);
+            SelectAndValidateValues(table, columnName, value, 1);
+            DeleteFromTable(table, string.Format("{0}={1}", columnName, valueString), 1);
         }
 
         private void ValidateInsertSelectDeleteSingleDecimalValue(string table, string columnName, SqlDecimal value)
@@ -161,14 +220,6 @@ namespace Apache.Arrow.Adbc.Tests
             InsertSingleValue(table, columnName, value.ToString());
             SelectAndValidateValues(table, columnName, value, 1);
             DeleteFromTable(table, string.Format("{0}={1}", columnName, value), 1);
-        }
-
-        private void ValidateInsertSelectDeleteSingleDoubleValue(string table, string columnName, double value)
-        {
-            string valueString = ConvertDoubleToString(value);
-            InsertSingleValue(table, columnName, valueString);
-            SelectAndValidateValues(table, columnName, value, 1);
-            DeleteFromTable(table, string.Format("{0}={1}", columnName, valueString), 1);
         }
 
         private void InsertSingleValue(string table, string columnName, string value)
