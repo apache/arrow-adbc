@@ -27,8 +27,7 @@ main() {
     echo "On ${repo} pull ${pr_number}"
 
     local -r latest_version=$(git ls-remote --heads origin |
-                                  grep maint- |
-                                  sed -E 's/^.*maint-(.*)$/\1/' |
+                                  grep -o '[0-9.]*$' |
                                   sort --version-sort |
                                   tail -n1)
     local -r milestone=$(gh api "/repos/${repo}/milestones" |
