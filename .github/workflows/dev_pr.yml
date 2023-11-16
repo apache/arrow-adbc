@@ -38,7 +38,6 @@ jobs:
           persist-credentials: false
 
       - name: Check title for Conventional Commits format
-        continue-on-error: true
         if: |
           github.event_name == 'pull_request_target' &&
             (github.event.action == 'opened' ||
@@ -51,7 +50,7 @@ jobs:
             await script({github, context});
 
       - name: Assign milestone
-        continue-on-error: true
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

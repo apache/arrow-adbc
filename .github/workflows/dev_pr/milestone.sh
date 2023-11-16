@@ -26,10 +26,20 @@ main() {
     local -r pr_number="${2}"
     echo "On ${repo} pull ${pr_number}"
 
+    local -r existing_milestone=$(gh pr view "${pr_number}" \
+                                  --json milestone \
+                                  -t '{{if .milestone}}{{.milestone.title}}{{else}}{{end}}')
+
+    if [[ ! -z "${existing_milestone}" ]]; then
+        echo "PR has milestone: ${existing_milestone}"
+        return 0
+    fi
+
     local -r latest_version=$(git ls-remote --heads origin |
                                   grep -o '[0-9.]*$' |
                                   sort --version-sort |
                                   tail -n1)
+
     local -r milestone=$(gh api "/repos/${repo}/milestones" |
                              jq -r '.[] | .title' |
                              grep -E '^ADBC Libraries' |
