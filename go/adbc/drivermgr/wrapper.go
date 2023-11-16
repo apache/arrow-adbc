@@ -32,6 +32,10 @@ package drivermgr
 //     return (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
 // }
 //
+// struct ArrowArrayStream* allocArrStream() {
+//     return (struct ArrowArrayStream*)malloc(sizeof(struct ArrowArrayStream));
+// }
+//
 import "C"
 import (
 	"context"
@@ -467,7 +471,16 @@ func (s *stmt) Bind(_ context.Context, values arrow.Record) error {
 }
 
 func (s *stmt) BindStream(_ context.Context, stream array.RecordReader) error {
-	return &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		arrStream   = C.allocArrStream()
+		cdArrStream = (*cdata.CArrowArrayStream)(unsafe.Pointer(arrStream))
+		err         C.struct_AdbcError
+	)
+	cdata.ExportRecordReader(stream, cdArrStream)
+	if code := adbc.Status(C.AdbcStatementBindStream(s.st, arrStream, &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
 }
 
 func (s *stmt) GetParameterSchema() (*arrow.Schema, error) {

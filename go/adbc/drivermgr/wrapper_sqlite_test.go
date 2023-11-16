@@ -526,6 +526,59 @@ func (dm *DriverMgrSuite) TestGetParameterSchema() {
 	dm.True(expSchema.Equal(schema))
 }
 
+func (dm *DriverMgrSuite) TestBindStream() {
+	query := "SELECT ?1, ?2"
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	dm.Require().NoError(st.SetSqlQuery(query))
+	defer st.Close()
+
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+		{Name: "2", Type: arrow.BinaryTypes.String, Nullable: true},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"one", "two", "three"}, nil)
+
+	rec1 := bldr.NewRecord()
+	defer rec1.Release()
+
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{4, 5, 6}, nil)
+	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"four", "five", "six"}, nil)
+
+	rec2 := bldr.NewRecord()
+	defer rec2.Release()
+
+	recsIn := []arrow.Record{rec1, rec2}
+	rdrIn, err := array.NewRecordReader(schema, recsIn)
+
+	err = st.BindStream(dm.ctx, rdrIn)
+	dm.NoError(err)
+
+	rdrOut, _, err := st.ExecuteQuery(dm.ctx)
+	dm.NoError(err)
+	defer rdrOut.Release()
+
+	recsOut := make([]arrow.Record, 0, 0)
+	for rdrOut.Next() {
+		rec := rdrOut.Record()
+		rec.Retain()
+		defer rec.Release()
+		recsOut = append(recsOut, rec)
+	}
+
+	tableIn := array.NewTableFromRecords(schema, recsIn)
+	defer tableIn.Release()
+	tableOut := array.NewTableFromRecords(schema, recsOut)
+	defer tableOut.Release()
+
+	dm.Truef(array.TableEqual(tableIn, tableOut), "expected: %s\ngot: %s", tableIn, tableOut)
+}
+
 func TestDriverMgr(t *testing.T) {
 	suite.Run(t, new(DriverMgrSuite))
 }
