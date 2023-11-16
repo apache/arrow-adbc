@@ -393,9 +393,8 @@ func (dm *DriverMgrSuite) TestCommitAutocommitDisabled() {
 	cnxnopt, ok := dm.conn.(adbc.PostInitOptions)
 	dm.True(ok)
 
-	cnxnopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled)
-	err := dm.conn.Commit(dm.ctx)
-	dm.NoError(err)
+	dm.NoError(cnxnopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+	dm.NoError(dm.conn.Commit(dm.ctx))
 }
 
 func (dm *DriverMgrSuite) TestRollback() {
@@ -408,9 +407,8 @@ func (dm *DriverMgrSuite) TestRollbackAutocommitDisabled() {
 	cnxnopt, ok := dm.conn.(adbc.PostInitOptions)
 	dm.True(ok)
 
-	cnxnopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled)
-	err := dm.conn.Rollback(dm.ctx)
-	dm.NoError(err)
+	dm.NoError(cnxnopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+	dm.NoError(dm.conn.Rollback(dm.ctx))
 }
 
 func (dm *DriverMgrSuite) TestSqlExecute() {
@@ -555,15 +553,15 @@ func (dm *DriverMgrSuite) TestBindStream() {
 
 	recsIn := []arrow.Record{rec1, rec2}
 	rdrIn, err := array.NewRecordReader(schema, recsIn)
-
-	err = st.BindStream(dm.ctx, rdrIn)
 	dm.NoError(err)
+
+	dm.NoError(st.BindStream(dm.ctx, rdrIn))
 
 	rdrOut, _, err := st.ExecuteQuery(dm.ctx)
 	dm.NoError(err)
 	defer rdrOut.Release()
 
-	recsOut := make([]arrow.Record, 0, 0)
+	recsOut := make([]arrow.Record, 0)
 	for rdrOut.Next() {
 		rec := rdrOut.Record()
 		rec.Retain()
