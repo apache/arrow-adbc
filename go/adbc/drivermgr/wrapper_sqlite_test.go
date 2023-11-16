@@ -61,12 +61,17 @@ func (dm *DriverMgrSuite) SetupSuite() {
 	dm.NoError(err)
 	defer stmt.Close()
 
-	err = stmt.SetSqlQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")
-	dm.NoError(err)
+	dm.NoError(stmt.SetSqlQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)"))
 
 	nrows, err := stmt.ExecuteUpdate(dm.ctx)
 	dm.NoError(err)
 	dm.Equal(int64(0), nrows)
+
+	dm.NoError(stmt.SetSqlQuery("INSERT INTO test_table (id, name) VALUES (1, 'test')"))
+
+	nrows, err = stmt.ExecuteUpdate(dm.ctx)
+	dm.NoError(err)
+	dm.Equal(int64(1), nrows)
 }
 
 func (dm *DriverMgrSuite) SetupTest() {
@@ -341,7 +346,7 @@ func (dm *DriverMgrSuite) TestGetTableSchema() {
 	expSchema := arrow.NewSchema(
 		[]arrow.Field{
 			{Name: "id", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
-			{Name: "name", Type: arrow.PrimitiveTypes.Int64, Nullable: true}, // Should be arrow.BinaryTypes.String
+			{Name: "name", Type: arrow.BinaryTypes.String, Nullable: true},
 		}, nil)
 	dm.True(expSchema.Equal(schema))
 }
