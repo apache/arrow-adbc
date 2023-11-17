@@ -196,11 +196,7 @@ func getSchema(out *C.struct_ArrowSchema) (*arrow.Schema, error) {
 		return nil, nil
 	}
 
-	schema, err := cdata.ImportCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(out)))
-	if err != nil {
-		return nil, err
-	}
-	return schema, nil
+	return cdata.ImportCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(out)))
 }
 
 type cnxn struct {
