@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Tests
     // TODO: When supported, use prepared statements instead of SQL string literals
     //      Which will better test how the driver handles values sent/received
 
-    public class ValueTests
+    public class ValueTests : IDisposable
     {
         static readonly string s_testTablePrefix = "ADBCVALUETEST_"; // Make configurable? Also; must be all caps if not double quoted
         readonly SnowflakeTestConfiguration _snowflakeTestConfiguration;
@@ -42,16 +42,14 @@ namespace Apache.Arrow.Adbc.Tests
         public ValueTests()
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
-            {
-                _snowflakeTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-                Dictionary<string, string> parameters = new Dictionary<string,string>();
-                Dictionary<string, string> options = new Dictionary<string, string>();
-                AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_snowflakeTestConfiguration, out parameters);
-                AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
-                _connection = adbcDatabase.Connect(options);
-                _statement = _connection.CreateStatement();
-                _catalogSchema = string.Format("{0}.{1}", _snowflakeTestConfiguration.Metadata.Catalog, _snowflakeTestConfiguration.Metadata.Schema);
-            }
+            _snowflakeTestConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            Dictionary<string, string> parameters = new Dictionary<string,string>();
+            Dictionary<string, string> options = new Dictionary<string, string>();
+            AdbcDriver snowflakeDriver = SnowflakeTestingUtils.GetSnowflakeAdbcDriver(_snowflakeTestConfiguration, out parameters);
+            AdbcDatabase adbcDatabase = snowflakeDriver.Open(parameters);
+            _connection = adbcDatabase.Connect(options);
+            _statement = _connection.CreateStatement();
+            _catalogSchema = string.Format("{0}.{1}", _snowflakeTestConfiguration.Metadata.Catalog, _snowflakeTestConfiguration.Metadata.Schema);
         }
 
         /// <summary>
@@ -266,28 +264,31 @@ namespace Apache.Arrow.Adbc.Tests
                 Field field = stream.Schema.GetFieldByName(columnName);
                 while (true)
                 {
-                    RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync();
-                    if (nextBatch == null) { break; }
-                    switch (field.DataType)
+                    using (RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync())
                     {
-                        case Decimal128Type:
-                            Decimal128Array decimalArray = (Decimal128Array)nextBatch.Column(0);
-                            for (int i = 0; i < decimalArray.Length; i++)
-                            {
-                                Assert.Equal(value, decimalArray.GetSqlDecimal(i));
-                            }
-                            break;
-                        case DoubleType:
-                            DoubleArray doubleArray = (DoubleArray)nextBatch.Column(0);
-                            for (int i = 0; i < doubleArray.Length; i++)
-                            {
-                                Assert.Equal(value, doubleArray.GetValue(i));
-                            }
-                            break;
+                        if (nextBatch == null) { break; }
+                        switch (field.DataType)
+                        {
+                            case Decimal128Type:
+                                Decimal128Array decimalArray = (Decimal128Array)nextBatch.Column(0);
+                                for (int i = 0; i < decimalArray.Length; i++)
+                                {
+                                    Assert.Equal(value, decimalArray.GetSqlDecimal(i));
+                                }
+                                break;
+                            case DoubleType:
+                                DoubleArray doubleArray = (DoubleArray)nextBatch.Column(0);
+                                for (int i = 0; i < doubleArray.Length; i++)
+                                {
+                                    Assert.Equal(value, doubleArray.GetValue(i));
+                                }
+                                break;
+                        }
                     }
                 }
             }
         }
+
         private void DeleteFromTable(string tableName, string whereClause, int expectedRowsAffected)
         {
             string deleteNumberStatement = string.Format("DELETE FROM {0} WHERE {1};", tableName, whereClause);
@@ -304,6 +305,12 @@ namespace Apache.Arrow.Adbc.Tests
             _statement.SqlQuery = createTableStatement;
             _statement.ExecuteUpdate();
             return tableName;
+        }
+
+        public void Dispose()
+        {
+            _connection.Dispose();
+            _statement.Dispose();
         }
     }
 }
