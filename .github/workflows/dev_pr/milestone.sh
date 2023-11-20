@@ -28,9 +28,9 @@ main() {
 
     local -r existing_milestone=$(gh pr view "${pr_number}" \
                                   --json milestone \
-                                  -t '{{if .milestone}}{{.milestone.title}}{{else}}{{end}}')
+                                  -t '{{if .milestone}}{{.milestone.title}}{{end}}')
 
-    if [[ ! -z "${existing_milestone}" ]]; then
+    if [[ -n "${existing_milestone}" ]]; then
         echo "PR has milestone: ${existing_milestone}"
         return 0
     fi
