@@ -156,8 +156,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 .FirstOrDefault();
 
             Assert.True(columns != null, "Columns cannot be null");
-
             Assert.Equal(testConfiguration.Metadata.ExpectedColumnCount, columns.Count);
+
+            if (testConfiguration.UseHighPrecision)
+            {
+                IEnumerable<AdbcColumn> highPrecisionColumns = columns.Where(c => c.XdbcTypeName == "NUMBER");
+
+                if(highPrecisionColumns.Count() > 0)
+                {
+                    // ensure they all are coming back as XdbcDataType_XDBC_DECIMAL because they are Decimal128
+                    short XdbcDataType_XDBC_DECIMAL = 3;
+                    IEnumerable<AdbcColumn> invalidHighPrecisionColumns  = highPrecisionColumns.Where(c => c.XdbcSqlDataType != XdbcDataType_XDBC_DECIMAL);
+                    int count = invalidHighPrecisionColumns.Count();
+                    Assert.True(count == 0, $"There are {count} columns that do not map to the correct XdbcSqlDataType when UseHighPrecision=true");
+                }
+            }
         }
 
         /// <summary>
