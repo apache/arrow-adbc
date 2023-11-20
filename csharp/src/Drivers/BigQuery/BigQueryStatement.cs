@@ -87,6 +87,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
+<<<<<<< HEAD
         public override object GetValue(IArrowArray arrowArray, Field field, int index)
         {
             switch(arrowArray)
@@ -100,6 +101,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
+=======
+        public override object GetValue(IArrowArray arrowArray, Field field, int index)
+        {
+            switch(arrowArray)
+            {
+                case StructArray structArray:
+                    return SerializeToJson(structArray, index);
+                case ListArray listArray:
+                    return listArray.GetSlicedValues(index);
+                default:
+                    return base.GetValue(arrowArray, field, index);
+            }
+        }
+
+>>>>>>> be35986c (add back support for List, Struct types)
         private IArrowType TranslateType(TableFieldSchema field)
         {
             // per https://developers.google.com/resources/api-libraries/documentation/bigquery/v2/java/latest/com/google/api/services/bigquery/model/TableFieldSchema.html#getType--
