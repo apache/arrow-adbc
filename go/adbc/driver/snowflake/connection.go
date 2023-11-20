@@ -282,60 +282,20 @@ func (c *cnxn) getObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, 
 
 	conditions := make([]string, 0)
 	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` CATALOG_NAME LIKE \'`+*catalog+`\'`)
+		conditions = append(conditions, ` CATALOG_NAME LIKE '`+*catalog+`'`)
 	}
 	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` SCHEMA_NAME LIKE \'`+*dbSchema+`\'`)
+		conditions = append(conditions, ` SCHEMA_NAME LIKE '`+*dbSchema+`'`)
 	}
 
 	cond := strings.Join(conditions, " AND ")
-	if cond != "" {
-		cond = `statement := 'SELECT * FROM (' || statement || ') WHERE ` + cond + `';`
-	}
 
 	result = make(map[string][]string)
-	const queryPrefix = `DECLARE
-	    c1 CURSOR FOR SELECT DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES;
-			res RESULTSET;
-			counter INTEGER DEFAULT 0;
-			statement VARCHAR DEFAULT '';
-		BEGIN
-		  FOR rec IN c1 DO
-				LET sharelist RESULTSET := (EXECUTE IMMEDIATE 'SHOW SHARES LIKE \'%' || rec.database_name || '%\'');
-				LET cnt RESULTSET := (SELECT COUNT(*) FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())));
-				LET cnt_cur CURSOR for cnt;
-				LET share_cnt INTEGER DEFAULT 0;
-				OPEN cnt_cur;
-				FETCH cnt_cur INTO share_cnt;
-				CLOSE cnt_cur;
 
-				IF (share_cnt > 0) THEN
-					LET c2 CURSOR for sharelist;
-					LET created_on TIMESTAMP;
-					LET kind VARCHAR DEFAULT '';
-					LET share_name VARCHAR DEFAULT '';
-					LET dbname VARCHAR DEFAULT '';
-					OPEN c2;
-					FETCH c2 INTO created_on, kind, share_name, dbname;
-					CLOSE c2;
-					IF (dbname = '') THEN
-						CONTINUE;
-					END IF;
-				END IF;
-
-				IF (counter > 0) THEN
-				  statement := statement || ' UNION ALL ';
-				END IF;
-				statement := statement || ' SELECT CATALOG_NAME, SCHEMA_NAME FROM ' || rec.database_name || '.INFORMATION_SCHEMA.SCHEMATA';
-				counter := counter + 1;
-			END FOR;
-		  `
-	const querySuffix = `
-	    res := (EXECUTE IMMEDIATE :statement);
-			RETURN TABLE (res);
-		END;`
-
-	query := queryPrefix + cond + querySuffix
+	query := `SELECT CATALOG_NAME, SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA`
+	if cond != "" {
+		query += " WHERE " + cond
+	}
 	var rows *sql.Rows
 	rows, err = c.sqldb.QueryContext(ctx, query)
 	if err != nil {
@@ -520,85 +480,29 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 
 	conditions := make([]string, 0)
 	if catalog != nil && *catalog != "" {
-		conditions = append(conditions, ` TABLE_CATALOG ILIKE \'`+*catalog+`\'`)
+		conditions = append(conditions, ` TABLE_CATALOG ILIKE '`+*catalog+`'`)
 	}
 	if dbSchema != nil && *dbSchema != "" {
-		conditions = append(conditions, ` TABLE_SCHEMA ILIKE \'`+*dbSchema+`\'`)
+		conditions = append(conditions, ` TABLE_SCHEMA ILIKE '`+*dbSchema+`'`)
 	}
 	if tableName != nil && *tableName != "" {
-		conditions = append(conditions, ` TABLE_NAME ILIKE \'`+*tableName+`\'`)
+		conditions = append(conditions, ` TABLE_NAME ILIKE '`+*tableName+`'`)
 	}
-
-	const queryPrefix = `DECLARE
-		c1 CURSOR FOR SELECT DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES;
-		res RESULTSET;
-		counter INTEGER DEFAULT 0;
-		statement VARCHAR DEFAULT '';
-	BEGIN
-		FOR rec IN c1 DO
-			LET sharelist RESULTSET := (EXECUTE IMMEDIATE 'SHOW SHARES LIKE \'%' || rec.database_name || '%\'');
-			LET cnt RESULTSET := (SELECT COUNT(*) FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())));
-			LET cnt_cur CURSOR for cnt;
-			LET share_cnt INTEGER DEFAULT 0;
-			OPEN cnt_cur;
-			FETCH cnt_cur INTO share_cnt;
-			CLOSE cnt_cur;
-
-			IF (share_cnt > 0) THEN
-				LET c2 CURSOR for sharelist;
-				LET created_on TIMESTAMP;
-				LET kind VARCHAR DEFAULT '';
-				LET share_name VARCHAR DEFAULT '';
-				LET dbname VARCHAR DEFAULT '';
-				OPEN c2;
-				FETCH c2 INTO created_on, kind, share_name, dbname;
-				CLOSE c2;
-				IF (dbname = '') THEN
-					CONTINUE;
-				END IF;
-			END IF;
-			IF (counter > 0) THEN
-				statement := statement || ' UNION ALL ';
-			END IF;
-			`
-
-	const noSchema = `statement := statement || ' SELECT table_catalog, table_schema, table_name, table_type FROM ' || rec.database_name || '.INFORMATION_SCHEMA.TABLES';
-			counter := counter + 1;
-		END FOR;
-		`
-
-	const getSchema = `statement := statement ||
-		' SELECT
-				table_catalog, table_schema, table_name, column_name,
-				ordinal_position, is_nullable::boolean, data_type, numeric_precision,
-				numeric_precision_radix, numeric_scale, is_identity::boolean,
-				identity_generation, identity_increment,
-				character_maximum_length, character_octet_length, datetime_precision, comment
-		FROM ' || rec.database_name || '.INFORMATION_SCHEMA.COLUMNS';
-
-		  counter := counter + 1;
-		END FOR;
-	  `
-
-	const querySuffix = `
-		res := (EXECUTE IMMEDIATE :statement);
-		RETURN TABLE (res);
-	END;`
 
 	// first populate the tables and table types
 	var rows *sql.Rows
 	var tblConditions []string
 	if len(tableType) > 0 {
-		tblConditions = append(conditions, ` TABLE_TYPE IN (\'`+strings.Join(tableType, `\',\'`)+`\')`)
+		tblConditions = append(conditions, ` TABLE_TYPE IN ('`+strings.Join(tableType, `','`)+`')`)
 	} else {
 		tblConditions = conditions
 	}
 
 	cond := strings.Join(tblConditions, " AND ")
+	query := "SELECT table_catalog, table_schema, table_name, table_type FROM INFORMATION_SCHEMA.TABLES"
 	if cond != "" {
-		cond = `statement := 'SELECT * FROM (' || statement || ') WHERE ` + cond + `';`
+		query += " WHERE " + cond
 	}
-	query := queryPrefix + noSchema + cond + querySuffix
 	rows, err = c.sqldb.QueryContext(ctx, query)
 	if err != nil {
 		err = errToAdbcErr(adbc.StatusIO, err)
@@ -622,6 +526,16 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 	}
 
 	if includeSchema {
+		conditions := make([]string, 0)
+		if catalog != nil && *catalog != "" {
+			conditions = append(conditions, ` TABLE_CATALOG ILIKE \'`+*catalog+`\'`)
+		}
+		if dbSchema != nil && *dbSchema != "" {
+			conditions = append(conditions, ` TABLE_SCHEMA ILIKE \'`+*dbSchema+`\'`)
+		}
+		if tableName != nil && *tableName != "" {
+			conditions = append(conditions, ` TABLE_NAME ILIKE \'`+*tableName+`\'`)
+		}
 		// if we need to include the schemas of the tables, make another fetch
 		// to fetch the columns and column info
 		if columnName != nil && *columnName != "" {
@@ -633,6 +547,50 @@ func (c *cnxn) getObjectsTables(ctx context.Context, depth adbc.ObjectDepth, cat
 		}
 		cond = `statement := 'SELECT * FROM (' || statement || ')` + cond +
 			` ORDER BY table_catalog, table_schema, table_name, ordinal_position';`
+
+		var queryPrefix = `DECLARE
+			c1 CURSOR FOR SELECT DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES;
+			res RESULTSET;
+			counter INTEGER DEFAULT 0;
+			statement VARCHAR DEFAULT '';
+		BEGIN
+			FOR rec IN c1 DO
+				IF (counter > 0) THEN
+					statement := statement || ' UNION ALL ';
+				END IF;
+				`
+
+		const getSchema = `statement := statement ||
+			' SELECT
+					table_catalog, table_schema, table_name, column_name,
+					ordinal_position, is_nullable::boolean, data_type, numeric_precision,
+					numeric_precision_radix, numeric_scale, is_identity::boolean,
+					identity_generation, identity_increment,
+					character_maximum_length, character_octet_length, datetime_precision, comment
+			FROM ' || rec.database_name || '.INFORMATION_SCHEMA.COLUMNS';
+
+			  counter := counter + 1;
+			END FOR;
+		  `
+
+		const querySuffix = `
+			res := (EXECUTE IMMEDIATE :statement);
+			RETURN TABLE (res);
+		END;`
+
+		if catalog != nil && *catalog != "" {
+			queryPrefix = `DECLARE
+				c1 CURSOR FOR SELECT DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES WHERE DATABASE_NAME ILIKE '` + *catalog + `';` +
+				`res RESULTSET;
+				counter INTEGER DEFAULT 0;
+				statement VARCHAR DEFAULT '';
+			BEGIN
+				FOR rec IN c1 DO
+					IF (counter > 0) THEN
+						statement := statement || ' UNION ALL ';
+					END IF;
+					`
+		}
 		query = queryPrefix + getSchema + cond + querySuffix
 		rows, err = c.sqldb.QueryContext(ctx, query)
 		if err != nil {
