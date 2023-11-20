@@ -667,7 +667,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return XdbcDataType.XdbcDataType_XDBC_FLOAT;
                 case "BOOL" or "BOOLEAN":
                     return XdbcDataType.XdbcDataType_XDBC_BIT;
-                case "STRING":
+                case "STRING" or "GEOGRAPHY" or "JSON":
                     return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
                 case "BYTES":
                     return XdbcDataType.XdbcDataType_XDBC_BINARY;
@@ -748,7 +748,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return fieldBuilder.DataType(DoubleType.Default);
                 case "BOOL" or "BOOLEAN":
                     return fieldBuilder.DataType(BooleanType.Default);
-                case "STRING" or "GEOGRAPHY":
+                case "STRING" or "GEOGRAPHY" or "JSON":
                     return fieldBuilder.DataType(StringType.Default);
                 case "BYTES":
                     return fieldBuilder.DataType(BinaryType.Default);
@@ -784,7 +784,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     string arrayType = type.Substring(dataType.Length).Replace("<", "").Replace(">", "");
                     return GetFieldBuilder(name, type, arrayType, index);
 
-                default: throw new InvalidOperationException();
+                default: throw new InvalidOperationException($"{dataType} cannot be handled");
             }
         }
 
