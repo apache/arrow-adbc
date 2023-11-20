@@ -129,7 +129,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return StringType.Default;
 
                 // treat these values as strings
-                case "GEOGRAPHY":
+                case "GEOGRAPHY" or "JSON":
                     return StringType.Default;
 
                 // get schema cannot get precision and scale for NUMERIC or BIGNUMERIC types
@@ -144,7 +144,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? StringType.Default : new Decimal256Type(76, 38);
 
                 // Google.Apis.Bigquery.v2.Data.TableFieldSchema do not include Array and Geography in types
-                default: throw new InvalidOperationException();
+                default: throw new InvalidOperationException($"{field.Type} cannot be translated");
             }
         }
 

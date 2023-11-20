@@ -56,7 +56,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                             "CAST('2023-09-08 12:34:56+00:00' as TIMESTAMP) as timestamp, " +
                             "ST_GEOGPOINT(1, 2) as point, " +
                             "ARRAY[1, 2, 3] as numbers, " +
-                            "STRUCT('John Doe' as name, 30 as age) as person",
+                            "STRUCT('John Doe' as name, 30 as age) as person," +
+                            "PARSE_JSON('{\"name\":\"Jane Doe\",\"age\":29}') as json",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {
                         new ColumnNetTypeArrowTypeValue("id", typeof(long), typeof(Int64Type), 1L),
@@ -76,7 +77,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         new ColumnNetTypeArrowTypeValue("timestamp", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023, 9, 8, 12, 34, 56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("point", typeof(string), typeof(StringType), "POINT(1 2)"),
                         new ColumnNetTypeArrowTypeValue("numbers", typeof(long), typeof(Int64Type), numbersArray),
-                        new ColumnNetTypeArrowTypeValue("person", typeof(string), typeof(StringType), "{\"name\":\"John Doe\",\"age\":30}")
+                        new ColumnNetTypeArrowTypeValue("person", typeof(string), typeof(StringType), "{\"name\":\"John Doe\",\"age\":30}"),
+                        new ColumnNetTypeArrowTypeValue("json", typeof(string), typeof(StringType), "{\"age\":29,\"name\":\"Jane Doe\"}")
+
                     }
                 });
 
