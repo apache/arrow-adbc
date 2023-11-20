@@ -667,7 +667,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     return XdbcDataType.XdbcDataType_XDBC_FLOAT;
                 case "BOOL" or "BOOLEAN":
                     return XdbcDataType.XdbcDataType_XDBC_BIT;
-                case "STRING" or "JSON":
+                case "STRING" or "GEOGRAPHY" or "JSON":
                     return XdbcDataType.XdbcDataType_XDBC_VARCHAR;
                 case "BYTES":
                     return XdbcDataType.XdbcDataType_XDBC_BINARY;

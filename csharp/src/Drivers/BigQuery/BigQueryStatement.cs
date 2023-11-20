@@ -143,7 +143,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "BIGNUMERIC" or "BIGDECIMAL":
                     return bool.Parse(this.Options[BigQueryParameters.LargeDecimalsAsString]) ? StringType.Default : new Decimal256Type(76, 38);
 
-                // Google.Apis.Bigquery.v2.Data.TableFieldSchema do not include Array and Geography in types
                 default: throw new InvalidOperationException($"{field.Type} cannot be translated");
             }
         }
