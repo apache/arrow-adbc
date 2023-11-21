@@ -105,6 +105,48 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
+        [SkippableFact]
+        public void VerifySchemaTables()
+        {
+            BigQueryTestConfiguration testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(testConfiguration))
+            {
+                adbcConnection.Open();
+
+                var collections = adbcConnection.GetSchema("MetaDataCollections");
+                Assert.Equal(7, collections.Rows.Count);
+                Assert.Equal(2, collections.Columns.Count);
+
+                var restrictions = adbcConnection.GetSchema("Restrictions");
+                Assert.Equal(11, restrictions.Rows.Count);
+                Assert.Equal(3, restrictions.Columns.Count);
+
+                var catalogs = adbcConnection.GetSchema("Catalogs");
+                Assert.Equal(1, catalogs.Columns.Count);
+                var catalog = (string)catalogs.Rows[0].ItemArray[0];
+
+                catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
+                Assert.Equal(1, catalogs.Rows.Count);
+
+                var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
+                Assert.Equal(2, schemas.Columns.Count);
+                var schema = (string)schemas.Rows[0].ItemArray[1];
+
+                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
+                Assert.Equal(1, schemas.Rows.Count);
+
+                var tableTypes = adbcConnection.GetSchema("TableTypes");
+                Assert.Equal(1, tableTypes.Columns.Count);
+
+                var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
+                Assert.Equal(4, tables.Columns.Count);
+
+                var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
+                Assert.Equal(16, columns.Columns.Count);
+            }
+        }
+
         private Adbc.Client.AdbcConnection GetAdbcConnection(BigQueryTestConfiguration testConfiguration)
         {
             return new Adbc.Client.AdbcConnection(
