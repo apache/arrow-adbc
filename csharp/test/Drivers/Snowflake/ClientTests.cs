@@ -217,6 +217,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 Assert.Equal(441, columns.Rows.Count);
             }
         }
+
         private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration)
         {
             // see https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html

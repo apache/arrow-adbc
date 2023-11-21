@@ -281,7 +281,7 @@ namespace Apache.Arrow.Adbc.Client
         abstract class SchemaCollection
         {
             protected static readonly List<SchemaCollection> collections;
-            static readonly SortedDictionary<string, SchemaCollection> schemaCollections;
+            private static readonly SortedDictionary<string, SchemaCollection> schemaCollections;
 
             static SchemaCollection()
             {
@@ -297,7 +297,7 @@ namespace Apache.Arrow.Adbc.Client
                 Add(new ColumnsCollection());
             }
 
-            static void Add(SchemaCollection collection)
+            private static void Add(SchemaCollection collection)
             {
                 collections.Add(collection);
                 schemaCollections.Add(collection.Name, collection);
@@ -314,7 +314,7 @@ namespace Apache.Arrow.Adbc.Client
             public abstract DataTable GetSchema(Adbc.AdbcConnection adbcConnection, string[] restrictions);
         }
 
-        sealed class MetadataCollection : SchemaCollection
+        private sealed class MetadataCollection : SchemaCollection
         {
             public override string Name => "MetaDataCollections";
             public override string[] Restrictions => new string[0];
@@ -334,7 +334,7 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        sealed class RestrictionsCollection : SchemaCollection
+        private sealed class RestrictionsCollection : SchemaCollection
         {
             public override string Name => "Restrictions";
             public override string[] Restrictions => new string[0];
@@ -359,7 +359,7 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        abstract class ArrowCollection : SchemaCollection
+        private abstract class ArrowCollection : SchemaCollection
         {
             protected abstract MapItem[] Map { get; }
 
@@ -434,12 +434,12 @@ namespace Apache.Arrow.Adbc.Client
 
             private class State
             {
-                readonly DataTable table;
-                readonly int[] indices;
-                readonly Action<State>[] loaders;
-                readonly object[] buffer;
-                readonly int[] offsets;
-                readonly IArrowRecord[] records;
+                private readonly DataTable table;
+                private readonly int[] indices;
+                private readonly Action<State>[] loaders;
+                private readonly object[] buffer;
+                private readonly int[] offsets;
+                private readonly IArrowRecord[] records;
 
                 public State(DataTable table, int[] indices, Action<State>[] loaders)
                 {
@@ -468,7 +468,7 @@ namespace Apache.Arrow.Adbc.Client
                     Loop(lists, 0, batch.Length);
                 }
 
-                void Loop(ListArray[] lists, int ptr, int count)
+                private void Loop(ListArray[] lists, int ptr, int count)
                 {
                     for (int i = 0; i < count; i++)
                     {
@@ -484,7 +484,7 @@ namespace Apache.Arrow.Adbc.Client
                     }
                 }
 
-                void AddRow()
+                private void AddRow()
                 {
                     foreach (Action<State> loader in this.loaders)
                     {
@@ -527,7 +527,7 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        sealed class CatalogsCollection : ArrowCollection
+        private sealed class CatalogsCollection : ArrowCollection
         {
             public override string Name => "Catalogs";
             public override string[] Restrictions => new[] { "Catalog" };
@@ -544,7 +544,7 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        class SchemasCollection : ArrowCollection
+        private class SchemasCollection : ArrowCollection
         {
             public override string Name => "Schemas";
             public override string[] Restrictions => new[] { "Catalog", "Schema" };
@@ -563,7 +563,7 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        class TableTypesCollection : ArrowCollection
+        private class TableTypesCollection : ArrowCollection
         {
             public override string Name => "TableTypes";
             public override string[] Restrictions => new string[0];
@@ -579,7 +579,7 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        class TablesCollection : ArrowCollection
+        private class TablesCollection : ArrowCollection
         {
             public override string Name => "Tables";
             public override string[] Restrictions => new[] { "Catalog", "Schema", "Table", "TableType" };
@@ -602,7 +602,7 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
-        class ColumnsCollection : ArrowCollection
+        private class ColumnsCollection : ArrowCollection
         {
             public override string Name => "Columns";
             public override string[] Restrictions => new[] { "Catalog", "Schema", "Table", "Column" };
