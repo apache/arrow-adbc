@@ -183,12 +183,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             {
                 adbcConnection.Open();
 
-                var schemas = adbcConnection.GetSchema();
-                Assert.Equal(8, schemas.Rows.Count);
+                var collections = adbcConnection.GetSchema("MetaDataCollections");
+                Assert.Equal(7, collections.Rows.Count);
+                Assert.Equal(2, collections.Columns.Count);
 
+                var restrictions = adbcConnection.GetSchema("Restrictions");
+                Assert.Equal(11, restrictions.Rows.Count);
+                Assert.Equal(3, restrictions.Columns.Count);
 
+                var catalogs = adbcConnection.GetSchema("Catalogs");
+                Assert.Equal(1, catalogs.Columns.Count);
+                var catalog = (string)catalogs.Rows[0].ItemArray[0];
 
-                // MetaDataCollections, Restrictions, Databases, Schemas, TableTypes, Tables, Columns, ForeignKeys
+                catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
+                Assert.Equal(1, catalogs.Rows.Count);
+
+                var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
+                Assert.Equal(2, schemas.Columns.Count);
+
+                var schema = "INFORMATION_SCHEMA";
+                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
+                Assert.Equal(1, schemas.Rows.Count);
+
+                var tableTypes = adbcConnection.GetSchema("TableTypes");
+                Assert.Equal(1, tableTypes.Columns.Count);
+
+                var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
+                Assert.Equal(4, tables.Columns.Count);
+                Assert.Equal(32, tables.Rows.Count);
+
+                // Columns
             }
         }
         private Adbc.Client.AdbcConnection GetSnowflakeAdbcConnectionUsingConnectionString(SnowflakeTestConfiguration testConfiguration)
